@@ -8,7 +8,7 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
 {
     private readonly IEditorSettings _editorSettings;
 
-    public PanelVisibilityFlags Panel { get; set; }
+    public PanelRegion Region { get; set; }
 
     public ResetPanelCommand(IEditorSettings editorSettings)
     {
@@ -17,22 +17,22 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        switch (Panel)
+        switch (Region)
         {
-            case PanelVisibilityFlags.Primary:
+            case PanelRegion.Primary:
                 _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
                 break;
 
-            case PanelVisibilityFlags.Secondary:
+            case PanelRegion.Secondary:
                 _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
                 break;
 
-            case PanelVisibilityFlags.Console:
+            case PanelRegion.Console:
                 _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
                 break;
 
             default:
-                return Result.Fail($"Unknown panel: {Panel}");
+                return Result.Fail($"Unknown region: {Region}");
         }
 
         await Task.CompletedTask;

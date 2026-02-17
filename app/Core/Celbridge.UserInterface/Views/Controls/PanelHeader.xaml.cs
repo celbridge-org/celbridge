@@ -13,42 +13,42 @@ public sealed partial class PanelHeader : UserControl
     /// <summary>
     /// The panel this header is associated with.
     /// </summary>
-    public FocusablePanel Panel
+    public WorkspacePanel Panel
     {
-        get => (FocusablePanel)GetValue(PanelProperty);
+        get => (WorkspacePanel)GetValue(PanelProperty);
         set => SetValue(PanelProperty, value);
     }
 
     public static readonly DependencyProperty PanelProperty =
         DependencyProperty.Register(
             nameof(Panel),
-            typeof(FocusablePanel),
+            typeof(WorkspacePanel),
             typeof(PanelHeader),
-            new PropertyMetadata(FocusablePanel.None, OnPanelChanged));
+            new PropertyMetadata(WorkspacePanel.None, OnPanelChanged));
 
     private static void OnPanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is PanelHeader header)
         {
-            header.FocusIndicatorControl.Panel = (FocusablePanel)e.NewValue;
+            header.FocusIndicatorControl.Panel = (WorkspacePanel)e.NewValue;
         }
     }
 
     /// <summary>
-    /// The visibility flag used to collapse this panel when the close button is clicked.
+    /// The region used to collapse this panel when the close button is clicked.
     /// </summary>
-    public PanelVisibilityFlags VisibilityFlag
+    public PanelRegion Region
     {
-        get => (PanelVisibilityFlags)GetValue(VisibilityFlagProperty);
-        set => SetValue(VisibilityFlagProperty, value);
+        get => (PanelRegion)GetValue(RegionProperty);
+        set => SetValue(RegionProperty, value);
     }
 
-    public static readonly DependencyProperty VisibilityFlagProperty =
+    public static readonly DependencyProperty RegionProperty =
         DependencyProperty.Register(
-            nameof(VisibilityFlag),
-            typeof(PanelVisibilityFlags),
+            nameof(Region),
+            typeof(PanelRegion),
             typeof(PanelHeader),
-            new PropertyMetadata(PanelVisibilityFlags.None));
+            new PropertyMetadata(PanelRegion.None));
 
     /// <summary>
     /// The title text displayed in the header.
@@ -115,21 +115,21 @@ public sealed partial class PanelHeader : UserControl
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        if (VisibilityFlag == PanelVisibilityFlags.None)
+        if (Region == PanelRegion.None)
         {
             return;
         }
 
         _commandService.Execute<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = VisibilityFlag;
+            command.Regions = Region;
             command.IsVisible = false;
         });
     }
 
     private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (VisibilityFlag == PanelVisibilityFlags.None)
+        if (Region == PanelRegion.None)
         {
             return;
         }
@@ -137,7 +137,7 @@ public sealed partial class PanelHeader : UserControl
         // Double-clicking the title bar resets the panel to its default size
         _commandService.Execute<IResetPanelCommand>(command =>
         {
-            command.Panel = VisibilityFlag;
+            command.Region = Region;
         });
     }
 }

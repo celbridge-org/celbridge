@@ -14,7 +14,7 @@ public class LayoutManager : ILayoutManager
     private readonly IEditorSettings _editorSettings;
 
     private WindowMode _windowMode = WindowMode.Windowed;
-    private PanelVisibilityFlags _panelVisibility = PanelVisibilityFlags.All;
+    private PanelRegion _panelVisibility = PanelRegion.All;
 
     public LayoutManager(
         ILogger<LayoutManager> logger,
@@ -75,7 +75,7 @@ public class LayoutManager : ILayoutManager
 
     public bool IsFullScreen => WindowMode != WindowMode.Windowed;
 
-    public PanelVisibilityFlags PanelVisibility
+    public PanelRegion PanelVisibility
     {
         get => _panelVisibility;
         private set
@@ -87,17 +87,17 @@ public class LayoutManager : ILayoutManager
         }
     }
 
-    public bool IsContextPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Primary);
+    public bool IsContextPanelVisible => PanelVisibility.HasFlag(PanelRegion.Primary);
 
-    public bool IsInspectorPanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Secondary);
+    public bool IsInspectorPanelVisible => PanelVisibility.HasFlag(PanelRegion.Secondary);
 
-    public bool IsConsolePanelVisible => PanelVisibility.HasFlag(PanelVisibilityFlags.Console);
+    public bool IsConsolePanelVisible => PanelVisibility.HasFlag(PanelRegion.Console);
 
-    public void SetPanelVisibility(PanelVisibilityFlags panel, bool isVisible)
+    public void SetPanelVisibility(PanelRegion region, bool isVisible)
     {
         var newVisibility = isVisible
-            ? PanelVisibility | panel
-            : PanelVisibility & ~panel;
+            ? PanelVisibility | region
+            : PanelVisibility & ~region;
 
         if (newVisibility == PanelVisibility)
         {
@@ -106,7 +106,7 @@ public class LayoutManager : ILayoutManager
 
         // If hiding console while maximized, restore first
         if (!isVisible && 
-            panel.HasFlag(PanelVisibilityFlags.Console) && 
+            region.HasFlag(PanelRegion.Console) && 
             IsConsoleMaximized)
         {
             SetConsoleMaximized(false);
@@ -119,10 +119,10 @@ public class LayoutManager : ILayoutManager
         UpdateWindowMode();
     }
 
-    public void TogglePanelVisibility(PanelVisibilityFlags panel)
+    public void TogglePanelVisibility(PanelRegion region)
     {
-        var isCurrentlyVisible = PanelVisibility.HasFlag(panel);
-        SetPanelVisibility(panel, !isCurrentlyVisible);
+        var isCurrentlyVisible = PanelVisibility.HasFlag(region);
+        SetPanelVisibility(region, !isCurrentlyVisible);
     }
 
     public bool IsConsoleMaximized => _editorSettings.IsConsoleMaximized;
@@ -179,15 +179,15 @@ public class LayoutManager : ILayoutManager
     /// </summary>
     private WindowMode EvaluateFullscreenMode()
     {
-        var sidebarPanels = PanelVisibilityFlags.Primary | PanelVisibilityFlags.Secondary;
-        var sidebarsHidden = (PanelVisibility & sidebarPanels) == PanelVisibilityFlags.None;
+        var sidebarRegions = PanelRegion.Primary | PanelRegion.Secondary;
+        var sidebarsHidden = (PanelVisibility & sidebarRegions) == PanelRegion.None;
 
         // Zen Mode requires:
-        // 1. No sidebar panels visible, AND
-        // 2. Either no panels at all, OR only console visible AND maximized
+        // 1. No sidebar regions visible, AND
+        // 2. Either no regions at all, OR only console visible AND maximized
         var isZenModeState = sidebarsHidden && 
-            (PanelVisibility == PanelVisibilityFlags.None || 
-             (PanelVisibility == PanelVisibilityFlags.Console && IsConsoleMaximized));
+            (PanelVisibility == PanelRegion.None || 
+             (PanelVisibility == PanelRegion.Console && IsConsoleMaximized));
 
         return isZenModeState ? WindowMode.ZenMode : WindowMode.FullScreen;
     }
@@ -254,8 +254,8 @@ public class LayoutManager : ILayoutManager
         // This allows the user to continue working in the console with full screen space.
         // Otherwise, hide all panels for fullscreen documents.
         var zenModeVisibility = IsConsoleMaximized
-            ? PanelVisibilityFlags.Console
-            : PanelVisibilityFlags.None;
+            ? PanelRegion.Console
+            : PanelRegion.None;
 
         // Don't persist this change as it's only temporary.
         UpdatePanelVisibility(zenModeVisibility, shouldPersist: false);
@@ -275,8 +275,8 @@ public class LayoutManager : ILayoutManager
         // This allows the user to present console output with full screen space.
         // Otherwise, hide all panels for fullscreen document presentation.
         var presenterModeVisibility = IsConsoleMaximized
-            ? PanelVisibilityFlags.Console
-            : PanelVisibilityFlags.None;
+            ? PanelRegion.Console
+            : PanelRegion.None;
 
         // Don't persist this change as it's only temporary.
         UpdatePanelVisibility(presenterModeVisibility, shouldPersist: false);
@@ -321,10 +321,10 @@ public class LayoutManager : ILayoutManager
         _editorSettings.PreferredWindowHeight = 0;
         _editorSettings.IsWindowMaximized = false;
 
-        // Reset preferred visibility to all panels
+        // Reset preferred visibility to all regions
         // Doing this both ways to be double sure
-        UpdatePanelVisibility(PanelVisibilityFlags.All, shouldPersist: true);
-        _editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.All;
+        UpdatePanelVisibility(PanelRegion.All, shouldPersist: true);
+        _editorSettings.PreferredPanelVisibility = PanelRegion.All;
 
         // Return to Windowed mode if in fullscreen
         if (WindowMode != WindowMode.Windowed)
@@ -344,7 +344,7 @@ public class LayoutManager : ILayoutManager
         return Result.Ok();
     }
 
-    private void UpdatePanelVisibility(PanelVisibilityFlags newVisibility, bool shouldPersist)
+    private void UpdatePanelVisibility(PanelRegion newVisibility, bool shouldPersist)
     {
         if (PanelVisibility == newVisibility)
         {

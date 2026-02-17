@@ -24,7 +24,7 @@ public interface ILayoutManager
     /// <summary>
     /// Current panel visibility state.
     /// </summary>
-    PanelVisibilityFlags PanelVisibility { get; }
+    PanelRegion PanelVisibility { get; }
 
     /// <summary>
     /// Whether the Context panel (left sidebar) is currently visible.
@@ -42,14 +42,14 @@ public interface ILayoutManager
     bool IsConsolePanelVisible { get; }
 
     /// <summary>
-    /// Sets the visibility of a specific panel.
+    /// Sets the visibility of a specific region.
     /// </summary>
-    void SetPanelVisibility(PanelVisibilityFlags panel, bool isVisible);
+    void SetPanelVisibility(PanelRegion region, bool isVisible);
 
     /// <summary>
-    /// Toggles the visibility of a specific panel.
+    /// Toggles the visibility of a specific region.
     /// </summary>
-    void TogglePanelVisibility(PanelVisibilityFlags panel);
+    void TogglePanelVisibility(PanelRegion region);
 
     /// <summary>
     /// Whether the Console panel is currently maximized to fill the Documents area.

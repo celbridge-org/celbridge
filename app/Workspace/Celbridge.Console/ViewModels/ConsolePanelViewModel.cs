@@ -213,7 +213,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         // This ensures the user can see the error banner even if they had previously collapsed the console
         _commandService.Execute<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Console;
+            command.Regions = PanelRegion.Console;
             command.IsVisible = true;
         });
     }

@@ -433,7 +433,7 @@ public sealed partial class WorkspacePage : Page
     {
         _commandService.Execute<IResetPanelCommand>(command =>
         {
-            command.Panel = PanelVisibilityFlags.Primary;
+            command.Region = PanelRegion.Primary;
         });
     }
 
@@ -441,7 +441,7 @@ public sealed partial class WorkspacePage : Page
     {
         _commandService.Execute<IResetPanelCommand>(command =>
         {
-            command.Panel = PanelVisibilityFlags.Secondary;
+            command.Region = PanelRegion.Secondary;
         });
     }
 
@@ -449,7 +449,7 @@ public sealed partial class WorkspacePage : Page
     {
         _commandService.Execute<IResetPanelCommand>(command =>
         {
-            command.Panel = PanelVisibilityFlags.Console;
+            command.Region = PanelRegion.Console;
         });
     }
 }

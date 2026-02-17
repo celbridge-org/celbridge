@@ -84,7 +84,7 @@ public sealed partial class DocumentSection : UserControl
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Documents);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Documents);
     }
 
     /// <summary>

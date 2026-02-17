@@ -16,7 +16,7 @@
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
                           Panel="Inspector"
-                          VisibilityFlag="Secondary"
+                          Region="Secondary"
                           Title="{x:Bind TitleString}"/>
 
     <local:EntityEditor x:Name="EntityEditor"

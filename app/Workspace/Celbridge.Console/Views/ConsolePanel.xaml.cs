@@ -62,7 +62,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Console);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Console);
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)

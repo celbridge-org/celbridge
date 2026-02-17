@@ -20,7 +20,7 @@
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
                           Panel="Console"
-                          VisibilityFlag="Console"
+                          Region="Console"
                           Title="{x:Bind TitleText}"
                           Tapped="TitleBar_Tapped"
                           DoubleTapped="TitleBar_DoubleTapped">

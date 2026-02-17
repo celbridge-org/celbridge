@@ -74,9 +74,9 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreferredWindowHeight), value);
     }
 
-    public PanelVisibilityFlags PreferredPanelVisibility
+    public PanelRegion PreferredPanelVisibility
     {
-        get => GetValue<PanelVisibilityFlags>(nameof(PreferredPanelVisibility), PanelVisibilityFlags.All);
+        get => GetValue<PanelRegion>(nameof(PreferredPanelVisibility), PanelRegion.All);
         set => SetValue(nameof(PreferredPanelVisibility), value);
     }
 

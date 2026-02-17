@@ -4,17 +4,17 @@ using Celbridge.UserInterface;
 namespace Celbridge.Workspace;
 
 /// <summary>
-/// Sets the visibility of workspace panels.
+/// Sets the visibility of workspace panel regions.
 /// </summary>
 public interface ISetPanelVisibilityCommand : IExecutableCommand
 {
     /// <summary>
-    /// Panel bitmask indicating which panels to show/hide.
+    /// Region bitmask indicating which regions to show/hide.
     /// </summary>
-    PanelVisibilityFlags Panels { get; set; }
+    PanelRegion Regions { get; set; }
 
     /// <summary>
-    /// Whether to show or hide the specified panels.
+    /// Whether to show or hide the specified regions.
     /// </summary>
     bool IsVisible { get; set; }
 }

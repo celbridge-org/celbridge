@@ -6,16 +6,16 @@ namespace Celbridge.UserInterface.Services;
 public class PanelFocusService : IPanelFocusService
 {
     private readonly IMessengerService _messengerService;
-    private FocusablePanel _focusedPanel = FocusablePanel.None;
+    private WorkspacePanel _focusedPanel = WorkspacePanel.None;
 
     public PanelFocusService(IMessengerService messengerService)
     {
         _messengerService = messengerService;
     }
 
-    public FocusablePanel FocusedPanel => _focusedPanel;
+    public WorkspacePanel FocusedPanel => _focusedPanel;
 
-    public void SetFocusedPanel(FocusablePanel panel)
+    public void SetFocusedPanel(WorkspacePanel panel)
     {
         if (_focusedPanel == panel)
         {
@@ -30,6 +30,6 @@ public class PanelFocusService : IPanelFocusService
 
     public void ClearFocus()
     {
-        SetFocusedPanel(FocusablePanel.None);
+        SetFocusedPanel(WorkspacePanel.None);
     }
 }

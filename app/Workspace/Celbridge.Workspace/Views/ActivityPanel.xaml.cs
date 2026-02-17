@@ -140,11 +140,11 @@ public sealed partial class ActivityPanel : UserControl, IActivityPanel
         {
             case ActivityPanelTab.Explorer:
                 ExplorerPanelControl.Visibility = Visibility.Visible;
-                _panelFocusService.SetFocusedPanel(FocusablePanel.Explorer);
+                _panelFocusService.SetFocusedPanel(WorkspacePanel.Explorer);
                 break;
             case ActivityPanelTab.Search:
                 SearchPanelControl.Visibility = Visibility.Visible;
-                _panelFocusService.SetFocusedPanel(FocusablePanel.Search);
+                _panelFocusService.SetFocusedPanel(WorkspacePanel.Search);
                 // Use dispatcher to ensure the panel is fully loaded before focusing
                 _dispatcher.TryEnqueue(() => SearchPanel.FocusSearchInput());
                 break;

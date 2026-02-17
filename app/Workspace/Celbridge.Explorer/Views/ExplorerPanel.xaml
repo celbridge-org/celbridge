@@ -26,7 +26,7 @@
     <controls:PanelHeader x:Name="PanelHeader"
                           Grid.Row="0"
                           Panel="Explorer"
-                          VisibilityFlag="Primary"
+                          Region="Primary"
                           Title="{x:Bind ViewModel.TitleText, Mode=OneWay}">
       <controls:PanelHeader.ToolbarContent>
         

@@ -12,18 +12,18 @@ public sealed partial class FocusIndicator : UserControl
     /// <summary>
     /// The panel this indicator is associated with.
     /// </summary>
-    public FocusablePanel Panel
+    public WorkspacePanel Panel
     {
-        get => (FocusablePanel)GetValue(PanelProperty);
+        get => (WorkspacePanel)GetValue(PanelProperty);
         set => SetValue(PanelProperty, value);
     }
 
     public static readonly DependencyProperty PanelProperty =
         DependencyProperty.Register(
             nameof(Panel),
-            typeof(FocusablePanel),
+            typeof(WorkspacePanel),
             typeof(FocusIndicator),
-            new PropertyMetadata(FocusablePanel.None, OnPanelChanged));
+            new PropertyMetadata(WorkspacePanel.None, OnPanelChanged));
 
     private static void OnPanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {

@@ -27,7 +27,7 @@
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
                           Panel="Search"
-                          VisibilityFlag="Primary"
+                          Region="Primary"
                           Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
 
     <!-- Search Input -->

@@ -23,7 +23,7 @@ public record WindowModeChangedMessage(WindowMode WindowMode);
 /// <summary>
 /// Message sent when the panel visibility changes.
 /// </summary>
-public record PanelVisibilityChangedMessage(PanelVisibilityFlags PanelVisibility);
+public record PanelVisibilityChangedMessage(PanelRegion PanelVisibility);
 
 /// <summary>
 /// Message sent to request the window state (maximized/restored) to be synchronized
@@ -40,7 +40,7 @@ public record ExitedFullscreenViaDragMessage();
 /// <summary>
 /// Message sent when the focused panel changes.
 /// </summary>
-public record PanelFocusChangedMessage(FocusablePanel FocusedPanel);
+public record PanelFocusChangedMessage(WorkspacePanel FocusedPanel);
 
 /// <summary>
 /// Message sent to request an undo operation.

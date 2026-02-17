@@ -46,12 +46,12 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Inspector);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Inspector);
     }
 
     private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Inspector);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Inspector);
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)

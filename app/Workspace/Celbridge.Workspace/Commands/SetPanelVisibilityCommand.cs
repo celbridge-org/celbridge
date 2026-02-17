@@ -7,7 +7,7 @@ public class SetPanelVisibilityCommand : CommandBase, ISetPanelVisibilityCommand
 {
     private readonly ILayoutManager _layoutManager;
 
-    public PanelVisibilityFlags Panels { get; set; }
+    public PanelRegion Regions { get; set; }
 
     public bool IsVisible { get; set; }
 
@@ -18,7 +18,7 @@ public class SetPanelVisibilityCommand : CommandBase, ISetPanelVisibilityCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        _layoutManager.SetPanelVisibility(Panels, IsVisible);
+        _layoutManager.SetPanelVisibility(Regions, IsVisible);
 
         await Task.CompletedTask;
         return Result.Ok();

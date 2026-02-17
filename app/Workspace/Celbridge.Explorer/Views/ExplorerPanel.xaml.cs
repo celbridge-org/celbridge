@@ -43,13 +43,13 @@ public sealed partial class ExplorerPanel : UserControl, IExplorerPanel
 
     private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Explorer);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Explorer);
     }
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
         _hasFocus = true;
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Explorer);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Explorer);
         UpdateToolbarVisibility();
     }
 

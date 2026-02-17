@@ -1,3 +1,5 @@
+using Celbridge.UserInterface;
+
 namespace Celbridge.Workspace;
 
 /// <summary>

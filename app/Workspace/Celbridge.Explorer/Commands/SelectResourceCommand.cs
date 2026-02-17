@@ -35,7 +35,7 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
         {
             _commandService.Execute<ISetPanelVisibilityCommand>(command =>
             {
-                command.Panels = PanelVisibilityFlags.Primary;
+                command.Regions = PanelRegion.Primary;
                 command.IsVisible = true;
             });
         }

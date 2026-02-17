@@ -151,7 +151,7 @@ public sealed partial class LayoutToolbar : UserControl
         var isVisible = !_layoutManager.IsContextPanelVisible;
         _commandService.Execute<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Primary;
+            command.Regions = PanelRegion.Primary;
             command.IsVisible = isVisible;
         });
     }
@@ -163,7 +163,7 @@ public sealed partial class LayoutToolbar : UserControl
         var isVisible = !_layoutManager.IsConsolePanelVisible;
         _commandService.ExecuteImmediate<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Console;
+            command.Regions = PanelRegion.Console;
             command.IsVisible = isVisible;
         });
 
@@ -180,7 +180,7 @@ public sealed partial class LayoutToolbar : UserControl
         var isVisible = !_layoutManager.IsInspectorPanelVisible;
         _commandService.Execute<ISetPanelVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Secondary;
+            command.Regions = PanelRegion.Secondary;
             command.IsVisible = isVisible;
         });
     }

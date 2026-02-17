@@ -33,14 +33,14 @@ public class EditorSettingsTests
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Check the default value system is working
-        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelRegion.All);
 
         // Set a property
-        editorSettings.PreferredPanelVisibility = PanelVisibilityFlags.Primary;
-        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.Primary);
+        editorSettings.PreferredPanelVisibility = PanelRegion.Primary;
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelRegion.Primary);
 
         // Reset the property to default
         editorSettings.Reset();
-        editorSettings.PreferredPanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        editorSettings.PreferredPanelVisibility.Should().Be(PanelRegion.All);
     }
 }
