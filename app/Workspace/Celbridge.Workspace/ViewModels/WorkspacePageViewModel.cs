@@ -46,6 +46,12 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.ConsolePanelHeight = value;
     }
 
+    public float RestoreConsoleHeight
+    {
+        get => _editorSettings.RestoreConsoleHeight;
+        set => _editorSettings.RestoreConsoleHeight = value;
+    }
+
     public bool IsFullScreen => _layoutManager.IsFullScreen;
 
     // Panel visibility properties now use Primary/Secondary naming
@@ -54,6 +60,8 @@ public partial class WorkspacePageViewModel : ObservableObject
     public bool IsSecondaryPanelVisible => _layoutManager.IsInspectorPanelVisible;
 
     public bool IsConsolePanelVisible => _layoutManager.IsConsolePanelVisible;
+
+    public bool IsConsoleMaximized => _layoutManager.IsConsoleMaximized;
 
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
@@ -80,6 +88,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Listen for layout manager state changes via messages
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
+        _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
         // Create the workspace service and notify the user interface service
         _workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
@@ -108,6 +117,12 @@ public partial class WorkspacePageViewModel : ObservableObject
         OnPropertyChanged(nameof(IsConsolePanelVisible));
     }
 
+    private void OnConsoleMaximizedChanged(object recipient, ConsoleMaximizedChangedMessage message)
+    {
+        // Notify that console maximized state has changed
+        OnPropertyChanged(nameof(IsConsoleMaximized));
+    }
+
     public void OnWorkspacePageUnloaded()
     {
         _editorSettings.PropertyChanged -= OnEditorSettings_PropertyChanged;
@@ -115,6 +130,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         // Unregister message handlers
         _messengerService.Unregister<WindowModeChangedMessage>(this);
         _messengerService.Unregister<PanelVisibilityChangedMessage>(this);
+        _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
 
         // Dispose the workspace service
         // This disposes all the sub-services and releases all resources held by the workspace.

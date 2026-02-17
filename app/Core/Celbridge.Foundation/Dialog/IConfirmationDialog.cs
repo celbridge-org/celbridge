@@ -16,14 +16,14 @@ public interface IConfirmationDialog
     string MessageText { get; set; }
 
     /// <summary>
-    /// The text for the primary (confirm) button. If null, uses default "OK" text.
+    /// The text for the primary (confirm) button. Defaults to localized "OK" text.
     /// </summary>
-    string? PrimaryButtonText { get; set; }
+    string PrimaryButtonText { get; set; }
 
     /// <summary>
-    /// The text for the secondary (cancel) button. If null, uses default "Cancel" text.
+    /// The text for the secondary (cancel) button. Defaults to localized "Cancel" text.
     /// </summary>
-    string? SecondaryButtonText { get; set; }
+    string SecondaryButtonText { get; set; }
 
     /// <summary>
     /// Present the confirms dialog to the user.

@@ -8,4 +8,7 @@
     <!-- Converts a boolean value to a Visibility value (true = Visible, false = Collapsed) -->
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 
+    <!-- Converts a boolean value to an accent color brush (true = accent, false = transparent) -->
+    <converters:BoolToAccentColorConverter x:Key="BoolToAccentColorConverter"/>
+
 </ResourceDictionary>

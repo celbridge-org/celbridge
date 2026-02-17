@@ -1,5 +1,5 @@
-using Celbridge.UserInterface;
 using System.ComponentModel;
+using Celbridge.UserInterface;
 
 namespace Celbridge.Settings;
 
@@ -110,6 +110,16 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Height of the detail panel.
     /// </summary>
     float DetailPanelHeight { get; set; }
+
+    /// <summary>
+    /// Whether the Console panel is maximized to fill the Documents area.
+    /// </summary>
+    bool IsConsoleMaximized { get; set; }
+
+    /// <summary>
+    /// The console panel height before it was maximized (used for restore).
+    /// </summary>
+    float RestoreConsoleHeight { get; set; }
 
     // ========================================
     // Settings Page Options

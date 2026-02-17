@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
@@ -5,7 +6,6 @@ using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
-using System.Security.Cryptography;
 
 namespace Celbridge.Console.ViewModels;
 
@@ -16,6 +16,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
+    private readonly ILayoutManager _layoutManager;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
@@ -31,7 +32,7 @@ public partial class ConsolePanelViewModel : ObservableObject
 
     [ObservableProperty]
     private string _projectChangeBannerTitle = string.Empty;
-    
+
     [ObservableProperty]
     private string _projectChangeBannerMessage = string.Empty;
 
@@ -47,6 +48,29 @@ public partial class ConsolePanelViewModel : ObservableObject
     [ObservableProperty]
     private string _migrationBannerMessage = string.Empty;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MaximizeRestoreGlyph))]
+    [NotifyPropertyChangedFor(nameof(MaximizeRestoreTooltip))]
+    [NotifyPropertyChangedFor(nameof(IsMaximizeButtonHighlighted))]
+    private bool _isConsoleMaximized;
+
+    /// <summary>
+    /// Glyph for the maximize/restore button. Chevron down when maximized, chevron up when restored.
+    /// </summary>
+    public string MaximizeRestoreGlyph => IsConsoleMaximized ? "\uE70D" : "\uE70E";
+
+    /// <summary>
+    /// Tooltip for the maximize/restore button.
+    /// </summary>
+    public string MaximizeRestoreTooltip => IsConsoleMaximized
+        ? _stringLocalizer.GetString("ConsolePanel_RestoreConsole")
+        : _stringLocalizer.GetString("ConsolePanel_MaximizeConsole");
+
+    /// <summary>
+    /// Whether the maximize/restore button should be highlighted (when console is maximized).
+    /// </summary>
+    public bool IsMaximizeButtonHighlighted => IsConsoleMaximized;
+
     private byte[]? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
@@ -56,13 +80,18 @@ public partial class ConsolePanelViewModel : ObservableObject
         IStringLocalizer stringLocalizer,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        ICommandService commandService,
+        ILayoutManager layoutManager)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
         _commandService = commandService;
+        _layoutManager = layoutManager;
+
+        // Initialize console maximized state from layout manager
+        _isConsoleMaximized = _layoutManager.IsConsoleMaximized;
 
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
@@ -70,11 +99,31 @@ public partial class ConsolePanelViewModel : ObservableObject
         // Register for resource change messages to monitor project file changes
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
 
+        // Register for console maximized state changes
+        _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
+
         // Store the original project file contents
         StoreProjectFileHash();
-        
+
         // Check if the project was migrated and show banner if needed
         CheckMigrationStatus();
+    }
+
+    private void OnConsoleMaximizedChanged(object recipient, ConsoleMaximizedChangedMessage message)
+    {
+        // Update the local state when the maximized state changes externally
+        _dispatcher.TryEnqueue(() =>
+        {
+            IsConsoleMaximized = message.IsMaximized;
+        });
+    }
+
+    public void ToggleConsoleMaximized()
+    {
+        _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
+        {
+            command.IsMaximized = !IsConsoleMaximized;
+        });
     }
 
     public void OnTerminalProcessExited()
@@ -233,7 +282,7 @@ public partial class ConsolePanelViewModel : ObservableObject
             }
 
             // Check if the hash has changed from the original
-            if (_originalProjectFileHash == null || 
+            if (_originalProjectFileHash == null ||
                 !currentHash.SequenceEqual(_originalProjectFileHash))
             {
                 // Populate the project change banner strings
@@ -271,16 +320,16 @@ public partial class ConsolePanelViewModel : ObservableObject
         // Only show the migration banner if there was an actual version change
         var oldVersion = currentProject.MigrationResult.OldVersion;
         var newVersion = currentProject.MigrationResult.NewVersion;
-        
-        if (!string.IsNullOrEmpty(oldVersion) && 
-            !string.IsNullOrEmpty(newVersion) && 
+
+        if (!string.IsNullOrEmpty(oldVersion) &&
+            !string.IsNullOrEmpty(newVersion) &&
             oldVersion != newVersion)
         {
             // Populate the migration banner strings
             MigrationBannerTitle = _stringLocalizer.GetString("ConsolePanel_MigrationBannerTitle");
             MigrationBannerMessage = _stringLocalizer.GetString("ConsolePanel_MigrationBannerMessage", oldVersion, newVersion);
             IsMigrationBannerVisible = true;
-            ShowConsolePanel(); 
+            ShowConsolePanel();
         }
     }
 
