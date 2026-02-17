@@ -135,7 +135,7 @@ public sealed partial class PanelHeader : UserControl
         }
 
         // Double-clicking the title bar resets the panel to its default size
-        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        _commandService.Execute<IResetPanelCommand>(command =>
         {
             command.Panel = VisibilityFlag;
         });

@@ -423,7 +423,7 @@ public sealed partial class WorkspacePage : Page
 
     private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        _commandService.Execute<IResetPanelCommand>(command =>
         {
             command.Panel = PanelVisibilityFlags.Primary;
         });
@@ -431,7 +431,7 @@ public sealed partial class WorkspacePage : Page
 
     private void SecondaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        _commandService.Execute<IResetPanelCommand>(command =>
         {
             command.Panel = PanelVisibilityFlags.Secondary;
         });
@@ -439,7 +439,7 @@ public sealed partial class WorkspacePage : Page
 
     private void ConsolePanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        _commandService.Execute<IResetPanelSizeCommand>(command =>
+        _commandService.Execute<IResetPanelCommand>(command =>
         {
             command.Panel = PanelVisibilityFlags.Console;
         });

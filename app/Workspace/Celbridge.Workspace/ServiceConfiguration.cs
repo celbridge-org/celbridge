@@ -58,7 +58,7 @@ public static class ServiceConfiguration
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
         services.AddTransient<ISetPanelVisibilityCommand, SetPanelVisibilityCommand>();
         services.AddTransient<ISetConsoleMaximizedCommand, SetConsoleMaximizedCommand>();
-        services.AddTransient<IResetPanelSizeCommand, ResetPanelSizeCommand>();
+        services.AddTransient<IResetPanelCommand, ResetPanelCommand>();
     }
 
     public static void Initialize()

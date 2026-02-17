@@ -4,13 +4,13 @@ using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Commands;
 
-public class ResetPanelSizeCommand : CommandBase, IResetPanelSizeCommand
+public class ResetPanelCommand : CommandBase, IResetPanelCommand
 {
     private readonly IEditorSettings _editorSettings;
 
     public PanelVisibilityFlags Panel { get; set; }
 
-    public ResetPanelSizeCommand(IEditorSettings editorSettings)
+    public ResetPanelCommand(IEditorSettings editorSettings)
     {
         _editorSettings = editorSettings;
     }
