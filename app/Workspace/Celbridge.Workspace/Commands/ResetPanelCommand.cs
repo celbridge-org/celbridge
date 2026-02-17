@@ -8,7 +8,7 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
 {
     private readonly IEditorSettings _editorSettings;
 
-    public PanelRegion Region { get; set; }
+    public LayoutRegion Region { get; set; }
 
     public ResetPanelCommand(IEditorSettings editorSettings)
     {
@@ -19,15 +19,15 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
     {
         switch (Region)
         {
-            case PanelRegion.Primary:
+            case LayoutRegion.Primary:
                 _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
                 break;
 
-            case PanelRegion.Secondary:
+            case LayoutRegion.Secondary:
                 _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
                 break;
 
-            case PanelRegion.Console:
+            case LayoutRegion.Console:
                 _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
                 break;
 

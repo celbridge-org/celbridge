@@ -37,18 +37,18 @@ public sealed partial class PanelHeader : UserControl
     /// <summary>
     /// The region used to collapse this panel when the close button is clicked.
     /// </summary>
-    public PanelRegion Region
+    public LayoutRegion Region
     {
-        get => (PanelRegion)GetValue(RegionProperty);
+        get => (LayoutRegion)GetValue(RegionProperty);
         set => SetValue(RegionProperty, value);
     }
 
     public static readonly DependencyProperty RegionProperty =
         DependencyProperty.Register(
             nameof(Region),
-            typeof(PanelRegion),
+            typeof(LayoutRegion),
             typeof(PanelHeader),
-            new PropertyMetadata(PanelRegion.None));
+            new PropertyMetadata(LayoutRegion.None));
 
     /// <summary>
     /// The title text displayed in the header.
@@ -115,12 +115,12 @@ public sealed partial class PanelHeader : UserControl
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Region == PanelRegion.None)
+        if (Region == LayoutRegion.None)
         {
             return;
         }
 
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
             command.Regions = Region;
             command.IsVisible = false;
@@ -129,7 +129,7 @@ public sealed partial class PanelHeader : UserControl
 
     private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (Region == PanelRegion.None)
+        if (Region == LayoutRegion.None)
         {
             return;
         }

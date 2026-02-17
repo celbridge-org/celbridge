@@ -211,9 +211,9 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Force the console panel to be visible when an error occurs
         // This ensures the user can see the error banner even if they had previously collapsed the console
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Regions = PanelRegion.Console;
+            command.Regions = LayoutRegion.Console;
             command.IsVisible = true;
         });
     }

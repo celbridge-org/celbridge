@@ -89,7 +89,7 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// <summary>
     /// Preferred panel visibility.
     /// </summary>
-    PanelRegion PreferredPanelVisibility { get; set; }
+    LayoutRegion PreferredRegionVisibility { get; set; }
 
     /// <summary>
     /// Width of the Primary panel.

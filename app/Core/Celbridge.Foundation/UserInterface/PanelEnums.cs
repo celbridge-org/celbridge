@@ -41,7 +41,7 @@ public enum WorkspacePanel
 /// Multiple panels can share a region.
 /// </summary>
 [Flags]
-public enum PanelRegion
+public enum LayoutRegion
 {
     /// <summary>
     /// No regions visible.

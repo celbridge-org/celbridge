@@ -37,7 +37,7 @@ public sealed partial class LayoutToolbar : UserControl
 
         // Register for layout manager state change messages
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
-        _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
+        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
     }
 
@@ -116,7 +116,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdateWindowModeRadios();
     }
 
-    private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
+    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
     {
         UpdatePanelIcons();
     }
@@ -149,9 +149,9 @@ public sealed partial class LayoutToolbar : UserControl
     {
         // Use command to toggle panel visibility
         var isVisible = !_layoutManager.IsContextPanelVisible;
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Regions = PanelRegion.Primary;
+            command.Regions = LayoutRegion.Primary;
             command.IsVisible = isVisible;
         });
     }
@@ -161,9 +161,9 @@ public sealed partial class LayoutToolbar : UserControl
         // Toggle panel visibility
         // Using an immediate command to ensure console is shown before focusing
         var isVisible = !_layoutManager.IsConsolePanelVisible;
-        _commandService.ExecuteImmediate<ISetPanelVisibilityCommand>(command =>
+        _commandService.ExecuteImmediate<ISetRegionVisibilityCommand>(command =>
         {
-            command.Regions = PanelRegion.Console;
+            command.Regions = LayoutRegion.Console;
             command.IsVisible = isVisible;
         });
 
@@ -178,9 +178,9 @@ public sealed partial class LayoutToolbar : UserControl
     {
         // Use command to toggle panel visibility
         var isVisible = !_layoutManager.IsInspectorPanelVisible;
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Regions = PanelRegion.Secondary;
+            command.Regions = LayoutRegion.Secondary;
             command.IsVisible = isVisible;
         });
     }

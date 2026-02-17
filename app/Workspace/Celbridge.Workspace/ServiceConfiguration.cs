@@ -56,7 +56,7 @@ public static class ServiceConfiguration
         services.AddTransient<ICopyTextToClipboardCommand, CopyTextToClipboardCommand>();
         services.AddTransient<ICopyResourceToClipboardCommand, CopyResourceToClipboardCommand>();
         services.AddTransient<IPasteResourceFromClipboardCommand, PasteResourceFromClipboardCommand>();
-        services.AddTransient<ISetPanelVisibilityCommand, SetPanelVisibilityCommand>();
+        services.AddTransient<ISetRegionVisibilityCommand, SetRegionVisibilityCommand>();
         services.AddTransient<ISetConsoleMaximizedCommand, SetConsoleMaximizedCommand>();
         services.AddTransient<IResetPanelCommand, ResetPanelCommand>();
     }

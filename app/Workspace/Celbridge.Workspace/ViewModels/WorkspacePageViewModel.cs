@@ -87,7 +87,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         
         // Listen for layout manager state changes via messages
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
-        _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
+        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
         _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
         // Create the workspace service and notify the user interface service
@@ -109,7 +109,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         OnPropertyChanged(nameof(IsFullScreen));
     }
 
-    private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
+    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
     {
         // Notify that panel visibility properties have changed
         OnPropertyChanged(nameof(IsPrimaryPanelVisible));
@@ -129,7 +129,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         
         // Unregister message handlers
         _messengerService.Unregister<WindowModeChangedMessage>(this);
-        _messengerService.Unregister<PanelVisibilityChangedMessage>(this);
+        _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
         _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
 
         // Dispose the workspace service

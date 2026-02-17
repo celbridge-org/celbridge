@@ -23,7 +23,7 @@ public record WindowModeChangedMessage(WindowMode WindowMode);
 /// <summary>
 /// Message sent when the panel visibility changes.
 /// </summary>
-public record PanelVisibilityChangedMessage(PanelRegion PanelVisibility);
+public record RegionVisibilityChangedMessage(LayoutRegion RegionVisibility);
 
 /// <summary>
 /// Message sent to request the window state (maximized/restored) to be synchronized

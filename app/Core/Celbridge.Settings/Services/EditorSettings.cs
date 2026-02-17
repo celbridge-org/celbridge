@@ -74,10 +74,10 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreferredWindowHeight), value);
     }
 
-    public PanelRegion PreferredPanelVisibility
+    public LayoutRegion PreferredRegionVisibility
     {
-        get => GetValue<PanelRegion>(nameof(PreferredPanelVisibility), PanelRegion.All);
-        set => SetValue(nameof(PreferredPanelVisibility), value);
+        get => GetValue<LayoutRegion>(nameof(PreferredRegionVisibility), LayoutRegion.All);
+        set => SetValue(nameof(PreferredRegionVisibility), value);
     }
 
     public float PrimaryPanelWidth

@@ -11,5 +11,5 @@ public interface IResetPanelCommand : IExecutableCommand
     /// <summary>
     /// The region to reset to default size.
     /// </summary>
-    PanelRegion Region { get; set; }
+    LayoutRegion Region { get; set; }
 }

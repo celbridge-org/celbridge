@@ -33,9 +33,9 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
         if (ShowExplorerPanel)
         {
-            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+            _commandService.Execute<ISetRegionVisibilityCommand>(command =>
             {
-                command.Regions = PanelRegion.Primary;
+                command.Regions = LayoutRegion.Primary;
                 command.IsVisible = true;
             });
         }

@@ -6,12 +6,12 @@ namespace Celbridge.Workspace;
 /// <summary>
 /// Sets the visibility of workspace panel regions.
 /// </summary>
-public interface ISetPanelVisibilityCommand : IExecutableCommand
+public interface ISetRegionVisibilityCommand : IExecutableCommand
 {
     /// <summary>
     /// Region bitmask indicating which regions to show/hide.
     /// </summary>
-    PanelRegion Regions { get; set; }
+    LayoutRegion Regions { get; set; }
 
     /// <summary>
     /// Whether to show or hide the specified regions.
