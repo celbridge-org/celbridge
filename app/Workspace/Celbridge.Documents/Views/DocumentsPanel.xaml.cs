@@ -185,6 +185,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Listen for document view focus to update active document
         _messengerService.Register<DocumentViewFocusedMessage>(this, OnDocumentViewFocused);
 
+        // Listen for layout reset requests to reset section count
+        _messengerService.Register<ResetLayoutRequestedMessage>(this, OnResetLayoutRequested);
+
         // Apply initial tab strip visibility based on current window mode
         UpdateTabStripVisibility(_layoutManager.WindowMode);
     }
@@ -202,6 +205,23 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         {
             SectionContainer.ActivateDocument(message.DocumentResource, section.SectionIndex);
         }
+    }
+
+    private void OnResetLayoutRequested(object recipient, ResetLayoutRequestedMessage message)
+    {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
+        // Reset to single section
+        if (SectionCount > 1)
+        {
+            SectionContainer.SetSectionCount(1);
+        }
+
+        // Reset section ratios
+        _ = SectionContainer.ResetSectionRatiosAsync();
     }
 
     private void DocumentsPanel_Unloaded(object sender, RoutedEventArgs e)

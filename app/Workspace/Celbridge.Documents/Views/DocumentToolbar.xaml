@@ -13,10 +13,14 @@
               VerticalAlignment="Center"
               Margin="0, 0, 4, 0">
     <Button x:Name="SplitEditorButton"
+            Style="{StaticResource TransparentIconButtonStyle}"
+            Width="24"
+            Height="24"
             ToolTipService.ToolTip="{x:Bind SplitEditorTooltipString}"
             Padding="4"
             VerticalAlignment="Center">
-      <controls:SplitEditorIcon x:Name="ButtonIcon" SectionCount="2"/>
+      <controls:SplitEditorIcon x:Name="ButtonIcon"
+                                SectionCount="2"/>
       <Button.Flyout>
         <Flyout x:Name="SplitEditorFlyout" Placement="Bottom">
           <StackPanel Spacing="4">

@@ -10,5 +10,5 @@ public interface ISetLayoutCommand : IExecutableCommand
     /// <summary>
     /// The layout transition to perform.
     /// </summary>
-    LayoutTransition Transition { get; set; }
+    WindowModeTransition Transition { get; set; }
 }

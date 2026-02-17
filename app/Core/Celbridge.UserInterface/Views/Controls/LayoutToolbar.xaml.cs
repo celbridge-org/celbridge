@@ -199,7 +199,7 @@ public sealed partial class LayoutToolbar : UserControl
     {
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = LayoutTransition.ResetLayout;
+            command.Transition = WindowModeTransition.ResetLayout;
         });
         PanelLayoutFlyout.Hide();
     }
@@ -211,23 +211,23 @@ public sealed partial class LayoutToolbar : UserControl
             return;
         }
 
-        LayoutTransition transition;
+        WindowModeTransition transition;
 
         if (ReferenceEquals(sender, WindowedModeRadio))
         {
-            transition = LayoutTransition.EnterWindowed;
+            transition = WindowModeTransition.EnterWindowed;
         }
         else if (ReferenceEquals(sender, FullScreenModeRadio))
         {
-            transition = LayoutTransition.EnterFullScreen;
+            transition = WindowModeTransition.EnterFullScreen;
         }
         else if (ReferenceEquals(sender, ZenModeRadio))
         {
-            transition = LayoutTransition.EnterZenMode;
+            transition = WindowModeTransition.EnterZenMode;
         }
         else if (ReferenceEquals(sender, PresenterModeRadio))
         {
-            transition = LayoutTransition.EnterPresenterMode;
+            transition = WindowModeTransition.EnterPresenterMode;
         }
         else
         {

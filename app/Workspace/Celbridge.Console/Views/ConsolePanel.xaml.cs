@@ -103,6 +103,17 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         FocusTerminal();
     }
 
+    private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ToggleConsoleMaximized();
+    }
+
+    private void TitleBar_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        // Double-clicking the title bar toggles maximize/restore
+        ViewModel.ToggleConsoleMaximized();
+    }
+
     private void FocusTerminal()
     {
         if (TerminalWebView?.CoreWebView2 != null)
@@ -252,7 +263,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         {
             _commandService.Execute<ISetLayoutCommand>(command =>
             {
-                command.Transition = LayoutTransition.ToggleZenMode;
+                command.Transition = WindowModeTransition.ToggleZenMode;
             });
             return;
         }

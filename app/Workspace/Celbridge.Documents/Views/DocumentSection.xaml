@@ -39,7 +39,8 @@
              DragOver="TabView_DragOver"
              Drop="TabView_Drop">
       <TabView.TabStripFooter>
-        <ContentPresenter x:Name="FooterPresenter"/>
+        <ContentPresenter x:Name="FooterPresenter"
+                          MinWidth="24"/>
       </TabView.TabStripFooter>
     </TabView>
   </Grid>

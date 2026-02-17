@@ -6,7 +6,7 @@ public class SetLayoutCommand : CommandBase, ISetLayoutCommand
 {
     private readonly ILayoutManager _layoutManager;
 
-    public LayoutTransition Transition { get; set; }
+    public WindowModeTransition Transition { get; set; }
 
     public SetLayoutCommand(ILayoutManager layoutManager)
     {
@@ -15,7 +15,7 @@ public class SetLayoutCommand : CommandBase, ISetLayoutCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var result = _layoutManager.RequestTransition(Transition);
+        var result = _layoutManager.RequestWindowModeTransition(Transition);
         
         await Task.CompletedTask;
 

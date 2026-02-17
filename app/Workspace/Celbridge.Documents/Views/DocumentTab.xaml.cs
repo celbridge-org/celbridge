@@ -221,7 +221,7 @@ public partial class DocumentTab : TabViewItem
         // Double-clicking a document tab toggles Zen Mode (fullscreen with panels hidden)
         _commandService.Execute<ISetLayoutCommand>(command =>
         {
-            command.Transition = LayoutTransition.ToggleZenMode;
+            command.Transition = WindowModeTransition.ToggleZenMode;
         });
         e.Handled = true;
     }

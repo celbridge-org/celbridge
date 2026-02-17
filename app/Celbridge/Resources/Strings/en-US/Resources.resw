@@ -306,6 +306,12 @@
   <data name="ConsolePanel_Title" xml:space="preserve">
     <value>Console</value>
   </data>
+  <data name="ConsolePanel_MaximizeConsole" xml:space="preserve">
+    <value>Maximize Console</value>
+  </data>
+  <data name="ConsolePanel_RestoreConsole" xml:space="preserve">
+    <value>Restore Console</value>
+  </data>
   <data name="ConsolePanel_ProjectConfigErrorTitle" xml:space="preserve">
     <value>Project Configuration Error</value>
   </data>
@@ -615,13 +621,13 @@ Do you wish to continue?</value>
     <value>Copy Path</value>
   </data>
   <data name="LayoutToolbar_TogglePrimaryTooltip" xml:space="preserve">
-    <value>Toggle Primary Panel</value>
+    <value>Toggle Left Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleConsoleTooltip" xml:space="preserve">
     <value>Toggle Console Panel</value>
   </data>
   <data name="LayoutToolbar_ToggleSecondaryTooltip" xml:space="preserve">
-    <value>Toggle Secondary Panel</value>
+    <value>Toggle Right Panel</value>
   </data>
   <data name="LayoutToolbar_CustomizeLayoutTooltip" xml:space="preserve">
     <value>Customize Layout</value>

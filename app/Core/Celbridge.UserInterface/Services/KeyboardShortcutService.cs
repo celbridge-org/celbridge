@@ -33,7 +33,7 @@ public class KeyboardShortcutService : IKeyboardShortcutService
             _logger.LogDebug("F11 pressed - toggling Zen Mode");
             _commandService.Execute<ISetLayoutCommand>(command =>
             {
-                command.Transition = LayoutTransition.ToggleZenMode;
+                command.Transition = WindowModeTransition.ToggleZenMode;
             });
             return true;
         }

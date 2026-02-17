@@ -1,3 +1,4 @@
+using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Console.Views;
 using Celbridge.Documents;
@@ -11,7 +12,14 @@ namespace Celbridge.Workspace.Views;
 
 public sealed partial class WorkspacePage : Page
 {
+    // If documents area becomes smaller than this during console resize, snap to maximize console
+    private const double MinDocumentsHeightBeforeMaximize = 100;
+
+    // Maximum fraction of available vertical space for restored console height
+    private const double MaxRestoredConsoleHeightFraction = 0.7;
+
     private readonly INavigationService _navigationService;
+    private readonly ICommandService _commandService;
 
     public WorkspacePageViewModel ViewModel { get; }
 
@@ -28,6 +36,7 @@ public sealed partial class WorkspacePage : Page
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
         _navigationService = ServiceLocator.AcquireService<INavigationService>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
 
         DataContext = ViewModel;
 
@@ -91,7 +100,15 @@ public sealed partial class WorkspacePage : Page
 
         PrimaryPanel.SizeChanged += (s, e) => ViewModel.PrimaryPanelWidth = (float)e.NewSize.Width;
         SecondaryPanel.SizeChanged += (s, e) => ViewModel.SecondaryPanelWidth = (float)e.NewSize.Width;
-        ConsolePanel.SizeChanged += (s, e) => ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+
+        // Only update console height setting when not maximized (to preserve restore height)
+        ConsolePanel.SizeChanged += (s, e) =>
+        {
+            if (!ViewModel.IsConsoleMaximized)
+            {
+                ViewModel.ConsolePanelHeight = (float)e.NewSize.Height;
+            }
+        };
 
         // Initialize splitter helpers
         _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: 100);
@@ -109,6 +126,7 @@ public sealed partial class WorkspacePage : Page
 
         ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
         ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
+        ConsolePanelSplitter.DragCompleted += ConsolePanelSplitter_DragCompleted;
         ConsolePanelSplitter.DoubleClicked += ConsolePanelSplitter_DoubleClicked;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -178,20 +196,32 @@ public sealed partial class WorkspacePage : Page
             case nameof(ViewModel.IsConsolePanelVisible):
                 UpdatePanels();
                 break;
+
+            case nameof(ViewModel.IsConsoleMaximized):
+                UpdateConsoleMaximized();
+                break;
+
             case nameof(ViewModel.PrimaryPanelWidth):
-                if (ViewModel.IsPrimaryPanelVisible && ViewModel.PrimaryPanelWidth > 0)
+                if (ViewModel.IsPrimaryPanelVisible && 
+                    ViewModel.PrimaryPanelWidth > 0)
                 {
                     PrimaryPanelColumn.Width = new GridLength(ViewModel.PrimaryPanelWidth);
                 }
                 break;
+
             case nameof(ViewModel.SecondaryPanelWidth):
-                if (ViewModel.IsSecondaryPanelVisible && ViewModel.SecondaryPanelWidth > 0)
+                if (ViewModel.IsSecondaryPanelVisible && 
+                    ViewModel.SecondaryPanelWidth > 0)
                 {
                     SecondaryPanelColumn.Width = new GridLength(ViewModel.SecondaryPanelWidth);
                 }
                 break;
+
             case nameof(ViewModel.ConsolePanelHeight):
-                if (ViewModel.IsConsolePanelVisible && ViewModel.ConsolePanelHeight > 0)
+                // Don't update row height when console is maximized (it uses Star sizing)
+                if (ViewModel.IsConsolePanelVisible && 
+                    ViewModel.ConsolePanelHeight > 0 && 
+                    !ViewModel.IsConsoleMaximized)
                 {
                     ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
                 }
@@ -249,6 +279,76 @@ public sealed partial class WorkspacePage : Page
             ConsolePanelRow.MinHeight = 0;
             ConsolePanelRow.Height = new GridLength(0);
         }
+
+        // Apply console maximized state after panel visibility
+        UpdateConsoleMaximized();
+    }
+
+    private void UpdateConsoleMaximized()
+    {
+        if (!ViewModel.IsConsolePanelVisible)
+        {
+            // Console is hidden, nothing to maximize
+            return;
+        }
+
+        if (ViewModel.IsConsoleMaximized)
+        {
+            // Save the current console height before maximizing so we can restore it later.
+            // Only save if we have a valid height (not already maximized).
+            var currentConsoleHeight = (float)ConsolePanel.ActualHeight;
+            if (currentConsoleHeight > 0 && ConsolePanelRow.Height.GridUnitType != GridUnitType.Star)
+            {
+                ViewModel.RestoreConsoleHeight = currentConsoleHeight;
+            }
+
+            // Hide the splitter while maximized
+            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
+
+            // Hide Documents panel and row
+            DocumentsPanel.Visibility = Visibility.Collapsed;
+            DocumentsPanelRow.MinHeight = 0;
+            DocumentsPanelRow.Height = new GridLength(0);
+
+            // Maximize Console row using Star sizing so it fills available space
+            ConsolePanelRow.MinHeight = 0;
+            ConsolePanelRow.Height = new GridLength(1, GridUnitType.Star);
+        }
+        else
+        {
+            // Show the splitter when restored
+            ConsolePanelSplitter.Visibility = Visibility.Visible;
+
+            // Restore Documents panel and row
+            DocumentsPanel.Visibility = Visibility.Visible;
+            DocumentsPanelRow.MinHeight = 0;
+            DocumentsPanelRow.Height = new GridLength(1, GridUnitType.Star);
+
+            // Restore console MinHeight
+            ConsolePanelRow.MinHeight = 100;
+
+            // Restore console to the height it was before maximizing
+            var consoleHeight = ViewModel.RestoreConsoleHeight;
+            if (consoleHeight <= 0)
+            {
+                consoleHeight = UserInterfaceConstants.ConsolePanelHeight;
+            }
+
+            // Clamp to max fraction of available height to ensure documents area is visible.
+            // This handles the case where the window was resized smaller while console was maximized.
+            var maxConsoleHeight = (float)(LayoutRoot.ActualHeight * MaxRestoredConsoleHeightFraction);
+            if (consoleHeight > maxConsoleHeight && maxConsoleHeight > 100)
+            {
+                consoleHeight = maxConsoleHeight;
+            }
+
+            // Set Console row to fixed height
+            ConsolePanelRow.Height = new GridLength(consoleHeight);
+        }
+
+        // Force layout recalculation
+        LayoutRoot.InvalidateMeasure();
+        LayoutRoot.InvalidateArrange();
     }
 
     private void Panel_GotFocus(object sender, RoutedEventArgs e)
@@ -315,18 +415,41 @@ public sealed partial class WorkspacePage : Page
         _consolePanelSplitterHelper?.OnDragDelta(delta);
     }
 
+    private void ConsolePanelSplitter_DragCompleted(object? sender, EventArgs e)
+    {
+        // If the user dragged the console splitter up until the documents area is very small,
+        // we interpret this as a request to maximize the console panel.
+        var documentsHeight = DocumentsPanel.ActualHeight;
+        if (documentsHeight < MinDocumentsHeightBeforeMaximize && !ViewModel.IsConsoleMaximized)
+        {
+            _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
+            {
+                command.IsMaximized = true;
+            });
+        }
+    }
+
     private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        ViewModel.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
+        _commandService.Execute<IResetPanelCommand>(command =>
+        {
+            command.Panel = PanelVisibilityFlags.Primary;
+        });
     }
 
     private void SecondaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        ViewModel.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
+        _commandService.Execute<IResetPanelCommand>(command =>
+        {
+            command.Panel = PanelVisibilityFlags.Secondary;
+        });
     }
 
     private void ConsolePanelSplitter_DoubleClicked(object? sender, EventArgs e)
     {
-        ViewModel.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
+        _commandService.Execute<IResetPanelCommand>(command =>
+        {
+            command.Panel = PanelVisibilityFlags.Console;
+        });
     }
 }

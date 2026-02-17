@@ -22,7 +22,25 @@
                           Panel="Console"
                           VisibilityFlag="Console"
                           Title="{x:Bind TitleText}"
-                          Tapped="TitleBar_Tapped"/>
+                          Tapped="TitleBar_Tapped"
+                          DoubleTapped="TitleBar_DoubleTapped">
+      <controls:PanelHeader.ToolbarContent>
+        <Button x:Name="MaximizeRestoreButton"
+                Style="{StaticResource TransparentIconButtonStyle}"
+                ToolTipService.ToolTip="{x:Bind ViewModel.MaximizeRestoreTooltip, Mode=OneWay}"
+                VerticalAlignment="Center"
+                Click="MaximizeRestoreButton_Click">
+          <!-- Border provides accent highlight when maximized -->
+          <Border Background="{x:Bind ViewModel.IsMaximizeButtonHighlighted, Mode=OneWay, Converter={StaticResource BoolToAccentColorConverter}}"
+                  CornerRadius="4"
+                  Padding="4">
+            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}"
+                      Glyph="{x:Bind ViewModel.MaximizeRestoreGlyph, Mode=OneWay}"
+                      FontSize="14" />
+          </Border>
+        </Button>
+      </controls:PanelHeader.ToolbarContent>
+    </controls:PanelHeader>
 
     <InfoBar x:Name="ErrorInfoBar"
              Grid.Row="1"

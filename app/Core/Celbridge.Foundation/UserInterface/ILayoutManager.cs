@@ -12,6 +12,11 @@ public interface ILayoutManager
     WindowMode WindowMode { get; }
 
     /// <summary>
+    /// Requests a wondow mode transition.
+    /// </summary>
+    Result RequestWindowModeTransition(WindowModeTransition transition);
+
+    /// <summary>
     /// Whether the window is currently in a fullscreen mode.
     /// </summary>
     bool IsFullScreen { get; }
@@ -37,11 +42,6 @@ public interface ILayoutManager
     bool IsConsolePanelVisible { get; }
 
     /// <summary>
-    /// Requests a layout state transition.
-    /// </summary>
-    Result RequestTransition(LayoutTransition transition);
-
-    /// <summary>
     /// Sets the visibility of a specific panel.
     /// </summary>
     void SetPanelVisibility(PanelVisibilityFlags panel, bool isVisible);
@@ -50,4 +50,15 @@ public interface ILayoutManager
     /// Toggles the visibility of a specific panel.
     /// </summary>
     void TogglePanelVisibility(PanelVisibilityFlags panel);
+
+    /// <summary>
+    /// Whether the Console panel is currently maximized to fill the Documents area.
+    /// </summary>
+    bool IsConsoleMaximized { get; }
+
+    /// <summary>
+    /// Sets the maximized state of the Console panel.
+    /// When maximized, the Console panel fills the Documents area.
+    /// </summary>
+    void SetConsoleMaximized(bool isMaximized);
 }
