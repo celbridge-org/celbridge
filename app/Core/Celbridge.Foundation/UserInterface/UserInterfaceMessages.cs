@@ -21,11 +21,6 @@ public record ActivePageChangedMessage(ApplicationPage ActivePage);
 public record WindowModeChangedMessage(WindowMode WindowMode);
 
 /// <summary>
-/// Message sent when the panel visibility changes.
-/// </summary>
-public record RegionVisibilityChangedMessage(LayoutRegion RegionVisibility);
-
-/// <summary>
 /// Message sent to request the window state (maximized/restored) to be synchronized
 /// with the current editor settings.
 /// </summary>
@@ -38,11 +33,6 @@ public record RestoreWindowStateMessage();
 public record ExitedFullscreenViaDragMessage();
 
 /// <summary>
-/// Message sent when the focused panel changes.
-/// </summary>
-public record PanelFocusChangedMessage(WorkspacePanel FocusedPanel);
-
-/// <summary>
 /// Message sent to request an undo operation.
 /// </summary>
 public record UndoRequestedMessage();
@@ -51,15 +41,4 @@ public record UndoRequestedMessage();
 /// Message sent to request a redo operation.
 /// </summary>
 public record RedoRequestedMessage();
-
-/// <summary>
-/// Message sent when the Console panel maximized state changes.
-/// </summary>
-public record ConsoleMaximizedChangedMessage(bool IsMaximized);
-
-/// <summary>
-/// Message sent when the layout should be reset to defaults.
-/// Listeners should reset their layout state (e.g., document sections).
-/// </summary>
-public record ResetLayoutRequestedMessage();
 

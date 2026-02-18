@@ -3,7 +3,6 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Search;
-using Celbridge.UserInterface;
 using Celbridge.Workspace.Services;
 using Celbridge.Workspace.ViewModels;
 using Microsoft.Extensions.Localization;

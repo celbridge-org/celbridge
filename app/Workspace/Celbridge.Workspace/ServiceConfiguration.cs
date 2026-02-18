@@ -31,6 +31,7 @@ public static class ServiceConfiguration
         // Register services
         //
 
+        services.AddSingleton<IPanelFocusService, PanelFocusService>();
         services.AddTransient<IWorkspaceSettingsService, WorkspaceSettingsService>();
         services.AddTransient<IWorkspaceService, WorkspaceService>();
         services.AddTransient<IDataTransferService, DataTransferService>();

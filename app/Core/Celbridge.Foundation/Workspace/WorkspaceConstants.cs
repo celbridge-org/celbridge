@@ -1,6 +1,6 @@
-namespace Celbridge.UserInterface;
+namespace Celbridge.Workspace;
 
-public static class UserInterfaceConstants
+public static class WorkspaceConstants
 {
     /// <summary>
     /// Default width of the primary panel.

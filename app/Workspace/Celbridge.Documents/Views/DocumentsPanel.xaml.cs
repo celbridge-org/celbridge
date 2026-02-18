@@ -16,7 +16,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IDocumentsLogger _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly ILayoutManager _layoutManager;
+    private readonly IWindowModeService _windowModeService;
 
     private bool _isShuttingDown = false;
 
@@ -46,14 +46,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        ILayoutManager layoutManager)
+        IWindowModeService windowModeService)
     {
         InitializeComponent();
 
         _logger = logger;
         _messengerService = messengerService;
         _commandService = commandService;
-        _layoutManager = layoutManager;
+        _windowModeService = windowModeService;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -189,7 +189,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService.Register<ResetLayoutRequestedMessage>(this, OnResetLayoutRequested);
 
         // Apply initial tab strip visibility based on current window mode
-        UpdateTabStripVisibility(_layoutManager.WindowMode);
+        UpdateTabStripVisibility(_windowModeService.WindowMode);
     }
 
     private void OnDocumentViewFocused(object recipient, DocumentViewFocusedMessage message)

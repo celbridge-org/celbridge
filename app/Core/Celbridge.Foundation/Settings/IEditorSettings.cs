@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Settings;
 

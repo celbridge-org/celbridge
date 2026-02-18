@@ -1,5 +1,5 @@
 using Celbridge.Logging;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;

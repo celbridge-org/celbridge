@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Commands;
 
@@ -20,15 +19,15 @@ public class ResetPanelCommand : CommandBase, IResetPanelCommand
         switch (Region)
         {
             case LayoutRegion.Primary:
-                _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
+                _editorSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
                 break;
 
             case LayoutRegion.Secondary:
-                _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
+                _editorSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
                 break;
 
             case LayoutRegion.Console:
-                _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
+                _editorSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
                 break;
 
             default:

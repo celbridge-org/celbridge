@@ -4,19 +4,19 @@ namespace Celbridge.UserInterface.Commands;
 
 public class SetLayoutCommand : CommandBase, ISetLayoutCommand
 {
-    private readonly ILayoutManager _layoutManager;
+    private readonly IWindowModeService _windowModeService;
 
     public WindowModeTransition Transition { get; set; }
 
-    public SetLayoutCommand(ILayoutManager layoutManager)
+    public SetLayoutCommand(IWindowModeService windowModeService)
     {
-        _layoutManager = layoutManager;
+        _windowModeService = windowModeService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var result = _layoutManager.RequestWindowModeTransition(Transition);
-        
+        var result = _windowModeService.RequestWindowModeTransition(Transition);
+
         await Task.CompletedTask;
 
         return result;

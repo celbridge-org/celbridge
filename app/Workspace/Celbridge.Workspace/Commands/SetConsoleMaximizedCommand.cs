@@ -1,22 +1,21 @@
 using Celbridge.Commands;
-using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Commands;
 
 public class SetConsoleMaximizedCommand : CommandBase, ISetConsoleMaximizedCommand
 {
-    private readonly ILayoutManager _layoutManager;
+    private readonly ILayoutService _layoutService;
 
     public bool IsMaximized { get; set; }
 
-    public SetConsoleMaximizedCommand(ILayoutManager layoutManager)
+    public SetConsoleMaximizedCommand(ILayoutService layoutService)
     {
-        _layoutManager = layoutManager;
+        _layoutService = layoutService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        _layoutManager.SetConsoleMaximized(IsMaximized);
+        _layoutService.SetConsoleMaximized(IsMaximized);
 
         await Task.CompletedTask;
         return Result.Ok();

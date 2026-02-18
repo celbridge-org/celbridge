@@ -4,7 +4,6 @@ using Celbridge.Console.Views;
 using Celbridge.Documents;
 using Celbridge.Inspector;
 using Celbridge.Navigation;
-using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace.ViewModels;
 
@@ -331,7 +330,7 @@ public sealed partial class WorkspacePage : Page
             var consoleHeight = ViewModel.RestoreConsoleHeight;
             if (consoleHeight <= 0)
             {
-                consoleHeight = UserInterfaceConstants.ConsolePanelHeight;
+                consoleHeight = WorkspaceConstants.ConsolePanelHeight;
             }
 
             // Clamp to max fraction of available height to ensure documents area is visible.

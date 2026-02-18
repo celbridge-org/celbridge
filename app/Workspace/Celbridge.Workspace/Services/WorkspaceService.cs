@@ -11,7 +11,6 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Search;
-using Celbridge.UserInterface;
 
 namespace Celbridge.Workspace.Services;
 

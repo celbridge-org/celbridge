@@ -1,6 +1,6 @@
 using Celbridge.Settings;
 using Celbridge.Settings.Services;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
@@ -23,7 +23,7 @@ public class EditorSettingsTests
 
     [TearDown]
     public void TearDown()
-    {}
+    { }
 
     [Test]
     public void ICanCanGetAndSetEditorSettings()

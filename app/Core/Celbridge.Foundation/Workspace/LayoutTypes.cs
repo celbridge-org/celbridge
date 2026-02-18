@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Identifies individual panels in the workspace for focus tracking.

@@ -1,5 +1,5 @@
 using Celbridge.Search.ViewModels;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Search.Views;
 

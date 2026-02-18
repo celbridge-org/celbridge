@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Manages focus state across panels to ensure only one panel appears focused at a time.

@@ -1,28 +1,12 @@
-namespace Celbridge.UserInterface;
+namespace Celbridge.Workspace;
 
 /// <summary>
-/// Centralized manager for window modes and panel visibility state.
-/// Implements a state machine with clear transitions between allowed states.
+/// Manages workspace layout region visibility and console maximized state.
 /// </summary>
-public interface ILayoutManager
+public interface ILayoutService
 {
     /// <summary>
-    /// Current window mode.
-    /// </summary>
-    WindowMode WindowMode { get; }
-
-    /// <summary>
-    /// Requests a wondow mode transition.
-    /// </summary>
-    Result RequestWindowModeTransition(WindowModeTransition transition);
-
-    /// <summary>
-    /// Whether the window is currently in a fullscreen mode.
-    /// </summary>
-    bool IsFullScreen { get; }
-
-    /// <summary>
-    /// Current panel visibility state.
+    /// Current region visibility state.
     /// </summary>
     LayoutRegion RegionVisibility { get; }
 

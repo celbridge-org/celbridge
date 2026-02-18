@@ -4,6 +4,7 @@ using Celbridge.Messaging.Services;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
@@ -191,10 +192,10 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        
+
         // Toggle back to Windowed - should restore the persisted preference (None)
         result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
-        
+
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
         _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);

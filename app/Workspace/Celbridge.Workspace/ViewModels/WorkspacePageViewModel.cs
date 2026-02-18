@@ -19,7 +19,8 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IEditorSettings _editorSettings;
-    private readonly ILayoutManager _layoutManager;
+    private readonly IWindowModeService _windowModeService;
+    private readonly ILayoutService _layoutService;
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
     private readonly IProjectService _projectService;
@@ -52,16 +53,16 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.RestoreConsoleHeight = value;
     }
 
-    public bool IsFullScreen => _layoutManager.IsFullScreen;
+    public bool IsFullScreen => _windowModeService.IsFullScreen;
 
     // Panel visibility properties now use Primary/Secondary naming
-    public bool IsPrimaryPanelVisible => _layoutManager.IsContextPanelVisible;
+    public bool IsPrimaryPanelVisible => _layoutService.IsContextPanelVisible;
 
-    public bool IsSecondaryPanelVisible => _layoutManager.IsInspectorPanelVisible;
+    public bool IsSecondaryPanelVisible => _layoutService.IsInspectorPanelVisible;
 
-    public bool IsConsolePanelVisible => _layoutManager.IsConsolePanelVisible;
+    public bool IsConsolePanelVisible => _layoutService.IsConsolePanelVisible;
 
-    public bool IsConsoleMaximized => _layoutManager.IsConsoleMaximized;
+    public bool IsConsoleMaximized => _layoutService.IsConsoleMaximized;
 
     public WorkspacePageViewModel(
         IWorkspaceLogger logger,
@@ -69,7 +70,8 @@ public partial class WorkspacePageViewModel : ObservableObject
         IMessengerService messengerService,
         IStringLocalizer stringLocalizer,
         IEditorSettings editorSettings,
-        ILayoutManager layoutManager,
+        IWindowModeService windowModeService,
+        ILayoutService layoutService,
         IDialogService dialogService,
         IProjectService projectService,
         WorkspaceLoader workspaceLoader)
@@ -78,7 +80,8 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _editorSettings = editorSettings;
-        _layoutManager = layoutManager;
+        _windowModeService = windowModeService;
+        _layoutService = layoutService;
         _dialogService = dialogService;
         _projectService = projectService;
         _workspaceLoader = workspaceLoader;

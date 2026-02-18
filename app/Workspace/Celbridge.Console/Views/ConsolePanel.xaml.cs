@@ -4,6 +4,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;

@@ -1,3 +1,4 @@
+using Celbridge.Workspace;
 using Celbridge.Logging;
 using Celbridge.Settings;
 
@@ -7,7 +8,7 @@ namespace Celbridge.UserInterface.Services;
 /// Centralized manager for window modes and panel visibility state.
 /// Implements a state machine with clear transitions between allowed states.
 /// </summary>
-public class LayoutManager : ILayoutManager
+public class LayoutManager : IWindowModeService, ILayoutService
 {
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
@@ -308,10 +309,10 @@ public class LayoutManager : ILayoutManager
         }
 
         // Reset panel sizes
-        _editorSettings.PrimaryPanelWidth = UserInterfaceConstants.PrimaryPanelWidth;
-        _editorSettings.SecondaryPanelWidth = UserInterfaceConstants.SecondaryPanelWidth;
-        _editorSettings.ConsolePanelHeight = UserInterfaceConstants.ConsolePanelHeight;
-        _editorSettings.RestoreConsoleHeight = UserInterfaceConstants.ConsolePanelHeight;
+        _editorSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
+        _editorSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
+        _editorSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
+        _editorSettings.RestoreConsoleHeight = WorkspaceConstants.ConsolePanelHeight;
 
         // Reset preferred window geometry
         _editorSettings.UsePreferredWindowGeometry = false;

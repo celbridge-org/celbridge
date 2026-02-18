@@ -17,9 +17,9 @@
     </Grid.ColumnDefinitions>
 
     <!-- Focus Indicator -->
-    <controls:FocusIndicator x:Name="FocusIndicatorControl"
-                             Grid.Column="0"
-                             Margin="6,0,0,0"/>
+    <controls:PanelFocusIndicator x:Name="FocusIndicatorControl"
+                                  Grid.Column="0"
+                                  Margin="6,0,0,0"/>
 
     <!-- Title -->
     <TextBlock Grid.Column="1"

@@ -16,7 +16,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
-    private readonly ILayoutManager _layoutManager;
+    private readonly ILayoutService _layoutService;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
@@ -81,17 +81,17 @@ public partial class ConsolePanelViewModel : ObservableObject
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        ILayoutManager layoutManager)
+        ILayoutService layoutService)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
         _commandService = commandService;
-        _layoutManager = layoutManager;
+        _layoutService = layoutService;
 
-        // Initialize console maximized state from layout manager
-        _isConsoleMaximized = _layoutManager.IsConsoleMaximized;
+        // Initialize console maximized state from layout service
+        _isConsoleMaximized = _layoutService.IsConsoleMaximized;
 
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
