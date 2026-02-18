@@ -1,0 +1,102 @@
+﻿<UserControl
+    x:Class="Celbridge.WorkspaceUI.Views.ActivityPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+
+    <Grid x:Name="LayoutRoot">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="50"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Navigation Bar Container -->
+        <Grid Grid.Column="0"
+              Background="{ThemeResource PanelBackgroundABrush}"
+              BorderBrush="{ThemeResource DividerBrush}"
+              BorderThickness="0,0,1,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Vertical Navigation View for tab selection -->
+            <NavigationView x:Name="ActivityNavigation"
+                            Grid.Row="0"
+                            IsPaneToggleButtonVisible="False"
+                            IsBackButtonVisible="Collapsed"
+                            IsSettingsVisible="False"
+                            PaneDisplayMode="LeftCompact"
+                            CompactPaneLength="48"
+                            Background="Transparent"
+                            SelectionChanged="ActivityNavigation_SelectionChanged">
+                <NavigationView.MenuItems>
+
+                    <!-- Explorer -->
+                    <NavigationViewItem x:Name="ExplorerNavItem"
+                                        Tag="Explorer">
+                        <NavigationViewItem.Icon>
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xEC50;"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+
+                    <!-- Search -->
+                    <NavigationViewItem x:Name="SearchNavItem"
+                                        Tag="Search">
+                        <NavigationViewItem.Icon>
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xE721;"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+
+                    <!-- Debug -->
+                    <NavigationViewItem x:Name="DebugNavItem"
+                                        Tag="Debug"
+                                        IsEnabled="False"
+                                        Visibility="Collapsed">
+                        <NavigationViewItem.Icon>
+                            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      Glyph="&#xEBE8;"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+
+                    <!-- Source Control -->
+                    <NavigationViewItem x:Name="SourceControlNavItem"
+                                        Tag="SourceControl"
+                                        IsEnabled="False"
+                                        Visibility="Collapsed">
+                        <NavigationViewItem.Icon>
+                            <SymbolIcon Symbol="Upload"/>
+                        </NavigationViewItem.Icon>
+                    </NavigationViewItem>
+                </NavigationView.MenuItems>
+            </NavigationView>
+
+            <!-- Shortcut Buttons Container -->
+            <StackPanel x:Name="ShortcutButtonsPanel"
+                        Grid.Row="1"
+                        VerticalAlignment="Top"
+                        Visibility="Collapsed">
+                <!-- Separator -->
+                <Border Height="1"
+                        Margin="8,4,8,4"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+                <!-- Shortcut buttons are added programmatically -->
+            </StackPanel>
+        </Grid>
+
+        <!-- Content area for the selected panel -->
+        <Grid x:Name="ContentArea"
+              Grid.Column="1"
+              Background="{ThemeResource PanelBackgroundABrush}">
+            <ContentControl x:Name="ExplorerPanelControl"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+            <ContentControl x:Name="SearchPanelControl"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"
+                            Visibility="Collapsed" />
+        </Grid>
+    </Grid>
+</UserControl>

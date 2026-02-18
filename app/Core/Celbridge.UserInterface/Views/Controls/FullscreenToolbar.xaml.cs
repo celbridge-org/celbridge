@@ -14,7 +14,7 @@ public sealed partial class FullscreenToolbar : UserControl
 
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
-    private readonly ILayoutManager _layoutManager;
+    private readonly IWindowModeService _windowModeService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly DispatcherTimer _hideTimer;
     
@@ -31,7 +31,7 @@ public sealed partial class FullscreenToolbar : UserControl
 
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
+        _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         this.DataContext = this;
@@ -60,7 +60,7 @@ public sealed partial class FullscreenToolbar : UserControl
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         
         // Check if already in a fullscreen mode
-        _isFullscreenModeActive = _layoutManager.IsFullScreen;
+        _isFullscreenModeActive = _windowModeService.IsFullScreen;
         
         // Update trigger zone visibility based on current mode
         UpdateTriggerZoneVisibility();

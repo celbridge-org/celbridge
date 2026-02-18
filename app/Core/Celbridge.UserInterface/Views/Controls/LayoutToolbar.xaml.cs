@@ -9,7 +9,8 @@ public sealed partial class LayoutToolbar : UserControl
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly ILayoutManager _layoutManager;
+    private readonly IWindowModeService _windowModeService;
+    private readonly ILayoutService _layoutService;
 
     private bool _isUpdatingUI = false;
     private bool _isOnWorkspacePage = false;
@@ -21,7 +22,8 @@ public sealed partial class LayoutToolbar : UserControl
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _layoutManager = ServiceLocator.AcquireService<ILayoutManager>();
+        _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
+        _layoutService = ServiceLocator.AcquireService<ILayoutService>();
 
         Loaded += LayoutToolbar_Loaded;
         Unloaded += LayoutToolbar_Unloaded;
@@ -37,7 +39,7 @@ public sealed partial class LayoutToolbar : UserControl
 
         // Register for layout manager state change messages
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
-        _messengerService.Register<PanelVisibilityChangedMessage>(this, OnPanelVisibilityChanged);
+        _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
     }
 
@@ -116,7 +118,7 @@ public sealed partial class LayoutToolbar : UserControl
         UpdateWindowModeRadios();
     }
 
-    private void OnPanelVisibilityChanged(object recipient, PanelVisibilityChangedMessage message)
+    private void OnRegionVisibilityChanged(object recipient, RegionVisibilityChangedMessage message)
     {
         UpdatePanelIcons();
     }
@@ -126,7 +128,7 @@ public sealed partial class LayoutToolbar : UserControl
         _isUpdatingUI = true;
         try
         {
-            var windowMode = _layoutManager.WindowMode;
+            var windowMode = _windowModeService.WindowMode;
             WindowedModeRadio.IsChecked = windowMode == WindowMode.Windowed;
             FullScreenModeRadio.IsChecked = windowMode == WindowMode.FullScreen;
             ZenModeRadio.IsChecked = windowMode == WindowMode.ZenMode;
@@ -140,18 +142,18 @@ public sealed partial class LayoutToolbar : UserControl
 
     private void UpdatePanelIcons()
     {
-        PrimaryPanelIcon.IsActivePanel = _layoutManager.IsContextPanelVisible;
-        ConsolePanelIcon.IsActivePanel = _layoutManager.IsConsolePanelVisible;
-        SecondaryPanelIcon.IsActivePanel = _layoutManager.IsInspectorPanelVisible;
+        PrimaryPanelIcon.IsActivePanel = _layoutService.IsContextPanelVisible;
+        ConsolePanelIcon.IsActivePanel = _layoutService.IsConsolePanelVisible;
+        SecondaryPanelIcon.IsActivePanel = _layoutService.IsInspectorPanelVisible;
     }
 
     private void TogglePrimaryPanelButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
-        var isVisible = !_layoutManager.IsContextPanelVisible;
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsContextPanelVisible;
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Primary;
+            command.Regions = LayoutRegion.Primary;
             command.IsVisible = isVisible;
         });
     }
@@ -160,10 +162,10 @@ public sealed partial class LayoutToolbar : UserControl
     {
         // Toggle panel visibility
         // Using an immediate command to ensure console is shown before focusing
-        var isVisible = !_layoutManager.IsConsolePanelVisible;
-        _commandService.ExecuteImmediate<ISetPanelVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsConsolePanelVisible;
+        _commandService.ExecuteImmediate<ISetRegionVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Console;
+            command.Regions = LayoutRegion.Console;
             command.IsVisible = isVisible;
         });
 
@@ -177,10 +179,10 @@ public sealed partial class LayoutToolbar : UserControl
     private void ToggleSecondaryPanelButton_Click(object sender, RoutedEventArgs e)
     {
         // Use command to toggle panel visibility
-        var isVisible = !_layoutManager.IsInspectorPanelVisible;
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        var isVisible = !_layoutService.IsInspectorPanelVisible;
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Secondary;
+            command.Regions = LayoutRegion.Secondary;
             command.IsVisible = isVisible;
         });
     }

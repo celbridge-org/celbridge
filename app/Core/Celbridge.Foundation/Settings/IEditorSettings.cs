@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Settings;
 
@@ -89,7 +89,7 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// <summary>
     /// Preferred panel visibility.
     /// </summary>
-    PanelVisibilityFlags PreferredPanelVisibility { get; set; }
+    LayoutRegion PreferredRegionVisibility { get; set; }
 
     /// <summary>
     /// Width of the Primary panel.

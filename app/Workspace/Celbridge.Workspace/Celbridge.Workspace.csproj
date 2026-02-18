@@ -21,11 +21,7 @@
     </UnoFeatures>
 
   </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="sqlite-net-pcl" />
-  </ItemGroup>
-  
+
   <ItemGroup>
     <ProjectReference Include="..\Celbridge.Activities\Celbridge.Activities.csproj" />
     <ProjectReference Include="..\Celbridge.Console\Celbridge.Console.csproj" />
@@ -37,6 +33,7 @@
     <ProjectReference Include="..\Celbridge.Python\Celbridge.Python.csproj" />
     <ProjectReference Include="..\Celbridge.Resources\Celbridge.Resources.csproj" />
     <ProjectReference Include="..\Celbridge.Search\Celbridge.Search.csproj" />
+    <ProjectReference Include="..\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj" />
   </ItemGroup>
   
 </Project>

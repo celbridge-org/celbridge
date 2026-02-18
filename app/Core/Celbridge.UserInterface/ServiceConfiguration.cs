@@ -29,14 +29,18 @@ public static class ServiceConfiguration
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IUserInterfaceService, UserInterfaceService>();
-        services.AddSingleton<ILayoutManager, LayoutManager>();
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
         services.AddSingleton<IFormService, FormService>();
-        services.AddSingleton<IPanelFocusService, PanelFocusService>();
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
+
+        // LayoutManager is a single implementation that exposes two interfaces:
+        // IWindowModeService (window mode) and ILayoutService (region visibility).
+        services.AddSingleton<LayoutManager>();
+        services.AddSingleton<IWindowModeService>(sp => sp.GetRequiredService<LayoutManager>());
+        services.AddSingleton<ILayoutService>(sp => sp.GetRequiredService<LayoutManager>());
 
 #if WINDOWS
         // Register WindowStateHelper for Windows platform only

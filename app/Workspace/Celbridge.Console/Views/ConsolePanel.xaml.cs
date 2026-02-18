@@ -4,6 +4,7 @@ using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
@@ -62,7 +63,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Console);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Console);
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)

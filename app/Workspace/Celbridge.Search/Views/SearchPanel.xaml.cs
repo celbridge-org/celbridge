@@ -1,5 +1,5 @@
 using Celbridge.Search.ViewModels;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Search.Views;
 
@@ -19,12 +19,12 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Search);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Search);
     }
 
     private void UserControl_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Search);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Search);
     }
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)

@@ -1,6 +1,6 @@
 using Celbridge.Projects;
 using Celbridge.Workspace;
-using Celbridge.Workspace.Services;
+using Celbridge.WorkspaceUI.Services;
 
 namespace Celbridge.Tests;
 

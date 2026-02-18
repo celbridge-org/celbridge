@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -15,7 +14,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     private readonly IDialogService _dialogService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ILayoutManager _layoutManager;
+    private readonly ILayoutService _layoutService;
 
     public ResourceKey FileResource { get; set; }
 
@@ -30,19 +29,19 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         IDialogService dialogService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        ILayoutManager layoutManager)
+        ILayoutService layoutService)
     {
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-        _layoutManager = layoutManager;
+        _layoutService = layoutService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
         // Restore console if maximized so user can see the document
-        if (_layoutManager.IsConsoleMaximized)
+        if (_layoutService.IsConsoleMaximized)
         {
             _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
             {
