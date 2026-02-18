@@ -5,6 +5,7 @@
   xmlns:local="using:Celbridge.Search.Views"
   xmlns:vm="using:Celbridge.Search.ViewModels"
   xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  xmlns:ws="using:Celbridge.WorkspaceUI.Views"
   xmlns:converters="using:Celbridge.UserInterface.Converters"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   GotFocus="UserControl_GotFocus"
@@ -25,10 +26,10 @@
     </Grid.RowDefinitions>
 
     <!-- Panel Header -->
-    <controls:PanelHeader Grid.Row="0"
-                          Panel="Search"
-                          Region="Primary"
-                          Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
+    <ws:PanelHeader Grid.Row="0"
+                    Panel="Search"
+                    Region="Primary"
+                    Title="{x:Bind ViewModel.TitleText, Mode=OneWay}"/>
 
     <!-- Search Input -->
     <Grid Grid.Row="1"

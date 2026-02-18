@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;

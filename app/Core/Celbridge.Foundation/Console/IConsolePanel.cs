@@ -14,4 +14,9 @@ public interface IConsolePanel
     /// Execute a command using the console script context.
     /// </summary>
     Task<Result> ExecuteCommand(string command, bool logCommand);
+
+    /// <summary>
+    /// Shuts down the console panel and releases resources.
+    /// </summary>
+    void Shutdown();
 }
