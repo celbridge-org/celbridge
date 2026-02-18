@@ -1,5 +1,5 @@
 using Celbridge.Logging;
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 using Celbridge.UserInterface.Helpers;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -84,7 +84,7 @@ public sealed partial class DocumentSection : UserControl
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
     {
-        _panelFocusService.SetFocusedPanel(FocusablePanel.Documents);
+        _panelFocusService.SetFocusedPanel(WorkspacePanel.Documents);
     }
 
     /// <summary>

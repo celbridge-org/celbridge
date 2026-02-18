@@ -1,4 +1,4 @@
-using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Settings.Services;
 
@@ -74,33 +74,33 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(PreferredWindowHeight), value);
     }
 
-    public PanelVisibilityFlags PreferredPanelVisibility
+    public LayoutRegion PreferredRegionVisibility
     {
-        get => GetValue<PanelVisibilityFlags>(nameof(PreferredPanelVisibility), PanelVisibilityFlags.All);
-        set => SetValue(nameof(PreferredPanelVisibility), value);
+        get => GetValue<LayoutRegion>(nameof(PreferredRegionVisibility), LayoutRegion.All);
+        set => SetValue(nameof(PreferredRegionVisibility), value);
     }
 
     public float PrimaryPanelWidth
     {
-        get => GetValue<float>(nameof(PrimaryPanelWidth), UserInterfaceConstants.PrimaryPanelWidth);
+        get => GetValue<float>(nameof(PrimaryPanelWidth), WorkspaceConstants.PrimaryPanelWidth);
         set => SetValue(nameof(PrimaryPanelWidth), value);
     }
 
     public float SecondaryPanelWidth
     {
-        get => GetValue<float>(nameof(SecondaryPanelWidth), UserInterfaceConstants.SecondaryPanelWidth);
+        get => GetValue<float>(nameof(SecondaryPanelWidth), WorkspaceConstants.SecondaryPanelWidth);
         set => SetValue(nameof(SecondaryPanelWidth), value);
     }
 
     public float ConsolePanelHeight
     {
-        get => GetValue<float>(nameof(ConsolePanelHeight), UserInterfaceConstants.ConsolePanelHeight);
+        get => GetValue<float>(nameof(ConsolePanelHeight), WorkspaceConstants.ConsolePanelHeight);
         set => SetValue(nameof(ConsolePanelHeight), value);
     }
 
     public float DetailPanelHeight
     {
-        get => GetValue<float>(nameof(DetailPanelHeight), UserInterfaceConstants.DetailPanelHeight);
+        get => GetValue<float>(nameof(DetailPanelHeight), WorkspaceConstants.DetailPanelHeight);
         set => SetValue(nameof(DetailPanelHeight), value);
     }
 
@@ -112,7 +112,7 @@ public class EditorSettings : ObservableSettings, IEditorSettings
 
     public float RestoreConsoleHeight
     {
-        get => GetValue<float>(nameof(RestoreConsoleHeight), UserInterfaceConstants.ConsolePanelHeight);
+        get => GetValue<float>(nameof(RestoreConsoleHeight), WorkspaceConstants.ConsolePanelHeight);
         set => SetValue(nameof(RestoreConsoleHeight), value);
     }
 

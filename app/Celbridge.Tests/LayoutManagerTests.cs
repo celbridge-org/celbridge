@@ -4,6 +4,7 @@ using Celbridge.Messaging.Services;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Services;
+using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests;
@@ -30,7 +31,7 @@ public class LayoutManagerTests
         _editorSettings = Substitute.For<IEditorSettings>();
 
         // Default to all panels visible
-        _editorSettings.PreferredPanelVisibility.Returns(PanelVisibilityFlags.All);
+        _editorSettings.PreferredRegionVisibility.Returns(LayoutRegion.All);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
         _layoutManager = new LayoutManager(logger, _messengerService, _editorSettings);
@@ -57,9 +58,9 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void InitialState_PanelVisibilityMatchesEditorSettings()
+    public void InitialState_RegionVisibilityMatchesEditorSettings()
     {
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 
     [Test]
@@ -91,7 +92,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.None);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
         _layoutManager.IsFullScreen.Should().BeTrue();
     }
 
@@ -102,12 +103,12 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Presenter);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.None);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
         _layoutManager.IsFullScreen.Should().BeTrue();
     }
 
     [Test]
-    public void TransitionToWindowed_FromFullScreen_RestoresPreferredPanelVisibility()
+    public void TransitionToWindowed_FromFullScreen_RestoresPreferredRegionVisibility()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
@@ -115,12 +116,12 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
         _layoutManager.IsFullScreen.Should().BeFalse();
     }
 
     [Test]
-    public void TransitionToWindowed_FromZenMode_RestoresPreferredPanelVisibility()
+    public void TransitionToWindowed_FromZenMode_RestoresPreferredRegionVisibility()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
 
@@ -128,7 +129,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 
     [Test]
@@ -153,7 +154,7 @@ public class LayoutManagerTests
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.None);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
     }
 
     [Test]
@@ -182,22 +183,22 @@ public class LayoutManagerTests
     public void ToggleZenMode_FromWindowedWithAllPanelsCollapsed_MaintainsNoPanel()
     {
         // Manually collapse all panels while in Windowed mode
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
 
         // Toggle to ZenMode
         var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
 
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        
+
         // Toggle back to Windowed - should restore the persisted preference (None)
         result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ToggleZenMode);
-        
+
         result.IsSuccess.Should().BeTrue();
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.None);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
     }
 
     #endregion
@@ -205,9 +206,9 @@ public class LayoutManagerTests
     #region Panel Visibility Tests
 
     [Test]
-    public void SetPanelVisibility_HideSinglePanel_UpdatesVisibility()
+    public void SetRegionVisibility_HideSinglePanel_UpdatesVisibility()
     {
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
 
         _layoutManager.IsContextPanelVisible.Should().BeFalse();
         _layoutManager.IsInspectorPanelVisible.Should().BeTrue();
@@ -215,60 +216,60 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void SetPanelVisibility_ShowHiddenPanel_UpdatesVisibility()
+    public void SetRegionVisibility_ShowHiddenPanel_UpdatesVisibility()
     {
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, true);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Console, true);
 
         _layoutManager.IsConsolePanelVisible.Should().BeTrue();
     }
 
     [Test]
-    public void TogglePanelVisibility_TogglesPanel()
+    public void ToggleRegionVisibility_TogglesPanel()
     {
         _layoutManager.IsContextPanelVisible.Should().BeTrue();
 
-        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Primary);
+        _layoutManager.ToggleRegionVisibility(LayoutRegion.Primary);
 
         _layoutManager.IsContextPanelVisible.Should().BeFalse();
 
-        _layoutManager.TogglePanelVisibility(PanelVisibilityFlags.Primary);
+        _layoutManager.ToggleRegionVisibility(LayoutRegion.Primary);
 
         _layoutManager.IsContextPanelVisible.Should().BeTrue();
     }
 
     [Test]
-    public void SetPanelVisibility_InZenMode_ShowingPanelTransitionsToFullScreen()
+    public void SetRegionVisibility_InZenMode_ShowingPanelTransitionsToFullScreen()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterZenMode);
 
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, true);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, true);
 
         _layoutManager.WindowMode.Should().Be(WindowMode.FullScreen);
         _layoutManager.IsContextPanelVisible.Should().BeTrue();
     }
 
     [Test]
-    public void SetPanelVisibility_InFullScreen_HidingAllPanelsTransitionsToZenMode()
+    public void SetRegionVisibility_InFullScreen_HidingAllPanelsTransitionsToZenMode()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
 
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
 
         _layoutManager.WindowMode.Should().Be(WindowMode.ZenMode);
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.None);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.None);
     }
 
     [Test]
-    public void SetPanelVisibility_SameState_NoChange()
+    public void SetRegionVisibility_SameState_NoChange()
     {
         bool messageReceived = false;
         var recipient = new object();
-        _messengerService.Register<PanelVisibilityChangedMessage>(recipient, (r, m) => messageReceived = true);
+        _messengerService.Register<RegionVisibilityChangedMessage>(recipient, (r, m) => messageReceived = true);
 
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, true);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, true);
 
         messageReceived.Should().BeFalse();
     }
@@ -280,13 +281,13 @@ public class LayoutManagerTests
     [Test]
     public void ResetLayout_RestoresAllPanelsVisible()
     {
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
 
         var result = _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
         result.IsSuccess.Should().BeTrue();
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 
     [Test]
@@ -311,11 +312,11 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void ResetLayout_ResetsPreferredPanelVisibilityInEditorSettings()
+    public void ResetLayout_ResetsPreferredRegionVisibilityInEditorSettings()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.ResetLayout);
 
-        _editorSettings.Received().PreferredPanelVisibility = PanelVisibilityFlags.All;
+        _editorSettings.Received().PreferredRegionVisibility = LayoutRegion.All;
     }
 
     #endregion
@@ -336,16 +337,16 @@ public class LayoutManagerTests
     }
 
     [Test]
-    public void PanelVisibilityChange_SendsPanelVisibilityChangedMessage()
+    public void RegionVisibilityChange_SendsRegionVisibilityChangedMessage()
     {
-        PanelVisibilityChangedMessage? receivedMessage = null;
+        RegionVisibilityChangedMessage? receivedMessage = null;
         var recipient = new object();
-        _messengerService.Register<PanelVisibilityChangedMessage>(recipient, (r, m) => receivedMessage = m);
+        _messengerService.Register<RegionVisibilityChangedMessage>(recipient, (r, m) => receivedMessage = m);
 
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
 
         receivedMessage.Should().NotBeNull();
-        receivedMessage!.PanelVisibility.Should().Be(PanelVisibilityFlags.Secondary | PanelVisibilityFlags.Console);
+        receivedMessage!.RegionVisibility.Should().Be(LayoutRegion.Secondary | LayoutRegion.Console);
     }
 
     #endregion
@@ -353,42 +354,42 @@ public class LayoutManagerTests
     #region Settings Persistence Tests
 
     [Test]
-    public void SetPanelVisibility_InWindowedMode_UpdatesPreferredPanelVisibility()
+    public void SetRegionVisibility_InWindowedMode_UpdatesPreferredRegionVisibility()
     {
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
 
-        var expectedVisibility = PanelVisibilityFlags.Secondary | PanelVisibilityFlags.Console;
-        _editorSettings.Received().PreferredPanelVisibility = expectedVisibility;
+        var expectedVisibility = LayoutRegion.Secondary | LayoutRegion.Console;
+        _editorSettings.Received().PreferredRegionVisibility = expectedVisibility;
     }
 
     [Test]
-    public void SetPanelVisibility_InFullScreenMode_UpdatesPreferredPanelVisibility()
+    public void SetRegionVisibility_InFullScreenMode_UpdatesPreferredRegionVisibility()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
         _editorSettings.ClearReceivedCalls();
 
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
 
-        var expectedVisibility = PanelVisibilityFlags.Primary | PanelVisibilityFlags.Console;
-        _editorSettings.Received().PreferredPanelVisibility = expectedVisibility;
+        var expectedVisibility = LayoutRegion.Primary | LayoutRegion.Console;
+        _editorSettings.Received().PreferredRegionVisibility = expectedVisibility;
     }
 
     [Test]
-    public void SetPanelVisibility_ToNone_UpdatesPreferredPanelVisibility()
+    public void SetRegionVisibility_ToNone_UpdatesPreferredRegionVisibility()
     {
         _layoutManager.RequestWindowModeTransition(WindowModeTransition.EnterFullScreen);
         _editorSettings.ClearReceivedCalls();
 
         // Hide all panels
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
         _editorSettings.ClearReceivedCalls();
 
         // The last panel being hidden SHOULD persist None as preference
         // because the user explicitly chose to hide all panels
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Console, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Console, false);
 
-        _editorSettings.Received().PreferredPanelVisibility = PanelVisibilityFlags.None;
+        _editorSettings.Received().PreferredRegionVisibility = LayoutRegion.None;
     }
 
     #endregion
@@ -406,16 +407,16 @@ public class LayoutManagerTests
 
         _layoutManager.WindowMode.Should().Be(WindowMode.Windowed);
         _layoutManager.IsFullScreen.Should().BeFalse();
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.All);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.All);
     }
 
     [Test]
-    public void PanelVisibilityFlags_CombinationsWorkCorrectly()
+    public void LayoutRegion_CombinationsWorkCorrectly()
     {
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Primary, false);
-        _layoutManager.SetPanelVisibility(PanelVisibilityFlags.Secondary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Primary, false);
+        _layoutManager.SetRegionVisibility(LayoutRegion.Secondary, false);
 
-        _layoutManager.PanelVisibility.Should().Be(PanelVisibilityFlags.Console);
+        _layoutManager.RegionVisibility.Should().Be(LayoutRegion.Console);
         _layoutManager.IsContextPanelVisible.Should().BeFalse();
         _layoutManager.IsInspectorPanelVisible.Should().BeFalse();
         _layoutManager.IsConsolePanelVisible.Should().BeTrue();

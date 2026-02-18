@@ -18,13 +18,13 @@ public class UndoService : IUndoService
 
     public Result Undo()
     {
-        // If the secondary panel is active, try to undo the entity for the selected resource
+        // If the inspector panel is active, try to undo the entity for the selected resource
         if (_workspaceWrapper.IsWorkspacePageLoaded)
         {
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var activePanel = workspaceService.ActivePanel;
 
-            if (activePanel == WorkspacePanel.Secondary)
+            if (activePanel == WorkspacePanel.Inspector)
             {
                 var inspectorService = workspaceService.InspectorService;
                 var inspectedResource = inspectorService.InspectedResource;
@@ -73,7 +73,7 @@ public class UndoService : IUndoService
             var workspaceService = _workspaceWrapper.WorkspaceService;
             var activePanel = workspaceService.ActivePanel;
 
-            if (activePanel == WorkspacePanel.Secondary)
+            if (activePanel == WorkspacePanel.Inspector)
             {
                 var inspectorService = workspaceService.InspectorService;
                 var inspectedResource = inspectorService.InspectedResource;

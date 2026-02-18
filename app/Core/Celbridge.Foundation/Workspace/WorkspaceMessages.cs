@@ -30,3 +30,24 @@ public record WorkspacePageDeactivatedMessage();
 /// Sent when the workspace state needs to be saved.
 /// </summary>
 public record WorkspaceStateDirtyMessage();
+
+/// <summary>
+/// Message sent when the region visibility changes.
+/// </summary>
+public record RegionVisibilityChangedMessage(LayoutRegion RegionVisibility);
+
+/// <summary>
+/// Message sent when the focused panel changes.
+/// </summary>
+public record PanelFocusChangedMessage(WorkspacePanel FocusedPanel);
+
+/// <summary>
+/// Message sent when the Console panel maximized state changes.
+/// </summary>
+public record ConsoleMaximizedChangedMessage(bool IsMaximized);
+
+/// <summary>
+/// Message sent when the layout should be reset to defaults.
+/// Listeners should reset their layout state (e.g., document sections).
+/// </summary>
+public record ResetLayoutRequestedMessage();

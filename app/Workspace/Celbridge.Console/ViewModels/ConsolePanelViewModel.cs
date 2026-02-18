@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -16,7 +15,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
-    private readonly ILayoutManager _layoutManager;
+    private readonly ILayoutService _layoutService;
 
     private record LogEntry(string Level, string Message, LogEntryException? Exception);
     private record LogEntryException(string Type, string Message, string StackTrace);
@@ -81,17 +80,17 @@ public partial class ConsolePanelViewModel : ObservableObject
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        ILayoutManager layoutManager)
+        ILayoutService layoutService)
     {
         _messengerService = messengerService;
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
         _commandService = commandService;
-        _layoutManager = layoutManager;
+        _layoutService = layoutService;
 
-        // Initialize console maximized state from layout manager
-        _isConsoleMaximized = _layoutManager.IsConsoleMaximized;
+        // Initialize console maximized state from layout service
+        _isConsoleMaximized = _layoutService.IsConsoleMaximized;
 
         // Register for console initialization error messages
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
@@ -211,9 +210,9 @@ public partial class ConsolePanelViewModel : ObservableObject
     {
         // Force the console panel to be visible when an error occurs
         // This ensures the user can see the error banner even if they had previously collapsed the console
-        _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+        _commandService.Execute<ISetRegionVisibilityCommand>(command =>
         {
-            command.Panels = PanelVisibilityFlags.Console;
+            command.Regions = LayoutRegion.Console;
             command.IsVisible = true;
         });
     }

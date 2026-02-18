@@ -3,7 +3,7 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Celbridge.Console.Views"
-  xmlns:controls="using:Celbridge.UserInterface.Views.Controls"
+  xmlns:controls="using:Celbridge.WorkspaceUI.Views"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   GotFocus="UserControl_GotFocus">
 
@@ -20,7 +20,7 @@
     <!-- Panel Header -->
     <controls:PanelHeader Grid.Row="0"
                           Panel="Console"
-                          VisibilityFlag="Console"
+                          Region="Console"
                           Title="{x:Bind TitleText}"
                           Tapped="TitleBar_Tapped"
                           DoubleTapped="TitleBar_DoubleTapped">

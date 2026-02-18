@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
 namespace Celbridge.Explorer.Commands;
@@ -33,9 +32,9 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
 
         if (ShowExplorerPanel)
         {
-            _commandService.Execute<ISetPanelVisibilityCommand>(command =>
+            _commandService.Execute<ISetRegionVisibilityCommand>(command =>
             {
-                command.Panels = PanelVisibilityFlags.Primary;
+                command.Regions = LayoutRegion.Primary;
                 command.IsVisible = true;
             });
         }

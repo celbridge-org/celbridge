@@ -78,6 +78,10 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
+
+        // Build the initial tree in case ResourceRegistryUpdatedMessage was sent
+        // before this view was part of the visual tree.
+        RebuildResourceTree();
     }
 
     public void OnUnloaded()
