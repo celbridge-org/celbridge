@@ -110,12 +110,6 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(IsConsoleMaximized), value);
     }
 
-    public float RestoreConsoleHeight
-    {
-        get => GetValue<float>(nameof(RestoreConsoleHeight), WorkspaceConstants.ConsolePanelHeight);
-        set => SetValue(nameof(RestoreConsoleHeight), value);
-    }
-
     public ApplicationColorTheme Theme
     {
         get => GetValue<ApplicationColorTheme>(nameof(Theme), ApplicationColorTheme.System);

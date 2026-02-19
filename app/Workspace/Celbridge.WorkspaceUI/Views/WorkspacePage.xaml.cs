@@ -299,14 +299,6 @@ public sealed partial class WorkspacePage : Page
 
         if (ViewModel.IsConsoleMaximized)
         {
-            // Save the current console height before maximizing so we can restore it later.
-            // Only save if we have a valid height (not already maximized).
-            var currentConsoleHeight = (float)ConsolePanel.ActualHeight;
-            if (currentConsoleHeight > 0 && ConsolePanelRow.Height.GridUnitType != GridUnitType.Star)
-            {
-                ViewModel.RestoreConsoleHeight = currentConsoleHeight;
-            }
-
             // Hide the splitter while maximized
             ConsolePanelSplitter.Visibility = Visibility.Collapsed;
 
@@ -333,7 +325,7 @@ public sealed partial class WorkspacePage : Page
             ConsolePanelRow.MinHeight = MinConsolePanelHeight;
 
             // Restore console to the height it was before maximizing
-            var consoleHeight = ViewModel.RestoreConsoleHeight;
+            var consoleHeight = ViewModel.ConsolePanelHeight;
             if (consoleHeight <= 0)
             {
                 consoleHeight = WorkspaceConstants.ConsolePanelHeight;
