@@ -64,6 +64,11 @@ public sealed record class CelbridgeSection
 }
 
 /// <summary>
+/// Represents a validation error found during shortcut configuration parsing.
+/// </summary>
+public record ShortcutValidationError(int ShortcutIndex, string PropertyName, string Message);
+
+/// <summary>
 /// Definition of a shortcut from the [[shortcut]] array.
 /// The name property contains the full hierarchical path using "/" as separator.
 /// Example: "Run Examples/Hello World" creates a "Hello World" item under "Run Examples" group.
@@ -96,7 +101,6 @@ public record ShortcutDefinition
 
     /// <summary>
     /// Returns the display text (last segment of the name path).
-    /// Example: "Run Examples/Hello World" returns "Hello World".
     /// </summary>
     public string DisplayName
     {
@@ -109,7 +113,6 @@ public record ShortcutDefinition
 
     /// <summary>
     /// Returns the parent path (everything before the last segment), or null if top-level.
-    /// Example: "Run Examples/Hello World" returns "Run Examples".
     /// </summary>
     public string? ParentPath
     {
@@ -124,17 +127,7 @@ public record ShortcutDefinition
     /// Returns true if this shortcut is a group container (no script defined).
     /// </summary>
     public bool IsGroup => string.IsNullOrEmpty(Script);
-
-    /// <summary>
-    /// Returns true if this is a top-level shortcut (no "/" in name).
-    /// </summary>
-    public bool IsTopLevel => ParentPath == null;
 }
-
-/// <summary>
-/// Represents a validation error found during shortcut configuration parsing.
-/// </summary>
-public record ShortcutValidationError(int ShortcutIndex, string PropertyName, string Message);
 
 /// <summary>
 /// Models the shortcut configuration from the project config.

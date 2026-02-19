@@ -53,7 +53,7 @@
 
         <!-- Page Navigation Toolbar -->
         <controls:PageNavigationToolbar x:Name="PageNavigationToolbar"
-                                        Grid.Column="1"/>
+                                         Grid.Column="1"/>
 
         <!-- Save Icon - positioned to the left of layout toolbar -->
         <FontIcon x:Name="SaveIcon"

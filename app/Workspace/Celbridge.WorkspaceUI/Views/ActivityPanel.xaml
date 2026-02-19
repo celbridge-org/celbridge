@@ -15,21 +15,16 @@
               Background="{ThemeResource PanelBackgroundABrush}"
               BorderBrush="{ThemeResource DividerBrush}"
               BorderThickness="0,0,1,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
 
             <!-- Vertical Navigation View for tab selection -->
             <NavigationView x:Name="ActivityNavigation"
-                            Grid.Row="0"
-                            IsPaneToggleButtonVisible="False"
-                            IsBackButtonVisible="Collapsed"
-                            IsSettingsVisible="False"
-                            PaneDisplayMode="LeftCompact"
-                            CompactPaneLength="48"
-                            Background="Transparent"
-                            SelectionChanged="ActivityNavigation_SelectionChanged">
+                             IsPaneToggleButtonVisible="False"
+                             IsBackButtonVisible="Collapsed"
+                             IsSettingsVisible="False"
+                             PaneDisplayMode="LeftCompact"
+                             CompactPaneLength="48"
+                             Background="Transparent"
+                             SelectionChanged="ActivityNavigation_SelectionChanged">
                 <NavigationView.MenuItems>
 
                     <!-- Explorer -->
@@ -72,18 +67,6 @@
                     </NavigationViewItem>
                 </NavigationView.MenuItems>
             </NavigationView>
-
-            <!-- Shortcut Buttons Container -->
-            <StackPanel x:Name="ShortcutButtonsPanel"
-                        Grid.Row="1"
-                        VerticalAlignment="Top"
-                        Visibility="Collapsed">
-                <!-- Separator -->
-                <Border Height="1"
-                        Margin="8,4,8,4"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-                <!-- Shortcut buttons are added programmatically -->
-            </StackPanel>
         </Grid>
 
         <!-- Content area for the selected panel -->

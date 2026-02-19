@@ -11,7 +11,7 @@ public class UserInterfaceService : IUserInterfaceService
 
     private Window? _mainWindow;
     private XamlRoot? _xamlRoot;
-    private Views.TitleBar? _titleBar;
+    private ITitleBar? _titleBar;
     private ApplicationPage _activePage = ApplicationPage.None;
 
 #if WINDOWS
@@ -20,7 +20,7 @@ public class UserInterfaceService : IUserInterfaceService
 
     public object MainWindow => _mainWindow!;
     public object XamlRoot => _xamlRoot!;
-    public object TitleBar => _titleBar!;
+    public ITitleBar? TitleBar => _titleBar;
     public ApplicationPage ActivePage => _activePage;
 
     public UserInterfaceService(
@@ -131,13 +131,9 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
-    public void RegisterTitleBar(object titleBar)
+    public void RegisterTitleBar(ITitleBar titleBar)
     {
-        Views.TitleBar? givenTitleBar = titleBar as Views.TitleBar;
-        if (givenTitleBar != null)
-        {
-            _titleBar = givenTitleBar;
-        }
+        _titleBar = titleBar;
     }
 
     public void ApplyCurrentTheme()
