@@ -10,8 +10,17 @@ namespace Celbridge.WorkspaceUI.Views;
 
 public sealed partial class WorkspacePage : Page
 {
-    // If documents area becomes smaller than this during console resize, snap to maximize console
-    private const double MinDocumentsHeightBeforeMaximize = 100;
+    // Minimum height for the documents area when resizing the console panel
+    private const double MinDocumentsHeight = 150;
+
+    // Minimum width for the documents area when resizing side panels
+    private const double MinDocumentsWidth = 200;
+
+    // Minimum width for side panels
+    private const double MinSidePanelWidth = 200;
+
+    // Minimum height for the console panel
+    private const double MinConsolePanelHeight = 150;
 
     // Maximum fraction of available vertical space for restored console height
     private const double MaxRestoredConsoleHeightFraction = 0.7;
@@ -109,9 +118,12 @@ public sealed partial class WorkspacePage : Page
         };
 
         // Initialize splitter helpers
-        _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: 100);
-        _secondaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 2, minSize: 100, invertDelta: true);
-        _consolePanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Rows, 1, minSize: 100, invertDelta: true);
+        _primaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 0, minSize: MinSidePanelWidth,
+            maxSizeFunc: () => LayoutRoot.ActualWidth - SecondaryPanelColumn.ActualWidth - MinDocumentsWidth);
+        _secondaryPanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Columns, 2, minSize: MinSidePanelWidth, invertDelta: true,
+            maxSizeFunc: () => LayoutRoot.ActualWidth - PrimaryPanelColumn.ActualWidth - MinDocumentsWidth);
+        _consolePanelSplitterHelper = new SplitterHelper(LayoutRoot, GridResizeMode.Rows, 1, minSize: MinConsolePanelHeight, invertDelta: true,
+            maxSizeFunc: () => LayoutRoot.ActualHeight - MinDocumentsHeight);
 
         // Set up splitter event handlers
         PrimaryPanelSplitter.DragStarted += PrimaryPanelSplitter_DragStarted;
@@ -124,7 +136,6 @@ public sealed partial class WorkspacePage : Page
 
         ConsolePanelSplitter.DragStarted += ConsolePanelSplitter_DragStarted;
         ConsolePanelSplitter.DragDelta += ConsolePanelSplitter_DragDelta;
-        ConsolePanelSplitter.DragCompleted += ConsolePanelSplitter_DragCompleted;
         ConsolePanelSplitter.DoubleClicked += ConsolePanelSplitter_DoubleClicked;
 
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
@@ -233,7 +244,7 @@ public sealed partial class WorkspacePage : Page
         {
             PrimaryPanelSplitter.Visibility = Visibility.Visible;
             PrimaryPanel.Visibility = Visibility.Visible;
-            PrimaryPanelColumn.MinWidth = 100;
+            PrimaryPanelColumn.MinWidth = MinSidePanelWidth;
             PrimaryPanelColumn.Width = new GridLength(ViewModel.PrimaryPanelWidth);
         }
         else
@@ -248,7 +259,7 @@ public sealed partial class WorkspacePage : Page
         {
             SecondaryPanelSplitter.Visibility = Visibility.Visible;
             SecondaryPanel.Visibility = Visibility.Visible;
-            SecondaryPanelColumn.MinWidth = 100;
+            SecondaryPanelColumn.MinWidth = MinSidePanelWidth;
             SecondaryPanelColumn.Width = new GridLength(ViewModel.SecondaryPanelWidth);
         }
         else
@@ -263,7 +274,7 @@ public sealed partial class WorkspacePage : Page
         {
             ConsolePanelSplitter.Visibility = Visibility.Visible;
             ConsolePanel.Visibility = Visibility.Visible;
-            ConsolePanelRow.MinHeight = 100;
+            ConsolePanelRow.MinHeight = MinConsolePanelHeight;
             ConsolePanelRow.Height = new GridLength(ViewModel.ConsolePanelHeight);
         }
         else
@@ -319,7 +330,7 @@ public sealed partial class WorkspacePage : Page
             DocumentsPanelRow.Height = new GridLength(1, GridUnitType.Star);
 
             // Restore console MinHeight
-            ConsolePanelRow.MinHeight = 100;
+            ConsolePanelRow.MinHeight = MinConsolePanelHeight;
 
             // Restore console to the height it was before maximizing
             var consoleHeight = ViewModel.RestoreConsoleHeight;
@@ -407,20 +418,6 @@ public sealed partial class WorkspacePage : Page
     private void ConsolePanelSplitter_DragDelta(object? sender, double delta)
     {
         _consolePanelSplitterHelper?.OnDragDelta(delta);
-    }
-
-    private void ConsolePanelSplitter_DragCompleted(object? sender, EventArgs e)
-    {
-        // If the user dragged the console splitter up until the documents area is very small,
-        // we interpret this as a request to maximize the console panel.
-        var documentsHeight = DocumentsPanel.ActualHeight;
-        if (documentsHeight < MinDocumentsHeightBeforeMaximize && !ViewModel.IsConsoleMaximized)
-        {
-            _commandService.Execute<ISetConsoleMaximizedCommand>(command =>
-            {
-                command.IsMaximized = true;
-            });
-        }
     }
 
     private void PrimaryPanelSplitter_DoubleClicked(object? sender, EventArgs e)
