@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.UserInterface;
 
 namespace Celbridge.WorkspaceUI.Services;
 
@@ -9,13 +10,16 @@ public class WorkspaceLoader
 {
     private readonly ILogger<WorkspaceLoader> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IUserInterfaceService userInterfaceService)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _userInterfaceService = userInterfaceService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -120,6 +124,11 @@ public class WorkspaceLoader
         await documentsService.StoreDocumentLayout();
 
         //
+        // Populate title bar shortcut buttons from project config
+        //
+        PopulateTitleBarShortcuts();
+
+        //
         // Initialize terminal window and Python scripting
         //
 
@@ -174,6 +183,52 @@ public class WorkspaceLoader
         {
             _logger.LogError(pythonResult, "Failed to initialize Python scripting");
         }
+    }
+
+    private void PopulateTitleBarShortcuts()
+    {
+        var projectService = ServiceLocator.AcquireService<IProjectService>();
+        var currentProject = projectService.CurrentProject;
+        if (currentProject is null)
+        {
+            return;
+        }
+
+        var shortcutsSection = currentProject.ProjectConfig.Config.Shortcuts;
+        if (shortcutsSection.HasErrors)
+        {
+            // Error notification is handled by TryInitializePythonAsync
+            return;
+        }
+
+        var titleBar = _userInterfaceService.TitleBar;
+        if (titleBar is null)
+        {
+            return;
+        }
+
+        var shortcuts = shortcutsSection.Definitions
+            .Select(d => new Shortcut
+            {
+                Name = d.Name,
+                Icon = d.Icon,
+                Tooltip = d.Tooltip,
+                Script = d.Script
+            })
+            .ToList();
+
+        titleBar.BuildShortcutButtons(shortcuts, (script) =>
+        {
+            _workspaceWrapper.WorkspaceService.ConsoleService.RunCommand(script);
+        });
+    }
+
+    /// <summary>
+    /// Clears shortcut buttons from the title bar. Called during workspace unload.
+    /// </summary>
+    public void ClearTitleBarShortcuts()
+    {
+        _userInterfaceService.TitleBar?.ClearShortcutButtons();
     }
 
     private void HandleShortcutConfigErrors(IReadOnlyList<ShortcutValidationError> errors, string projectFilePath)

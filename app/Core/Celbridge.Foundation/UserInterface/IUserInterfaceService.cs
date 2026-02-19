@@ -19,7 +19,7 @@ public interface IUserInterfaceService
     /// <summary>
     /// Returns the TitleBar of the application.
     /// </summary>
-    object TitleBar { get; }
+    ITitleBar? TitleBar { get; }
 
     /// <summary>
     /// Color theme of the user interface
@@ -34,7 +34,7 @@ public interface IUserInterfaceService
     /// <summary>
     /// Call to register the Titlebar of the application with the UserInterface service.
     /// </summary>
-    void RegisterTitleBar(object titleBar);
+    void RegisterTitleBar(ITitleBar titleBar);
 
     /// <summary>
     /// Sets the active application page and broadcasts an ActivePageChangedMessage.

@@ -4,7 +4,7 @@ using Microsoft.UI.Dispatching;
 
 namespace Celbridge.UserInterface.Views;
 
-public sealed partial class TitleBar : UserControl
+public sealed partial class TitleBar : UserControl, ITitleBar
 {
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
@@ -12,6 +12,21 @@ public sealed partial class TitleBar : UserControl
     private DispatcherQueueTimer? _updateRegionsTimer;
 
     public TitleBarViewModel ViewModel { get; }
+
+    public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, Action<string> onScriptExecute)
+    {
+        return PageNavigationToolbar.BuildShortcutButtons(shortcuts, onScriptExecute);
+    }
+
+    public void SetShortcutButtonsVisible(bool isVisible)
+    {
+        PageNavigationToolbar.SetShortcutButtonsVisible(isVisible);
+    }
+
+    public void ClearShortcutButtons()
+    {
+        PageNavigationToolbar.ClearShortcutButtons();
+    }
 
     public TitleBar()
     {
@@ -41,10 +56,10 @@ public sealed partial class TitleBar : UserControl
         LayoutToolbar.SizeChanged += OnLayoutToolbar_SizeChanged;
         PageNavigationToolbar.SizeChanged += OnPageNavigationToolbar_SizeChanged;
         SettingsButton.SizeChanged += OnSettingsButton_SizeChanged;
-        
+
         var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _mainWindow = userInterfaceService.MainWindow as Window;
-        
+
         // Listen for layout updates to recalculate interactive regions
         // This handles window maximize/restore events
         this.LayoutUpdated += OnTitleBar_LayoutUpdated;
@@ -64,7 +79,7 @@ public sealed partial class TitleBar : UserControl
         PageNavigationToolbar.SizeChanged -= OnPageNavigationToolbar_SizeChanged;
         SettingsButton.SizeChanged -= OnSettingsButton_SizeChanged;
         this.LayoutUpdated -= OnTitleBar_LayoutUpdated;
-        
+
         if (_updateRegionsTimer is not null)
         {
             _updateRegionsTimer.Stop();
@@ -142,7 +157,7 @@ public sealed partial class TitleBar : UserControl
                     _updateRegionsTimer?.Stop();
                 };
             }
-            
+
             _updateRegionsTimer.Start();
         }
     }

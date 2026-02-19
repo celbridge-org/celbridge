@@ -1,4 +1,4 @@
-namespace Celbridge.WorkspaceUI.Views;
+namespace Celbridge.UserInterface.Views.Controls;
 
 public sealed partial class ShortcutButton : UserControl
 {
@@ -17,7 +17,7 @@ public sealed partial class ShortcutButton : UserControl
     public void SetTooltip(string tooltip)
     {
         ToolTipService.SetToolTip(ButtonElement, tooltip);
-        ToolTipService.SetPlacement(ButtonElement, PlacementMode.Right);
+        ToolTipService.SetPlacement(ButtonElement, PlacementMode.Bottom);
     }
 
     public void SetFlyout(MenuFlyout flyout)

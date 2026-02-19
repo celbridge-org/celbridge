@@ -128,11 +128,14 @@ public partial class WorkspacePageViewModel : ObservableObject
     public void OnWorkspacePageUnloaded()
     {
         _editorSettings.PropertyChanged -= OnEditorSettings_PropertyChanged;
-        
+
         // Unregister message handlers
         _messengerService.Unregister<WindowModeChangedMessage>(this);
         _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
         _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
+
+        // Clear shortcut buttons from the title bar before disposing the workspace
+        _workspaceLoader.ClearTitleBarShortcuts();
 
         // Dispose the workspace service
         // This disposes all the sub-services and releases all resources held by the workspace.

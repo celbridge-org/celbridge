@@ -52,5 +52,25 @@
                 </NavigationViewItem.Icon>
             </NavigationViewItem>
         </NavigationView.MenuItems>
+
+        <!-- Shortcut buttons -->
+        <NavigationView.PaneCustomContent>
+            <StackPanel x:Name="ShortcutButtonsContainer"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+
+              <!-- Separator -->
+              <Border Width="1"
+                      Height="20"
+                      Margin="4,0,4,0"
+                      Background="{ThemeResource DividerStrokeColorDefaultBrush}"/>
+              
+              <!-- Shortcut buttons are added programmatically -->
+              <StackPanel x:Name="ShortcutButtonsPanel"
+                          Orientation="Horizontal"/>
+              
+            </StackPanel>
+        </NavigationView.PaneCustomContent>
     </NavigationView>
 </UserControl>
