@@ -14,14 +14,7 @@
             BorderThickness="0"
             CornerRadius="4"
             Click="ButtonElement_Click">
-      
-        <Button.Resources>
-            <SolidColorBrush x:Key="ButtonBackgroundPointerOver"
-                             Color="Transparent"/>
-            <SolidColorBrush x:Key="ButtonBackgroundPressed"
-                             Color="Transparent"/>
-        </Button.Resources>
-      
+
         <SymbolIcon x:Name="IconElement"
                     Symbol="Play"/>
     </Button>
