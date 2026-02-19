@@ -1,5 +1,7 @@
+using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.ViewModels.Controls;
 using Celbridge.Workspace;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Celbridge.UserInterface.Views;
 
@@ -8,8 +10,92 @@ public sealed partial class PageNavigationToolbar : UserControl
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private MainMenu? _mainMenu;
+    private bool _hasShortcuts;
+    private ShortcutMenuBuilder? _shortcutMenuBuilder;
 
     public PageNavigationToolbarViewModel ViewModel { get; }
+
+    /// <summary>
+    /// Builds shortcut buttons from the given definitions and wires up click handling.
+    /// </summary>
+    public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, Action<string> onScriptExecute)
+    {
+        ClearShortcutButtons();
+
+        var logger = ServiceLocator.AcquireService<Logging.ILogger<ShortcutMenuBuilder>>();
+        _shortcutMenuBuilder = new ShortcutMenuBuilder(logger);
+        _shortcutMenuBuilder.ShortcutClicked += (tag) =>
+        {
+            if (_shortcutMenuBuilder.TryGetScript(tag, out var script) && !string.IsNullOrEmpty(script))
+            {
+                onScriptExecute(script);
+            }
+        };
+
+        var hasShortcuts = _shortcutMenuBuilder.BuildShortcutButtons(shortcuts, ShortcutButtonsPanel);
+        SetShortcutButtonsVisible(hasShortcuts);
+
+        return hasShortcuts;
+    }
+
+    /// <summary>
+    /// Clears all shortcut buttons and disposes the builder.
+    /// </summary>
+    public void ClearShortcutButtons()
+    {
+        _shortcutMenuBuilder = null;
+        ShortcutButtonsPanel.Children.Clear();
+        SetShortcutButtonsVisible(false);
+    }
+
+    /// <summary>
+    /// Sets whether shortcut buttons are populated and shows/hides them accordingly.
+    /// Shortcuts are only visible when populated and the workspace page is active.
+    /// </summary>
+    public void SetShortcutButtonsVisible(bool isVisible)
+    {
+        _hasShortcuts = isVisible;
+        UpdateShortcutButtonsVisibility(animate: isVisible);
+    }
+
+    private void UpdateShortcutButtonsVisibility(bool animate = false)
+    {
+        var userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
+        var shouldShow = _hasShortcuts && userInterfaceService.ActivePage == ApplicationPage.Workspace;
+
+        if (shouldShow)
+        {
+            if (animate)
+            {
+                ShortcutButtonsContainer.Opacity = 0;
+                ShortcutButtonsContainer.Visibility = Visibility.Visible;
+
+                var storyboard = new Storyboard();
+                var fadeIn = new DoubleAnimation
+                {
+                    From = 0,
+                    To = 1,
+                    Duration = new Duration(TimeSpan.FromMilliseconds(500)),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                Storyboard.SetTarget(fadeIn, ShortcutButtonsContainer);
+                Storyboard.SetTargetProperty(fadeIn, "Opacity");
+                storyboard.Children.Add(fadeIn);
+                storyboard.Begin();
+            }
+            else
+            {
+                ShortcutButtonsContainer.Opacity = 1;
+                ShortcutButtonsContainer.Visibility = Visibility.Visible;
+            }
+        }
+        else
+        {
+            ShortcutButtonsContainer.Visibility = Visibility.Collapsed;
+            ShortcutButtonsContainer.Opacity = 1;
+        }
+    }
 
     public PageNavigationToolbar()
     {
@@ -71,10 +157,10 @@ public sealed partial class PageNavigationToolbar : UserControl
 
     private void UpdateWorkspaceTooltip()
     {
-        var tooltip = !string.IsNullOrEmpty(ViewModel.ProjectFilePath) 
-            ? ViewModel.ProjectFilePath 
+        var tooltip = !string.IsNullOrEmpty(ViewModel.ProjectFilePath)
+            ? ViewModel.ProjectFilePath
             : _stringLocalizer.GetString("TitleBar_WorkspaceTooltip");
-        
+
         ToolTipService.SetToolTip(WorkspaceNavItem, tooltip);
         ToolTipService.SetPlacement(WorkspaceNavItem, PlacementMode.Bottom);
     }
@@ -88,6 +174,9 @@ public sealed partial class PageNavigationToolbar : UserControl
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
     {
         UpdateNavigationSelection(message.ActivePage);
+
+        var isNavigatingToWorkspace = message.ActivePage == ApplicationPage.Workspace;
+        UpdateShortcutButtonsVisibility(animate: isNavigatingToWorkspace);
     }
 
     private void UpdateNavigationSelection(ApplicationPage activePage)

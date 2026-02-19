@@ -1,8 +1,7 @@
 using Celbridge.Logging;
-using Celbridge.Projects;
-using Celbridge.WorkspaceUI.Views;
+using Celbridge.UserInterface.Views.Controls;
 
-namespace Celbridge.WorkspaceUI.Services;
+namespace Celbridge.UserInterface.Services;
 
 /// <summary>
 /// Helper class for building custom shortcut buttons in the navigation bar.
@@ -34,19 +33,17 @@ public class ShortcutMenuBuilder
     }
 
     /// <summary>
-    /// Builds shortcut buttons from the shortcuts section configuration.
+    /// Builds shortcut buttons from the given shortcuts.
     /// </summary>
-    public bool BuildShortcutButtons(ShortcutsSection shortcutsSection, StackPanel panel)
+    public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, StackPanel panel)
     {
-        var definitions = shortcutsSection.Definitions;
-        
-        if (definitions.Count == 0)
+        if (shortcuts.Count == 0)
         {
             return false;
         }
 
         // Build tree structure from flat list
-        var rootNode = BuildTreeFromDefinitions(definitions);
+        var rootNode = BuildTreeFromDefinitions(shortcuts);
         
         // Add buttons to panel
         AddShortcutButtonsFromTree(rootNode, panel);
@@ -59,20 +56,20 @@ public class ShortcutMenuBuilder
     /// </summary>
     private class ShortcutTreeNode
     {
-        public ShortcutDefinition? Definition { get; set; }
+        public Shortcut? Definition { get; set; }
         public Dictionary<string, ShortcutTreeNode> Children { get; } = new();
-        public List<ShortcutDefinition> LeafItems { get; } = new();
+        public List<Shortcut> LeafItems { get; } = new();
     }
 
     /// <summary>
-    /// Build a tree structure from the flat list of shortcut definitions.
+    /// Build a tree structure from the flat list of shortcuts.
     /// </summary>
-    private ShortcutTreeNode BuildTreeFromDefinitions(IReadOnlyList<ShortcutDefinition> definitions)
+    private ShortcutTreeNode BuildTreeFromDefinitions(IReadOnlyList<Shortcut> shortcuts)
     {
         var root = new ShortcutTreeNode();
-        
+
         // First pass: create group nodes
-        foreach (var def in definitions)
+        foreach (var def in shortcuts)
         {
             if (def.IsGroup)
             {
@@ -90,7 +87,7 @@ public class ShortcutMenuBuilder
         }
 
         // Second pass: add leaf items (non-groups)
-        foreach (var def in definitions)
+        foreach (var def in shortcuts)
         {
             if (!def.IsGroup)
             {
@@ -181,7 +178,7 @@ public class ShortcutMenuBuilder
             
             // Create a flyout menu for the child items
             var flyout = new MenuFlyout();
-            flyout.Placement = FlyoutPlacementMode.RightEdgeAlignedTop;
+            flyout.Placement = FlyoutPlacementMode.Bottom;
             AddMenuItemsFromTree(childNode, flyout.Items);
             button.SetFlyout(flyout);
             
