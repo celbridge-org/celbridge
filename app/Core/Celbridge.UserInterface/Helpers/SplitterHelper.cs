@@ -10,6 +10,7 @@ public class SplitterHelper
     private readonly int _firstIndex;
     private readonly int _secondIndex;
     private readonly double _minSize;
+    private readonly Func<double>? _maxSizeFunc;
     private readonly SplitterResizeMode _resizeMode;
 
     private double _firstStartSize;
@@ -41,13 +42,15 @@ public class SplitterHelper
         GridResizeMode mode,
         int index,
         double minSize = 100,
-        bool invertDelta = false)
+        bool invertDelta = false,
+        Func<double>? maxSizeFunc = null)
     {
         _grid = grid ?? throw new ArgumentNullException(nameof(grid));
         _mode = mode;
         _firstIndex = index;
         _secondIndex = invertDelta ? -1 : 0; // Use secondIndex == -1 to indicate inverted delta
         _minSize = minSize;
+        _maxSizeFunc = maxSizeFunc;
         _resizeMode = SplitterResizeMode.Single;
     }
 
@@ -96,6 +99,15 @@ public class SplitterHelper
             if (newSize < _minSize)
             {
                 return;
+            }
+
+            if (_maxSizeFunc != null)
+            {
+                var maxSize = _maxSizeFunc();
+                if (newSize > maxSize)
+                {
+                    newSize = maxSize;
+                }
             }
 
             if (_mode == GridResizeMode.Columns)
