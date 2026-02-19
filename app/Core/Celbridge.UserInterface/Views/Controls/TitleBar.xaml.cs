@@ -13,19 +13,16 @@ public sealed partial class TitleBar : UserControl, ITitleBar
 
     public TitleBarViewModel ViewModel { get; }
 
-    /// <inheritdoc/>
     public bool BuildShortcutButtons(IReadOnlyList<Shortcut> shortcuts, Action<string> onScriptExecute)
     {
         return PageNavigationToolbar.BuildShortcutButtons(shortcuts, onScriptExecute);
     }
 
-    /// <inheritdoc/>
     public void SetShortcutButtonsVisible(bool isVisible)
     {
         PageNavigationToolbar.SetShortcutButtonsVisible(isVisible);
     }
 
-    /// <inheritdoc/>
     public void ClearShortcutButtons()
     {
         PageNavigationToolbar.ClearShortcutButtons();
