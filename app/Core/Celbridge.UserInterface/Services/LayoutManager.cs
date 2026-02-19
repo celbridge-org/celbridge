@@ -312,7 +312,6 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _editorSettings.PrimaryPanelWidth = WorkspaceConstants.PrimaryPanelWidth;
         _editorSettings.SecondaryPanelWidth = WorkspaceConstants.SecondaryPanelWidth;
         _editorSettings.ConsolePanelHeight = WorkspaceConstants.ConsolePanelHeight;
-        _editorSettings.RestoreConsoleHeight = WorkspaceConstants.ConsolePanelHeight;
 
         // Reset preferred window geometry
         _editorSettings.UsePreferredWindowGeometry = false;

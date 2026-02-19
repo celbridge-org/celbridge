@@ -116,11 +116,6 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// </summary>
     bool IsConsoleMaximized { get; set; }
 
-    /// <summary>
-    /// The console panel height before it was maximized (used for restore).
-    /// </summary>
-    float RestoreConsoleHeight { get; set; }
-
     // ========================================
     // Settings Page Options
     // ========================================

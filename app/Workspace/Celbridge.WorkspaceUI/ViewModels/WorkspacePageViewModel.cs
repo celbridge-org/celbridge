@@ -46,12 +46,6 @@ public partial class WorkspacePageViewModel : ObservableObject
         set => _editorSettings.ConsolePanelHeight = value;
     }
 
-    public float RestoreConsoleHeight
-    {
-        get => _editorSettings.RestoreConsoleHeight;
-        set => _editorSettings.RestoreConsoleHeight = value;
-    }
-
     public bool IsFullScreen => _windowModeService.IsFullScreen;
 
     // Panel visibility properties now use Primary/Secondary naming
