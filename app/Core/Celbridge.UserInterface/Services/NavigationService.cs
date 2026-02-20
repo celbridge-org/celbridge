@@ -17,8 +17,7 @@ public class NavigationService : INavigationService
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    private INavigationProvider? _navigationProvider;
-    public INavigationProvider NavigationProvider => _navigationProvider!;
+    private Func<Type, object?, Result>? _navigateHandler;
 
     private readonly Dictionary<string, PageInfo> _pages = new();
 
@@ -33,13 +32,14 @@ public class NavigationService : INavigationService
     }
 
     /// <summary>
-    /// Sets the navigation provider. Called by MainPage after it has loaded.
+    /// Sets the handler that performs the actual page navigation.
+    /// Called by MainPage after it has loaded.
     /// </summary>
-    public void SetNavigationProvider(INavigationProvider navigationProvider)
+    public void SetNavigateHandler(Func<Type, object?, Result> handler)
     {
-        Guard.IsNotNull(navigationProvider);
-        Guard.IsNull(_navigationProvider);
-        _navigationProvider = navigationProvider;
+        Guard.IsNull(_navigateHandler);
+        Guard.IsNotNull(handler);
+        _navigateHandler = handler;
     }
 
     public Result RegisterPage(string tag, Type pageType)
@@ -79,14 +79,9 @@ public class NavigationService : INavigationService
         return Result.Ok();
     }
 
-    public Result NavigateToPage(string tag)
+    public Result NavigateToPage(string tag, object? parameter = null)
     {
-        return NavigateToPage(tag, string.Empty);
-    }
-
-    public Result NavigateToPage(string tag, object parameter)
-    {
-        Guard.IsNotNull(_navigationProvider);
+        Guard.IsNotNull(_navigateHandler);
 
         if (!_pages.TryGetValue(tag, out var pageInfo))
         {
@@ -101,7 +96,7 @@ public class NavigationService : INavigationService
             SetActivePage(pageInfo.AppPage);
         }
 
-        var navigateResult = _navigationProvider.NavigateToPage(pageInfo.PageType, parameter);
+        var navigateResult = _navigateHandler(pageInfo.PageType, parameter);
         if (navigateResult.IsFailure)
         {
             _logger.LogError(navigateResult.Error);
