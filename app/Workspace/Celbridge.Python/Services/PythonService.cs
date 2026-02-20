@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Console;
 using Celbridge.Messaging;
@@ -19,6 +21,7 @@ public class PythonService : IPythonService, IDisposable
     private const string UVToolsFolderName = "uv_tools";
     private const string UVBinFolderName = "uv_bin";
     private const string IPythonCacheFolderName = "ipython";
+    private const string PythonFingerprintFileName = "python_config.fingerprint";
 
     // Environment variable names
     private const string UVPythonInstallDirEnv = "UV_PYTHON_INSTALL_DIR";
@@ -205,12 +208,31 @@ public class PythonService : IPythonService, IDisposable
                 }
             }
 
+            // Determine if we can use offline mode (no network required).
+            // If the python version, dependencies, and wheel files have not changed since the last
+            // successful startup, we can use --offline to avoid network access.
+            var cacheDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
+            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, hostWheelPath, celbridgeWheelPath, pythonPackages);
+            var savedFingerprint = LoadSavedFingerprint(cacheDir);
+            var useOfflineMode = currentFingerprint == savedFingerprint;
+            if (useOfflineMode)
+            {
+                _logger.LogInformation("Python config unchanged since last run, using offline mode");
+            }
+
             // Run the celbridge module then drop to the IPython REPL
             // The order of the command line arguments is important!
 
-            var commandLine = new CommandLineBuilder(uvExePath)
+            var builder = new CommandLineBuilder(uvExePath)
                 .Add("run")                                 // uv run
-                .Add("--cache-dir", uvCacheDir)             // cache uv files in app data folder (not globally per-user)
+                .Add("--cache-dir", uvCacheDir);             // cache uv files in app data folder (not globally per-user)
+
+            if (useOfflineMode)
+            {
+                builder.Add("--offline");                   // use only locally cached packages (no network required)
+            }
+
+            var commandLine = builder
                 .Add("--no-project")                        // ignore pyproject.toml file if present (dependencies are passed via --with instead)
                 .Add("--python", pythonVersion!)            // python interpreter version
                 .Add("--managed-python")                    // only use uv-managed Python, ignore system Python
@@ -223,6 +245,9 @@ public class PythonService : IPythonService, IDisposable
                 .Add("-m", "celbridge_host")                // run the celbridge module
                 .Add("-i")                                  // drop to interactive mode after running celbridge module
                 .ToString();
+
+            // Save the current fingerprint so subsequent runs can use offline mode
+            SaveFingerprint(cacheDir, currentFingerprint);
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
 
@@ -270,6 +295,75 @@ public class PythonService : IPythonService, IDisposable
         {
             return Result.Fail("An error occurred when initializing Python")
                          .WithException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Computes a fingerprint of the current Python configuration.
+    /// If this fingerprint matches the saved one, we can use offline mode.
+    /// </summary>
+    private static string ComputeConfigFingerprint(
+        string appVersion,
+        string pythonVersion,
+        string hostWheelPath,
+        string celbridgeWheelPath,
+        IReadOnlyList<string>? dependencies)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(appVersion);
+        sb.AppendLine(pythonVersion);
+        sb.AppendLine(Path.GetFileName(hostWheelPath));
+        sb.AppendLine(Path.GetFileName(celbridgeWheelPath));
+
+        if (dependencies is not null)
+        {
+            foreach (var dep in dependencies)
+            {
+                sb.AppendLine(dep);
+            }
+        }
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
+        return Convert.ToHexString(bytes);
+    }
+
+    /// <summary>
+    /// Loads the previously saved config fingerprint from the cache folder.
+    /// Returns null if no fingerprint file exists.
+    /// </summary>
+    private static string? LoadSavedFingerprint(string cacheDir)
+    {
+        var filePath = Path.Combine(cacheDir, PythonFingerprintFileName);
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            return File.ReadAllText(filePath).Trim();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Saves the current config fingerprint to the cache folder.
+    /// </summary>
+    private static void SaveFingerprint(string cacheDir, string fingerprint)
+    {
+        try
+        {
+            Directory.CreateDirectory(cacheDir);
+            var filePath = Path.Combine(cacheDir, PythonFingerprintFileName);
+            File.WriteAllText(filePath, fingerprint);
+        }
+        catch
+        {
+            // Non-critical: failing to save the fingerprint just means
+            // the next run will use online mode.
         }
     }
 
