@@ -129,15 +129,24 @@ public class WorkspaceLoader
         PopulateTitleBarShortcuts();
 
         //
+        // Notify that the workspace has loaded.
+        //
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        var workspaceLoadedMessage = new WorkspaceLoadedMessage();
+        messengerService.Send(workspaceLoadedMessage);
+
+        //
         // Initialize terminal window and Python scripting
+        // These run after the workspace is considered "loaded" because they don't block
+        // the workspaace UI from being functional.
         //
 
-        // Workspace loading should continue even if terminal initialization fails
 
         var consoleService = workspaceService.ConsoleService;
         var initTerminal = await consoleService.InitializeTerminalWindow();
         if (initTerminal.IsFailure)
         {
+            // Workspace loading continues even if terminal initialization fails
             _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
         }
 
