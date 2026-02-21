@@ -138,7 +138,7 @@ public class WorkspaceLoader
         //
         // Initialize terminal window and Python scripting
         // These run after the workspace is considered "loaded" because they don't block
-        // the workspaace UI from being functional.
+        // the workspace UI from being functional.
         //
 
 
