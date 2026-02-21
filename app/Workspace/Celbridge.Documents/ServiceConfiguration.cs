@@ -25,9 +25,9 @@ public static class ServiceConfiguration
         services.AddTransient<WebAppDocumentView>();
         services.AddTransient<MonacoEditorView>();
         services.AddTransient<FileViewerDocumentView>();
-        services.AddTransient<EditorPreviewView>();
         services.AddTransient<TextEditorDocumentView>();
         services.AddTransient<SpreadsheetDocumentView>();
+        services.AddTransient<MilkdownDocumentView>();
 
         //
         // Register view models
@@ -39,9 +39,9 @@ public static class ServiceConfiguration
         services.AddTransient<WebAppDocumentViewModel>();
         services.AddTransient<MonacoEditorViewModel>();
         services.AddTransient<FileViewerDocumentViewModel>();
-        services.AddTransient<EditorPreviewViewModel>();
         services.AddTransient<TextEditorDocumentViewModel>();
         services.AddTransient<SpreadsheetDocumentViewModel>();
+        services.AddTransient<MilkdownDocumentViewModel>();
 
         //
         // Register commands

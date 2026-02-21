@@ -31,5 +31,10 @@ public enum DocumentViewType
     /// <summary>
     /// An Excel spreadsheet document with the .xlsx extension
     /// </summary>
-    Spreadsheet
+    Spreadsheet,
+
+    /// <summary>
+    /// A Markdown document edited using the Milkdown WYSIWYG editor.
+    /// </summary>
+    Markdown
 }

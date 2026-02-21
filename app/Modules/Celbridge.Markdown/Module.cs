@@ -19,8 +19,6 @@ public class Module : IModule
         //
 
         services.AddTransient<MarkdownActivity>();
-        services.AddTransient<MarkdownPreviewProvider>();
-        services.AddTransient<AsciiDocPreviewProvider>();
 
         //
         // Register component editors

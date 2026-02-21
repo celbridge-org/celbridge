@@ -3,12 +3,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class SpreadsheetDocumentViewModel : DocumentViewModel
+public partial class MilkdownDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
-
-    [ObservableProperty]
-    private string _source = string.Empty;
 
     // Delay before saving the document after the most recent change
     private const double SaveDelay = 1.0; // Seconds
@@ -16,27 +13,23 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
     [ObservableProperty]
     private double _saveTimer;
 
-    // Event to notify the view that the spreadsheet should be reloaded
+    // Event to notify the view that the document should be reloaded
     public event EventHandler? ReloadRequested;
 
-    public SpreadsheetDocumentViewModel(IMessengerService messengerService)
+    public MilkdownDocumentViewModel(IMessengerService messengerService)
     {
         _messengerService = messengerService;
 
-        // Register for resource change messages
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
     }
 
     private void OnMonitoredResourceChangedMessage(object recipient, MonitoredResourceChangedMessage message)
     {
-        // Check if the changed resource is the current document
         if (message.Resource == FileResource)
         {
-            // Check if this change is genuinely different from our last save
             if (IsFileChangedExternally())
             {
-                // This is an external change, notify the view to reload
                 ReloadRequested?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -44,10 +37,8 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
 
     private void OnDocumentSaveCompletedMessage(object recipient, DocumentSaveCompletedMessage message)
     {
-        // Check if this is a save completion for the current document
         if (message.DocumentResource == FileResource)
         {
-            // Update our tracking information after a successful save
             UpdateFileTrackingInfo();
         }
     }
@@ -82,10 +73,6 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
     {
         try
         {
-            var fileUri = new Uri(FilePath);
-            Source = fileUri.ToString();
-
-            // Track the initial file state when loading
             UpdateFileTrackingInfo();
 
             await Task.CompletedTask;
@@ -94,30 +81,27 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occured when loading document from file: {FilePath}")
+            return Result.Fail($"An exception occurred when loading document from file: {FilePath}")
                 .WithException(ex);
         }
     }
 
     public async Task<Result> SaveDocument()
     {
-        // Don't immediately try to save again if the save fails.
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
-        // The actual saving is handled in SpreadsheetDocumentView
+        // The actual saving is handled in MilkdownDocumentView
         await Task.CompletedTask;
 
         return Result.Ok();
     }
 
-    public async Task<Result> SaveSpreadsheetDataToFile(string spreadsheetData)
+    public async Task<Result> SaveMarkdownToFile(string markdownContent)
     {
         try
         {
-            byte[] fileBytes = Convert.FromBase64String(spreadsheetData);
-
-            await File.WriteAllBytesAsync(FilePath, fileBytes);
+            await File.WriteAllTextAsync(FilePath, markdownContent);
 
             var message = new DocumentSaveCompletedMessage(FileResource);
             _messengerService.Send(message);
@@ -126,14 +110,13 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to save Excel file: '{FilePath}'")
+            return Result.Fail($"Failed to save Markdown file: '{FilePath}'")
                 .WithException(ex);
         }
     }
 
     public void Cleanup()
     {
-        // Unregister message handlers
         _messengerService.UnregisterAll(this);
     }
 }

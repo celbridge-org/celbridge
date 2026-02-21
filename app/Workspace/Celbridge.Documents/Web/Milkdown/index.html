@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milkdown Editor</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #editor {
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px 32px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* Light theme */
+        :root {
+            --bg: #ffffff;
+            --fg: #24292f;
+            --fg-muted: #57606a;
+            --border: #d0d7de;
+            --code-bg: #f6f8fa;
+            --link: #0969da;
+            --blockquote-border: #d0d7de;
+            --table-border: #d0d7de;
+            --hr-color: #d8dee4;
+        }
+
+        /* Dark theme */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0d1117;
+                --fg: #e6edf3;
+                --fg-muted: #8b949e;
+                --border: #30363d;
+                --code-bg: #161b22;
+                --link: #58a6ff;
+                --blockquote-border: #30363d;
+                --table-border: #30363d;
+                --hr-color: #21262d;
+            }
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--fg);
+        }
+
+        /* ProseMirror editor styles */
+        .milkdown .editor {
+            outline: none;
+        }
+
+        .milkdown h1 { font-size: 2em; margin: 0.67em 0; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+        .milkdown h2 { font-size: 1.5em; margin: 0.83em 0; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+        .milkdown h3 { font-size: 1.25em; margin: 1em 0; font-weight: 600; }
+        .milkdown h4 { font-size: 1em; margin: 1.33em 0; font-weight: 600; }
+        .milkdown h5 { font-size: 0.875em; margin: 1.67em 0; font-weight: 600; }
+        .milkdown h6 { font-size: 0.85em; margin: 2.33em 0; font-weight: 600; color: var(--fg-muted); }
+
+        .milkdown p { margin: 0 0 16px 0; }
+
+        .milkdown a { color: var(--link); text-decoration: none; }
+        .milkdown a:hover { text-decoration: underline; }
+
+        .milkdown code {
+            background: var(--code-bg);
+            border-radius: 6px;
+            padding: 0.2em 0.4em;
+            font-size: 85%;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        }
+
+        .milkdown pre {
+            background: var(--code-bg);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 0 0 16px 0;
+        }
+
+        .milkdown pre code {
+            background: none;
+            padding: 0;
+            font-size: 85%;
+        }
+
+        .milkdown blockquote {
+            margin: 0 0 16px 0;
+            padding: 0 16px;
+            border-left: 4px solid var(--blockquote-border);
+            color: var(--fg-muted);
+        }
+
+        .milkdown ul, .milkdown ol {
+            margin: 0 0 16px 0;
+            padding-left: 2em;
+        }
+
+        .milkdown li { margin: 4px 0; }
+        .milkdown li p { margin: 0; }
+
+        .milkdown li[data-checked="true"],
+        .milkdown li[data-checked="false"] {
+            list-style-type: none;
+            margin-left: -1.5em;
+        }
+
+        .milkdown li[data-checked="true"]::before { content: "☑ "; }
+        .milkdown li[data-checked="false"]::before { content: "☐ "; }
+
+        .milkdown hr {
+            border: none;
+            border-top: 2px solid var(--hr-color);
+            margin: 24px 0;
+        }
+
+        .milkdown table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0 0 16px 0;
+        }
+
+        .milkdown th, .milkdown td {
+            border: 1px solid var(--table-border);
+            padding: 6px 13px;
+        }
+
+        .milkdown th {
+            font-weight: 600;
+            background: var(--code-bg);
+        }
+
+        .milkdown img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .milkdown .tableWrapper {
+            overflow-x: auto;
+        }
+
+        /* Placeholder when editor is empty */
+        .milkdown .ProseMirror p.is-editor-empty:first-child::before {
+            content: "Start writing...";
+            color: var(--fg-muted);
+            pointer-events: none;
+            float: left;
+            height: 0;
+        }
+
+        /* Selection styling */
+        .milkdown .ProseMirror ::selection {
+            background: rgba(9, 105, 218, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="status" style="padding: 16px; font-family: monospace; font-size: 13px; color: var(--fg-muted);">
+        ⏳ Loading Milkdown editor...
+    </div>
+    <div id="editor" class="milkdown" style="display: none;"></div>
+
+    <!-- Non-module script to confirm page load independent of CDN -->
+    <script>
+        window._milkdownStatus = function(msg) {
+            var el = document.getElementById('status');
+            if (el) el.textContent = msg;
+            console.log('[Milkdown] ' + msg);
+        };
+        window._milkdownStatus('Page loaded, fetching modules from CDN...');
+    </script>
+
+    <!--
+        Import map ensures all @milkdown/* packages share the same singleton instances
+        of the core packages (@milkdown/ctx, @milkdown/prose, etc.).
+        Without this, esm.sh serves each package with its own bundled copy of shared
+        dependencies, which breaks Milkdown's context-based DI system.
+        The ?external= parameter tells esm.sh to leave those imports as bare specifiers
+        so the browser's import map resolves them to the shared instances.
+    -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@milkdown/ctx": "https://esm.sh/@milkdown/ctx@7.8.0",
+            "@milkdown/prose": "https://esm.sh/@milkdown/prose@7.8.0",
+            "@milkdown/prose/": "https://esm.sh/@milkdown/prose@7.8.0/",
+            "@milkdown/transformer": "https://esm.sh/@milkdown/transformer@7.8.0?external=@milkdown/ctx,@milkdown/prose",
+            "@milkdown/core": "https://esm.sh/@milkdown/core@7.8.0?external=@milkdown/ctx,@milkdown/prose,@milkdown/transformer",
+            "@milkdown/preset-commonmark": "https://esm.sh/@milkdown/preset-commonmark@7.8.0?external=@milkdown/ctx,@milkdown/core,@milkdown/prose,@milkdown/transformer",
+            "@milkdown/preset-gfm": "https://esm.sh/@milkdown/preset-gfm@7.8.0?external=@milkdown/ctx,@milkdown/core,@milkdown/prose,@milkdown/transformer,@milkdown/preset-commonmark",
+            "@milkdown/plugin-history": "https://esm.sh/@milkdown/plugin-history@7.8.0?external=@milkdown/ctx,@milkdown/core,@milkdown/prose",
+            "@milkdown/plugin-clipboard": "https://esm.sh/@milkdown/plugin-clipboard@7.8.0?external=@milkdown/ctx,@milkdown/core,@milkdown/prose,@milkdown/transformer",
+            "@milkdown/plugin-listener": "https://esm.sh/@milkdown/plugin-listener@7.8.0?external=@milkdown/ctx,@milkdown/core",
+            "@milkdown/utils": "https://esm.sh/@milkdown/utils@7.8.0?external=@milkdown/ctx,@milkdown/core"
+        }
+    }
+    </script>
+
+    <script type="module">
+        window._milkdownStatus('Module script started executing');
+
+        let Editor, rootCtx, defaultValueCtx, editorViewCtx;
+        let commonmark, gfm, history, clipboard, listener, listenerCtx;
+        let getMarkdown, replaceAll, $remark;
+
+        try {
+            window._milkdownStatus('Importing @milkdown/core...');
+            ({ Editor, rootCtx, defaultValueCtx, editorViewCtx } = await import('@milkdown/core'));
+
+            window._milkdownStatus('Importing @milkdown/preset-commonmark...');
+            ({ commonmark } = await import('@milkdown/preset-commonmark'));
+
+            window._milkdownStatus('Importing @milkdown/preset-gfm...');
+            ({ gfm } = await import('@milkdown/preset-gfm'));
+
+            window._milkdownStatus('Importing @milkdown/plugin-history...');
+            ({ history } = await import('@milkdown/plugin-history'));
+
+            window._milkdownStatus('Importing @milkdown/plugin-clipboard...');
+            ({ clipboard } = await import('@milkdown/plugin-clipboard'));
+
+            window._milkdownStatus('Importing @milkdown/plugin-listener...');
+            ({ listener, listenerCtx } = await import('@milkdown/plugin-listener'));
+
+            window._milkdownStatus('Importing @milkdown/utils...');
+            ({ getMarkdown, replaceAll, $remark } = await import('@milkdown/utils'));
+
+            window._milkdownStatus('All modules loaded successfully');
+        } catch (e) {
+            window._milkdownStatus('❌ Module import failed: ' + e.message);
+            throw e;
+        }
+
+        // Remark plugin that converts raw HTML in the markdown AST before it reaches
+        // the ProseMirror parser. Without this, any raw HTML (e.g. <br />) crashes the
+        // parser because there is no ProseMirror node type for "html".
+        function remarkStripHtmlPlugin() {
+            return (tree) => {
+                (function walk(node) {
+                    if (!node.children) return;
+                    for (let i = node.children.length - 1; i >= 0; i--) {
+                        const child = node.children[i];
+                        if (child.type === 'html') {
+                            if (/^<br\s*\/?>$/i.test(child.value.trim())) {
+                                // Only convert <br /> to a break node when inside a
+                                // paragraph. ProseMirror's listItem content spec is
+                                // "paragraph block*", so a hardbreak placed directly
+                                // inside a listItem crashes the parser.
+                                if (node.type === 'paragraph') {
+                                    node.children[i] = { type: 'break' };
+                                } else {
+                                    node.children.splice(i, 1);
+                                }
+                            } else {
+                                // Remove other unsupported HTML nodes
+                                node.children.splice(i, 1);
+                            }
+                        } else {
+                            walk(child);
+                        }
+                    }
+                })(tree);
+            };
+        }
+
+        const remarkStripHtml = $remark('remarkStripHtml', () => remarkStripHtmlPlugin);
+
+        let editor = null;
+        let isLoadingContent = false;
+
+        function postWebViewMessage(message) {
+            if (!window.isWebView) return;
+            try {
+                if (window.chrome?.webview) {
+                    chrome.webview.postMessage(message);
+                } else if (window.unoWebView) {
+                    unoWebView.postMessage(JSON.stringify(message));
+                } else if (window.webkit?.messageHandlers?.unoWebView) {
+                    window.webkit.messageHandlers.unoWebView.postMessage(JSON.stringify(message));
+                }
+            } catch (ex) {
+                console.error('WebView postMessage failed:', ex);
+            }
+        }
+
+        function listenForWebViewMessages() {
+            if (!window.isWebView) return;
+            if (window.chrome?.webview) {
+                chrome.webview.addEventListener('message', event => onWebViewMessage(event.data));
+            } else if (window.unoWebView) {
+                window.unoWebViewReceiveMessage = data => onWebViewMessage(data);
+            } else if (window.webkit?.messageHandlers) {
+                window.webkit.messageHandlers.unoWebViewReceiveMessage = data => onWebViewMessage(data);
+            }
+        }
+
+        function onWebViewMessage(data) {
+            if (data === 'request_save') {
+                if (editor) {
+                    const markdown = editor.action(getMarkdown());
+                    postWebViewMessage(markdown);
+                }
+                return;
+            }
+
+            // Any other message is markdown content to load into the editor
+            setEditorContent(data);
+        }
+
+        async function setEditorContent(markdown) {
+            if (!editor) return;
+            isLoadingContent = true;
+            try {
+                editor.action(replaceAll(markdown || ''));
+            } catch (e) {
+                console.warn('replaceAll failed, recreating editor:', e.message);
+                try {
+                    await initEditor(markdown);
+                } catch (e2) {
+                    console.error('initEditor also failed:', e2.message);
+                }
+            }
+            setTimeout(() => { isLoadingContent = false; }, 100);
+        }
+
+        async function initEditor(initialMarkdown) {
+            window._milkdownStatus('Initializing editor...');
+
+            if (editor) {
+                await editor.destroy();
+                editor = null;
+            }
+
+            const container = document.getElementById('editor');
+            container.innerHTML = '';
+
+            isLoadingContent = true;
+
+            editor = await Editor.make()
+                .config((ctx) => {
+                    ctx.set(rootCtx, container);
+                    ctx.set(defaultValueCtx, initialMarkdown || '');
+                    ctx.get(listenerCtx).markdownUpdated((ctx, markdown, prevMarkdown) => {
+                        if (!isLoadingContent && markdown !== prevMarkdown) {
+                            postWebViewMessage('data_changed');
+                        }
+                    });
+                })
+                .use(remarkStripHtml)
+                .use(commonmark)
+                .use(gfm)
+                .use(history)
+                .use(clipboard)
+                .use(listener)
+                .create();
+
+            setTimeout(() => { isLoadingContent = false; }, 100);
+
+            window._milkdownStatus('Editor initialized');
+        }
+
+        async function main() {
+            try {
+                await initEditor('');
+
+                // Hide status, show editor
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('editor').style.display = '';
+
+                listenForWebViewMessages();
+                postWebViewMessage('editor_ready');
+
+                window._milkdownStatus('editor_ready sent');
+            } catch (e) {
+                window._milkdownStatus('❌ Editor init failed: ' + e.message);
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>

@@ -553,6 +553,10 @@ public class DocumentsService : IDocumentsService, IDisposable
             case DocumentViewType.Spreadsheet:
                 documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
                 break;
+
+            case DocumentViewType.Markdown:
+                documentView = _serviceProvider.GetRequiredService<MilkdownDocumentView>();
+                break;
 #else
             case DocumentViewType.WebAppDocument:
                 documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();

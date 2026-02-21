@@ -63,6 +63,11 @@ public class FileTypeHelper
             return DocumentViewType.WebAppDocument;
         }
 
+        if (fileExtension == ExplorerConstants.MarkdownExtension)
+        {
+            return DocumentViewType.Markdown;
+        }
+
         if (fileExtension == ExplorerConstants.ExcelExtension)
         {
             // Only return Spreadsheet view type if SpreadJS is available.

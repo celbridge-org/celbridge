@@ -10,12 +10,6 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <!-- Modules manage their own package dependency versions -->
-  <ItemGroup>
-    <PackageReference Include="Markdig" Version="0.44.0" />
-    <PackageReference Include="Leisn.MarkdigToc" Version="0.1.3" />
-  </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Include="Assets\**" />
   </ItemGroup>
