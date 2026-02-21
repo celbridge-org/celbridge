@@ -166,23 +166,13 @@ public partial class WorkspacePageViewModel : ObservableObject
             }
         }
 
+        LoadProjectCancellationToken = null;
+
         // Log how long it took to open the workspace
         stopWatch.Stop();
         var elapsed = (long)stopWatch.Elapsed.TotalMilliseconds;
         _logger.LogDebug($"Workspace loaded in {elapsed} ms");
 
-        // Short delay so that the progress bar continues to display while the last document is reopening.
-        // If there are no documents to open, this gives the user a chance to visually register the
-        // progress bar updating, which feels more responsive than having the progress bar flash on screen momentarily.
-        await Task.Delay(1000);
-
-        LoadProjectCancellationToken = null;
-
-        if (loadResult.IsSuccess)
-        {
-            var message = new WorkspaceLoadedMessage();
-            _messengerService.Send(message);
-        }
     }
 
     public void SetActivePanel(WorkspacePanel panel)

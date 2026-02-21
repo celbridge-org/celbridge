@@ -46,6 +46,8 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
         Title = TitleString;
 
         this.InitializeComponent();
+
+        this.EnableThemeSync();
     }
 
     private void ProjectNameTextBox_Loaded(object sender, RoutedEventArgs e)

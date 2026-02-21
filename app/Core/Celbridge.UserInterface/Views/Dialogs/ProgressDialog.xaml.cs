@@ -22,6 +22,8 @@ public sealed partial class ProgressDialog : ContentDialog, IProgressDialog
         ViewModel = ServiceLocator.AcquireService<ProgressDialogViewModel>();
 
         this.InitializeComponent();
+
+        this.EnableThemeSync();
     }
 
     public void ShowDialog()

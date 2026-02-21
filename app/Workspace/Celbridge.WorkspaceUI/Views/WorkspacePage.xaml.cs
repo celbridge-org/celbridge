@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
-using Celbridge.Navigation;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 
@@ -25,7 +24,6 @@ public sealed partial class WorkspacePage : Page
     // Maximum fraction of available vertical space for restored console height
     private const double MaxRestoredConsoleHeightFraction = 0.7;
 
-    private readonly INavigationService _navigationService;
     private readonly ICommandService _commandService;
 
     public WorkspacePageViewModel ViewModel { get; }
@@ -42,7 +40,6 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
-        _navigationService = ServiceLocator.AcquireService<INavigationService>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
 
         DataContext = ViewModel;
@@ -54,28 +51,14 @@ public sealed partial class WorkspacePage : Page
         Unloaded += WorkspacePage_Unloaded;
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
-        ViewModel.LoadProjectCancellationToken = e.Parameter as CancellationTokenSource;
-    }
-
-    protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
-    {
-        // Check if cleanup was requested before navigation occurs
-        if (_navigationService.IsWorkspacePageCleanupPending)
-        {
-            // Disable caching so the page will be cleaned up on unload
-            NavigationCacheMode = NavigationCacheMode.Disabled;
-        }
-
-        base.OnNavigatingFrom(e);
-    }
-
     private void WorkspacePage_Loaded(object sender, RoutedEventArgs e)
     {
         // Only execute initialization if this is the first load or if we're rebuilding after cache clear
         if (!_initialized || NavigationCacheMode == NavigationCacheMode.Disabled)
         {
+            // Read the navigation parameter passed via Page.Tag by the navigation system
+            ViewModel.LoadProjectCancellationToken = Tag as CancellationTokenSource;
+
             InitializeWorkspace();
             _initialized = true;
 

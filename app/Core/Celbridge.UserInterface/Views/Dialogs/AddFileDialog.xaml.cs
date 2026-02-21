@@ -38,6 +38,8 @@ public sealed partial class AddFileDialog : ContentDialog, IAddFileDialog
         FileTypeComboBox.ItemsSource = ViewModel.FileTypes
             .Select(ft => new FileTypeDisplayItem(ft.DisplayName, ft.Extension))
             .ToList();
+
+        this.EnableThemeSync();
     }
 
     private void Dialog_Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
