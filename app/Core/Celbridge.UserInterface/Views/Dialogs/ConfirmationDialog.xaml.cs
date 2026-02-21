@@ -32,6 +32,8 @@ public sealed partial class ConfirmationDialog : ContentDialog, IConfirmationDia
         var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         PrimaryButtonText = stringLocalizer.GetString("DialogButton_Ok");
         SecondaryButtonText = stringLocalizer.GetString("DialogButton_Cancel");
+
+        this.EnableThemeSync();
     }
 
     public async Task<bool> ShowDialogAsync()

@@ -13,6 +13,7 @@ public class UserInterfaceService : IUserInterfaceService
     private XamlRoot? _xamlRoot;
     private ITitleBar? _titleBar;
     private ApplicationPage _activePage = ApplicationPage.None;
+    private ThemeHelper? _themeHelper;
 
 #if WINDOWS
     private Helpers.WindowStateHelper? _windowStateHelper;
@@ -64,6 +65,10 @@ public class UserInterfaceService : IUserInterfaceService
 
         _mainWindow = window;
         _xamlRoot = root;
+
+        // Initialize platform-specific theme detection and titlebar management
+        _themeHelper = new ThemeHelper(_mainWindow);
+        _themeHelper.Initialize(OnSystemThemeChanged);
 
 #if WINDOWS
         // Initialize window state management
@@ -131,6 +136,24 @@ public class UserInterfaceService : IUserInterfaceService
     }
 #endif
 
+    private void OnSystemThemeChanged(UserInterfaceTheme newTheme)
+    {
+        // Only apply theme changes if the app is configured to follow system theme
+        if (_editorSettings.Theme != ApplicationColorTheme.System)
+        {
+            return;
+        }
+
+        // Check if the theme actually changed
+        if (UserInterfaceTheme == newTheme)
+        {
+            return;
+        }
+
+        _logger.LogInformation("System theme changed to {Theme}", newTheme);
+        ApplyCurrentTheme();
+    }
+
     public void RegisterTitleBar(ITitleBar titleBar)
     {
         _titleBar = titleBar;
@@ -169,9 +192,14 @@ public class UserInterfaceService : IUserInterfaceService
                 break;
         }
 
+        _logger.LogInformation("Applied theme: {Theme} (setting: {Setting})", UserInterfaceTheme, theme);
+
         // Notify all components that the theme has changed
         var message = new ThemeChangedMessage(UserInterfaceTheme);
         _messengerService.Send(message);
+
+        // Update titlebar buttons
+        _themeHelper?.UpdateTitleBar(UserInterfaceTheme);
     }
 
     public void SetActivePage(ApplicationPage page)
