@@ -6,11 +6,6 @@ namespace Celbridge.Navigation;
 public interface INavigationService
 {
     /// <summary>
-    /// Returns the page navigation provider.
-    /// </summary>
-    INavigationProvider NavigationProvider { get; }
-
-    /// <summary>
     /// Registers a page with the navigation system using a navigation tag.
     /// The page type must inherit from Windows.UI.Xaml.Controls.Page class.
     /// </summary>
@@ -22,14 +17,10 @@ public interface INavigationService
     Result UnregisterPage(string tag);
 
     /// <summary>
-    /// Navigates the top-level UI to display the specified page by tag.
+    /// Navigates the top-level UI to display the specified page by tag,
+    /// optionally passing a parameter object.
     /// </summary>
-    Result NavigateToPage(string tag);
-
-    /// <summary>
-    /// Navigates the top-level UI to display the specified page by tag, passing an object parameter.
-    /// </summary>
-    Result NavigateToPage(string tag, object parameter);
+    Result NavigateToPage(string tag, object? parameter = null);
 
     /// <summary>
     /// When true, the WorkspacePage should perform cleanup when it unloads.

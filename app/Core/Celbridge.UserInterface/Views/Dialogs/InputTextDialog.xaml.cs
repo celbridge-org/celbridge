@@ -49,6 +49,8 @@ public sealed partial class InputTextDialog : ContentDialog, IInputTextDialog
 
         // Set default submit button text
         PrimaryButtonText = _stringLocalizer.GetString(_submitButtonKey);
+
+        this.EnableThemeSync();
     }
 
     private void InputTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
