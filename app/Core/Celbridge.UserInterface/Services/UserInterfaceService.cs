@@ -29,7 +29,7 @@ public class UserInterfaceService : IUserInterfaceService
         IMessengerService messengerService,
         IEditorSettings editorSettings
 #if WINDOWS
-        , Helpers.WindowStateHelper windowStateHelper
+        , WindowStateHelper windowStateHelper
 #endif
         )
     {
