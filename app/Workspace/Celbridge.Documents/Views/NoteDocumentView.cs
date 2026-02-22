@@ -91,6 +91,16 @@ public sealed partial class NoteDocumentView : DocumentView
                 "Celbridge.Documents/Web/Note",
                 CoreWebView2HostResourceAccessKind.Allow);
 
+            // Map the project folder so resource key image paths resolve correctly
+            var projectFolder = _resourceRegistry.ProjectFolderPath;
+            if (!string.IsNullOrEmpty(projectFolder))
+            {
+                webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    "project.celbridge",
+                    projectFolder,
+                    CoreWebView2HostResourceAccessKind.Allow);
+            }
+
             webView.DefaultBackgroundColor = Colors.Transparent;
 
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
@@ -197,8 +207,9 @@ public sealed partial class NoteDocumentView : DocumentView
         try
         {
             var docJson = await ViewModel.LoadNoteDocJson();
+            var projectBaseUrl = "https://project.celbridge/";
 
-            SendMessageToJS(new { type = "load-doc", payload = new { content = docJson } });
+            SendMessageToJS(new { type = "load-doc", payload = new { content = docJson, projectBaseUrl } });
 
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.WebMessageReceived += WebView_WebMessageReceived;

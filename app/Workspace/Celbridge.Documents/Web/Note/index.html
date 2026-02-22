@@ -235,6 +235,26 @@
             height: 0;
         }
 
+        .tiptap img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 0.5em 0;
+            cursor: pointer;
+        }
+
+        .tiptap img.ProseMirror-selectednode {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+
+        .tiptap img.note-broken {
+            min-height: 80px;
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            background: var(--code-bg);
+        }
+
         #status {
             padding: 16px;
             font-family: monospace;
@@ -266,6 +286,7 @@
         <button class="toolbar-btn" data-action="horizontalRule" title="Horizontal Rule">&#x2014;</button>
         <div class="toolbar-separator"></div>
         <button class="toolbar-btn" data-action="link" title="Insert Link">&#x1F517;</button>
+        <button class="toolbar-btn" data-action="image" title="Insert Image">&#x1F5BC;</button>
         <div class="toolbar-separator"></div>
         <button class="toolbar-btn" data-action="undo" title="Undo (Ctrl+Z)">&#x21A9;</button>
         <button class="toolbar-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)">&#x21AA;</button>
@@ -281,6 +302,7 @@
         import Underline from 'https://esm.sh/@tiptap/extension-underline@2';
         import Link from 'https://esm.sh/@tiptap/extension-link@2';
         import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2';
+        import Image from 'https://esm.sh/@tiptap/extension-image@2';
 
         const statusEl = document.getElementById('status');
         const toolbarEl = document.getElementById('toolbar');
@@ -289,12 +311,32 @@
         let changeTimer = null;
         const CHANGE_DEBOUNCE_MS = 300;
         let isLoadingContent = false;
+        let projectBaseUrl = '';
 
         function sendMessage(msg) {
             const json = JSON.stringify(msg);
             if (window.chrome && window.chrome.webview) {
                 window.chrome.webview.postMessage(json);
             }
+        }
+
+        // Resolve an image src for display.
+        // Resource keys (no protocol) are resolved against the project base URL.
+        function resolveImageSrc(src) {
+            if (!src) return src;
+            if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return src;
+            if (projectBaseUrl) return projectBaseUrl + src;
+            return src;
+        }
+
+        // Extract the original src value from a resolved URL.
+        // Strips the project base URL prefix so the doc stores resource keys.
+        function unresolveImageSrc(resolvedSrc) {
+            if (!resolvedSrc) return resolvedSrc;
+            if (projectBaseUrl && resolvedSrc.startsWith(projectBaseUrl)) {
+                return resolvedSrc.substring(projectBaseUrl.length);
+            }
+            return resolvedSrc;
         }
 
         const editor = new Editor({
@@ -316,6 +358,10 @@
                 }),
                 Placeholder.configure({
                     placeholder: 'Start writing...',
+                }),
+                Image.configure({
+                    inline: false,
+                    allowBase64: true,
                 }),
             ],
             content: '',
@@ -377,10 +423,18 @@
                 case 'codeBlock': editor.chain().focus().toggleCodeBlock().run(); break;
                 case 'horizontalRule': editor.chain().focus().setHorizontalRule().run(); break;
                 case 'link': toggleLink(); break;
+                case 'image': insertImage(); break;
                 case 'undo': editor.chain().focus().undo().run(); break;
                 case 'redo': editor.chain().focus().redo().run(); break;
             }
         });
+
+        function insertImage() {
+            const src = prompt('Enter image URL or resource key:');
+            if (src) {
+                editor.chain().focus().setImage({ src: resolveImageSrc(src) }).run();
+            }
+        }
 
         function toggleLink() {
             if (editor.isActive('link')) {
@@ -410,7 +464,11 @@
                     case 'load-doc': {
                         isLoadingContent = true;
                         try {
+                            if (msg.payload.projectBaseUrl) {
+                                projectBaseUrl = msg.payload.projectBaseUrl;
+                            }
                             const doc = JSON.parse(msg.payload.content);
+                            resolveDocImageSrcs(doc);
                             editor.commands.setContent(doc);
                         } catch (e) {
                             console.error('[Note] Failed to load doc:', e);
@@ -419,7 +477,9 @@
                         break;
                     }
                     case 'request-save': {
-                        const docJson = JSON.stringify(editor.getJSON());
+                        const doc = editor.getJSON();
+                        unresolveDocImageSrcs(doc);
+                        const docJson = JSON.stringify(doc);
                         sendMessage({
                             type: 'save-response',
                             payload: { content: docJson }
@@ -432,6 +492,69 @@
 
         statusEl.style.display = 'none';
         toolbarEl.classList.add('visible');
+
+        // Walk a ProseMirror JSON tree and resolve image srcs for display
+        function resolveDocImageSrcs(node) {
+            if (!node) return;
+            if (node.type === 'image' && node.attrs && node.attrs.src) {
+                node.attrs.src = resolveImageSrc(node.attrs.src);
+            }
+            if (node.content) {
+                node.content.forEach(resolveDocImageSrcs);
+            }
+        }
+
+        // Walk a ProseMirror JSON tree and unresolve image srcs for storage
+        function unresolveDocImageSrcs(node) {
+            if (!node) return;
+            if (node.type === 'image' && node.attrs && node.attrs.src) {
+                node.attrs.src = unresolveImageSrc(node.attrs.src);
+            }
+            if (node.content) {
+                node.content.forEach(unresolveDocImageSrcs);
+            }
+        }
+
+        // Click on an image to edit its src via prompt dialog.
+        // Never inject DOM into ProseMirror's content tree.
+        function setupImageInteraction() {
+            const editorWrapper = document.getElementById('editor-wrapper');
+
+            editorWrapper.addEventListener('click', (e) => {
+                const img = e.target.closest('.tiptap img');
+                if (!img) return;
+
+                const view = editor.view;
+                const pos = view.posAtDOM(img, 0);
+                if (pos < 0) return;
+
+                const currentSrc = unresolveImageSrc(img.src);
+                const newSrc = prompt('Image URL or resource key (clear to remove):', currentSrc || '');
+
+                if (newSrc === null) return;
+
+                if (newSrc.trim() === '') {
+                    editor.chain().focus()
+                        .setNodeSelection(pos)
+                        .deleteSelection()
+                        .run();
+                } else {
+                    editor.chain().focus()
+                        .setNodeSelection(pos)
+                        .updateAttributes('image', { src: resolveImageSrc(newSrc.trim()) })
+                        .run();
+                }
+            });
+
+            // Style broken images so they remain visible and clickable
+            editorWrapper.addEventListener('error', (e) => {
+                if (e.target.tagName === 'IMG' && e.target.closest('.tiptap')) {
+                    e.target.classList.add('note-broken');
+                }
+            }, true);
+        }
+
+        setupImageInteraction();
 
         sendMessage({ type: 'editor-ready' });
     </script>
