@@ -112,6 +112,7 @@
   ".mli": "fsharp",
   ".mligo": "cameligo",
   ".msdax": "msdax",
+  ".note": "json",
   ".opf": "xml",
   ".p": "pascal",
   ".pas": "pascal",

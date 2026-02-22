@@ -554,8 +554,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
                 break;
 
-            case DocumentViewType.Markdown:
-                documentView = _serviceProvider.GetRequiredService<MilkdownDocumentView>();
+            case DocumentViewType.Note:
+                documentView = _serviceProvider.GetRequiredService<NoteDocumentView>();
                 break;
 #else
             case DocumentViewType.WebAppDocument:

@@ -31,6 +31,11 @@ public static class ExplorerConstants
     public const string TextExtension = ".txt";
 
     /// <summary>
+    /// File extension for note file resources.
+    /// </summary>
+    public const string NoteExtension = ".note";
+
+    /// <summary>
     /// File extension for Excel file resources.
     /// </summary>
     public const string ExcelExtension = ".xlsx";

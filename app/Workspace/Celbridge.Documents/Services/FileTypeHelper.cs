@@ -63,9 +63,9 @@ public class FileTypeHelper
             return DocumentViewType.WebAppDocument;
         }
 
-        if (fileExtension == ExplorerConstants.MarkdownExtension)
+        if (fileExtension == ExplorerConstants.NoteExtension)
         {
-            return DocumentViewType.Markdown;
+            return DocumentViewType.Note;
         }
 
         if (fileExtension == ExplorerConstants.ExcelExtension)

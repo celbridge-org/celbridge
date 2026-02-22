@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note Editor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-toolbar: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --hover-bg: #f3f4f6;
+            --active-bg: #e5e7eb;
+            --accent-color: #3b82f6;
+            --code-bg: #f1f3f5;
+            --blockquote-border: #d1d5db;
+            --link-color: #2563eb;
+            --placeholder-color: #9ca3af;
+            --hr-color: #d1d5db;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #1e1e1e;
+                --bg-toolbar: #2d2d2d;
+                --text-primary: #cccccc;
+                --text-secondary: #8b8b8b;
+                --border-color: #404040;
+                --hover-bg: #383838;
+                --active-bg: #4a4a4a;
+                --accent-color: #569cd6;
+                --code-bg: #2d2d2d;
+                --blockquote-border: #555555;
+                --link-color: #6ca4dc;
+                --placeholder-color: #555555;
+                --hr-color: #555555;
+            }
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #toolbar {
+            display: none;
+            flex-shrink: 0;
+            padding: 4px 8px;
+            background: var(--bg-toolbar);
+            border-bottom: 1px solid var(--border-color);
+            gap: 2px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #toolbar.visible {
+            display: flex;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 20px;
+            background: var(--border-color);
+            margin: 0 4px;
+        }
+
+        .toolbar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            padding: 2px 6px;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            font-weight: 500;
+            line-height: 1;
+            user-select: none;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--hover-bg);
+        }
+
+        .toolbar-btn.active {
+            background: var(--active-bg);
+            color: var(--accent-color);
+        }
+
+        #editor-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .tiptap {
+            max-width: 720px;
+            margin: 0 auto;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.65;
+            color: var(--text-primary);
+        }
+
+        .tiptap p {
+            margin-bottom: 0.75em;
+        }
+
+        .tiptap h1 {
+            font-size: 1.875em;
+            font-weight: 700;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            line-height: 1.3;
+        }
+
+        .tiptap h2 {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-top: 1.25em;
+            margin-bottom: 0.5em;
+            line-height: 1.35;
+        }
+
+        .tiptap h3 {
+            font-size: 1.25em;
+            font-weight: 600;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            line-height: 1.4;
+        }
+
+        .tiptap h1:first-child,
+        .tiptap h2:first-child,
+        .tiptap h3:first-child {
+            margin-top: 0;
+        }
+
+        .tiptap ul,
+        .tiptap ol {
+            padding-left: 1.5em;
+            margin-bottom: 0.75em;
+        }
+
+        .tiptap li {
+            margin-bottom: 0.25em;
+        }
+
+        .tiptap li p {
+            margin-bottom: 0.25em;
+        }
+
+        .tiptap blockquote {
+            border-left: 3px solid var(--blockquote-border);
+            padding-left: 1em;
+            margin-left: 0;
+            margin-bottom: 0.75em;
+            color: var(--text-secondary);
+        }
+
+        .tiptap code {
+            background: var(--code-bg);
+            border-radius: 3px;
+            padding: 0.15em 0.35em;
+            font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+            font-size: 0.9em;
+        }
+
+        .tiptap pre {
+            background: var(--code-bg);
+            border-radius: 6px;
+            padding: 0.75em 1em;
+            margin-bottom: 0.75em;
+            overflow-x: auto;
+        }
+
+        .tiptap pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.875em;
+            color: var(--text-primary);
+        }
+
+        .tiptap hr {
+            border: none;
+            border-top: 2px solid var(--hr-color);
+            margin: 1.5em 0;
+        }
+
+        .tiptap a {
+            color: var(--link-color);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .tiptap a:hover {
+            text-decoration: none;
+        }
+
+        .tiptap s {
+            text-decoration: line-through;
+        }
+
+        .tiptap u {
+            text-decoration: underline;
+        }
+
+        .tiptap p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder);
+            float: left;
+            color: var(--placeholder-color);
+            pointer-events: none;
+            height: 0;
+        }
+
+        #status {
+            padding: 16px;
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div id="status">&#x23F3; Loading editor...</div>
+
+    <div id="toolbar">
+        <button class="toolbar-btn" data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+        <button class="toolbar-btn" data-action="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+        <button class="toolbar-btn" data-action="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+        <button class="toolbar-btn" data-action="strike" title="Strikethrough"><s>S</s></button>
+        <button class="toolbar-btn" data-action="code" title="Inline Code">&lt;/&gt;</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn" data-action="heading1" title="Heading 1">H1</button>
+        <button class="toolbar-btn" data-action="heading2" title="Heading 2">H2</button>
+        <button class="toolbar-btn" data-action="heading3" title="Heading 3">H3</button>
+        <button class="toolbar-btn" data-action="paragraph" title="Paragraph">&#x00B6;</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn" data-action="bulletList" title="Bullet List">&#x2022;</button>
+        <button class="toolbar-btn" data-action="orderedList" title="Ordered List">1.</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn" data-action="blockquote" title="Blockquote">&#x275D;</button>
+        <button class="toolbar-btn" data-action="codeBlock" title="Code Block">{ }</button>
+        <button class="toolbar-btn" data-action="horizontalRule" title="Horizontal Rule">&#x2014;</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn" data-action="link" title="Insert Link">&#x1F517;</button>
+        <div class="toolbar-separator"></div>
+        <button class="toolbar-btn" data-action="undo" title="Undo (Ctrl+Z)">&#x21A9;</button>
+        <button class="toolbar-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)">&#x21AA;</button>
+    </div>
+
+    <div id="editor-wrapper">
+        <div id="editor"></div>
+    </div>
+
+    <script type="module">
+        import { Editor } from 'https://esm.sh/@tiptap/core@2';
+        import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2';
+        import Underline from 'https://esm.sh/@tiptap/extension-underline@2';
+        import Link from 'https://esm.sh/@tiptap/extension-link@2';
+        import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2';
+
+        const statusEl = document.getElementById('status');
+        const toolbarEl = document.getElementById('toolbar');
+        const editorEl = document.getElementById('editor');
+
+        let changeTimer = null;
+        const CHANGE_DEBOUNCE_MS = 300;
+        let isLoadingContent = false;
+
+        function sendMessage(msg) {
+            const json = JSON.stringify(msg);
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(json);
+            }
+        }
+
+        const editor = new Editor({
+            element: editorEl,
+            editorProps: {
+                attributes: {
+                    class: 'tiptap',
+                },
+            },
+            extensions: [
+                StarterKit,
+                Underline,
+                Link.configure({
+                    openOnClick: false,
+                    autolink: true,
+                    HTMLAttributes: {
+                        rel: 'noopener noreferrer nofollow',
+                    },
+                }),
+                Placeholder.configure({
+                    placeholder: 'Start writing...',
+                }),
+            ],
+            content: '',
+            onUpdate: () => {
+                if (isLoadingContent) return;
+
+                if (changeTimer) clearTimeout(changeTimer);
+                changeTimer = setTimeout(() => {
+                    sendMessage({ type: 'doc-changed' });
+                }, CHANGE_DEBOUNCE_MS);
+            },
+        });
+
+        function updateToolbar() {
+            toolbarEl.querySelectorAll('.toolbar-btn[data-action]').forEach(btn => {
+                const action = btn.dataset.action;
+                let isActive = false;
+
+                switch (action) {
+                    case 'bold': isActive = editor.isActive('bold'); break;
+                    case 'italic': isActive = editor.isActive('italic'); break;
+                    case 'underline': isActive = editor.isActive('underline'); break;
+                    case 'strike': isActive = editor.isActive('strike'); break;
+                    case 'code': isActive = editor.isActive('code'); break;
+                    case 'heading1': isActive = editor.isActive('heading', { level: 1 }); break;
+                    case 'heading2': isActive = editor.isActive('heading', { level: 2 }); break;
+                    case 'heading3': isActive = editor.isActive('heading', { level: 3 }); break;
+                    case 'paragraph': isActive = editor.isActive('paragraph'); break;
+                    case 'bulletList': isActive = editor.isActive('bulletList'); break;
+                    case 'orderedList': isActive = editor.isActive('orderedList'); break;
+                    case 'blockquote': isActive = editor.isActive('blockquote'); break;
+                    case 'codeBlock': isActive = editor.isActive('codeBlock'); break;
+                    case 'link': isActive = editor.isActive('link'); break;
+                }
+
+                btn.classList.toggle('active', isActive);
+            });
+        }
+
+        toolbarEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('.toolbar-btn[data-action]');
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+
+            switch (action) {
+                case 'bold': editor.chain().focus().toggleBold().run(); break;
+                case 'italic': editor.chain().focus().toggleItalic().run(); break;
+                case 'underline': editor.chain().focus().toggleUnderline().run(); break;
+                case 'strike': editor.chain().focus().toggleStrike().run(); break;
+                case 'code': editor.chain().focus().toggleCode().run(); break;
+                case 'heading1': editor.chain().focus().toggleHeading({ level: 1 }).run(); break;
+                case 'heading2': editor.chain().focus().toggleHeading({ level: 2 }).run(); break;
+                case 'heading3': editor.chain().focus().toggleHeading({ level: 3 }).run(); break;
+                case 'paragraph': editor.chain().focus().setParagraph().run(); break;
+                case 'bulletList': editor.chain().focus().toggleBulletList().run(); break;
+                case 'orderedList': editor.chain().focus().toggleOrderedList().run(); break;
+                case 'blockquote': editor.chain().focus().toggleBlockquote().run(); break;
+                case 'codeBlock': editor.chain().focus().toggleCodeBlock().run(); break;
+                case 'horizontalRule': editor.chain().focus().setHorizontalRule().run(); break;
+                case 'link': toggleLink(); break;
+                case 'undo': editor.chain().focus().undo().run(); break;
+                case 'redo': editor.chain().focus().redo().run(); break;
+            }
+        });
+
+        function toggleLink() {
+            if (editor.isActive('link')) {
+                editor.chain().focus().unsetLink().run();
+                return;
+            }
+
+            const url = prompt('Enter URL:');
+            if (url) {
+                editor.chain().focus().setLink({ href: url }).run();
+            }
+        }
+
+        editor.on('selectionUpdate', updateToolbar);
+        editor.on('transaction', updateToolbar);
+
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.addEventListener('message', (event) => {
+                let msg;
+                try {
+                    msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                } catch (e) {
+                    return;
+                }
+
+                switch (msg.type) {
+                    case 'load-doc': {
+                        isLoadingContent = true;
+                        try {
+                            const doc = JSON.parse(msg.payload.content);
+                            editor.commands.setContent(doc);
+                        } catch (e) {
+                            console.error('[Note] Failed to load doc:', e);
+                        }
+                        isLoadingContent = false;
+                        break;
+                    }
+                    case 'request-save': {
+                        const docJson = JSON.stringify(editor.getJSON());
+                        sendMessage({
+                            type: 'save-response',
+                            payload: { content: docJson }
+                        });
+                        break;
+                    }
+                }
+            });
+        }
+
+        statusEl.style.display = 'none';
+        toolbarEl.classList.add('visible');
+
+        sendMessage({ type: 'editor-ready' });
+    </script>
+</body>
+</html>

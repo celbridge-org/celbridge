@@ -599,8 +599,8 @@ Do you wish to continue?</value>
   <data name="AddFileDialog_FileType_Excel" xml:space="preserve">
     <value>Excel File (.xlsx)</value>
   </data>
-  <data name="AddFileDialog_FileType_Markdown" xml:space="preserve">
-    <value>Markdown File (.md)</value>
+  <data name="AddFileDialog_FileType_Note" xml:space="preserve">
+    <value>Note (.note)</value>
   </data>
   <data name="AddFileDialog_FileType_WebApp" xml:space="preserve">
     <value>Web Application File (.webapp)</value>

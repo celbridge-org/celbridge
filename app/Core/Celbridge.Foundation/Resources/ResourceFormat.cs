@@ -21,9 +21,9 @@ public enum ResourceFormat
     Excel,
 
     /// <summary>
-    /// A markdown document with the .md extension
+    /// A rich text note document with the .note extension
     /// </summary>
-    Markdown,
+    Note,
 
     /// <summary>
     /// A Python script file with the .py extension

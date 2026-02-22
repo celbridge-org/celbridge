@@ -3,13 +3,13 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "MarkdownActivity"
+    "rootActivity": "NoteActivity"
   },
 
   "properties": {
     "_type": {
       "type": "string",
-      "const": "Markdown.Markdown#1"
+      "const": "Notes.Note#1"
     }
   },
 

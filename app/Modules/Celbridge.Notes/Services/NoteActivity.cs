@@ -1,18 +1,18 @@
 using Celbridge.Activities;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Markdown.ComponentEditors;
+using Celbridge.Notes.ComponentEditors;
 using Celbridge.Workspace;
 
-namespace Celbridge.Markdown.Services;
+namespace Celbridge.Notes.Services;
 
-public class MarkdownActivity : IActivity
+public class NoteActivity : IActivity
 {
-    public const string ActivityName = "Markdown";
+    public const string ActivityName = "Notes";
 
     private readonly IEntityService _entityService;
 
-    public MarkdownActivity(
+    public NoteActivity(
         IWorkspaceWrapper workspaceWrapper)
     {
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
@@ -34,7 +34,7 @@ public class MarkdownActivity : IActivity
     public bool SupportsResource(ResourceKey resource)
     {
         var extension = Path.GetExtension(resource);
-        return extension == ExplorerConstants.MarkdownExtension;
+        return extension == ExplorerConstants.NoteExtension;
     }
 
     public async Task<Result> InitializeResourceAsync(ResourceKey resource)
@@ -51,7 +51,7 @@ public class MarkdownActivity : IActivity
             return Result.Ok();
         }
 
-        _entityService.AddComponent(new ComponentKey(resource, 0), MarkdownEditor.ComponentType);
+        _entityService.AddComponent(new ComponentKey(resource, 0), NoteEditor.ComponentType);
 
         await Task.CompletedTask;
 
@@ -74,11 +74,11 @@ public class MarkdownActivity : IActivity
         }
 
         //
-        // Root component must be "Markdown"
+        // Root component must be "Note"
         //
 
         var rootComponent = components[0];
-        if (rootComponent.IsComponentType(MarkdownEditor.ComponentType))
+        if (rootComponent.IsComponentType(NoteEditor.ComponentType))
         {
             entityAnnotation.SetIsRecognized(0);
         }

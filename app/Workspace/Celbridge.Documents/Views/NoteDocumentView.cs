@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -10,14 +11,14 @@ using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class MilkdownDocumentView : DocumentView
+public sealed partial class NoteDocumentView : DocumentView
 {
     private ILogger _logger;
     private ICommandService _commandService;
     private IMessengerService _messengerService;
     private IResourceRegistry _resourceRegistry;
 
-    public MilkdownDocumentViewModel ViewModel { get; }
+    public NoteDocumentViewModel ViewModel { get; }
 
     private WebView2? _webView;
 
@@ -25,21 +26,21 @@ public sealed partial class MilkdownDocumentView : DocumentView
     private bool _isSaveInProgress = false;
     private bool _hasPendingSave = false;
 
-    public MilkdownDocumentView(
+    public NoteDocumentView(
         IServiceProvider serviceProvider,
-        ILogger<MilkdownDocumentView> logger,
+        ILogger<NoteDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        ViewModel = serviceProvider.GetRequiredService<MilkdownDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<NoteDocumentViewModel>();
 
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        Loaded += MilkdownDocumentView_Loaded;
+        Loaded += NoteDocumentView_Loaded;
 
         ViewModel.ReloadRequested += ViewModel_ReloadRequested;
 
@@ -67,42 +68,28 @@ public sealed partial class MilkdownDocumentView : DocumentView
         _isSaveInProgress = true;
         _hasPendingSave = false;
 
-        _webView.CoreWebView2.PostWebMessageAsString("request_save");
+        SendMessageToJS(new { type = "request-save" });
 
         return await ViewModel.SaveDocument();
     }
 
-    private async void MilkdownDocumentView_Loaded(object sender, RoutedEventArgs e)
+    private async void NoteDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= MilkdownDocumentView_Loaded;
+        Loaded -= NoteDocumentView_Loaded;
 
-        await InitMilkdownViewAsync();
+        await InitNoteViewAsync();
     }
 
-    private async Task InitMilkdownViewAsync()
+    private async Task InitNoteViewAsync()
     {
         try
         {
-            _logger.LogTrace("Milkdown: Creating WebView2 instance");
-
             var webView = new WebView2();
             await webView.EnsureCoreWebView2Async();
 
-            _logger.LogTrace("Milkdown: WebView2 CoreWebView2 initialized");
-
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("milkdown.celbridge",
-                "Celbridge.Documents/Web/Milkdown",
+            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("note.celbridge",
+                "Celbridge.Documents/Web/Note",
                 CoreWebView2HostResourceAccessKind.Allow);
-
-            // Map the project folder so relative image/link paths resolve correctly
-            var folder = System.IO.Path.GetDirectoryName(ViewModel.FilePath);
-            if (!string.IsNullOrEmpty(folder))
-            {
-                webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "project.celbridge",
-                    folder,
-                    CoreWebView2HostResourceAccessKind.Allow);
-            }
 
             webView.DefaultBackgroundColor = Colors.Transparent;
 
@@ -116,7 +103,7 @@ public sealed partial class MilkdownDocumentView : DocumentView
             webView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
-                if (uri != null && !uri.StartsWith("https://milkdown.celbridge"))
+                if (uri != null && !uri.StartsWith("https://note.celbridge"))
                 {
                     args.Cancel = true;
                     OpenSystemBrowser(uri);
@@ -134,27 +121,37 @@ public sealed partial class MilkdownDocumentView : DocumentView
 
             _webView = webView;
 
-            // Show the WebView immediately so the diagnostic status is visible
+            // Show the WebView immediately so the status is visible
             this.Content = _webView;
 
-            _logger.LogTrace("Milkdown: Navigating to index.html");
-
-            webView.CoreWebView2.Navigate("https://milkdown.celbridge/index.html");
+            webView.CoreWebView2.Navigate("https://note.celbridge/index.html");
 
             bool isEditorReady = false;
             TypedEventHandler<WebView2, CoreWebView2WebMessageReceivedEventArgs> onWebMessageReceived = (sender, e) =>
             {
                 var message = e.TryGetWebMessageAsString();
 
-                _logger.LogTrace($"Milkdown: Received web message during init: '{message}'");
-
-                if (message == "editor_ready")
+                if (WebView2Helper.HandleKeyboardShortcut(message))
                 {
-                    isEditorReady = true;
                     return;
                 }
 
-                _logger.LogError($"Milkdown: Expected 'editor_ready' message, but received: '{message}'");
+                try
+                {
+                    using var doc = JsonDocument.Parse(message);
+                    var type = doc.RootElement.GetProperty("type").GetString();
+                    if (type == "editor-ready")
+                    {
+                        isEditorReady = true;
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Not JSON or doesn't have type field
+                }
+
+                _logger.LogError($"Note: Expected 'editor-ready' message, but received: '{message}'");
             };
 
             webView.WebMessageReceived += onWebMessageReceived;
@@ -170,55 +167,53 @@ public sealed partial class MilkdownDocumentView : DocumentView
                 elapsed += interval;
                 if (elapsed >= timeout)
                 {
-                    _logger.LogError("Milkdown: Timed out waiting for 'editor_ready' message from WebView");
+                    _logger.LogError("Note: Timed out waiting for 'editor-ready' message from WebView");
                     return;
                 }
             }
 
             webView.WebMessageReceived -= onWebMessageReceived;
 
-            _logger.LogTrace("Milkdown: Editor is ready, loading content");
-
-            await LoadMarkdownContent();
-
-            _logger.LogTrace("Milkdown: Markdown content loaded successfully");
+            await LoadNoteContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize Milkdown Web View.");
+            _logger.LogError(ex, "Failed to initialize Note Web View.");
         }
     }
 
-    private async Task LoadMarkdownContent()
+    private async Task LoadNoteContent()
     {
         Guard.IsNotNull(_webView);
 
         var filePath = ViewModel.FilePath;
-        _logger.LogTrace($"Milkdown: Loading markdown from '{filePath}'");
 
         if (!File.Exists(filePath))
         {
-            _logger.LogWarning($"Milkdown: Cannot load markdown - file does not exist: {filePath}");
+            _logger.LogWarning($"Note: Cannot load - file does not exist: {filePath}");
             return;
         }
 
         try
         {
-            var markdownContent = await File.ReadAllTextAsync(filePath);
+            var docJson = await ViewModel.LoadNoteDocJson();
 
-            _logger.LogTrace($"Milkdown: Read {markdownContent.Length} chars, posting to WebView");
-
-            _webView.CoreWebView2.PostWebMessageAsString(markdownContent);
+            SendMessageToJS(new { type = "load-doc", payload = new { content = docJson } });
 
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.WebMessageReceived += WebView_WebMessageReceived;
-
-            _logger.LogTrace("Milkdown: Content posted to WebView");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to load markdown: {filePath}");
+            _logger.LogError(ex, $"Failed to load note: {filePath}");
         }
+    }
+
+    private void SendMessageToJS(object message)
+    {
+        Guard.IsNotNull(_webView);
+        var json = JsonSerializer.Serialize(message);
+        _webView.CoreWebView2.PostWebMessageAsString(json);
     }
 
     private void OpenSystemBrowser(string? uri)
@@ -275,32 +270,54 @@ public sealed partial class MilkdownDocumentView : DocumentView
             return;
         }
 
-        if (webMessage == "data_changed")
+        try
         {
-            ViewModel.OnDataChanged();
-            return;
-        }
+            using var doc = JsonDocument.Parse(webMessage);
+            var type = doc.RootElement.GetProperty("type").GetString();
 
-        // Only accept markdown content when a save was actually requested.
-        // This prevents stray messages (e.g. "editor_ready" arriving late)
-        // from being written to the file as content.
-        if (_isSaveInProgress)
-        {
-            await SaveMarkdown(webMessage);
+            switch (type)
+            {
+                case "doc-changed":
+                    ViewModel.OnDataChanged();
+                    break;
+
+                case "save-response":
+                    if (_isSaveInProgress)
+                    {
+                        var content = doc.RootElement
+                            .GetProperty("payload")
+                            .GetProperty("content")
+                            .GetString();
+
+                        if (!string.IsNullOrEmpty(content))
+                        {
+                            await SaveNoteContent(content);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Received save-response while no save was in progress");
+                    }
+                    break;
+
+                default:
+                    _logger.LogWarning($"Note: Received unknown message type: '{type}'");
+                    break;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _logger.LogWarning($"Received unexpected web message while no save was in progress: '{webMessage[..Math.Min(50, webMessage.Length)]}'");
+            _logger.LogWarning($"Note: Failed to parse web message: '{webMessage[..Math.Min(50, webMessage.Length)]}'. Exception: {ex.Message}");
         }
     }
 
-    private async Task SaveMarkdown(string markdownContent)
+    private async Task SaveNoteContent(string docJson)
     {
-        var saveResult = await ViewModel.SaveMarkdownToFile(markdownContent);
+        var saveResult = await ViewModel.SaveNoteToFile(docJson);
 
         if (saveResult.IsFailure)
         {
-            _logger.LogError(saveResult, "Failed to save markdown data");
+            _logger.LogError(saveResult, "Failed to save note data");
         }
 
         _isSaveInProgress = false;
@@ -315,7 +332,7 @@ public sealed partial class MilkdownDocumentView : DocumentView
 
     public override async Task PrepareToClose()
     {
-        Loaded -= MilkdownDocumentView_Loaded;
+        Loaded -= NoteDocumentView_Loaded;
 
         ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
 
@@ -343,7 +360,7 @@ public sealed partial class MilkdownDocumentView : DocumentView
     {
         if (_webView != null)
         {
-            await LoadMarkdownContent();
+            await LoadNoteContent();
         }
     }
 }
