@@ -236,10 +236,14 @@
         }
 
         .tiptap img {
+            display: block;
             max-width: 100%;
             height: auto;
             border-radius: 4px;
-            margin: 0.5em 0;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            margin-left: auto;
+            margin-right: auto;
             cursor: pointer;
         }
 
@@ -255,11 +259,157 @@
             background: var(--code-bg);
         }
 
+        .tiptap figure {
+            display: block;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .tiptap figure img {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        .tiptap figcaption {
+            text-align: center;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-top: 0.35em;
+            font-style: italic;
+        }
+
+        .tiptap a {
+            cursor: pointer;
+        }
+
+        #image-toolbar {
+            display: none;
+            background: var(--bg-toolbar);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 4px;
+            gap: 2px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            margin-bottom: 6px;
+            width: 100%;
+        }
+
+        #image-toolbar.visible {
+            display: flex;
+        }
+
+        .image-node-wrapper {
+            display: block;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .image-node-wrapper figure {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        #image-toolbar .img-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        #image-toolbar .toolbar-btn {
+            min-width: 26px;
+            height: 26px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        #image-toolbar .toolbar-separator {
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        #image-toolbar .img-src-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            min-width: 0;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 6px;
+            font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+            cursor: pointer;
+            direction: rtl;
+            text-align: left;
+        }
+
+        #image-toolbar .img-src-label:hover {
+            color: var(--accent-color);
+        }
+
         #status {
             padding: 16px;
             font-family: monospace;
             font-size: 13px;
             color: var(--text-secondary);
+        }
+
+        #prompt-bar {
+            display: none;
+            flex-shrink: 0;
+            padding: 6px 12px;
+            background: var(--bg-toolbar);
+            border-bottom: 1px solid var(--border-color);
+            gap: 6px;
+            align-items: center;
+        }
+
+        #prompt-bar.visible {
+            display: flex;
+        }
+
+        #prompt-bar-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        #prompt-bar-input {
+            flex: 1;
+            min-width: 0;
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        #prompt-bar-input:focus {
+            border-color: var(--accent-color);
+        }
+
+        #prompt-bar button {
+            padding: 4px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        #prompt-bar button:hover {
+            background: var(--hover-bg);
+        }
+
+        .toolbar-btn svg {
+            display: block;
         }
     </style>
 </head>
@@ -276,7 +426,7 @@
         <button class="toolbar-btn" data-action="heading1" title="Heading 1">H1</button>
         <button class="toolbar-btn" data-action="heading2" title="Heading 2">H2</button>
         <button class="toolbar-btn" data-action="heading3" title="Heading 3">H3</button>
-        <button class="toolbar-btn" data-action="paragraph" title="Paragraph">&#x00B6;</button>
+        <button class="toolbar-btn" data-action="paragraph" title="Paragraph">P</button>
         <div class="toolbar-separator"></div>
         <button class="toolbar-btn" data-action="bulletList" title="Bullet List">&#x2022;</button>
         <button class="toolbar-btn" data-action="orderedList" title="Ordered List">1.</button>
@@ -285,11 +435,43 @@
         <button class="toolbar-btn" data-action="codeBlock" title="Code Block">{ }</button>
         <button class="toolbar-btn" data-action="horizontalRule" title="Horizontal Rule">&#x2014;</button>
         <div class="toolbar-separator"></div>
-        <button class="toolbar-btn" data-action="link" title="Insert Link">&#x1F517;</button>
-        <button class="toolbar-btn" data-action="image" title="Insert Image">&#x1F5BC;</button>
+        <button class="toolbar-btn" data-action="link" title="Insert/Edit Link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9L4.5 11.5C3.67 12.33 2.33 12.33 1.5 11.5C0.67 10.67 0.67 9.33 1.5 8.5L4 6"/><path d="M9 7L11.5 4.5C12.33 3.67 13.67 3.67 14.5 4.5C15.33 5.33 15.33 6.67 14.5 7.5L12 10"/><line x1="6" y1="10" x2="10" y2="6"/></svg></button>
+        <button class="toolbar-btn" data-action="image" title="Insert Image"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="10" rx="1"/><circle cx="5" cy="6.5" r="1.5"/><path d="M1.5 12l3-3.5 2.5 2.5 2-2L14.5 13" stroke-linejoin="round"/></svg></button>
         <div class="toolbar-separator"></div>
         <button class="toolbar-btn" data-action="undo" title="Undo (Ctrl+Z)">&#x21A9;</button>
         <button class="toolbar-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)">&#x21AA;</button>
+    </div>
+
+    <div id="prompt-bar">
+        <span id="prompt-bar-label"></span>
+        <input type="text" id="prompt-bar-input" />
+        <button id="prompt-bar-ok">OK</button>
+        <button id="prompt-bar-cancel">Cancel</button>
+    </div>
+
+    <div id="image-toolbar">
+        <span class="img-group" data-group="actions">
+            <button class="toolbar-btn" data-img-action="src" title="Change image source"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 5v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1H8.5L7 4H3a1 1 0 00-1 1z"/></svg></button>
+            <button class="toolbar-btn" data-img-action="caption" title="Edit caption">Aa</button>
+        </span>
+        <div class="toolbar-separator" data-group="actions"></div>
+        <span class="img-group" data-group="sizes">
+            <button class="toolbar-btn" data-img-action="size-25" title="25% width">25%</button>
+            <button class="toolbar-btn" data-img-action="size-50" title="50% width">50%</button>
+            <button class="toolbar-btn" data-img-action="size-75" title="75% width">75%</button>
+            <button class="toolbar-btn" data-img-action="size-100" title="Full width">100%</button>
+            <button class="toolbar-btn" data-img-action="size-custom" title="Custom width">&#x2026;</button>
+        </span>
+        <div class="toolbar-separator" data-group="align"></div>
+        <span class="img-group" data-group="align">
+            <button class="toolbar-btn" data-img-action="align-left" title="Align left"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="9" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+            <button class="toolbar-btn" data-img-action="align-center" title="Align center"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4.5" y1="8" x2="11.5" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+            <button class="toolbar-btn" data-img-action="align-right" title="Align right"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+        </span>
+        <div class="toolbar-separator" data-group="delete"></div>
+        <span class="img-group" data-group="delete">
+            <button class="toolbar-btn" data-img-action="delete" title="Delete image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
+        </span>
     </div>
 
     <div id="editor-wrapper">
@@ -312,6 +494,7 @@
         const CHANGE_DEBOUNCE_MS = 300;
         let isLoadingContent = false;
         let projectBaseUrl = '';
+        let cancelActivePrompt = null;
 
         function sendMessage(msg) {
             const json = JSON.stringify(msg);
@@ -359,7 +542,128 @@
                 Placeholder.configure({
                     placeholder: 'Start writing...',
                 }),
-                Image.configure({
+                Image.extend({
+                    addAttributes() {
+                        return {
+                            ...this.parent?.(),
+                            width: {
+                                default: null,
+                                parseHTML: el => el.getAttribute('data-width') || null,
+                                renderHTML: attrs => {
+                                    if (!attrs.width) return {};
+                                    return { 'data-width': attrs.width, style: `width:${attrs.width}` };
+                                },
+                            },
+                            textAlign: {
+                                default: null,
+                                parseHTML: el => el.getAttribute('data-align') || null,
+                                renderHTML: attrs => {
+                                    if (!attrs.textAlign || attrs.textAlign === 'center') {
+                                        return attrs.textAlign ? { 'data-align': 'center' } : {};
+                                    }
+                                    if (attrs.textAlign === 'right') {
+                                        return { 'data-align': 'right', style: 'margin-left:auto;margin-right:0' };
+                                    }
+                                    return { 'data-align': 'left', style: 'margin-left:0;margin-right:auto' };
+                                },
+                            },
+                            caption: {
+                                default: null,
+                                parseHTML: el => el.getAttribute('data-caption') || null,
+                                renderHTML: attrs => {
+                                    if (!attrs.caption) return {};
+                                    return { 'data-caption': attrs.caption };
+                                },
+                            },
+                        };
+                    },
+                    addNodeView() {
+                        return ({ node, getPos, editor: ed }) => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'image-node-wrapper';
+                            wrapper.contentEditable = 'false';
+
+                            const figure = document.createElement('figure');
+                            const img = document.createElement('img');
+                            const figcaption = document.createElement('figcaption');
+
+                            function applyAttrs() {
+                                img.src = node.attrs.src || '';
+                                if (node.attrs.alt) img.alt = node.attrs.alt;
+                                if (node.attrs.title) img.title = node.attrs.title;
+
+                                // Image fills its figure container
+                                img.style.cssText = 'width:100%';
+                                if (node.attrs.width) {
+                                    img.setAttribute('data-width', node.attrs.width);
+                                }
+
+                                const figStyle = [];
+                                const a = node.attrs.textAlign;
+                                if (a === 'left') {
+                                    figStyle.push('margin-left:0', 'margin-right:auto');
+                                } else if (a === 'right') {
+                                    figStyle.push('margin-left:auto', 'margin-right:0');
+                                } else {
+                                    figStyle.push('margin-left:auto', 'margin-right:auto');
+                                }
+                                // Figure gets the width percentage
+                                if (node.attrs.width) figStyle.push(`width:${node.attrs.width}`);
+                                figure.style.cssText = figStyle.join(';');
+
+                                if (node.attrs.caption) {
+                                    figcaption.textContent = node.attrs.caption;
+                                    figcaption.style.display = '';
+                                } else {
+                                    figcaption.textContent = '';
+                                    figcaption.style.display = 'none';
+                                }
+                            }
+
+                            applyAttrs();
+                            figure.appendChild(img);
+                            figure.appendChild(figcaption);
+                            wrapper.appendChild(figure);
+
+                            img.addEventListener('click', () => {
+                                if (typeof getPos === 'function') {
+                                    const pos = getPos();
+                                    if (pos != null) {
+                                        ed.chain().setNodeSelection(pos).run();
+                                    }
+                                }
+                            });
+
+                            return {
+                                dom: wrapper,
+                                update(updatedNode) {
+                                    if (updatedNode.type.name !== 'image') return false;
+                                    node = updatedNode;
+                                    applyAttrs();
+                                    return true;
+                                },
+                                selectNode() {
+                                    wrapper.insertBefore(imageToolbarEl, figure);
+                                    imageToolbarEl.classList.add('visible');
+                                    updateImageToolbar();
+                                    figure.classList.add('ProseMirror-selectednode');
+                                    img.classList.add('ProseMirror-selectednode');
+                                },
+                                deselectNode() {
+                                    if (cancelActivePrompt) {
+                                        cancelActivePrompt();
+                                    }
+                                    if (imageToolbarEl.parentNode === wrapper) {
+                                        document.body.appendChild(imageToolbarEl);
+                                    }
+                                    imageToolbarEl.classList.remove('visible');
+                                    figure.classList.remove('ProseMirror-selectednode');
+                                    img.classList.remove('ProseMirror-selectednode');
+                                },
+                            };
+                        };
+                    },
+                }).configure({
                     inline: false,
                     allowBase64: true,
                 }),
@@ -374,6 +678,34 @@
                 }, CHANGE_DEBOUNCE_MS);
             },
         });
+
+        function updateToolbarSeparators() {
+            const children = Array.from(toolbarEl.children);
+
+            // First, show all separators
+            children.forEach(child => {
+                if (child.classList.contains('toolbar-separator')) {
+                    child.style.display = '';
+                }
+            });
+
+            // Get only currently visible elements (groups may be hidden via CSS)
+            const visibleChildren = children.filter(child => child.offsetParent !== null);
+
+            // Hide separators that are at the start, end, or next to other separators
+            visibleChildren.forEach((child, index) => {
+                if (!child.classList.contains('toolbar-separator')) return;
+
+                const isFirst = index === 0;
+                const isLast = index === visibleChildren.length - 1;
+                const prevIsSeparator = index > 0 && visibleChildren[index - 1].classList.contains('toolbar-separator');
+                const nextIsSeparator = index < visibleChildren.length - 1 && visibleChildren[index + 1].classList.contains('toolbar-separator');
+
+                if (isFirst || isLast || prevIsSeparator || nextIsSeparator) {
+                    child.style.display = 'none';
+                }
+            });
+        }
 
         function updateToolbar() {
             toolbarEl.querySelectorAll('.toolbar-btn[data-action]').forEach(btn => {
@@ -399,6 +731,8 @@
 
                 btn.classList.toggle('active', isActive);
             });
+
+            updateToolbarSeparators();
         }
 
         toolbarEl.addEventListener('click', (e) => {
@@ -429,22 +763,61 @@
             }
         });
 
-        function insertImage() {
-            const src = prompt('Enter image URL or resource key:');
-            if (src) {
-                editor.chain().focus().setImage({ src: resolveImageSrc(src) }).run();
+        function showPrompt(label, defaultValue = '') {
+            return new Promise((resolve) => {
+                const bar = document.getElementById('prompt-bar');
+                const input = document.getElementById('prompt-bar-input');
+                const labelEl = document.getElementById('prompt-bar-label');
+                const okBtn = document.getElementById('prompt-bar-ok');
+                const cancelBtn = document.getElementById('prompt-bar-cancel');
+
+                labelEl.textContent = label;
+                input.value = defaultValue;
+                bar.classList.add('visible');
+                input.focus();
+                input.select();
+
+                function cleanup() {
+                    bar.classList.remove('visible');
+                    input.removeEventListener('keydown', onKey);
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    cancelActivePrompt = null;
+                }
+
+                function onOk() { cleanup(); resolve(input.value); }
+                function onCancel() { cleanup(); resolve(null); }
+                function onKey(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+                    else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+                }
+
+                cancelActivePrompt = onCancel;
+                input.addEventListener('keydown', onKey);
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+            });
+        }
+
+        async function insertImage() {
+            const src = await showPrompt('Image URL or resource key:');
+            if (src && src.trim()) {
+                editor.chain().focus().setImage({ src: resolveImageSrc(src.trim()) }).run();
             }
         }
 
-        function toggleLink() {
-            if (editor.isActive('link')) {
-                editor.chain().focus().unsetLink().run();
-                return;
-            }
+        async function toggleLink() {
+            const currentHref = editor.isActive('link')
+                ? editor.getAttributes('link').href || ''
+                : '';
 
-            const url = prompt('Enter URL:');
-            if (url) {
-                editor.chain().focus().setLink({ href: url }).run();
+            const url = await showPrompt('URL:', currentHref);
+            if (url === null) return;
+
+            if (url.trim() === '') {
+                editor.chain().focus().unsetLink().run();
+            } else {
+                editor.chain().focus().setLink({ href: url.trim() }).run();
             }
         }
 
@@ -515,46 +888,244 @@
             }
         }
 
-        // Click on an image to edit its src via prompt dialog.
-        // Never inject DOM into ProseMirror's content tree.
-        function setupImageInteraction() {
-            const editorWrapper = document.getElementById('editor-wrapper');
+        // Floating image toolbar — positioned outside ProseMirror's tree
+        const imageToolbarEl = document.getElementById('image-toolbar');
 
-            editorWrapper.addEventListener('click', (e) => {
-                const img = e.target.closest('.tiptap img');
-                if (!img) return;
+        function getSelectedImageInfo() {
+            const { state } = editor;
+            const { selection } = state;
+            if (!selection || !selection.node || selection.node.type.name !== 'image') return null;
+            const pos = selection.from;
+            const node = selection.node;
+            const dom = editor.view.nodeDOM(pos);
+            return { pos, node, dom };
+        }
 
-                const view = editor.view;
-                const pos = view.posAtDOM(img, 0);
-                if (pos < 0) return;
+        function updateImageToolbar() {
+            const info = getSelectedImageInfo();
+            if (!info) return;
 
-                const currentSrc = unresolveImageSrc(img.src);
-                const newSrc = prompt('Image URL or resource key (clear to remove):', currentSrc || '');
+            const srcLabelNode = imageToolbarEl.querySelector('.img-src-label');
+            const hideOrder = ['align', 'sizes', 'actions'];
 
-                if (newSrc === null) return;
+            // Reset: show everything
+            if (srcLabelNode) srcLabelNode.style.display = '';
+            imageToolbarEl.querySelectorAll('[data-group]').forEach(g => g.style.display = '');
 
-                if (newSrc.trim() === '') {
-                    editor.chain().focus()
-                        .setNodeSelection(pos)
-                        .deleteSelection()
-                        .run();
-                } else {
-                    editor.chain().focus()
-                        .setNodeSelection(pos)
-                        .updateAttributes('image', { src: resolveImageSrc(newSrc.trim()) })
-                        .run();
+            // Update src label text before measuring so width is accurate
+            let srcLabelEl = imageToolbarEl.querySelector('.img-src-label');
+            if (!srcLabelEl) {
+                srcLabelEl = document.createElement('span');
+                srcLabelEl.className = 'img-src-label';
+                imageToolbarEl.insertBefore(srcLabelEl, imageToolbarEl.firstChild);
+            }
+            srcLabelEl.textContent = unresolveImageSrc(info.node.attrs.src) || 'no source';
+            srcLabelEl.title = unresolveImageSrc(info.node.attrs.src) || '';
+
+            // Progressive hiding: the toolbar is width:100% so offsetWidth gives available space.
+            // Temporarily switch to max-content to measure natural content width for comparison.
+            const availableWidth = imageToolbarEl.offsetWidth;
+            if (availableWidth > 0) {
+                imageToolbarEl.style.width = 'max-content';
+
+                if (imageToolbarEl.offsetWidth > availableWidth && srcLabelNode) {
+                    srcLabelNode.style.display = 'none';
+                }
+
+                for (const groupName of hideOrder) {
+                    if (imageToolbarEl.offsetWidth <= availableWidth) break;
+                    imageToolbarEl.querySelectorAll(`[data-group="${groupName}"]`).forEach(g => g.style.display = 'none');
+                }
+
+                imageToolbarEl.style.width = '';
+            }
+
+            // Hide separators that don't have visible content on both sides
+            const allChildren = Array.from(imageToolbarEl.children);
+            const visibleChildren = allChildren.filter(child => child.offsetParent !== null);
+
+            visibleChildren.forEach((child, index) => {
+                if (!child.classList.contains('toolbar-separator')) return;
+
+                const isFirst = index === 0;
+                const isLast = index === visibleChildren.length - 1;
+                const prevIsSeparator = index > 0 && visibleChildren[index - 1].classList.contains('toolbar-separator');
+                const nextIsSeparator = index < visibleChildren.length - 1 && visibleChildren[index + 1].classList.contains('toolbar-separator');
+
+                if (isFirst || isLast || prevIsSeparator || nextIsSeparator) {
+                    child.style.display = 'none';
                 }
             });
 
-            // Style broken images so they remain visible and clickable
-            editorWrapper.addEventListener('error', (e) => {
-                if (e.target.tagName === 'IMG' && e.target.closest('.tiptap')) {
-                    e.target.classList.add('note-broken');
-                }
-            }, true);
+            // Update active states for size buttons
+            const w = info.node.attrs.width || '100%';
+            const a = info.node.attrs.textAlign || 'center';
+            imageToolbarEl.querySelectorAll('[data-img-action]').forEach(btn => {
+                const action = btn.dataset.imgAction;
+                let isActive = false;
+                if (action === 'size-25') isActive = w === '25%';
+                else if (action === 'size-50') isActive = w === '50%';
+                else if (action === 'size-75') isActive = w === '75%';
+                else if (action === 'size-100') isActive = !w || w === '100%';
+                else if (action === 'size-custom') isActive = w && w !== '25%' && w !== '50%' && w !== '75%' && w !== '100%';
+                else if (action === 'align-left') isActive = a === 'left';
+                else if (action === 'align-center') isActive = !a || a === 'center';
+                else if (action === 'align-right') isActive = a === 'right';
+                btn.classList.toggle('active', isActive);
+            });
         }
 
-        setupImageInteraction();
+        editor.on('selectionUpdate', updateImageToolbar);
+        editor.on('transaction', updateImageToolbar);
+
+        imageToolbarEl.addEventListener('mousedown', (e) => {
+            // Prevent the toolbar clicks from stealing focus/selection from the editor
+            e.preventDefault();
+        });
+
+        imageToolbarEl.addEventListener('click', async (e) => {
+            const info = getSelectedImageInfo();
+            if (!info) return;
+
+            // Clicking the src label triggers src editing
+            if (e.target.closest('.img-src-label')) {
+                const savedPos = info.pos;
+                const currentSrc = unresolveImageSrc(info.node.attrs.src);
+                const newSrc = await showPrompt('Image URL or resource key:', currentSrc || '');
+                if (newSrc !== null && newSrc.trim()) {
+                    editor.chain().setNodeSelection(savedPos)
+                        .updateAttributes('image', { src: resolveImageSrc(newSrc.trim()) })
+                        .run();
+                } else if (newSrc === null) {
+                    editor.chain().setNodeSelection(savedPos).run();
+                }
+                return;
+            }
+
+            const btn = e.target.closest('[data-img-action]');
+            if (!btn) return;
+
+            const action = btn.dataset.imgAction;
+            const savedPos = info.pos;
+
+            switch (action) {
+                case 'src': {
+                    const currentSrc = unresolveImageSrc(info.node.attrs.src);
+                    const newSrc = await showPrompt('Image URL or resource key:', currentSrc || '');
+                    if (newSrc !== null && newSrc.trim()) {
+                        editor.chain().setNodeSelection(savedPos)
+                            .updateAttributes('image', { src: resolveImageSrc(newSrc.trim()) })
+                            .run();
+                    } else if (newSrc === null) {
+                        editor.chain().setNodeSelection(savedPos).run();
+                    }
+                    break;
+                }
+                case 'caption': {
+                    const currentCaption = info.node.attrs.caption || '';
+                    const newCaption = await showPrompt('Caption:', currentCaption);
+                    if (newCaption !== null) {
+                        editor.chain().setNodeSelection(savedPos)
+                            .updateAttributes('image', { caption: newCaption || null })
+                            .run();
+                    } else {
+                        editor.chain().setNodeSelection(savedPos).run();
+                    }
+                    break;
+                }
+                case 'size-25':
+                    editor.chain().updateAttributes('image', { width: '25%' }).run();
+                    break;
+                case 'size-50':
+                    editor.chain().updateAttributes('image', { width: '50%' }).run();
+                    break;
+                case 'size-75':
+                    editor.chain().updateAttributes('image', { width: '75%' }).run();
+                    break;
+                case 'size-100':
+                    editor.chain().updateAttributes('image', { width: '100%' }).run();
+                    break;
+                case 'size-custom': {
+                    const currentWidth = info.node.attrs.width || '100%';
+                    const currentNum = parseInt(currentWidth.replace('%', ''), 10) || 100;
+                    const input = await showPrompt('Width (1–100):', String(currentNum));
+                    if (input !== null && input.trim()) {
+                        let num = parseInt(input.trim(), 10);
+                        if (isNaN(num) || num < 1) num = 100;
+                        if (num > 100) num = 100;
+                        editor.chain().setNodeSelection(savedPos)
+                            .updateAttributes('image', { width: num + '%' })
+                            .run();
+                    } else if (input === null) {
+                        editor.chain().setNodeSelection(savedPos).run();
+                    }
+                    break;
+                }
+                case 'align-left':
+                    editor.chain().updateAttributes('image', { textAlign: 'left' }).run();
+                    break;
+                case 'align-center':
+                    editor.chain().updateAttributes('image', { textAlign: 'center' }).run();
+                    break;
+                case 'align-right':
+                    editor.chain().updateAttributes('image', { textAlign: 'right' }).run();
+                    break;
+                case 'delete':
+                    editor.chain().focus().deleteSelection().run();
+                    break;
+            }
+        });
+
+        // Ensure images stay resolved and clear broken styling on successful load
+        document.getElementById('editor-wrapper').addEventListener('load', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.tiptap')) {
+                e.target.classList.remove('note-broken');
+            }
+        }, true);
+
+        // Style broken images so they remain visible and clickable
+        document.getElementById('editor-wrapper').addEventListener('error', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.tiptap')) {
+                const rawSrc = e.target.getAttribute('src');
+                if (rawSrc && !/^https?:\/\//i.test(rawSrc) && !rawSrc.startsWith('data:')) {
+                    const resolved = resolveImageSrc(rawSrc);
+                    if (e.target.src !== resolved) {
+                        e.target.src = resolved;
+                        e.target.classList.remove('note-broken');
+                        return;
+                    }
+                }
+
+                e.target.classList.add('note-broken');
+            }
+        }, true);
+
+        // Handle link clicks — send to C# host for routing
+        document.getElementById('editor-wrapper').addEventListener('click', (e) => {
+            const link = e.target.closest('.tiptap a');
+            if (!link) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const href = link.getAttribute('href');
+            if (href) {
+                sendMessage({ type: 'link-clicked', payload: { href } });
+            }
+        });
+
+        // Re-evaluate toolbar group visibility when the editor panel is resized
+        new ResizeObserver(() => {
+            updateImageToolbar();
+        }).observe(document.getElementById('editor-wrapper'));
+
+        // Update toolbar separators on window resize
+        // Use requestAnimationFrame to ensure layout is stable before checking
+        new ResizeObserver(() => {
+            requestAnimationFrame(() => {
+                updateToolbarSeparators();
+            });
+        }).observe(toolbarEl);
 
         sendMessage({ type: 'editor-ready' });
     </script>

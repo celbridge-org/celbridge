@@ -854,4 +854,10 @@ Do you wish to continue?</value>
   <data name="SearchPanel_CollapseAllTooltip" xml:space="preserve">
     <value>Collapse All Search Results</value>
   </data>
+  <data name="NoteEditor_LinkError_Title" xml:space="preserve">
+    <value>Link Error</value>
+  </data>
+  <data name="NoteEditor_LinkError_Message" xml:space="preserve">
+    <value>The link '{0}' could not be opened. The resource may not exist or the link may be invalid.</value>
+  </data>
 </root>

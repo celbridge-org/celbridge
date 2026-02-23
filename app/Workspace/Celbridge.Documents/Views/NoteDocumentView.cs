@@ -1,11 +1,13 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
 
@@ -17,6 +19,8 @@ public sealed partial class NoteDocumentView : DocumentView
     private ICommandService _commandService;
     private IMessengerService _messengerService;
     private IResourceRegistry _resourceRegistry;
+    private IStringLocalizer _stringLocalizer;
+    private IDialogService _dialogService;
 
     public NoteDocumentViewModel ViewModel { get; }
 
@@ -31,7 +35,9 @@ public sealed partial class NoteDocumentView : DocumentView
         ILogger<NoteDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IStringLocalizer stringLocalizer,
+        IDialogService dialogService)
     {
         ViewModel = serviceProvider.GetRequiredService<NoteDocumentViewModel>();
 
@@ -39,6 +45,8 @@ public sealed partial class NoteDocumentView : DocumentView
         _commandService = commandService;
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _stringLocalizer = stringLocalizer;
+        _dialogService = dialogService;
 
         Loaded += NoteDocumentView_Loaded;
 
@@ -240,6 +248,86 @@ public sealed partial class NoteDocumentView : DocumentView
         });
     }
 
+    private async Task HandleLinkClicked(string? href)
+    {
+        if (string.IsNullOrEmpty(href))
+        {
+            return;
+        }
+
+        // Remote URLs: open in system browser
+        if (Uri.TryCreate(href, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == "http" || uri.Scheme == "https"))
+        {
+            OpenSystemBrowser(href);
+            return;
+        }
+
+        // Treat as a resource key — try as-is first, then relative to the current document's folder
+        try
+        {
+            // Helper to normalize path segments (handle ../ and ./)
+            string NormalizePath(string path)
+            {
+                var segments = path.Split('/');
+                var stack = new Stack<string>();
+                foreach (var segment in segments)
+                {
+                    if (segment == ".." && stack.Count > 0)
+                    {
+                        stack.Pop();
+                    }
+                    else if (segment != "." && !string.IsNullOrEmpty(segment))
+                    {
+                        stack.Push(segment);
+                    }
+                }
+                return string.Join("/", stack.Reverse());
+            }
+
+            // 1. Try href as a direct resource key (absolute from project root)
+            var directKey = new ResourceKey(NormalizePath(href));
+            var directResult = _resourceRegistry.NormalizeResourceKey(directKey);
+            if (directResult.IsSuccess)
+            {
+                _commandService.Execute<IOpenDocumentCommand>(command =>
+                {
+                    command.FileResource = directResult.Value;
+                });
+                return;
+            }
+
+            // 2. Try href relative to the current document's folder
+            var currentFolder = Path.GetDirectoryName(ViewModel.FileResource.ToString())?.Replace('\\', '/') ?? "";
+            if (!string.IsNullOrEmpty(currentFolder))
+            {
+                var relativePath = NormalizePath($"{currentFolder}/{href}");
+                var relativeKey = new ResourceKey(relativePath);
+                var relativeResult = _resourceRegistry.NormalizeResourceKey(relativeKey);
+                if (relativeResult.IsSuccess)
+                {
+                    _commandService.Execute<IOpenDocumentCommand>(command =>
+                    {
+                        command.FileResource = relativeResult.Value;
+                    });
+                    return;
+                }
+            }
+
+            // Could not resolve the link
+            var errorTitle = _stringLocalizer.GetString("NoteEditor_LinkError_Title");
+            var errorMessage = _stringLocalizer.GetString("NoteEditor_LinkError_Message", href);
+            await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Failed to handle link click for '{href}': {ex.Message}");
+            var errorTitle = _stringLocalizer.GetString("NoteEditor_LinkError_Title");
+            var errorMessage = _stringLocalizer.GetString("NoteEditor_LinkError_Message", href);
+            await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
+        }
+    }
+
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
@@ -309,6 +397,14 @@ public sealed partial class NoteDocumentView : DocumentView
                     {
                         _logger.LogWarning("Received save-response while no save was in progress");
                     }
+                    break;
+
+                case "link-clicked":
+                    var href = doc.RootElement
+                        .GetProperty("payload")
+                        .GetProperty("href")
+                        .GetString();
+                    await HandleLinkClicked(href);
                     break;
 
                 default:
