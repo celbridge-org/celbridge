@@ -567,15 +567,21 @@ imageToolbarEl.addEventListener('click', async (e) => {
         case 'size-custom': {
             const currentWidth = info.node.attrs.width || '100%';
             const currentNum = parseInt(currentWidth.replace('%', ''), 10) || 100;
-            const input = await showPrompt('Width (1–100):', String(currentNum));
-            if (input !== null && input.trim()) {
-                let num = parseInt(input.trim(), 10);
+            const widthInput = await showPrompt('Width % (1–100):', String(currentNum));
+            if (widthInput !== null && widthInput.trim()) {
+                let num = parseInt(widthInput.trim(), 10);
                 if (isNaN(num) || num < 1) num = 100;
                 if (num > 100) num = 100;
-                editor.chain().setNodeSelection(savedPos)
-                    .updateAttributes('image', { width: num + '%' })
-                    .run();
-            } else if (input === null) {
+                const imageNode = editor.state.doc.nodeAt(savedPos);
+                if (imageNode && imageNode.type.name === 'image') {
+                    const tr = editor.state.tr.setNodeMarkup(savedPos, undefined, {
+                        ...imageNode.attrs,
+                        width: num + '%'
+                    });
+                    editor.view.dispatch(tr);
+                }
+                editor.chain().setNodeSelection(savedPos).run();
+            } else if (widthInput === null) {
                 editor.chain().setNodeSelection(savedPos).run();
             }
             break;
