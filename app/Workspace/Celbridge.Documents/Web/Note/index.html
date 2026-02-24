@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Note Editor</title>
     <link rel="stylesheet" href="note.css">
+    <link rel="stylesheet" href="note-image-toolbar.css">
+    <link rel="stylesheet" href="note-link-toolbar.css">
 </head>
 <body>
     <div id="status">&#x23F3; Loading editor...</div>
@@ -65,6 +67,13 @@
         <span class="img-group" data-group="delete">
             <button class="toolbar-btn" data-img-action="delete" title="Delete image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
         </span>
+    </div>
+
+    <div id="link-toolbar">
+        <span id="link-toolbar-url"></span>
+        <button class="toolbar-btn" data-link-action="edit" title="Edit URL">&#x270E;</button>
+        <button class="toolbar-btn" data-link-action="open" title="Open link">&#x2197;</button>
+        <button class="toolbar-btn" data-link-action="unlink" title="Remove link">&#x2715;</button>
     </div>
 
     <div id="editor-wrapper">
