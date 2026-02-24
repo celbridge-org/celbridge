@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Note Editor</title>
     <link rel="stylesheet" href="note.css">
-    <link rel="stylesheet" href="note-image-toolbar.css">
-    <link rel="stylesheet" href="note-link-toolbar.css">
+    <link rel="stylesheet" href="note-image-popover.css">
+    <link rel="stylesheet" href="note-link-popover.css">
 </head>
 <body>
     <div id="status">&#x23F3; Loading editor...</div>
@@ -44,32 +44,48 @@
         <button id="prompt-bar-cancel">Cancel</button>
     </div>
 
-    <div id="image-toolbar">
-        <span class="img-group" data-group="actions">
-            <button class="toolbar-btn" data-img-action="src" title="Change image source"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 5v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1H8.5L7 4H3a1 1 0 00-1 1z"/></svg></button>
-            <button class="toolbar-btn" data-img-action="caption" title="Edit caption">Aa</button>
-        </span>
-        <div class="toolbar-separator" data-group="actions"></div>
-        <span class="img-group" data-group="sizes">
-            <button class="toolbar-btn" data-img-action="size-25" title="25% width">25%</button>
-            <button class="toolbar-btn" data-img-action="size-50" title="50% width">50%</button>
-            <button class="toolbar-btn" data-img-action="size-75" title="75% width">75%</button>
-            <button class="toolbar-btn" data-img-action="size-100" title="Full width">100%</button>
-            <button class="toolbar-btn" data-img-action="size-custom" title="Custom width">&#x2026;</button>
-        </span>
-        <div class="toolbar-separator" data-group="align"></div>
-        <span class="img-group" data-group="align">
-            <button class="toolbar-btn" data-img-action="align-left" title="Align left"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="9" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-            <button class="toolbar-btn" data-img-action="align-center" title="Align center"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4.5" y1="8" x2="11.5" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-            <button class="toolbar-btn" data-img-action="align-right" title="Align right"><svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
-        </span>
-        <div class="toolbar-separator" data-group="delete"></div>
-        <span class="img-group" data-group="delete">
-            <button class="toolbar-btn" data-img-action="delete" title="Delete image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
-        </span>
-    </div>
-
     <div id="editor-wrapper">
+        <div id="image-popover">
+            <div class="img-popover-header">
+                <svg class="img-popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="10" rx="1"/><circle cx="5" cy="6.5" r="1.5"/><path d="M1.5 12l3-3.5 2.5 2.5 2-2L14.5 13" stroke-linejoin="round"/></svg>
+                <span class="img-popover-label">Image</span>
+            </div>
+            <!-- View mode: src label, layout controls, action buttons -->
+            <div id="image-popover-view-mode" class="img-popover-mode">
+                <div id="image-popover-src-display"></div>
+                <!-- Size buttons + inline custom input, all on one row -->
+                <div class="img-popover-size-row">
+                    <button class="img-popover-size-btn" data-img-action="size-25" title="25% width">25%</button>
+                    <button class="img-popover-size-btn" data-img-action="size-50" title="50% width">50%</button>
+                    <button class="img-popover-size-btn" data-img-action="size-75" title="75% width">75%</button>
+                    <button class="img-popover-size-btn" data-img-action="size-100" title="Full width">100%</button>
+                    <button class="img-popover-size-btn" data-img-action="size-custom" title="Custom width">~%</button>
+                    <div id="image-popover-custom-size-wrapper" class="img-popover-custom-size-wrapper" style="display:none">
+                        <input type="text" id="image-popover-custom-size-input" title="Enter image width as a percentage (1–100)" placeholder="1–100" />
+                        <span class="img-popover-custom-size-label">%</span>
+                    </div>
+                </div>
+                <!-- Align buttons on their own row -->
+                <div class="img-popover-align-row">
+                    <button class="img-popover-align-btn" data-img-action="align-left" title="Align left"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="9" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+                    <button class="img-popover-align-btn" data-img-action="align-center" title="Align center"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4.5" y1="8" x2="11.5" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+                    <button class="img-popover-align-btn" data-img-action="align-right" title="Align right"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+                </div>
+                <div class="img-popover-action-row">
+                    <button id="image-popover-edit-btn" class="img-popover-btn" title="Edit source and caption">&#x270E;</button>
+                    <button id="image-popover-delete" class="img-popover-btn img-popover-btn-danger" title="Delete image"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
+                </div>
+            </div>
+            <!-- Edit mode: live source + caption inputs, cancel reverts -->
+            <div id="image-popover-edit-mode" class="img-popover-mode">
+                <input type="text" id="image-popover-src-input" placeholder="URL or resource key..." />
+                <input type="text" id="image-popover-caption-input" placeholder="Caption (optional)" />
+                <div class="img-popover-buttons">
+                    <button id="image-popover-confirm" class="img-popover-btn img-popover-btn-primary" title="Accept changes">&#x2713;</button>
+                    <button id="image-popover-cancel" class="img-popover-btn" title="Cancel — revert to previous values">&#x2715;</button>
+                </div>
+            </div>
+        </div>
         <div id="link-popup">
             <div class="link-popup-header">
                 <svg class="link-popup-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9L4.5 11.5C3.67 12.33 2.33 12.33 1.5 11.5C0.67 10.67 0.67 9.33 1.5 8.5L4 6"/><path d="M9 7L11.5 4.5C12.33 3.67 13.67 3.67 14.5 4.5C15.33 5.33 15.33 6.67 14.5 7.5L12 10"/><line x1="6" y1="10" x2="10" y2="6"/></svg>

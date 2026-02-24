@@ -1,0 +1,275 @@
+/* Image node styles and image popover */
+
+.tiptap img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    cursor: pointer;
+}
+
+.tiptap img.ProseMirror-selectednode {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.tiptap img.note-broken {
+    min-height: 80px;
+    border: 2px dashed var(--border-color);
+    border-radius: 6px;
+    background: var(--code-bg);
+}
+
+.tiptap figure {
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.tiptap figure img {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.tiptap figcaption {
+    text-align: center;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-top: 0.35em;
+    font-style: italic;
+}
+
+.image-node-wrapper {
+    display: block;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.image-node-wrapper figure {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* Image popover */
+#image-popover {
+    display: none;
+    position: absolute;
+    background: var(--bg-toolbar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 420px;
+    max-width: 560px;
+    width: max-content;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#image-popover.visible {
+    display: flex;
+}
+
+.img-popover-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.img-popover-icon {
+    color: var(--text-secondary);
+}
+
+/* Mode containers */
+.img-popover-mode {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.img-popover-mode.active {
+    display: flex;
+}
+
+/* Src label */
+#image-popover-src-display {
+    font-size: 13px;
+    color: var(--link-color);
+    word-break: break-all;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+}
+
+#image-popover-src-display.empty {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-family: inherit;
+}
+
+/* Size row: all buttons + optional custom input on one line */
+.img-popover-size-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+/* Align row */
+.img-popover-align-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.img-popover-size-btn,
+.img-popover-align-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    flex-shrink: 0;
+}
+
+.img-popover-align-btn {
+    width: 36px;
+    padding: 0;
+}
+
+.img-popover-size-btn:hover,
+.img-popover-align-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.img-popover-size-btn.active,
+.img-popover-align-btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+/* Custom size wrapper */
+.img-popover-custom-size-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 2px;
+}
+
+.img-popover-custom-size-wrapper input {
+    width: 52px;
+    padding: 5px 7px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    text-align: center;
+}
+
+.img-popover-custom-size-wrapper input:focus {
+    border-color: var(--accent-color);
+}
+
+.img-popover-custom-size-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Action row */
+.img-popover-action-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+/* Edit mode inputs */
+#image-popover-edit-mode input[type="text"] {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#image-popover-edit-mode input[type="text"]:focus {
+    border-color: var(--accent-color);
+}
+
+#image-popover-edit-mode input[type="text"]::placeholder {
+    color: var(--placeholder-color);
+}
+
+/* Buttons */
+.img-popover-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.img-popover-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 4px;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.img-popover-btn svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.img-popover-btn:hover {
+    background: var(--active-bg);
+    color: var(--text-primary);
+}
+
+.img-popover-btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.img-popover-btn-primary:hover {
+    background: var(--accent-color);
+    filter: brightness(1.1);
+    color: white;
+}
+
+.img-popover-btn-danger:hover {
+    background: #dc2626;
+    color: white;
+}

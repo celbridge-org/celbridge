@@ -1,5 +1,5 @@
 // Note editor entry point
-// Slim module that creates the TipTap editor and wires up toolbar modules
+// Slim module that creates the TipTap editor and wires up popover modules
 
 import { Editor } from 'https://esm.sh/@tiptap/core@2';
 import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2';
@@ -7,8 +7,8 @@ import Underline from 'https://esm.sh/@tiptap/extension-underline@2';
 import Link from 'https://esm.sh/@tiptap/extension-link@2';
 import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2';
 
-import { createImageExtension, init as initImageToolbar, insertImage } from './note-image-toolbar.js';
-import { init as initLinkToolbar, toggleLink } from './note-link-toolbar.js';
+import { createImageExtension, init as initImagePopover, insertImage } from './note-image-popover.js';
+import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
 
 // DOM elements
 const statusEl = document.getElementById('status');
@@ -46,12 +46,10 @@ function unresolveImageSrc(resolvedSrc) {
     return resolvedSrc;
 }
 
-// Shared context object for toolbar modules
+// Shared context object for popover modules
 const ctx = {
     editor: null,
     showPrompt,
-    getCancelActivePrompt: () => cancelActivePrompt,
-    setCancelActivePrompt: (fn) => { cancelActivePrompt = fn; },
     sendMessage,
     resolveImageSrc,
     unresolveImageSrc,
@@ -97,9 +95,9 @@ const editor = new Editor({
 // Store editor in context for modules
 ctx.editor = editor;
 
-// Initialize toolbar modules
-initImageToolbar(ctx);
-initLinkToolbar(ctx);
+// Initialize popover modules
+initImagePopover(ctx);
+initLinkPopover(ctx);
 
 // Main toolbar separator logic
 function updateToolbarSeparators() {

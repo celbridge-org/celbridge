@@ -1,4 +1,4 @@
-// Link popup module for Note editor
+// Link popover module for Note editor
 // Three modes: view (existing link), edit (editing existing), create (new link)
 
 let ctx = null;
