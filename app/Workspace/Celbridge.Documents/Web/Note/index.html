@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="note.css">
     <link rel="stylesheet" href="note-image-popover.css">
     <link rel="stylesheet" href="note-link-popover.css">
+    <link rel="stylesheet" href="note-table-popover.css">
 </head>
 <body>
     <div id="status">&#x23F3; Loading editor...</div>
@@ -32,6 +33,7 @@
         <div class="toolbar-separator"></div>
         <button class="toolbar-btn" data-action="link" title="Insert/Edit Link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9L4.5 11.5C3.67 12.33 2.33 12.33 1.5 11.5C0.67 10.67 0.67 9.33 1.5 8.5L4 6"/><path d="M9 7L11.5 4.5C12.33 3.67 13.67 3.67 14.5 4.5C15.33 5.33 15.33 6.67 14.5 7.5L12 10"/><line x1="6" y1="10" x2="10" y2="6"/></svg></button>
         <button class="toolbar-btn" data-action="image" title="Insert Image"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="10" rx="1"/><circle cx="5" cy="6.5" r="1.5"/><path d="M1.5 12l3-3.5 2.5 2.5 2-2L14.5 13" stroke-linejoin="round"/></svg></button>
+        <button class="toolbar-btn" data-action="table" title="Insert/Edit Table"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="1.5" y1="10.5" x2="14.5" y2="10.5"/><line x1="6" y1="2.5" x2="6" y2="13.5"/><line x1="10.5" y1="2.5" x2="10.5" y2="13.5"/></svg></button>
         <div class="toolbar-separator"></div>
         <button class="toolbar-btn" data-action="undo" title="Undo (Ctrl+Z)">&#x21A9;</button>
         <button class="toolbar-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)">&#x21AA;</button>
@@ -113,6 +115,56 @@
                 <div class="link-popup-buttons">
                     <button id="link-popup-confirm" class="link-popup-btn link-popup-btn-primary" title="Confirm">&#x2713;</button>
                     <button id="link-popup-cancel" class="link-popup-btn" title="Cancel">&#x2715;</button>
+                </div>
+            </div>
+        </div>
+        <div id="table-popover">
+            <div class="table-popover-header">
+                <svg class="table-popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="1.5" y1="10.5" x2="14.5" y2="10.5"/><line x1="6" y1="2.5" x2="6" y2="13.5"/><line x1="10.5" y1="2.5" x2="10.5" y2="13.5"/></svg>
+                <span class="table-popover-label">Table</span>
+            </div>
+            <!-- Create mode: configure rows, columns, header before inserting -->
+            <div id="table-popover-create-mode" class="table-popover-mode">
+                <div class="table-popover-control-row">
+                    <div class="table-popover-control-group">
+                        <label for="table-create-rows">Rows</label>
+                        <input type="number" id="table-create-rows" min="1" max="20" value="3" />
+                    </div>
+                    <div class="table-popover-control-group">
+                        <label for="table-create-cols">Columns</label>
+                        <input type="number" id="table-create-cols" min="1" max="20" value="3" />
+                    </div>
+                </div>
+                <label class="table-popover-checkbox">
+                    <input type="checkbox" id="table-create-header" checked />
+                    <span>Header row</span>
+                </label>
+                <div class="table-popover-create-buttons">
+                    <button id="table-popover-create-confirm" class="table-popover-btn table-popover-btn-primary" title="Insert table">&#x2713;</button>
+                    <button id="table-popover-create-cancel" class="table-popover-btn" title="Cancel">&#x2715;</button>
+                </div>
+            </div>
+            <!-- View mode: table info, row/column actions, toggle header, delete -->
+            <div id="table-popover-view-mode" class="table-popover-mode">
+                <div class="table-popover-field">
+                    <span class="table-popover-field-label">Size</span>
+                    <span id="table-view-info"></span>
+                </div>
+                <div class="table-popover-grid">
+                    <span class="table-popover-grid-label">Row</span>
+                    <button id="table-add-row" class="table-popover-action-btn" title="Add row below"><span class="table-popover-action-icon">+</span> Add</button>
+                    <button id="table-delete-row" class="table-popover-action-btn table-popover-action-btn-danger" title="Delete current row"><span class="table-popover-action-icon">−</span> Remove</button>
+                    <span class="table-popover-grid-label">Column</span>
+                    <button id="table-add-col" class="table-popover-action-btn" title="Add column to the right"><span class="table-popover-action-icon">+</span> Add</button>
+                    <button id="table-delete-col" class="table-popover-action-btn table-popover-action-btn-danger" title="Delete current column"><span class="table-popover-action-icon">−</span> Remove</button>
+                </div>
+                <div class="table-popover-footer-row">
+                    <label class="table-popover-checkbox">
+                        <input type="checkbox" id="table-toggle-header" />
+                        <span>Header row</span>
+                    </label>
+                    <div style="flex:1"></div>
+                    <button id="table-delete" class="table-popover-btn table-popover-btn-danger" title="Delete table"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
                 </div>
             </div>
         </div>

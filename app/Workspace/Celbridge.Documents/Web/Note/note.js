@@ -9,6 +9,7 @@ import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2';
 
 import { createImageExtension, init as initImagePopover, insertImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
+import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
 
 // DOM elements
 const statusEl = document.getElementById('status');
@@ -58,6 +59,9 @@ const ctx = {
 // Create the Image extension before editor init (needs ctx for toolbar references)
 const imageExtension = createImageExtension(ctx);
 
+// Create the Table extensions
+const tableExtensions = createTableExtensions();
+
 // Create the TipTap editor
 const editor = new Editor({
     element: editorEl,
@@ -80,6 +84,7 @@ const editor = new Editor({
             placeholder: 'Start writing...',
         }),
         imageExtension,
+        ...tableExtensions,
     ],
     content: '',
     onUpdate: () => {
@@ -98,6 +103,7 @@ ctx.editor = editor;
 // Initialize popover modules
 initImagePopover(ctx);
 initLinkPopover(ctx);
+initTablePopover(ctx);
 
 // Main toolbar separator logic
 function updateToolbarSeparators() {
@@ -149,6 +155,7 @@ function updateToolbar() {
             case 'blockquote': isActive = editor.isActive('blockquote'); break;
             case 'codeBlock': isActive = editor.isActive('codeBlock'); break;
             case 'link': isActive = editor.isActive('link'); break;
+            case 'table': isActive = editor.isActive('table'); break;
         }
 
         btn.classList.toggle('active', isActive);
@@ -181,6 +188,7 @@ toolbarEl.addEventListener('click', (e) => {
         case 'horizontalRule': editor.chain().focus().setHorizontalRule().run(); break;
         case 'link': toggleLink(); break;
         case 'image': insertImage(); break;
+        case 'table': toggleTable(); break;
         case 'undo': editor.chain().focus().undo().run(); break;
         case 'redo': editor.chain().focus().redo().run(); break;
     }

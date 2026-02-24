@@ -1,0 +1,297 @@
+/* Table styles and table popover */
+
+/* Table styles in the editor */
+.tiptap table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+    overflow: hidden;
+}
+
+.tiptap table td,
+.tiptap table th {
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    vertical-align: top;
+    min-width: 50px;
+    position: relative;
+}
+
+.tiptap table th {
+    background: var(--code-bg);
+    font-weight: 600;
+    text-align: left;
+}
+
+.tiptap table td > *,
+.tiptap table th > * {
+    margin-bottom: 0;
+}
+
+.tiptap table td p,
+.tiptap table th p {
+    margin-bottom: 0;
+}
+
+/* Selected cell highlight */
+.tiptap table .selectedCell {
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.tiptap table .selectedCell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 2px solid var(--accent-color);
+}
+
+/* Table wrapper for selection */
+.tiptap .tableWrapper {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+    overflow-x: auto;
+}
+
+.tiptap .tableWrapper table {
+    margin: 0;
+}
+
+/* Table popover */
+#table-popover {
+    display: none;
+    position: fixed;
+    background: var(--bg-toolbar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 320px;
+    max-width: 450px;
+    width: max-content;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#table-popover.visible {
+    display: flex;
+}
+
+.table-popover-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-popover-icon {
+    color: var(--text-secondary);
+}
+
+/* Mode containers */
+.table-popover-mode {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.table-popover-mode.active {
+    display: flex;
+}
+
+/* Field with label */
+.table-popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.table-popover-field-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+#table-view-info {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+/* Row/Column control row */
+.table-popover-control-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: nowrap;
+}
+
+.table-popover-control-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.table-popover-control-group label {
+    font-size: 13px;
+    color: var(--text-primary);
+    min-width: 60px;
+}
+
+.table-popover-control-group input[type="number"] {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    text-align: center;
+}
+
+.table-popover-control-group input[type="number"]:focus {
+    border-color: var(--accent-color);
+}
+
+/* Checkbox styles */
+.table-popover-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.table-popover-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.table-popover-checkbox span {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+/* Row/Column action grid: label + 2 buttons per row */
+.table-popover-grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    gap: 4px;
+    align-items: center;
+}
+
+.table-popover-grid-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    padding-right: 8px;
+}
+
+.table-popover-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 4px;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    white-space: nowrap;
+    gap: 3px;
+}
+
+.table-popover-action-icon {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.table-popover-action-btn:hover {
+    background: var(--active-bg);
+    color: var(--text-primary);
+}
+
+.table-popover-action-btn.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.table-popover-action-btn-danger:hover {
+    background: #dc2626;
+    color: white;
+}
+
+/* Footer row: header toggle + delete */
+.table-popover-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Buttons */
+.table-popover-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 4px;
+    background: var(--hover-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.table-popover-btn svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.table-popover-btn:hover {
+    background: var(--active-bg);
+    color: var(--text-primary);
+}
+
+.table-popover-btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.table-popover-btn-primary:hover {
+    background: var(--accent-color);
+    filter: brightness(1.1);
+    color: white;
+}
+
+.table-popover-btn-danger:hover {
+    background: #dc2626;
+    color: white;
+}
+
+/* Create mode specific */
+.table-popover-create-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
