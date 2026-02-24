@@ -32,6 +32,8 @@ public sealed partial class AlertDialog : ContentDialog, IAlertDialog
         ViewModel = ServiceLocator.AcquireService<AlertDialogViewModel>();
 
         this.InitializeComponent();
+
+        this.EnableThemeSync();
     }
 
     public async Task ShowDialogAsync()
