@@ -57,7 +57,7 @@
 /* Image popover */
 #image-popover {
     display: none;
-    position: absolute;
+    position: fixed;
     background: var(--bg-toolbar);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -102,33 +102,57 @@
     display: flex;
 }
 
-/* Src label */
+/* Src link in view mode */
 #image-popover-src-display {
     font-size: 13px;
     color: var(--link-color);
     word-break: break-all;
     font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#image-popover-src-display:hover {
+    text-decoration: underline;
 }
 
 #image-popover-src-display.empty {
     color: var(--text-secondary);
     font-style: italic;
     font-family: inherit;
+    cursor: default;
+    pointer-events: none;
 }
 
-/* Size row: all buttons + optional custom input on one line */
-.img-popover-size-row {
+/* Field with label */
+.img-popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.img-popover-field-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+/* Layout row: size buttons + custom input + separator + align buttons */
+.img-popover-layout-row {
     display: flex;
     align-items: center;
     gap: 4px;
     flex-wrap: nowrap;
 }
 
-/* Align row */
-.img-popover-align-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+/* Separator between size and align button groups */
+.img-popover-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 6px;
 }
 
 .img-popover-size-btn,
@@ -138,9 +162,9 @@
     justify-content: center;
     height: 28px;
     padding: 0 8px;
-    border: 1px solid var(--border-color);
+    border: none;
     border-radius: 4px;
-    background: var(--bg-primary);
+    background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     font-size: 12px;
@@ -163,20 +187,21 @@
 .img-popover-align-btn.active {
     background: var(--accent-color);
     color: white;
-    border-color: var(--accent-color);
 }
 
-/* Custom size wrapper */
+/* Custom size wrapper - always visible */
 .img-popover-custom-size-wrapper {
     display: flex;
     align-items: center;
     gap: 3px;
-    margin-left: 2px;
+    margin-left: 4px;
+    padding-left: 6px;
+    border-left: 1px solid var(--border-color);
 }
 
 .img-popover-custom-size-wrapper input {
-    width: 52px;
-    padding: 5px 7px;
+    width: 42px;
+    padding: 5px 5px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-primary);

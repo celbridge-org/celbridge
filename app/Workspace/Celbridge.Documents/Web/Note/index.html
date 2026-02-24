@@ -50,36 +50,43 @@
                 <svg class="img-popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="10" rx="1"/><circle cx="5" cy="6.5" r="1.5"/><path d="M1.5 12l3-3.5 2.5 2.5 2-2L14.5 13" stroke-linejoin="round"/></svg>
                 <span class="img-popover-label">Image</span>
             </div>
-            <!-- View mode: src label, layout controls, action buttons -->
+            <!-- View mode: layout controls, then src link, action buttons -->
             <div id="image-popover-view-mode" class="img-popover-mode">
-                <div id="image-popover-src-display"></div>
-                <!-- Size buttons + inline custom input, all on one row -->
-                <div class="img-popover-size-row">
+                <!-- Size and align buttons on the same row with separator -->
+                <div class="img-popover-layout-row">
                     <button class="img-popover-size-btn" data-img-action="size-25" title="25% width">25%</button>
                     <button class="img-popover-size-btn" data-img-action="size-50" title="50% width">50%</button>
                     <button class="img-popover-size-btn" data-img-action="size-75" title="75% width">75%</button>
                     <button class="img-popover-size-btn" data-img-action="size-100" title="Full width">100%</button>
-                    <button class="img-popover-size-btn" data-img-action="size-custom" title="Custom width">~%</button>
-                    <div id="image-popover-custom-size-wrapper" class="img-popover-custom-size-wrapper" style="display:none">
-                        <input type="text" id="image-popover-custom-size-input" title="Enter image width as a percentage (1–100)" placeholder="1–100" />
+                    <div class="img-popover-custom-size-wrapper">
+                        <input type="text" id="image-popover-custom-size-input" title="Enter image width as a percentage (1–100)" placeholder="%" />
                         <span class="img-popover-custom-size-label">%</span>
                     </div>
-                </div>
-                <!-- Align buttons on their own row -->
-                <div class="img-popover-align-row">
+                    <div class="img-popover-separator"></div>
                     <button class="img-popover-align-btn" data-img-action="align-left" title="Align left"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="9" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
                     <button class="img-popover-align-btn" data-img-action="align-center" title="Align center"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4.5" y1="8" x2="11.5" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
                     <button class="img-popover-align-btn" data-img-action="align-right" title="Align right"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+                </div>
+                <!-- Image source as clickable link -->
+                <div class="img-popover-field">
+                    <span class="img-popover-field-label">Source</span>
+                    <span id="image-popover-src-display"></span>
                 </div>
                 <div class="img-popover-action-row">
                     <button id="image-popover-edit-btn" class="img-popover-btn" title="Edit source and caption">&#x270E;</button>
                     <button id="image-popover-delete" class="img-popover-btn img-popover-btn-danger" title="Delete image"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
                 </div>
             </div>
-            <!-- Edit mode: live source + caption inputs, cancel reverts -->
+            <!-- Edit mode: live source + caption inputs with labels, cancel reverts -->
             <div id="image-popover-edit-mode" class="img-popover-mode">
-                <input type="text" id="image-popover-src-input" placeholder="URL or resource key..." />
-                <input type="text" id="image-popover-caption-input" placeholder="Caption (optional)" />
+                <div class="img-popover-field">
+                    <label class="img-popover-field-label" for="image-popover-src-input">Source</label>
+                    <input type="text" id="image-popover-src-input" placeholder="URL or resource key..." />
+                </div>
+                <div class="img-popover-field">
+                    <label class="img-popover-field-label" for="image-popover-caption-input">Caption</label>
+                    <input type="text" id="image-popover-caption-input" placeholder="Optional caption text..." />
+                </div>
                 <div class="img-popover-buttons">
                     <button id="image-popover-confirm" class="img-popover-btn img-popover-btn-primary" title="Accept changes">&#x2713;</button>
                     <button id="image-popover-cancel" class="img-popover-btn" title="Cancel — revert to previous values">&#x2715;</button>

@@ -1,5 +1,5 @@
 // Image popover module for Note editor
-// View mode: src label + immediate size/align controls
+// View mode: layout controls + src link + immediate size/align controls
 // Edit mode: live src + caption inputs, Cancel reverts to previous values
 
 import Image from 'https://esm.sh/@tiptap/extension-image@2';
@@ -7,11 +7,11 @@ import Image from 'https://esm.sh/@tiptap/extension-image@2';
 let ctx = null;
 let imagePopoverEl = null;
 let editorWrapper = null;
+let toolbarEl = null;
 let srcDisplayEl = null;
 let srcInputEl = null;
 let captionInputEl = null;
 let customSizeInputEl = null;
-let customSizeWrapperEl = null;
 
 let currentPos = null;
 let currentWrapperEl = null;
@@ -105,7 +105,8 @@ export function createImageExtension(context) {
                 figure.appendChild(figcaption);
                 wrapper.appendChild(figure);
 
-                img.addEventListener('click', () => {
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const pos = typeof getPos === 'function' ? getPos() : null;
                     if (pos == null) return;
 
@@ -113,12 +114,18 @@ export function createImageExtension(context) {
                     const alreadySelected = sel.node != null && sel.from === pos;
 
                     if (alreadySelected) {
-                        if (imagePopoverEl && !imagePopoverEl.classList.contains('visible')) {
-                            showPopoverForImage(wrapper, pos, node);
-                        }
+                        // Always show popover when clicking on already-selected image
+                        showPopoverForImage(wrapper, pos, node);
                     } else {
                         ed.chain().setNodeSelection(pos).run();
                     }
+                });
+
+                // Clicking empty space around the image (wrapper but not img) hides popover but keeps selection
+                wrapper.addEventListener('click', (e) => {
+                    if (e.target === img) return; // handled by img click
+                    e.stopPropagation();
+                    hidePopover();
                 });
 
                 return {
@@ -154,11 +161,11 @@ export function init(context) {
     ctx = context;
     imagePopoverEl = document.getElementById('image-popover');
     editorWrapper = document.getElementById('editor-wrapper');
+    toolbarEl = document.getElementById('toolbar');
     srcDisplayEl = document.getElementById('image-popover-src-display');
     srcInputEl = document.getElementById('image-popover-src-input');
     captionInputEl = document.getElementById('image-popover-caption-input');
     customSizeInputEl = document.getElementById('image-popover-custom-size-input');
-    customSizeWrapperEl = document.getElementById('image-popover-custom-size-wrapper');
 
     imagePopoverEl.addEventListener('mousedown', (e) => {
         if (e.target !== srcInputEl && e.target !== captionInputEl && e.target !== customSizeInputEl) {
@@ -169,30 +176,30 @@ export function init(context) {
     document.getElementById('image-popover-edit-btn').addEventListener('click', () => switchToEditMode());
     document.getElementById('image-popover-delete').addEventListener('click', () => deleteImage());
 
+    // Clicking the source label opens the image - use same logic as link popover
+    // so resource keys open as documents in Celbridge
+    srcDisplayEl.addEventListener('click', () => {
+        if (currentPos == null) return;
+        const node = ctx.editor.state.doc.nodeAt(currentPos);
+        if (!node || !node.attrs.src) return;
+        // Send the unresolved resource key, not the resolved URL
+        const resourceKey = ctx.unresolveImageSrc(node.attrs.src);
+        if (resourceKey) {
+            ctx.sendMessage({ type: 'link-clicked', payload: { href: resourceKey } });
+        }
+    });
+
+    // Handle clicks on size and align buttons
     imagePopoverEl.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-img-action]');
         if (!btn) return;
         const action = btn.dataset.imgAction;
 
-        if (action === 'size-custom') {
-            if (!btn.classList.contains('active')) {
-                imagePopoverEl.querySelectorAll('.img-popover-size-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                customSizeWrapperEl.style.display = '';
-                if (!customSizeInputEl.value) {
-                    const node = ctx.editor.state.doc.nodeAt(currentPos);
-                    if (node) customSizeInputEl.value = parseInt(node.attrs.width || '100') + '';
-                }
-                customSizeInputEl.focus();
-                customSizeInputEl.select();
-            }
-            return;
-        }
-
         if (action.startsWith('size-')) {
-            imagePopoverEl.querySelectorAll('.img-popover-size-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            customSizeWrapperEl.style.display = 'none';
+            // Preset size button clicked - populate the custom size input and apply
+            const sizeValue = action.replace('size-', '');
+            customSizeInputEl.value = sizeValue;
+            updateSizeButtonHighlights(sizeValue);
             applyLayoutImmediate();
         } else if (action.startsWith('align-')) {
             imagePopoverEl.querySelectorAll('.img-popover-align-btn').forEach(b => b.classList.remove('active'));
@@ -204,6 +211,9 @@ export function init(context) {
     customSizeInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); applyLayoutImmediate(); customSizeInputEl.blur(); }
         else if (e.key === 'Escape') { e.preventDefault(); hidePopover(); }
+    });
+    customSizeInputEl.addEventListener('input', () => {
+        updateSizeButtonHighlights(customSizeInputEl.value.trim());
     });
     customSizeInputEl.addEventListener('change', () => applyLayoutImmediate());
 
@@ -236,6 +246,24 @@ export function init(context) {
     new ResizeObserver(() => {
         if (imagePopoverEl.classList.contains('visible')) hidePopover();
     }).observe(editorWrapper);
+
+    // Dismiss on click outside popover (including dead areas and other UI elements)
+    document.addEventListener('mousedown', (e) => {
+        if (!imagePopoverEl.classList.contains('visible')) return;
+
+        // Don't dismiss if clicking inside the popover
+        if (imagePopoverEl.contains(e.target)) return;
+
+        // Don't dismiss if clicking on the selected image itself
+        if (currentWrapperEl && currentWrapperEl.contains(e.target)) return;
+
+        hidePopover();
+    });
+
+    // Dismiss when focus leaves the editor area (e.g., clicking in inspector)
+    window.addEventListener('blur', () => {
+        if (imagePopoverEl.classList.contains('visible')) hidePopover();
+    });
 
     editorWrapper.addEventListener('load', (e) => {
         if (e.target.tagName === 'IMG' && e.target.closest('.tiptap')) {
@@ -283,7 +311,7 @@ function showPopoverForImage(wrapperEl, pos, node) {
 
     imagePopoverEl.classList.add('visible');
     requestAnimationFrame(() => {
-        positionBelowElement(wrapperEl);
+        positionAtTop();
         if (isNewImage) srcInputEl.focus();
     });
 }
@@ -329,18 +357,11 @@ function switchToEditMode() {
 function initLayoutButtons(node) {
     const w = node.attrs.width || '100%';
     const a = node.attrs.textAlign || 'center';
-    const isPreset = ['25%', '50%', '75%', '100%'].includes(w);
 
-    imagePopoverEl.querySelectorAll('.img-popover-size-btn').forEach(b => {
-        const action = b.dataset.imgAction;
-        b.classList.toggle('active',
-            (action === 'size-25' && w === '25%') ||
-            (action === 'size-50' && w === '50%') ||
-            (action === 'size-75' && w === '75%') ||
-            (action === 'size-100' && (!w || w === '100%')) ||
-            (action === 'size-custom' && !isPreset)
-        );
-    });
+    // Set the custom size input value (always visible)
+    const sizeValue = parseInt(w) || 100;
+    customSizeInputEl.value = sizeValue + '';
+    updateSizeButtonHighlights(sizeValue + '');
 
     imagePopoverEl.querySelectorAll('.img-popover-align-btn').forEach(b => {
         const action = b.dataset.imgAction;
@@ -350,32 +371,33 @@ function initLayoutButtons(node) {
             (action === 'align-right' && a === 'right')
         );
     });
+}
 
-    if (!isPreset && w) {
-        customSizeInputEl.value = parseInt(w) + '';
-        customSizeWrapperEl.style.display = '';
-    } else {
-        customSizeInputEl.value = '';
-        customSizeWrapperEl.style.display = 'none';
-    }
+function updateSizeButtonHighlights(value) {
+    const num = parseInt(value) || 0;
+    imagePopoverEl.querySelectorAll('.img-popover-size-btn').forEach(b => {
+        const action = b.dataset.imgAction;
+        b.classList.toggle('active',
+            (action === 'size-25' && num === 25) ||
+            (action === 'size-50' && num === 50) ||
+            (action === 'size-75' && num === 75) ||
+            (action === 'size-100' && num === 100)
+        );
+    });
 }
 
 function applyLayoutImmediate() {
     if (currentPos == null) return;
 
-    const activeSizeBtn = imagePopoverEl.querySelector('.img-popover-size-btn.active');
-    let width = '100%';
-    if (activeSizeBtn) {
-        const action = activeSizeBtn.dataset.imgAction;
-        if (action === 'size-25') width = '25%';
-        else if (action === 'size-50') width = '50%';
-        else if (action === 'size-75') width = '75%';
-        else if (action === 'size-100') width = '100%';
-        else if (action === 'size-custom') {
-            const num = parseInt(customSizeInputEl.value.trim(), 10);
-            if (!isNaN(num) && num >= 1) width = Math.min(num, 100) + '%';
-        }
+    // Always read from the custom size input
+    const width = parseAndClampCustomSize(customSizeInputEl.value);
+
+    // Update the input to show the clamped/normalized value
+    const numericValue = parseInt(width);
+    if (customSizeInputEl.value.trim() !== numericValue + '') {
+        customSizeInputEl.value = numericValue + '';
     }
+    updateSizeButtonHighlights(numericValue + '');
 
     const activeAlignBtn = imagePopoverEl.querySelector('.img-popover-align-btn.active');
     let textAlign = 'center';
@@ -387,6 +409,19 @@ function applyLayoutImmediate() {
     }
 
     applyAttrsToNode({ width, textAlign });
+}
+
+function parseAndClampCustomSize(value) {
+    const trimmed = value.trim();
+    const num = parseFloat(trimmed);
+
+    // Invalid input defaults to 100%
+    if (isNaN(num)) return '100%';
+
+    // Round decimals to integers and clamp to 1-100 range
+    const rounded = Math.round(num);
+    const clamped = Math.max(1, Math.min(100, rounded));
+    return clamped + '%';
 }
 
 // ---------------------------------------------------------------------------
@@ -445,34 +480,24 @@ function refreshViewMode() {
 // Positioning
 // ---------------------------------------------------------------------------
 
-function positionBelowElement(el) {
-    const rect = el.getBoundingClientRect();
-    const wrapperRect = editorWrapper.getBoundingClientRect();
+function positionAtTop() {
+    // Position fixed, directly under the toolbar
+    const toolbarRect = toolbarEl.getBoundingClientRect();
     const popupWidth = imagePopoverEl.offsetWidth;
+    const viewportWidth = window.innerWidth;
 
-    const rectCenterInWrapper = (rect.left + rect.right) / 2 - wrapperRect.left;
-    let left = rectCenterInWrapper - popupWidth / 2;
-    const maxLeft = editorWrapper.clientWidth - popupWidth - 8;
+    // Center horizontally within the viewport
+    let left = (viewportWidth - popupWidth) / 2;
+    const maxLeft = viewportWidth - popupWidth - 8;
     if (left > maxLeft) left = maxLeft;
     if (left < 8) left = 8;
 
-    const rectBottomInWrapper = rect.bottom - wrapperRect.top;
-    const rectTopInWrapper = rect.top - wrapperRect.top;
-    const spaceBelow = editorWrapper.clientHeight - rectBottomInWrapper - 16;
-    const spaceAbove = rectTopInWrapper - 16;
-
-    let top, maxHeight;
-    if (spaceBelow >= spaceAbove) {
-        top = rectBottomInWrapper + editorWrapper.scrollTop + 8;
-        maxHeight = Math.max(spaceBelow, 120);
-    } else {
-        maxHeight = Math.max(spaceAbove, 120);
-        top = rectTopInWrapper + editorWrapper.scrollTop - maxHeight - 8;
-    }
+    // Position directly under the toolbar
+    const top = toolbarRect.bottom + 8;
 
     imagePopoverEl.style.top = top + 'px';
     imagePopoverEl.style.left = left + 'px';
-    imagePopoverEl.style.maxHeight = maxHeight + 'px';
+    imagePopoverEl.style.maxHeight = '';
 }
 
 // ---------------------------------------------------------------------------
