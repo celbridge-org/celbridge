@@ -39,21 +39,14 @@
         <button class="toolbar-btn" data-action="redo" title="Redo (Ctrl+Shift+Z)">&#x21AA;</button>
     </div>
 
-    <div id="prompt-bar">
-        <span id="prompt-bar-label"></span>
-        <input type="text" id="prompt-bar-input" />
-        <button id="prompt-bar-ok">OK</button>
-        <button id="prompt-bar-cancel">Cancel</button>
-    </div>
-
     <div id="editor-wrapper">
-        <div id="image-popover">
-            <div class="img-popover-header">
-                <svg class="img-popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="10" rx="1"/><circle cx="5" cy="6.5" r="1.5"/><path d="M1.5 12l3-3.5 2.5 2.5 2-2L14.5 13" stroke-linejoin="round"/></svg>
-                <span class="img-popover-label">Image</span>
+        <div id="image-popover" class="popover">
+            <div class="popover-header">
+                <svg class="popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="3" width="13" height="10" rx="1"/><circle cx="5" cy="6.5" r="1.5"/><path d="M1.5 12l3-3.5 2.5 2.5 2-2L14.5 13" stroke-linejoin="round"/></svg>
+                <span>Image</span>
             </div>
             <!-- View mode: layout controls, then src link, action buttons -->
-            <div id="image-popover-view-mode" class="img-popover-mode">
+            <div id="image-popover-view-mode" class="popover-mode">
                 <!-- Size and align buttons on the same row with separator -->
                 <div class="img-popover-layout-row">
                     <button class="img-popover-size-btn" data-img-action="size-25" title="25% width">25%</button>
@@ -70,61 +63,61 @@
                     <button class="img-popover-align-btn" data-img-action="align-right" title="Align right"><svg width="15" height="15" viewBox="0 0 16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="7" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
                 </div>
                 <!-- Image source as clickable link -->
-                <div class="img-popover-field">
-                    <span class="img-popover-field-label">Source</span>
+                <div class="popover-field">
+                    <span class="popover-field-label">Source</span>
                     <span id="image-popover-src-display"></span>
                 </div>
-                <div class="img-popover-action-row">
-                    <button id="image-popover-edit-btn" class="img-popover-btn" title="Edit source and caption">&#x270E;</button>
-                    <button id="image-popover-delete" class="img-popover-btn img-popover-btn-danger" title="Delete image"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
+                <div class="popover-buttons">
+                    <button id="image-popover-edit-btn" class="popover-btn" title="Edit source and caption">&#x270E;</button>
+                    <button id="image-popover-delete" class="popover-btn popover-btn-danger" title="Delete image"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
                 </div>
             </div>
             <!-- Edit mode: live source + caption inputs with labels, cancel reverts -->
-            <div id="image-popover-edit-mode" class="img-popover-mode">
-                <div class="img-popover-field">
-                    <label class="img-popover-field-label" for="image-popover-src-input">Source</label>
+            <div id="image-popover-edit-mode" class="popover-mode">
+                <div class="popover-field">
+                    <label class="popover-field-label" for="image-popover-src-input">Source</label>
                     <input type="text" id="image-popover-src-input" placeholder="URL or resource key..." />
                 </div>
-                <div class="img-popover-field">
-                    <label class="img-popover-field-label" for="image-popover-caption-input">Caption</label>
+                <div class="popover-field">
+                    <label class="popover-field-label" for="image-popover-caption-input">Caption</label>
                     <input type="text" id="image-popover-caption-input" placeholder="Optional caption text..." />
                 </div>
-                <div class="img-popover-buttons">
-                    <button id="image-popover-confirm" class="img-popover-btn img-popover-btn-primary" title="Accept changes">&#x2713;</button>
-                    <button id="image-popover-cancel" class="img-popover-btn" title="Cancel — revert to previous values">&#x2715;</button>
+                <div class="popover-buttons">
+                    <button id="image-popover-confirm" class="popover-btn popover-btn-primary" title="Accept changes">&#x2713;</button>
+                    <button id="image-popover-cancel" class="popover-btn" title="Cancel — revert to previous values">&#x2715;</button>
                 </div>
             </div>
         </div>
-        <div id="link-popup">
-            <div class="link-popup-header">
-                <svg class="link-popup-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9L4.5 11.5C3.67 12.33 2.33 12.33 1.5 11.5C0.67 10.67 0.67 9.33 1.5 8.5L4 6"/><path d="M9 7L11.5 4.5C12.33 3.67 13.67 3.67 14.5 4.5C15.33 5.33 15.33 6.67 14.5 7.5L12 10"/><line x1="6" y1="10" x2="10" y2="6"/></svg>
-                <span class="link-popup-label">Link</span>
+        <div id="link-popover" class="popover">
+            <div class="popover-header">
+                <svg class="popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9L4.5 11.5C3.67 12.33 2.33 12.33 1.5 11.5C0.67 10.67 0.67 9.33 1.5 8.5L4 6"/><path d="M9 7L11.5 4.5C12.33 3.67 13.67 3.67 14.5 4.5C15.33 5.33 15.33 6.67 14.5 7.5L12 10"/><line x1="6" y1="10" x2="10" y2="6"/></svg>
+                <span>Link</span>
             </div>
             <!-- View mode: read-only URL with Open/Edit/Delete -->
-            <div id="link-popup-view-mode" class="link-popup-mode">
-                <div id="link-popup-url-display"></div>
-                <div class="link-popup-buttons">
-                    <button id="link-popup-open" class="link-popup-btn" title="Open link">&#x2197;</button>
-                    <button id="link-popup-edit-btn" class="link-popup-btn" title="Edit link">&#x270E;</button>
-                    <button id="link-popup-delete" class="link-popup-btn link-popup-btn-danger" title="Remove link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
+            <div id="link-popover-view-mode" class="popover-mode">
+                <div id="link-popover-url-display"></div>
+                <div class="popover-buttons">
+                    <button id="link-popover-open" class="popover-btn" title="Open link">&#x2197;</button>
+                    <button id="link-popover-edit-btn" class="popover-btn" title="Edit link">&#x270E;</button>
+                    <button id="link-popover-delete" class="popover-btn popover-btn-danger" title="Remove link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
                 </div>
             </div>
             <!-- Edit mode: editable input with Confirm/Cancel -->
-            <div id="link-popup-edit-mode" class="link-popup-mode">
-                <input type="text" id="link-popup-input" placeholder="Enter URL or resource key..." />
-                <div class="link-popup-buttons">
-                    <button id="link-popup-confirm" class="link-popup-btn link-popup-btn-primary" title="Confirm">&#x2713;</button>
-                    <button id="link-popup-cancel" class="link-popup-btn" title="Cancel">&#x2715;</button>
+            <div id="link-popover-edit-mode" class="popover-mode">
+                <input type="text" id="link-popover-input" placeholder="Enter URL or resource key..." />
+                <div class="popover-buttons">
+                    <button id="link-popover-confirm" class="popover-btn popover-btn-primary" title="Confirm">&#x2713;</button>
+                    <button id="link-popover-cancel" class="popover-btn" title="Cancel">&#x2715;</button>
                 </div>
             </div>
         </div>
-        <div id="table-popover">
-            <div class="table-popover-header">
-                <svg class="table-popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="1.5" y1="10.5" x2="14.5" y2="10.5"/><line x1="6" y1="2.5" x2="6" y2="13.5"/><line x1="10.5" y1="2.5" x2="10.5" y2="13.5"/></svg>
-                <span class="table-popover-label">Table</span>
+        <div id="table-popover" class="popover">
+            <div class="popover-header">
+                <svg class="popover-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1"/><line x1="1.5" y1="6.5" x2="14.5" y2="6.5"/><line x1="1.5" y1="10.5" x2="14.5" y2="10.5"/><line x1="6" y1="2.5" x2="6" y2="13.5"/><line x1="10.5" y1="2.5" x2="10.5" y2="13.5"/></svg>
+                <span>Table</span>
             </div>
             <!-- Create mode: configure rows, columns, header before inserting -->
-            <div id="table-popover-create-mode" class="table-popover-mode">
+            <div id="table-popover-create-mode" class="popover-mode">
                 <div class="table-popover-control-row">
                     <div class="table-popover-control-group">
                         <label for="table-create-rows">Rows</label>
@@ -139,15 +132,15 @@
                     <input type="checkbox" id="table-create-header" checked />
                     <span>Header row</span>
                 </label>
-                <div class="table-popover-create-buttons">
-                    <button id="table-popover-create-confirm" class="table-popover-btn table-popover-btn-primary" title="Insert table">&#x2713;</button>
-                    <button id="table-popover-create-cancel" class="table-popover-btn" title="Cancel">&#x2715;</button>
+                <div class="popover-buttons">
+                    <button id="table-popover-create-confirm" class="popover-btn popover-btn-primary" title="Insert table">&#x2713;</button>
+                    <button id="table-popover-create-cancel" class="popover-btn" title="Cancel">&#x2715;</button>
                 </div>
             </div>
             <!-- View mode: table info, row/column actions, toggle header, delete -->
-            <div id="table-popover-view-mode" class="table-popover-mode">
-                <div class="table-popover-field">
-                    <span class="table-popover-field-label">Size</span>
+            <div id="table-popover-view-mode" class="popover-mode">
+                <div class="popover-field">
+                    <span class="popover-field-label">Size</span>
                     <span id="table-view-info"></span>
                 </div>
                 <div class="table-popover-grid">
@@ -164,7 +157,7 @@
                         <span>Header row</span>
                     </label>
                     <div style="flex:1"></div>
-                    <button id="table-delete" class="table-popover-btn table-popover-btn-danger" title="Delete table"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
+                    <button id="table-delete" class="popover-btn popover-btn-danger" title="Delete table"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 5h10"/><path d="M6.5 5V3.5a1 1 0 011-1h1a1 1 0 011 1V5"/><path d="M4.5 5l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8"/></svg></button>
                 </div>
             </div>
         </div>

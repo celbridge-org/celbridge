@@ -1,10 +1,14 @@
 // Link popover module for Note editor
 // Three modes: view (existing link), edit (editing existing), create (new link)
 
+import { setupDismiss } from './popover-utils.js';
+
 let ctx = null;
-let linkPopupEl = null;
+let linkPopoverEl = null;
 let linkInputEl = null;
 let urlDisplayEl = null;
+let viewModeEl = null;
+let editModeEl = null;
 let editorWrapper = null;
 let currentLinkEl = null;
 let currentSelectionRange = null;
@@ -13,9 +17,11 @@ let currentMode = null; // 'view' | 'edit' | 'create'
 
 export function init(context) {
     ctx = context;
-    linkPopupEl = document.getElementById('link-popup');
-    linkInputEl = document.getElementById('link-popup-input');
-    urlDisplayEl = document.getElementById('link-popup-url-display');
+    linkPopoverEl = document.getElementById('link-popover');
+    linkInputEl = document.getElementById('link-popover-input');
+    urlDisplayEl = document.getElementById('link-popover-url-display');
+    viewModeEl = document.getElementById('link-popover-view-mode');
+    editModeEl = document.getElementById('link-popover-edit-mode');
     editorWrapper = document.getElementById('editor-wrapper');
 
     // Handle clicks in the editor
@@ -23,8 +29,8 @@ export function init(context) {
         const link = e.target.closest('.tiptap a');
 
         if (!link) {
-            if (!linkPopupEl.contains(e.target)) {
-                hidePopup();
+            if (!linkPopoverEl.contains(e.target)) {
+                hidePopover();
             }
             return;
         }
@@ -38,7 +44,7 @@ export function init(context) {
                 ctx.sendMessage({ type: 'link-clicked', payload: { href } });
             }
         } else {
-            showPopupForLink(link);
+            showPopoverForLink(link);
         }
     });
 
@@ -53,8 +59,8 @@ export function init(context) {
         }
     });
 
-    // Prevent mousedown inside popup from blurring input
-    linkPopupEl.addEventListener('mousedown', (e) => {
+    // Prevent mousedown inside popover from blurring input
+    linkPopoverEl.addEventListener('mousedown', (e) => {
         if (e.target !== linkInputEl) {
             e.preventDefault();
         }
@@ -65,65 +71,46 @@ export function init(context) {
         const href = currentLinkEl?.getAttribute('href');
         if (href) {
             ctx.sendMessage({ type: 'link-clicked', payload: { href } });
-            hidePopup();
+            hidePopover();
         }
     });
 
     // View mode buttons
-    document.getElementById('link-popup-open').addEventListener('click', () => {
+    document.getElementById('link-popover-open').addEventListener('click', () => {
         const href = currentLinkEl?.getAttribute('href');
         if (href) {
             ctx.sendMessage({ type: 'link-clicked', payload: { href } });
-            hidePopup();
+            hidePopover();
         }
     });
 
-    document.getElementById('link-popup-edit-btn').addEventListener('click', () => {
+    document.getElementById('link-popover-edit-btn').addEventListener('click', () => {
         switchToEditMode();
     });
 
-    document.getElementById('link-popup-delete').addEventListener('click', () => {
+    document.getElementById('link-popover-delete').addEventListener('click', () => {
         removeLink();
     });
 
     // Edit/create mode buttons
-    document.getElementById('link-popup-confirm').addEventListener('click', () => {
+    document.getElementById('link-popover-confirm').addEventListener('click', () => {
         confirmAndClose();
     });
 
-    document.getElementById('link-popup-cancel').addEventListener('click', () => {
+    document.getElementById('link-popover-cancel').addEventListener('click', () => {
         cancelAndClose();
     });
 
-    // Dismiss on scroll or resize
-    editorWrapper.addEventListener('scroll', () => {
-        if (linkPopupEl.classList.contains('visible')) {
-            cancelAndClose();
-        }
-    });
-
-    new ResizeObserver(() => {
-        if (linkPopupEl.classList.contains('visible')) {
-            cancelAndClose();
-        }
-    }).observe(editorWrapper);
-
-    // Dismiss on click outside popup
-    document.addEventListener('mousedown', (e) => {
-        if (linkPopupEl.classList.contains('visible') && !linkPopupEl.contains(e.target)) {
-            cancelAndClose();
-        }
-    });
+    // Dismiss on scroll, resize, click outside, or window blur
+    setupDismiss(editorWrapper, linkPopoverEl, cancelAndClose);
 }
 
 // --- Mode switching ---
 
 function setMode(mode) {
     currentMode = mode;
-    const viewEl = document.getElementById('link-popup-view-mode');
-    const editEl = document.getElementById('link-popup-edit-mode');
-    viewEl.classList.toggle('active', mode === 'view');
-    editEl.classList.toggle('active', mode === 'edit' || mode === 'create');
+    viewModeEl.classList.toggle('active', mode === 'view');
+    editModeEl.classList.toggle('active', mode === 'edit' || mode === 'create');
 }
 
 function switchToEditMode() {
@@ -137,9 +124,9 @@ function switchToEditMode() {
     });
 }
 
-// --- Show popup ---
+// --- Show popover ---
 
-function showPopupForLink(linkEl) {
+function showPopoverForLink(linkEl) {
     currentLinkEl = linkEl;
     currentSelectionRange = null;
     originalHref = linkEl.getAttribute('href') || '';
@@ -148,14 +135,14 @@ function showPopupForLink(linkEl) {
     urlDisplayEl.title = originalHref;
 
     setMode('view');
-    linkPopupEl.classList.add('visible');
+    linkPopoverEl.classList.add('visible');
 
     requestAnimationFrame(() => {
         positionBelowElement(linkEl);
     });
 }
 
-export function showPopupForSelection() {
+export function showPopoverForSelection() {
     const { state } = ctx.editor;
     const { selection } = state;
     const { from, to, empty } = selection;
@@ -165,7 +152,7 @@ export function showPopupForSelection() {
     if (ctx.editor.isActive('link')) {
         const info = getActiveLinkInfo();
         if (info?.linkEl) {
-            showPopupForLink(info.linkEl);
+            showPopoverForLink(info.linkEl);
             return true;
         }
     }
@@ -184,7 +171,7 @@ export function showPopupForSelection() {
     linkInputEl.value = '';
 
     setMode('create');
-    linkPopupEl.classList.add('visible');
+    linkPopoverEl.classList.add('visible');
 
     const domSel = window.getSelection();
     if (domSel?.rangeCount > 0) {
@@ -221,32 +208,32 @@ function confirmAndClose() {
         }
     }
 
-    hidePopup();
+    hidePopover();
 }
 
 function cancelAndClose() {
     if (currentMode === 'edit') {
-        // Revert to view mode rather than dismissing the popup entirely
+        // Revert to view mode rather than dismissing the popover entirely
         urlDisplayEl.textContent = originalHref || '(no URL)';
         urlDisplayEl.title = originalHref;
         setMode('view');
         return;
     }
     ctx.editor.commands.focus();
-    hidePopup();
+    hidePopover();
 }
 
 function removeLink() {
     if (currentLinkEl) {
         ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
     }
-    hidePopup();
+    hidePopover();
 }
 
 // --- Hide ---
 
-function hidePopup() {
-    linkPopupEl.classList.remove('visible');
+function hidePopover() {
+    linkPopoverEl.classList.remove('visible');
     currentLinkEl = null;
     currentSelectionRange = null;
     currentMode = null;
@@ -261,8 +248,8 @@ function positionBelowElement(el) {
 
 function positionBelowRect(rect) {
     const wrapperRect = editorWrapper.getBoundingClientRect();
-    const popupHeight = linkPopupEl.offsetHeight;
-    const popupWidth = linkPopupEl.offsetWidth;
+    const popoverHeight = linkPopoverEl.offsetHeight;
+    const popoverWidth = linkPopoverEl.offsetWidth;
 
     const rectBottomInWrapper = rect.bottom - wrapperRect.top;
     const rectLeftInWrapper = rect.left - wrapperRect.left;
@@ -270,27 +257,27 @@ function positionBelowRect(rect) {
     let top = rectBottomInWrapper + editorWrapper.scrollTop + 8;
     let left = rectLeftInWrapper;
 
-    const maxLeft = editorWrapper.clientWidth - popupWidth - 8;
+    const maxLeft = editorWrapper.clientWidth - popoverWidth - 8;
     if (left > maxLeft) left = maxLeft;
     if (left < 8) left = 8;
 
     // Flip above if not enough room below
     const visibleBottom = editorWrapper.scrollTop + editorWrapper.clientHeight;
-    if (top + popupHeight > visibleBottom) {
+    if (top + popoverHeight > visibleBottom) {
         const rectTopInWrapper = rect.top - wrapperRect.top;
-        top = rectTopInWrapper + editorWrapper.scrollTop - popupHeight - 8;
+        top = rectTopInWrapper + editorWrapper.scrollTop - popoverHeight - 8;
     }
 
     // Hide if anchor has scrolled out of view
     const rectTop = rect.top - wrapperRect.top;
     const rectBottom = rect.bottom - wrapperRect.top;
     if (rectBottom < 0 || rectTop > editorWrapper.clientHeight) {
-        hidePopup();
+        hidePopover();
         return;
     }
 
-    linkPopupEl.style.top = top + 'px';
-    linkPopupEl.style.left = left + 'px';
+    linkPopoverEl.style.top = top + 'px';
+    linkPopoverEl.style.left = left + 'px';
 }
 
 // --- Helpers ---
@@ -320,17 +307,9 @@ function getActiveLinkInfo() {
 // --- Toolbar entry point ---
 
 export function toggleLink() {
-    if (linkPopupEl.classList.contains('visible')) {
+    if (linkPopoverEl.classList.contains('visible')) {
         cancelAndClose();
         return;
     }
-    showPopupForSelection();
+    showPopoverForSelection();
 }
-
-export function triggerEdit() {
-    const info = getActiveLinkInfo();
-    if (info?.linkEl) {
-        showPopupForLink(info.linkEl);
-    }
-}
-

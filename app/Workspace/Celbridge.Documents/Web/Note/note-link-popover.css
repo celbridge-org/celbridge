@@ -1,4 +1,4 @@
-/* Link styles and link popup */
+/* Link styles and link popover */
 
 .tiptap a {
     color: var(--link-color);
@@ -10,55 +10,15 @@
     text-decoration: none;
 }
 
-/* Link popup - positioned below link/selection */
-#link-popup {
-    display: none;
+/* Link popover — position and size overrides (absolute, positioned near clicked link) */
+#link-popover {
     position: absolute;
-    background: var(--bg-toolbar);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
     min-width: 300px;
     max-width: 500px;
-    width: max-content;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 100;
-    flex-direction: column;
-    gap: 10px;
-}
-
-#link-popup.visible {
-    display: flex;
-}
-
-.link-popup-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.link-popup-icon {
-    color: var(--text-secondary);
-}
-
-/* Mode containers */
-.link-popup-mode {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.link-popup-mode.active {
-    display: flex;
 }
 
 /* View mode - URL display as a plain clickable label */
-#link-popup-url-display {
+#link-popover-url-display {
     padding: 4px 2px;
     color: var(--link-color);
     font-size: 14px;
@@ -68,12 +28,12 @@
     text-decoration: underline;
 }
 
-#link-popup-url-display:hover {
+#link-popover-url-display:hover {
     color: var(--accent-color);
 }
 
 /* Edit mode - input */
-#link-popup-input {
+#link-popover-input {
     flex: 1;
     min-width: 300px;
     padding: 10px 12px;
@@ -86,59 +46,10 @@
     outline: none;
 }
 
-#link-popup-input:focus {
+#link-popover-input:focus {
     border-color: var(--accent-color);
 }
 
-#link-popup-input::placeholder {
+#link-popover-input::placeholder {
     color: var(--placeholder-color);
-}
-
-/* Button row */
-.link-popup-buttons {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-end;
-}
-
-.link-popup-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 4px;
-    background: var(--hover-bg);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 18px;
-    flex-shrink: 0;
-}
-
-.link-popup-btn svg {
-    width: 18px;
-    height: 18px;
-    display: block;
-}
-
-.link-popup-btn:hover {
-    background: var(--active-bg);
-    color: var(--text-primary);
-}
-
-.link-popup-btn-primary {
-    background: var(--accent-color);
-    color: white;
-}
-
-.link-popup-btn-primary:hover {
-    background: var(--accent-color);
-    filter: brightness(1.1);
-    color: white;
-}
-
-.link-popup-btn-danger:hover {
-    background: #dc2626;
-    color: white;
 }

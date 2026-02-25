@@ -1,11 +1,11 @@
 // Note editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
-import { Editor } from 'https://esm.sh/@tiptap/core@2';
-import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2';
-import Underline from 'https://esm.sh/@tiptap/extension-underline@2';
-import Link from 'https://esm.sh/@tiptap/extension-link@2';
-import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2';
+import { Editor } from 'https://esm.sh/@tiptap/core@2.27.2';
+import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.27.2';
+import Underline from 'https://esm.sh/@tiptap/extension-underline@2.27.2';
+import Link from 'https://esm.sh/@tiptap/extension-link@2.27.2';
+import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2.27.2';
 
 import { createImageExtension, init as initImagePopover, insertImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
@@ -21,7 +21,6 @@ let changeTimer = null;
 const CHANGE_DEBOUNCE_MS = 300;
 let isLoadingContent = false;
 let projectBaseUrl = '';
-let cancelActivePrompt = null;
 
 // WebView2 messaging
 function sendMessage(msg) {
@@ -50,7 +49,6 @@ function unresolveImageSrc(resolvedSrc) {
 // Shared context object for popover modules
 const ctx = {
     editor: null,
-    showPrompt,
     sendMessage,
     resolveImageSrc,
     unresolveImageSrc,
@@ -193,43 +191,6 @@ toolbarEl.addEventListener('click', (e) => {
         case 'redo': editor.chain().focus().redo().run(); break;
     }
 });
-
-// Prompt bar implementation
-function showPrompt(label, defaultValue = '') {
-    return new Promise((resolve) => {
-        const bar = document.getElementById('prompt-bar');
-        const input = document.getElementById('prompt-bar-input');
-        const labelEl = document.getElementById('prompt-bar-label');
-        const okBtn = document.getElementById('prompt-bar-ok');
-        const cancelBtn = document.getElementById('prompt-bar-cancel');
-
-        labelEl.textContent = label;
-        input.value = defaultValue;
-        bar.classList.add('visible');
-        input.focus();
-        input.select();
-
-        function cleanup() {
-            bar.classList.remove('visible');
-            input.removeEventListener('keydown', onKey);
-            okBtn.removeEventListener('click', onOk);
-            cancelBtn.removeEventListener('click', onCancel);
-            cancelActivePrompt = null;
-        }
-
-        function onOk() { cleanup(); resolve(input.value); }
-        function onCancel() { cleanup(); resolve(null); }
-        function onKey(e) {
-            if (e.key === 'Enter') { e.preventDefault(); onOk(); }
-            else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
-        }
-
-        cancelActivePrompt = onCancel;
-        input.addEventListener('keydown', onKey);
-        okBtn.addEventListener('click', onOk);
-        cancelBtn.addEventListener('click', onCancel);
-    });
-}
 
 // Toolbar state listeners
 editor.on('selectionUpdate', updateToolbar);

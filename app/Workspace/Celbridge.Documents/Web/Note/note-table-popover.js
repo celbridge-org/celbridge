@@ -2,16 +2,24 @@
 // Create mode: configure rows, columns, and header row before inserting
 // View mode: add/remove rows/columns, toggle header, delete table
 
-import Table from 'https://esm.sh/@tiptap/extension-table@2';
-import TableRow from 'https://esm.sh/@tiptap/extension-table-row@2';
-import TableCell from 'https://esm.sh/@tiptap/extension-table-cell@2';
-import TableHeader from 'https://esm.sh/@tiptap/extension-table-header@2';
+import Table from 'https://esm.sh/@tiptap/extension-table@2.27.2';
+import TableRow from 'https://esm.sh/@tiptap/extension-table-row@2.27.2';
+import TableCell from 'https://esm.sh/@tiptap/extension-table-cell@2.27.2';
+import TableHeader from 'https://esm.sh/@tiptap/extension-table-header@2.27.2';
+import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;
 let tablePopoverEl = null;
 let editorWrapper = null;
 let toolbarEl = null;
 let currentMode = null; // 'create' | 'view'
+let rowsInputEl = null;
+let colsInputEl = null;
+let headerCheckboxEl = null;
+let viewInfoEl = null;
+let toggleHeaderEl = null;
+let createModeEl = null;
+let viewModeEl = null;
 
 // ---------------------------------------------------------------------------
 // Table extensions
@@ -35,6 +43,13 @@ export function init(context) {
     tablePopoverEl = document.getElementById('table-popover');
     editorWrapper = document.getElementById('editor-wrapper');
     toolbarEl = document.getElementById('toolbar');
+    rowsInputEl = document.getElementById('table-create-rows');
+    colsInputEl = document.getElementById('table-create-cols');
+    headerCheckboxEl = document.getElementById('table-create-header');
+    viewInfoEl = document.getElementById('table-view-info');
+    toggleHeaderEl = document.getElementById('table-toggle-header');
+    createModeEl = document.getElementById('table-popover-create-mode');
+    viewModeEl = document.getElementById('table-popover-view-mode');
 
     // Prevent mousedown inside popover from stealing focus
     tablePopoverEl.addEventListener('mousedown', (e) => {
@@ -51,11 +66,11 @@ export function init(context) {
     document.getElementById('table-popover-create-cancel').addEventListener('click', () => hidePopover());
 
     // Create mode: enter key on inputs
-    document.getElementById('table-create-rows').addEventListener('keydown', (e) => {
+    rowsInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); confirmCreate(); }
         else if (e.key === 'Escape') { e.preventDefault(); hidePopover(); }
     });
-    document.getElementById('table-create-cols').addEventListener('keydown', (e) => {
+    colsInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); confirmCreate(); }
         else if (e.key === 'Escape') { e.preventDefault(); hidePopover(); }
     });
@@ -79,7 +94,7 @@ export function init(context) {
     });
 
     // View mode: toggle header row
-    document.getElementById('table-toggle-header').addEventListener('change', () => {
+    toggleHeaderEl.addEventListener('change', () => {
         ctx.editor.chain().focus().toggleHeaderRow().run();
         refreshViewInfo();
     });
@@ -90,25 +105,8 @@ export function init(context) {
         hidePopover();
     });
 
-    // Dismiss on scroll or resize
-    editorWrapper.addEventListener('scroll', () => {
-        if (tablePopoverEl.classList.contains('visible')) hidePopover();
-    });
-
-    new ResizeObserver(() => {
-        if (tablePopoverEl.classList.contains('visible')) hidePopover();
-    }).observe(editorWrapper);
-
-    // Dismiss on click outside
-    document.addEventListener('mousedown', (e) => {
-        if (!tablePopoverEl.classList.contains('visible')) return;
-        if (tablePopoverEl.contains(e.target)) return;
-        hidePopover();
-    });
-
-    window.addEventListener('blur', () => {
-        if (tablePopoverEl.classList.contains('visible')) hidePopover();
-    });
+    // Dismiss on scroll, resize, click outside, or window blur
+    setupDismiss(editorWrapper, tablePopoverEl, hidePopover);
 }
 
 // ---------------------------------------------------------------------------
@@ -116,21 +114,17 @@ export function init(context) {
 // ---------------------------------------------------------------------------
 
 function showCreateMode() {
-    const rowsInput = document.getElementById('table-create-rows');
-    const colsInput = document.getElementById('table-create-cols');
-    const headerCheckbox = document.getElementById('table-create-header');
-
-    rowsInput.value = '3';
-    colsInput.value = '3';
-    headerCheckbox.checked = true;
+    rowsInputEl.value = '3';
+    colsInputEl.value = '3';
+    headerCheckboxEl.checked = true;
 
     setMode('create');
     tablePopoverEl.classList.add('visible');
 
     requestAnimationFrame(() => {
-        positionAtTop();
-        rowsInput.focus();
-        rowsInput.select();
+        positionAtTop(tablePopoverEl, toolbarEl);
+        rowsInputEl.focus();
+        rowsInputEl.select();
     });
 }
 
@@ -140,7 +134,7 @@ function showViewMode() {
     tablePopoverEl.classList.add('visible');
 
     requestAnimationFrame(() => {
-        positionAtTop();
+        positionAtTop(tablePopoverEl, toolbarEl);
     });
 }
 
@@ -155,8 +149,8 @@ function hidePopover() {
 
 function setMode(mode) {
     currentMode = mode;
-    document.getElementById('table-popover-create-mode').classList.toggle('active', mode === 'create');
-    document.getElementById('table-popover-view-mode').classList.toggle('active', mode === 'view');
+    createModeEl.classList.toggle('active', mode === 'create');
+    viewModeEl.classList.toggle('active', mode === 'view');
 }
 
 // ---------------------------------------------------------------------------
@@ -164,16 +158,12 @@ function setMode(mode) {
 // ---------------------------------------------------------------------------
 
 function confirmCreate() {
-    const rowsInput = document.getElementById('table-create-rows');
-    const colsInput = document.getElementById('table-create-cols');
-    const headerCheckbox = document.getElementById('table-create-header');
-
-    let rows = parseInt(rowsInput.value) || 3;
-    let cols = parseInt(colsInput.value) || 3;
+    let rows = parseInt(rowsInputEl.value) || 3;
+    let cols = parseInt(colsInputEl.value) || 3;
     rows = Math.max(1, Math.min(20, rows));
     cols = Math.max(1, Math.min(20, cols));
 
-    const withHeaderRow = headerCheckbox.checked;
+    const withHeaderRow = headerCheckboxEl.checked;
 
     ctx.editor.chain().focus().insertTable({
         rows: withHeaderRow ? rows + 1 : rows,
@@ -192,11 +182,8 @@ function refreshViewInfo() {
     const info = getTableInfo();
     if (!info) return;
 
-    const infoEl = document.getElementById('table-view-info');
-    infoEl.textContent = `${info.rows} rows × ${info.cols} columns`;
-
-    const headerCheckbox = document.getElementById('table-toggle-header');
-    headerCheckbox.checked = info.hasHeader;
+    viewInfoEl.textContent = `${info.rows} rows × ${info.cols} columns`;
+    toggleHeaderEl.checked = info.hasHeader;
 }
 
 function getTableInfo() {
@@ -221,27 +208,6 @@ function getTableInfo() {
         }
     }
     return null;
-}
-
-// ---------------------------------------------------------------------------
-// Positioning
-// ---------------------------------------------------------------------------
-
-function positionAtTop() {
-    const toolbarRect = toolbarEl.getBoundingClientRect();
-    const popupWidth = tablePopoverEl.offsetWidth;
-    const viewportWidth = window.innerWidth;
-
-    let left = (viewportWidth - popupWidth) / 2;
-    const maxLeft = viewportWidth - popupWidth - 8;
-    if (left > maxLeft) left = maxLeft;
-    if (left < 8) left = 8;
-
-    const top = toolbarRect.bottom + 8;
-
-    tablePopoverEl.style.top = top + 'px';
-    tablePopoverEl.style.left = left + 'px';
-    tablePopoverEl.style.maxHeight = '';
 }
 
 // ---------------------------------------------------------------------------

@@ -226,58 +226,112 @@ body {
     color: var(--text-secondary);
 }
 
-#prompt-bar {
-    display: none;
-    flex-shrink: 0;
-    padding: 6px 12px;
-    background: var(--bg-toolbar);
-    border-bottom: 1px solid var(--border-color);
-    gap: 6px;
-    align-items: center;
+.toolbar-btn svg {
+    display: block;
 }
 
-#prompt-bar.visible {
+/* Shared popover styles */
+
+.popover {
+    display: none;
+    background: var(--bg-toolbar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    width: max-content;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.popover.visible {
     display: flex;
 }
 
-#prompt-bar-label {
-    font-size: 12px;
+.popover-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-#prompt-bar-input {
-    flex: 1;
-    min-width: 0;
-    padding: 4px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-}
-
-#prompt-bar-input:focus {
-    border-color: var(--accent-color);
-}
-
-#prompt-bar button {
-    padding: 4px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text-primary);
     font-size: 12px;
-    cursor: pointer;
-    font-family: inherit;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-#prompt-bar button:hover {
+.popover-icon {
+    color: var(--text-secondary);
+}
+
+.popover-mode {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.popover-mode.active {
+    display: flex;
+}
+
+.popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.popover-field-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.popover-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.popover-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 4px;
     background: var(--hover-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    flex-shrink: 0;
 }
 
-.toolbar-btn svg {
+.popover-btn svg {
+    width: 18px;
+    height: 18px;
     display: block;
+}
+
+.popover-btn:hover {
+    background: var(--active-bg);
+    color: var(--text-primary);
+}
+
+.popover-btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.popover-btn-primary:hover {
+    background: var(--accent-color);
+    filter: brightness(1.1);
+    color: white;
+}
+
+.popover-btn-danger:hover {
+    background: #dc2626;
+    color: white;
 }

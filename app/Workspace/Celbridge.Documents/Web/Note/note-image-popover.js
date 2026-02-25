@@ -2,12 +2,15 @@
 // View mode: layout controls + src link + immediate size/align controls
 // Edit mode: live src + caption inputs, Cancel reverts to previous values
 
-import Image from 'https://esm.sh/@tiptap/extension-image@2';
+import Image from 'https://esm.sh/@tiptap/extension-image@2.27.2';
+import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;
 let imagePopoverEl = null;
 let editorWrapper = null;
 let toolbarEl = null;
+let viewModeEl = null;
+let editModeEl = null;
 let srcDisplayEl = null;
 let srcInputEl = null;
 let captionInputEl = null;
@@ -162,6 +165,8 @@ export function init(context) {
     imagePopoverEl = document.getElementById('image-popover');
     editorWrapper = document.getElementById('editor-wrapper');
     toolbarEl = document.getElementById('toolbar');
+    viewModeEl = document.getElementById('image-popover-view-mode');
+    editModeEl = document.getElementById('image-popover-edit-mode');
     srcDisplayEl = document.getElementById('image-popover-src-display');
     srcInputEl = document.getElementById('image-popover-src-input');
     captionInputEl = document.getElementById('image-popover-caption-input');
@@ -239,30 +244,9 @@ export function init(context) {
     document.getElementById('image-popover-confirm').addEventListener('click', () => confirmEdit());
     document.getElementById('image-popover-cancel').addEventListener('click', () => cancelEdit());
 
-    editorWrapper.addEventListener('scroll', () => {
-        if (imagePopoverEl.classList.contains('visible')) hidePopover();
-    });
-
-    new ResizeObserver(() => {
-        if (imagePopoverEl.classList.contains('visible')) hidePopover();
-    }).observe(editorWrapper);
-
-    // Dismiss on click outside popover (including dead areas and other UI elements)
-    document.addEventListener('mousedown', (e) => {
-        if (!imagePopoverEl.classList.contains('visible')) return;
-
-        // Don't dismiss if clicking inside the popover
-        if (imagePopoverEl.contains(e.target)) return;
-
-        // Don't dismiss if clicking on the selected image itself
-        if (currentWrapperEl && currentWrapperEl.contains(e.target)) return;
-
-        hidePopover();
-    });
-
-    // Dismiss when focus leaves the editor area (e.g., clicking in inspector)
-    window.addEventListener('blur', () => {
-        if (imagePopoverEl.classList.contains('visible')) hidePopover();
+    // Dismiss on scroll, resize, click outside, or window blur
+    setupDismiss(editorWrapper, imagePopoverEl, hidePopover, (e) => {
+        return currentWrapperEl && currentWrapperEl.contains(e.target);
     });
 
     editorWrapper.addEventListener('load', (e) => {
@@ -311,7 +295,7 @@ function showPopoverForImage(wrapperEl, pos, node) {
 
     imagePopoverEl.classList.add('visible');
     requestAnimationFrame(() => {
-        positionAtTop();
+        positionAtTop(imagePopoverEl, toolbarEl);
         if (isNewImage) srcInputEl.focus();
     });
 }
@@ -332,8 +316,8 @@ function hidePopover() {
 
 function setMode(mode) {
     currentMode = mode;
-    document.getElementById('image-popover-view-mode').classList.toggle('active', mode === 'view');
-    document.getElementById('image-popover-edit-mode').classList.toggle('active', mode === 'edit');
+    viewModeEl.classList.toggle('active', mode === 'view');
+    editModeEl.classList.toggle('active', mode === 'edit');
 }
 
 function switchToEditMode() {
@@ -474,30 +458,6 @@ function refreshViewMode() {
     srcDisplayEl.textContent = src || '(no source)';
     srcDisplayEl.title = src;
     srcDisplayEl.classList.toggle('empty', !src);
-}
-
-// ---------------------------------------------------------------------------
-// Positioning
-// ---------------------------------------------------------------------------
-
-function positionAtTop() {
-    // Position fixed, directly under the toolbar
-    const toolbarRect = toolbarEl.getBoundingClientRect();
-    const popupWidth = imagePopoverEl.offsetWidth;
-    const viewportWidth = window.innerWidth;
-
-    // Center horizontally within the viewport
-    let left = (viewportWidth - popupWidth) / 2;
-    const maxLeft = viewportWidth - popupWidth - 8;
-    if (left > maxLeft) left = maxLeft;
-    if (left < 8) left = 8;
-
-    // Position directly under the toolbar
-    const top = toolbarRect.bottom + 8;
-
-    imagePopoverEl.style.top = top + 'px';
-    imagePopoverEl.style.left = left + 'px';
-    imagePopoverEl.style.maxHeight = '';
 }
 
 // ---------------------------------------------------------------------------
