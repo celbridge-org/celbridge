@@ -24,8 +24,8 @@
     :root {
         --bg-primary: #1e1e1e;
         --bg-toolbar: #2d2d2d;
-        --text-primary: #cccccc;
-        --text-secondary: #8b8b8b;
+        --text-primary: #dadada;
+        --text-secondary: #aaaaaa;
         --border-color: #404040;
         --hover-bg: #383838;
         --active-bg: #4a4a4a;
@@ -253,7 +253,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 12px;
     font-weight: 500;
     text-transform: uppercase;
@@ -261,7 +261,7 @@ body {
 }
 
 .popover-icon {
-    color: var(--text-secondary);
+    color: var(--text-primary);
 }
 
 .popover-mode {
@@ -303,7 +303,7 @@ body {
     border: none;
     border-radius: 4px;
     background: var(--hover-bg);
-    color: var(--text-secondary);
+    color: var(--text-primary);
     cursor: pointer;
     font-size: 18px;
     flex-shrink: 0;

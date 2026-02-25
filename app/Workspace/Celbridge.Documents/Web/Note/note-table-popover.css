@@ -155,7 +155,7 @@
     border: none;
     border-radius: 4px;
     background: var(--hover-bg);
-    color: var(--text-secondary);
+    color: var(--text-primary);
     cursor: pointer;
     font-size: 12px;
     font-family: inherit;
