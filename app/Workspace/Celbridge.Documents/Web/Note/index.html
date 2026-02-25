@@ -57,50 +57,37 @@
                 <i class="bi bi-image popover-icon"></i>
                 <span data-loc-key="NoteEditor_Image_Header">Image</span>
             </div>
-            <!-- View mode: layout controls, then src link, action buttons -->
-            <div id="image-popover-view-mode" class="popover-mode">
-                <!-- Size and align buttons on the same row with separator -->
-                <div class="img-popover-layout-row">
-                    <button class="img-popover-size-btn" data-img-action="size-25" data-loc-key="NoteEditor_Image_Size25" data-loc-attr="title" title="25% width">25%</button>
-                    <button class="img-popover-size-btn" data-img-action="size-75" data-loc-key="NoteEditor_Image_Size75" data-loc-attr="title" title="75% width">75%</button>
-                    <button class="img-popover-size-btn" data-img-action="size-50" data-loc-key="NoteEditor_Image_Size50" data-loc-attr="title" title="50% width">50%</button>
-                    <button class="img-popover-size-btn" data-img-action="size-100" data-loc-key="NoteEditor_Image_SizeFull" data-loc-attr="title" title="Full width">100%</button>
-                    <div class="img-popover-custom-size-wrapper">
-                        <input type="text" id="image-popover-custom-size-input" data-loc-key="NoteEditor_Image_CustomSizeTooltip" data-loc-attr="title" title="Enter image width as a percentage (1–100)" placeholder="%" />
-                        <span class="img-popover-custom-size-label">%</span>
-                    </div>
-                    <div class="img-popover-separator"></div>
-                    <button class="img-popover-align-btn" data-img-action="align-left" data-loc-key="NoteEditor_Image_AlignLeft" data-loc-attr="title" title="Align left"><i class="bi bi-text-left"></i></button>
-                    <button class="img-popover-align-btn" data-img-action="align-center" data-loc-key="NoteEditor_Image_AlignCenter" data-loc-attr="title" title="Align center"><i class="bi bi-text-center"></i></button>
-                    <button class="img-popover-align-btn" data-img-action="align-right" data-loc-key="NoteEditor_Image_AlignRight" data-loc-attr="title" title="Align right"><i class="bi bi-text-right"></i></button>
+            <!-- Size and align buttons on the same row with separator -->
+            <div class="img-popover-layout-row">
+                <button class="img-popover-size-btn" data-img-action="size-25" data-loc-key="NoteEditor_Image_Size25" data-loc-attr="title" title="25% width">25%</button>
+                <button class="img-popover-size-btn" data-img-action="size-75" data-loc-key="NoteEditor_Image_Size75" data-loc-attr="title" title="75% width">75%</button>
+                <button class="img-popover-size-btn" data-img-action="size-50" data-loc-key="NoteEditor_Image_Size50" data-loc-attr="title" title="50% width">50%</button>
+                <button class="img-popover-size-btn" data-img-action="size-100" data-loc-key="NoteEditor_Image_SizeFull" data-loc-attr="title" title="Full width">100%</button>
+                <div class="img-popover-custom-size-wrapper">
+                    <input type="text" id="image-popover-custom-size-input" data-loc-key="NoteEditor_Image_CustomSizeTooltip" data-loc-attr="title" title="Enter image width as a percentage (1–100)" placeholder="%" />
+                    <span class="img-popover-custom-size-label">%</span>
                 </div>
-                <!-- Image source as clickable link -->
-                <div class="popover-field">
-                    <span class="popover-field-label" data-loc-key="NoteEditor_Image_SourceLabel">Source</span>
-                    <span id="image-popover-src-display"></span>
-                </div>
-                <div class="popover-buttons">
-                    <button id="image-popover-edit-btn" class="popover-btn" data-loc-key="NoteEditor_Image_EditTooltip" data-loc-attr="title" title="Edit source and caption"><i class="bi bi-pencil"></i></button>
-                    <button id="image-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Image_DeleteTooltip" data-loc-attr="title" title="Delete image"><i class="bi bi-trash3"></i></button>
+                <div class="img-popover-separator"></div>
+                <button class="img-popover-align-btn" data-img-action="align-left" data-loc-key="NoteEditor_Image_AlignLeft" data-loc-attr="title" title="Align left"><i class="bi bi-text-left"></i></button>
+                <button class="img-popover-align-btn" data-img-action="align-center" data-loc-key="NoteEditor_Image_AlignCenter" data-loc-attr="title" title="Align center"><i class="bi bi-text-center"></i></button>
+                <button class="img-popover-align-btn" data-img-action="align-right" data-loc-key="NoteEditor_Image_AlignRight" data-loc-attr="title" title="Align right"><i class="bi bi-text-right"></i></button>
+            </div>
+            <div class="popover-field">
+                <label class="popover-field-label" for="image-popover-src-input" data-loc-key="NoteEditor_Image_SourceLabel">Source</label>
+                <div class="img-popover-src-row">
+                    <input type="text" id="image-popover-src-input" data-loc-key="NoteEditor_Image_SrcPlaceholder" data-loc-attr="placeholder" placeholder="URL or resource key..." />
+                    <button id="image-popover-src-browse" class="popover-btn" data-loc-key="NoteEditor_Image_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-folder2-open"></i></button>
                 </div>
             </div>
-            <!-- Edit mode: live source + caption inputs with labels, cancel reverts -->
-            <div id="image-popover-edit-mode" class="popover-mode">
-                <div class="popover-field">
-                    <label class="popover-field-label" for="image-popover-src-input" data-loc-key="NoteEditor_Image_SourceLabel">Source</label>
-                    <div class="img-popover-src-row">
-                        <input type="text" id="image-popover-src-input" data-loc-key="NoteEditor_Image_SrcPlaceholder" data-loc-attr="placeholder" placeholder="URL or resource key..." />
-                        <button id="image-popover-src-browse" class="popover-btn" data-loc-key="NoteEditor_Image_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-folder2-open"></i></button>
-                    </div>
-                </div>
-                <div class="popover-field">
-                    <label class="popover-field-label" for="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionLabel">Caption</label>
-                    <input type="text" id="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionPlaceholder" data-loc-attr="placeholder" placeholder="Optional caption text..." />
-                </div>
-                <div class="popover-buttons">
-                    <button id="image-popover-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Image_ConfirmTooltip" data-loc-attr="title" title="Accept changes"><i class="bi bi-check-lg"></i></button>
-                    <button id="image-popover-cancel" class="popover-btn" data-loc-key="NoteEditor_Image_CancelTooltip" data-loc-attr="title" title="Cancel — revert to previous values"><i class="bi bi-x-lg"></i></button>
-                </div>
+            <div class="popover-field">
+                <label class="popover-field-label" for="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionLabel">Caption</label>
+                <input type="text" id="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionPlaceholder" data-loc-attr="placeholder" placeholder="Optional caption text..." />
+            </div>
+            <div class="popover-buttons">
+                <button id="image-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Image_DeleteTooltip" data-loc-attr="title" title="Delete image"><i class="bi bi-trash3"></i></button>
+                <div style="flex:1"></div>
+                <button id="image-popover-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Image_ConfirmTooltip" data-loc-attr="title" title="Accept changes"><i class="bi bi-check-lg"></i></button>
+                <button id="image-popover-cancel" class="popover-btn" data-loc-key="NoteEditor_Image_CancelTooltip" data-loc-attr="title" title="Cancel — revert to previous values"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
         <div id="link-popover" class="popover">

@@ -1,28 +1,22 @@
 // Image popover module for Note editor
-// View mode: layout controls + src link + immediate size/align controls
-// Edit mode: live src + caption inputs, Cancel reverts to previous values
+// All controls shown in a single view with immediate changes.
+// Cancel reverts to original state; Confirm just closes the popover.
 
 import { Image } from './lib/tiptap.js';
-import { t } from 'https://shared.celbridge/celbridge-localization.js';
 import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;
 let imagePopoverEl = null;
 let editorWrapper = null;
 let toolbarEl = null;
-let viewModeEl = null;
-let editModeEl = null;
-let srcDisplayEl = null;
 let srcInputEl = null;
 let captionInputEl = null;
 let customSizeInputEl = null;
 
 let currentPos = null;
 let currentWrapperEl = null;
-let currentMode = null;
 let isNewImage = false;
-let originalSrc = '';
-let originalCaption = '';
+let originalAttrs = null;
 let isPickerOpen = false;
 
 // ---------------------------------------------------------------------------
@@ -167,9 +161,6 @@ export function init(context) {
     imagePopoverEl = document.getElementById('image-popover');
     editorWrapper = document.getElementById('editor-wrapper');
     toolbarEl = document.getElementById('toolbar');
-    viewModeEl = document.getElementById('image-popover-view-mode');
-    editModeEl = document.getElementById('image-popover-edit-mode');
-    srcDisplayEl = document.getElementById('image-popover-src-display');
     srcInputEl = document.getElementById('image-popover-src-input');
     captionInputEl = document.getElementById('image-popover-caption-input');
     customSizeInputEl = document.getElementById('image-popover-custom-size-input');
@@ -180,25 +171,11 @@ export function init(context) {
         }
     });
 
-    document.getElementById('image-popover-edit-btn').addEventListener('click', () => switchToEditMode());
     document.getElementById('image-popover-delete').addEventListener('click', () => deleteImage());
 
     document.getElementById('image-popover-src-browse').addEventListener('click', () => {
         isPickerOpen = true;
         ctx.sendMessage({ type: 'pick-image-resource' });
-    });
-
-    // Clicking the source label opens the image - use same logic as link popover
-    // so resource keys open as documents in Celbridge
-    srcDisplayEl.addEventListener('click', () => {
-        if (currentPos == null) return;
-        const node = ctx.editor.state.doc.nodeAt(currentPos);
-        if (!node || !node.attrs.src) return;
-        // Send the unresolved resource key, not the resolved URL
-        const resourceKey = ctx.unresolveImageSrc(node.attrs.src);
-        if (resourceKey) {
-            ctx.sendMessage({ type: 'link-clicked', payload: { href: resourceKey } });
-        }
     });
 
     // Handle clicks on size and align buttons
@@ -208,7 +185,6 @@ export function init(context) {
         const action = btn.dataset.imgAction;
 
         if (action.startsWith('size-')) {
-            // Preset size button clicked - populate the custom size input and apply
             const sizeValue = action.replace('size-', '');
             customSizeInputEl.value = sizeValue;
             updateSizeButtonHighlights(sizeValue);
@@ -222,7 +198,7 @@ export function init(context) {
 
     customSizeInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); applyLayoutImmediate(); customSizeInputEl.blur(); }
-        else if (e.key === 'Escape') { e.preventDefault(); hidePopover(); }
+        else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
     });
     customSizeInputEl.addEventListener('input', () => {
         updateSizeButtonHighlights(customSizeInputEl.value.trim());
@@ -287,18 +263,16 @@ function showPopoverForImage(wrapperEl, pos, node) {
     currentWrapperEl = wrapperEl;
     isNewImage = !node.attrs.src;
 
-    initLayoutButtons(node);
-    refreshViewMode();
+    originalAttrs = {
+        src: node.attrs.src || '',
+        caption: node.attrs.caption || null,
+        width: node.attrs.width || null,
+        textAlign: node.attrs.textAlign || null,
+    };
 
-    if (isNewImage) {
-        originalSrc = '';
-        originalCaption = '';
-        srcInputEl.value = '';
-        captionInputEl.value = '';
-        setMode('edit');
-    } else {
-        setMode('view');
-    }
+    initLayoutButtons(node);
+    srcInputEl.value = ctx.unresolveImageSrc(node.attrs.src) || '';
+    captionInputEl.value = node.attrs.caption || '';
 
     imagePopoverEl.classList.add('visible');
     requestAnimationFrame(() => {
@@ -311,34 +285,8 @@ function hidePopover() {
     imagePopoverEl.classList.remove('visible');
     currentPos = null;
     currentWrapperEl = null;
-    currentMode = null;
     isNewImage = false;
-    originalSrc = '';
-    originalCaption = '';
-}
-
-// ---------------------------------------------------------------------------
-// Mode switching
-// ---------------------------------------------------------------------------
-
-function setMode(mode) {
-    currentMode = mode;
-    viewModeEl.classList.toggle('active', mode === 'view');
-    editModeEl.classList.toggle('active', mode === 'edit');
-}
-
-function switchToEditMode() {
-    if (currentPos == null) return;
-    const node = ctx.editor.state.doc.nodeAt(currentPos);
-    if (!node) return;
-
-    originalSrc = ctx.unresolveImageSrc(node.attrs.src) || '';
-    originalCaption = node.attrs.caption || '';
-    srcInputEl.value = originalSrc;
-    captionInputEl.value = originalCaption;
-
-    setMode('edit');
-    requestAnimationFrame(() => { srcInputEl.focus(); srcInputEl.select(); });
+    originalAttrs = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -416,24 +364,19 @@ function parseAndClampCustomSize(value) {
 }
 
 // ---------------------------------------------------------------------------
-// Edit mode actions
+// Confirm / Cancel
 // ---------------------------------------------------------------------------
 
 function confirmEdit() {
-    const src = srcInputEl.value.trim();
-    if (!src) { cancelEdit(); return; }
-    refreshViewMode();
-    setMode('view');
+    hidePopover();
 }
 
 function cancelEdit() {
     if (isNewImage) { deleteImage(); return; }
-    applyAttrsToNode({
-        src: originalSrc ? ctx.resolveImageSrc(originalSrc) : '',
-        caption: originalCaption || null,
-    });
-    refreshViewMode();
-    setMode('view');
+    if (originalAttrs) {
+        applyAttrsToNode(originalAttrs);
+    }
+    hidePopover();
 }
 
 function deleteImage() {
@@ -455,16 +398,6 @@ function applyAttrsToNode(attrsUpdate) {
         ...attrsUpdate,
     });
     ctx.editor.view.dispatch(tr);
-}
-
-function refreshViewMode() {
-    if (currentPos == null) return;
-    const node = ctx.editor.state.doc.nodeAt(currentPos);
-    if (!node) return;
-    const src = ctx.unresolveImageSrc(node.attrs.src) || '';
-    srcDisplayEl.textContent = src || t('NoteEditor_Image_NoSource');
-    srcDisplayEl.title = src;
-    srcDisplayEl.classList.toggle('empty', !src);
 }
 
 // ---------------------------------------------------------------------------
