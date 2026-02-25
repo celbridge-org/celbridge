@@ -1,0 +1,59 @@
+/*
+ * Bootstrap Icons v1.12.1 (https://icons.getbootstrap.com/)
+ * Licensed under MIT (https://github.com/twbs/icons/blob/main/LICENSE)
+ *
+ * Subset: only the icons used by the Note editor are included.
+ */
+
+@font-face {
+    font-display: block;
+    font-family: "bootstrap-icons";
+    src: url("./fonts/bootstrap-icons.woff2") format("woff2");
+}
+
+.bi {
+    display: inline-block;
+    font-family: "bootstrap-icons" !important;
+    font-style: normal;
+    font-weight: normal !important;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    vertical-align: -0.125em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Toolbar icons */
+.bi-type-bold::before { content: "\f5f0"; }
+.bi-type-italic::before { content: "\f5f4"; }
+.bi-type-underline::before { content: "\f5f6"; }
+.bi-type-strikethrough::before { content: "\f5f5"; }
+.bi-code-slash::before { content: "\f2c6"; }
+.bi-type-h1::before { content: "\f5f1"; }
+.bi-type-h2::before { content: "\f5f2"; }
+.bi-type-h3::before { content: "\f5f3"; }
+.bi-text-paragraph::before { content: "\f5c8"; }
+.bi-list-ul::before { content: "\f478"; }
+.bi-list-ol::before { content: "\f475"; }
+.bi-blockquote-left::before { content: "\f190"; }
+.bi-braces::before { content: "\f1c9"; }
+.bi-dash-lg::before { content: "\f63b"; }
+.bi-link-45deg::before { content: "\f470"; }
+.bi-image::before { content: "\f42a"; }
+.bi-table::before { content: "\f5aa"; }
+.bi-arrow-counterclockwise::before { content: "\f117"; }
+.bi-arrow-clockwise::before { content: "\f116"; }
+
+/* Popover icons */
+.bi-pencil::before { content: "\f4cb"; }
+.bi-trash3::before { content: "\f78b"; }
+.bi-check-lg::before { content: "\f633"; }
+.bi-x-lg::before { content: "\f659"; }
+.bi-box-arrow-up-right::before { content: "\f1c5"; }
+.bi-text-left::before { content: "\f5c7"; }
+.bi-text-center::before { content: "\f5c4"; }
+.bi-text-right::before { content: "\f5c9"; }
+.bi-plus-lg::before { content: "\f64d"; }
+.bi-plus::before { content: "\f4fe"; }
+.bi-dash::before { content: "\f2ea"; }

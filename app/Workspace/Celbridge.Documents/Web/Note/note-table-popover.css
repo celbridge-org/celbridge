@@ -160,12 +160,11 @@
     font-size: 12px;
     font-family: inherit;
     white-space: nowrap;
-    gap: 3px;
+    gap: 4px;
 }
 
 .table-popover-action-icon {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 12px;
     line-height: 1;
 }
 

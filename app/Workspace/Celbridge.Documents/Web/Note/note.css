@@ -228,10 +228,12 @@ body {
 }
 
 #status {
-    padding: 16px;
-    font-family: monospace;
-    font-size: 13px;
-    color: var(--text-secondary);
+    display: none;
+}
+
+.toolbar-btn .bi {
+    font-size: 16px;
+    line-height: 1;
 }
 
 .toolbar-btn svg {
@@ -269,6 +271,7 @@ body {
 }
 
 .popover-icon {
+    font-size: 16px;
     color: var(--text-primary);
 }
 
@@ -315,6 +318,11 @@ body {
     cursor: pointer;
     font-size: 18px;
     flex-shrink: 0;
+}
+
+.popover-btn .bi {
+    font-size: 18px;
+    line-height: 1;
 }
 
 .popover-btn svg {
