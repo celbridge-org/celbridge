@@ -74,6 +74,13 @@ body {
     margin: 0 4px;
 }
 
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: nowrap;
+}
+
 .toolbar-btn {
     display: inline-flex;
     align-items: center;
