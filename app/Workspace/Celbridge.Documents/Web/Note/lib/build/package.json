@@ -1,0 +1,25 @@
+{
+  "name": "celbridge-note-tiptap-vendor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vendored TipTap ESM bundles for the Celbridge Note editor",
+  "type": "module",
+  "scripts": {
+    "vendor": "node vendor.js"
+  },
+  "dependencies": {
+    "@tiptap/core": "2.27.2",
+    "@tiptap/starter-kit": "2.27.2",
+    "@tiptap/extension-underline": "2.27.2",
+    "@tiptap/extension-link": "2.27.2",
+    "@tiptap/extension-placeholder": "2.27.2",
+    "@tiptap/extension-image": "2.27.2",
+    "@tiptap/extension-table": "2.27.2",
+    "@tiptap/extension-table-row": "2.27.2",
+    "@tiptap/extension-table-cell": "2.27.2",
+    "@tiptap/extension-table-header": "2.27.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

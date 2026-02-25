@@ -2,7 +2,7 @@
 // View mode: layout controls + src link + immediate size/align controls
 // Edit mode: live src + caption inputs, Cancel reverts to previous values
 
-import Image from 'https://esm.sh/@tiptap/extension-image@2.27.2';
+import { Image } from './lib/tiptap.js';
 import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;

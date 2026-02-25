@@ -1,11 +1,7 @@
 // Note editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
-import { Editor } from 'https://esm.sh/@tiptap/core@2.27.2';
-import StarterKit from 'https://esm.sh/@tiptap/starter-kit@2.27.2';
-import Underline from 'https://esm.sh/@tiptap/extension-underline@2.27.2';
-import Link from 'https://esm.sh/@tiptap/extension-link@2.27.2';
-import Placeholder from 'https://esm.sh/@tiptap/extension-placeholder@2.27.2';
+import { Editor, StarterKit, Underline, Link, Placeholder } from './lib/tiptap.js';
 
 import { createImageExtension, init as initImagePopover, insertImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';

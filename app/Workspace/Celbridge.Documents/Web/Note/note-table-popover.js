@@ -2,10 +2,7 @@
 // Create mode: configure rows, columns, and header row before inserting
 // View mode: add/remove rows/columns, toggle header, delete table
 
-import Table from 'https://esm.sh/@tiptap/extension-table@2.27.2';
-import TableRow from 'https://esm.sh/@tiptap/extension-table-row@2.27.2';
-import TableCell from 'https://esm.sh/@tiptap/extension-table-cell@2.27.2';
-import TableHeader from 'https://esm.sh/@tiptap/extension-table-header@2.27.2';
+import { Table, TableRow, TableCell, TableHeader } from './lib/tiptap.js';
 import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;
