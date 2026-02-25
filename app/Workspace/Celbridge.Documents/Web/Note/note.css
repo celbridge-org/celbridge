@@ -61,6 +61,7 @@ body {
     gap: 2px;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
 }
 
 #toolbar.visible {
