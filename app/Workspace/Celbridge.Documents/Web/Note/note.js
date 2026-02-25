@@ -12,7 +12,6 @@ import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
 
 // DOM elements
-const statusEl = document.getElementById('status');
 const toolbarEl = document.getElementById('toolbar');
 const editorEl = document.getElementById('editor');
 
@@ -237,7 +236,6 @@ if (window.chrome && window.chrome.webview) {
 }
 
 // Show UI after initialization
-statusEl.style.display = 'none';
 toolbarEl.classList.add('visible');
 
 // Document tree traversal for image src resolution
