@@ -105,6 +105,8 @@ public sealed partial class NoteDocumentView : DocumentView
                 "Celbridge.Documents/Web/Note",
                 CoreWebView2HostResourceAccessKind.Allow);
 
+            WebView2Helper.MapSharedAssets(webView.CoreWebView2);
+
             // Map the project folder so resource key image paths resolve correctly
             var projectFolder = _resourceRegistry.ProjectFolderPath;
             if (!string.IsNullOrEmpty(projectFolder))
