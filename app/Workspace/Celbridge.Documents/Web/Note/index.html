@@ -88,7 +88,10 @@
             <div id="image-popover-edit-mode" class="popover-mode">
                 <div class="popover-field">
                     <label class="popover-field-label" for="image-popover-src-input" data-loc-key="NoteEditor_Image_SourceLabel">Source</label>
-                    <input type="text" id="image-popover-src-input" data-loc-key="NoteEditor_Image_SrcPlaceholder" data-loc-attr="placeholder" placeholder="URL or resource key..." />
+                    <div class="img-popover-src-row">
+                        <input type="text" id="image-popover-src-input" data-loc-key="NoteEditor_Image_SrcPlaceholder" data-loc-attr="placeholder" placeholder="URL or resource key..." />
+                        <button id="image-popover-src-browse" class="popover-btn" data-loc-key="NoteEditor_Image_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-folder2-open"></i></button>
+                    </div>
                 </div>
                 <div class="popover-field">
                     <label class="popover-field-label" for="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionLabel">Caption</label>

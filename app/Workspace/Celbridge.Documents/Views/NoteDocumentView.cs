@@ -249,6 +249,16 @@ public sealed partial class NoteDocumentView : DocumentView
         _webView.CoreWebView2.PostWebMessageAsString(json);
     }
 
+    private async Task HandlePickImageResource()
+    {
+        var imageExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp" };
+        var title = _stringLocalizer.GetString("NoteEditor_SelectImage_Title");
+        var result = await _dialogService.ShowResourcePickerDialogAsync(imageExtensions, title, showPreview: true);
+
+        var resourceKey = result.IsSuccess ? result.Value.ToString() : string.Empty;
+        SendMessageToJS(new { type = "pick-image-resource-result", payload = new { resourceKey } });
+    }
+
     private void OpenSystemBrowser(string? uri)
     {
         if (string.IsNullOrEmpty(uri))
@@ -419,6 +429,10 @@ public sealed partial class NoteDocumentView : DocumentView
                         .GetProperty("href")
                         .GetString();
                     await HandleLinkClicked(href);
+                    break;
+
+                case "pick-image-resource":
+                    await HandlePickImageResource();
                     break;
 
                 default:

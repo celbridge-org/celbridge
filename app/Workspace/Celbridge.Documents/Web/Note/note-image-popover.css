@@ -188,3 +188,20 @@
 #image-popover-edit-mode input[type="text"]::placeholder {
     color: var(--placeholder-color);
 }
+
+/* Source row: text input + browse button side by side */
+.img-popover-src-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.img-popover-src-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+#image-popover-src-browse {
+    flex-shrink: 0;
+}

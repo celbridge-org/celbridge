@@ -57,3 +57,4 @@
 .bi-plus-lg::before { content: "\f64d"; }
 .bi-plus::before { content: "\f4fe"; }
 .bi-dash::before { content: "\f2ea"; }
+.bi-folder2-open::before { content: "\f38b"; }

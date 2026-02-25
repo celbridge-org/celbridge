@@ -23,6 +23,7 @@ let currentMode = null;
 let isNewImage = false;
 let originalSrc = '';
 let originalCaption = '';
+let isPickerOpen = false;
 
 // ---------------------------------------------------------------------------
 // Image extension
@@ -182,6 +183,11 @@ export function init(context) {
     document.getElementById('image-popover-edit-btn').addEventListener('click', () => switchToEditMode());
     document.getElementById('image-popover-delete').addEventListener('click', () => deleteImage());
 
+    document.getElementById('image-popover-src-browse').addEventListener('click', () => {
+        isPickerOpen = true;
+        ctx.sendMessage({ type: 'pick-image-resource' });
+    });
+
     // Clicking the source label opens the image - use same logic as link popover
     // so resource keys open as documents in Celbridge
     srcDisplayEl.addEventListener('click', () => {
@@ -248,7 +254,7 @@ export function init(context) {
     // Dismiss on scroll, resize, click outside, or window blur
     setupDismiss(editorWrapper, imagePopoverEl, hidePopover, (e) => {
         return currentWrapperEl && currentWrapperEl.contains(e.target);
-    });
+    }, () => isPickerOpen);
 
     editorWrapper.addEventListener('load', (e) => {
         if (e.target.tagName === 'IMG' && e.target.closest('.tiptap')) {
@@ -467,4 +473,16 @@ function refreshViewMode() {
 
 export function insertImage() {
     ctx.editor.chain().focus().setImage({ src: '' }).run();
+}
+
+// ---------------------------------------------------------------------------
+// Resource picker result (called from note.js when C# responds)
+// ---------------------------------------------------------------------------
+
+export function onPickImageResourceResult(resourceKey) {
+    isPickerOpen = false;
+    if (!resourceKey) return;
+    srcInputEl.value = resourceKey;
+    applyAttrsToNode({ src: ctx.resolveImageSrc(resourceKey) });
+    srcInputEl.focus();
 }

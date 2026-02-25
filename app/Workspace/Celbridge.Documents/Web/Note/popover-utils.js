@@ -3,8 +3,10 @@
 /**
  * Set up dismiss-on-scroll, dismiss-on-resize, dismiss-on-click-outside, and
  * dismiss-on-window-blur for a popover element.
+ * @param {Function} extraIgnoreFn - Optional function to ignore certain click targets
+ * @param {Function} suppressBlurFn - Optional function that returns true when blur should be ignored
  */
-export function setupDismiss(editorWrapper, popoverEl, hideFn, extraIgnoreFn) {
+export function setupDismiss(editorWrapper, popoverEl, hideFn, extraIgnoreFn, suppressBlurFn) {
     editorWrapper.addEventListener('scroll', () => {
         if (popoverEl.classList.contains('visible')) hideFn();
     });
@@ -21,6 +23,7 @@ export function setupDismiss(editorWrapper, popoverEl, hideFn, extraIgnoreFn) {
     });
 
     window.addEventListener('blur', () => {
+        if (suppressBlurFn && suppressBlurFn()) return;
         if (popoverEl.classList.contains('visible')) hideFn();
     });
 }

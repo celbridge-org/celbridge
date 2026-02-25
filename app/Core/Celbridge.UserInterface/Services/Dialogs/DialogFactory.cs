@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Resources;
 using Celbridge.UserInterface.Views;
 using Celbridge.Validators;
 
@@ -77,6 +78,17 @@ public class DialogFactory : IDialogFactory
         dialog.ViewModel.Validator = validator;
         dialog.SetDefaultFileName(defaultFileName, selectionRange);
 
+        return dialog;
+    }
+
+    public IResourcePickerDialog CreateResourcePickerDialog(IResourceRegistry registry, IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
+    {
+        var dialog = new ResourcePickerDialog();
+        dialog.ViewModel.Initialize(registry, extensions, showPreview);
+        if (title is not null)
+        {
+            dialog.SetTitle(title);
+        }
         return dialog;
     }
 }

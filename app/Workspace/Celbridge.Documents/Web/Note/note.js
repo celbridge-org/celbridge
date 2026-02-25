@@ -4,7 +4,7 @@
 import { Editor, StarterKit, Underline, Link, Placeholder } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
-import { createImageExtension, init as initImagePopover, insertImage } from './note-image-popover.js';
+import { createImageExtension, init as initImagePopover, insertImage, onPickImageResourceResult } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
 
@@ -236,6 +236,10 @@ if (window.chrome && window.chrome.webview) {
                     type: 'save-response',
                     payload: { content: docJson }
                 });
+                break;
+            }
+            case 'pick-image-resource-result': {
+                onPickImageResourceResult(msg.payload.resourceKey);
                 break;
             }
         }
