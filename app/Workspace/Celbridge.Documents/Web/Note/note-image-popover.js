@@ -3,6 +3,7 @@
 // Edit mode: live src + caption inputs, Cancel reverts to previous values
 
 import { Image } from './lib/tiptap.js';
+import { t } from 'https://shared.celbridge/celbridge-localization.js';
 import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;
@@ -455,7 +456,7 @@ function refreshViewMode() {
     const node = ctx.editor.state.doc.nodeAt(currentPos);
     if (!node) return;
     const src = ctx.unresolveImageSrc(node.attrs.src) || '';
-    srcDisplayEl.textContent = src || '(no source)';
+    srcDisplayEl.textContent = src || t('NoteEditor_Image_NoSource');
     srcDisplayEl.title = src;
     srcDisplayEl.classList.toggle('empty', !src);
 }

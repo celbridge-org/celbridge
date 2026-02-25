@@ -860,4 +860,193 @@ Do you wish to continue?</value>
   <data name="NoteEditor_LinkError_Message" xml:space="preserve">
     <value>The link '{0}' could not be opened. The resource may not exist or the link may be invalid.</value>
   </data>
+  <data name="NoteEditor_Toolbar_Bold" xml:space="preserve">
+    <value>Bold (Ctrl+B)</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Italic" xml:space="preserve">
+    <value>Italic (Ctrl+I)</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Underline" xml:space="preserve">
+    <value>Underline (Ctrl+U)</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Strikethrough" xml:space="preserve">
+    <value>Strikethrough</value>
+  </data>
+  <data name="NoteEditor_Toolbar_InlineCode" xml:space="preserve">
+    <value>Inline Code</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Heading1" xml:space="preserve">
+    <value>Heading 1</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Heading2" xml:space="preserve">
+    <value>Heading 2</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Heading3" xml:space="preserve">
+    <value>Heading 3</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Paragraph" xml:space="preserve">
+    <value>Paragraph</value>
+  </data>
+  <data name="NoteEditor_Toolbar_BulletList" xml:space="preserve">
+    <value>Bullet List</value>
+  </data>
+  <data name="NoteEditor_Toolbar_OrderedList" xml:space="preserve">
+    <value>Ordered List</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Blockquote" xml:space="preserve">
+    <value>Blockquote</value>
+  </data>
+  <data name="NoteEditor_Toolbar_CodeBlock" xml:space="preserve">
+    <value>Code Block</value>
+  </data>
+  <data name="NoteEditor_Toolbar_HorizontalRule" xml:space="preserve">
+    <value>Horizontal Rule</value>
+  </data>
+  <data name="NoteEditor_Toolbar_InsertLink" xml:space="preserve">
+    <value>Insert/Edit Link</value>
+  </data>
+  <data name="NoteEditor_Toolbar_InsertImage" xml:space="preserve">
+    <value>Insert Image</value>
+  </data>
+  <data name="NoteEditor_Toolbar_InsertTable" xml:space="preserve">
+    <value>Insert/Edit Table</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Undo" xml:space="preserve">
+    <value>Undo (Ctrl+Z)</value>
+  </data>
+  <data name="NoteEditor_Toolbar_Redo" xml:space="preserve">
+    <value>Redo (Ctrl+Shift+Z)</value>
+  </data>
+  <data name="NoteEditor_Placeholder" xml:space="preserve">
+    <value>Start writing...</value>
+  </data>
+  <data name="NoteEditor_Image_Header" xml:space="preserve">
+    <value>Image</value>
+  </data>
+  <data name="NoteEditor_Image_Size25" xml:space="preserve">
+    <value>25% width</value>
+  </data>
+  <data name="NoteEditor_Image_Size33" xml:space="preserve">
+    <value>33% width</value>
+  </data>
+  <data name="NoteEditor_Image_Size50" xml:space="preserve">
+    <value>50% width</value>
+  </data>
+  <data name="NoteEditor_Image_SizeFull" xml:space="preserve">
+    <value>Full width</value>
+  </data>
+  <data name="NoteEditor_Image_CustomSizeTooltip" xml:space="preserve">
+    <value>Enter image width as a percentage (1–100)</value>
+  </data>
+  <data name="NoteEditor_Image_AlignLeft" xml:space="preserve">
+    <value>Align left</value>
+  </data>
+  <data name="NoteEditor_Image_AlignCenter" xml:space="preserve">
+    <value>Align center</value>
+  </data>
+  <data name="NoteEditor_Image_AlignRight" xml:space="preserve">
+    <value>Align right</value>
+  </data>
+  <data name="NoteEditor_Image_SourceLabel" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="NoteEditor_Image_EditTooltip" xml:space="preserve">
+    <value>Edit source and caption</value>
+  </data>
+  <data name="NoteEditor_Image_DeleteTooltip" xml:space="preserve">
+    <value>Delete image</value>
+  </data>
+  <data name="NoteEditor_Image_CaptionLabel" xml:space="preserve">
+    <value>Caption</value>
+  </data>
+  <data name="NoteEditor_Image_SrcPlaceholder" xml:space="preserve">
+    <value>URL or resource key...</value>
+  </data>
+  <data name="NoteEditor_Image_CaptionPlaceholder" xml:space="preserve">
+    <value>Optional caption text...</value>
+  </data>
+  <data name="NoteEditor_Image_ConfirmTooltip" xml:space="preserve">
+    <value>Accept changes</value>
+  </data>
+  <data name="NoteEditor_Image_CancelTooltip" xml:space="preserve">
+    <value>Cancel — revert to previous values</value>
+  </data>
+  <data name="NoteEditor_Image_NoSource" xml:space="preserve">
+    <value>(no source)</value>
+  </data>
+  <data name="NoteEditor_Link_Header" xml:space="preserve">
+    <value>Link</value>
+  </data>
+  <data name="NoteEditor_Link_OpenTooltip" xml:space="preserve">
+    <value>Open link</value>
+  </data>
+  <data name="NoteEditor_Link_EditTooltip" xml:space="preserve">
+    <value>Edit link</value>
+  </data>
+  <data name="NoteEditor_Link_DeleteTooltip" xml:space="preserve">
+    <value>Remove link</value>
+  </data>
+  <data name="NoteEditor_Link_Placeholder" xml:space="preserve">
+    <value>Enter URL or resource key...</value>
+  </data>
+  <data name="NoteEditor_Link_ConfirmTooltip" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="NoteEditor_Link_CancelTooltip" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="NoteEditor_Link_NoURL" xml:space="preserve">
+    <value>(no URL)</value>
+  </data>
+  <data name="NoteEditor_Table_Header" xml:space="preserve">
+    <value>Table</value>
+  </data>
+  <data name="NoteEditor_Table_RowsLabel" xml:space="preserve">
+    <value>Rows</value>
+  </data>
+  <data name="NoteEditor_Table_ColumnsLabel" xml:space="preserve">
+    <value>Columns</value>
+  </data>
+  <data name="NoteEditor_Table_HeaderRowLabel" xml:space="preserve">
+    <value>Header row</value>
+  </data>
+  <data name="NoteEditor_Table_InsertTooltip" xml:space="preserve">
+    <value>Insert table</value>
+  </data>
+  <data name="NoteEditor_Table_CancelTooltip" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="NoteEditor_Table_SizeLabel" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="NoteEditor_Table_RowLabel" xml:space="preserve">
+    <value>Row</value>
+  </data>
+  <data name="NoteEditor_Table_ColumnLabel" xml:space="preserve">
+    <value>Column</value>
+  </data>
+  <data name="NoteEditor_Table_AddRowTooltip" xml:space="preserve">
+    <value>Add row below</value>
+  </data>
+  <data name="NoteEditor_Table_Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="NoteEditor_Table_DeleteRowTooltip" xml:space="preserve">
+    <value>Delete current row</value>
+  </data>
+  <data name="NoteEditor_Table_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="NoteEditor_Table_AddColumnTooltip" xml:space="preserve">
+    <value>Add column to the right</value>
+  </data>
+  <data name="NoteEditor_Table_DeleteColumnTooltip" xml:space="preserve">
+    <value>Delete current column</value>
+  </data>
+  <data name="NoteEditor_Table_DeleteTooltip" xml:space="preserve">
+    <value>Delete table</value>
+  </data>
+  <data name="NoteEditor_Table_SizeInfo" xml:space="preserve">
+    <value>{0} rows × {1} columns</value>
+  </data>
 </root>

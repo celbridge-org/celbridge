@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Xml.Linq;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -72,5 +74,36 @@ public static class WebView2Helper
     {
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         return keyboardShortcutService.HandleWebView2KeyboardShortcut(message);
+    }
+
+    /// <summary>
+    /// Sends localized strings matching a key prefix to a WebView2 page.
+    /// Keys are discovered automatically from the embedded Resources.resw,
+    /// resolved via the provided IStringLocalizer, and sent as a
+    /// "set-localization" message that celbridge-localization.js processes.
+    /// </summary>
+    public static void SendLocalizationStrings(
+        CoreWebView2 coreWebView2,
+        IStringLocalizer stringLocalizer,
+        string keyPrefix)
+    {
+        var assembly = typeof(WebView2Helper).Assembly;
+        using var stream = assembly.GetManifestResourceStream("Celbridge.Strings.Resources.resw");
+        Guard.IsNotNull(stream);
+
+        var reswDoc = XDocument.Load(stream);
+        var strings = new Dictionary<string, string>();
+        foreach (var data in reswDoc.Descendants("data"))
+        {
+            var name = data.Attribute("name")?.Value;
+            if (name is not null && name.StartsWith(keyPrefix))
+            {
+                strings[name] = stringLocalizer.GetString(name);
+            }
+        }
+
+        var message = new { type = "set-localization", payload = new { strings } };
+        var json = JsonSerializer.Serialize(message);
+        coreWebView2.PostWebMessageAsString(json);
     }
 }

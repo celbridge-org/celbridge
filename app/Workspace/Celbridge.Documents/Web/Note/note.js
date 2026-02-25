@@ -2,6 +2,7 @@
 // Slim module that creates the TipTap editor and wires up popover modules
 
 import { Editor, StarterKit, Underline, Link, Placeholder } from './lib/tiptap.js';
+import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
 import { createImageExtension, init as initImagePopover, insertImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
@@ -202,6 +203,16 @@ if (window.chrome && window.chrome.webview) {
         }
 
         switch (msg.type) {
+            case 'set-localization': {
+                setStrings(msg.payload.strings);
+                // Update the TipTap placeholder text dynamically, i.e. "Start writing..."
+                const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
+                if (placeholderExt) {
+                    placeholderExt.options.placeholder = t('NoteEditor_Placeholder');
+                    editor.view.dispatch(editor.state.tr);
+                }
+                break;
+            }
             case 'load-doc': {
                 isLoadingContent = true;
                 try {

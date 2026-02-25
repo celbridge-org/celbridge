@@ -2,6 +2,7 @@
 // Three modes: view (existing link), edit (editing existing), create (new link)
 
 import { setupDismiss } from './popover-utils.js';
+import { t } from 'https://shared.celbridge/celbridge-localization.js';
 
 let ctx = null;
 let linkPopoverEl = null;
@@ -131,7 +132,7 @@ function showPopoverForLink(linkEl) {
     currentSelectionRange = null;
     originalHref = linkEl.getAttribute('href') || '';
 
-    urlDisplayEl.textContent = originalHref || '(no URL)';
+    urlDisplayEl.textContent = originalHref || t('NoteEditor_Link_NoURL');
     urlDisplayEl.title = originalHref;
 
     setMode('view');
@@ -214,7 +215,7 @@ function confirmAndClose() {
 function cancelAndClose() {
     if (currentMode === 'edit') {
         // Revert to view mode rather than dismissing the popover entirely
-        urlDisplayEl.textContent = originalHref || '(no URL)';
+        urlDisplayEl.textContent = originalHref || t('NoteEditor_Link_NoURL');
         urlDisplayEl.title = originalHref;
         setMode('view');
         return;

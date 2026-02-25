@@ -203,6 +203,9 @@ public sealed partial class NoteDocumentView : DocumentView
 
             webView.WebMessageReceived -= onWebMessageReceived;
 
+            // Send localization strings to the editor before loading content
+            WebView2Helper.SendLocalizationStrings(webView.CoreWebView2, _stringLocalizer, "NoteEditor_");
+
             await LoadNoteContent();
         }
         catch (Exception ex)

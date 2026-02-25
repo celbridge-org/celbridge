@@ -3,6 +3,7 @@
 // View mode: add/remove rows/columns, toggle header, delete table
 
 import { Table, TableRow, TableCell, TableHeader } from './lib/tiptap.js';
+import { t } from 'https://shared.celbridge/celbridge-localization.js';
 import { setupDismiss, positionAtTop } from './popover-utils.js';
 
 let ctx = null;
@@ -179,7 +180,7 @@ function refreshViewInfo() {
     const info = getTableInfo();
     if (!info) return;
 
-    viewInfoEl.textContent = `${info.rows} rows × ${info.cols} columns`;
+    viewInfoEl.textContent = t('NoteEditor_Table_SizeInfo', info.rows, info.cols);
     toggleHeaderEl.checked = info.hasHeader;
 }
 
