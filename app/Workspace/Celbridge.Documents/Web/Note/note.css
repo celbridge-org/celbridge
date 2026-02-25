@@ -352,3 +352,9 @@ body {
     background: #dc2626;
     color: white;
 }
+
+.popover-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}

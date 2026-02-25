@@ -12,6 +12,7 @@ let toolbarEl = null;
 let srcInputEl = null;
 let captionInputEl = null;
 let customSizeInputEl = null;
+let confirmBtnEl = null;
 
 let currentPos = null;
 let currentWrapperEl = null;
@@ -164,6 +165,7 @@ export function init(context) {
     srcInputEl = document.getElementById('image-popover-src-input');
     captionInputEl = document.getElementById('image-popover-caption-input');
     customSizeInputEl = document.getElementById('image-popover-custom-size-input');
+    confirmBtnEl = document.getElementById('image-popover-confirm');
 
     imagePopoverEl.addEventListener('mousedown', (e) => {
         if (e.target !== srcInputEl && e.target !== captionInputEl && e.target !== customSizeInputEl) {
@@ -207,7 +209,11 @@ export function init(context) {
 
     srcInputEl.addEventListener('input', () => {
         const src = srcInputEl.value.trim();
-        if (src) applyAttrsToNode({ src: ctx.resolveImageSrc(src) });
+        if (src) {
+            applyAttrsToNode({ src: ctx.resolveImageSrc(src) });
+        } else {
+            updateConfirmState();
+        }
     });
 
     captionInputEl.addEventListener('input', () => {
@@ -220,7 +226,7 @@ export function init(context) {
     });
 
     captionInputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); confirmEdit(); }
+        if (e.key === 'Enter') { e.preventDefault(); if (!confirmBtnEl.disabled) confirmEdit(); }
         else if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
     });
 
@@ -273,6 +279,7 @@ function showPopoverForImage(wrapperEl, pos, node) {
     initLayoutButtons(node);
     srcInputEl.value = ctx.unresolveImageSrc(node.attrs.src) || '';
     captionInputEl.value = node.attrs.caption || '';
+    updateConfirmState();
 
     imagePopoverEl.classList.add('visible');
     requestAnimationFrame(() => {
@@ -364,10 +371,35 @@ function parseAndClampCustomSize(value) {
 }
 
 // ---------------------------------------------------------------------------
+// Confirm button state
+// ---------------------------------------------------------------------------
+
+function updateConfirmState() {
+    if (!confirmBtnEl || !originalAttrs) return;
+
+    if (isNewImage) {
+        confirmBtnEl.disabled = srcInputEl.value.trim() === '';
+        return;
+    }
+
+    const node = currentPos != null ? ctx.editor.state.doc.nodeAt(currentPos) : null;
+    if (!node) { confirmBtnEl.disabled = true; return; }
+
+    const changed =
+        (node.attrs.src || '') !== originalAttrs.src ||
+        (node.attrs.caption || null) !== originalAttrs.caption ||
+        (node.attrs.width || null) !== originalAttrs.width ||
+        (node.attrs.textAlign || null) !== originalAttrs.textAlign;
+
+    confirmBtnEl.disabled = !changed;
+}
+
+// ---------------------------------------------------------------------------
 // Confirm / Cancel
 // ---------------------------------------------------------------------------
 
 function confirmEdit() {
+    if (confirmBtnEl.disabled) return;
     hidePopover();
 }
 
@@ -398,6 +430,7 @@ function applyAttrsToNode(attrsUpdate) {
         ...attrsUpdate,
     });
     ctx.editor.view.dispatch(tr);
+    updateConfirmState();
 }
 
 // ---------------------------------------------------------------------------

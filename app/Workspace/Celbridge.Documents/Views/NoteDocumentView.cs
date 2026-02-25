@@ -259,6 +259,15 @@ public sealed partial class NoteDocumentView : DocumentView
         SendMessageToJS(new { type = "pick-image-resource-result", payload = new { resourceKey } });
     }
 
+    private async Task HandlePickLinkResource()
+    {
+        var title = _stringLocalizer.GetString("NoteEditor_SelectResource_Title");
+        var result = await _dialogService.ShowResourcePickerDialogAsync(Array.Empty<string>(), title);
+
+        var resourceKey = result.IsSuccess ? result.Value.ToString() : string.Empty;
+        SendMessageToJS(new { type = "pick-link-resource-result", payload = new { resourceKey } });
+    }
+
     private void OpenSystemBrowser(string? uri)
     {
         if (string.IsNullOrEmpty(uri))
@@ -433,6 +442,10 @@ public sealed partial class NoteDocumentView : DocumentView
 
                 case "pick-image-resource":
                     await HandlePickImageResource();
+                    break;
+
+                case "pick-link-resource":
+                    await HandlePickLinkResource();
                     break;
 
                 default:

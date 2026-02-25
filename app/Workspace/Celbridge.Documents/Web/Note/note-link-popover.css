@@ -17,26 +17,9 @@
     max-width: 500px;
 }
 
-/* View mode - URL display as a plain clickable label */
-#link-popover-url-display {
-    padding: 4px 2px;
-    color: var(--link-color);
-    font-size: 14px;
-    word-break: break-all;
-    min-width: 280px;
-    cursor: pointer;
-    text-decoration: underline;
-}
-
-#link-popover-url-display:hover {
-    color: var(--accent-color);
-}
-
-/* Edit mode - input */
+/* URL input */
 #link-popover-input {
-    flex: 1;
-    min-width: 300px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-primary);
@@ -44,6 +27,8 @@
     font-size: 14px;
     font-family: inherit;
     outline: none;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 #link-popover-input:focus {
@@ -52,4 +37,21 @@
 
 #link-popover-input::placeholder {
     color: var(--placeholder-color);
+}
+
+/* URL row: text input + browse button side by side */
+.link-popover-url-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.link-popover-url-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+#link-popover-browse {
+    flex-shrink: 0;
 }

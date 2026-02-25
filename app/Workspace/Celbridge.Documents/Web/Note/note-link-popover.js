@@ -1,29 +1,29 @@
 // Link popover module for Note editor
-// Three modes: view (existing link), edit (editing existing), create (new link)
+// Single-mode popover: URL input with browse, open, delete, confirm, cancel
 
 import { setupDismiss } from './popover-utils.js';
-import { t } from 'https://shared.celbridge/celbridge-localization.js';
 
 let ctx = null;
 let linkPopoverEl = null;
 let linkInputEl = null;
-let urlDisplayEl = null;
-let viewModeEl = null;
-let editModeEl = null;
 let editorWrapper = null;
+let deleteBtnEl = null;
+let openBtnEl = null;
+let confirmBtnEl = null;
 let currentLinkEl = null;
 let currentSelectionRange = null;
 let originalHref = '';
-let currentMode = null; // 'view' | 'edit' | 'create'
+let isExistingLink = false;
+let isPickerOpen = false;
 
 export function init(context) {
     ctx = context;
     linkPopoverEl = document.getElementById('link-popover');
     linkInputEl = document.getElementById('link-popover-input');
-    urlDisplayEl = document.getElementById('link-popover-url-display');
-    viewModeEl = document.getElementById('link-popover-view-mode');
-    editModeEl = document.getElementById('link-popover-edit-mode');
     editorWrapper = document.getElementById('editor-wrapper');
+    deleteBtnEl = document.getElementById('link-popover-delete');
+    openBtnEl = document.getElementById('link-popover-open');
+    confirmBtnEl = document.getElementById('link-popover-confirm');
 
     // Handle clicks in the editor
     editorWrapper.addEventListener('click', (e) => {
@@ -49,16 +49,19 @@ export function init(context) {
         }
     });
 
-    // Input keydown (edit and create modes)
+    // Input keydown
     linkInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            confirmAndClose();
+            if (!confirmBtnEl.disabled) confirmAndClose();
         } else if (e.key === 'Escape') {
             e.preventDefault();
             cancelAndClose();
         }
     });
+
+    // Track input changes to update confirm button state
+    linkInputEl.addEventListener('input', () => updateConfirmState());
 
     // Prevent mousedown inside popover from blurring input
     linkPopoverEl.addEventListener('mousedown', (e) => {
@@ -67,33 +70,26 @@ export function init(context) {
         }
     });
 
-    // Clicking the URL label in view mode opens the link
-    urlDisplayEl.addEventListener('click', () => {
-        const href = currentLinkEl?.getAttribute('href');
+    // Browse button — pick a resource
+    document.getElementById('link-popover-browse').addEventListener('click', () => {
+        isPickerOpen = true;
+        ctx.sendMessage({ type: 'pick-link-resource' });
+    });
+
+    // Open link button
+    openBtnEl.addEventListener('click', () => {
+        const href = linkInputEl.value.trim();
         if (href) {
             ctx.sendMessage({ type: 'link-clicked', payload: { href } });
-            hidePopover();
         }
     });
 
-    // View mode buttons
-    document.getElementById('link-popover-open').addEventListener('click', () => {
-        const href = currentLinkEl?.getAttribute('href');
-        if (href) {
-            ctx.sendMessage({ type: 'link-clicked', payload: { href } });
-            hidePopover();
-        }
-    });
-
-    document.getElementById('link-popover-edit-btn').addEventListener('click', () => {
-        switchToEditMode();
-    });
-
-    document.getElementById('link-popover-delete').addEventListener('click', () => {
+    // Delete link button
+    deleteBtnEl.addEventListener('click', () => {
         removeLink();
     });
 
-    // Edit/create mode buttons
+    // Confirm / Cancel buttons
     document.getElementById('link-popover-confirm').addEventListener('click', () => {
         confirmAndClose();
     });
@@ -103,26 +99,7 @@ export function init(context) {
     });
 
     // Dismiss on scroll, resize, click outside, or window blur
-    setupDismiss(editorWrapper, linkPopoverEl, cancelAndClose);
-}
-
-// --- Mode switching ---
-
-function setMode(mode) {
-    currentMode = mode;
-    viewModeEl.classList.toggle('active', mode === 'view');
-    editModeEl.classList.toggle('active', mode === 'edit' || mode === 'create');
-}
-
-function switchToEditMode() {
-    const href = currentLinkEl?.getAttribute('href') || '';
-    linkInputEl.value = href;
-    originalHref = href;
-    setMode('edit');
-    requestAnimationFrame(() => {
-        linkInputEl.focus();
-        linkInputEl.select();
-    });
+    setupDismiss(editorWrapper, linkPopoverEl, cancelAndClose, null, () => isPickerOpen);
 }
 
 // --- Show popover ---
@@ -130,16 +107,20 @@ function switchToEditMode() {
 function showPopoverForLink(linkEl) {
     currentLinkEl = linkEl;
     currentSelectionRange = null;
+    isExistingLink = true;
     originalHref = linkEl.getAttribute('href') || '';
 
-    urlDisplayEl.textContent = originalHref || t('NoteEditor_Link_NoURL');
-    urlDisplayEl.title = originalHref;
+    linkInputEl.value = originalHref;
+    deleteBtnEl.style.display = '';
+    openBtnEl.style.display = '';
+    updateConfirmState();
 
-    setMode('view');
     linkPopoverEl.classList.add('visible');
 
     requestAnimationFrame(() => {
         positionBelowElement(linkEl);
+        linkInputEl.focus();
+        linkInputEl.select();
     });
 }
 
@@ -168,10 +149,14 @@ export function showPopoverForSelection() {
 
     currentSelectionRange = { from: trimmedFrom, to: trimmedTo };
     currentLinkEl = null;
+    isExistingLink = false;
     originalHref = '';
     linkInputEl.value = '';
 
-    setMode('create');
+    deleteBtnEl.style.display = 'none';
+    openBtnEl.style.display = 'none';
+    updateConfirmState();
+
     linkPopoverEl.classList.add('visible');
 
     const domSel = window.getSelection();
@@ -186,12 +171,23 @@ export function showPopoverForSelection() {
     return true;
 }
 
+// --- Confirm button state ---
+
+function updateConfirmState() {
+    const href = linkInputEl.value.trim();
+    if (isExistingLink) {
+        confirmBtnEl.disabled = href === originalHref;
+    } else {
+        confirmBtnEl.disabled = href === '';
+    }
+}
+
 // --- Actions ---
 
 function confirmAndClose() {
     const href = linkInputEl.value.trim();
 
-    if (currentMode === 'create' && currentSelectionRange) {
+    if (!isExistingLink && currentSelectionRange) {
         if (href) {
             ctx.editor.chain()
                 .focus()
@@ -199,7 +195,7 @@ function confirmAndClose() {
                 .setLink({ href })
                 .run();
         }
-    } else if ((currentMode === 'edit') && currentLinkEl) {
+    } else if (isExistingLink && currentLinkEl) {
         if (href === '') {
             ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
         } else if (href !== originalHref) {
@@ -213,13 +209,6 @@ function confirmAndClose() {
 }
 
 function cancelAndClose() {
-    if (currentMode === 'edit') {
-        // Revert to view mode rather than dismissing the popover entirely
-        urlDisplayEl.textContent = originalHref || t('NoteEditor_Link_NoURL');
-        urlDisplayEl.title = originalHref;
-        setMode('view');
-        return;
-    }
     ctx.editor.commands.focus();
     hidePopover();
 }
@@ -237,7 +226,7 @@ function hidePopover() {
     linkPopoverEl.classList.remove('visible');
     currentLinkEl = null;
     currentSelectionRange = null;
-    currentMode = null;
+    isExistingLink = false;
     originalHref = '';
 }
 
@@ -313,4 +302,14 @@ export function toggleLink() {
         return;
     }
     showPopoverForSelection();
+}
+
+// --- Resource picker result (called from note.js when C# responds) ---
+
+export function onPickLinkResourceResult(resourceKey) {
+    isPickerOpen = false;
+    if (!resourceKey) return;
+    linkInputEl.value = resourceKey;
+    updateConfirmState();
+    linkInputEl.focus();
 }

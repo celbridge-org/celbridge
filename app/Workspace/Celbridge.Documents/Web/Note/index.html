@@ -76,7 +76,7 @@
                 <label class="popover-field-label" for="image-popover-src-input" data-loc-key="NoteEditor_Image_SourceLabel">Source</label>
                 <div class="img-popover-src-row">
                     <input type="text" id="image-popover-src-input" data-loc-key="NoteEditor_Image_SrcPlaceholder" data-loc-attr="placeholder" placeholder="URL or resource key..." />
-                    <button id="image-popover-src-browse" class="popover-btn" data-loc-key="NoteEditor_Image_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-folder2-open"></i></button>
+                    <button id="image-popover-src-browse" class="popover-btn" data-loc-key="NoteEditor_Image_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-three-dots"></i></button>
                 </div>
             </div>
             <div class="popover-field">
@@ -95,22 +95,19 @@
                 <i class="bi bi-link-45deg popover-icon"></i>
                 <span data-loc-key="NoteEditor_Link_Header">Link</span>
             </div>
-            <!-- View mode: read-only URL with Open/Edit/Delete -->
-            <div id="link-popover-view-mode" class="popover-mode">
-                <div id="link-popover-url-display"></div>
-                <div class="popover-buttons">
-                    <button id="link-popover-open" class="popover-btn" data-loc-key="NoteEditor_Link_OpenTooltip" data-loc-attr="title" title="Open link"><i class="bi bi-box-arrow-up-right"></i></button>
-                    <button id="link-popover-edit-btn" class="popover-btn" data-loc-key="NoteEditor_Link_EditTooltip" data-loc-attr="title" title="Edit link"><i class="bi bi-pencil"></i></button>
-                    <button id="link-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Link_DeleteTooltip" data-loc-attr="title" title="Remove link"><i class="bi bi-trash3"></i></button>
+            <div class="popover-field">
+                <label class="popover-field-label" for="link-popover-input" data-loc-key="NoteEditor_Link_URLLabel">URL</label>
+                <div class="link-popover-url-row">
+                    <input type="text" id="link-popover-input" data-loc-key="NoteEditor_Link_Placeholder" data-loc-attr="placeholder" placeholder="Enter URL or resource key..." />
+                    <button id="link-popover-browse" class="popover-btn" data-loc-key="NoteEditor_Link_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-three-dots"></i></button>
                 </div>
             </div>
-            <!-- Edit mode: editable input with Confirm/Cancel -->
-            <div id="link-popover-edit-mode" class="popover-mode">
-                <input type="text" id="link-popover-input" data-loc-key="NoteEditor_Link_Placeholder" data-loc-attr="placeholder" placeholder="Enter URL or resource key..." />
-                <div class="popover-buttons">
-                    <button id="link-popover-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Link_ConfirmTooltip" data-loc-attr="title" title="Confirm"><i class="bi bi-check-lg"></i></button>
-                    <button id="link-popover-cancel" class="popover-btn" data-loc-key="NoteEditor_Link_CancelTooltip" data-loc-attr="title" title="Cancel"><i class="bi bi-x-lg"></i></button>
-                </div>
+            <div class="popover-buttons">
+                <button id="link-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Link_DeleteTooltip" data-loc-attr="title" title="Remove link"><i class="bi bi-trash3"></i></button>
+                <button id="link-popover-open" class="popover-btn" data-loc-key="NoteEditor_Link_OpenTooltip" data-loc-attr="title" title="Open link"><i class="bi bi-box-arrow-up-right"></i></button>
+                <div style="flex:1"></div>
+                <button id="link-popover-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Link_ConfirmTooltip" data-loc-attr="title" title="Confirm"><i class="bi bi-check-lg"></i></button>
+                <button id="link-popover-cancel" class="popover-btn" data-loc-key="NoteEditor_Link_CancelTooltip" data-loc-attr="title" title="Cancel"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
         <div id="table-popover" class="popover">
@@ -154,12 +151,12 @@
                     <button id="table-delete-col" class="table-popover-action-btn table-popover-action-btn-danger" data-loc-key="NoteEditor_Table_DeleteColumnTooltip" data-loc-attr="title" title="Delete current column"><i class="bi bi-dash table-popover-action-icon"></i> <span data-loc-key="NoteEditor_Table_Remove">Remove</span></button>
                 </div>
                 <div class="table-popover-footer-row">
+                    <button id="table-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Table_DeleteTooltip" data-loc-attr="title" title="Delete table"><i class="bi bi-trash3"></i></button>
+                    <div style="flex:1"></div>
                     <label class="table-popover-checkbox">
                         <input type="checkbox" id="table-toggle-header" />
                         <span data-loc-key="NoteEditor_Table_HeaderRowLabel">Header row</span>
                     </label>
-                    <div style="flex:1"></div>
-                    <button id="table-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Table_DeleteTooltip" data-loc-attr="title" title="Delete table"><i class="bi bi-trash3"></i></button>
                 </div>
             </div>
         </div>
