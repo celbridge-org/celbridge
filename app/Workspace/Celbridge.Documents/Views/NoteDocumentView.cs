@@ -5,6 +5,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -18,6 +19,7 @@ public sealed partial class NoteDocumentView : DocumentView
     private ILogger _logger;
     private ICommandService _commandService;
     private IMessengerService _messengerService;
+    private IUserInterfaceService _userInterfaceService;
     private IResourceRegistry _resourceRegistry;
     private IStringLocalizer _stringLocalizer;
     private IDialogService _dialogService;
@@ -35,6 +37,7 @@ public sealed partial class NoteDocumentView : DocumentView
         ILogger<NoteDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
+        IUserInterfaceService userInterfaceService,
         IWorkspaceWrapper workspaceWrapper,
         IStringLocalizer stringLocalizer,
         IDialogService dialogService)
@@ -44,9 +47,12 @@ public sealed partial class NoteDocumentView : DocumentView
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
+        _userInterfaceService = userInterfaceService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
+
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
         Loaded += NoteDocumentView_Loaded;
 
@@ -110,6 +116,9 @@ public sealed partial class NoteDocumentView : DocumentView
             }
 
             webView.DefaultBackgroundColor = Colors.Transparent;
+
+            // Sync WebView2 color scheme with the app theme so CSS prefers-color-scheme matches
+            ApplyThemeToWebView(webView);
 
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
@@ -439,6 +448,8 @@ public sealed partial class NoteDocumentView : DocumentView
 
     public override async Task PrepareToClose()
     {
+        _messengerService.UnregisterAll(this);
+
         Loaded -= NoteDocumentView_Loaded;
 
         ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
@@ -455,6 +466,22 @@ public sealed partial class NoteDocumentView : DocumentView
         }
 
         await base.PrepareToClose();
+    }
+
+    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    {
+        if (_webView != null)
+        {
+            ApplyThemeToWebView(_webView);
+        }
+    }
+
+    private void ApplyThemeToWebView(WebView2 webView)
+    {
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        webView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+            ? CoreWebView2PreferredColorScheme.Dark
+            : CoreWebView2PreferredColorScheme.Light;
     }
 
     private void WebView_GotFocus(object sender, RoutedEventArgs e)
