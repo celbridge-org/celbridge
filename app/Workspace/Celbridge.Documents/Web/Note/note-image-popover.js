@@ -364,7 +364,7 @@ function updateSizeButtonHighlights(value) {
         const action = b.dataset.imgAction;
         b.classList.toggle('active',
             (action === 'size-25' && num === 25) ||
-            (action === 'size-33' && num === 33) ||
+            (action === 'size-75' && num === 75) ||
             (action === 'size-50' && num === 50) ||
             (action === 'size-100' && num === 100)
         );

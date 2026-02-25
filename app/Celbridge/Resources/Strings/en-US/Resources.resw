@@ -926,8 +926,8 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Image_Size25" xml:space="preserve">
     <value>25% width</value>
   </data>
-  <data name="NoteEditor_Image_Size33" xml:space="preserve">
-    <value>33% width</value>
+  <data name="NoteEditor_Image_Size75" xml:space="preserve">
+    <value>75% width</value>
   </data>
   <data name="NoteEditor_Image_Size50" xml:space="preserve">
     <value>50% width</value>
