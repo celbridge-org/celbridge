@@ -234,7 +234,9 @@ export function init(context) {
 
     // Dismiss on scroll, resize, click outside, or window blur
     setupDismiss(editorWrapper, imagePopoverEl, hidePopover, (e) => {
-        return currentWrapperEl && currentWrapperEl.contains(e.target);
+        if (currentWrapperEl && currentWrapperEl.contains(e.target)) return true;
+        if (e.target.closest('.toolbar-btn[data-action="image"]')) return true;
+        return false;
     }, () => isPickerOpen);
 
     editorWrapper.addEventListener('load', (e) => {

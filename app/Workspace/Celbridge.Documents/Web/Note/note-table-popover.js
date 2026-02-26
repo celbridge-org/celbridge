@@ -105,7 +105,9 @@ export function init(context) {
     });
 
     // Dismiss on scroll, resize, click outside, or window blur
-    setupDismiss(editorWrapper, tablePopoverEl, hidePopover);
+    setupDismiss(editorWrapper, tablePopoverEl, hidePopover, (e) => {
+        return !!e.target.closest('.toolbar-btn[data-action="table"]');
+    });
 }
 
 // ---------------------------------------------------------------------------
