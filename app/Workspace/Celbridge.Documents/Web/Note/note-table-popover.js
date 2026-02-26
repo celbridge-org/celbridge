@@ -1,23 +1,26 @@
 // Table popover module for Note editor
-// Create mode: configure rows, columns, and header row before inserting
-// View mode: add/remove rows/columns, toggle header, delete table
+// Unified popover: immediate table creation with live editing of dimensions
 
 import { Table, TableRow, TableCell, TableHeader } from './lib/tiptap.js';
-import { t } from 'https://shared.celbridge/celbridge-localization.js';
 import { setupDismiss, positionAtTop, registerPopover, hideAllPopovers } from './popover-utils.js';
 
 let ctx = null;
 let tablePopoverEl = null;
 let editorWrapper = null;
 let toolbarEl = null;
-let currentMode = null; // 'create' | 'view'
-let rowsInputEl = null;
-let colsInputEl = null;
+let rowsValueEl = null;
+let colsValueEl = null;
+let rowsDecBtn = null;
+let rowsIncBtn = null;
+let colsDecBtn = null;
+let colsIncBtn = null;
 let headerCheckboxEl = null;
-let viewInfoEl = null;
-let toggleHeaderEl = null;
-let createModeEl = null;
-let viewModeEl = null;
+let isNewTable = false;
+
+const MIN_ROWS = 1;
+const MAX_ROWS = 20;
+const MIN_COLS = 1;
+const MAX_COLS = 20;
 
 // ---------------------------------------------------------------------------
 // Table extensions
@@ -41,64 +44,43 @@ export function init(context) {
     tablePopoverEl = document.getElementById('table-popover');
     editorWrapper = document.getElementById('editor-wrapper');
     toolbarEl = document.getElementById('toolbar');
-    rowsInputEl = document.getElementById('table-create-rows');
-    colsInputEl = document.getElementById('table-create-cols');
-    headerCheckboxEl = document.getElementById('table-create-header');
-    viewInfoEl = document.getElementById('table-view-info');
-    toggleHeaderEl = document.getElementById('table-toggle-header');
-    createModeEl = document.getElementById('table-popover-create-mode');
-    viewModeEl = document.getElementById('table-popover-view-mode');
+    rowsValueEl = document.getElementById('table-rows-value');
+    colsValueEl = document.getElementById('table-cols-value');
+    rowsDecBtn = document.getElementById('table-rows-dec');
+    rowsIncBtn = document.getElementById('table-rows-inc');
+    colsDecBtn = document.getElementById('table-cols-dec');
+    colsIncBtn = document.getElementById('table-cols-inc');
+    headerCheckboxEl = document.getElementById('table-header');
 
     // Prevent mousedown inside popover from stealing focus
     tablePopoverEl.addEventListener('mousedown', (e) => {
-        const inputs = tablePopoverEl.querySelectorAll('input');
-        let isInput = false;
-        inputs.forEach(inp => { if (inp === e.target) isInput = true; });
-        if (!isInput) {
+        if (e.target.tagName !== 'INPUT') {
             e.preventDefault();
         }
     });
 
     registerPopover(hidePopover);
 
-    // Create mode: confirm
-    document.getElementById('table-popover-create-confirm').addEventListener('click', () => confirmCreate());
+    // Row +/- buttons
+    rowsDecBtn.addEventListener('click', () => changeRows(-1));
+    rowsIncBtn.addEventListener('click', () => changeRows(1));
 
-    // Create mode: enter key on inputs
-    rowsInputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); confirmCreate(); }
-        else if (e.key === 'Escape') { e.preventDefault(); hidePopover(); }
-    });
-    colsInputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); confirmCreate(); }
-        else if (e.key === 'Escape') { e.preventDefault(); hidePopover(); }
-    });
+    // Column +/- buttons
+    colsDecBtn.addEventListener('click', () => changeCols(-1));
+    colsIncBtn.addEventListener('click', () => changeCols(1));
 
-    // View mode: row/column actions
-    document.getElementById('table-add-row').addEventListener('click', () => {
-        ctx.editor.chain().focus().addRowAfter().run();
-        refreshViewInfo();
-    });
-    document.getElementById('table-delete-row').addEventListener('click', () => {
-        ctx.editor.chain().focus().deleteRow().run();
-        refreshViewInfo();
-    });
-    document.getElementById('table-add-col').addEventListener('click', () => {
-        ctx.editor.chain().focus().addColumnAfter().run();
-        refreshViewInfo();
-    });
-    document.getElementById('table-delete-col').addEventListener('click', () => {
-        ctx.editor.chain().focus().deleteColumn().run();
-        refreshViewInfo();
+    // Escape key on popover
+    tablePopoverEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
     });
 
-    // View mode: toggle header row
-    toggleHeaderEl.addEventListener('change', () => {
+    // Header toggle
+    headerCheckboxEl.addEventListener('change', () => {
         ctx.editor.chain().focus().toggleHeaderRow().run();
-        refreshViewInfo();
+        refreshPopover();
     });
 
-    // View mode: delete table
+    // Delete table
     document.getElementById('table-delete').addEventListener('click', () => {
         ctx.editor.chain().focus().deleteTable().run();
         hidePopover();
@@ -114,84 +96,97 @@ export function init(context) {
 // Show / hide
 // ---------------------------------------------------------------------------
 
-function showCreateMode() {
+function showPopover() {
     hideAllPopovers();
 
-    rowsInputEl.value = '3';
-    colsInputEl.value = '3';
-    headerCheckboxEl.checked = true;
+    refreshPopover();
 
-    setMode('create');
     tablePopoverEl.classList.add('visible');
-
     requestAnimationFrame(() => {
         positionAtTop(tablePopoverEl, toolbarEl);
-        rowsInputEl.focus();
-        rowsInputEl.select();
     });
 }
 
-function showViewMode() {
-    hideAllPopovers();
+function refreshPopover() {
+    const info = getTableInfo();
+    if (!info) return;
 
-    refreshViewInfo();
-    setMode('view');
-    tablePopoverEl.classList.add('visible');
+    rowsValueEl.textContent = info.dataRows;
+    colsValueEl.textContent = info.cols;
+    headerCheckboxEl.checked = info.hasHeader;
 
-    requestAnimationFrame(() => {
-        positionAtTop(tablePopoverEl, toolbarEl);
-    });
+    // Update button states
+    rowsDecBtn.disabled = info.dataRows <= MIN_ROWS;
+    rowsIncBtn.disabled = info.dataRows >= MAX_ROWS;
+    colsDecBtn.disabled = info.cols <= MIN_COLS;
+    colsIncBtn.disabled = info.cols >= MAX_COLS;
 }
 
 function hidePopover() {
     tablePopoverEl.classList.remove('visible');
-    currentMode = null;
+    isNewTable = false;
 }
 
-// ---------------------------------------------------------------------------
-// Mode switching
-// ---------------------------------------------------------------------------
-
-function setMode(mode) {
-    currentMode = mode;
-    createModeEl.classList.toggle('active', mode === 'create');
-    viewModeEl.classList.toggle('active', mode === 'view');
-}
-
-// ---------------------------------------------------------------------------
-// Create mode
-// ---------------------------------------------------------------------------
-
-function confirmCreate() {
-    let rows = parseInt(rowsInputEl.value) || 3;
-    let cols = parseInt(colsInputEl.value) || 3;
-    rows = Math.max(1, Math.min(20, rows));
-    cols = Math.max(1, Math.min(20, cols));
-
-    const withHeaderRow = headerCheckboxEl.checked;
-
-    ctx.editor.chain().focus().insertTable({
-        rows: withHeaderRow ? rows + 1 : rows,
-        cols,
-        withHeaderRow,
-    }).run();
-
+function cancelEdit() {
+    if (isNewTable) {
+        ctx.editor.chain().focus().deleteTable().run();
+    }
     hidePopover();
 }
 
 // ---------------------------------------------------------------------------
-// View mode info
+// Row/column changes
 // ---------------------------------------------------------------------------
 
-function refreshViewInfo() {
+function changeRows(delta) {
     const info = getTableInfo();
     if (!info) return;
 
-    viewInfoEl.textContent = t('NoteEditor_Table_SizeInfo', info.rows, info.cols);
-    toggleHeaderEl.checked = info.hasHeader;
+    const targetRows = info.dataRows + delta;
+    if (targetRows < MIN_ROWS || targetRows > MAX_ROWS) return;
+
+    if (delta > 0) {
+        // Add row at the end
+        setCursorToLastRow();
+        ctx.editor.chain().focus().addRowAfter().run();
+    } else {
+        // Remove last row
+        setCursorToLastRow();
+        ctx.editor.chain().focus().deleteRow().run();
+    }
+
+    // Ensure caret is inside a valid cell
+    ensureCursorInTable();
+    refreshPopover();
 }
 
-function getTableInfo() {
+function changeCols(delta) {
+    const info = getTableInfo();
+    if (!info) return;
+
+    const targetCols = info.cols + delta;
+    if (targetCols < MIN_COLS || targetCols > MAX_COLS) return;
+
+    if (delta > 0) {
+        // Add column at the end
+        setCursorToLastCol();
+        ctx.editor.chain().focus().addColumnAfter().run();
+    } else {
+        // Remove last column
+        setCursorToLastCol();
+        ctx.editor.chain().focus().deleteColumn().run();
+    }
+
+    // Ensure caret is inside a valid cell
+    ensureCursorInTable();
+    refreshPopover();
+}
+
+// ---------------------------------------------------------------------------
+// Cursor positioning helpers
+// ---------------------------------------------------------------------------
+
+function findTableContext() {
     const { editor } = ctx;
     if (!editor.isActive('table')) return null;
 
@@ -199,20 +194,98 @@ function getTableInfo() {
     const { selection } = state;
     const $anchor = selection.$anchor;
 
-    // Walk up to find the table node
     for (let depth = $anchor.depth; depth >= 0; depth--) {
         const node = $anchor.node(depth);
         if (node.type.name === 'table') {
-            const rows = node.childCount;
-            let cols = 0;
-            if (rows > 0) {
-                cols = node.child(0).childCount;
-            }
-            const hasHeader = rows > 0 && node.child(0).child(0)?.type.name === 'tableHeader';
-            return { rows, cols, hasHeader };
+            return { node, pos: $anchor.before(depth) };
         }
     }
     return null;
+}
+
+function getCellContentPos(tablePos, tableNode, rowIndex, colIndex) {
+    let pos = tablePos + 1; // enter table
+    for (let r = 0; r < rowIndex; r++) {
+        pos += tableNode.child(r).nodeSize;
+    }
+    pos += 1; // enter row
+    const row = tableNode.child(rowIndex);
+    for (let c = 0; c < colIndex; c++) {
+        pos += row.child(c).nodeSize;
+    }
+    pos += 1; // enter cell
+    pos += 1; // enter paragraph inside cell
+    return pos;
+}
+
+function setCursorToLastRow() {
+    const tc = findTableContext();
+    if (!tc) return;
+    const lastRowIdx = tc.node.childCount - 1;
+    const pos = getCellContentPos(tc.pos, tc.node, lastRowIdx, 0);
+    ctx.editor.commands.setTextSelection(pos);
+}
+
+function setCursorToLastCol() {
+    const tc = findTableContext();
+    if (!tc) return;
+    const firstRow = tc.node.child(0);
+    const lastColIdx = firstRow.childCount - 1;
+    const pos = getCellContentPos(tc.pos, tc.node, 0, lastColIdx);
+    ctx.editor.commands.setTextSelection(pos);
+}
+
+function ensureCursorInTable() {
+    // After a dimension change, verify cursor is still in table
+    // If not, place it in the first data cell
+    if (ctx.editor.isActive('table')) return;
+
+    // Find the table we were editing (should be nearby in the doc)
+    // For now, re-find and position to first cell
+    const tc = findTableContextFromDoc();
+    if (tc) {
+        const firstDataRowIdx = tc.hasHeader ? 1 : 0;
+        const rowIdx = Math.min(firstDataRowIdx, tc.node.childCount - 1);
+        const pos = getCellContentPos(tc.pos, tc.node, rowIdx, 0);
+        ctx.editor.commands.setTextSelection(pos);
+    }
+}
+
+function findTableContextFromDoc() {
+    // Walk the document to find the first table (used after cursor falls outside)
+    const { state } = ctx.editor;
+    let result = null;
+    state.doc.descendants((node, pos) => {
+        if (result) return false;
+        if (node.type.name === 'table') {
+            const hasHeader = node.childCount > 0 && node.child(0).child(0)?.type.name === 'tableHeader';
+            result = { node, pos, hasHeader };
+            return false;
+        }
+    });
+    return result;
+}
+
+// ---------------------------------------------------------------------------
+// Table info
+// ---------------------------------------------------------------------------
+
+function getTableInfo() {
+    const { editor } = ctx;
+    if (!editor.isActive('table')) return null;
+
+    const tc = findTableContext();
+    if (!tc) return null;
+
+    const rows = tc.node.childCount;
+    let cols = 0;
+    if (rows > 0) {
+        cols = tc.node.child(0).childCount;
+    }
+    const hasHeader = rows > 0 && tc.node.child(0).child(0)?.type.name === 'tableHeader';
+    const dataRows = hasHeader ? rows - 1 : rows;
+
+    return { rows, cols, hasHeader, dataRows };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,8 +299,16 @@ export function toggleTable() {
     }
 
     if (ctx.editor.isActive('table')) {
-        showViewMode();
+        isNewTable = false;
+        showPopover();
     } else {
-        showCreateMode();
+        // Insert 3x3 table with header immediately and show popover
+        isNewTable = true;
+        ctx.editor.chain().focus().insertTable({
+            rows: 4, // 3 data rows + 1 header row
+            cols: 3,
+            withHeaderRow: true,
+        }).run();
+        showPopover();
     }
 }

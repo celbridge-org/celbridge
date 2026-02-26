@@ -306,6 +306,12 @@ body {
     justify-content: flex-end;
 }
 
+.popover-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .popover-btn {
     display: flex;
     align-items: center;

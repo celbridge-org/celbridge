@@ -83,7 +83,7 @@
                 <label class="popover-field-label" for="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionLabel">Caption</label>
                 <input type="text" id="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionPlaceholder" data-loc-attr="placeholder" placeholder="Optional caption text..." />
             </div>
-            <div class="popover-buttons">
+            <div class="popover-footer-row">
                 <button id="image-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Image_DeleteTooltip" data-loc-attr="title" title="Delete image"><i class="bi bi-trash3"></i></button>
             </div>
         </div>
@@ -99,8 +99,9 @@
                     <button id="link-popover-browse" class="popover-btn" data-loc-key="NoteEditor_Link_BrowseTooltip" data-loc-attr="title" title="Browse project resources"><i class="bi bi-three-dots"></i></button>
                 </div>
             </div>
-            <div class="popover-buttons">
+            <div class="popover-footer-row">
                 <button id="link-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Link_DeleteTooltip" data-loc-attr="title" title="Remove link"><i class="bi bi-trash3"></i></button>
+                <div style="flex:1"></div>
                 <button id="link-popover-open" class="popover-btn" data-loc-key="NoteEditor_Link_OpenTooltip" data-loc-attr="title" title="Open link"><i class="bi bi-box-arrow-up-right"></i></button>
             </div>
         </div>
@@ -109,48 +110,27 @@
                 <i class="bi bi-table popover-icon"></i>
                 <span data-loc-key="NoteEditor_Table_Header">Table</span>
             </div>
-            <!-- Create mode: configure rows, columns, header before inserting -->
-            <div id="table-popover-create-mode" class="popover-mode">
-                <div class="table-popover-control-row">
-                    <div class="table-popover-control-group">
-                        <label for="table-create-rows" data-loc-key="NoteEditor_Table_RowsLabel">Rows</label>
-                        <input type="number" id="table-create-rows" min="1" max="20" value="3" />
-                    </div>
-                    <div class="table-popover-control-group">
-                        <label for="table-create-cols" data-loc-key="NoteEditor_Table_ColumnsLabel">Columns</label>
-                        <input type="number" id="table-create-cols" min="1" max="20" value="3" />
-                    </div>
+            <div class="table-popover-control-row">
+                <div class="table-popover-control-group">
+                    <label data-loc-key="NoteEditor_Table_RowsLabel">Rows</label>
+                    <button class="table-popover-spin-btn" id="table-rows-dec" data-loc-key="NoteEditor_Table_DecreaseRows" data-loc-attr="title" title="Remove row"><i class="bi bi-dash"></i></button>
+                    <span id="table-rows-value" class="table-popover-spin-value">3</span>
+                    <button class="table-popover-spin-btn" id="table-rows-inc" data-loc-key="NoteEditor_Table_IncreaseRows" data-loc-attr="title" title="Add row"><i class="bi bi-plus"></i></button>
                 </div>
-                <label class="table-popover-checkbox">
-                    <input type="checkbox" id="table-create-header" checked />
-                    <span data-loc-key="NoteEditor_Table_HeaderRowLabel">Header row</span>
-                </label>
-                <div class="popover-buttons">
-                    <button id="table-popover-create-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Table_InsertTooltip" data-loc-attr="title" title="Insert table"><i class="bi bi-check-lg"></i></button>
+                <div class="table-popover-control-group">
+                    <label data-loc-key="NoteEditor_Table_ColumnsLabel">Columns</label>
+                    <button class="table-popover-spin-btn" id="table-cols-dec" data-loc-key="NoteEditor_Table_DecreaseColumns" data-loc-attr="title" title="Remove column"><i class="bi bi-dash"></i></button>
+                    <span id="table-cols-value" class="table-popover-spin-value">3</span>
+                    <button class="table-popover-spin-btn" id="table-cols-inc" data-loc-key="NoteEditor_Table_IncreaseColumns" data-loc-attr="title" title="Add column"><i class="bi bi-plus"></i></button>
                 </div>
             </div>
-            <!-- View mode: table info, row/column actions, toggle header, delete -->
-            <div id="table-popover-view-mode" class="popover-mode">
-                <div class="popover-field">
-                    <span class="popover-field-label" data-loc-key="NoteEditor_Table_SizeLabel">Size</span>
-                    <span id="table-view-info"></span>
-                </div>
-                <div class="table-popover-grid">
-                    <span class="table-popover-grid-label" data-loc-key="NoteEditor_Table_RowLabel">Row</span>
-                    <button id="table-add-row" class="table-popover-action-btn" data-loc-key="NoteEditor_Table_AddRowTooltip" data-loc-attr="title" title="Add row below"><i class="bi bi-plus table-popover-action-icon"></i> <span data-loc-key="NoteEditor_Table_Add">Add</span></button>
-                    <button id="table-delete-row" class="table-popover-action-btn table-popover-action-btn-danger" data-loc-key="NoteEditor_Table_DeleteRowTooltip" data-loc-attr="title" title="Delete current row"><i class="bi bi-dash table-popover-action-icon"></i> <span data-loc-key="NoteEditor_Table_Remove">Remove</span></button>
-                    <span class="table-popover-grid-label" data-loc-key="NoteEditor_Table_ColumnLabel">Column</span>
-                    <button id="table-add-col" class="table-popover-action-btn" data-loc-key="NoteEditor_Table_AddColumnTooltip" data-loc-attr="title" title="Add column to the right"><i class="bi bi-plus table-popover-action-icon"></i> <span data-loc-key="NoteEditor_Table_Add">Add</span></button>
-                    <button id="table-delete-col" class="table-popover-action-btn table-popover-action-btn-danger" data-loc-key="NoteEditor_Table_DeleteColumnTooltip" data-loc-attr="title" title="Delete current column"><i class="bi bi-dash table-popover-action-icon"></i> <span data-loc-key="NoteEditor_Table_Remove">Remove</span></button>
-                </div>
-                <div class="table-popover-footer-row">
-                    <button id="table-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Table_DeleteTooltip" data-loc-attr="title" title="Delete table"><i class="bi bi-trash3"></i></button>
-                    <div style="flex:1"></div>
-                    <label class="table-popover-checkbox">
-                        <input type="checkbox" id="table-toggle-header" />
-                        <span data-loc-key="NoteEditor_Table_HeaderRowLabel">Header row</span>
-                    </label>
-                </div>
+            <div class="table-popover-footer-row">
+                <button id="table-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Table_DeleteTooltip" data-loc-attr="title" title="Delete table"><i class="bi bi-trash3"></i></button>
+                <div style="flex:1"></div>
+                <label class="table-popover-checkbox">
+                    <input type="checkbox" id="table-header" checked />
+                    <span data-loc-key="NoteEditor_Table_HeaderRowLabel">Header row</span>
+                </label>
             </div>
         </div>
         <div id="editor"></div>

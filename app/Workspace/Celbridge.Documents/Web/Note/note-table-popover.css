@@ -35,7 +35,7 @@
     margin-bottom: 0;
 }
 
-/* Selected cell highlight */
+/* Selected cell highlight (drag selection) */
 .tiptap table .selectedCell {
     background: color-mix(in srgb, var(--accent-color) 15%, transparent);
 }
@@ -62,28 +62,22 @@
 /* Table popover — position and size overrides */
 #table-popover {
     position: fixed;
-    min-width: 320px;
-    max-width: 450px;
+    min-width: 280px;
+    max-width: 350px;
     overflow-y: auto;
 }
 
-#table-view-info {
-    font-size: 13px;
-    color: var(--text-primary);
-}
-
-/* Row/Column control row */
+/* Row/Column control rows - stacked vertically */
 .table-popover-control-row {
     display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: nowrap;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .table-popover-control-group {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .table-popover-control-group label {
@@ -92,21 +86,49 @@
     min-width: 60px;
 }
 
-.table-popover-control-group input[type="number"] {
-    width: 60px;
-    padding: 6px 8px;
+/* Spin buttons for row/column adjustment */
+.table-popover-spin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    text-align: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.1s, border-color 0.1s;
 }
 
-.table-popover-control-group input[type="number"]:focus {
+.table-popover-spin-btn:hover {
+    background: var(--hover-bg);
     border-color: var(--accent-color);
+}
+
+.table-popover-spin-btn:active {
+    background: var(--active-bg);
+}
+
+.table-popover-spin-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.table-popover-spin-btn .bi {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.table-popover-spin-value {
+    display: inline-block;
+    min-width: 28px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
 /* Checkbox styles */
@@ -129,61 +151,7 @@
     color: var(--text-primary);
 }
 
-/* Row/Column action grid: label + 2 buttons per row */
-.table-popover-grid {
-    display: grid;
-    grid-template-columns: auto 1fr 1fr;
-    gap: 4px;
-    align-items: center;
-}
-
-.table-popover-grid-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
-    padding-right: 8px;
-}
-
-.table-popover-action-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 28px;
-    padding: 0 10px;
-    border: none;
-    border-radius: 4px;
-    background: var(--hover-bg);
-    color: var(--text-primary);
-    cursor: pointer;
-    font-size: 12px;
-    font-family: inherit;
-    white-space: nowrap;
-    gap: 4px;
-}
-
-.table-popover-action-icon {
-    font-size: 12px;
-    line-height: 1;
-}
-
-.table-popover-action-btn:hover {
-    background: var(--active-bg);
-    color: var(--text-primary);
-}
-
-.table-popover-action-btn.active {
-    background: var(--accent-color);
-    color: white;
-}
-
-.table-popover-action-btn-danger:hover {
-    background: #dc2626;
-    color: white;
-}
-
-/* Footer row: header toggle + delete */
+/* Footer row: delete button + header toggle */
 .table-popover-footer-row {
     display: flex;
     align-items: center;
