@@ -18,6 +18,8 @@ let currentWrapperEl = null;
 let isNewImage = false;
 let originalAttrs = null;
 let isPickerOpen = false;
+let pendingPopoverOnSelect = false;
+let isApplyingAttrs = false;
 
 // ---------------------------------------------------------------------------
 // Image extension
@@ -112,10 +114,7 @@ export function createImageExtension(context) {
                     const sel = ed.state.selection;
                     const alreadySelected = sel.node != null && sel.from === pos;
 
-                    if (alreadySelected) {
-                        // Always show popover when clicking on already-selected image
-                        showPopoverForImage(wrapper, pos, node);
-                    } else {
+                    if (!alreadySelected) {
                         ed.chain().setNodeSelection(pos).run();
                     }
                 });
@@ -138,13 +137,18 @@ export function createImageExtension(context) {
                     selectNode() {
                         figure.classList.add('ProseMirror-selectednode');
                         img.classList.add('ProseMirror-selectednode');
-                        const pos = typeof getPos === 'function' ? getPos() : null;
-                        showPopoverForImage(wrapper, pos, node);
+                        if (pendingPopoverOnSelect) {
+                            pendingPopoverOnSelect = false;
+                            const pos = typeof getPos === 'function' ? getPos() : null;
+                            showPopoverForImage(wrapper, pos, node);
+                        }
                     },
                     deselectNode() {
                         figure.classList.remove('ProseMirror-selectednode');
                         img.classList.remove('ProseMirror-selectednode');
-                        hidePopover();
+                        if (!isApplyingAttrs) {
+                            hidePopover();
+                        }
                     },
                 };
             };
@@ -392,19 +396,40 @@ function applyAttrsToNode(attrsUpdate) {
     if (currentPos == null) return;
     const node = ctx.editor.state.doc.nodeAt(currentPos);
     if (!node || node.type.name !== 'image') return;
-    const tr = ctx.editor.state.tr.setNodeMarkup(currentPos, undefined, {
-        ...node.attrs,
-        ...attrsUpdate,
-    });
-    ctx.editor.view.dispatch(tr);
+    isApplyingAttrs = true;
+    try {
+        const tr = ctx.editor.state.tr.setNodeMarkup(currentPos, undefined, {
+            ...node.attrs,
+            ...attrsUpdate,
+        });
+        ctx.editor.view.dispatch(tr);
+    } finally {
+        isApplyingAttrs = false;
+    }
 }
 
 // ---------------------------------------------------------------------------
-// Insert image (toolbar button)
+// Toolbar entry point
 // ---------------------------------------------------------------------------
 
-export function insertImage() {
-    ctx.editor.chain().focus().setImage({ src: '' }).run();
+export function toggleImage() {
+    if (imagePopoverEl.classList.contains('visible')) {
+        hidePopover();
+        return;
+    }
+
+    const { state } = ctx.editor;
+    const { selection } = state;
+
+    if (selection.node && selection.node.type.name === 'image') {
+        const pos = selection.from;
+        const domNode = ctx.editor.view.nodeDOM(pos);
+        const wrapperEl = domNode?.closest?.('.image-node-wrapper') || domNode;
+        showPopoverForImage(wrapperEl, pos, selection.node);
+    } else {
+        pendingPopoverOnSelect = true;
+        ctx.editor.chain().focus().setImage({ src: '' }).run();
+    }
 }
 
 // ---------------------------------------------------------------------------

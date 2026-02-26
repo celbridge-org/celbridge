@@ -4,7 +4,7 @@
 import { Editor, StarterKit, Underline, Link, Placeholder } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
-import { createImageExtension, init as initImagePopover, insertImage, onPickImageResourceResult } from './note-image-popover.js';
+import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink, onPickLinkResourceResult } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
 
@@ -149,6 +149,7 @@ function updateToolbar() {
             case 'blockquote': isActive = editor.isActive('blockquote'); break;
             case 'codeBlock': isActive = editor.isActive('codeBlock'); break;
             case 'link': isActive = editor.isActive('link'); break;
+            case 'image': isActive = editor.state.selection.node?.type.name === 'image'; break;
             case 'table': isActive = editor.isActive('table'); break;
         }
 
@@ -181,7 +182,7 @@ toolbarEl.addEventListener('click', (e) => {
         case 'codeBlock': editor.chain().focus().toggleCodeBlock().run(); break;
         case 'horizontalRule': editor.chain().focus().setHorizontalRule().run(); break;
         case 'link': toggleLink(); break;
-        case 'image': insertImage(); break;
+        case 'image': toggleImage(); break;
         case 'table': toggleTable(); break;
         case 'undo': editor.chain().focus().undo().run(); break;
         case 'redo': editor.chain().focus().redo().run(); break;
