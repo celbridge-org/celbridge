@@ -14,7 +14,6 @@ let rowsDecBtn = null;
 let rowsIncBtn = null;
 let colsDecBtn = null;
 let colsIncBtn = null;
-let headerCheckboxEl = null;
 let isNewTable = false;
 
 const MIN_ROWS = 1;
@@ -28,7 +27,7 @@ const MAX_COLS = 20;
 
 export function createTableExtensions() {
     return [
-        Table.configure({ resizable: true, lastColumnResizable: false }),
+        Table.configure({ resizable: false }),
         TableRow,
         TableCell,
         TableHeader,
@@ -50,7 +49,6 @@ export function init(context) {
     rowsIncBtn = document.getElementById('table-rows-inc');
     colsDecBtn = document.getElementById('table-cols-dec');
     colsIncBtn = document.getElementById('table-cols-inc');
-    headerCheckboxEl = document.getElementById('table-header');
 
     // Prevent mousedown inside popover from stealing focus
     tablePopoverEl.addEventListener('mousedown', (e) => {
@@ -74,32 +72,11 @@ export function init(context) {
         if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
     });
 
-    // Header toggle
-    headerCheckboxEl.addEventListener('change', () => {
-        ctx.editor.chain().focus().toggleHeaderRow().run();
-        refreshPopover();
-    });
-
     // Delete table
     document.getElementById('table-delete').addEventListener('click', () => {
         ctx.editor.chain().focus().deleteTable().run();
         hidePopover();
     });
-
-    // Track active column-resize drag to suppress the fade-in animation
-    const editorEl = document.querySelector('.tiptap');
-    if (editorEl) {
-        editorEl.addEventListener('mousedown', () => {
-            if (editorEl.classList.contains('resize-cursor')) {
-                editorEl.classList.add('col-resizing');
-                const onUp = () => {
-                    editorEl.classList.remove('col-resizing');
-                    document.removeEventListener('mouseup', onUp);
-                };
-                document.addEventListener('mouseup', onUp);
-            }
-        });
-    }
 
     // Dismiss on scroll, resize, click outside, or window blur
     setupDismiss(editorWrapper, tablePopoverEl, hidePopover, (e) => {
@@ -128,7 +105,6 @@ function refreshPopover() {
 
     rowsValueEl.textContent = info.dataRows;
     colsValueEl.textContent = info.cols;
-    headerCheckboxEl.checked = info.hasHeader;
 
     // Update button states
     rowsDecBtn.disabled = info.dataRows <= MIN_ROWS;

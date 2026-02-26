@@ -24,47 +24,22 @@
     background: var(--code-bg);
 }
 
-.tiptap figure {
-    display: block;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-}
-
-.tiptap figure img {
-    margin-top: 0;
-    margin-bottom: 0;
-}
-
-.tiptap figcaption {
-    text-align: center;
-    font-size: 0.85em;
-    color: var(--text-secondary);
-    margin-top: 0.35em;
-    font-style: italic;
-}
-
 .image-node-wrapper {
     display: block;
     margin-top: 0.5em;
     margin-bottom: 0.5em;
 }
 
-.image-node-wrapper figure {
-    margin-top: 0;
-    margin-bottom: 0;
-}
-
 /* Image popover — position and size overrides */
 #image-popover {
     position: fixed;
-    min-width: 420px;
-    max-width: 560px;
+    min-width: 320px;
+    max-width: 460px;
     overflow-y: auto;
 }
 
-/* Source and caption inputs */
-#image-popover-src-input,
-#image-popover-caption-input {
+/* Source input */
+#image-popover-src-input {
     padding: 8px 10px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -77,13 +52,11 @@
     box-sizing: border-box;
 }
 
-#image-popover-src-input:focus,
-#image-popover-caption-input:focus {
+#image-popover-src-input:focus {
     border-color: var(--accent-color);
 }
 
-#image-popover-src-input::placeholder,
-#image-popover-caption-input::placeholder {
+#image-popover-src-input::placeholder {
     color: var(--placeholder-color);
 }
 
@@ -102,89 +75,4 @@
 
 #image-popover-src-browse {
     flex-shrink: 0;
-}
-
-/* Layout row: size buttons + custom input + separator + align buttons */
-.img-popover-layout-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: nowrap;
-}
-
-/* Separator between size and align button groups */
-.img-popover-separator {
-    width: 1px;
-    height: 20px;
-    background: var(--border-color);
-    margin: 0 6px;
-}
-
-.img-popover-size-btn,
-.img-popover-align-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 28px;
-    padding: 0 8px;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text-primary);
-    cursor: pointer;
-    font-size: 12px;
-    font-family: inherit;
-    flex-shrink: 0;
-}
-
-.img-popover-align-btn {
-    width: 36px;
-    padding: 0;
-    font-size: 15px;
-}
-
-.img-popover-size-btn:hover,
-.img-popover-align-btn:hover {
-    background: var(--hover-bg);
-    color: var(--text-primary);
-}
-
-.img-popover-size-btn.active,
-.img-popover-align-btn.active {
-    background: var(--accent-color);
-    color: white;
-}
-
-/* Custom size wrapper - always visible */
-.img-popover-custom-size-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    margin-left: 4px;
-    padding-left: 6px;
-    border-left: 1px solid var(--border-color);
-}
-
-.img-popover-custom-size-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-/* Custom size input in the layout row */
-#image-popover-custom-size-input {
-    width: 42px;
-    padding: 5px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-size: 12px;
-    font-family: inherit;
-    outline: none;
-    text-align: center;
-    box-sizing: border-box;
-}
-
-#image-popover-custom-size-input:focus {
-    border-color: var(--accent-color);
 }

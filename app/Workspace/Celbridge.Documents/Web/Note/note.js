@@ -1,7 +1,7 @@
 // Note editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
-import { Editor, StarterKit, Underline, Link, Placeholder, Highlight } from './lib/tiptap.js';
+import { Editor, StarterKit, Link, Placeholder, Markdown } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './note-image-popover.js';
@@ -66,15 +66,23 @@ const editor = new Editor({
         attributes: {
             class: 'tiptap',
         },
+        handleDOMEvents: {
+            click: (view, event) => {
+                if (event.target.closest('a')) {
+                    event.preventDefault();
+                }
+                return false;
+            },
+        },
     },
     extensions: [
         StarterKit,
-        Underline,
-        Highlight,
+        Markdown,
         Link.configure({
             openOnClick: false,
             autolink: true,
             HTMLAttributes: {
+                target: null,
                 rel: 'noopener noreferrer nofollow',
             },
         }),
@@ -141,10 +149,8 @@ function updateToolbar() {
         switch (action) {
             case 'bold': isActive = editor.isActive('bold'); break;
             case 'italic': isActive = editor.isActive('italic'); break;
-            case 'underline': isActive = editor.isActive('underline'); break;
             case 'strike': isActive = editor.isActive('strike'); break;
             case 'code': isActive = editor.isActive('code'); break;
-            case 'highlight': isActive = editor.isActive('highlight'); break;
             case 'heading1': isActive = editor.isActive('heading', { level: 1 }); break;
             case 'heading2': isActive = editor.isActive('heading', { level: 2 }); break;
             case 'heading3': isActive = editor.isActive('heading', { level: 3 }); break;
@@ -262,10 +268,8 @@ toolbarEl.addEventListener('click', (e) => {
     switch (action) {
         case 'bold': editor.chain().focus().toggleBold().run(); break;
         case 'italic': editor.chain().focus().toggleItalic().run(); break;
-        case 'underline': editor.chain().focus().toggleUnderline().run(); break;
         case 'strike': editor.chain().focus().toggleStrike().run(); break;
         case 'code': editor.chain().focus().toggleCode().run(); break;
-        case 'highlight': editor.chain().focus().toggleHighlight().run(); break;
         case 'heading1': editor.chain().focus().toggleHeading({ level: 1 }).run(); break;
         case 'heading2': editor.chain().focus().toggleHeading({ level: 2 }).run(); break;
         case 'heading3': editor.chain().focus().toggleHeading({ level: 3 }).run(); break;
@@ -323,9 +327,9 @@ if (window.chrome && window.chrome.webview) {
                     if (msg.payload.projectBaseUrl) {
                         projectBaseUrl = msg.payload.projectBaseUrl;
                     }
-                    const doc = JSON.parse(msg.payload.content);
-                    resolveDocImageSrcs(doc);
-                    editor.commands.setContent(doc);
+                    let content = msg.payload.content || '';
+                    content = content.replace(/&nbsp;/g, '');
+                    editor.commands.setContent(content, { contentType: 'markdown' });
                 } catch (e) {
                     console.error('[Note] Failed to load doc:', e);
                 }
@@ -333,12 +337,11 @@ if (window.chrome && window.chrome.webview) {
                 break;
             }
             case 'request-save': {
-                const doc = editor.getJSON();
-                unresolveDocImageSrcs(doc);
-                const docJson = JSON.stringify(doc);
+                let markdown = editor.getMarkdown();
+                markdown = markdown.replace(/&nbsp;/g, '');
                 sendMessage({
                     type: 'save-response',
-                    payload: { content: docJson }
+                    payload: { content: markdown }
                 });
                 break;
             }
@@ -356,27 +359,6 @@ if (window.chrome && window.chrome.webview) {
 
 // Show UI after initialization
 toolbarEl.classList.add('visible');
-
-// Document tree traversal for image src resolution
-function resolveDocImageSrcs(node) {
-    if (!node) return;
-    if (node.type === 'image' && node.attrs && node.attrs.src) {
-        node.attrs.src = resolveImageSrc(node.attrs.src);
-    }
-    if (node.content) {
-        node.content.forEach(resolveDocImageSrcs);
-    }
-}
-
-function unresolveDocImageSrcs(node) {
-    if (!node) return;
-    if (node.type === 'image' && node.attrs && node.attrs.src) {
-        node.attrs.src = unresolveImageSrc(node.attrs.src);
-    }
-    if (node.content) {
-        node.content.forEach(unresolveDocImageSrcs);
-    }
-}
 
 // Main toolbar resize observer
 new ResizeObserver(() => {

@@ -48,35 +48,6 @@
     border: 2px solid var(--accent-color);
 }
 
-/* Column resize handle — delayed fade-in to avoid flicker on casual mouse movement */
-.tiptap .column-resize-handle {
-    position: absolute;
-    right: -2px;
-    top: 0;
-    bottom: -2px;
-    width: 4px;
-    background-color: var(--accent-color);
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0;
-    animation: colResizeHandleFadeIn 0.15s ease-in 0.3s forwards;
-}
-
-/* When actively dragging, show the handle immediately without replaying the animation */
-.tiptap.col-resizing .column-resize-handle {
-    animation: none;
-    opacity: 1;
-}
-
-@keyframes colResizeHandleFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.tiptap.resize-cursor {
-    cursor: col-resize;
-}
-
 /* Table wrapper for selection */
 .tiptap .tableWrapper {
     margin-top: 0.75em;
@@ -160,27 +131,7 @@
     color: var(--text-primary);
 }
 
-/* Checkbox styles */
-.table-popover-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.table-popover-checkbox input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    accent-color: var(--accent-color);
-}
-
-.table-popover-checkbox span {
-    font-size: 13px;
-    color: var(--text-primary);
-}
-
-/* Footer row: delete button + header toggle */
+/* Footer row: delete button */
 .table-popover-footer-row {
     display: flex;
     align-items: center;

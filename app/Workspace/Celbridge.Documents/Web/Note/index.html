@@ -21,10 +21,8 @@
         <div class="toolbar-group">
             <button class="toolbar-btn" data-action="bold" data-loc-key="NoteEditor_Toolbar_Bold" data-loc-attr="title"><i class="bi bi-type-bold"></i></button>
             <button class="toolbar-btn" data-action="italic" data-loc-key="NoteEditor_Toolbar_Italic" data-loc-attr="title"><i class="bi bi-type-italic"></i></button>
-            <button class="toolbar-btn" data-action="underline" data-loc-key="NoteEditor_Toolbar_Underline" data-loc-attr="title"><i class="bi bi-type-underline"></i></button>
             <button class="toolbar-btn" data-action="strike" data-loc-key="NoteEditor_Toolbar_Strikethrough" data-loc-attr="title"><i class="bi bi-type-strikethrough"></i></button>
             <button class="toolbar-btn" data-action="code" data-loc-key="NoteEditor_Toolbar_InlineCode" data-loc-attr="title"><i class="bi bi-code-slash"></i></button>
-            <button class="toolbar-btn" data-action="highlight" data-loc-key="NoteEditor_Toolbar_Highlight" data-loc-attr="title"><i class="bi bi-highlighter"></i></button>
         </div>
         <div class="toolbar-separator"></div>
         <div class="toolbar-group">
@@ -73,31 +71,12 @@
                 <i class="bi bi-image popover-icon"></i>
                 <span data-loc-key="NoteEditor_Image_Header"></span>
             </div>
-            <!-- Size and align buttons on the same row with separator -->
-            <div class="img-popover-layout-row">
-                <button class="img-popover-size-btn" data-img-action="size-25" data-loc-key="NoteEditor_Image_Size25" data-loc-attr="title">25%</button>
-                <button class="img-popover-size-btn" data-img-action="size-50" data-loc-key="NoteEditor_Image_Size50" data-loc-attr="title">50%</button>
-                <button class="img-popover-size-btn" data-img-action="size-75" data-loc-key="NoteEditor_Image_Size75" data-loc-attr="title">75%</button>
-                <button class="img-popover-size-btn" data-img-action="size-100" data-loc-key="NoteEditor_Image_SizeFull" data-loc-attr="title">100%</button>
-                <div class="img-popover-custom-size-wrapper">
-                    <input type="text" id="image-popover-custom-size-input" data-loc-key="NoteEditor_Image_CustomSizeTooltip" data-loc-attr="title" placeholder="%" />
-                    <span class="img-popover-custom-size-label">%</span>
-                </div>
-                <div class="img-popover-separator"></div>
-                <button class="img-popover-align-btn" data-img-action="align-left" data-loc-key="NoteEditor_Image_AlignLeft" data-loc-attr="title"><i class="bi bi-text-left"></i></button>
-                <button class="img-popover-align-btn" data-img-action="align-center" data-loc-key="NoteEditor_Image_AlignCenter" data-loc-attr="title"><i class="bi bi-text-center"></i></button>
-                <button class="img-popover-align-btn" data-img-action="align-right" data-loc-key="NoteEditor_Image_AlignRight" data-loc-attr="title"><i class="bi bi-text-right"></i></button>
-            </div>
             <div class="popover-field">
                 <label class="popover-field-label" for="image-popover-src-input" data-loc-key="NoteEditor_Image_SourceLabel"></label>
                 <div class="img-popover-src-row">
                     <input type="text" id="image-popover-src-input" data-loc-key="NoteEditor_Image_SrcPlaceholder" data-loc-attr="placeholder" />
                     <button id="image-popover-src-browse" class="popover-btn" data-loc-key="NoteEditor_Image_BrowseTooltip" data-loc-attr="title"><i class="bi bi-three-dots"></i></button>
                 </div>
-            </div>
-            <div class="popover-field">
-                <label class="popover-field-label" for="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionLabel"></label>
-                <input type="text" id="image-popover-caption-input" data-loc-key="NoteEditor_Image_CaptionPlaceholder" data-loc-attr="placeholder" />
             </div>
             <div class="popover-footer-row">
                 <button id="image-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Image_DeleteTooltip" data-loc-attr="title"><i class="bi bi-trash3"></i></button>
@@ -142,11 +121,6 @@
             </div>
             <div class="table-popover-footer-row">
                 <button id="table-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Table_DeleteTooltip" data-loc-attr="title"><i class="bi bi-trash3"></i></button>
-                <div style="flex:1"></div>
-                <label class="table-popover-checkbox">
-                    <input type="checkbox" id="table-header" checked />
-                    <span data-loc-key="NoteEditor_Table_HeaderRowLabel"></span>
-                </label>
             </div>
         </div>
         <div id="editor"></div>

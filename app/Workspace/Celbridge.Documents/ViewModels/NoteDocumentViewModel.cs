@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -75,9 +73,9 @@ public partial class NoteDocumentViewModel : DocumentViewModel
     {
         try
         {
-            await EnsureNoteFileAsync();
-
             UpdateFileTrackingInfo();
+
+            await Task.CompletedTask;
 
             return Result.Ok();
         }
@@ -88,30 +86,15 @@ public partial class NoteDocumentViewModel : DocumentViewModel
         }
     }
 
-    public async Task<string> LoadNoteDocJson()
+    public async Task<string> LoadNoteContent()
     {
-        var fileContent = await File.ReadAllTextAsync(FilePath);
-
-        if (string.IsNullOrWhiteSpace(fileContent))
+        if (!File.Exists(FilePath))
         {
-            return GetDefaultDocJson();
+            return string.Empty;
         }
 
-        try
-        {
-            var envelope = JsonNode.Parse(fileContent);
-            var doc = envelope?["doc"];
-            if (doc is null)
-            {
-                return GetDefaultDocJson();
-            }
-
-            return doc.ToJsonString();
-        }
-        catch
-        {
-            return GetDefaultDocJson();
-        }
+        var content = await File.ReadAllTextAsync(FilePath);
+        return content ?? string.Empty;
     }
 
     public async Task<Result> SaveDocument()
@@ -125,52 +108,11 @@ public partial class NoteDocumentViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    public async Task<Result> SaveNoteToFile(string docJsonString)
+    public async Task<Result> SaveNoteToFile(string markdownContent)
     {
         try
         {
-            var docNode = JsonNode.Parse(docJsonString);
-
-            // Try to read existing envelope to preserve created timestamp
-            string? existingCreated = null;
-            if (File.Exists(FilePath))
-            {
-                try
-                {
-                    var existing = await File.ReadAllTextAsync(FilePath);
-                    if (!string.IsNullOrWhiteSpace(existing))
-                    {
-                        var existingEnvelope = JsonNode.Parse(existing);
-                        existingCreated = existingEnvelope?["meta"]?["created"]?.GetValue<string>();
-                    }
-                }
-                catch
-                {
-                    // Ignore errors reading existing file
-                }
-            }
-
-            var now = DateTime.UtcNow.ToString("o");
-            var created = existingCreated ?? now;
-            var title = ExtractTitle(docNode);
-
-            var envelope = new JsonObject
-            {
-                ["format"] = "note",
-                ["version"] = 1,
-                ["doc"] = docNode,
-                ["meta"] = new JsonObject
-                {
-                    ["title"] = title,
-                    ["created"] = created,
-                    ["modified"] = now
-                }
-            };
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = envelope.ToJsonString(options);
-
-            await File.WriteAllTextAsync(FilePath, json);
+            await File.WriteAllTextAsync(FilePath, markdownContent);
 
             var message = new DocumentSaveCompletedMessage(FileResource);
             _messengerService.Send(message);
@@ -187,77 +129,5 @@ public partial class NoteDocumentViewModel : DocumentViewModel
     public void Cleanup()
     {
         _messengerService.UnregisterAll(this);
-    }
-
-    private async Task EnsureNoteFileAsync()
-    {
-        if (!File.Exists(FilePath))
-        {
-            return;
-        }
-
-        var content = await File.ReadAllTextAsync(FilePath);
-        if (!string.IsNullOrWhiteSpace(content))
-        {
-            return;
-        }
-
-        // File is empty, write default envelope
-        var now = DateTime.UtcNow.ToString("o");
-
-        var envelope = new JsonObject
-        {
-            ["format"] = "note",
-            ["version"] = 1,
-            ["doc"] = JsonNode.Parse(GetDefaultDocJson()),
-            ["meta"] = new JsonObject
-            {
-                ["title"] = "Untitled",
-                ["created"] = now,
-                ["modified"] = now
-            }
-        };
-
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        await File.WriteAllTextAsync(FilePath, envelope.ToJsonString(options));
-    }
-
-    private static string GetDefaultDocJson()
-    {
-        return """{"type":"doc","content":[{"type":"paragraph"}]}""";
-    }
-
-    private static string ExtractTitle(JsonNode? docNode)
-    {
-        try
-        {
-            var content = docNode?["content"]?.AsArray();
-            if (content is null)
-            {
-                return "Untitled";
-            }
-
-            foreach (var node in content)
-            {
-                if (node?["type"]?.GetValue<string>() == "heading")
-                {
-                    var textContent = node["content"]?.AsArray();
-                    if (textContent != null && textContent.Count > 0)
-                    {
-                        var text = textContent[0]?["text"]?.GetValue<string>();
-                        if (!string.IsNullOrWhiteSpace(text))
-                        {
-                            return text;
-                        }
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // Ignore errors extracting title
-        }
-
-        return "Untitled";
     }
 }

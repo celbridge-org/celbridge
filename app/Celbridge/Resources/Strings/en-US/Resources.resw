@@ -872,17 +872,11 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Toolbar_Italic" xml:space="preserve">
     <value>Italic (Ctrl+I)</value>
   </data>
-  <data name="NoteEditor_Toolbar_Underline" xml:space="preserve">
-    <value>Underline (Ctrl+U)</value>
-  </data>
   <data name="NoteEditor_Toolbar_Strikethrough" xml:space="preserve">
     <value>Strikethrough</value>
   </data>
   <data name="NoteEditor_Toolbar_InlineCode" xml:space="preserve">
     <value>Inline Code</value>
-  </data>
-  <data name="NoteEditor_Toolbar_Highlight" xml:space="preserve">
-    <value>Highlight</value>
   </data>
   <data name="NoteEditor_Toolbar_Heading1" xml:space="preserve">
     <value>Heading 1</value>
@@ -935,47 +929,17 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Image_Header" xml:space="preserve">
     <value>Image</value>
   </data>
-  <data name="NoteEditor_Image_Size25" xml:space="preserve">
-    <value>25% width</value>
-  </data>
-  <data name="NoteEditor_Image_Size75" xml:space="preserve">
-    <value>75% width</value>
-  </data>
-  <data name="NoteEditor_Image_Size50" xml:space="preserve">
-    <value>50% width</value>
-  </data>
-  <data name="NoteEditor_Image_SizeFull" xml:space="preserve">
-    <value>Full width</value>
-  </data>
-  <data name="NoteEditor_Image_CustomSizeTooltip" xml:space="preserve">
-    <value>Enter image width as a percentage (1–100)</value>
-  </data>
-  <data name="NoteEditor_Image_AlignLeft" xml:space="preserve">
-    <value>Align left</value>
-  </data>
-  <data name="NoteEditor_Image_AlignCenter" xml:space="preserve">
-    <value>Align center</value>
-  </data>
-  <data name="NoteEditor_Image_AlignRight" xml:space="preserve">
-    <value>Align right</value>
-  </data>
   <data name="NoteEditor_Image_SourceLabel" xml:space="preserve">
     <value>Source</value>
   </data>
   <data name="NoteEditor_Image_EditTooltip" xml:space="preserve">
-    <value>Edit source and caption</value>
+    <value>Edit source</value>
   </data>
   <data name="NoteEditor_Image_DeleteTooltip" xml:space="preserve">
     <value>Delete image</value>
   </data>
-  <data name="NoteEditor_Image_CaptionLabel" xml:space="preserve">
-    <value>Caption</value>
-  </data>
   <data name="NoteEditor_Image_SrcPlaceholder" xml:space="preserve">
     <value>URL or resource key...</value>
-  </data>
-  <data name="NoteEditor_Image_CaptionPlaceholder" xml:space="preserve">
-    <value>Optional caption text...</value>
   </data>
   <data name="NoteEditor_Image_ConfirmTooltip" xml:space="preserve">
     <value>Accept changes</value>
@@ -1033,9 +997,6 @@ Do you wish to continue?</value>
   </data>
   <data name="NoteEditor_Table_ColumnsLabel" xml:space="preserve">
     <value>Columns</value>
-  </data>
-  <data name="NoteEditor_Table_HeaderRowLabel" xml:space="preserve">
-    <value>Header row</value>
   </data>
   <data name="NoteEditor_Table_InsertTooltip" xml:space="preserve">
     <value>Insert table</value>

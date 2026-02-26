@@ -123,27 +123,38 @@ public sealed partial class NoteDocumentView : DocumentView
             ApplyThemeToWebView(webView);
 
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+            var settings = webView.CoreWebView2.Settings;
+            settings.AreDevToolsEnabled = false;
+            settings.AreDefaultContextMenusEnabled = true;
 
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
 
-            // Open external links in system browser
+            // Cancel all navigations except the initial editor page load.
+            // Link handling is done via JS popover and explicit 'link-clicked' messages.
             webView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
-                if (uri != null && !uri.StartsWith("https://note.celbridge"))
+                if (string.IsNullOrEmpty(uri))
                 {
-                    args.Cancel = true;
-                    OpenSystemBrowser(uri);
+                    return;
                 }
+
+                // Allow only the initial editor page load
+                if (uri.StartsWith("https://note.celbridge/index.html"))
+                {
+                    return;
+                }
+
+                // Cancel all other navigations - the editor should never navigate away
+                args.Cancel = true;
             };
 
+            // Block all new window requests - links are handled via JS popover
             webView.CoreWebView2.NewWindowRequested += (s, args) =>
             {
                 args.Handled = true;
-                var uri = args.Uri;
-                OpenSystemBrowser(uri);
             };
 
             webView.GotFocus += WebView_GotFocus;
@@ -228,10 +239,10 @@ public sealed partial class NoteDocumentView : DocumentView
 
         try
         {
-            var docJson = await ViewModel.LoadNoteDocJson();
+            var content = await ViewModel.LoadNoteContent();
             var projectBaseUrl = "https://project.celbridge/";
 
-            SendMessageToJS(new { type = "load-doc", payload = new { content = docJson, projectBaseUrl } });
+            SendMessageToJS(new { type = "load-doc", payload = new { content, projectBaseUrl } });
 
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.WebMessageReceived += WebView_WebMessageReceived;
@@ -459,9 +470,9 @@ public sealed partial class NoteDocumentView : DocumentView
         }
     }
 
-    private async Task SaveNoteContent(string docJson)
+    private async Task SaveNoteContent(string markdownContent)
     {
-        var saveResult = await ViewModel.SaveNoteToFile(docJson);
+        var saveResult = await ViewModel.SaveNoteToFile(markdownContent);
 
         if (saveResult.IsFailure)
         {
