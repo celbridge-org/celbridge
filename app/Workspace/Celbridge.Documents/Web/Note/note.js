@@ -11,6 +11,9 @@ import { createTableExtensions, init as initTablePopover, toggleTable } from './
 // DOM elements
 const toolbarEl = document.getElementById('toolbar');
 const editorEl = document.getElementById('editor');
+const tocPanel = document.getElementById('toc-panel');
+const tocList = document.getElementById('toc-list');
+const tocEmpty = document.getElementById('toc-empty');
 
 // State
 let changeTimer = null;
@@ -151,6 +154,7 @@ function updateToolbar() {
             case 'link': isActive = editor.isActive('link'); break;
             case 'image': isActive = editor.state.selection.node?.type.name === 'image'; break;
             case 'table': isActive = editor.isActive('table'); break;
+            case 'toc': isActive = tocPanel.classList.contains('visible'); break;
         }
 
         btn.classList.toggle('active', isActive);
@@ -158,6 +162,93 @@ function updateToolbar() {
 
     updateToolbarSeparators();
 }
+
+// Table of Contents
+let tocUpdatePending = false;
+
+function scheduleTocUpdate() {
+    if (!tocPanel.classList.contains('visible') || tocUpdatePending) return;
+    tocUpdatePending = true;
+    requestAnimationFrame(() => {
+        tocUpdatePending = false;
+        updateToc();
+    });
+}
+
+function updateToc() {
+    if (!tocPanel.classList.contains('visible')) return;
+
+    const headings = [];
+    editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+            headings.push({
+                level: node.attrs.level,
+                text: node.textContent,
+                pos: pos,
+            });
+        }
+    });
+
+    tocList.innerHTML = '';
+    tocEmpty.classList.toggle('visible', headings.length === 0);
+
+    headings.forEach((h) => {
+        const btn = document.createElement('button');
+        btn.className = 'toc-item';
+        btn.dataset.level = h.level;
+        btn.textContent = h.text || '(empty heading)';
+        btn.title = h.text || '(empty heading)';
+        btn.addEventListener('click', () => {
+            editor.chain().focus().setTextSelection(h.pos + 1).run();
+            const domPos = editor.view.domAtPos(h.pos + 1);
+            const el = domPos.node.nodeType === 1 ? domPos.node : domPos.node.parentElement;
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+        tocList.appendChild(btn);
+    });
+
+    highlightActiveTocItem();
+}
+
+function highlightActiveTocItem() {
+    if (!tocPanel.classList.contains('visible')) return;
+
+    const { from } = editor.state.selection;
+    const items = tocList.querySelectorAll('.toc-item');
+    let activeIndex = -1;
+
+    const headings = [];
+    editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+            headings.push(pos);
+        }
+    });
+
+    for (let i = headings.length - 1; i >= 0; i--) {
+        if (from >= headings[i]) {
+            activeIndex = i;
+            break;
+        }
+    }
+
+    items.forEach((item, idx) => {
+        item.classList.toggle('active', idx === activeIndex);
+    });
+}
+
+function toggleToc() {
+    tocPanel.classList.toggle('visible');
+    if (tocPanel.classList.contains('visible')) {
+        updateToc();
+    }
+    updateToolbar();
+}
+
+document.getElementById('toc-close').addEventListener('click', () => {
+    toggleToc();
+});
 
 // Main toolbar click handler
 toolbarEl.addEventListener('click', (e) => {
@@ -184,14 +275,23 @@ toolbarEl.addEventListener('click', (e) => {
         case 'link': toggleLink(); break;
         case 'image': toggleImage(); break;
         case 'table': toggleTable(); break;
+        case 'toc': toggleToc(); break;
         case 'undo': editor.chain().focus().undo().run(); break;
         case 'redo': editor.chain().focus().redo().run(); break;
     }
 });
 
 // Toolbar state listeners
-editor.on('selectionUpdate', updateToolbar);
-editor.on('transaction', updateToolbar);
+editor.on('selectionUpdate', () => {
+    updateToolbar();
+    highlightActiveTocItem();
+});
+editor.on('transaction', ({ transaction }) => {
+    updateToolbar();
+    if (transaction.docChanged) {
+        scheduleTocUpdate();
+    }
+});
 
 // WebView2 message handling
 if (window.chrome && window.chrome.webview) {

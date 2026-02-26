@@ -10,9 +10,14 @@
     <link rel="stylesheet" href="note-image-popover.css">
     <link rel="stylesheet" href="note-link-popover.css">
     <link rel="stylesheet" href="note-table-popover.css">
+    <link rel="stylesheet" href="note-toc.css">
 </head>
 <body>
     <div id="toolbar">
+        <div class="toolbar-group">
+            <button class="toolbar-btn" data-action="toc" data-loc-key="NoteEditor_Toolbar_TableOfContents" data-loc-attr="title" title="Table of Contents"><i class="bi bi-list-nested"></i></button>
+        </div>
+        <div class="toolbar-separator"></div>
         <div class="toolbar-group">
             <button class="toolbar-btn" data-action="bold" data-loc-key="NoteEditor_Toolbar_Bold" data-loc-attr="title" title="Bold (Ctrl+B)"><i class="bi bi-type-bold"></i></button>
             <button class="toolbar-btn" data-action="italic" data-loc-key="NoteEditor_Toolbar_Italic" data-loc-attr="title" title="Italic (Ctrl+I)"><i class="bi bi-type-italic"></i></button>
@@ -51,6 +56,16 @@
         </div>
     </div>
 
+    <div id="content-area">
+    <div id="toc-panel">
+        <div id="toc-header">
+            <i class="bi bi-list-nested toc-header-icon"></i>
+            <span data-loc-key="NoteEditor_TOC_Header">Table of Contents</span>
+            <button id="toc-close" data-loc-key="NoteEditor_TOC_CloseTooltip" data-loc-attr="title" title="Close"><i class="bi bi-x"></i></button>
+        </div>
+        <div id="toc-list"></div>
+        <div id="toc-empty" data-loc-key="NoteEditor_TOC_Empty">No headings found</div>
+    </div>
     <div id="editor-wrapper">
         <div id="image-popover" class="popover">
             <div class="popover-header">
@@ -136,6 +151,7 @@
         <div id="editor"></div>
     </div>
 
+    </div>
     <script type="module" src="note.js"></script>
 </body>
 </html>
