@@ -15,6 +15,7 @@ let currentSelectionRange = null;
 let originalHref = '';
 let isExistingLink = false;
 let isPickerOpen = false;
+let createModeRange = null;
 
 export function init(context) {
     ctx = context;
@@ -47,6 +48,38 @@ export function init(context) {
             }
         } else {
             showPopoverForLink(link);
+        }
+    });
+
+    // Live-apply link as the user types during create mode
+    linkInputEl.addEventListener('input', () => {
+        const href = linkInputEl.value.trim();
+        updateButtonStates(href);
+
+        if (createModeRange) {
+            if (href) {
+                ctx.editor.chain()
+                    .setTextSelection(createModeRange)
+                    .setLink({ href })
+                    .run();
+
+                if (!isExistingLink) {
+                    isExistingLink = true;
+                    const domAtPos = ctx.editor.view.domAtPos(createModeRange.from);
+                    if (domAtPos.node.nodeType === Node.TEXT_NODE) {
+                        currentLinkEl = domAtPos.node.parentElement?.closest('a');
+                    } else {
+                        currentLinkEl = domAtPos.node.closest?.('a') || domAtPos.node.querySelector?.('a');
+                    }
+                }
+            } else if (isExistingLink) {
+                ctx.editor.chain()
+                    .setTextSelection(createModeRange)
+                    .unsetLink()
+                    .run();
+                isExistingLink = false;
+                currentLinkEl = null;
+            }
         }
     });
 
@@ -98,12 +131,12 @@ function showPopoverForLink(linkEl) {
 
     currentLinkEl = linkEl;
     currentSelectionRange = null;
+    createModeRange = null;
     isExistingLink = true;
     originalHref = linkEl.getAttribute('href') || '';
 
     linkInputEl.value = originalHref;
-    deleteBtnEl.style.display = '';
-    openBtnEl.style.display = '';
+    updateButtonStates(originalHref);
 
     linkPopoverEl.classList.add('visible');
 
@@ -140,13 +173,13 @@ export function showPopoverForSelection() {
     if (trimmedFrom >= trimmedTo) return false;
 
     currentSelectionRange = { from: trimmedFrom, to: trimmedTo };
+    createModeRange = { from: trimmedFrom, to: trimmedTo };
     currentLinkEl = null;
     isExistingLink = false;
     originalHref = '';
     linkInputEl.value = '';
 
-    deleteBtnEl.style.display = 'none';
-    openBtnEl.style.display = 'none';
+    updateButtonStates('');
 
     linkPopoverEl.classList.add('visible');
 
@@ -169,14 +202,9 @@ function applyAndClose() {
 
     const href = linkInputEl.value.trim();
 
-    if (!isExistingLink && currentSelectionRange) {
-        if (href) {
-            ctx.editor.chain()
-                .focus()
-                .setTextSelection(currentSelectionRange)
-                .setLink({ href })
-                .run();
-        }
+    if (createModeRange) {
+        // Link was already applied live during input; just focus and close
+        ctx.editor.commands.focus();
     } else if (isExistingLink && currentLinkEl) {
         if (href === '') {
             ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -189,12 +217,23 @@ function applyAndClose() {
 }
 
 function cancelAndClose() {
-    ctx.editor.commands.focus();
+    if (createModeRange && isExistingLink) {
+        // Undo the link that was applied live during create mode
+        ctx.editor.chain()
+            .focus()
+            .setTextSelection(createModeRange)
+            .unsetLink()
+            .run();
+    } else {
+        ctx.editor.commands.focus();
+    }
     hidePopover();
 }
 
 function removeLink() {
-    if (currentLinkEl) {
+    if (createModeRange && isExistingLink) {
+        ctx.editor.chain().focus().setTextSelection(createModeRange).unsetLink().run();
+    } else if (currentLinkEl) {
         ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
     }
     hidePopover();
@@ -206,8 +245,15 @@ function hidePopover() {
     linkPopoverEl.classList.remove('visible');
     currentLinkEl = null;
     currentSelectionRange = null;
+    createModeRange = null;
     isExistingLink = false;
     originalHref = '';
+}
+
+function updateButtonStates(href) {
+    const hasHref = href.length > 0;
+    deleteBtnEl.disabled = !hasHref;
+    openBtnEl.disabled = !hasHref;
 }
 
 // --- Positioning ---
@@ -290,5 +336,6 @@ export function onPickLinkResourceResult(resourceKey) {
     isPickerOpen = false;
     if (!resourceKey) return;
     linkInputEl.value = resourceKey;
+    linkInputEl.dispatchEvent(new Event('input', { bubbles: true }));
     linkInputEl.focus();
 }
