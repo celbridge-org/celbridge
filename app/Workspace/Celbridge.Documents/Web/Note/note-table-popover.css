@@ -48,7 +48,7 @@
     border: 2px solid var(--accent-color);
 }
 
-/* Column resize handle */
+/* Column resize handle — delayed fade-in to avoid flicker on casual mouse movement */
 .tiptap .column-resize-handle {
     position: absolute;
     right: -2px;
@@ -58,6 +58,19 @@
     background-color: var(--accent-color);
     pointer-events: none;
     z-index: 1;
+    opacity: 0;
+    animation: colResizeHandleFadeIn 0.15s ease-in 0.3s forwards;
+}
+
+/* When actively dragging, show the handle immediately without replaying the animation */
+.tiptap.col-resizing .column-resize-handle {
+    animation: none;
+    opacity: 1;
+}
+
+@keyframes colResizeHandleFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .tiptap.resize-cursor {

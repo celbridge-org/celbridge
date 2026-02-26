@@ -86,6 +86,21 @@ export function init(context) {
         hidePopover();
     });
 
+    // Track active column-resize drag to suppress the fade-in animation
+    const editorEl = document.querySelector('.tiptap');
+    if (editorEl) {
+        editorEl.addEventListener('mousedown', () => {
+            if (editorEl.classList.contains('resize-cursor')) {
+                editorEl.classList.add('col-resizing');
+                const onUp = () => {
+                    editorEl.classList.remove('col-resizing');
+                    document.removeEventListener('mouseup', onUp);
+                };
+                document.addEventListener('mouseup', onUp);
+            }
+        });
+    }
+
     // Dismiss on scroll, resize, click outside, or window blur
     setupDismiss(editorWrapper, tablePopoverEl, hidePopover, (e) => {
         return !!e.target.closest('.toolbar-btn[data-action="table"]');
