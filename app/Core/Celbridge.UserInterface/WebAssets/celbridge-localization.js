@@ -34,18 +34,30 @@ export function t(key, ...args) {
  * Walk the DOM and apply localized strings to elements marked with data-loc-key.
  * - data-loc-key: the resource key to look up
  * - data-loc-attr: the attribute to set (e.g. "title", "placeholder"). Defaults to textContent.
+ *
+ * When a key is missing from the dictionary, the raw key name is displayed
+ * instead and a console warning is logged so missing entries are obvious.
  */
 export function applyLocalization(root = document) {
+    const missing = [];
+
     root.querySelectorAll('[data-loc-key]').forEach(el => {
         const key = el.getAttribute('data-loc-key');
         const value = strings[key];
-        if (value === undefined) return;
+        if (value === undefined) {
+            missing.push(key);
+        }
 
+        const text = value ?? key;
         const attr = el.getAttribute('data-loc-attr');
         if (attr) {
-            el.setAttribute(attr, value);
+            el.setAttribute(attr, text);
         } else {
-            el.textContent = value;
+            el.textContent = text;
         }
     });
+
+    if (missing.length > 0) {
+        console.warn(`[Localization] Missing keys: ${missing.join(', ')}`);
+    }
 }

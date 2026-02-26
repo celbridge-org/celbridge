@@ -881,6 +881,9 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Toolbar_InlineCode" xml:space="preserve">
     <value>Inline Code</value>
   </data>
+  <data name="NoteEditor_Toolbar_Highlight" xml:space="preserve">
+    <value>Highlight</value>
+  </data>
   <data name="NoteEditor_Toolbar_Heading1" xml:space="preserve">
     <value>Heading 1</value>
   </data>
@@ -922,6 +925,9 @@ Do you wish to continue?</value>
   </data>
   <data name="NoteEditor_Toolbar_Redo" xml:space="preserve">
     <value>Redo (Ctrl+Shift+Z)</value>
+  </data>
+  <data name="NoteEditor_Toolbar_TableOfContents" xml:space="preserve">
+    <value>Table of Contents</value>
   </data>
   <data name="NoteEditor_Placeholder" xml:space="preserve">
     <value>Start writing...</value>
@@ -1004,6 +1010,12 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Link_Placeholder" xml:space="preserve">
     <value>Enter URL or resource key...</value>
   </data>
+  <data name="NoteEditor_Link_URLLabel" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="NoteEditor_Link_BrowseTooltip" xml:space="preserve">
+    <value>Browse project resources</value>
+  </data>
   <data name="NoteEditor_Link_ConfirmTooltip" xml:space="preserve">
     <value>Confirm</value>
   </data>
@@ -1063,5 +1075,26 @@ Do you wish to continue?</value>
   </data>
   <data name="NoteEditor_Table_SizeInfo" xml:space="preserve">
     <value>{0} rows × {1} columns</value>
+  </data>
+  <data name="NoteEditor_Table_IncreaseRows" xml:space="preserve">
+    <value>Add row</value>
+  </data>
+  <data name="NoteEditor_Table_DecreaseRows" xml:space="preserve">
+    <value>Remove row</value>
+  </data>
+  <data name="NoteEditor_Table_IncreaseColumns" xml:space="preserve">
+    <value>Add column</value>
+  </data>
+  <data name="NoteEditor_Table_DecreaseColumns" xml:space="preserve">
+    <value>Remove column</value>
+  </data>
+  <data name="NoteEditor_TOC_Header" xml:space="preserve">
+    <value>Table of Contents</value>
+  </data>
+  <data name="NoteEditor_TOC_CloseTooltip" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="NoteEditor_TOC_Empty" xml:space="preserve">
+    <value>No headings found</value>
   </data>
 </root>

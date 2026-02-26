@@ -11,3 +11,4 @@ export { default as Table } from '@tiptap/extension-table';
 export { default as TableRow } from '@tiptap/extension-table-row';
 export { default as TableCell } from '@tiptap/extension-table-cell';
 export { default as TableHeader } from '@tiptap/extension-table-header';
+export { default as Highlight } from '@tiptap/extension-highlight';

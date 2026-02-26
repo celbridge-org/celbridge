@@ -1,7 +1,7 @@
 // Note editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
-import { Editor, StarterKit, Underline, Link, Placeholder } from './lib/tiptap.js';
+import { Editor, StarterKit, Underline, Link, Placeholder, Highlight } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './note-image-popover.js';
@@ -70,6 +70,7 @@ const editor = new Editor({
     extensions: [
         StarterKit,
         Underline,
+        Highlight,
         Link.configure({
             openOnClick: false,
             autolink: true,
@@ -143,6 +144,7 @@ function updateToolbar() {
             case 'underline': isActive = editor.isActive('underline'); break;
             case 'strike': isActive = editor.isActive('strike'); break;
             case 'code': isActive = editor.isActive('code'); break;
+            case 'highlight': isActive = editor.isActive('highlight'); break;
             case 'heading1': isActive = editor.isActive('heading', { level: 1 }); break;
             case 'heading2': isActive = editor.isActive('heading', { level: 2 }); break;
             case 'heading3': isActive = editor.isActive('heading', { level: 3 }); break;
@@ -263,6 +265,7 @@ toolbarEl.addEventListener('click', (e) => {
         case 'underline': editor.chain().focus().toggleUnderline().run(); break;
         case 'strike': editor.chain().focus().toggleStrike().run(); break;
         case 'code': editor.chain().focus().toggleCode().run(); break;
+        case 'highlight': editor.chain().focus().toggleHighlight().run(); break;
         case 'heading1': editor.chain().focus().toggleHeading({ level: 1 }).run(); break;
         case 'heading2': editor.chain().focus().toggleHeading({ level: 2 }).run(); break;
         case 'heading3': editor.chain().focus().toggleHeading({ level: 3 }).run(); break;

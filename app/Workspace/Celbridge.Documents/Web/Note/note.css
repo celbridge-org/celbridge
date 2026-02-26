@@ -220,6 +220,13 @@ body {
     text-decoration: underline;
 }
 
+.tiptap mark {
+    background-color: #fbbc04;
+    border-radius: 2px;
+    padding: 0.05em 0;
+    color: #1a1a1a;
+}
+
 .tiptap p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
