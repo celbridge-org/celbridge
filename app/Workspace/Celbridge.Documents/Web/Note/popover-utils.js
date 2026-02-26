@@ -1,5 +1,25 @@
 // Shared utilities for popover modules
 
+// ---------------------------------------------------------------------------
+// Popover registry — ensures only one popover is visible at a time
+// ---------------------------------------------------------------------------
+
+const registeredPopovers = [];
+
+/**
+ * Register a popover's hide function so it can be dismissed when another opens.
+ */
+export function registerPopover(hideFn) {
+    registeredPopovers.push(hideFn);
+}
+
+/**
+ * Hide every registered popover. Call before showing a new one.
+ */
+export function hideAllPopovers() {
+    registeredPopovers.forEach(fn => fn());
+}
+
 /**
  * Set up dismiss-on-scroll, dismiss-on-resize, dismiss-on-click-outside, and
  * dismiss-on-window-blur for a popover element.

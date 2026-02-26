@@ -1,7 +1,8 @@
 // Link popover module for Note editor
-// Single-mode popover: URL input with browse, open, delete, confirm, cancel
+// Single-mode popover: URL input with browse, open, delete.
+// Changes auto-apply on close; Escape cancels.
 
-import { setupDismiss } from './popover-utils.js';
+import { setupDismiss, registerPopover, hideAllPopovers } from './popover-utils.js';
 
 let ctx = null;
 let linkPopoverEl = null;
@@ -9,7 +10,6 @@ let linkInputEl = null;
 let editorWrapper = null;
 let deleteBtnEl = null;
 let openBtnEl = null;
-let confirmBtnEl = null;
 let currentLinkEl = null;
 let currentSelectionRange = null;
 let originalHref = '';
@@ -23,7 +23,8 @@ export function init(context) {
     editorWrapper = document.getElementById('editor-wrapper');
     deleteBtnEl = document.getElementById('link-popover-delete');
     openBtnEl = document.getElementById('link-popover-open');
-    confirmBtnEl = document.getElementById('link-popover-confirm');
+
+    registerPopover(() => applyAndClose());
 
     // Handle clicks in the editor
     editorWrapper.addEventListener('click', (e) => {
@@ -31,7 +32,7 @@ export function init(context) {
 
         if (!link) {
             if (!linkPopoverEl.contains(e.target)) {
-                hidePopover();
+                applyAndClose();
             }
             return;
         }
@@ -53,15 +54,12 @@ export function init(context) {
     linkInputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (!confirmBtnEl.disabled) confirmAndClose();
+            applyAndClose();
         } else if (e.key === 'Escape') {
             e.preventDefault();
             cancelAndClose();
         }
     });
-
-    // Track input changes to update confirm button state
-    linkInputEl.addEventListener('input', () => updateConfirmState());
 
     // Prevent mousedown inside popover from blurring input
     linkPopoverEl.addEventListener('mousedown', (e) => {
@@ -89,22 +87,15 @@ export function init(context) {
         removeLink();
     });
 
-    // Confirm / Cancel buttons
-    document.getElementById('link-popover-confirm').addEventListener('click', () => {
-        confirmAndClose();
-    });
-
-    document.getElementById('link-popover-cancel').addEventListener('click', () => {
-        cancelAndClose();
-    });
-
     // Dismiss on scroll, resize, click outside, or window blur
-    setupDismiss(editorWrapper, linkPopoverEl, cancelAndClose, null, () => isPickerOpen);
+    setupDismiss(editorWrapper, linkPopoverEl, applyAndClose, null, () => isPickerOpen);
 }
 
 // --- Show popover ---
 
 function showPopoverForLink(linkEl) {
+    hideAllPopovers();
+
     currentLinkEl = linkEl;
     currentSelectionRange = null;
     isExistingLink = true;
@@ -113,7 +104,6 @@ function showPopoverForLink(linkEl) {
     linkInputEl.value = originalHref;
     deleteBtnEl.style.display = '';
     openBtnEl.style.display = '';
-    updateConfirmState();
 
     linkPopoverEl.classList.add('visible');
 
@@ -125,6 +115,8 @@ function showPopoverForLink(linkEl) {
 }
 
 export function showPopoverForSelection() {
+    hideAllPopovers();
+
     const { state } = ctx.editor;
     const { selection } = state;
     const { from, to, empty } = selection;
@@ -155,7 +147,6 @@ export function showPopoverForSelection() {
 
     deleteBtnEl.style.display = 'none';
     openBtnEl.style.display = 'none';
-    updateConfirmState();
 
     linkPopoverEl.classList.add('visible');
 
@@ -171,20 +162,11 @@ export function showPopoverForSelection() {
     return true;
 }
 
-// --- Confirm button state ---
-
-function updateConfirmState() {
-    const href = linkInputEl.value.trim();
-    if (isExistingLink) {
-        confirmBtnEl.disabled = href === originalHref;
-    } else {
-        confirmBtnEl.disabled = href === '';
-    }
-}
-
 // --- Actions ---
 
-function confirmAndClose() {
+function applyAndClose() {
+    if (!linkPopoverEl.classList.contains('visible')) return;
+
     const href = linkInputEl.value.trim();
 
     if (!isExistingLink && currentSelectionRange) {
@@ -200,8 +182,6 @@ function confirmAndClose() {
             ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
         } else if (href !== originalHref) {
             ctx.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
-        } else {
-            ctx.editor.commands.focus();
         }
     }
 
@@ -298,7 +278,7 @@ function getActiveLinkInfo() {
 
 export function toggleLink() {
     if (linkPopoverEl.classList.contains('visible')) {
-        cancelAndClose();
+        applyAndClose();
         return;
     }
     showPopoverForSelection();
@@ -310,6 +290,5 @@ export function onPickLinkResourceResult(resourceKey) {
     isPickerOpen = false;
     if (!resourceKey) return;
     linkInputEl.value = resourceKey;
-    updateConfirmState();
     linkInputEl.focus();
 }

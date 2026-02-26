@@ -4,7 +4,7 @@
 
 import { Table, TableRow, TableCell, TableHeader } from './lib/tiptap.js';
 import { t } from 'https://shared.celbridge/celbridge-localization.js';
-import { setupDismiss, positionAtTop } from './popover-utils.js';
+import { setupDismiss, positionAtTop, registerPopover, hideAllPopovers } from './popover-utils.js';
 
 let ctx = null;
 let tablePopoverEl = null;
@@ -59,9 +59,10 @@ export function init(context) {
         }
     });
 
-    // Create mode: confirm / cancel
+    registerPopover(hidePopover);
+
+    // Create mode: confirm
     document.getElementById('table-popover-create-confirm').addEventListener('click', () => confirmCreate());
-    document.getElementById('table-popover-create-cancel').addEventListener('click', () => hidePopover());
 
     // Create mode: enter key on inputs
     rowsInputEl.addEventListener('keydown', (e) => {
@@ -112,6 +113,8 @@ export function init(context) {
 // ---------------------------------------------------------------------------
 
 function showCreateMode() {
+    hideAllPopovers();
+
     rowsInputEl.value = '3';
     colsInputEl.value = '3';
     headerCheckboxEl.checked = true;
@@ -127,6 +130,8 @@ function showCreateMode() {
 }
 
 function showViewMode() {
+    hideAllPopovers();
+
     refreshViewInfo();
     setMode('view');
     tablePopoverEl.classList.add('visible');

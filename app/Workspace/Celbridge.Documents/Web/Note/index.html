@@ -60,8 +60,8 @@
             <!-- Size and align buttons on the same row with separator -->
             <div class="img-popover-layout-row">
                 <button class="img-popover-size-btn" data-img-action="size-25" data-loc-key="NoteEditor_Image_Size25" data-loc-attr="title" title="25% width">25%</button>
-                <button class="img-popover-size-btn" data-img-action="size-75" data-loc-key="NoteEditor_Image_Size75" data-loc-attr="title" title="75% width">75%</button>
                 <button class="img-popover-size-btn" data-img-action="size-50" data-loc-key="NoteEditor_Image_Size50" data-loc-attr="title" title="50% width">50%</button>
+                <button class="img-popover-size-btn" data-img-action="size-75" data-loc-key="NoteEditor_Image_Size75" data-loc-attr="title" title="75% width">75%</button>
                 <button class="img-popover-size-btn" data-img-action="size-100" data-loc-key="NoteEditor_Image_SizeFull" data-loc-attr="title" title="Full width">100%</button>
                 <div class="img-popover-custom-size-wrapper">
                     <input type="text" id="image-popover-custom-size-input" data-loc-key="NoteEditor_Image_CustomSizeTooltip" data-loc-attr="title" title="Enter image width as a percentage (1–100)" placeholder="%" />
@@ -85,9 +85,6 @@
             </div>
             <div class="popover-buttons">
                 <button id="image-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Image_DeleteTooltip" data-loc-attr="title" title="Delete image"><i class="bi bi-trash3"></i></button>
-                <div style="flex:1"></div>
-                <button id="image-popover-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Image_ConfirmTooltip" data-loc-attr="title" title="Accept changes"><i class="bi bi-check-lg"></i></button>
-                <button id="image-popover-cancel" class="popover-btn" data-loc-key="NoteEditor_Image_CancelTooltip" data-loc-attr="title" title="Cancel — revert to previous values"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
         <div id="link-popover" class="popover">
@@ -105,9 +102,6 @@
             <div class="popover-buttons">
                 <button id="link-popover-delete" class="popover-btn popover-btn-danger" data-loc-key="NoteEditor_Link_DeleteTooltip" data-loc-attr="title" title="Remove link"><i class="bi bi-trash3"></i></button>
                 <button id="link-popover-open" class="popover-btn" data-loc-key="NoteEditor_Link_OpenTooltip" data-loc-attr="title" title="Open link"><i class="bi bi-box-arrow-up-right"></i></button>
-                <div style="flex:1"></div>
-                <button id="link-popover-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Link_ConfirmTooltip" data-loc-attr="title" title="Confirm"><i class="bi bi-check-lg"></i></button>
-                <button id="link-popover-cancel" class="popover-btn" data-loc-key="NoteEditor_Link_CancelTooltip" data-loc-attr="title" title="Cancel"><i class="bi bi-x-lg"></i></button>
             </div>
         </div>
         <div id="table-popover" class="popover">
@@ -133,7 +127,6 @@
                 </label>
                 <div class="popover-buttons">
                     <button id="table-popover-create-confirm" class="popover-btn popover-btn-primary" data-loc-key="NoteEditor_Table_InsertTooltip" data-loc-attr="title" title="Insert table"><i class="bi bi-check-lg"></i></button>
-                    <button id="table-popover-create-cancel" class="popover-btn" data-loc-key="NoteEditor_Table_CancelTooltip" data-loc-attr="title" title="Cancel"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
             <!-- View mode: table info, row/column actions, toggle header, delete -->
