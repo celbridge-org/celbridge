@@ -2,13 +2,12 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class WebAppDocumentView : DocumentView
+public sealed partial class WebAppDocumentView : WebView2DocumentView
 {
     private readonly ILogger<WebAppDocumentView> _logger;
     private readonly ICommandService _commandService;
@@ -19,16 +18,27 @@ public sealed partial class WebAppDocumentView : DocumentView
 
     public WebAppDocumentViewModel ViewModel { get; }
 
-    public WebAppDocumentView()
+    protected override ResourceKey FileResource => ViewModel.FileResource;
+
+    public WebAppDocumentView(
+        IServiceProvider serviceProvider,
+        ILogger<WebAppDocumentView> logger,
+        ICommandService commandService,
+        IMessengerService messengerService,
+        IWorkspaceWrapper workspaceWrapper)
+        : base(messengerService)
     {
         this.InitializeComponent();
 
-        _logger = ServiceLocator.AcquireService<ILogger<WebAppDocumentView>>();
-        _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        _logger = logger;
+        _commandService = commandService;
+        _messengerService = messengerService;
+        _workspaceWrapper = workspaceWrapper;
 
-        ViewModel = ServiceLocator.AcquireService<WebAppDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
+
+        // Assign the WebView from XAML to the base class property
+        WebView = AppWebView;
 
         _messengerService.Register<WebAppNavigateMessage>(this, OnWebAppNavigate);
         _messengerService.Register<WebAppRefreshMessage>(this, OnWebAppRefresh);
@@ -240,7 +250,10 @@ public sealed partial class WebAppDocumentView : DocumentView
         // Be aware that this method can be called multiple times if the document is reloaded as a result of
         // the user changing the URL in the inspector.
 
-        await WebView.EnsureCoreWebView2Async();
+        // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
+        await InitializeWebViewAsync();
+
+        Guard.IsNotNull(WebView);
 
         // Ensure we only register once for these events
         WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
@@ -255,17 +268,6 @@ public sealed partial class WebAppDocumentView : DocumentView
         WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
         WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
 
-        // Handle focus to set this document as active
-        WebView.GotFocus -= WebView_GotFocus;
-        WebView.GotFocus += WebView_GotFocus;
-
-        // Listen for messages from the WebView (used for keyboard shortcut handling)
-        WebView.WebMessageReceived -= WebView_WebMessageReceived;
-        WebView.WebMessageReceived += WebView_WebMessageReceived;
-
-        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-        await WebView2Helper.InjectKeyboardShortcutHandlerAsync(WebView.CoreWebView2);
-
         // Load URL from file and navigate
         var loadResult = await ViewModel.LoadContent();
         if (loadResult.IsSuccess && !string.IsNullOrEmpty(ViewModel.SourceUrl))
@@ -274,14 +276,6 @@ public sealed partial class WebAppDocumentView : DocumentView
         }
 
         return loadResult;
-    }
-
-    private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
-    {
-        var message = args.TryGetWebMessageAsString();
-
-        // Handle keyboard shortcuts via centralized helper
-        WebView2Helper.HandleKeyboardShortcut(message);
     }
 
     private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
@@ -297,29 +291,17 @@ public sealed partial class WebAppDocumentView : DocumentView
         }
     }
 
-    private void WebView_GotFocus(object sender, RoutedEventArgs e)
-    {
-        // Set this document as the active document when the WebView2 receives focus
-        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
-        _messengerService.Send(message);
-    }
-
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);
 
-        WebView.WebMessageReceived -= WebView_WebMessageReceived;
-        WebView.GotFocus -= WebView_GotFocus;
-
-        if (WebView.CoreWebView2 != null)
+        if (WebView?.CoreWebView2 is not null)
         {
             WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             WebView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
         }
-
-        WebView.Close();
 
         await base.PrepareToClose();
     }

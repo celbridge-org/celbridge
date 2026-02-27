@@ -4,7 +4,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
@@ -12,26 +11,25 @@ using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class SpreadsheetDocumentView : DocumentView
+public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 {
-    private ILogger _logger;
-    private IStringLocalizer _stringLocalizer;
-    private ICommandService _commandService;
-    private IDialogService _dialogService;
-    private IMessengerService _messengerService;
-    private IResourceRegistry _resourceRegistry;
+    private readonly ILogger _logger;
+    private readonly IStringLocalizer _stringLocalizer;
+    private readonly ICommandService _commandService;
+    private readonly IDialogService _dialogService;
+    private readonly IResourceRegistry _resourceRegistry;
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
-    private WebView2? _webView;
+    protected override ResourceKey FileResource => ViewModel.FileResource;
 
     // Track save state to prevent race conditions
-    private bool _isSaveInProgress = false;
-    private bool _hasPendingSave = false;
+    private bool _isSaveInProgress;
+    private bool _hasPendingSave;
 
     // Track import state to prevent race conditions during initial load and reloads
-    private bool _isImportInProgress = false;
-    private bool _hasPendingImport = false;
+    private bool _isImportInProgress;
+    private bool _hasPendingImport;
 
     public SpreadsheetDocumentView(
         IServiceProvider serviceProvider,
@@ -41,6 +39,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         IDialogService dialogService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
+        : base(messengerService)
     {
         ViewModel = serviceProvider.GetRequiredService<SpreadsheetDocumentViewModel>();
 
@@ -48,19 +47,17 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         _commandService = commandService;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
-        _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+
+        this.InitializeComponent();
+
+        // Assign the WebView from XAML to the base class property
+        WebView = SpreadsheetWebView;
 
         Loaded += SpreadsheetDocumentView_Loaded;
 
         // Subscribe to reload requests from the ViewModel
         ViewModel.ReloadRequested += ViewModel_ReloadRequested;
-
-        //
-        // Set the data context
-        // 
-
-        this.DataContext(ViewModel);
     }
 
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
@@ -72,7 +69,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        Guard.IsNotNull(_webView);
+        Guard.IsNotNull(WebView);
 
         // If a save is already in progress, mark that we need another save after this one completes
         if (_isSaveInProgress)
@@ -86,7 +83,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         _hasPendingSave = false;
 
         // Send a message to request the data to be serialized and sent back as another message.
-        _webView.CoreWebView2.PostWebMessageAsString("request_save");
+        WebView.CoreWebView2.PostWebMessageAsString("request_save");
 
         return await ViewModel.SaveDocument();
     }
@@ -104,27 +101,22 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
     {
         try
         {
-            var webView = new WebView2();
-            await webView.EnsureCoreWebView2Async();
+            Guard.IsNotNull(WebView);
 
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("spreadjs.celbridge",
+            await WebView.EnsureCoreWebView2Async();
+
+            WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "spreadjs.celbridge",
                 "Celbridge.Documents/Web/SpreadJS",
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            // This fixes a visual bug where the WebView2 control would show a white background briefly when
-            // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-            webView.DefaultBackgroundColor = Colors.Transparent;
+            WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
-            webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+            WebView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
 
-            // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-            await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
-
-            webView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
-
-            bool isEditorReady = false;
+            var isEditorReady = false;
             TypedEventHandler<WebView2, CoreWebView2WebMessageReceivedEventArgs> onWebMessageReceived = (sender, e) =>
             {
                 var message = e.TryGetWebMessageAsString();
@@ -138,44 +130,36 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
                 throw new InvalidOperationException($"Expected 'editor_ready' message, but received: {message}");
             };
 
-            webView.WebMessageReceived += onWebMessageReceived;
+            WebView.WebMessageReceived += onWebMessageReceived;
 
             while (!isEditorReady)
             {
                 await Task.Delay(50);
             }
 
-            webView.WebMessageReceived -= onWebMessageReceived;
+            WebView.WebMessageReceived -= onWebMessageReceived;
+
+            // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
+            // Must be done AFTER editor-ready to avoid the base handler receiving initialization messages
+            await InitializeWebViewAsync();
 
             // Use the system browser if the user clicks on links in the spreadsheet UI.
-
-            webView.NavigationStarting += (s, args) =>
+            WebView.NavigationStarting += (s, args) =>
             {
                 args.Cancel = true;
                 var uri = args.Uri;
                 OpenSystemBrowser(uri);
             };
 
-            webView.CoreWebView2.NewWindowRequested += (s, args) =>
+            WebView.CoreWebView2.NewWindowRequested += (s, args) =>
             {
                 args.Handled = true;
                 var uri = args.Uri;
                 OpenSystemBrowser(uri);
             };
 
-            // Fixes a visual bug where the WebView2 control would show a white background briefly when
-            // switching between tabs. Similar issue described here: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-            webView.DefaultBackgroundColor = Colors.Transparent;
-
-            // Handle focus to set this document as active
-            webView.GotFocus += WebView_GotFocus;
-
-            _webView = webView;
-
             var filePath = ViewModel.FilePath;
             await LoadSpreadsheet(filePath);
-
-            this.Content = _webView;
         }
         catch (Exception ex)
         {
@@ -225,7 +209,7 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
 
     private async Task LoadSpreadsheet(string filePath)
     {
-        Guard.IsNotNull(_webView);
+        Guard.IsNotNull(WebView);
 
         if (!File.Exists(filePath))
         {
@@ -253,16 +237,12 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
                 FileAccess.Read,
                 FileShare.ReadWrite);
 
-            byte[] bytes = new byte[fileStream.Length];
+            var bytes = new byte[fileStream.Length];
             // Use ReadExactlyAsync to ensure all bytes are read (fixes CA2022 warning)
             await fileStream.ReadExactlyAsync(bytes, CancellationToken.None);
-            string base64 = Convert.ToBase64String(bytes);
+            var base64 = Convert.ToBase64String(bytes);
 
-            _webView.CoreWebView2.PostWebMessageAsString(base64);
-
-            // Ensure event handler is registered
-            _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            _webView.WebMessageReceived += WebView_WebMessageReceived;
+            WebView.CoreWebView2.PostWebMessageAsString(base64);
 
             _logger.LogDebug($"Successfully sent spreadsheet data to SpreadJS for import: {filePath}");
         }
@@ -276,9 +256,8 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         }
     }
 
-    private async void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    protected override async void OnWebMessageReceived(string? webMessage)
     {
-        var webMessage = args.TryGetWebMessageAsString();
         if (string.IsNullOrEmpty(webMessage))
         {
             _logger.LogError("Invalid web message received");
@@ -286,15 +265,11 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         }
 
         // Try to handle as a global keyboard shortcut first
-        if (WebView2Helper.HandleKeyboardShortcut(webMessage))
-        {
-            return;
-        }
+        base.OnWebMessageReceived(webMessage);
 
         if (webMessage == "load_excel_data")
         {
             // This will discard any pending changes so ask user to confirm
-
             var title = _stringLocalizer.GetString("Documents_LoadDocumentConfirmTitle");
             var filename = Path.GetFileName(ViewModel.FilePath);
             var message = _stringLocalizer.GetString("Documents_LoadDocumentConfirm", filename);
@@ -374,32 +349,13 @@ public sealed partial class SpreadsheetDocumentView : DocumentView
         // Cleanup ViewModel message handlers
         ViewModel.Cleanup();
 
-        if (_webView != null)
-        {
-            _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            _webView.GotFocus -= WebView_GotFocus;
-
-            // Note: Event handlers were added with lambda functions, so we can't unregister them
-            // individually but the Close() method will clean them up anyway.
-
-            _webView.Close();
-            _webView = null;
-        }
-
         await base.PrepareToClose();
-    }
-
-    private void WebView_GotFocus(object sender, RoutedEventArgs e)
-    {
-        // Set this document as the active document when the WebView2 receives focus
-        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
-        _messengerService.Send(message);
     }
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
         // Reload the spreadsheet from disk when an external change is detected
-        if (_webView != null)
+        if (WebView is not null)
         {
             var filePath = ViewModel.FilePath;
             await LoadSpreadsheet(filePath);

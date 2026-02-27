@@ -5,7 +5,7 @@ namespace Celbridge.Documents.Views;
 
 public sealed partial class TextBoxDocumentView : DocumentView
 {
-    private IResourceRegistry _resourceRegistry;
+    private readonly IResourceRegistry _resourceRegistry;
 
     public DefaultDocumentViewModel ViewModel { get; }
 
@@ -17,19 +17,7 @@ public sealed partial class TextBoxDocumentView : DocumentView
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var textBox = new TextBox()
-            .Text(x => x.Binding(() => ViewModel.Text)
-                        .Mode(BindingMode.TwoWay)
-                        .UpdateSourceTrigger(UpdateSourceTrigger.PropertyChanged))
-            .AcceptsReturn(true)
-            .IsSpellCheckEnabled(false);
-
-        //
-        // Set the data context and control content
-        // 
-
-        this.DataContext(ViewModel, (userControl, vm) => userControl
-            .Content(textBox));
+        this.InitializeComponent();
     }
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -43,7 +31,7 @@ public sealed partial class TextBoxDocumentView : DocumentView
 
         if (!File.Exists(filePath))
         {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");            
+            return Result.Fail($"File resource does not exist on disk: {fileResource}");
         }
 
         ViewModel.FileResource = fileResource;
