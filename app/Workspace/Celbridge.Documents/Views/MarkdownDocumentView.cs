@@ -17,7 +17,7 @@ namespace Celbridge.Documents.Views;
 public sealed partial class MarkdownDocumentView : DocumentView
 {
     // Payload for loading a markdown document into the editor
-    private record LoadDocPayload(string Content, string DocumentBaseUrl);
+    private record LoadDocPayload(string Content, string ProjectBaseUrl, string DocumentBaseUrl);
 
     // Payload for returning a picked resource key to the editor
     private record ResourceKeyPayload(string ResourceKey);
@@ -252,9 +252,10 @@ public sealed partial class MarkdownDocumentView : DocumentView
         try
         {
             var content = await ViewModel.LoadMarkdownContent();
+            const string projectBaseUrl = "https://project.celbridge/";
             var documentBaseUrl = GetDocumentBaseUrl();
 
-            var payload = new LoadDocPayload(content, documentBaseUrl);
+            var payload = new LoadDocPayload(content, projectBaseUrl, documentBaseUrl);
             var message = new JsPayloadMessage<LoadDocPayload>("load-doc", payload);
             _webMessenger.Send(message);
 
@@ -424,15 +425,27 @@ public sealed partial class MarkdownDocumentView : DocumentView
     }
 
     /// <summary>
-    /// Resolves a relative path to an absolute Resource Key.
-    /// All paths are resolved relative to the current document's folder.
+    /// Resolves a path to an absolute Resource Key.
+    /// Paths starting with '/' are resolved from the project root.
+    /// All other paths are resolved relative to the current document's folder.
     /// </summary>
     private Result<ResourceKey> ResolveResourcePath(string path)
     {
-        var documentBasePath = GetDocumentBasePath();
-        var fullPath = string.IsNullOrEmpty(documentBasePath)
-            ? path
-            : $"{documentBasePath}/{path}";
+        string fullPath;
+
+        if (path.StartsWith('/'))
+        {
+            // Project-root-relative path: strip the leading '/' and use as-is
+            fullPath = path.Substring(1);
+        }
+        else
+        {
+            // Document-relative path: prepend document's folder
+            var documentBasePath = GetDocumentBasePath();
+            fullPath = string.IsNullOrEmpty(documentBasePath)
+                ? path
+                : $"{documentBasePath}/{path}";
+        }
 
         var normalizedPath = NormalizeResourcePath(fullPath);
         var resourceKey = new ResourceKey(normalizedPath);

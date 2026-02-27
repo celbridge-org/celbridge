@@ -19,6 +19,7 @@ const tocEmpty = document.getElementById('toc-empty');
 let changeTimer = null;
 const CHANGE_DEBOUNCE_MS = 300;
 let isLoadingContent = false;
+let projectBaseUrl = '';
 let documentBaseUrl = '';
 
 // WebView2 messaging
@@ -33,6 +34,11 @@ function sendMessage(msg) {
 function resolveImageSrc(src) {
     if (!src) return src;
     if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return src;
+    // '/' prefix means project-root-relative path
+    if (src.startsWith('/') && projectBaseUrl) {
+        return projectBaseUrl + src.substring(1);
+    }
+    // Otherwise resolve relative to document
     if (documentBaseUrl) return documentBaseUrl + src;
     return src;
 }
@@ -324,6 +330,9 @@ if (window.chrome && window.chrome.webview) {
             case 'load-doc': {
                 isLoadingContent = true;
                 try {
+                    if (msg.payload.projectBaseUrl) {
+                        projectBaseUrl = msg.payload.projectBaseUrl;
+                    }
                     if (msg.payload.documentBaseUrl) {
                         documentBaseUrl = msg.payload.documentBaseUrl;
                     }
