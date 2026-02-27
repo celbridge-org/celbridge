@@ -174,7 +174,10 @@ const editor = new Editor({
         },
     },
     extensions: [
-        StarterKit,
+        StarterKit.configure({
+            // Disable Link in StarterKit to avoid duplicate with our custom Link configuration
+            link: false,
+        }),
         Markdown,
         Link.configure({
             openOnClick: false,
@@ -182,6 +185,15 @@ const editor = new Editor({
             HTMLAttributes: {
                 target: null,
                 rel: 'noopener noreferrer nofollow',
+            },
+            // Allow relative paths (which don't have a protocol) in addition to standard URLs
+            isAllowedUri: (url, ctx) => {
+                // Allow relative paths (no protocol/colon, or starts with ./ or ../)
+                if (!url.includes(':') || url.startsWith('./') || url.startsWith('../')) {
+                    return true;
+                }
+                // For URLs with protocols, use the default validation
+                return ctx.defaultValidate(url);
             },
         }),
         Placeholder.configure({

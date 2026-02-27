@@ -51,36 +51,9 @@ export function init(context) {
         }
     });
 
-    // Live-apply link as the user types during create mode
     linkInputEl.addEventListener('input', () => {
         const href = linkInputEl.value.trim();
         updateButtonStates(href);
-
-        if (createModeRange) {
-            if (href) {
-                ctx.editor.chain()
-                    .setTextSelection(createModeRange)
-                    .setLink({ href })
-                    .run();
-
-                if (!isExistingLink) {
-                    isExistingLink = true;
-                    const domAtPos = ctx.editor.view.domAtPos(createModeRange.from);
-                    if (domAtPos.node.nodeType === Node.TEXT_NODE) {
-                        currentLinkEl = domAtPos.node.parentElement?.closest('a');
-                    } else {
-                        currentLinkEl = domAtPos.node.closest?.('a') || domAtPos.node.querySelector?.('a');
-                    }
-                }
-            } else if (isExistingLink) {
-                ctx.editor.chain()
-                    .setTextSelection(createModeRange)
-                    .unsetLink()
-                    .run();
-                isExistingLink = false;
-                currentLinkEl = null;
-            }
-        }
     });
 
     // Input keydown
@@ -133,7 +106,14 @@ function showPopoverForLink(linkEl) {
     currentSelectionRange = null;
     createModeRange = null;
     isExistingLink = true;
-    originalHref = linkEl.getAttribute('href') || '';
+
+    // Try multiple ways to get the href
+    let href = linkEl.getAttribute('href');
+    if (!href && linkEl.href) {
+        // Some browsers store full URL in .href property
+        href = linkEl.href;
+    }
+    originalHref = href || '';
 
     linkInputEl.value = originalHref;
     updateButtonStates(originalHref);
@@ -203,8 +183,15 @@ function applyAndClose() {
     const href = linkInputEl.value.trim();
 
     if (createModeRange) {
-        // Link was already applied live during input; just focus and close
-        ctx.editor.commands.focus();
+        if (href) {
+            ctx.editor.chain()
+                .focus()
+                .setTextSelection(createModeRange)
+                .setLink({ href })
+                .run();
+        } else {
+            ctx.editor.commands.focus();
+        }
     } else if (isExistingLink && currentLinkEl) {
         if (href === '') {
             ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -217,23 +204,12 @@ function applyAndClose() {
 }
 
 function cancelAndClose() {
-    if (createModeRange && isExistingLink) {
-        // Undo the link that was applied live during create mode
-        ctx.editor.chain()
-            .focus()
-            .setTextSelection(createModeRange)
-            .unsetLink()
-            .run();
-    } else {
-        ctx.editor.commands.focus();
-    }
+    ctx.editor.commands.focus();
     hidePopover();
 }
 
 function removeLink() {
-    if (createModeRange && isExistingLink) {
-        ctx.editor.chain().focus().setTextSelection(createModeRange).unsetLink().run();
-    } else if (currentLinkEl) {
+    if (!createModeRange && currentLinkEl) {
         ctx.editor.chain().focus().extendMarkRange('link').unsetLink().run();
     }
     hidePopover();
@@ -335,7 +311,90 @@ export function toggleLink() {
 export function onPickLinkResourceResult(resourceKey) {
     isPickerOpen = false;
     if (!resourceKey) return;
+
     linkInputEl.value = resourceKey;
-    linkInputEl.dispatchEvent(new Event('input', { bubbles: true }));
-    linkInputEl.focus();
+    updateButtonStates(resourceKey);
+
+    const { state } = ctx.editor;
+
+    // Apply the link change directly using ProseMirror transactions
+    // (the cursor position may have been lost when the picker dialog took focus)
+    if (createModeRange) {
+        // Verify the range is still valid
+        const docSize = state.doc.content.size;
+        if (createModeRange.from < 0 || createModeRange.to > docSize) {
+            linkInputEl.focus();
+            return;
+        }
+
+        try {
+            const linkMark = ctx.editor.schema.marks.link;
+            if (!linkMark) {
+                linkInputEl.focus();
+                return;
+            }
+
+            const { tr } = ctx.editor.state;
+            tr.addMark(
+                createModeRange.from,
+                createModeRange.to,
+                linkMark.create({ href: resourceKey })
+            );
+            ctx.editor.view.dispatch(tr);
+
+            // Focus the editor and set selection at the end of the link
+            ctx.editor.chain().focus().setTextSelection(createModeRange.to).run();
+
+            hidePopover();
+        } catch (e) {
+            console.warn('Failed to apply link:', e);
+            linkInputEl.focus();
+        }
+    } else if (isExistingLink && currentLinkEl) {
+        // Edit mode: use a direct transaction to update the link
+        try {
+            const linkPos = ctx.editor.view.posAtDOM(currentLinkEl, 0);
+            const $pos = ctx.editor.state.doc.resolve(linkPos);
+            const linkMark = $pos.marks().find(m => m.type.name === 'link');
+
+            if (!linkMark) {
+                linkInputEl.focus();
+                return;
+            }
+
+            // Find the start and end of the link
+            let start = linkPos;
+            let end = linkPos;
+
+            // Walk backwards to find link start
+            while (start > 0) {
+                const $s = ctx.editor.state.doc.resolve(start - 1);
+                if (!$s.marks().some(m => m.type.name === 'link' && m.attrs.href === linkMark.attrs.href)) break;
+                start--;
+            }
+
+            // Walk forwards to find link end
+            const docSize = ctx.editor.state.doc.content.size;
+            while (end < docSize) {
+                const $e = ctx.editor.state.doc.resolve(end);
+                if (!$e.marks().some(m => m.type.name === 'link' && m.attrs.href === linkMark.attrs.href)) break;
+                end++;
+            }
+
+            // Use transaction to update the link
+            const { tr } = ctx.editor.state;
+            const linkMarkType = ctx.editor.schema.marks.link;
+            tr.removeMark(start, end, linkMarkType);
+            tr.addMark(start, end, linkMarkType.create({ href: resourceKey }));
+            ctx.editor.view.dispatch(tr);
+
+            hidePopover();
+        } catch (e) {
+            console.warn('Failed to update link:', e);
+            linkInputEl.focus();
+        }
+    } else {
+        // Fallback: just focus the input and let user apply manually
+        linkInputEl.focus();
+    }
 }
