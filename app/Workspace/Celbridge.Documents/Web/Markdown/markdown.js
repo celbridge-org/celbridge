@@ -9,37 +9,6 @@ import { init as initLinkPopover, toggleLink, onPickLinkResourceResult } from '.
 import { createTableExtensions, init as initTablePopover, toggleTable } from './markdown-table-popover.js';
 
 // ---------------------------------------------------------------------------
-// Debug logging for caret/selection tracking
-// ---------------------------------------------------------------------------
-
-const DEBUG_SELECTION = true;
-let lastLoggedSelection = null;
-
-function logSelection(source, editor) {
-    if (!DEBUG_SELECTION) return;
-
-    const { state } = editor;
-    const { selection } = state;
-    const { from, to, empty } = selection;
-    const docSize = state.doc.content.size;
-    const isAtEnd = from === docSize - 1 || to === docSize - 1;
-
-    const selKey = `${from}-${to}`;
-    if (selKey === lastLoggedSelection) return;
-    lastLoggedSelection = selKey;
-
-    const logStyle = isAtEnd ? 'color: red; font-weight: bold' : 'color: gray';
-    console.log(
-        `%c[SEL] ${source}: from=${from}, to=${to}, empty=${empty}, docSize=${docSize}${isAtEnd ? ' ⚠️ AT END' : ''}`,
-        logStyle
-    );
-
-    if (isAtEnd && source !== 'init') {
-        console.trace('[SEL] Stack trace for selection at end');
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Table clipboard handling
 // When all cells in a table are selected, copy/cut the entire table
 // ---------------------------------------------------------------------------
@@ -238,13 +207,7 @@ const editor = new Editor({
         ...tableExtensions,
     ],
     content: '',
-    onUpdate: ({ editor: ed, transaction }) => {
-        if (DEBUG_SELECTION) {
-            const steps = transaction.steps.map(s => s.constructor.name).join(', ') || 'none';
-            console.log(`[UPDATE] docChanged=${transaction.docChanged}, steps=[${steps}]`);
-            logSelection('onUpdate', ed);
-        }
-
+    onUpdate: () => {
         if (isLoadingContent) return;
 
         if (changeTimer) clearTimeout(changeTimer);
@@ -256,23 +219,6 @@ const editor = new Editor({
 
 // Store editor in context for modules
 ctx.editor = editor;
-
-// Log initial selection state
-logSelection('init', editor);
-
-// Add focus/blur logging
-editor.on('focus', ({ editor: ed }) => {
-    if (DEBUG_SELECTION) {
-        console.log('[FOCUS] Editor gained focus');
-        logSelection('focus', ed);
-    }
-});
-editor.on('blur', ({ editor: ed }) => {
-    if (DEBUG_SELECTION) {
-        console.log('[BLUR] Editor lost focus');
-        logSelection('blur', ed);
-    }
-});
 
 // Initialize popover modules
 initImagePopover(ctx);
@@ -458,18 +404,11 @@ toolbarEl.addEventListener('click', (e) => {
 });
 
 // Toolbar state listeners
-editor.on('selectionUpdate', ({ editor: ed, transaction }) => {
-    if (DEBUG_SELECTION) {
-        logSelection('selectionUpdate', ed);
-    }
+editor.on('selectionUpdate', () => {
     updateToolbar();
     highlightActiveTocItem();
 });
-editor.on('transaction', ({ editor: ed, transaction }) => {
-    if (DEBUG_SELECTION && transaction.selectionSet) {
-        console.log(`[TRANSACTION] selectionSet=true, docChanged=${transaction.docChanged}`);
-        logSelection('transaction(selectionSet)', ed);
-    }
+editor.on('transaction', ({ transaction }) => {
     updateToolbar();
     if (transaction.docChanged) {
         scheduleTocUpdate();
@@ -488,10 +427,6 @@ if (window.chrome && window.chrome.webview) {
 
         switch (msg.type) {
             case 'set-localization': {
-                if (DEBUG_SELECTION) {
-                    console.log('[MSG] set-localization received');
-                    logSelection('before set-localization', editor);
-                }
                 setStrings(msg.payload.strings);
                 // Update the TipTap placeholder text dynamically, i.e. "Start writing..."
                 const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
@@ -499,15 +434,9 @@ if (window.chrome && window.chrome.webview) {
                     placeholderExt.options.placeholder = t('NoteEditor_Placeholder');
                     editor.view.dispatch(editor.state.tr);
                 }
-                if (DEBUG_SELECTION) {
-                    logSelection('after set-localization', editor);
-                }
                 break;
             }
             case 'load-doc': {
-                if (DEBUG_SELECTION) {
-                    console.log('[MSG] load-doc received');
-                }
                 isLoadingContent = true;
                 try {
                     if (msg.payload.projectBaseUrl) {
@@ -523,25 +452,15 @@ if (window.chrome && window.chrome.webview) {
                     console.error('[Note] Failed to load doc:', e);
                 }
                 isLoadingContent = false;
-                if (DEBUG_SELECTION) {
-                    logSelection('after load-doc', editor);
-                }
                 break;
             }
             case 'request-save': {
-                if (DEBUG_SELECTION) {
-                    console.log('[MSG] request-save received');
-                    logSelection('before request-save', editor);
-                }
                 let markdown = editor.getMarkdown();
                 markdown = markdown.replace(/&nbsp;/g, '');
                 sendMessage({
                     type: 'save-response',
                     payload: { content: markdown }
                 });
-                if (DEBUG_SELECTION) {
-                    logSelection('after request-save', editor);
-                }
                 break;
             }
             case 'pick-image-resource-result': {

@@ -10,6 +10,11 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
     // Delay before saving the document after the most recent change
     private const double SaveDelay = 1.0; // Seconds
 
+    // Flag to suppress reload requests triggered by our own save operations.
+    // This prevents the file watcher race condition where the watcher fires
+    // before we can update our tracking info.
+    private bool _isSavingFile;
+
     [ObservableProperty]
     private double _saveTimer;
 
@@ -28,6 +33,12 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
     {
         if (message.Resource == FileResource)
         {
+            // Skip reload if we're currently saving - this is our own file change
+            if (_isSavingFile)
+            {
+                return;
+            }
+
             if (IsFileChangedExternally())
             {
                 ReloadRequested?.Invoke(this, EventArgs.Empty);
@@ -112,7 +123,13 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
     {
         try
         {
+            // Set flag before writing to suppress file watcher reload requests
+            _isSavingFile = true;
+
             await File.WriteAllTextAsync(FilePath, markdownContent);
+
+            // Update file tracking info immediately after writing
+            UpdateFileTrackingInfo();
 
             var message = new DocumentSaveCompletedMessage(FileResource);
             _messengerService.Send(message);
@@ -123,6 +140,11 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         {
             return Result.Fail($"Failed to save markdown file: '{FilePath}'")
                 .WithException(ex);
+        }
+        finally
+        {
+            // Clear the flag after save completes (success or failure)
+            _isSavingFile = false;
         }
     }
 
