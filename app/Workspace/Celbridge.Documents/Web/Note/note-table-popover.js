@@ -27,7 +27,10 @@ const MAX_COLS = 20;
 
 export function createTableExtensions() {
     return [
-        Table.configure({ resizable: false }),
+        Table.configure({
+            resizable: false,
+            allowTableNodeSelection: true,
+        }),
         TableRow,
         TableCell,
         TableHeader,

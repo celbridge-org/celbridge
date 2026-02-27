@@ -896,6 +896,9 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Toolbar_OrderedList" xml:space="preserve">
     <value>Ordered List</value>
   </data>
+  <data name="NoteEditor_Toolbar_TaskList" xml:space="preserve">
+    <value>Task List</value>
+  </data>
   <data name="NoteEditor_Toolbar_Blockquote" xml:space="preserve">
     <value>Blockquote</value>
   </data>

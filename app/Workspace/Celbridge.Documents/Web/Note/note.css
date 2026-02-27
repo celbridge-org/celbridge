@@ -360,3 +360,57 @@ body {
     cursor: default;
     pointer-events: none;
 }
+
+/* Task List styles */
+
+.tiptap ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0.75em;
+}
+
+.tiptap ul[data-type="taskList"] > li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.tiptap ul[data-type="taskList"] > li:not(:last-child) {
+    margin-bottom: 0.15em;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.tiptap ul[data-type="taskList"] li > div p {
+    margin-bottom: 0;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+/* Nested task lists */
+.tiptap ul[data-type="taskList"] ul[data-type="taskList"] {
+    margin-top: 0.15em;
+    margin-bottom: 0;
+    padding-left: 1.5em;
+}

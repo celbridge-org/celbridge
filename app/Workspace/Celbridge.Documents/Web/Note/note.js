@@ -1,7 +1,7 @@
 // Note editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
-import { Editor, StarterKit, Link, Placeholder, Markdown } from './lib/tiptap.js';
+import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './note-image-popover.js';
@@ -95,6 +95,10 @@ const editor = new Editor({
         Placeholder.configure({
             placeholder: 'Start writing...',
         }),
+        TaskList,
+        TaskItem.configure({
+            nested: true,
+        }),
         imageExtension,
         ...tableExtensions,
     ],
@@ -163,6 +167,7 @@ function updateToolbar() {
             case 'paragraph': isActive = editor.isActive('paragraph'); break;
             case 'bulletList': isActive = editor.isActive('bulletList'); break;
             case 'orderedList': isActive = editor.isActive('orderedList'); break;
+            case 'taskList': isActive = editor.isActive('taskList'); break;
             case 'blockquote': isActive = editor.isActive('blockquote'); break;
             case 'codeBlock': isActive = editor.isActive('codeBlock'); break;
             case 'link': isActive = editor.isActive('link'); break;
@@ -282,6 +287,7 @@ toolbarEl.addEventListener('click', (e) => {
         case 'paragraph': editor.chain().focus().setParagraph().run(); break;
         case 'bulletList': editor.chain().focus().toggleBulletList().run(); break;
         case 'orderedList': editor.chain().focus().toggleOrderedList().run(); break;
+        case 'taskList': editor.chain().focus().toggleTaskList().run(); break;
         case 'blockquote': editor.chain().focus().toggleBlockquote().run(); break;
         case 'codeBlock': editor.chain().focus().toggleCodeBlock().run(); break;
         case 'horizontalRule': editor.chain().focus().setHorizontalRule().run(); break;
