@@ -14,7 +14,7 @@ using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class MarkdownDocumentView : DocumentView
+public sealed partial class MarkdownDocumentView : WebView2DocumentView
 {
     // Payload for loading a markdown document into the editor
     private record LoadDocPayload(string Content, string ProjectBaseUrl, string DocumentBaseUrl);
@@ -22,22 +22,19 @@ public sealed partial class MarkdownDocumentView : DocumentView
     // Payload for returning a picked resource key to the editor
     private record ResourceKeyPayload(string ResourceKey);
 
-    private ILogger _logger;
-    private ICommandService _commandService;
-    private IMessengerService _messengerService;
-    private IUserInterfaceService _userInterfaceService;
-    private IResourceRegistry _resourceRegistry;
-    private IStringLocalizer _stringLocalizer;
-    private IDialogService _dialogService;
+    private readonly ILogger _logger;
+    private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
+    private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IStringLocalizer _stringLocalizer;
+    private readonly IDialogService _dialogService;
 
     public MarkdownDocumentViewModel ViewModel { get; }
 
-    private WebView2? _webView;
-    private WebView2Messenger? _webMessenger;
+    protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    // Track save state to prevent race conditions
-    private bool _isSaveInProgress = false;
-    private bool _hasPendingSave = false;
+    private WebView2Messenger? _webMessenger;
 
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
@@ -48,6 +45,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
         IWorkspaceWrapper workspaceWrapper,
         IStringLocalizer stringLocalizer,
         IDialogService dialogService)
+        : base(messengerService)
     {
         ViewModel = serviceProvider.GetRequiredService<MarkdownDocumentViewModel>();
 
@@ -59,13 +57,16 @@ public sealed partial class MarkdownDocumentView : DocumentView
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
 
+        this.InitializeComponent();
+
+        // Assign the WebView from XAML to the base class property
+        WebView = MarkdownWebView;
+
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
         Loaded += MarkdownDocumentView_Loaded;
 
         ViewModel.ReloadRequested += ViewModel_ReloadRequested;
-
-        this.DataContext(ViewModel);
     }
 
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
@@ -79,15 +80,11 @@ public sealed partial class MarkdownDocumentView : DocumentView
     {
         Guard.IsNotNull(_webMessenger);
 
-        if (_isSaveInProgress)
+        if (!TryBeginSave())
         {
-            _hasPendingSave = true;
             _logger.LogDebug("Save already in progress, queuing pending save");
             return Result.Ok();
         }
-
-        _isSaveInProgress = true;
-        _hasPendingSave = false;
 
         var message = new JsMessage("request-save");
         _webMessenger.Send(message);
@@ -106,44 +103,42 @@ public sealed partial class MarkdownDocumentView : DocumentView
     {
         try
         {
-            var webView = new WebView2();
-            await webView.EnsureCoreWebView2Async();
+            Guard.IsNotNull(WebView);
 
-            var messenger = new WebView2Messenger(webView.CoreWebView2);
+            await WebView.EnsureCoreWebView2Async();
 
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("markdown.celbridge",
+            _webMessenger = new WebView2Messenger(WebView.CoreWebView2);
+
+            WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "markdown.celbridge",
                 "Celbridge.Documents/Web/Markdown",
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            WebView2Helper.MapSharedAssets(webView.CoreWebView2);
+            WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
 
             // Map the project folder so resource key image paths resolve correctly
             var projectFolder = _resourceRegistry.ProjectFolderPath;
             if (!string.IsNullOrEmpty(projectFolder))
             {
-                webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     "project.celbridge",
                     projectFolder,
                     CoreWebView2HostResourceAccessKind.Allow);
             }
 
-            webView.DefaultBackgroundColor = Colors.Transparent;
-
             // Sync WebView2 color scheme with the app theme so CSS prefers-color-scheme matches
-            ApplyThemeToWebView(webView);
+            ApplyThemeToWebView(WebView);
 
-            webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
-            var settings = webView.CoreWebView2.Settings;
+            WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+            var settings = WebView.CoreWebView2.Settings;
             settings.AreDevToolsEnabled = true;
             settings.AreDefaultContextMenusEnabled = true;
 
-            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
-
-            await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
+            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             // Cancel all navigations except the initial editor page load.
             // Link handling is done via JS popover and explicit 'link-clicked' messages.
-            webView.NavigationStarting += (s, args) =>
+            WebView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
                 if (string.IsNullOrEmpty(uri))
@@ -162,22 +157,14 @@ public sealed partial class MarkdownDocumentView : DocumentView
             };
 
             // Block all new window requests - links are handled via JS popover
-            webView.CoreWebView2.NewWindowRequested += (s, args) =>
+            WebView.CoreWebView2.NewWindowRequested += (s, args) =>
             {
                 args.Handled = true;
             };
 
-            webView.GotFocus += WebView_GotFocus;
+            WebView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
 
-            _webView = webView;
-            _webMessenger = messenger;
-
-            // Show the WebView immediately so the status is visible
-            this.Content = _webView;
-
-            webView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
-
-            bool isEditorReady = false;
+            var isEditorReady = false;
             TypedEventHandler<WebView2, CoreWebView2WebMessageReceivedEventArgs> onWebMessageReceived = (sender, e) =>
             {
                 var message = e.TryGetWebMessageAsString();
@@ -205,7 +192,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
                 _logger.LogError($"Markdown: Expected 'editor-ready' message, but received: '{message}'");
             };
 
-            webView.WebMessageReceived += onWebMessageReceived;
+            WebView.WebMessageReceived += onWebMessageReceived;
 
             // Wait for editor_ready with a timeout to avoid hanging indefinitely
             var timeout = TimeSpan.FromSeconds(30);
@@ -223,10 +210,14 @@ public sealed partial class MarkdownDocumentView : DocumentView
                 }
             }
 
-            webView.WebMessageReceived -= onWebMessageReceived;
+            WebView.WebMessageReceived -= onWebMessageReceived;
+
+            // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
+            // Must be done AFTER editor-ready to avoid the base handler receiving initialization messages
+            await InitializeWebViewAsync();
 
             // Send localization strings to the editor before loading content
-            messenger.SendLocalizationStrings(_stringLocalizer, "Markdown_");
+            _webMessenger.SendLocalizationStrings(_stringLocalizer, "Markdown_");
 
             await LoadMarkdownContent();
         }
@@ -238,7 +229,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     private async Task LoadMarkdownContent()
     {
-        Guard.IsNotNull(_webView);
+        Guard.IsNotNull(WebView);
         Guard.IsNotNull(_webMessenger);
 
         var filePath = ViewModel.FilePath;
@@ -258,9 +249,6 @@ public sealed partial class MarkdownDocumentView : DocumentView
             var payload = new LoadDocPayload(content, projectBaseUrl, documentBaseUrl);
             var message = new JsPayloadMessage<LoadDocPayload>("load-doc", payload);
             _webMessenger.Send(message);
-
-            _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            _webView.WebMessageReceived += WebView_WebMessageReceived;
         }
         catch (Exception ex)
         {
@@ -528,19 +516,16 @@ public sealed partial class MarkdownDocumentView : DocumentView
         return await ViewModel.LoadContent();
     }
 
-    private async void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    protected override async void OnWebMessageReceived(string? webMessage)
     {
-        var webMessage = args.TryGetWebMessageAsString();
         if (string.IsNullOrEmpty(webMessage))
         {
             _logger.LogError("Invalid web message received");
             return;
         }
 
-        if (WebView2Helper.HandleKeyboardShortcut(webMessage))
-        {
-            return;
-        }
+        // Try to handle as a global keyboard shortcut first
+        base.OnWebMessageReceived(webMessage);
 
         try
         {
@@ -554,7 +539,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
                     break;
 
                 case "save-response":
-                    if (_isSaveInProgress)
+                    if (IsSaveInProgress)
                     {
                         var content = doc.RootElement
                             .GetProperty("payload")
@@ -608,12 +593,10 @@ public sealed partial class MarkdownDocumentView : DocumentView
             _logger.LogError(saveResult, "Failed to save markdown data");
         }
 
-        _isSaveInProgress = false;
-
-        if (_hasPendingSave)
+        // Check if there's a pending save that needs processing
+        if (CompleteSave())
         {
             _logger.LogDebug("Processing pending save request");
-            _hasPendingSave = false;
             ViewModel.OnDataChanged();
         }
     }
@@ -628,24 +611,16 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
         ViewModel.Cleanup();
 
-        if (_webView != null)
-        {
-            _webView.WebMessageReceived -= WebView_WebMessageReceived;
-            _webView.GotFocus -= WebView_GotFocus;
-
-            _webView.Close();
-            _webView = null;
-            _webMessenger = null;
-        }
+        _webMessenger = null;
 
         await base.PrepareToClose();
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
     {
-        if (_webView != null)
+        if (WebView is not null)
         {
-            ApplyThemeToWebView(_webView);
+            ApplyThemeToWebView(WebView);
         }
     }
 
@@ -657,15 +632,9 @@ public sealed partial class MarkdownDocumentView : DocumentView
             : CoreWebView2PreferredColorScheme.Light;
     }
 
-    private void WebView_GotFocus(object sender, RoutedEventArgs e)
-    {
-        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
-        _messengerService.Send(message);
-    }
-
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
-        if (_webView != null)
+        if (WebView is not null)
         {
             await LoadMarkdownContent();
         }

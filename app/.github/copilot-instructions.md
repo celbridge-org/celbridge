@@ -8,6 +8,7 @@
 - Always define collection initialization using multiple lines, never on a single line. 
 - Only use ternary expressions for trivial logic, never complicated logic.
 - Prefer explicit record classes with meaningful property names over anonymous types for message contracts. Records can be defined in the same file or class, whichever is more maintainable.
+- Code-behind files should always follow the standard .xaml.cs naming convention (e.g., MyView.xaml.cs, not MyView.cs).
 
 ## Code Style
 - Use specific formatting rules

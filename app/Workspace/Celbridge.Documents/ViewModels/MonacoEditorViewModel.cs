@@ -13,19 +13,10 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
 
-    // Delay before saving the document after the most recent change
-    private const double SaveDelay = 1.0; // Seconds
-
-    [ObservableProperty]
-    private double _saveTimer;
-
     // A cache of the editor text that was last saved to disk.
     // This is the text that is displayed in the preview panel.
     [ObservableProperty]
     private string _cachedText = string.Empty;
-
-    // Event to notify the view that the document should be reloaded
-    public event EventHandler? ReloadRequested;
 
     public MonacoEditorViewModel(
         ICommandService commandService,
@@ -86,26 +77,6 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    public Result<bool> UpdateSaveTimer(double deltaTime)
-    {
-        if (!HasUnsavedChanges)
-        {
-            return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
-        }
-
-        if (SaveTimer > 0)
-        {
-            SaveTimer -= deltaTime;
-            if (SaveTimer <= 0)
-            {
-                SaveTimer = 0;
-                return Result<bool>.Ok(true);
-            }
-        }
-
-        return Result<bool>.Ok(false);
-    }
-
     public string GetDocumentLanguage()
     {
         return _documentsService.GetDocumentLanguage(FileResource);
@@ -148,7 +119,7 @@ public partial class MonacoEditorViewModel : DocumentViewModel
             if (IsFileChangedExternally())
             {
                 // This is an external change, notify the view to reload
-                ReloadRequested?.Invoke(this, EventArgs.Empty);
+                RaiseReloadRequested();
             }
         }
     }
