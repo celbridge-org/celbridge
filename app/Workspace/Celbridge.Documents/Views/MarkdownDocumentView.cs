@@ -16,6 +16,12 @@ namespace Celbridge.Documents.Views;
 
 public sealed partial class MarkdownDocumentView : DocumentView
 {
+    // Payload for loading a markdown document into the editor
+    private record LoadDocPayload(string Content, string ProjectBaseUrl);
+
+    // Payload for returning a picked resource key to the editor
+    private record ResourceKeyPayload(string ResourceKey);
+
     private ILogger _logger;
     private ICommandService _commandService;
     private IMessengerService _messengerService;
@@ -27,6 +33,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
     public MarkdownDocumentViewModel ViewModel { get; }
 
     private WebView2? _webView;
+    private WebView2Messenger? _messenger;
 
     // Track save state to prevent race conditions
     private bool _isSaveInProgress = false;
@@ -70,7 +77,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        Guard.IsNotNull(_webView);
+        Guard.IsNotNull(_messenger);
 
         if (_isSaveInProgress)
         {
@@ -82,7 +89,8 @@ public sealed partial class MarkdownDocumentView : DocumentView
         _isSaveInProgress = true;
         _hasPendingSave = false;
 
-        SendMessageToJS(new { type = "request-save" });
+        var message = new JsMessage("request-save");
+        _messenger.Send(message);
 
         return await ViewModel.SaveDocument();
     }
@@ -100,6 +108,8 @@ public sealed partial class MarkdownDocumentView : DocumentView
         {
             var webView = new WebView2();
             await webView.EnsureCoreWebView2Async();
+
+            var messenger = new WebView2Messenger(webView.CoreWebView2);
 
             webView.CoreWebView2.SetVirtualHostNameToFolderMapping("note.celbridge",
                 "Celbridge.Documents/Web/Note",
@@ -160,6 +170,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             webView.GotFocus += WebView_GotFocus;
 
             _webView = webView;
+            _messenger = messenger;
 
             // Show the WebView immediately so the status is visible
             this.Content = _webView;
@@ -215,7 +226,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             webView.WebMessageReceived -= onWebMessageReceived;
 
             // Send localization strings to the editor before loading content
-            WebView2Helper.SendLocalizationStrings(webView.CoreWebView2, _stringLocalizer, "NoteEditor_");
+            messenger.SendLocalizationStrings(_stringLocalizer, "NoteEditor_");
 
             await LoadMarkdownContent();
         }
@@ -228,6 +239,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
     private async Task LoadMarkdownContent()
     {
         Guard.IsNotNull(_webView);
+        Guard.IsNotNull(_messenger);
 
         var filePath = ViewModel.FilePath;
 
@@ -242,7 +254,9 @@ public sealed partial class MarkdownDocumentView : DocumentView
             var content = await ViewModel.LoadMarkdownContent();
             var projectBaseUrl = "https://project.celbridge/";
 
-            SendMessageToJS(new { type = "load-doc", payload = new { content, projectBaseUrl } });
+            var payload = new LoadDocPayload(content, projectBaseUrl);
+            var message = new JsPayloadMessage<LoadDocPayload>("load-doc", payload);
+            _messenger.Send(message);
 
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.WebMessageReceived += WebView_WebMessageReceived;
@@ -253,21 +267,30 @@ public sealed partial class MarkdownDocumentView : DocumentView
         }
     }
 
-    private void SendMessageToJS(object message)
-    {
-        Guard.IsNotNull(_webView);
-        var json = JsonSerializer.Serialize(message);
-        _webView.CoreWebView2.PostWebMessageAsString(json);
-    }
-
     private async Task HandlePickImageResource()
     {
-        var imageExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp" };
+        var imageExtensions = new[]
+        {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".svg",
+            ".bmp"
+        };
         var title = _stringLocalizer.GetString("NoteEditor_SelectImage_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(imageExtensions, title, showPreview: true);
 
-        var resourceKey = result.IsSuccess ? result.Value.ToString() : string.Empty;
-        SendMessageToJS(new { type = "pick-image-resource-result", payload = new { resourceKey } });
+        var resourceKey = string.Empty;
+        if (result.IsSuccess)
+        {
+            resourceKey = result.Value.ToString();
+        }
+
+        var payload = new ResourceKeyPayload(resourceKey);
+        var message = new JsPayloadMessage<ResourceKeyPayload>("pick-image-resource-result", payload);
+        _messenger!.Send(message);
     }
 
     private async Task HandlePickLinkResource()
@@ -275,8 +298,15 @@ public sealed partial class MarkdownDocumentView : DocumentView
         var title = _stringLocalizer.GetString("NoteEditor_SelectResource_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(Array.Empty<string>(), title);
 
-        var resourceKey = result.IsSuccess ? result.Value.ToString() : string.Empty;
-        SendMessageToJS(new { type = "pick-link-resource-result", payload = new { resourceKey } });
+        var resourceKey = string.Empty;
+        if (result.IsSuccess)
+        {
+            resourceKey = result.Value.ToString();
+        }
+
+        var payload = new ResourceKeyPayload(resourceKey);
+        var message = new JsPayloadMessage<ResourceKeyPayload>("pick-link-resource-result", payload);
+        _messenger!.Send(message);
     }
 
     private void OpenSystemBrowser(string? uri)
@@ -342,7 +372,9 @@ public sealed partial class MarkdownDocumentView : DocumentView
             }
 
             // 2. Try href relative to the current document's folder
-            var currentFolder = Path.GetDirectoryName(ViewModel.FileResource.ToString())?.Replace('\\', '/') ?? "";
+            var fileResourcePath = ViewModel.FileResource.ToString();
+            var directoryName = Path.GetDirectoryName(fileResourcePath);
+            var currentFolder = directoryName?.Replace('\\', '/') ?? "";
             if (!string.IsNullOrEmpty(currentFolder))
             {
                 var relativePath = NormalizePath($"{currentFolder}/{href}");
@@ -506,6 +538,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
             _webView.Close();
             _webView = null;
+            _messenger = null;
         }
 
         await base.PrepareToClose();
