@@ -69,7 +69,7 @@ function handleTableClipboard(event, isCut, editor) {
     const tableInfo = findTableFromCellSelection(state);
     if (!tableInfo) return false;
 
-    const { pos, node } = tableInfo;
+    const { pos } = tableInfo;
 
     // Select the entire table node, then let default clipboard handling work
     // This converts cell selection to node selection which copies the whole table
@@ -277,6 +277,20 @@ function updateToolbar() {
 // Table of Contents
 let tocUpdatePending = false;
 
+function collectHeadings() {
+    const headings = [];
+    editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+            headings.push({
+                level: node.attrs.level,
+                text: node.textContent,
+                pos: pos,
+            });
+        }
+    });
+    return headings;
+}
+
 function scheduleTocUpdate() {
     if (!tocPanel.classList.contains('visible') || tocUpdatePending) return;
     tocUpdatePending = true;
@@ -289,16 +303,7 @@ function scheduleTocUpdate() {
 function updateToc() {
     if (!tocPanel.classList.contains('visible')) return;
 
-    const headings = [];
-    editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'heading') {
-            headings.push({
-                level: node.attrs.level,
-                text: node.textContent,
-                pos: pos,
-            });
-        }
-    });
+    const headings = collectHeadings();
 
     tocList.innerHTML = '';
     tocEmpty.classList.toggle('visible', headings.length === 0);
@@ -330,15 +335,9 @@ function highlightActiveTocItem() {
     const items = tocList.querySelectorAll('.toc-item');
     let activeIndex = -1;
 
-    const headings = [];
-    editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === 'heading') {
-            headings.push(pos);
-        }
-    });
-
+    const headings = collectHeadings();
     for (let i = headings.length - 1; i >= 0; i--) {
-        if (from >= headings[i]) {
+        if (from >= headings[i].pos) {
             activeIndex = i;
             break;
         }

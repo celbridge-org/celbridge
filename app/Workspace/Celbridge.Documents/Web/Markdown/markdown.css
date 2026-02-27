@@ -272,16 +272,6 @@ body {
     color: var(--text-primary);
 }
 
-.popover-mode {
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.popover-mode.active {
-    display: flex;
-}
-
 .popover-field {
     display: flex;
     flex-direction: column;

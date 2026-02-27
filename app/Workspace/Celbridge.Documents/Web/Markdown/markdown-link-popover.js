@@ -330,7 +330,7 @@ export function toggleLink() {
     showPopoverForSelection();
 }
 
-// --- Resource picker result (called from note.js when C# responds) ---
+// --- Resource picker result (called from markdown.js when C# responds) ---
 
 export function onPickLinkResourceResult(resourceKey) {
     isPickerOpen = false;
