@@ -9,9 +9,9 @@ namespace Celbridge.Modules.Services;
 public class ModuleServiceCollection : IModuleServiceCollection
 {
     private List<Type> TransientServices { get; } = new();
-    private Dictionary<Type, Type> TransientInterfaceServices { get; } = new();
+    private List<(Type Interface, Type Implementation)> TransientInterfaceServices { get; } = new();
     private List<Type> SingletonServices { get; } = new();
-    private Dictionary<Type, Type> SingletonInterfaceServices { get; } = new();
+    private List<(Type Interface, Type Implementation)> SingletonInterfaceServices { get; } = new();
 
     public void AddTransient<T>()
         where T : class
@@ -23,7 +23,7 @@ public class ModuleServiceCollection : IModuleServiceCollection
         where I : class
         where T : class
     {
-        TransientInterfaceServices.Add(typeof(I), typeof(T));
+        TransientInterfaceServices.Add((typeof(I), typeof(T)));
     }
 
     public void AddSingleton<T>()
@@ -36,7 +36,7 @@ public class ModuleServiceCollection : IModuleServiceCollection
         where I : class
         where T : class
     {
-        SingletonInterfaceServices.Add(typeof(I), typeof(T));
+        SingletonInterfaceServices.Add((typeof(I), typeof(T)));
     }
 
     public void PopulateServices(IServiceCollection services)
@@ -46,9 +46,9 @@ public class ModuleServiceCollection : IModuleServiceCollection
             services.AddTransient(serviceType);
         }
 
-        foreach (var kv in TransientInterfaceServices)
+        foreach (var (interfaceType, implementationType) in TransientInterfaceServices)
         {
-            services.AddTransient(kv.Key, kv.Value);
+            services.AddTransient(interfaceType, implementationType);
         }
 
         foreach (var serviceType in SingletonServices)
@@ -56,9 +56,9 @@ public class ModuleServiceCollection : IModuleServiceCollection
             services.AddSingleton(serviceType);
         }
 
-        foreach (var kv in SingletonInterfaceServices)
+        foreach (var (interfaceType, implementationType) in SingletonInterfaceServices)
         {
-            services.AddSingleton(kv.Key, kv.Value);
+            services.AddSingleton(interfaceType, implementationType);
         }
     }
 }

@@ -1,7 +1,10 @@
 using Celbridge.Activities;
-using Celbridge.Modules;
+using Celbridge.Documents;
 using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Markdown.Services;
+using Celbridge.Markdown.ViewModels;
+using Celbridge.Markdown.Views;
+using Celbridge.Modules;
 
 namespace Celbridge.Markdown;
 
@@ -19,6 +22,24 @@ public class Module : IModule
         //
 
         services.AddTransient<MarkdownActivity>();
+
+        //
+        // Register document editor factories
+        //
+
+        services.AddTransient<IDocumentEditorFactory, MarkdownEditorFactory>();
+
+        //
+        // Register views
+        //
+
+        services.AddTransient<MarkdownDocumentView>();
+
+        //
+        // Register view models
+        //
+
+        services.AddTransient<MarkdownDocumentViewModel>();
 
         //
         // Register component editors

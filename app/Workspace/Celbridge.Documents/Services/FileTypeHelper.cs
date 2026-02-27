@@ -6,28 +6,31 @@ namespace Celbridge.Documents.Services;
 
 public class FileTypeHelper
 {
-    private const string TextEditorTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.TextEditorTypes.json";
     private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
     private const string PlaintextLanguage = "plaintext";
-    private const string SpreadJSLicense = "ms-appx:///Celbridge.Documents/Web/SpreadJS/lib/license.js";
+    private const string SpreadJSLicense = "ms-appx:///Celbridge.Spreadsheet/Web/SpreadJS/lib/license.js";
 
-    private Dictionary<string, string> _extensionToLanguage = new();
     private List<string> _fileViewerExtensions = new();
     private HashSet<string> _binaryFileExtensions = new();
+
+    private IDocumentEditorRegistry? _documentEditorRegistry;
 
     /// <summary>
     /// Indicates whether the SpreadJS Excel editor is available.
     /// </summary>
     public bool IsSpreadJSAvailable { get; private set; }
 
+    /// <summary>
+    /// Sets the document editor registry for querying language mappings and supported extensions.
+    /// This must be called after factories are registered.
+    /// </summary>
+    public void SetDocumentEditorRegistry(IDocumentEditorRegistry registry)
+    {
+        _documentEditorRegistry = registry;
+    }
+
     public Result Initialize()
     {
-        var loadTextResult = LoadTextEditorTypes();
-        if (loadTextResult.IsFailure)
-        {
-            return loadTextResult;
-        }
-
         var loadWebResult = LoadFileViewerTypes();
         if (loadWebResult.IsFailure)
         {
@@ -87,17 +90,18 @@ public class FileTypeHelper
 
     /// <summary>
     /// Gets the text editor language for a file extension.
+    /// Queries registered document editor factories for the language mapping.
     /// Returns "plaintext" for empty or unrecognized file extensions.
     /// </summary>
     public string GetTextEditorLanguage(string fileExtension)
     {
-        if (!string.IsNullOrEmpty(fileExtension) &&
-            _extensionToLanguage.TryGetValue(fileExtension, out var language))
+        if (string.IsNullOrEmpty(fileExtension))
         {
-            return language;
+            return PlaintextLanguage;
         }
 
-        return PlaintextLanguage;
+        var language = _documentEditorRegistry?.GetLanguageForExtension(fileExtension);
+        return language ?? PlaintextLanguage;
     }
 
     public bool IsWebViewerFile(string fileExtension)
@@ -136,8 +140,8 @@ public class FileTypeHelper
             return true;
         }
 
-        // Check if it's a known text editor type
-        if (_extensionToLanguage.ContainsKey(fileExtension))
+        // Check if it's a known text editor type (via registered factories)
+        if (_documentEditorRegistry?.IsExtensionSupported(fileExtension) == true)
         {
             return true;
         }
@@ -149,51 +153,6 @@ public class FileTypeHelper
         }
 
         return false;
-    }
-
-    private Result LoadTextEditorTypes()
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-
-        var stream = assembly.GetManifestResourceStream(TextEditorTypesResourceName);
-        if (stream is null)
-        {
-            return Result.Fail($"Embedded resource not found: {TextEditorTypesResourceName}");
-        }
-
-        var json = string.Empty;
-        try
-        {
-            using (stream)
-            using (StreamReader reader = new StreamReader(stream))
-            {
-                json = reader.ReadToEnd();
-            }
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when reading content of embedded resource: {TextEditorTypesResourceName}")
-                .WithException(ex);
-        }
-
-        try
-        {
-            // Deserialize the JSON into a dictionary mapping file extensions to languages
-            var dictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-            if (dictionary is null)
-            {
-                return Result.Fail($"Failed to deserialize embedded resource: {TextEditorTypesResourceName}");
-            }
-
-            _extensionToLanguage.ReplaceWith(dictionary);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when deserializing embedded resource: {TextEditorTypesResourceName}")
-                .WithException(ex);
-        }
-
-        return Result.Ok();
     }
 
     private Result LoadFileViewerTypes()

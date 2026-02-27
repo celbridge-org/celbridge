@@ -33,14 +33,23 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// </summary>
     public Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; } = new();
 
-    // This utility is only used internally and is not exposed via IDocumentService
-    internal TextEditorWebViewPool TextEditorWebViewPool { get; }
+    /// <summary>
+    /// Gets the text editor WebView2 pool for efficient reuse of Monaco editor instances.
+    /// </summary>
+    public ITextEditorWebViewPool TextEditorWebViewPool { get; }
 
     private bool _isWorkspaceLoaded;
 
     private FileTypeHelper _fileTypeHelper;
 
     private Dictionary<string, IPreviewProvider> _previewProviders = new();
+
+    private readonly DocumentEditorRegistry _documentEditorRegistry = new();
+
+    /// <summary>
+    /// Gets the document editor registry.
+    /// </summary>
+    public IDocumentEditorRegistry DocumentEditorRegistry => _documentEditorRegistry;
 
     public DocumentsService(
         IServiceProvider serviceProvider,
@@ -67,11 +76,34 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
+        // Auto-register all document editor factories from the DI container.
+        // This must happen before FileTypeHelper initialization so factories can provide language mappings.
+        RegisterDocumentEditorFactoriesFromContainer(serviceProvider);
+
         _fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
+        _fileTypeHelper.SetDocumentEditorRegistry(_documentEditorRegistry);
+
         var loadResult = _fileTypeHelper.Initialize();
         if (loadResult.IsFailure)
         {
             throw new InvalidProgramException("Failed to initialize file type helper");
+        }
+    }
+
+    private void RegisterDocumentEditorFactoriesFromContainer(IServiceProvider serviceProvider)
+    {
+        var factories = serviceProvider.GetServices<IDocumentEditorFactory>();
+        foreach (var factory in factories)
+        {
+            var result = _documentEditorRegistry.RegisterFactory(factory);
+            if (result.IsSuccess)
+            {
+                _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
+            }
+            else
+            {
+                _logger.LogWarning(result, $"Failed to register document editor factory");
+            }
         }
     }
 
@@ -187,6 +219,14 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public bool IsDocumentSupported(ResourceKey fileResource)
     {
+        // First check if any registered factory supports this extension
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        if (_documentEditorRegistry.IsExtensionSupported(extension))
+        {
+            return true;
+        }
+
+        // Fall back to built-in types
         var documentType = GetDocumentViewType(fileResource);
         return documentType != DocumentViewType.UnsupportedFormat;
     }
@@ -527,56 +567,60 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result<IPreviewProvider>.Fail();
     }
 
+    /// <summary>
+    /// Registers a document editor factory.
+    /// </summary>
+    public Result RegisterDocumentEditorFactory(IDocumentEditorFactory factory)
+    {
+        var registerResult = _documentEditorRegistry.RegisterFactory(factory);
+        if (registerResult.IsFailure)
+        {
+            return Result.Fail($"Failed to register document editor factory")
+                .WithErrors(registerResult);
+        }
+
+        _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
+
+        return Result.Ok();
+    }
+
     private Result<IDocumentView> CreateDocumentViewInternal(ResourceKey fileResource)
     {
+        // First, try to get a document view from the registry
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var filePath = resourceRegistry.GetResourcePath(fileResource);
+
+        var factoryResult = _documentEditorRegistry.GetFactory(fileResource, filePath);
+        if (factoryResult.IsSuccess)
+        {
+            var factory = factoryResult.Value;
+            var createResult = factory.CreateDocumentView(fileResource);
+            if (createResult.IsSuccess)
+            {
+                return createResult;
+            }
+
+            // Log the failure and fall through to fallback
+            _logger.LogWarning(createResult, $"Factory failed to create document view for: '{fileResource}'");
+        }
+
+        // Fall back to TextBoxDocumentView for text files on non-Windows platforms
+        // or when no factory is registered
         var viewType = GetDocumentViewType(fileResource);
 
-        IDocumentView? documentView = null;
-        switch (viewType)
+        if (viewType == DocumentViewType.UnsupportedFormat)
         {
-            case DocumentViewType.UnsupportedFormat:
-                return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
-
-#if WINDOWS
-            case DocumentViewType.TextDocument:
-                documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
-                break;
-
-            case DocumentViewType.WebAppDocument:
-                documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();
-                break;
-
-            case DocumentViewType.FileViewer:
-                documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
-                break;
-
-            case DocumentViewType.Spreadsheet:
-                documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
-                break;
-
-            case DocumentViewType.Markdown:
-                documentView = _serviceProvider.GetRequiredService<MarkdownDocumentView>();
-                break;
-#else
-            case DocumentViewType.WebAppDocument:
-                documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();
-                break;
-            case DocumentViewType.TextDocument:
-            case DocumentViewType.FileViewer:
-
-                // On non-Windows platforms, use the text editor document view for all document types
-                documentView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
-                break;
-#endif
-
+            return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        if (documentView is null)
+        // Use TextBoxDocumentView as the ultimate fallback for text documents
+        if (viewType == DocumentViewType.TextDocument)
         {
-            return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+            var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
+            return Result<IDocumentView>.Ok(textBoxView);
         }
 
-        return Result<IDocumentView>.Ok(documentView);
+        return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)

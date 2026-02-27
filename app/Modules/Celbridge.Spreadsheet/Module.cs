@@ -1,9 +1,12 @@
 using Celbridge.Activities;
+using Celbridge.Documents;
 using Celbridge.Modules;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Services;
+using Celbridge.Spreadsheet.ViewModels;
+using Celbridge.Spreadsheet.Views;
 
-namespace Celbridge.Workspace;
+namespace Celbridge.Spreadsheet;
 
 public class Module : IModule
 {
@@ -19,6 +22,24 @@ public class Module : IModule
         //
 
         services.AddTransient<SpreadsheetActivity>();
+
+        //
+        // Register document editor factories
+        //
+
+        services.AddTransient<IDocumentEditorFactory, SpreadsheetEditorFactory>();
+
+        //
+        // Register views
+        //
+
+        services.AddTransient<SpreadsheetDocumentView>();
+
+        //
+        // Register view models
+        //
+
+        services.AddTransient<SpreadsheetDocumentViewModel>();
 
         //
         // Register components
