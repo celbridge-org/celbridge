@@ -226,7 +226,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             webView.WebMessageReceived -= onWebMessageReceived;
 
             // Send localization strings to the editor before loading content
-            messenger.SendLocalizationStrings(_stringLocalizer, "NoteEditor_");
+            messenger.SendLocalizationStrings(_stringLocalizer, "Markdown_");
 
             await LoadMarkdownContent();
         }
@@ -280,7 +280,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             ".svg",
             ".bmp"
         };
-        var title = _stringLocalizer.GetString("NoteEditor_SelectImage_Title");
+        var title = _stringLocalizer.GetString("Markdown_SelectImage_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(imageExtensions, title, showPreview: true);
 
         var relativePath = string.Empty;
@@ -297,7 +297,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     private async Task HandlePickLinkResource()
     {
-        var title = _stringLocalizer.GetString("NoteEditor_SelectResource_Title");
+        var title = _stringLocalizer.GetString("Markdown_SelectResource_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(Array.Empty<string>(), title);
 
         var relativePath = string.Empty;
@@ -488,15 +488,15 @@ public sealed partial class MarkdownDocumentView : DocumentView
             }
 
             // Could not resolve the link
-            var errorTitle = _stringLocalizer.GetString("NoteEditor_LinkError_Title");
-            var errorMessage = _stringLocalizer.GetString("NoteEditor_LinkError_Message", href);
+            var errorTitle = _stringLocalizer.GetString("Markdown_LinkError_Title");
+            var errorMessage = _stringLocalizer.GetString("Markdown_LinkError_Message", href);
             await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
         }
         catch (Exception ex)
         {
             _logger.LogWarning($"Failed to handle link click for '{href}': {ex.Message}");
-            var errorTitle = _stringLocalizer.GetString("NoteEditor_LinkError_Title");
-            var errorMessage = _stringLocalizer.GetString("NoteEditor_LinkError_Message", href);
+            var errorTitle = _stringLocalizer.GetString("Markdown_LinkError_Title");
+            var errorMessage = _stringLocalizer.GetString("Markdown_LinkError_Message", href);
             await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
         }
     }

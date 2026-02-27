@@ -860,208 +860,208 @@ Do you wish to continue?</value>
   <data name="SearchPanel_CollapseAllTooltip" xml:space="preserve">
     <value>Collapse All Search Results</value>
   </data>
-  <data name="NoteEditor_LinkError_Title" xml:space="preserve">
+  <data name="Markdown_LinkError_Title" xml:space="preserve">
     <value>Link Error</value>
   </data>
-  <data name="NoteEditor_LinkError_Message" xml:space="preserve">
+  <data name="Markdown_LinkError_Message" xml:space="preserve">
     <value>The link '{0}' could not be opened. The resource may not exist or the link may be invalid.</value>
   </data>
-  <data name="NoteEditor_Toolbar_Bold" xml:space="preserve">
+  <data name="Markdown_Toolbar_Bold" xml:space="preserve">
     <value>Bold (Ctrl+B)</value>
   </data>
-  <data name="NoteEditor_Toolbar_Italic" xml:space="preserve">
+  <data name="Markdown_Toolbar_Italic" xml:space="preserve">
     <value>Italic (Ctrl+I)</value>
   </data>
-  <data name="NoteEditor_Toolbar_Strikethrough" xml:space="preserve">
+  <data name="Markdown_Toolbar_Strikethrough" xml:space="preserve">
     <value>Strikethrough</value>
   </data>
-  <data name="NoteEditor_Toolbar_InlineCode" xml:space="preserve">
+  <data name="Markdown_Toolbar_InlineCode" xml:space="preserve">
     <value>Inline Code</value>
   </data>
-  <data name="NoteEditor_Toolbar_Heading1" xml:space="preserve">
+  <data name="Markdown_Toolbar_Heading1" xml:space="preserve">
     <value>Heading 1</value>
   </data>
-  <data name="NoteEditor_Toolbar_Heading2" xml:space="preserve">
+  <data name="Markdown_Toolbar_Heading2" xml:space="preserve">
     <value>Heading 2</value>
   </data>
-  <data name="NoteEditor_Toolbar_Heading3" xml:space="preserve">
+  <data name="Markdown_Toolbar_Heading3" xml:space="preserve">
     <value>Heading 3</value>
   </data>
-  <data name="NoteEditor_Toolbar_Paragraph" xml:space="preserve">
+  <data name="Markdown_Toolbar_Paragraph" xml:space="preserve">
     <value>Paragraph</value>
   </data>
-  <data name="NoteEditor_Toolbar_BulletList" xml:space="preserve">
+  <data name="Markdown_Toolbar_BulletList" xml:space="preserve">
     <value>Bullet List</value>
   </data>
-  <data name="NoteEditor_Toolbar_OrderedList" xml:space="preserve">
+  <data name="Markdown_Toolbar_OrderedList" xml:space="preserve">
     <value>Ordered List</value>
   </data>
-  <data name="NoteEditor_Toolbar_TaskList" xml:space="preserve">
+  <data name="Markdown_Toolbar_TaskList" xml:space="preserve">
     <value>Task List</value>
   </data>
-  <data name="NoteEditor_Toolbar_Blockquote" xml:space="preserve">
+  <data name="Markdown_Toolbar_Blockquote" xml:space="preserve">
     <value>Blockquote</value>
   </data>
-  <data name="NoteEditor_Toolbar_CodeBlock" xml:space="preserve">
+  <data name="Markdown_Toolbar_CodeBlock" xml:space="preserve">
     <value>Code Block</value>
   </data>
-  <data name="NoteEditor_Toolbar_HorizontalRule" xml:space="preserve">
+  <data name="Markdown_Toolbar_HorizontalRule" xml:space="preserve">
     <value>Horizontal Rule</value>
   </data>
-  <data name="NoteEditor_Toolbar_InsertLink" xml:space="preserve">
+  <data name="Markdown_Toolbar_InsertLink" xml:space="preserve">
     <value>Insert/Edit Link</value>
   </data>
-  <data name="NoteEditor_Toolbar_InsertImage" xml:space="preserve">
+  <data name="Markdown_Toolbar_InsertImage" xml:space="preserve">
     <value>Insert Image</value>
   </data>
-  <data name="NoteEditor_Toolbar_InsertTable" xml:space="preserve">
+  <data name="Markdown_Toolbar_InsertTable" xml:space="preserve">
     <value>Insert/Edit Table</value>
   </data>
-  <data name="NoteEditor_Toolbar_Undo" xml:space="preserve">
+  <data name="Markdown_Toolbar_Undo" xml:space="preserve">
     <value>Undo (Ctrl+Z)</value>
   </data>
-  <data name="NoteEditor_Toolbar_Redo" xml:space="preserve">
+  <data name="Markdown_Toolbar_Redo" xml:space="preserve">
     <value>Redo (Ctrl+Shift+Z)</value>
   </data>
-  <data name="NoteEditor_Toolbar_TableOfContents" xml:space="preserve">
+  <data name="Markdown_Toolbar_TableOfContents" xml:space="preserve">
     <value>Table of Contents</value>
   </data>
-  <data name="NoteEditor_Placeholder" xml:space="preserve">
+  <data name="Markdown_Placeholder" xml:space="preserve">
     <value>Start writing...</value>
   </data>
-  <data name="NoteEditor_Image_Header" xml:space="preserve">
+  <data name="Markdown_Image_Header" xml:space="preserve">
     <value>Image</value>
   </data>
-  <data name="NoteEditor_Image_SourceLabel" xml:space="preserve">
+  <data name="Markdown_Image_SourceLabel" xml:space="preserve">
     <value>Source</value>
   </data>
-  <data name="NoteEditor_Image_EditTooltip" xml:space="preserve">
+  <data name="Markdown_Image_EditTooltip" xml:space="preserve">
     <value>Edit source</value>
   </data>
-  <data name="NoteEditor_Image_DeleteTooltip" xml:space="preserve">
+  <data name="Markdown_Image_DeleteTooltip" xml:space="preserve">
     <value>Delete image</value>
   </data>
-  <data name="NoteEditor_Image_SrcPlaceholder" xml:space="preserve">
+  <data name="Markdown_Image_SrcPlaceholder" xml:space="preserve">
     <value>URL or resource key...</value>
   </data>
-  <data name="NoteEditor_Image_ConfirmTooltip" xml:space="preserve">
+  <data name="Markdown_Image_ConfirmTooltip" xml:space="preserve">
     <value>Accept changes</value>
   </data>
-  <data name="NoteEditor_Image_CancelTooltip" xml:space="preserve">
+  <data name="Markdown_Image_CancelTooltip" xml:space="preserve">
     <value>Cancel — revert to previous values</value>
   </data>
-  <data name="NoteEditor_Image_BrowseTooltip" xml:space="preserve">
+  <data name="Markdown_Image_BrowseTooltip" xml:space="preserve">
     <value>Browse project resources</value>
   </data>
-  <data name="NoteEditor_SelectImage_Title" xml:space="preserve">
+  <data name="Markdown_SelectImage_Title" xml:space="preserve">
     <value>Select Image</value>
   </data>
-  <data name="NoteEditor_SelectResource_Title" xml:space="preserve">
+  <data name="Markdown_SelectResource_Title" xml:space="preserve">
     <value>Select Resource</value>
   </data>
-  <data name="NoteEditor_Image_NoSource" xml:space="preserve">
+  <data name="Markdown_Image_NoSource" xml:space="preserve">
     <value>(no source)</value>
   </data>
-  <data name="NoteEditor_Link_Header" xml:space="preserve">
+  <data name="Markdown_Link_Header" xml:space="preserve">
     <value>Link</value>
   </data>
-  <data name="NoteEditor_Link_OpenTooltip" xml:space="preserve">
+  <data name="Markdown_Link_OpenTooltip" xml:space="preserve">
     <value>Open link</value>
   </data>
-  <data name="NoteEditor_Link_EditTooltip" xml:space="preserve">
+  <data name="Markdown_Link_EditTooltip" xml:space="preserve">
     <value>Edit link</value>
   </data>
-  <data name="NoteEditor_Link_DeleteTooltip" xml:space="preserve">
+  <data name="Markdown_Link_DeleteTooltip" xml:space="preserve">
     <value>Remove link</value>
   </data>
-  <data name="NoteEditor_Link_Placeholder" xml:space="preserve">
+  <data name="Markdown_Link_Placeholder" xml:space="preserve">
     <value>Enter URL or resource key...</value>
   </data>
-  <data name="NoteEditor_Link_URLLabel" xml:space="preserve">
+  <data name="Markdown_Link_URLLabel" xml:space="preserve">
     <value>URL</value>
   </data>
-  <data name="NoteEditor_Link_BrowseTooltip" xml:space="preserve">
+  <data name="Markdown_Link_BrowseTooltip" xml:space="preserve">
     <value>Browse project resources</value>
   </data>
-  <data name="NoteEditor_Link_ConfirmTooltip" xml:space="preserve">
+  <data name="Markdown_Link_ConfirmTooltip" xml:space="preserve">
     <value>Confirm</value>
   </data>
-  <data name="NoteEditor_Link_CancelTooltip" xml:space="preserve">
+  <data name="Markdown_Link_CancelTooltip" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="NoteEditor_Link_NoURL" xml:space="preserve">
+  <data name="Markdown_Link_NoURL" xml:space="preserve">
     <value>(no URL)</value>
   </data>
-  <data name="NoteEditor_Table_Header" xml:space="preserve">
+  <data name="Markdown_Table_Header" xml:space="preserve">
     <value>Table</value>
   </data>
-  <data name="NoteEditor_Table_RowsLabel" xml:space="preserve">
+  <data name="Markdown_Table_RowsLabel" xml:space="preserve">
     <value>Rows</value>
   </data>
-  <data name="NoteEditor_Table_ColumnsLabel" xml:space="preserve">
+  <data name="Markdown_Table_ColumnsLabel" xml:space="preserve">
     <value>Columns</value>
   </data>
-  <data name="NoteEditor_Table_InsertTooltip" xml:space="preserve">
+  <data name="Markdown_Table_InsertTooltip" xml:space="preserve">
     <value>Insert table</value>
   </data>
-  <data name="NoteEditor_Table_CancelTooltip" xml:space="preserve">
+  <data name="Markdown_Table_CancelTooltip" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="NoteEditor_Table_SizeLabel" xml:space="preserve">
+  <data name="Markdown_Table_SizeLabel" xml:space="preserve">
     <value>Size</value>
   </data>
-  <data name="NoteEditor_Table_RowLabel" xml:space="preserve">
+  <data name="Markdown_Table_RowLabel" xml:space="preserve">
     <value>Row</value>
   </data>
-  <data name="NoteEditor_Table_ColumnLabel" xml:space="preserve">
+  <data name="Markdown_Table_ColumnLabel" xml:space="preserve">
     <value>Column</value>
   </data>
-  <data name="NoteEditor_Table_AddRowTooltip" xml:space="preserve">
+  <data name="Markdown_Table_AddRowTooltip" xml:space="preserve">
     <value>Add row below</value>
   </data>
-  <data name="NoteEditor_Table_Add" xml:space="preserve">
+  <data name="Markdown_Table_Add" xml:space="preserve">
     <value>Add</value>
   </data>
-  <data name="NoteEditor_Table_DeleteRowTooltip" xml:space="preserve">
+  <data name="Markdown_Table_DeleteRowTooltip" xml:space="preserve">
     <value>Delete current row</value>
   </data>
-  <data name="NoteEditor_Table_Remove" xml:space="preserve">
+  <data name="Markdown_Table_Remove" xml:space="preserve">
     <value>Remove</value>
   </data>
-  <data name="NoteEditor_Table_AddColumnTooltip" xml:space="preserve">
+  <data name="Markdown_Table_AddColumnTooltip" xml:space="preserve">
     <value>Add column to the right</value>
   </data>
-  <data name="NoteEditor_Table_DeleteColumnTooltip" xml:space="preserve">
+  <data name="Markdown_Table_DeleteColumnTooltip" xml:space="preserve">
     <value>Delete current column</value>
   </data>
-  <data name="NoteEditor_Table_DeleteTooltip" xml:space="preserve">
+  <data name="Markdown_Table_DeleteTooltip" xml:space="preserve">
     <value>Delete table</value>
   </data>
-  <data name="NoteEditor_Table_SelectTooltip" xml:space="preserve">
+  <data name="Markdown_Table_SelectTooltip" xml:space="preserve">
     <value>Select table (for cut/copy)</value>
   </data>
-  <data name="NoteEditor_Table_SizeInfo" xml:space="preserve">
+  <data name="Markdown_Table_SizeInfo" xml:space="preserve">
     <value>{0} rows × {1} columns</value>
   </data>
-  <data name="NoteEditor_Table_IncreaseRows" xml:space="preserve">
+  <data name="Markdown_Table_IncreaseRows" xml:space="preserve">
     <value>Add row</value>
   </data>
-  <data name="NoteEditor_Table_DecreaseRows" xml:space="preserve">
+  <data name="Markdown_Table_DecreaseRows" xml:space="preserve">
     <value>Remove row</value>
   </data>
-  <data name="NoteEditor_Table_IncreaseColumns" xml:space="preserve">
+  <data name="Markdown_Table_IncreaseColumns" xml:space="preserve">
     <value>Add column</value>
   </data>
-  <data name="NoteEditor_Table_DecreaseColumns" xml:space="preserve">
+  <data name="Markdown_Table_DecreaseColumns" xml:space="preserve">
     <value>Remove column</value>
   </data>
-  <data name="NoteEditor_TOC_Header" xml:space="preserve">
+  <data name="Markdown_TOC_Header" xml:space="preserve">
     <value>Table of Contents</value>
   </data>
-  <data name="NoteEditor_TOC_CloseTooltip" xml:space="preserve">
+  <data name="Markdown_TOC_CloseTooltip" xml:space="preserve">
     <value>Close</value>
   </data>
-  <data name="NoteEditor_TOC_Empty" xml:space="preserve">
+  <data name="Markdown_TOC_Empty" xml:space="preserve">
     <value>No headings found</value>
   </data>
 </root>
