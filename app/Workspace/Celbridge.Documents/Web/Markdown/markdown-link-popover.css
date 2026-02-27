@@ -13,8 +13,8 @@
 /* Link popover — position and size overrides (absolute, positioned near clicked link) */
 #link-popover {
     position: absolute;
-    min-width: 300px;
-    max-width: 500px;
+    min-width: 480px;
+    max-width: 640px;
 }
 
 /* URL input */
