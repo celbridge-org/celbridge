@@ -3,27 +3,19 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "MarkdownActivity",
-    "isPreviewController": "true"
+    "rootActivity": "MarkdownActivity"
   },
 
   "properties": {
     "_type": {
       "type": "string",
       "const": "Markdown.Markdown#1"
-    },
-    "editorMode": {
-      "type": "string",
-      "enum": [ "Editor", "Preview", "EditorAndPreview" ]
     }
   },
 
   "required": [
-    "_type",
-    "editorMode"
+    "_type"
   ],
 
-  "prototype": {
-    "editorMode": "EditorAndPreview"
-  }
+  "prototype": {}
 }

@@ -3,8 +3,7 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "ScreenplayActivity",
-    "isPreviewController": "true"
+    "rootActivity": "ScreenplayActivity"
   },
 
   "properties": {

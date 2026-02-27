@@ -2,6 +2,7 @@ using System.Text.Json;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
@@ -13,6 +14,7 @@ public sealed partial class MonacoEditorView : DocumentView
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
     private readonly IMessengerService _messengerService;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     public MonacoEditorViewModel ViewModel { get; }
 
@@ -25,8 +27,12 @@ public sealed partial class MonacoEditorView : DocumentView
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
         ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
+
+        // Monitor theme changes to update Monaco editor theme
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
         // Subscribe to reload requests from the ViewModel
         ViewModel.ReloadRequested += ViewModel_ReloadRequested;
@@ -87,6 +93,9 @@ public sealed partial class MonacoEditorView : DocumentView
         var pool = documentsService.TextEditorWebViewPool;
 
         _webView = await pool.AcquireInstance();
+
+        // Sync Monaco theme with the current app theme in case the pooled instance was created with a different theme
+        await ApplyThemeToWebViewAsync();
 
         await UpdateTextEditorLanguage();
 
@@ -173,6 +182,8 @@ public sealed partial class MonacoEditorView : DocumentView
 
     public override async Task PrepareToClose()
     {
+        _messengerService.UnregisterAll(this);
+
         if (_webView == null)
         {
             return;
@@ -289,5 +300,22 @@ public sealed partial class MonacoEditorView : DocumentView
                 _webView.CoreWebView2.PostWebMessageAsString(text);
             }
         }
+    }
+
+    private async void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    {
+        if (_webView?.CoreWebView2 != null)
+        {
+            await ApplyThemeToWebViewAsync();
+        }
+    }
+
+    private async Task ApplyThemeToWebViewAsync()
+    {
+        Guard.IsNotNull(_webView);
+
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        var vsTheme = theme == UserInterfaceTheme.Light ? "vs-light" : "vs-dark";
+        await _webView.CoreWebView2.ExecuteScriptAsync($"monaco.editor.setTheme('{vsTheme}')");
     }
 }

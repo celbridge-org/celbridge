@@ -53,7 +53,7 @@ public partial class WebAppDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occured when loading document from file: {FilePath}")
+            return Result.Fail($"An exception occurred when loading document from file: {FilePath}")
                 .WithException(ex);
         }
 

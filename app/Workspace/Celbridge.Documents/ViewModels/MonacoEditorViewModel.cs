@@ -4,7 +4,6 @@ using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Security.Cryptography;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -24,10 +23,6 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     // This is the text that is displayed in the preview panel.
     [ObservableProperty]
     private string _cachedText = string.Empty;
-
-    // Track the hash and size of the last saved file to detect genuine external changes
-    private string? _lastSavedFileHash = null;
-    private long _lastSavedFileSize = 0;
 
     // Event to notify the view that the document should be reloaded
     public event EventHandler? ReloadRequested;
@@ -158,52 +153,6 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         }
     }
 
-    private bool IsFileChangedExternally()
-    {
-        // If we haven't saved yet, any change is considered external
-        if (_lastSavedFileHash == null)
-        {
-            return true;
-        }
-
-        try
-        {
-            if (!File.Exists(FilePath))
-            {
-                // File was deleted, consider this an external change
-                return true;
-            }
-
-            var fileInfo = new FileInfo(FilePath);
-            var currentSize = fileInfo.Length;
-
-            // If file size is different, it's definitely changed
-            if (currentSize != _lastSavedFileSize)
-            {
-                return true;
-            }
-
-            // File size is the same - compute hash to check if content actually changed
-            // This handles cases where the file was rewritten with identical content
-            var currentHash = ComputeFileHash(FilePath);
-            
-            return currentHash != _lastSavedFileHash;
-        }
-        catch (Exception)
-        {
-            // If we can't read the file, assume it changed (safer to reload)
-            return true;
-        }
-    }
-
-    private static string ComputeFileHash(string filePath)
-    {
-        using var stream = File.OpenRead(filePath);
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(stream);
-        return Convert.ToBase64String(hashBytes);
-    }
-
     private void OnDocumentSaveCompletedMessage(object recipient, DocumentSaveCompletedMessage message)
     {
         // Check if this is a save completion for the current document
@@ -211,25 +160,6 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         {
             // Update our tracking information after a successful save
             UpdateFileTrackingInfo();
-        }
-    }
-
-    private void UpdateFileTrackingInfo()
-    {
-        try
-        {
-            if (File.Exists(FilePath))
-            {
-                var fileInfo = new FileInfo(FilePath);
-                _lastSavedFileSize = fileInfo.Length;
-                _lastSavedFileHash = ComputeFileHash(FilePath);
-            }
-        }
-        catch (Exception)
-        {
-            // If we can't read the file, clear our tracking info
-            _lastSavedFileHash = null;
-            _lastSavedFileSize = 0;
         }
     }
 

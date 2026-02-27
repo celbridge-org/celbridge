@@ -1,21 +1,25 @@
 using Celbridge.Dialog;
 using Celbridge.Projects;
 using Celbridge.Validators;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services.Dialogs;
 
 public class DialogService : IDialogService
 {
     private readonly IDialogFactory _dialogFactory;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly object _tokenLock = new();
     private IProgressDialog? _progressDialog;
     private bool _suppressProgressDialog;
     private List<IProgressDialogToken> _progressDialogTokens = [];
 
     public DialogService(
-        IDialogFactory dialogFactory)
+        IDialogFactory dialogFactory,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _dialogFactory = dialogFactory;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public async Task ShowAlertDialogAsync(string titleText, string messageText)
@@ -129,6 +133,18 @@ public class DialogService : IDialogService
     public async Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator)
     {
         var dialog = _dialogFactory.CreateAddFileDialog(defaultFileName, selectionRange, validator);
+        return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
+
+    public async Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return Result<ResourceKey>.Fail("Cannot show resource picker: no project is currently loaded.");
+        }
+
+        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var dialog = _dialogFactory.CreateResourcePickerDialog(registry, extensions, title, showPreview);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 }

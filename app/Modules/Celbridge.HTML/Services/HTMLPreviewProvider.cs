@@ -7,7 +7,7 @@ public class HTMLPreviewProvider : IHTMLPreviewProvider
     public HTMLPreviewProvider()
     {}
 
-    public async Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview)
+    public async Task<Result<string>> GeneratePreview(string text)
     {
         await Task.CompletedTask;
 

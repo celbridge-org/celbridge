@@ -8,5 +8,5 @@ public interface IPreviewProvider
     /// <summary>
     /// Generates a HTML preview of the specified text.
     /// </summary>
-    public abstract Task<Result<string>> GeneratePreview(string text, IEditorPreview editorPreview);
+    public abstract Task<Result<string>> GeneratePreview(string text);
 }

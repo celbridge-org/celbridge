@@ -1,0 +1,76 @@
+/* Image node styles and image popover */
+
+.tiptap img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    margin-left: auto;
+    margin-right: auto;
+    cursor: pointer;
+}
+
+.tiptap img.ProseMirror-selectednode {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.tiptap img.note-broken {
+    min-height: 80px;
+    border: 2px dashed var(--border-color);
+    border-radius: 6px;
+    background: var(--code-bg);
+}
+
+.image-node-wrapper {
+    display: block;
+}
+
+/* Image popover — position and size overrides */
+#image-popover {
+    position: fixed;
+    min-width: 480px;
+    max-width: 640px;
+    overflow-y: auto;
+}
+
+/* Source input */
+#image-popover-src-input {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#image-popover-src-input:focus {
+    border-color: var(--accent-color);
+}
+
+#image-popover-src-input::placeholder {
+    color: var(--placeholder-color);
+}
+
+/* Source row: text input + browse button side by side */
+.img-popover-src-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.img-popover-src-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+#image-popover-src-browse {
+    flex-shrink: 0;
+}

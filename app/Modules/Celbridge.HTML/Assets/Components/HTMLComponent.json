@@ -3,27 +3,19 @@
   "additionalProperties": false,
 
   "attributes": {
-    "rootActivity": "HTMLActivity",
-    "isPreviewController": "true"
+    "rootActivity": "HTMLActivity"
   },
 
   "properties": {
     "_type": {
       "type": "string",
       "const": "HTML.HTML#1"
-    },
-    "editorMode": {
-      "type": "string",
-      "enum": [ "Editor", "Preview", "EditorAndPreview" ]
     }
   },
 
   "required": [
-    "_type",
-    "editorMode"
+    "_type"
   ],
 
-  "prototype": {
-    "editorMode": "EditorAndPreview"
-  }
+  "prototype": {}
 }

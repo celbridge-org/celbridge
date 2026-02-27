@@ -9,6 +9,17 @@ namespace Celbridge.UserInterface.Helpers;
 public static class WebView2Helper
 {
     /// <summary>
+    /// Virtual host name used to serve shared web assets (e.g. Bootstrap Icons)
+    /// from the Celbridge.UserInterface project.
+    /// </summary>
+    public const string SharedAssetsHostName = "shared.celbridge";
+
+    /// <summary>
+    /// Folder path (relative to the app output directory) containing shared web assets.
+    /// </summary>
+    public const string SharedAssetsFolderPath = "Celbridge.UserInterface/WebAssets";  // virtual host root maps here; subfolders (e.g. bootstrap-icons/) are path-resolved automatically
+
+    /// <summary>
     /// JavaScript that captures global keyboard shortcuts and sends them to the C# host.
     /// Uses capture phase to intercept before other handlers.
     /// </summary>
@@ -39,6 +50,19 @@ public static class WebView2Helper
     public static async Task InjectKeyboardShortcutHandlerAsync(CoreWebView2 coreWebView2)
     {
         await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
+    }
+
+    /// <summary>
+    /// Maps the shared web assets folder to a virtual host so that WebView2 pages
+    /// can reference shared resources such as Bootstrap Icons.
+    /// Call after EnsureCoreWebView2Async() completes.
+    /// </summary>
+    public static void MapSharedAssets(CoreWebView2 coreWebView2)
+    {
+        coreWebView2.SetVirtualHostNameToFolderMapping(
+            SharedAssetsHostName,
+            SharedAssetsFolderPath,
+            CoreWebView2HostResourceAccessKind.Allow);
     }
 
     /// <summary>

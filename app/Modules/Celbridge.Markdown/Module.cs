@@ -1,7 +1,7 @@
 using Celbridge.Activities;
+using Celbridge.Modules;
 using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Markdown.Services;
-using Celbridge.Modules;
 
 namespace Celbridge.Markdown;
 
@@ -19,8 +19,6 @@ public class Module : IModule
         //
 
         services.AddTransient<MarkdownActivity>();
-        services.AddTransient<MarkdownPreviewProvider>();
-        services.AddTransient<AsciiDocPreviewProvider>();
 
         //
         // Register component editors

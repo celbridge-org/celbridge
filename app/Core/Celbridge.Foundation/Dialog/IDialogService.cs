@@ -41,5 +41,11 @@ public interface IDialogService
     /// Display an Add File Dialog with file type selection.
     /// </summary>
     Task<Result<AddFileConfig>> ShowAddFileDialogAsync(string defaultFileName, Range selectionRange, IValidator validator);
+
+    /// <summary>
+    /// Display a Resource Picker Dialog filtered to the specified file extensions.
+    /// Fails if no project is currently loaded.
+    /// </summary>
+    Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 }
 
