@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class NoteDocumentViewModel : DocumentViewModel
+public partial class MarkdownDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
 
@@ -16,7 +16,7 @@ public partial class NoteDocumentViewModel : DocumentViewModel
     // Event to notify the view that the document should be reloaded
     public event EventHandler? ReloadRequested;
 
-    public NoteDocumentViewModel(IMessengerService messengerService)
+    public MarkdownDocumentViewModel(IMessengerService messengerService)
     {
         _messengerService = messengerService;
 
@@ -86,7 +86,7 @@ public partial class NoteDocumentViewModel : DocumentViewModel
         }
     }
 
-    public async Task<string> LoadNoteContent()
+    public async Task<string> LoadMarkdownContent()
     {
         if (!File.Exists(FilePath))
         {
@@ -102,13 +102,13 @@ public partial class NoteDocumentViewModel : DocumentViewModel
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
-        // The actual saving is handled in NoteDocumentView
+        // The actual saving is handled in MarkdownDocumentView
         await Task.CompletedTask;
 
         return Result.Ok();
     }
 
-    public async Task<Result> SaveNoteToFile(string markdownContent)
+    public async Task<Result> SaveMarkdownToFile(string markdownContent)
     {
         try
         {
@@ -121,7 +121,7 @@ public partial class NoteDocumentViewModel : DocumentViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to save Note file: '{FilePath}'")
+            return Result.Fail($"Failed to save markdown file: '{FilePath}'")
                 .WithException(ex);
         }
     }

@@ -34,7 +34,7 @@ public enum DocumentViewType
     Spreadsheet,
 
     /// <summary>
-    /// A rich text note document edited using the TipTap WYSIWYG editor.
+    /// A markdown document edited using the TipTap WYSIWYG editor.
     /// </summary>
-    Note
+    Markdown
 }

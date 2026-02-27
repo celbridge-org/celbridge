@@ -14,7 +14,7 @@ using Windows.Foundation;
 
 namespace Celbridge.Documents.Views;
 
-public sealed partial class NoteDocumentView : DocumentView
+public sealed partial class MarkdownDocumentView : DocumentView
 {
     private ILogger _logger;
     private ICommandService _commandService;
@@ -24,7 +24,7 @@ public sealed partial class NoteDocumentView : DocumentView
     private IStringLocalizer _stringLocalizer;
     private IDialogService _dialogService;
 
-    public NoteDocumentViewModel ViewModel { get; }
+    public MarkdownDocumentViewModel ViewModel { get; }
 
     private WebView2? _webView;
 
@@ -32,9 +32,9 @@ public sealed partial class NoteDocumentView : DocumentView
     private bool _isSaveInProgress = false;
     private bool _hasPendingSave = false;
 
-    public NoteDocumentView(
+    public MarkdownDocumentView(
         IServiceProvider serviceProvider,
-        ILogger<NoteDocumentView> logger,
+        ILogger<MarkdownDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
@@ -42,7 +42,7 @@ public sealed partial class NoteDocumentView : DocumentView
         IStringLocalizer stringLocalizer,
         IDialogService dialogService)
     {
-        ViewModel = serviceProvider.GetRequiredService<NoteDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<MarkdownDocumentViewModel>();
 
         _logger = logger;
         _commandService = commandService;
@@ -54,7 +54,7 @@ public sealed partial class NoteDocumentView : DocumentView
 
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
-        Loaded += NoteDocumentView_Loaded;
+        Loaded += MarkdownDocumentView_Loaded;
 
         ViewModel.ReloadRequested += ViewModel_ReloadRequested;
 
@@ -87,14 +87,14 @@ public sealed partial class NoteDocumentView : DocumentView
         return await ViewModel.SaveDocument();
     }
 
-    private async void NoteDocumentView_Loaded(object sender, RoutedEventArgs e)
+    private async void MarkdownDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= NoteDocumentView_Loaded;
+        Loaded -= MarkdownDocumentView_Loaded;
 
-        await InitNoteViewAsync();
+        await InitMarkdownViewAsync();
     }
 
-    private async Task InitNoteViewAsync()
+    private async Task InitMarkdownViewAsync()
     {
         try
         {
@@ -191,7 +191,7 @@ public sealed partial class NoteDocumentView : DocumentView
                     // Not JSON or doesn't have type field
                 }
 
-                _logger.LogError($"Note: Expected 'editor-ready' message, but received: '{message}'");
+                _logger.LogError($"Markdown: Expected 'editor-ready' message, but received: '{message}'");
             };
 
             webView.WebMessageReceived += onWebMessageReceived;
@@ -207,7 +207,7 @@ public sealed partial class NoteDocumentView : DocumentView
                 elapsed += interval;
                 if (elapsed >= timeout)
                 {
-                    _logger.LogError("Note: Timed out waiting for 'editor-ready' message from WebView");
+                    _logger.LogError("Markdown: Timed out waiting for 'editor-ready' message from WebView");
                     return;
                 }
             }
@@ -217,15 +217,15 @@ public sealed partial class NoteDocumentView : DocumentView
             // Send localization strings to the editor before loading content
             WebView2Helper.SendLocalizationStrings(webView.CoreWebView2, _stringLocalizer, "NoteEditor_");
 
-            await LoadNoteContent();
+            await LoadMarkdownContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize Note Web View.");
+            _logger.LogError(ex, "Failed to initialize Markdown Web View.");
         }
     }
 
-    private async Task LoadNoteContent()
+    private async Task LoadMarkdownContent()
     {
         Guard.IsNotNull(_webView);
 
@@ -233,13 +233,13 @@ public sealed partial class NoteDocumentView : DocumentView
 
         if (!File.Exists(filePath))
         {
-            _logger.LogWarning($"Note: Cannot load - file does not exist: {filePath}");
+            _logger.LogWarning($"Markdown: Cannot load - file does not exist: {filePath}");
             return;
         }
 
         try
         {
-            var content = await ViewModel.LoadNoteContent();
+            var content = await ViewModel.LoadMarkdownContent();
             var projectBaseUrl = "https://project.celbridge/";
 
             SendMessageToJS(new { type = "load-doc", payload = new { content, projectBaseUrl } });
@@ -249,7 +249,7 @@ public sealed partial class NoteDocumentView : DocumentView
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to load note: {filePath}");
+            _logger.LogError(ex, $"Failed to load markdown: {filePath}");
         }
     }
 
@@ -434,7 +434,7 @@ public sealed partial class NoteDocumentView : DocumentView
 
                         if (!string.IsNullOrEmpty(content))
                         {
-                            await SaveNoteContent(content);
+                            await SaveMarkdownContent(content);
                         }
                     }
                     else
@@ -460,23 +460,23 @@ public sealed partial class NoteDocumentView : DocumentView
                     break;
 
                 default:
-                    _logger.LogWarning($"Note: Received unknown message type: '{type}'");
+                    _logger.LogWarning($"Markdown: Received unknown message type: '{type}'");
                     break;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"Note: Failed to parse web message: '{webMessage[..Math.Min(50, webMessage.Length)]}'. Exception: {ex.Message}");
+            _logger.LogWarning($"Markdown: Failed to parse web message: '{webMessage[..Math.Min(50, webMessage.Length)]}'. Exception: {ex.Message}");
         }
     }
 
-    private async Task SaveNoteContent(string markdownContent)
+    private async Task SaveMarkdownContent(string markdownContent)
     {
-        var saveResult = await ViewModel.SaveNoteToFile(markdownContent);
+        var saveResult = await ViewModel.SaveMarkdownToFile(markdownContent);
 
         if (saveResult.IsFailure)
         {
-            _logger.LogError(saveResult, "Failed to save note data");
+            _logger.LogError(saveResult, "Failed to save markdown data");
         }
 
         _isSaveInProgress = false;
@@ -493,7 +493,7 @@ public sealed partial class NoteDocumentView : DocumentView
     {
         _messengerService.UnregisterAll(this);
 
-        Loaded -= NoteDocumentView_Loaded;
+        Loaded -= MarkdownDocumentView_Loaded;
 
         ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
 
@@ -537,7 +537,7 @@ public sealed partial class NoteDocumentView : DocumentView
     {
         if (_webView != null)
         {
-            await LoadNoteContent();
+            await LoadMarkdownContent();
         }
     }
 }

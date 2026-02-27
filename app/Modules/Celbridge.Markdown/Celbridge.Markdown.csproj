@@ -19,9 +19,5 @@
     <ProjectReference Include="..\..\Workspace\Celbridge.Entities\Celbridge.Entities.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Assets\Forms\" />
-  </ItemGroup>
-
-</Project>
+  </Project>
 

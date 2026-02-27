@@ -1,15 +1,15 @@
 using Celbridge.Activities;
 using Celbridge.Modules;
-using Celbridge.Notes.ComponentEditors;
-using Celbridge.Notes.Services;
+using Celbridge.Markdown.ComponentEditors;
+using Celbridge.Markdown.Services;
 
-namespace Celbridge.Notes;
+namespace Celbridge.Markdown;
 
 public class Module : IModule
 {
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
     {
-        nameof(NoteActivity)
+        nameof(MarkdownActivity)
     };
 
     public void ConfigureServices(IModuleServiceCollection services)
@@ -18,13 +18,13 @@ public class Module : IModule
         // Register services
         //
 
-        services.AddTransient<NoteActivity>();
+        services.AddTransient<MarkdownActivity>();
 
         //
         // Register component editors
         //
 
-        services.AddTransient<NoteEditor>();
+        services.AddTransient<MarkdownEditor>();
     }
 
     public Result Initialize()
@@ -34,9 +34,9 @@ public class Module : IModule
 
     public Result<IActivity> CreateActivity(string activityName)
     {
-        if (activityName == nameof(NoteActivity))
+        if (activityName == nameof(MarkdownActivity))
         {
-            var activity = ServiceLocator.AcquireService<NoteActivity>();
+            var activity = ServiceLocator.AcquireService<MarkdownActivity>();
             return Result<IActivity>.Ok(activity);
         }
 

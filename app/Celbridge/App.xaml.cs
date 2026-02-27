@@ -111,7 +111,7 @@ public partial class App : Application
                     {
                         "Celbridge.Core",
                         "Celbridge.HTML",
-                        "Celbridge.Notes",
+                        "Celbridge.Markdown",
                         "Celbridge.Screenplay",
                         "Celbridge.Spreadsheet",
                     };

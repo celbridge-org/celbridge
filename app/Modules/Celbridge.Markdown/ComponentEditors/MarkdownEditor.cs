@@ -1,15 +1,15 @@
 using Celbridge.Entities;
 
-namespace Celbridge.Notes.ComponentEditors;
+namespace Celbridge.Markdown.ComponentEditors;
 
-public class NoteEditor : ComponentEditorBase
+public class MarkdownEditor : ComponentEditorBase
 {
-    private const string ConfigPath = "Celbridge.Notes.Assets.Components.NoteComponent.json";
-    private const string ComponentFormPath = "Celbridge.Notes.Assets.Forms.NoteForm.json";
+    private const string ConfigPath = "Celbridge.Markdown.Assets.Components.MarkdownComponent.json";
+    private const string ComponentFormPath = "Celbridge.Markdown.Assets.Forms.MarkdownForm.json";
 
-    public const string ComponentType = "Notes.Note";
+    public const string ComponentType = "Markdown.Markdown";
 
-    public NoteEditor()
+    public MarkdownEditor()
     { }
 
     public override string GetComponentConfig()

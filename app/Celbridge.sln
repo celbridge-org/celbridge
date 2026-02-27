@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.2.11415.280
@@ -75,7 +75,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Utilities", "Core
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.WorkspaceUI", "Workspace\Celbridge.WorkspaceUI\Celbridge.WorkspaceUI.csproj", "{3D74EE58-C58F-4B92-B36A-D0D23B107823}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Notes", "Modules\Celbridge.Notes\Celbridge.Notes.csproj", "{B8BE9626-CF95-466F-A943-433F81A9F42D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Celbridge.Markdown", "Modules\Celbridge.Markdown\Celbridge.Markdown.csproj", "{B8BE9626-CF95-466F-A943-433F81A9F42D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

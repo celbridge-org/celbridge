@@ -63,9 +63,9 @@ public class FileTypeHelper
             return DocumentViewType.WebAppDocument;
         }
 
-        if (fileExtension == ExplorerConstants.NoteExtension)
+        if (fileExtension == ExplorerConstants.MarkdownExtension)
         {
-            return DocumentViewType.Note;
+            return DocumentViewType.Markdown;
         }
 
         if (fileExtension == ExplorerConstants.ExcelExtension)
@@ -126,6 +126,12 @@ public class FileTypeHelper
 
         // Check for web app extension
         if (fileExtension == ExplorerConstants.WebAppExtension)
+        {
+            return true;
+        }
+
+        // Check for markdown extension (handled by the WYSIWYG editor)
+        if (fileExtension == ExplorerConstants.MarkdownExtension)
         {
             return true;
         }
