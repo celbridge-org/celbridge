@@ -26,8 +26,18 @@ const MAX_COLS = 20;
 // ---------------------------------------------------------------------------
 
 export function createTableExtensions() {
+    // Extend the Table node to remove the default width: 100% style
+    // This allows tables to auto-size based on content
+    const AutoSizeTable = Table.extend({
+        renderHTML({ HTMLAttributes }) {
+            // Remove any width-related styles that TipTap adds by default
+            const { style, ...restAttributes } = HTMLAttributes;
+            return ['table', restAttributes, ['tbody', 0]];
+        },
+    });
+
     return [
-        Table.configure({
+        AutoSizeTable.configure({
             resizable: false,
             allowTableNodeSelection: true,
         }),
