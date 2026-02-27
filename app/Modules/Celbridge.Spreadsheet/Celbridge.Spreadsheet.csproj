@@ -7,6 +7,19 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <UnoFeatures>
+      CSharpMarkup;
+      Lottie;
+      Hosting;
+      Toolkit;
+      Logging;
+      Mvvm;
+      Configuration;
+      Localization;
+      ThemeService;
+    </UnoFeatures>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +27,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Web\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Entities\Celbridge.Entities.csproj" />
   </ItemGroup>
 

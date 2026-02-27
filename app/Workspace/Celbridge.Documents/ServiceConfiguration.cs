@@ -14,18 +14,10 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<IDocumentsService, DocumentsService>();
-        services.AddTransient<FileTypeHelper>();
 
-        //
-        // Register document editor factories
-        // These are automatically registered with the DocumentsService when it's created
-        //
-
-        services.AddTransient<IDocumentEditorFactory, MarkdownEditorFactory>();
-        services.AddTransient<IDocumentEditorFactory, CodeEditorFactory>();
-        services.AddTransient<IDocumentEditorFactory, SpreadsheetEditorFactory>();
-        services.AddTransient<IDocumentEditorFactory, FileViewerFactory>();
-        services.AddTransient<IDocumentEditorFactory, WebAppEditorFactory>();
+        // FileTypeHelper must be singleton because it's initialized by DocumentsService
+        // and shared across all document editor factories
+        services.AddSingleton<FileTypeHelper>();
 
         //
         // Register views
@@ -33,12 +25,6 @@ public static class ServiceConfiguration
 
         services.AddTransient<IDocumentsPanel, DocumentsPanel>();
         services.AddTransient<TextBoxDocumentView>();
-        services.AddTransient<WebAppDocumentView>();
-        services.AddTransient<MonacoEditorView>();
-        services.AddTransient<FileViewerDocumentView>();
-        services.AddTransient<TextEditorDocumentView>();
-        services.AddTransient<SpreadsheetDocumentView>();
-        services.AddTransient<MarkdownDocumentView>();
 
         //
         // Register view models
@@ -47,12 +33,6 @@ public static class ServiceConfiguration
         services.AddTransient<DocumentsPanelViewModel>();
         services.AddTransient<DocumentTabViewModel>();
         services.AddTransient<DefaultDocumentViewModel>();
-        services.AddTransient<WebAppDocumentViewModel>();
-        services.AddTransient<MonacoEditorViewModel>();
-        services.AddTransient<FileViewerDocumentViewModel>();
-        services.AddTransient<TextEditorDocumentViewModel>();
-        services.AddTransient<SpreadsheetDocumentViewModel>();
-        services.AddTransient<MarkdownDocumentViewModel>();
 
         //
         // Register commands

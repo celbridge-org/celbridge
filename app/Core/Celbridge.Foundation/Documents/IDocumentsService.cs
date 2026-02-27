@@ -115,4 +115,9 @@ public interface IDocumentsService
     /// Gets the document editor registry.
     /// </summary>
     IDocumentEditorRegistry DocumentEditorRegistry { get; }
+
+    /// <summary>
+    /// Gets the text editor WebView2 pool for efficient reuse of Monaco editor instances.
+    /// </summary>
+    ITextEditorWebViewPool TextEditorWebViewPool { get; }
 }

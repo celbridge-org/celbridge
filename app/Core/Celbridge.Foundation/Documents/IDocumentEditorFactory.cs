@@ -28,4 +28,10 @@ public interface IDocumentEditorFactory
     /// Creates a document view for the specified file resource.
     /// </summary>
     Result<IDocumentView> CreateDocumentView(ResourceKey fileResource);
+
+    /// <summary>
+    /// Gets the editor language identifier for the specified file extension.
+    /// Returns null if this factory doesn't provide language mapping for the extension.
+    /// </summary>
+    string? GetLanguageForExtension(string extension) => null;
 }

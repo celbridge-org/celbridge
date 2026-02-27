@@ -25,4 +25,16 @@ public interface IDocumentEditorRegistry
     /// Gets all registered factories.
     /// </summary>
     IReadOnlyList<IDocumentEditorFactory> GetAllFactories();
+
+    /// <summary>
+    /// Gets the editor language identifier for the specified file extension.
+    /// Queries registered factories in priority order and returns the first non-null result.
+    /// Returns null if no factory provides a language mapping for the extension.
+    /// </summary>
+    string? GetLanguageForExtension(string fileExtension);
+
+    /// <summary>
+    /// Gets all file extensions supported by registered factories.
+    /// </summary>
+    IReadOnlyList<string> GetAllSupportedExtensions();
 }

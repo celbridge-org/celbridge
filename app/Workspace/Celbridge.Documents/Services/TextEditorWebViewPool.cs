@@ -7,7 +7,7 @@ using Windows.Foundation;
 
 namespace Celbridge.Documents.Services;
 
-public class TextEditorWebViewPool
+public class TextEditorWebViewPool : ITextEditorWebViewPool
 {
     private readonly ILogger<TextEditorWebViewPool> _logger;
     private readonly ConcurrentQueue<WebView2> _pool;
@@ -253,7 +253,7 @@ public class TextEditorWebViewPool
         await webView.EnsureCoreWebView2Async();
         webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
             "MonacoEditor",
-            "Celbridge.Documents/Web/Monaco",
+            "Celbridge.Code/Web/Monaco",
             CoreWebView2HostResourceAccessKind.Allow);
 
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");

@@ -84,4 +84,38 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry
     {
         return _factories.AsReadOnly();
     }
+
+    /// <summary>
+    /// Gets the editor language identifier for the specified file extension.
+    /// Queries registered factories in priority order and returns the first non-null result.
+    /// </summary>
+    public string? GetLanguageForExtension(string fileExtension)
+    {
+        var normalizedExtension = fileExtension.ToLowerInvariant();
+
+        if (!_extensionToFactories.TryGetValue(normalizedExtension, out var factoryList))
+        {
+            return null;
+        }
+
+        // Factories are sorted by priority, so return the first non-null language
+        foreach (var factory in factoryList)
+        {
+            var language = factory.GetLanguageForExtension(normalizedExtension);
+            if (language is not null)
+            {
+                return language;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets all file extensions supported by registered factories.
+    /// </summary>
+    public IReadOnlyList<string> GetAllSupportedExtensions()
+    {
+        return _extensionToFactories.Keys.ToList().AsReadOnly();
+    }
 }

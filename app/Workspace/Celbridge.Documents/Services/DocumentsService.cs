@@ -33,8 +33,10 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// </summary>
     public Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; } = new();
 
-    // This utility is only used internally and is not exposed via IDocumentService
-    internal TextEditorWebViewPool TextEditorWebViewPool { get; }
+    /// <summary>
+    /// Gets the text editor WebView2 pool for efficient reuse of Monaco editor instances.
+    /// </summary>
+    public ITextEditorWebViewPool TextEditorWebViewPool { get; }
 
     private bool _isWorkspaceLoaded;
 
@@ -74,15 +76,18 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
+        // Auto-register all document editor factories from the DI container.
+        // This must happen before FileTypeHelper initialization so factories can provide language mappings.
+        RegisterDocumentEditorFactoriesFromContainer(serviceProvider);
+
         _fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
+        _fileTypeHelper.SetDocumentEditorRegistry(_documentEditorRegistry);
+
         var loadResult = _fileTypeHelper.Initialize();
         if (loadResult.IsFailure)
         {
             throw new InvalidProgramException("Failed to initialize file type helper");
         }
-
-        // Auto-register all document editor factories from the DI container
-        RegisterDocumentEditorFactoriesFromContainer(serviceProvider);
     }
 
     private void RegisterDocumentEditorFactoriesFromContainer(IServiceProvider serviceProvider)
@@ -595,59 +600,27 @@ public class DocumentsService : IDocumentsService, IDisposable
                 return createResult;
             }
 
-            // Log the failure and fall through to built-in types
+            // Log the failure and fall through to fallback
             _logger.LogWarning(createResult, $"Factory failed to create document view for: '{fileResource}'");
         }
 
-        // Fall back to built-in document view types
+        // Fall back to TextBoxDocumentView for text files on non-Windows platforms
+        // or when no factory is registered
         var viewType = GetDocumentViewType(fileResource);
 
-        IDocumentView? documentView = null;
-        switch (viewType)
+        if (viewType == DocumentViewType.UnsupportedFormat)
         {
-            case DocumentViewType.UnsupportedFormat:
-                return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
-
-#if WINDOWS
-            case DocumentViewType.TextDocument:
-                documentView = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
-                break;
-
-            case DocumentViewType.WebAppDocument:
-                documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();
-                break;
-
-            case DocumentViewType.FileViewer:
-                documentView = _serviceProvider.GetRequiredService<FileViewerDocumentView>();
-                break;
-
-            case DocumentViewType.Spreadsheet:
-                documentView = _serviceProvider.GetRequiredService<SpreadsheetDocumentView>();
-                break;
-
-            case DocumentViewType.Markdown:
-                documentView = _serviceProvider.GetRequiredService<MarkdownDocumentView>();
-                break;
-#else
-            case DocumentViewType.WebAppDocument:
-                documentView = _serviceProvider.GetRequiredService<WebAppDocumentView>();
-                break;
-            case DocumentViewType.TextDocument:
-            case DocumentViewType.FileViewer:
-
-                // On non-Windows platforms, use the text editor document view for all document types
-                documentView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
-                break;
-#endif
-
+            return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        if (documentView is null)
+        // Use TextBoxDocumentView as the ultimate fallback for text documents
+        if (viewType == DocumentViewType.TextDocument)
         {
-            return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+            var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
+            return Result<IDocumentView>.Ok(textBoxView);
         }
 
-        return Result<IDocumentView>.Ok(documentView);
+        return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
