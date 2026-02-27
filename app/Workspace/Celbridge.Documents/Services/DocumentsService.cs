@@ -42,6 +42,13 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private Dictionary<string, IPreviewProvider> _previewProviders = new();
 
+    private readonly DocumentEditorRegistry _documentEditorRegistry = new();
+
+    /// <summary>
+    /// Gets the document editor registry.
+    /// </summary>
+    public IDocumentEditorRegistry DocumentEditorRegistry => _documentEditorRegistry;
+
     public DocumentsService(
         IServiceProvider serviceProvider,
         ILogger<DocumentsService> logger,
@@ -72,6 +79,26 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (loadResult.IsFailure)
         {
             throw new InvalidProgramException("Failed to initialize file type helper");
+        }
+
+        // Auto-register all document editor factories from the DI container
+        RegisterDocumentEditorFactoriesFromContainer(serviceProvider);
+    }
+
+    private void RegisterDocumentEditorFactoriesFromContainer(IServiceProvider serviceProvider)
+    {
+        var factories = serviceProvider.GetServices<IDocumentEditorFactory>();
+        foreach (var factory in factories)
+        {
+            var result = _documentEditorRegistry.RegisterFactory(factory);
+            if (result.IsSuccess)
+            {
+                _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
+            }
+            else
+            {
+                _logger.LogWarning(result, $"Failed to register document editor factory");
+            }
         }
     }
 
@@ -187,6 +214,14 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public bool IsDocumentSupported(ResourceKey fileResource)
     {
+        // First check if any registered factory supports this extension
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        if (_documentEditorRegistry.IsExtensionSupported(extension))
+        {
+            return true;
+        }
+
+        // Fall back to built-in types
         var documentType = GetDocumentViewType(fileResource);
         return documentType != DocumentViewType.UnsupportedFormat;
     }
@@ -527,8 +562,44 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result<IPreviewProvider>.Fail();
     }
 
+    /// <summary>
+    /// Registers a document editor factory.
+    /// </summary>
+    public Result RegisterDocumentEditorFactory(IDocumentEditorFactory factory)
+    {
+        var registerResult = _documentEditorRegistry.RegisterFactory(factory);
+        if (registerResult.IsFailure)
+        {
+            return Result.Fail($"Failed to register document editor factory")
+                .WithErrors(registerResult);
+        }
+
+        _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
+
+        return Result.Ok();
+    }
+
     private Result<IDocumentView> CreateDocumentViewInternal(ResourceKey fileResource)
     {
+        // First, try to get a document view from the registry
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var filePath = resourceRegistry.GetResourcePath(fileResource);
+
+        var factoryResult = _documentEditorRegistry.GetFactory(fileResource, filePath);
+        if (factoryResult.IsSuccess)
+        {
+            var factory = factoryResult.Value;
+            var createResult = factory.CreateDocumentView(fileResource);
+            if (createResult.IsSuccess)
+            {
+                return createResult;
+            }
+
+            // Log the failure and fall through to built-in types
+            _logger.LogWarning(createResult, $"Factory failed to create document view for: '{fileResource}'");
+        }
+
+        // Fall back to built-in document view types
         var viewType = GetDocumentViewType(fileResource);
 
         IDocumentView? documentView = null;

@@ -17,6 +17,17 @@ public static class ServiceConfiguration
         services.AddTransient<FileTypeHelper>();
 
         //
+        // Register document editor factories
+        // These are automatically registered with the DocumentsService when it's created
+        //
+
+        services.AddTransient<IDocumentEditorFactory, MarkdownEditorFactory>();
+        services.AddTransient<IDocumentEditorFactory, CodeEditorFactory>();
+        services.AddTransient<IDocumentEditorFactory, SpreadsheetEditorFactory>();
+        services.AddTransient<IDocumentEditorFactory, FileViewerFactory>();
+        services.AddTransient<IDocumentEditorFactory, WebAppEditorFactory>();
+
+        //
         // Register views
         //
 

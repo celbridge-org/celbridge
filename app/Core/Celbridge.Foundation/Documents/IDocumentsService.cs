@@ -105,4 +105,14 @@ public interface IDocumentsService
     /// Fails if no matching preview provider is found.
     /// </summary>
     Result<IPreviewProvider> GetPreviewProvider(string fileExtension);
+
+    /// <summary>
+    /// Registers a document editor factory.
+    /// </summary>
+    Result RegisterDocumentEditorFactory(IDocumentEditorFactory factory);
+
+    /// <summary>
+    /// Gets the document editor registry.
+    /// </summary>
+    IDocumentEditorRegistry DocumentEditorRegistry { get; }
 }
