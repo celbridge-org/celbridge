@@ -23,20 +23,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Web\**" />
-    <!-- Exclude TipTap vendoring toolchain (only lib/tiptap.js is needed at runtime) -->
-    <Content Remove="Web\Markdown\lib\build\**" />
-
-    <!-- Excluding these files as they trigger localization warnings during the build process -->
-    <Content Remove="Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
-    <Content Remove="Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
-    <Content Remove="Web\Monaco\min\vs\basic-languages\st\st.js" />
-    <Content Remove="Web\Monaco\min\vs\editor\editor.main.nls.zh-cn.js" />
-    <Content Remove="Web\Monaco\min\vs\editor\editor.main.nls.zh-tw.js" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\DocumentTypes\TextEditorTypes.json" />
     <EmbeddedResource Include="Assets\DocumentTypes\FileViewerTypes.json" />
   </ItemGroup>
 
@@ -45,5 +31,9 @@
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <Folder Include="Services\Factories\" />
+  </ItemGroup>
+
 </Project>
