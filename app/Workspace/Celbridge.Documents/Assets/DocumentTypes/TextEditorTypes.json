@@ -97,8 +97,6 @@
   ".lua": "lua",
   ".m": "objective-c",
   ".m3": "m3",
-  ".markdown": "markdown",
-  ".md": "markdown",
   ".mdoc": "html",
   ".mdown": "markdown",
   ".mdtext": "markdown",

@@ -1,0 +1,57 @@
+/* Link styles and link popover */
+
+.tiptap a {
+    color: var(--link-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.tiptap a:hover {
+    text-decoration: none;
+}
+
+/* Link popover — position and size overrides (absolute, positioned near clicked link) */
+#link-popover {
+    position: absolute;
+    min-width: 480px;
+    max-width: 640px;
+}
+
+/* URL input */
+#link-popover-input {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#link-popover-input:focus {
+    border-color: var(--accent-color);
+}
+
+#link-popover-input::placeholder {
+    color: var(--placeholder-color);
+}
+
+/* URL row: text input + browse button side by side */
+.link-popover-url-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.link-popover-url-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+#link-popover-browse {
+    flex-shrink: 0;
+}

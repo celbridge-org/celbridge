@@ -1,5 +1,4 @@
 using Celbridge.Activities;
-using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
 using Celbridge.Markdown.ComponentEditors;
@@ -11,39 +10,16 @@ public class MarkdownActivity : IActivity
 {
     public const string ActivityName = "Markdown";
 
-    private readonly IServiceProvider _serviceProvider;
     private readonly IEntityService _entityService;
-    private readonly IDocumentsService _documentsService;
 
     public MarkdownActivity(
-        IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     public async Task<Result> ActivateAsync()
     {
-        // Register the Markdown preview provider
-        var markdownProvider = _serviceProvider.AcquireService<MarkdownPreviewProvider>();
-        var addMarkdownResult = _documentsService.AddPreviewProvider(ExplorerConstants.MarkdownExtension, markdownProvider);
-        if (addMarkdownResult.IsFailure)
-        {
-            return Result.Fail("Failed to add Markdown preview provider.")
-                .WithErrors(addMarkdownResult);
-        }
-
-        // Register the AsciiDoc preview provider
-        var asciiDocProvider = _serviceProvider.AcquireService<AsciiDocPreviewProvider>();
-        var addAsciiDocResult = _documentsService.AddPreviewProvider(".adoc", asciiDocProvider);
-        if (addAsciiDocResult.IsFailure)
-        {
-            return Result.Fail("Failed to add Asciidoc preview provider.")
-                .WithErrors(addAsciiDocResult);
-        }
-
         await Task.CompletedTask;
 
         return Result.Ok();

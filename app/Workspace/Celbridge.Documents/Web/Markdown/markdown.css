@@ -1,0 +1,441 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg-primary: #ffffff;
+    --bg-toolbar: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --hover-bg: #f3f4f6;
+    --active-bg: #e5e7eb;
+    --accent-color: #3b82f6;
+    --code-bg: #f1f3f5;
+    --blockquote-border: #d1d5db;
+    --link-color: #2563eb;
+    --placeholder-color: #9ca3af;
+    --hr-color: #d1d5db;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #1e1e1e;
+        --bg-toolbar: #2d2d2d;
+        --text-primary: #dadada;
+        --text-secondary: #aaaaaa;
+        --border-color: #404040;
+        --hover-bg: #383838;
+        --active-bg: #4a4a4a;
+        --accent-color: #569cd6;
+        --code-bg: #2d2d2d;
+        --blockquote-border: #555555;
+        --link-color: #6ca4dc;
+        --placeholder-color: #555555;
+        --hr-color: #555555;
+    }
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    color-scheme: light dark;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+#toolbar {
+    display: none;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border-color);
+    gap: 2px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+#toolbar.visible {
+    display: flex;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: nowrap;
+}
+
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 2px 6px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    line-height: 1;
+    user-select: none;
+}
+
+.toolbar-btn:hover {
+    background: var(--hover-bg);
+}
+
+.toolbar-btn.active {
+    background: var(--active-bg);
+    color: var(--accent-color);
+}
+
+#editor-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    position: relative;
+}
+
+.tiptap {
+    max-width: 720px;
+    margin: 0 auto;
+    outline: none;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-primary);
+}
+
+.tiptap p {
+    margin-bottom: 0.75em;
+}
+
+.tiptap h1 {
+    font-size: 1.875em;
+    font-weight: 700;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    line-height: 1.3;
+}
+
+.tiptap h2 {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    line-height: 1.35;
+}
+
+.tiptap h3 {
+    font-size: 1.25em;
+    font-weight: 600;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    line-height: 1.4;
+}
+
+.tiptap h1:first-child,
+.tiptap h2:first-child,
+.tiptap h3:first-child {
+    margin-top: 0;
+}
+
+.tiptap ul,
+.tiptap ol {
+    padding-left: 1.5em;
+    margin-bottom: 0.75em;
+}
+
+.tiptap li {
+    margin-bottom: 0.25em;
+}
+
+.tiptap li p {
+    margin-bottom: 0.25em;
+}
+
+.tiptap blockquote {
+    border-left: 3px solid var(--blockquote-border);
+    padding-left: 1em;
+    margin-left: 0;
+    margin-bottom: 0.75em;
+    color: var(--text-secondary);
+}
+
+.tiptap code {
+    background: var(--code-bg);
+    border-radius: 3px;
+    padding: 0.15em 0.35em;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: 0.9em;
+}
+
+.tiptap pre {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 0.75em 1em;
+    margin-bottom: 0.75em;
+    overflow-x: auto;
+}
+
+.tiptap pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.875em;
+    color: var(--text-primary);
+}
+
+.tiptap hr {
+    border: none;
+    border-top: 2px solid var(--hr-color);
+    margin: 1.5em 0;
+}
+
+.tiptap s {
+    text-decoration: line-through;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--placeholder-color);
+    pointer-events: none;
+    height: 0;
+}
+
+#status {
+    display: none;
+}
+
+.toolbar-btn .bi {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.toolbar-btn svg {
+    display: block;
+}
+
+/* Shared popover styles */
+
+.popover {
+    display: none;
+    background: var(--bg-toolbar);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    width: max-content;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.popover.visible {
+    display: flex;
+}
+
+.popover-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.popover-icon {
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.popover-field-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.popover-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.popover-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.popover-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 4px;
+    background: var(--hover-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.popover-btn .bi {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.popover-btn svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.popover-btn:hover {
+    background: var(--active-bg);
+    color: var(--text-primary);
+}
+
+.popover-btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.popover-btn-primary:hover {
+    background: var(--accent-color);
+    filter: brightness(1.1);
+    color: white;
+}
+
+.popover-btn-danger:hover {
+    background: #dc2626;
+    color: white;
+}
+
+.popover-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Task List styles */
+
+.tiptap ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0.75em;
+}
+
+.tiptap ul[data-type="taskList"] > li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.tiptap ul[data-type="taskList"] > li:not(:last-child) {
+    margin-bottom: 0.15em;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.tiptap ul[data-type="taskList"] li > div p {
+    margin-bottom: 0;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+/* Nested task lists */
+.tiptap ul[data-type="taskList"] ul[data-type="taskList"] {
+    margin-top: 0.15em;
+    margin-bottom: 0;
+    padding-left: 1.5em;
+}
+
+/* Table styles */
+.tiptap table {
+    border-collapse: collapse;
+    margin-bottom: 0.75em;
+    width: auto;
+    table-layout: auto;
+}
+
+.tiptap td,
+.tiptap th {
+    border: 1px solid var(--border-color);
+    padding: 0.5em 0.75em;
+    vertical-align: top;
+    min-width: 1em;
+}
+
+.tiptap th {
+    background: var(--bg-toolbar);
+    font-weight: 600;
+}
+
+.tiptap .selectedCell {
+    background: var(--active-bg);
+}
+
+.tiptap .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    background-color: var(--accent-color);
+}

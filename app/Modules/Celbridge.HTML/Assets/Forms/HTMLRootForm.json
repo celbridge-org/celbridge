@@ -9,27 +9,6 @@
         "tooltip": "Open document",
         "icon": "OpenFile",
         "buttonId": "OpenDocument"
-      },
-      {
-        "element": "Button",
-        "isEnabled": "/editorEnabled",
-        "tooltip": "Editor view",
-        "icon": "DockLeft",
-        "buttonId": "Editor"
-      },
-      {
-        "element": "Button",
-        "isEnabled": "/editorAndPreviewEnabled",
-        "tooltip": "Split view",
-        "icon": "DockBottom",
-        "buttonId": "EditorAndPreview"
-      },
-      {
-        "element": "Button",
-        "isEnabled": "/previewEnabled",
-        "tooltip": "Preview view",
-        "icon": "DockRight",
-        "buttonId": "Preview"
       }
     ]
   }
