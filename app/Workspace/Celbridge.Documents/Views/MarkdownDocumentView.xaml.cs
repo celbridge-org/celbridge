@@ -36,10 +36,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     private WebView2Messenger? _webMessenger;
 
-    // Track save state to prevent race conditions
-    private bool _isSaveInProgress;
-    private bool _hasPendingSave;
-
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
         ILogger<MarkdownDocumentView> logger,
@@ -84,15 +80,11 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
     {
         Guard.IsNotNull(_webMessenger);
 
-        if (_isSaveInProgress)
+        if (!TryBeginSave())
         {
-            _hasPendingSave = true;
             _logger.LogDebug("Save already in progress, queuing pending save");
             return Result.Ok();
         }
-
-        _isSaveInProgress = true;
-        _hasPendingSave = false;
 
         var message = new JsMessage("request-save");
         _webMessenger.Send(message);
@@ -547,7 +539,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
                     break;
 
                 case "save-response":
-                    if (_isSaveInProgress)
+                    if (IsSaveInProgress)
                     {
                         var content = doc.RootElement
                             .GetProperty("payload")
@@ -601,12 +593,10 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             _logger.LogError(saveResult, "Failed to save markdown data");
         }
 
-        _isSaveInProgress = false;
-
-        if (_hasPendingSave)
+        // Check if there's a pending save that needs processing
+        if (CompleteSave())
         {
             _logger.LogDebug("Processing pending save request");
-            _hasPendingSave = false;
             ViewModel.OnDataChanged();
         }
     }

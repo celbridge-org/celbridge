@@ -53,6 +53,10 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
             return;
         }
 
+        if (WebView is null)
+        {
+            return;
+        }
 
         try
         {
@@ -68,6 +72,11 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
     private async void OnWebAppRefresh(object recipient, WebAppRefreshMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
+        {
+            return;
+        }
+
+        if (WebView is null)
         {
             return;
         }
@@ -95,6 +104,11 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
             return;
         }
 
+        if (WebView is null)
+        {
+            return;
+        }
+
         try
         {
             await WebView.EnsureCoreWebView2Async();
@@ -112,6 +126,11 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
     private async void OnWebAppGoForward(object recipient, WebAppGoForwardMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
+        {
+            return;
+        }
+
+        if (WebView is null)
         {
             return;
         }
@@ -142,16 +161,23 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
 
     private void SendNavigationStateChanged()
     {
-        var canRefresh = WebView.CoreWebView2 != null &&
-                         !string.IsNullOrEmpty(WebView.CoreWebView2.Source) &&
-                         WebView.CoreWebView2.Source != "about:blank";
+        if (WebView is null)
+        {
+            return;
+        }
 
-        var currentUrl = WebView.CoreWebView2?.Source ?? string.Empty;
+        var coreWebView = WebView.CoreWebView2;
+
+        var canRefresh = coreWebView is not null &&
+                         !string.IsNullOrEmpty(coreWebView.Source) &&
+                         coreWebView.Source != "about:blank";
+
+        var currentUrl = coreWebView?.Source ?? string.Empty;
 
         var message = new WebAppNavigationStateChangedMessage(
             ViewModel.FileResource,
-            WebView.CoreWebView2?.CanGoBack ?? false,
-            WebView.CoreWebView2?.CanGoForward ?? false,
+            coreWebView?.CanGoBack ?? false,
+            coreWebView?.CanGoForward ?? false,
             canRefresh,
             currentUrl);
 

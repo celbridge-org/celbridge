@@ -23,10 +23,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    // Track save state to prevent race conditions
-    private bool _isSaveInProgress;
-    private bool _hasPendingSave;
-
     // Track import state to prevent race conditions during initial load and reloads
     private bool _isImportInProgress;
     private bool _hasPendingImport;
@@ -71,16 +67,11 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
     {
         Guard.IsNotNull(WebView);
 
-        // If a save is already in progress, mark that we need another save after this one completes
-        if (_isSaveInProgress)
+        if (!TryBeginSave())
         {
-            _hasPendingSave = true;
             _logger.LogDebug("Save already in progress, queuing pending save");
             return Result.Ok();
         }
-
-        _isSaveInProgress = true;
-        _hasPendingSave = false;
 
         // Send a message to request the data to be serialized and sent back as another message.
         WebView.CoreWebView2.PostWebMessageAsString("request_save");
@@ -327,15 +318,11 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
             await _dialogService.ShowAlertDialogAsync(title, message);
         }
 
-        // Save is complete, clear the flag
-        _isSaveInProgress = false;
-
-        // If changes occurred during the save, trigger another save
-        if (_hasPendingSave)
+        // Check if there's a pending save that needs processing
+        if (CompleteSave())
         {
             _logger.LogDebug("Processing pending save request");
-            _hasPendingSave = false;
-            ViewModel.OnDataChanged(); // Re-trigger a pending save
+            ViewModel.OnDataChanged();
         }
     }
 
