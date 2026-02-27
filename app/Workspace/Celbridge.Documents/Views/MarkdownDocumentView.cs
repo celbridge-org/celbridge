@@ -17,7 +17,7 @@ namespace Celbridge.Documents.Views;
 public sealed partial class MarkdownDocumentView : DocumentView
 {
     // Payload for loading a markdown document into the editor
-    private record LoadDocPayload(string Content, string ProjectBaseUrl);
+    private record LoadDocPayload(string Content, string DocumentBaseUrl);
 
     // Payload for returning a picked resource key to the editor
     private record ResourceKeyPayload(string ResourceKey);
@@ -33,7 +33,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
     public MarkdownDocumentViewModel ViewModel { get; }
 
     private WebView2? _webView;
-    private WebView2Messenger? _messenger;
+    private WebView2Messenger? _webMessenger;
 
     // Track save state to prevent race conditions
     private bool _isSaveInProgress = false;
@@ -77,7 +77,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        Guard.IsNotNull(_messenger);
+        Guard.IsNotNull(_webMessenger);
 
         if (_isSaveInProgress)
         {
@@ -90,7 +90,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
         _hasPendingSave = false;
 
         var message = new JsMessage("request-save");
-        _messenger.Send(message);
+        _webMessenger.Send(message);
 
         return await ViewModel.SaveDocument();
     }
@@ -170,7 +170,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             webView.GotFocus += WebView_GotFocus;
 
             _webView = webView;
-            _messenger = messenger;
+            _webMessenger = messenger;
 
             // Show the WebView immediately so the status is visible
             this.Content = _webView;
@@ -239,7 +239,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
     private async Task LoadMarkdownContent()
     {
         Guard.IsNotNull(_webView);
-        Guard.IsNotNull(_messenger);
+        Guard.IsNotNull(_webMessenger);
 
         var filePath = ViewModel.FilePath;
 
@@ -252,11 +252,11 @@ public sealed partial class MarkdownDocumentView : DocumentView
         try
         {
             var content = await ViewModel.LoadMarkdownContent();
-            var projectBaseUrl = "https://project.celbridge/";
+            var documentBaseUrl = GetDocumentBaseUrl();
 
-            var payload = new LoadDocPayload(content, projectBaseUrl);
+            var payload = new LoadDocPayload(content, documentBaseUrl);
             var message = new JsPayloadMessage<LoadDocPayload>("load-doc", payload);
-            _messenger.Send(message);
+            _webMessenger.Send(message);
 
             _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _webView.WebMessageReceived += WebView_WebMessageReceived;
@@ -282,15 +282,16 @@ public sealed partial class MarkdownDocumentView : DocumentView
         var title = _stringLocalizer.GetString("NoteEditor_SelectImage_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(imageExtensions, title, showPreview: true);
 
-        var resourceKey = string.Empty;
+        var relativePath = string.Empty;
         if (result.IsSuccess)
         {
-            resourceKey = result.Value.ToString();
+            var resourceKey = result.Value.ToString();
+            relativePath = GetRelativePathFromResourceKey(resourceKey);
         }
 
-        var payload = new ResourceKeyPayload(resourceKey);
+        var payload = new ResourceKeyPayload(relativePath);
         var message = new JsPayloadMessage<ResourceKeyPayload>("pick-image-resource-result", payload);
-        _messenger!.Send(message);
+        _webMessenger!.Send(message);
     }
 
     private async Task HandlePickLinkResource()
@@ -298,15 +299,16 @@ public sealed partial class MarkdownDocumentView : DocumentView
         var title = _stringLocalizer.GetString("NoteEditor_SelectResource_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(Array.Empty<string>(), title);
 
-        var resourceKey = string.Empty;
+        var relativePath = string.Empty;
         if (result.IsSuccess)
         {
-            resourceKey = result.Value.ToString();
+            var resourceKey = result.Value.ToString();
+            relativePath = GetRelativePathFromResourceKey(resourceKey);
         }
 
-        var payload = new ResourceKeyPayload(resourceKey);
+        var payload = new ResourceKeyPayload(relativePath);
         var message = new JsPayloadMessage<ResourceKeyPayload>("pick-link-resource-result", payload);
-        _messenger!.Send(message);
+        _webMessenger!.Send(message);
     }
 
     private void OpenSystemBrowser(string? uri)
@@ -320,6 +322,128 @@ public sealed partial class MarkdownDocumentView : DocumentView
         {
             command.URL = uri;
         });
+    }
+
+    /// <summary>
+    /// Normalizes a path by resolving '..' and '.' segments.
+    /// This is used for both link and image relative path resolution.
+    /// </summary>
+    private static string NormalizeResourcePath(string path)
+    {
+        var segments = path.Split('/');
+        var stack = new Stack<string>();
+        foreach (var segment in segments)
+        {
+            if (segment == ".." && stack.Count > 0)
+            {
+                stack.Pop();
+            }
+            else if (segment != "." && !string.IsNullOrEmpty(segment))
+            {
+                stack.Push(segment);
+            }
+        }
+        return string.Join("/", stack.Reverse());
+    }
+
+    /// <summary>
+    /// Gets the base path (folder) of the current document for resolving relative paths.
+    /// Returns an empty string if the document is at the project root.
+    /// </summary>
+    private string GetDocumentBasePath()
+    {
+        var fileResourcePath = ViewModel.FileResource.ToString();
+        var directoryName = Path.GetDirectoryName(fileResourcePath);
+        return directoryName?.Replace('\\', '/') ?? "";
+    }
+
+    /// <summary>
+    /// Gets the full URL base for the current document's folder.
+    /// Used by JavaScript to resolve relative image/link paths.
+    /// </summary>
+    private string GetDocumentBaseUrl()
+    {
+        const string projectBaseUrl = "https://project.celbridge/";
+        var documentBasePath = GetDocumentBasePath();
+        return string.IsNullOrEmpty(documentBasePath)
+            ? projectBaseUrl
+            : $"{projectBaseUrl}{documentBasePath}/";
+    }
+
+    /// <summary>
+    /// Converts an absolute Resource Key to a path relative to the current document.
+    /// Uses forward slashes only for consistency.
+    /// </summary>
+    private string GetRelativePathFromResourceKey(string resourceKey)
+    {
+        if (string.IsNullOrEmpty(resourceKey))
+        {
+            return string.Empty;
+        }
+
+        var documentBasePath = GetDocumentBasePath();
+        if (string.IsNullOrEmpty(documentBasePath))
+        {
+            // Document is at project root, Resource Key is already relative
+            return resourceKey;
+        }
+
+        var documentSegments = documentBasePath.Split('/');
+        var targetSegments = resourceKey.Split('/');
+
+        // Find common prefix length
+        var commonLength = 0;
+        var minLength = Math.Min(documentSegments.Length, targetSegments.Length);
+        for (var i = 0; i < minLength; i++)
+        {
+            if (documentSegments[i] == targetSegments[i])
+            {
+                commonLength++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // Build relative path: go up for remaining document segments, then down to target
+        var upCount = documentSegments.Length - commonLength;
+        var relativeParts = new List<string>();
+
+        for (var i = 0; i < upCount; i++)
+        {
+            relativeParts.Add("..");
+        }
+
+        for (var i = commonLength; i < targetSegments.Length; i++)
+        {
+            relativeParts.Add(targetSegments[i]);
+        }
+
+        return string.Join("/", relativeParts);
+    }
+
+    /// <summary>
+    /// Resolves a relative path to an absolute Resource Key.
+    /// All paths are resolved relative to the current document's folder.
+    /// </summary>
+    private Result<ResourceKey> ResolveResourcePath(string path)
+    {
+        var documentBasePath = GetDocumentBasePath();
+        var fullPath = string.IsNullOrEmpty(documentBasePath)
+            ? path
+            : $"{documentBasePath}/{path}";
+
+        var normalizedPath = NormalizeResourcePath(fullPath);
+        var resourceKey = new ResourceKey(normalizedPath);
+        var result = _resourceRegistry.NormalizeResourceKey(resourceKey);
+
+        if (result.IsSuccess)
+        {
+            return Result<ResourceKey>.Ok(result.Value);
+        }
+
+        return Result<ResourceKey>.Fail($"Could not resolve resource path: {path}");
     }
 
     private async Task HandleLinkClicked(string? href)
@@ -337,57 +461,17 @@ public sealed partial class MarkdownDocumentView : DocumentView
             return;
         }
 
-        // Treat as a resource key — try as-is first, then relative to the current document's folder
+        // Resolve the path relative to the current document's folder
         try
         {
-            // Helper to normalize path segments (handle ../ and ./)
-            string NormalizePath(string path)
-            {
-                var segments = path.Split('/');
-                var stack = new Stack<string>();
-                foreach (var segment in segments)
-                {
-                    if (segment == ".." && stack.Count > 0)
-                    {
-                        stack.Pop();
-                    }
-                    else if (segment != "." && !string.IsNullOrEmpty(segment))
-                    {
-                        stack.Push(segment);
-                    }
-                }
-                return string.Join("/", stack.Reverse());
-            }
-
-            // 1. Try href as a direct resource key (absolute from project root)
-            var directKey = new ResourceKey(NormalizePath(href));
-            var directResult = _resourceRegistry.NormalizeResourceKey(directKey);
-            if (directResult.IsSuccess)
+            var resolveResult = ResolveResourcePath(href);
+            if (resolveResult.IsSuccess)
             {
                 _commandService.Execute<IOpenDocumentCommand>(command =>
                 {
-                    command.FileResource = directResult.Value;
+                    command.FileResource = resolveResult.Value;
                 });
                 return;
-            }
-
-            // 2. Try href relative to the current document's folder
-            var fileResourcePath = ViewModel.FileResource.ToString();
-            var directoryName = Path.GetDirectoryName(fileResourcePath);
-            var currentFolder = directoryName?.Replace('\\', '/') ?? "";
-            if (!string.IsNullOrEmpty(currentFolder))
-            {
-                var relativePath = NormalizePath($"{currentFolder}/{href}");
-                var relativeKey = new ResourceKey(relativePath);
-                var relativeResult = _resourceRegistry.NormalizeResourceKey(relativeKey);
-                if (relativeResult.IsSuccess)
-                {
-                    _commandService.Execute<IOpenDocumentCommand>(command =>
-                    {
-                        command.FileResource = relativeResult.Value;
-                    });
-                    return;
-                }
             }
 
             // Could not resolve the link
@@ -538,7 +622,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
             _webView.Close();
             _webView = null;
-            _messenger = null;
+            _webMessenger = null;
         }
 
         await base.PrepareToClose();
