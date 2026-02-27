@@ -1,4 +1,4 @@
-// Link popover module for Note editor
+// Link popover module for Markdown editor
 // Single-mode popover: URL input with browse, open, delete.
 // Changes auto-apply on close; Escape cancels.
 

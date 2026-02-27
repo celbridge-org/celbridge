@@ -25,7 +25,6 @@
   <ItemGroup>
     <Content Include="Web\**" />
     <!-- Exclude TipTap vendoring toolchain (only lib/tiptap.js is needed at runtime) -->
-    <Content Remove="Web\Note\lib\build\**" />
     <!-- Excluding these files as they trigger localization warnings during the build process -->
     <Content Remove="Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
     <Content Remove="Web\Monaco\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />

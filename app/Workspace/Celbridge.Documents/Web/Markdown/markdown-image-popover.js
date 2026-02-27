@@ -1,4 +1,4 @@
-// Image popover module for Note editor
+// Image popover module for Markdown editor
 // All controls shown in a single view with immediate changes.
 // Escape reverts to original state; clicking away keeps changes.
 

@@ -1,17 +1,18 @@
-// Note editor entry point
+// Markdown editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
 import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
-import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './note-image-popover.js';
-import { init as initLinkPopover, toggleLink, onPickLinkResourceResult } from './note-link-popover.js';
-import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
+import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './markdown-image-popover.js';
+import { init as initLinkPopover, toggleLink, onPickLinkResourceResult } from './markdown-link-popover.js';
+import { createTableExtensions, init as initTablePopover, toggleTable } from './markdown-table-popover.js';
 
 // ---------------------------------------------------------------------------
 // Table clipboard handling
 // When all cells in a table are selected, copy/cut the entire table
 // ---------------------------------------------------------------------------
+
 
 function findTableFromCellSelection(state) {
     const { selection } = state;

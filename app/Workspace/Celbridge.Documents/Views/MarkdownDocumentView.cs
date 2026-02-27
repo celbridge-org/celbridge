@@ -111,8 +111,8 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
             var messenger = new WebView2Messenger(webView.CoreWebView2);
 
-            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("note.celbridge",
-                "Celbridge.Documents/Web/Note",
+            webView.CoreWebView2.SetVirtualHostNameToFolderMapping("markdown.celbridge",
+                "Celbridge.Documents/Web/Markdown",
                 CoreWebView2HostResourceAccessKind.Allow);
 
             WebView2Helper.MapSharedAssets(webView.CoreWebView2);
@@ -152,7 +152,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
                 }
 
                 // Allow only the initial editor page load
-                if (uri.StartsWith("https://note.celbridge/index.html"))
+                if (uri.StartsWith("https://markdown.celbridge/index.html"))
                 {
                     return;
                 }
@@ -175,7 +175,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             // Show the WebView immediately so the status is visible
             this.Content = _webView;
 
-            webView.CoreWebView2.Navigate("https://note.celbridge/index.html");
+            webView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
 
             bool isEditorReady = false;
             TypedEventHandler<WebView2, CoreWebView2WebMessageReceivedEventArgs> onWebMessageReceived = (sender, e) =>
