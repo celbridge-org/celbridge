@@ -1,25 +1,10 @@
 using Celbridge.Messaging;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
 public partial class MarkdownDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
-
-    // Delay before saving the document after the most recent change
-    private const double SaveDelay = 1.0; // Seconds
-
-    // Flag to suppress reload requests triggered by our own save operations.
-    // This prevents the file watcher race condition where the watcher fires
-    // before we can update our tracking info.
-    private bool _isSavingFile;
-
-    [ObservableProperty]
-    private double _saveTimer;
-
-    // Event to notify the view that the document should be reloaded
-    public event EventHandler? ReloadRequested;
 
     public MarkdownDocumentViewModel(IMessengerService messengerService)
     {
@@ -34,14 +19,14 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         if (message.Resource == FileResource)
         {
             // Skip reload if we're currently saving - this is our own file change
-            if (_isSavingFile)
+            if (IsSavingFile)
             {
                 return;
             }
 
             if (IsFileChangedExternally())
             {
-                ReloadRequested?.Invoke(this, EventArgs.Empty);
+                RaiseReloadRequested();
             }
         }
     }
@@ -52,32 +37,6 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         {
             UpdateFileTrackingInfo();
         }
-    }
-
-    public void OnDataChanged()
-    {
-        HasUnsavedChanges = true;
-        SaveTimer = SaveDelay;
-    }
-
-    public Result<bool> UpdateSaveTimer(double deltaTime)
-    {
-        if (!HasUnsavedChanges)
-        {
-            return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
-        }
-
-        if (SaveTimer > 0)
-        {
-            SaveTimer -= deltaTime;
-            if (SaveTimer <= 0)
-            {
-                SaveTimer = 0;
-                return Result<bool>.Ok(true);
-            }
-        }
-
-        return Result<bool>.Ok(false);
     }
 
     public async Task<Result> LoadContent()
@@ -124,7 +83,7 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         try
         {
             // Set flag before writing to suppress file watcher reload requests
-            _isSavingFile = true;
+            IsSavingFile = true;
 
             await File.WriteAllTextAsync(FilePath, markdownContent);
 
@@ -144,11 +103,11 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         finally
         {
             // Clear the flag after save completes (success or failure)
-            _isSavingFile = false;
+            IsSavingFile = false;
         }
     }
 
-    public void Cleanup()
+    public override void Cleanup()
     {
         _messengerService.UnregisterAll(this);
     }

@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Security.Cryptography;
 
@@ -5,6 +6,9 @@ namespace Celbridge.Documents.ViewModels;
 
 public abstract partial class DocumentViewModel : ObservableObject
 {
+    // Delay before saving the document after the most recent change
+    protected const double SaveDelay = 1.0; // Seconds
+
     [ObservableProperty]
     private ResourceKey _fileResource = string.Empty;
 
@@ -14,9 +18,67 @@ public abstract partial class DocumentViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasUnsavedChanges = false;
 
+    [ObservableProperty]
+    private double _saveTimer;
+
+    // Flag to suppress reload requests triggered by our own save operations.
+    // This prevents the file watcher race condition where the watcher fires
+    // before we can update our tracking info.
+    protected bool IsSavingFile { get; set; }
+
+    // Event to notify the view that the document should be reloaded
+    public event EventHandler? ReloadRequested;
+
     // Track the hash and size of the last saved file to detect genuine external changes
     private string? _lastSavedFileHash;
     private long _lastSavedFileSize;
+
+    /// <summary>
+    /// Marks the document as having unsaved changes and resets the save timer.
+    /// </summary>
+    public virtual void OnDataChanged()
+    {
+        HasUnsavedChanges = true;
+        SaveTimer = SaveDelay;
+    }
+
+    /// <summary>
+    /// Updates the save timer and returns true when the timer expires and a save should occur.
+    /// </summary>
+    public Result<bool> UpdateSaveTimer(double deltaTime)
+    {
+        if (!HasUnsavedChanges)
+        {
+            return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
+        }
+
+        if (SaveTimer > 0)
+        {
+            SaveTimer -= deltaTime;
+            if (SaveTimer <= 0)
+            {
+                SaveTimer = 0;
+                return Result<bool>.Ok(true);
+            }
+        }
+
+        return Result<bool>.Ok(false);
+    }
+
+    /// <summary>
+    /// Raises the ReloadRequested event to notify the view that the document should be reloaded.
+    /// </summary>
+    protected void RaiseReloadRequested()
+    {
+        ReloadRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Override this method to perform cleanup when the document is closed.
+    /// </summary>
+    public virtual void Cleanup()
+    {
+    }
 
     protected bool IsFileChangedExternally()
     {

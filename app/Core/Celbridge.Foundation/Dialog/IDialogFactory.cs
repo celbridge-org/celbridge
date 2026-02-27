@@ -1,4 +1,3 @@
-using Celbridge.Resources;
 using Celbridge.Validators;
 
 namespace Celbridge.Dialog;
@@ -41,7 +40,5 @@ public interface IDialogFactory
     /// <summary>
     /// Create a Resource Picker Dialog filtered to the specified file extensions.
     /// </summary>
-    /// <param name="title">Custom title for the dialog (e.g., "Select Image"). If null, uses default.</param>
-    /// <param name="showPreview">If true, shows a preview panel for image files.</param>
     IResourcePickerDialog CreateResourcePickerDialog(IResourceRegistry registry, IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 }

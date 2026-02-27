@@ -34,7 +34,7 @@ public enum DocumentViewType
     Spreadsheet,
 
     /// <summary>
-    /// A markdown document edited using the TipTap WYSIWYG editor.
+    /// A markdown document with the .md extension.
     /// </summary>
     Markdown
 }

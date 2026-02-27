@@ -45,10 +45,7 @@ public class WebView2Messenger
     }
 
     /// <summary>
-    /// Sends localized strings matching a key prefix to the WebView.
-    /// Keys are discovered automatically from the embedded Resources.resw,
-    /// resolved via the provided IStringLocalizer, and sent as a
-    /// "set-localization" message that celbridge-localization.js processes.
+    /// Sends localized strings matching a key prefix from the .NET host application to the WebView.
     /// </summary>
     public void SendLocalizationStrings(IStringLocalizer stringLocalizer, string keyPrefix)
     {

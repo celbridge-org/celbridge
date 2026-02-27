@@ -297,7 +297,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     private async Task HandlePickLinkResource()
     {
-        var title = _stringLocalizer.GetString("Markdown_SelectResource_Title");
+        var title = _stringLocalizer.GetString("Markdown_SelectFile_Title");
         var result = await _dialogService.ShowResourcePickerDialogAsync(Array.Empty<string>(), title);
 
         var relativePath = string.Empty;

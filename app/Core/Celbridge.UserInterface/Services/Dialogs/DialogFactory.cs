@@ -1,5 +1,4 @@
 using Celbridge.Dialog;
-using Celbridge.Resources;
 using Celbridge.UserInterface.Views;
 using Celbridge.Validators;
 

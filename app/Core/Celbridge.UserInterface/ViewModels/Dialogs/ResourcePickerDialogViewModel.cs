@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Celbridge.UserInterface.Services;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -142,7 +141,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
         var searchLower = search.ToLowerInvariant();
         FilteredItems = _allItems
-            .Where(item => item.DisplayText.ToLowerInvariant().Contains(searchLower))
+            .Where(item => item.DisplayTextLower.Contains(searchLower))
             .ToList();
     }
 }

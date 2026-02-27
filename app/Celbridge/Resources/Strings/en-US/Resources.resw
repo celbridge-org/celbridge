@@ -956,8 +956,8 @@ Do you wish to continue?</value>
   <data name="Markdown_SelectImage_Title" xml:space="preserve">
     <value>Select Image</value>
   </data>
-  <data name="Markdown_SelectResource_Title" xml:space="preserve">
-    <value>Select Resource</value>
+  <data name="Markdown_SelectFile_Title" xml:space="preserve">
+    <value>Select File</value>
   </data>
   <data name="Markdown_Image_NoSource" xml:space="preserve">
     <value>(no source)</value>
@@ -1016,32 +1016,14 @@ Do you wish to continue?</value>
   <data name="Markdown_Table_ColumnLabel" xml:space="preserve">
     <value>Column</value>
   </data>
-  <data name="Markdown_Table_AddRowTooltip" xml:space="preserve">
-    <value>Add row below</value>
-  </data>
   <data name="Markdown_Table_Add" xml:space="preserve">
     <value>Add</value>
-  </data>
-  <data name="Markdown_Table_DeleteRowTooltip" xml:space="preserve">
-    <value>Delete current row</value>
   </data>
   <data name="Markdown_Table_Remove" xml:space="preserve">
     <value>Remove</value>
   </data>
-  <data name="Markdown_Table_AddColumnTooltip" xml:space="preserve">
-    <value>Add column to the right</value>
-  </data>
-  <data name="Markdown_Table_DeleteColumnTooltip" xml:space="preserve">
-    <value>Delete current column</value>
-  </data>
   <data name="Markdown_Table_DeleteTooltip" xml:space="preserve">
     <value>Delete table</value>
-  </data>
-  <data name="Markdown_Table_SelectTooltip" xml:space="preserve">
-    <value>Select table (for cut/copy)</value>
-  </data>
-  <data name="Markdown_Table_SizeInfo" xml:space="preserve">
-    <value>{0} rows × {1} columns</value>
   </data>
   <data name="Markdown_Table_IncreaseRows" xml:space="preserve">
     <value>Add row</value>

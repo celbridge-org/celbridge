@@ -1,5 +1,3 @@
-using Celbridge.UserInterface;
-
 namespace Celbridge.UserInterface.ViewModels;
 
 /// <summary>
@@ -14,12 +12,19 @@ public class ResourcePickerItem
     /// <summary>
     /// The full resource key path displayed in the list (e.g. "docs/images/photo.png").
     /// </summary>
-    public string DisplayText => ResourceKey.ToString();
+    public string DisplayText { get; }
+
+    /// <summary>
+    /// Pre-computed lowercase version of DisplayText for efficient filtering.
+    /// </summary>
+    public string DisplayTextLower { get; }
 
     public ResourcePickerItem(IResource resource, ResourceKey resourceKey, FileIconDefinition iconDefinition)
     {
         Resource = resource;
         ResourceKey = resourceKey;
         IconDefinition = iconDefinition;
+        DisplayText = resourceKey.ToString();
+        DisplayTextLower = DisplayText.ToLowerInvariant();
     }
 }

@@ -1,15 +1,12 @@
 using Celbridge.Documents.Services;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
-public partial class TextEditorDocumentViewModel : ObservableObject
+public partial class TextEditorDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
-
-    private ResourceKey _fileResource;
 
     public Action<string>? OnSetContent;
 
@@ -24,12 +21,12 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
     public void SetFileResource(ResourceKey fileResource)
     {
-        _fileResource = fileResource;
+        FileResource = fileResource;
     }
 
     private void OnSetTextDocumentContentMessage(object recipient, SetTextDocumentContentMessage message)
     {
-        if (message.Resource != _fileResource)
+        if (message.Resource != FileResource)
         {
             return;
         }
@@ -38,5 +35,10 @@ public partial class TextEditorDocumentViewModel : ObservableObject
 
         // Notify the view that the content should be updated
         OnSetContent?.Invoke(content);
+    }
+
+    public override void Cleanup()
+    {
+        _messengerService.UnregisterAll(this);
     }
 }

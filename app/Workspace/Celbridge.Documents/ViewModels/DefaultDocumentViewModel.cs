@@ -4,14 +4,8 @@ namespace Celbridge.Documents.ViewModels;
 
 public partial class DefaultDocumentViewModel : DocumentViewModel
 {
-    // Delay before saving the document after the most recent change
-    private const double SaveDelay = 1.0; // Seconds
-
     [ObservableProperty]
     private string _text = string.Empty;
-
-    [ObservableProperty]
-    private double _saveTimer;
 
     public async Task<Result> LoadDocument()
     {
@@ -53,37 +47,11 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    public Result<bool> UpdateSaveTimer(double deltaTime)
-    {
-        if (!HasUnsavedChanges)
-        {
-            return Result<bool>.Fail($"Document does not have unsaved changes: {FileResource}");
-        }
-
-        if (SaveTimer > 0)
-        {
-            SaveTimer -= deltaTime;
-            if (SaveTimer <= 0)
-            {
-                SaveTimer = 0;
-                return Result<bool>.Ok(true);
-            }
-        }
-
-        return Result<bool>.Ok(false);
-    }
-
     private void TextDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Text))
         {
-            OnTextChanged();
+            OnDataChanged();
         }
-    }
-
-    public void OnTextChanged()
-    {
-        HasUnsavedChanges = true;
-        SaveTimer = SaveDelay;
     }
 }
