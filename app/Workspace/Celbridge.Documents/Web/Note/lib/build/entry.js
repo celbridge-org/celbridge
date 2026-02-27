@@ -13,3 +13,6 @@ export { default as TableHeader } from '@tiptap/extension-table-header';
 export { default as TaskList } from '@tiptap/extension-task-list';
 export { default as TaskItem } from '@tiptap/extension-task-item';
 export { Markdown } from '@tiptap/markdown';
+
+// Export table selection utilities for clipboard handling
+export { CellSelection, TableMap } from '@tiptap/pm/tables';

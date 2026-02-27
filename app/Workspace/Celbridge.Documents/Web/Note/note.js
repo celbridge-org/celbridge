@@ -1,12 +1,90 @@
 // Note editor entry point
 // Slim module that creates the TipTap editor and wires up popover modules
 
-import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem } from './lib/tiptap.js';
+import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink, onPickLinkResourceResult } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
+
+// ---------------------------------------------------------------------------
+// Table clipboard handling
+// When all cells in a table are selected, copy/cut the entire table
+// ---------------------------------------------------------------------------
+
+function findTableFromCellSelection(state) {
+    const { selection } = state;
+    if (!(selection instanceof CellSelection)) return null;
+
+    // Find the table node containing the selection
+    const $anchor = selection.$anchorCell;
+    for (let depth = $anchor.depth; depth >= 0; depth--) {
+        const node = $anchor.node(depth);
+        if (node.type.name === 'table') {
+            return {
+                node,
+                pos: $anchor.before(depth),
+                depth
+            };
+        }
+    }
+    return null;
+}
+
+function areAllCellsSelected(state) {
+    const { selection } = state;
+    if (!(selection instanceof CellSelection)) return false;
+
+    const tableInfo = findTableFromCellSelection(state);
+    if (!tableInfo) return false;
+
+    const { node: tableNode } = tableInfo;
+
+    // Count total cells in the table
+    let totalCells = 0;
+    tableNode.forEach(row => {
+        row.forEach(() => {
+            totalCells++;
+        });
+    });
+
+    // Count selected cells
+    let selectedCells = 0;
+    selection.forEachCell(() => {
+        selectedCells++;
+    });
+
+    return selectedCells === totalCells && totalCells > 0;
+}
+
+function handleTableClipboard(event, isCut, editor) {
+    const { state } = editor;
+
+    if (!areAllCellsSelected(state)) {
+        return false; // Let default handling proceed
+    }
+
+    const tableInfo = findTableFromCellSelection(state);
+    if (!tableInfo) return false;
+
+    const { pos, node } = tableInfo;
+
+    // Select the entire table node, then let default clipboard handling work
+    // This converts cell selection to node selection which copies the whole table
+    editor.commands.setNodeSelection(pos);
+
+    // For cut, we need to delete after the copy completes
+    if (isCut) {
+        // Use setTimeout to let the copy happen first, then delete
+        setTimeout(() => {
+            editor.commands.deleteSelection();
+        }, 0);
+    }
+
+    // Return false to let the default copy/cut proceed with the new node selection
+    return false;
+}
 
 // DOM elements
 const toolbarEl = document.getElementById('toolbar');
@@ -76,6 +154,19 @@ const editor = new Editor({
             click: (view, event) => {
                 if (event.target.closest('a')) {
                     event.preventDefault();
+                }
+                return false;
+            },
+            copy: (view, event) => {
+                // ctx.editor is set after editor creation, so use it from closure
+                if (ctx.editor) {
+                    return handleTableClipboard(event, false, ctx.editor);
+                }
+                return false;
+            },
+            cut: (view, event) => {
+                if (ctx.editor) {
+                    return handleTableClipboard(event, true, ctx.editor);
                 }
                 return false;
             },

@@ -1037,6 +1037,9 @@ Do you wish to continue?</value>
   <data name="NoteEditor_Table_DeleteTooltip" xml:space="preserve">
     <value>Delete table</value>
   </data>
+  <data name="NoteEditor_Table_SelectTooltip" xml:space="preserve">
+    <value>Select table (for cut/copy)</value>
+  </data>
   <data name="NoteEditor_Table_SizeInfo" xml:space="preserve">
     <value>{0} rows × {1} columns</value>
   </data>
