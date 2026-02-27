@@ -134,7 +134,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
             webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
             var settings = webView.CoreWebView2.Settings;
-            settings.AreDevToolsEnabled = false;
+            settings.AreDevToolsEnabled = true;
             settings.AreDefaultContextMenusEnabled = true;
 
             await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
