@@ -9,3 +9,8 @@ public record SaveScreenplayFailedMessage(ResourceKey SceneResource);
 /// Message sent when the SaveScreenplay command has succeeded.
 /// </summary>
 public record SaveScreenplaySucceededMessage();
+
+/// <summary>
+/// Message sent when a scene's content has been updated and needs to be refreshed in the document view.
+/// </summary>
+public record SceneContentUpdatedMessage(ResourceKey SceneResource);

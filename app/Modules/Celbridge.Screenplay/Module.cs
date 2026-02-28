@@ -1,8 +1,11 @@
 using Celbridge.Activities;
+using Celbridge.Documents;
 using Celbridge.Modules;
 using Celbridge.Screenplay.Commands;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Services;
+using Celbridge.Screenplay.ViewModels;
+using Celbridge.Screenplay.Views;
 
 namespace Celbridge.Screenplay;
 
@@ -16,12 +19,30 @@ public class Module : IModule
     public void ConfigureServices(IModuleServiceCollection services)
     {
         //
+        // Register document editor factories
+        //
+
+        services.AddTransient<IDocumentEditorFactory, SceneEditorFactory>();
+
+        //
         // Register services
         //
 
         services.AddTransient<ScreenplayActivity>();
         services.AddTransient<ScreenplayLoader>();
         services.AddTransient<ScreenplaySaver>();
+
+        //
+        // Register views
+        //
+
+        services.AddTransient<SceneDocumentView>();
+
+        //
+        // Register view models
+        //
+
+        services.AddTransient<SceneDocumentViewModel>();
 
         //
         // Register components

@@ -1,5 +1,4 @@
 using Celbridge.Activities;
-using Celbridge.Documents;
 using Celbridge.HTML.Components;
 using Celbridge.HTML.Services;
 using Celbridge.Modules;
@@ -20,7 +19,6 @@ public class Module : IModule
         //
 
         services.AddTransient<HTMLActivity>();
-        services.AddTransient<IHTMLPreviewProvider, HTMLPreviewProvider>();
 
         //
         // Register component editors

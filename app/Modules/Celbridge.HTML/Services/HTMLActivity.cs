@@ -1,5 +1,4 @@
 using Celbridge.Activities;
-using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.HTML.Components;
 using Celbridge.Workspace;
@@ -8,47 +7,28 @@ namespace Celbridge.HTML.Services;
 
 public class HTMLActivity : IActivity
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IEntityService _entityService;
-    private readonly IDocumentsService _documentsService;
 
-    public HTMLActivity(
-        IServiceProvider serviceProvider,
-        IWorkspaceWrapper workspaceWrapper)
+    public HTMLActivity(IWorkspaceWrapper workspaceWrapper)
     {
-        _serviceProvider = serviceProvider;        
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
     }
 
     public async Task<Result> ActivateAsync()
     {
-        // Register a HTML preview provider for .html files
-        var provider = _serviceProvider.AcquireService<IHTMLPreviewProvider>();
-
-        var addProviderResult = _documentsService.AddPreviewProvider(".html", provider);
-        if (addProviderResult.IsFailure)
-        {
-            return Result.Fail("Failed to register HTML preview provider for '.html' file extension.")
-                .WithErrors(addProviderResult);
-        }
-
         await Task.CompletedTask;
-
         return Result.Ok();
     }
 
     public async Task<Result> DeactivateAsync()
     {
         await Task.CompletedTask;
-
         return Result.Ok();
     }
 
     public async Task<Result> InitializeResourceAsync(ResourceKey resource)
     {
         await Task.CompletedTask;
-
         return Result.Ok();
     }
 

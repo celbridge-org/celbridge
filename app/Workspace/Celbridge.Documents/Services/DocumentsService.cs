@@ -42,8 +42,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private FileTypeHelper _fileTypeHelper;
 
-    private Dictionary<string, IPreviewProvider> _previewProviders = new();
-
     private readonly DocumentEditorRegistry _documentEditorRegistry = new();
 
     /// <summary>
@@ -538,35 +536,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public Result AddPreviewProvider(string fileExtension, IPreviewProvider previewProvider)
-    {
-        // Check for valid file extension format
-        if (!Regex.IsMatch(fileExtension, @"^\.[a-zA-Z0-9]+$"))
-        {
-            return Result.Fail($"Invalid file extension: '{fileExtension}'");
-        }
-
-        // Check for conflicts with previously registered providers
-        if (_previewProviders.ContainsKey(fileExtension))
-        {
-            return Result.Fail($"A preview provider is already registered for extension: '{fileExtension}'");
-        }
-
-        _previewProviders.Add(fileExtension, previewProvider);
-
-        return Result.Ok();
-    }
-
-    public Result<IPreviewProvider> GetPreviewProvider(string fileExtension)
-    {
-        if (_previewProviders.TryGetValue(fileExtension, out var previewProvider))
-        {
-            return Result<IPreviewProvider>.Ok(previewProvider);
-        }
-
-        return Result<IPreviewProvider>.Fail();
-    }
-
     /// <summary>
     /// Registers a document editor factory.
     /// </summary>
@@ -669,8 +638,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
-
-                _previewProviders.Clear();
 
                 TextEditorWebViewPool.Shutdown();
             }

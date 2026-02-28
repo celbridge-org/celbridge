@@ -96,17 +96,6 @@ public interface IDocumentsService
     Task RestorePanelState();
 
     /// <summary>
-    /// Adds a preview provider that generates a HTML preview for a specific file extension.
-    /// </summary>
-    Result AddPreviewProvider(string fileExtension, IPreviewProvider previewProvider);
-
-    /// <summary>
-    /// Returns a previously registered preview provider for the specified file extension.
-    /// Fails if no matching preview provider is found.
-    /// </summary>
-    Result<IPreviewProvider> GetPreviewProvider(string fileExtension);
-
-    /// <summary>
     /// Registers a document editor factory.
     /// </summary>
     Result RegisterDocumentEditorFactory(IDocumentEditorFactory factory);

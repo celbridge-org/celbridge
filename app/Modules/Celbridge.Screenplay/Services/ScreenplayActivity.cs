@@ -1,13 +1,11 @@
 using Celbridge.Activities;
 using Celbridge.Dialog;
-using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Localization;
+using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;
-using Humanizer;
-using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -16,40 +14,31 @@ namespace Celbridge.Screenplay.Services;
 public class ScreenplayActivity : IActivity
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IMessengerService _messengerService;
     private readonly ILocalizerService _localizerService;
     private readonly IDialogService _dialogService;
     private readonly IEntityService _entityService;
-    private readonly IDocumentsService _documentsService;
     private readonly IWorkspaceSettings _workspaceSettings;
     private readonly IResourceRegistry _resourceRegistry;
 
     public ScreenplayActivity(
         IServiceProvider serviceProvider,
+        IMessengerService messengerService,
         ILocalizerService localizerService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _serviceProvider = serviceProvider;
+        _messengerService = messengerService;
         _localizerService = localizerService;
         _dialogService = dialogService;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
     }
 
     public async Task<Result> ActivateAsync()
     {
-        // Register a HTML preview provider for .scene files
-        var provider = _serviceProvider.AcquireService<IHTMLPreviewProvider>();
-
-        var addProviderResult = _documentsService.AddPreviewProvider(".scene", provider);
-        if (addProviderResult.IsFailure)
-        {
-            return Result.Fail("Failed to register HTML preview provider for '.scene' file extension.")
-                .WithErrors(addProviderResult);
-        }
-
         await Task.CompletedTask;
         return Result.Ok();
     }
@@ -402,22 +391,9 @@ public class ScreenplayActivity : IActivity
             return Result.Ok();
         }
 
-        var generateResult = GenerateScreenplayHTML(resource);
-        if (generateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to generate screenplay markdown").
-                WithErrors(generateResult);
-        }
-
-        var markdown = generateResult.Value;
-
-        // Set the contents of the document to the generated markdown
-        var setContentResult = await _documentsService.SetTextDocumentContentAsync(resource, markdown);
-        if (setContentResult.IsFailure)
-        {
-            return Result.Fail($"Failed to set document content")
-                .WithErrors(setContentResult);
-        }
+        // Notify the scene document view to refresh its content
+        var message = new SceneContentUpdatedMessage(resource);
+        _messengerService.Send(message);
 
         await Task.CompletedTask;
 
@@ -667,162 +643,5 @@ public class ScreenplayActivity : IActivity
         var confirmed = confirmResult.Value;
 
         return confirmed;
-    }
-
-    private Result<string> GenerateScreenplayHTML(ResourceKey sceneResource)
-    {
-        // Get all components in the entity, including the Scene component
-
-        var getComponentsResult = _entityService.GetComponents(sceneResource);
-        if (getComponentsResult.IsFailure)
-        {
-            return Result<string>.Fail("Failed to get Line components")
-                .WithErrors(getComponentsResult);
-        }
-        var components = getComponentsResult.Value;
-
-        if (components.Count == 0 ||
-            !components[0].IsComponentType(SceneEditor.ComponentType))
-        {
-            return Result<string>.Fail("Entity does not contain a Scene component");
-        }
-
-        var sceneComponent = components[0];
-
-        // Get the list of characters
-
-        var getCharactersResult = GetCharacters(sceneResource);
-        if (getCharactersResult.IsFailure)
-        {
-            return Result<string>.Fail("Failed to get Character list")
-                .WithErrors(getCharactersResult);
-        }
-        var characters = getCharactersResult.Value;
-
-        // Construct the screenplay HTML
-
-        var ns = sceneComponent.GetString(SceneEditor.Namespace);
-        ns = ns.Humanize(LetterCasing.Title);
-        var namespaceText = WebUtility.HtmlEncode(ns);
-
-        var contextText = WebUtility.HtmlEncode(sceneComponent.GetString(SceneEditor.Context));
-
-        var sb = new StringBuilder();
-
-        sb.AppendLine("<!DOCTYPE html>");
-        sb.AppendLine("<html>");
-        sb.AppendLine("<head>");
-        sb.AppendLine("<meta charset=\"UTF-8\">");
-
-        sb.AppendLine("<style>");
-        sb.AppendLine("body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: transparent; }");
-        sb.AppendLine(".screenplay { max-width: 800px; width: 100%; margin: 0 auto; }");
-        sb.AppendLine(".page { max-width: 794px; margin: 0 auto; }");
-        sb.AppendLine(".scene { text-align: left; margin-bottom: 2em; font-size: 2em; font-weight: bold; margin: 0 0 0.67em 0;}");
-        sb.AppendLine(".scene-note { text-align: left; margin-bottom: 2em; font-style: italic; }");
-        sb.AppendLine(".line { margin-bottom: 2em; text-align: center; }");
-        sb.AppendLine(".character { display: block; font-weight: bold; text-transform: uppercase; margin-bottom: 0.5em; }");
-        sb.AppendLine(".direction { text-align: center; }");
-        sb.AppendLine(".dialogue { display: block; white-space: pre-wrap; }");
-        sb.AppendLine(".variant { margin-right: 3em; margin-left: auto; text-align: right; font-style: italic; }");
-        sb.AppendLine(".player-color { color: hsl(220, 80%, 60%); }");
-        sb.AppendLine(".npc-color { color: hsl(10, 70%, 50%); }");
-        sb.AppendLine("</style>");
-
-        sb.AppendLine("</head>");
-        sb.AppendLine("<body>");
-        sb.AppendLine("<div class=\"screenplay\">");
-        sb.AppendLine("<div class=\"page\">");
-
-        sb.AppendLine($"<div class=\"scene\">{namespaceText}</div>");
-        sb.AppendLine($"<div class=\"scene-note\">{contextText}</div>");
-
-        // If the Direction property of a Player Variant line is empty, it defaults to the 
-        // Direction of its parent Player Line. We store the Player Line direction when we process it so
-        // that we can output it for Player Variant Lines if needed.
-        string playerDirection = string.Empty;
-
-        foreach (var component in components)
-        {
-            if (component.IsComponentType(LineEditor.ComponentType))
-            {
-                // Add line to the screenplay
-
-                var characterId = component.GetString(LineEditor.CharacterId);
-                var sourceText = WebUtility.HtmlEncode(component.GetString(LineEditor.SourceText));
-                if (string.IsNullOrWhiteSpace(characterId) || string.IsNullOrWhiteSpace(sourceText))
-                {
-                    continue;
-                }
-
-                string characterName = string.Empty;
-                bool isPlayer = characterId == "Player";
-                bool isPlayerVariant = false;
-
-                foreach (var character in characters)
-                {
-                    if (character.CharacterId == characterId)
-                    {
-                        characterName = character.Name;
-                        if (!isPlayer && character.Tag.StartsWith("Character.Player."))
-                        {
-                            isPlayerVariant = true;
-                        }
-                        break;
-                    }
-                }
-
-                string displayCharacter = characterName == characterId
-                    ? WebUtility.HtmlEncode($"{characterName}")
-                    : WebUtility.HtmlEncode($"{characterName} ({characterId})");
-
-                string lineClass = isPlayerVariant ? "line variant" : "line";
-                string colorClass = isPlayer || isPlayerVariant ? "player-color" : "npc-color";
-
-                var direction = component.GetString(LineEditor.Direction);
-
-                if (isPlayer)
-                {
-                    // Record the Player direction to display as placeholder direction in PlayerVariant lines
-                    playerDirection = direction;
-                }
-                else if (!isPlayerVariant)
-                {
-                    playerDirection = string.Empty;
-                }
-
-                // Display the recorded Player direction if the PlayerVariant direction is empty
-                if (isPlayerVariant && string.IsNullOrEmpty(direction))
-                {
-                    direction = playerDirection;
-                }
-
-                var directionText = WebUtility.HtmlEncode(direction);
-
-                if (characterId == "SceneNote")
-                {
-                    // Add scene note to the screenplay
-                    sb.AppendLine($"<div class=\"scene-note\">{sourceText}</div>");
-                }
-                else
-                {
-                    sb.AppendLine($"<div class=\"{lineClass}\">");
-                    sb.AppendLine($"  <span class=\"character {colorClass}\">{displayCharacter}</span>");
-                    if (!string.IsNullOrEmpty(directionText))
-                    {
-                        sb.AppendLine($"  <span class=\"direction\">({directionText})</span>");
-                    }
-                    sb.AppendLine($"  <span class=\"dialogue\">{sourceText}</span>");
-                    sb.AppendLine("</div>");
-                }
-            }
-        }
-
-        sb.AppendLine("</div>"); // page
-        sb.AppendLine("</div>"); // screenplay
-        sb.AppendLine("</body>");
-        sb.AppendLine("</html>");
-
-        return Result<string>.Ok(sb.ToString());
     }
 }
