@@ -43,6 +43,8 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
         // Assign the WebView from XAML to the base class property
         WebView = AppWebView;
 
+        Loaded += WebAppDocumentView_Loaded;
+
         _messengerService.Register<WebAppNavigateMessage>(this, OnWebAppNavigate);
         _messengerService.Register<WebAppRefreshMessage>(this, OnWebAppRefresh);
         _messengerService.Register<WebAppGoBackMessage>(this, OnWebAppGoBack);
@@ -149,6 +151,40 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to navigate forward");
+        }
+    }
+
+    private async void WebAppDocumentView_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= WebAppDocumentView_Loaded;
+
+        await InitWebAppViewAsync();
+    }
+
+    private async Task InitWebAppViewAsync()
+    {
+        // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
+        await InitializeWebViewAsync();
+
+        Guard.IsNotNull(WebView);
+
+        // Ensure we only register once for these events
+        WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+        WebView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+
+        WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+        WebView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
+
+        WebView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
+        WebView.CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
+
+        WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+        WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
+
+        // Navigate to the URL if already loaded
+        if (!string.IsNullOrEmpty(ViewModel.SourceUrl))
+        {
+            WebView.CoreWebView2.Navigate(ViewModel.SourceUrl);
         }
     }
 
@@ -278,27 +314,15 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
         // Be aware that this method can be called multiple times if the document is reloaded as a result of
         // the user changing the URL in the inspector.
 
-        // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
-        await InitializeWebViewAsync();
-
-        Guard.IsNotNull(WebView);
-
-        // Ensure we only register once for these events
-        WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-        WebView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
-
-        WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-        WebView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
-
-        WebView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
-        WebView.CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
-
-        WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
-        WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
-
-        // Load URL from file and navigate
+        // Load URL from file - actual navigation happens in InitWebAppViewAsync when the view is loaded
         var loadResult = await ViewModel.LoadContent();
-        if (loadResult.IsSuccess && !string.IsNullOrEmpty(ViewModel.SourceUrl))
+        if (loadResult.IsFailure)
+        {
+            return loadResult;
+        }
+
+        // If the WebView is already initialized (reload case), navigate now
+        if (WebView?.CoreWebView2 is not null && !string.IsNullOrEmpty(ViewModel.SourceUrl))
         {
             WebView.CoreWebView2.Navigate(ViewModel.SourceUrl);
         }
