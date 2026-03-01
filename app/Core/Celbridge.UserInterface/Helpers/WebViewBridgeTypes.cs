@@ -30,7 +30,7 @@ public static class JsonRpcErrorCodes
 public class BridgeException : Exception
 {
     public int Code { get; }
-    public object? Data { get; }
+    public new object? Data { get; }
 
     public BridgeException(int code, string message, object? data = null) : base(message)
     {
@@ -153,3 +153,21 @@ public record ThemeChangedNotification(ThemeInfo Theme);
 /// Notification sent when localization is updated.
 /// </summary>
 public record LocalizationUpdatedNotification(Dictionary<string, string> Strings);
+
+// =============================================================================
+// Link/Navigation Operations
+// =============================================================================
+
+/// <summary>
+/// Parameters for the link/clicked notification (JS to C#).
+/// </summary>
+public record LinkClickedParams(string Href);
+
+// =============================================================================
+// Editor-specific initialization data
+// =============================================================================
+
+/// <summary>
+/// Additional editor-specific data for Markdown initialization.
+/// </summary>
+public record MarkdownEditorConfig(string ProjectBaseUrl, string DocumentBaseUrl);

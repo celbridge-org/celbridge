@@ -39,6 +39,16 @@ public class WebViewBridge : IDisposable
     public DialogHandlers Dialog { get; }
 
     /// <summary>
+    /// Theme-related notifications.
+    /// </summary>
+    public ThemeHandlers Theme { get; }
+
+    /// <summary>
+    /// Localization-related notifications.
+    /// </summary>
+    public LocalizationHandlers Localization { get; }
+
+    /// <summary>
     /// Creates a new WebViewBridge with the specified message channel.
     /// </summary>
     public WebViewBridge(IWebViewMessageChannel channel, ILogger? logger = null)
@@ -48,6 +58,8 @@ public class WebViewBridge : IDisposable
 
         Document = new DocumentHandlers(this);
         Dialog = new DialogHandlers(this);
+        Theme = new ThemeHandlers(this);
+        Localization = new LocalizationHandlers(this);
 
         _channel.MessageReceived += OnMessageReceived;
     }
@@ -372,11 +384,28 @@ public class WebViewBridge : IDisposable
         }
 
         /// <summary>
+        /// Sends a document/requestSave notification to trigger the WebView to save.
+        /// JS should respond by calling document.save(content).
+        /// </summary>
+        public void RequestSave()
+        {
+            _bridge.SendNotification("document/requestSave");
+        }
+
+        /// <summary>
         /// Sends a document/externalChange notification to the WebView.
         /// </summary>
         public void NotifyExternalChange()
         {
             _bridge.SendNotification("document/externalChange");
+        }
+
+        /// <summary>
+        /// Registers a handler for link/clicked notifications.
+        /// </summary>
+        public void OnLinkClicked(Action<string> handler)
+        {
+            _bridge.RegisterNotificationHandler<LinkClickedParams>("link/clicked", p => handler(p.Href));
         }
     }
 
@@ -414,6 +443,52 @@ public class WebViewBridge : IDisposable
         public void OnAlert(Func<AlertParams, Task<AlertResult>> handler)
         {
             _bridge.RegisterHandler("dialog/alert", handler);
+        }
+    }
+
+    // =========================================================================
+    // Theme Notification Helpers
+    // =========================================================================
+
+    /// <summary>
+    /// Theme-related notification methods.
+    /// </summary>
+    public class ThemeHandlers
+    {
+        private readonly WebViewBridge _bridge;
+
+        internal ThemeHandlers(WebViewBridge bridge)
+        {
+            _bridge = bridge;
+        }
+
+        /// <summary>
+        /// Sends a theme/changed notification to the WebView.
+        /// </summary>
+        public void NotifyChanged(ThemeInfo theme)
+        {
+            _bridge.SendNotification("theme/changed", new ThemeChangedNotification(theme));
+        }
+    }
+
+    /// <summary>
+    /// Localization-related notification methods.
+    /// </summary>
+    public class LocalizationHandlers
+    {
+        private readonly WebViewBridge _bridge;
+
+        internal LocalizationHandlers(WebViewBridge bridge)
+        {
+            _bridge = bridge;
+        }
+
+        /// <summary>
+        /// Sends a localization/updated notification to the WebView.
+        /// </summary>
+        public void NotifyUpdated(Dictionary<string, string> strings)
+        {
+            _bridge.SendNotification("localization/updated", new LocalizationUpdatedNotification(strings));
         }
     }
 }

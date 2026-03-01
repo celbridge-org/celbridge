@@ -114,9 +114,20 @@ export function init(context) {
 
     document.getElementById('image-popover-delete').addEventListener('click', () => deleteImage());
 
-    document.getElementById('image-popover-src-browse').addEventListener('click', () => {
+    document.getElementById('image-popover-src-browse').addEventListener('click', async () => {
         isPickerOpen = true;
-        ctx.sendMessage({ type: 'pick-image-resource' });
+        try {
+            const path = await ctx.bridge.dialog.pickImage([]);
+            isPickerOpen = false;
+            if (path) {
+                srcInputEl.value = path;
+                applyAttrsToNode({ src: path });
+                srcInputEl.focus();
+            }
+        } catch (e) {
+            isPickerOpen = false;
+            console.error('[ImagePopover] Failed to pick image:', e);
+        }
     });
 
     srcInputEl.addEventListener('input', () => {
@@ -243,16 +254,4 @@ export function toggleImage() {
         pendingPopoverOnSelect = true;
         ctx.editor.chain().focus().setImage({ src: '' }).run();
     }
-}
-
-// ---------------------------------------------------------------------------
-// Resource picker result (called from markdown.js when C# responds)
-// ---------------------------------------------------------------------------
-
-export function onPickImageResourceResult(resourceKey) {
-    isPickerOpen = false;
-    if (!resourceKey) return;
-    srcInputEl.value = resourceKey;
-    applyAttrsToNode({ src: resourceKey });
-    srcInputEl.focus();
 }

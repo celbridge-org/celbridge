@@ -1,6 +1,5 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Spreadsheet.ViewModels;

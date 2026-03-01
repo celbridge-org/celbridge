@@ -1,5 +1,4 @@
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;

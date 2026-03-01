@@ -1,9 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Commands;
 using Celbridge.Console;
-using Celbridge.Documents;
 using Celbridge.Entities;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;

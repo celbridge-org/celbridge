@@ -5,7 +5,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;

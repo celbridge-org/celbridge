@@ -46,7 +46,48 @@ Keep notes concise—this file may be referenced in future sessions.
 
 ## Phase 2: Markdown Editor Migration
 
-*(To be filled during implementation)*
+**Completed:** Yes
+
+**Files Created:**
+- `Core/Celbridge.UserInterface/Helpers/WebView2MessageChannel.cs` - Production implementation of IWebViewMessageChannel
+- `Core/Celbridge.UserInterface/Helpers/WebViewLocalizationHelper.cs` - Helper to extract localization strings for WebView editors
+
+**Files Modified:**
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Added Theme, Localization handlers; Document.RequestSave(), Document.OnLinkClicked()
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridgeContracts.cs` - Added LinkClickedParams, MarkdownEditorConfig
+- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - Added document.onRequestSave() event
+- `Modules/Celbridge.Markdown/Views/MarkdownDocumentView.xaml.cs` - Full migration to WebViewBridge
+- `Modules/Celbridge.Markdown/Web/Markdown/markdown.js` - Full migration to bridge API
+- `Modules/Celbridge.Markdown/Web/Markdown/markdown-image-popover.js` - Use bridge.dialog.pickImage()
+- `Modules/Celbridge.Markdown/Web/Markdown/markdown-link-popover.js` - Use bridge.dialog.pickFile(), bridge notifications
+
+**Deviations from Plan:**
+1. **Save flow**: The plan described JS-initiated saves, but the existing auto-save infrastructure in C# relies on timer-based saves. Added `document/requestSave` notification (host → client) so C# can request a save, and JS responds by calling `bridge.document.save(content)`. This preserves the existing auto-save behavior while using the bridge.
+
+2. **Link clicked handling**: Added `link/clicked` notification for handling link clicks, registered via `Document.OnLinkClicked()`.
+
+3. **No separate MarkdownBridgeHandlers.cs**: Handlers are defined inline in `MarkdownDocumentView.xaml.cs` rather than a separate file. This keeps the view self-contained and avoids additional files for minimal code.
+
+**Design Decisions:**
+1. `WebView2MessageChannel.Detach()` method added to cleanly unsubscribe from WebView2 events during disposal.
+2. Localization strings are now bundled in the `InitializeResult` response, eliminating the need for a separate `set-localization` message.
+3. Theme changes are pushed to JS via `theme/changed` notification when the host detects a theme change.
+4. The `_isDirty` flag in the view tracks whether JS has unsaved changes (via `document/changed` notifications).
+5. Removed guard flags (`_isContentLoaded`, `isLoadingContent`, `isDocumentLoaded`) - the bridge initialization handshake handles timing.
+
+**Test Results:**
+- Build: Successful
+
+**Manual Testing Required:**
+- [ ] Create new markdown document → editor loads, can type
+- [ ] Open existing markdown document → content displays correctly
+- [ ] Edit and wait for auto-save → file saved to disk
+- [ ] Insert image via toolbar → image picker works
+- [ ] Insert link via toolbar → file picker works
+- [ ] Click link (Ctrl+click) → opens document/browser
+- [ ] External file change (clean) → reloads without prompt
+- [ ] External file change (dirty) → conflict dialog appears
+- [ ] Theme change → editor updates
 
 ---
 

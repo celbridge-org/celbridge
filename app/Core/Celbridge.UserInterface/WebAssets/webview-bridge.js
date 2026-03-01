@@ -422,6 +422,15 @@ class DocumentAPI {
     onExternalChange(handler) {
         this.#bridge._addEventListener('document/externalChange', handler);
     }
+
+    /**
+     * Registers a handler for save request notifications from the host.
+     * The handler should get the current content and call document.save(content).
+     * @param {Function} handler - Called when the host requests a save.
+     */
+    onRequestSave(handler) {
+        this.#bridge._addEventListener('document/requestSave', handler);
+    }
 }
 
 /**

@@ -8,10 +8,10 @@ This document outlines the design for a standardized communication layer between
 
 This is a **living design document** that serves as both specification and implementation tracker.
 
-**For the AI assistant (Copilot):** When the user says "Implement the next phase", you should:
+**For the AI assistant (Copilot):**
 1. Read this document to understand the current status and next phase
 2. Review the "Key Files" listed in Current Status for context
-3. Implement the phase according to the tasks listed
+3. Implement the next phase to be implemented according to the tasks listed
 4. Update the phase status from ⬜ to ✅ when complete
 5. Record any deviations or decisions in [WebViewBridgeNotes.md](WebViewBridgeNotes.md)
 6. Update the "Current Status" section using the Phase Context Templates at the end
@@ -31,22 +31,18 @@ This is a **living design document** that serves as both specification and imple
 
 ## Current Status
 
-**Next Phase:** Phase 2 - Markdown Editor Migration
+**Next Phase:** Phase 3 - Spreadsheet Editor Migration
 
 **Key Files to Review:**
-- `Modules/Celbridge.Markdown/Views/MarkdownDocumentView.xaml.cs` - C# side to migrate
-- `Modules/Celbridge.Markdown/Web/markdown.js` - JS side to migrate
-- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Bridge API (from Phase 1)
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - JS bridge (from Phase 1)
+- `Modules/Celbridge.Spreadsheet/Views/SpreadsheetDocumentView.xaml.cs`
+- `Modules/Celbridge.Spreadsheet/Web/` - SpreadJS integration
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
 
 **Verification:**
 - [ ] `dotnet build` succeeds
-- [ ] Create new markdown document → editor loads, can type
-- [ ] Open existing markdown document → content displays correctly
-- [ ] Edit and wait for auto-save → file saved to disk
-- [ ] Insert image via toolbar → image picker works
-- [ ] External file change (clean) → reloads without prompt
-- [ ] External file change (dirty) → conflict dialog appears
+- [ ] Create/open spreadsheet → displays correctly
+- [ ] Edit cells, formulas → auto-save works
+- [ ] Large dataset performance acceptable
 
 ## Rationale
 
@@ -264,7 +260,7 @@ C# Host                          JavaScript
 9. Write unit tests (C# xUnit + JS Vitest)
 10. Add JS test step to CI workflow
 
-### Phase 2: Markdown Editor Migration ⬜
+### Phase 2: Markdown Editor Migration ✅
 
 **Deliverables:**
 - `MarkdownBridgeHandlers.cs` - Markdown-specific method handlers

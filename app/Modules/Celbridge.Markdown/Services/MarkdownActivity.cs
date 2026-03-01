@@ -1,6 +1,5 @@
 using Celbridge.Activities;
 using Celbridge.Entities;
-using Celbridge.Explorer;
 using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Workspace;
 

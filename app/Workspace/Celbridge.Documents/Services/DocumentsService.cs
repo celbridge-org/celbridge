@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;

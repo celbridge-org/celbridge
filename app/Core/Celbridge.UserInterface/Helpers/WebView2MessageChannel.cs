@@ -1,0 +1,41 @@
+using Microsoft.Web.WebView2.Core;
+
+namespace Celbridge.UserInterface.Helpers;
+
+/// <summary>
+/// Implementation of IWebViewMessageChannel that wraps CoreWebView2.
+/// </summary>
+public class WebView2MessageChannel : IWebViewMessageChannel
+{
+    private readonly CoreWebView2 _coreWebView2;
+
+    public WebView2MessageChannel(CoreWebView2 coreWebView2)
+    {
+        _coreWebView2 = coreWebView2;
+        _coreWebView2.WebMessageReceived += OnWebMessageReceived;
+    }
+
+    public event EventHandler<string>? MessageReceived;
+
+    public void PostMessage(string json)
+    {
+        _coreWebView2.PostWebMessageAsString(json);
+    }
+
+    private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        var message = e.TryGetWebMessageAsString();
+        if (!string.IsNullOrEmpty(message))
+        {
+            MessageReceived?.Invoke(this, message);
+        }
+    }
+
+    /// <summary>
+    /// Detaches the message handler. Call when disposing the view.
+    /// </summary>
+    public void Detach()
+    {
+        _coreWebView2.WebMessageReceived -= OnWebMessageReceived;
+    }
+}

@@ -10,6 +10,7 @@
 - Prefer explicit record classes with meaningful property names over anonymous types for message contracts. Records can be defined in the same file or class, whichever is more maintainable.
 - Code-behind files should always follow the standard .xaml.cs naming convention (e.g., MyView.xaml.cs, not MyView.cs).
 - Never use `/// <param>` XML documentation in doc strings because they are verbose and hard to keep synchronized.
+- Do not use special characters like arrows or emojis in code comments. Use only standard ASCII characters.
 
 ## Code Style
 - Use specific formatting rules
