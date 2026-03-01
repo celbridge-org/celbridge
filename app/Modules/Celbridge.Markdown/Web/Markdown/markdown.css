@@ -115,6 +115,13 @@ body {
     overflow-y: auto;
     padding: 24px;
     position: relative;
+    /* Hidden until content loads to prevent flash of empty placeholder */
+    opacity: 0;
+    transition: opacity 0.15s ease-in;
+}
+
+#editor-wrapper.visible {
+    opacity: 1;
 }
 
 .tiptap {

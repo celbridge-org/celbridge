@@ -38,6 +38,11 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     private WebView2Messenger? _webMessenger;
 
+    // Flag to prevent saves before the editor has loaded its initial content.
+    // This guards against a race condition where the auto-save timer could fire
+    // before the document content is sent to the JavaScript editor.
+    private bool _isContentLoaded;
+
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
         ILogger<MarkdownDocumentView> logger,
@@ -81,6 +86,15 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
     public override async Task<Result> SaveDocument()
     {
         Guard.IsNotNull(_webMessenger);
+
+        // Don't save if content hasn't been loaded yet - this prevents a race condition
+        // where the auto-save timer fires before the editor receives its initial content,
+        // which would result in saving empty/placeholder content and losing the user's data.
+        if (!_isContentLoaded)
+        {
+            _logger.LogDebug("Save skipped - editor content not yet loaded");
+            return Result.Ok();
+        }
 
         if (!TryBeginSave())
         {
@@ -251,6 +265,10 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             var payload = new LoadDocPayload(content, projectBaseUrl, documentBaseUrl);
             var message = new JsPayloadMessage<LoadDocPayload>("load-doc", payload);
             _webMessenger.Send(message);
+
+            // Mark content as loaded to enable saves.
+            // This must be set after sending load-doc to ensure the editor has received its content.
+            _isContentLoaded = true;
         }
         catch (Exception ex)
         {
@@ -552,6 +570,13 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
                         {
                             await SaveMarkdownContent(content);
                         }
+                        else
+                        {
+                            // Content is empty - still need to complete the save cycle to avoid
+                            // leaving the save state stuck (which would block all future saves).
+                            _logger.LogWarning("Received save-response with empty content");
+                            CompleteSave();
+                        }
                     }
                     else
                     {
@@ -638,6 +663,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
     {
         if (WebView is not null)
         {
+            // Clear the content loaded flag to prevent saves during reload.
+            // LoadMarkdownContent will set it back to true after sending the content.
+            _isContentLoaded = false;
             await LoadMarkdownContent();
         }
     }
