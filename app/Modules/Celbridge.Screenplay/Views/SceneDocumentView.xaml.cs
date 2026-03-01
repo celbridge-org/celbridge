@@ -4,6 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
 namespace Celbridge.Screenplay.Views;
@@ -13,6 +14,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
     private readonly ILogger<SceneDocumentView> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IUserInterfaceService _userInterfaceService;
 
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -24,7 +26,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         IServiceProvider serviceProvider,
         ILogger<SceneDocumentView> logger,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IUserInterfaceService userInterfaceService)
         : base(messengerService)
     {
         this.InitializeComponent();
@@ -32,6 +35,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         _logger = logger;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _userInterfaceService = userInterfaceService;
 
         ViewModel = serviceProvider.GetRequiredService<SceneDocumentViewModel>();
 
@@ -40,6 +44,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         Loaded += SceneDocumentView_Loaded;
 
         _messengerService.Register<SceneContentUpdatedMessage>(this, OnSceneContentUpdated);
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
     }
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -66,7 +71,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        var loadResult = ViewModel.LoadContent();
+        var isDarkMode = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
+        var loadResult = ViewModel.LoadContent(isDarkMode);
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to load scene content")
@@ -85,10 +91,24 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
             return;
         }
 
-        var loadResult = ViewModel.LoadContent();
+        var isDarkMode = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
+        var loadResult = ViewModel.LoadContent(isDarkMode);
         if (loadResult.IsFailure)
         {
             _logger.LogError($"Failed to reload scene content: {loadResult}");
+            return;
+        }
+
+        await NavigateToHtmlContent();
+    }
+
+    private async void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    {
+        var isDarkMode = message.Theme == UserInterfaceTheme.Dark;
+        var loadResult = ViewModel.LoadContent(isDarkMode);
+        if (loadResult.IsFailure)
+        {
+            _logger.LogError($"Failed to reload scene content after theme change: {loadResult}");
             return;
         }
 
@@ -108,7 +128,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
         Guard.IsNotNull(WebView);
 
-        var loadResult = ViewModel.LoadContent();
+        var isDarkMode = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
+        var loadResult = ViewModel.LoadContent(isDarkMode);
         if (loadResult.IsFailure)
         {
             _logger.LogError($"Failed to load scene content: {loadResult}");
@@ -139,6 +160,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
     public override async Task PrepareToClose()
     {
         _messengerService.Unregister<SceneContentUpdatedMessage>(this);
+        _messengerService.Unregister<ThemeChangedMessage>(this);
 
         await base.PrepareToClose();
     }
