@@ -31,26 +31,22 @@ This is a **living design document** that serves as both specification and imple
 
 ## Current Status
 
-**Next Phase:** Phase 1 - Core Infrastructure
-
+**Next Phase:** Phase 2 - Markdown Editor Migration
 
 **Key Files to Review:**
-- `Core/Celbridge.UserInterface/Helpers/WebView2Helper.cs` - Existing WebView2 setup (understand current patterns)
-- `Core/Celbridge.UserInterface/Helpers/WebView2Messenger.cs` - Legacy messaging (to be deprecated, not modified)
-- `Core/Celbridge.UserInterface/WebAssets/celbridge-localization.js` - Existing shared JS module (reference for style)
-- `Celbridge.Tests/` - Existing test project (add WebViewBridge tests here)
+- `Modules/Celbridge.Markdown/Views/MarkdownDocumentView.xaml.cs` - C# side to migrate
+- `Modules/Celbridge.Markdown/Web/markdown.js` - JS side to migrate
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Bridge API (from Phase 1)
+- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - JS bridge (from Phase 1)
 
 **Verification:**
 - [ ] `dotnet build` succeeds
-- [ ] C# unit tests pass (`dotnet test`)
-- [ ] JS tests pass (`npm test` in WebAssets folder)
-- [ ] Existing editors still work (legacy code untouched)
-
-**Implementation Details (Phase 1 specific):**
-- C# record types (`InitializeParams`, etc.) → Define in `Helpers/WebViewBridgeContracts.cs`
-- C# unit tests → Add to `Celbridge.Tests/WebViewBridgeTests.cs`
-- No CI workflow exists yet → Skip task 10, note in Implementation Notes
-- Deprecate `WebView2Messenger.cs` → Add `[Obsolete("Use WebViewBridge instead")]` attribute
+- [ ] Create new markdown document → editor loads, can type
+- [ ] Open existing markdown document → content displays correctly
+- [ ] Edit and wait for auto-save → file saved to disk
+- [ ] Insert image via toolbar → image picker works
+- [ ] External file change (clean) → reloads without prompt
+- [ ] External file change (dirty) → conflict dialog appears
 
 ## Rationale
 
@@ -242,7 +238,7 @@ C# Host                          JavaScript
 
 ## Implementation Plan
 
-### Phase 1: Core Infrastructure ⬜
+### Phase 1: Core Infrastructure ✅
 
 **Deliverables:**
 - `Core/Celbridge.UserInterface/` - Add to existing project:

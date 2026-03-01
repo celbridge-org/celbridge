@@ -18,6 +18,7 @@ public record JsPayloadMessage<T>(string Type, T Payload);
 /// Helper for sending typed JSON messages to a WebView2 control.
 /// Serializes messages with camelCase property naming to match JS conventions.
 /// </summary>
+[Obsolete("Use WebViewBridge instead. This class will be removed after all editors are migrated.")]
 public class WebView2Messenger
 {
     // Payload for the set-localization message

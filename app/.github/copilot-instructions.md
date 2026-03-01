@@ -9,6 +9,7 @@
 - Only use ternary expressions for trivial logic, never complicated logic.
 - Prefer explicit record classes with meaningful property names over anonymous types for message contracts. Records can be defined in the same file or class, whichever is more maintainable.
 - Code-behind files should always follow the standard .xaml.cs naming convention (e.g., MyView.xaml.cs, not MyView.cs).
+- Never use `/// <param>` XML documentation in doc strings because they are verbose and hard to keep synchronized.
 
 ## Code Style
 - Use specific formatting rules
