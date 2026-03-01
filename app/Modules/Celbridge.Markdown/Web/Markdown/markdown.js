@@ -90,6 +90,7 @@ function handleTableClipboard(event, isCut, editor) {
 // DOM elements
 const toolbarEl = document.getElementById('toolbar');
 const editorEl = document.getElementById('editor');
+const editorWrapperEl = document.getElementById('editor-wrapper');
 const tocPanel = document.getElementById('toc-panel');
 const tocList = document.getElementById('toc-list');
 const tocEmpty = document.getElementById('toc-empty');
@@ -98,6 +99,7 @@ const tocEmpty = document.getElementById('toc-empty');
 let changeTimer = null;
 const CHANGE_DEBOUNCE_MS = 300;
 let isLoadingContent = false;
+let isDocumentLoaded = false;  // Set true after first load-doc completes; guards against spurious doc-changed
 let projectBaseUrl = '';
 let documentBaseUrl = '';
 
@@ -208,7 +210,9 @@ const editor = new Editor({
     ],
     content: '',
     onUpdate: () => {
-        if (isLoadingContent) return;
+        // Don't send doc-changed during content loading or before document is first loaded.
+        // This prevents spurious saves during initialization (e.g., from localization updates).
+        if (isLoadingContent || !isDocumentLoaded) return;
 
         if (changeTimer) clearTimeout(changeTimer);
         changeTimer = setTimeout(() => {
@@ -452,6 +456,8 @@ if (window.chrome && window.chrome.webview) {
                     console.error('[Note] Failed to load doc:', e);
                 }
                 isLoadingContent = false;
+                isDocumentLoaded = true;  // Enable doc-changed notifications now that content is loaded
+                editorWrapperEl.classList.add('visible');  // Show editor now that content is ready
                 break;
             }
             case 'request-save': {
