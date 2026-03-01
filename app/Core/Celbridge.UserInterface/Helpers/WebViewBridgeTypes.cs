@@ -164,6 +164,34 @@ public record LocalizationUpdatedNotification(Dictionary<string, string> Strings
 public record LinkClickedParams(string Href);
 
 // =============================================================================
+// Binary Document Operations (for spreadsheets, etc.)
+// =============================================================================
+
+/// <summary>
+/// Parameters for the document/saveBinary request (binary content as base64).
+/// </summary>
+public record SaveBinaryParams(string ContentBase64);
+
+/// <summary>
+/// Result of the document/saveBinary request.
+/// </summary>
+public record SaveBinaryResult(bool Success, string? Error = null);
+
+/// <summary>
+/// Result of the document/loadBinary request (binary content as base64).
+/// </summary>
+public record LoadBinaryResult(string ContentBase64, DocumentMetadata? Metadata = null);
+
+// =============================================================================
+// Import Complete Notification (for spreadsheets)
+// =============================================================================
+
+/// <summary>
+/// Notification sent when import operation completes (success or failure).
+/// </summary>
+public record ImportCompleteNotification(bool Success, string? Error = null);
+
+// =============================================================================
 // Editor-specific initialization data
 // =============================================================================
 

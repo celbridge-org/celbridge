@@ -31,18 +31,17 @@ This is a **living design document** that serves as both specification and imple
 
 ## Current Status
 
-**Next Phase:** Phase 3 - Spreadsheet Editor Migration
+**Next Phase:** Phase 4 - Screenplay Editor Migration
 
 **Key Files to Review:**
-- `Modules/Celbridge.Spreadsheet/Views/SpreadsheetDocumentView.xaml.cs`
-- `Modules/Celbridge.Spreadsheet/Web/` - SpreadJS integration
+- `Modules/Celbridge.Screenplay/Views/ScreenplayDocumentView.xaml.cs`
+- `Modules/Celbridge.Screenplay/Web/`
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
 
 **Verification:**
 - [ ] `dotnet build` succeeds
-- [ ] Create/open spreadsheet → displays correctly
-- [ ] Edit cells, formulas → auto-save works
-- [ ] Large dataset performance acceptable
+- [ ] Create/open screenplay - displays correctly
+- [ ] Edit and auto-save works
 
 ## Rationale
 
@@ -276,7 +275,7 @@ C# Host                          JavaScript
 6. Remove `_isContentLoaded`, `isDocumentLoaded`, `isLoadingContent` guards
 7. Test thoroughly: new document, existing document, reload, external changes
 
-### Phase 3: Spreadsheet Editor Migration ⬜
+### Phase 3: Spreadsheet Editor Migration ✅
 
 **Deliverables:**
 - `SpreadsheetBridgeHandlers.cs`

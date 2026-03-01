@@ -93,7 +93,50 @@ Keep notes concise—this file may be referenced in future sessions.
 
 ## Phase 3: Spreadsheet Editor Migration
 
-*(To be filled during implementation)*
+**Completed:** Yes
+
+**Files Modified:**
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Added Document.OnSaveBinary(), Document.OnLoadBinary(), Document.OnImportComplete()
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridgeTypes.cs` - Added SaveBinaryParams, SaveBinaryResult, LoadBinaryResult, ImportCompleteNotification
+- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - Added document.saveBinary(), document.loadBinary(), document.notifyImportComplete()
+- `Modules/Celbridge.Spreadsheet/Views/SpreadsheetDocumentView.xaml.cs` - Full migration to WebViewBridge
+- `Modules/Celbridge.Spreadsheet/Web/SpreadJS/index.html` - Full migration to bridge API (ES module)
+
+**Deviations from Plan:**
+1. **Binary content via content field**: Rather than creating a separate binary initialization flow, the spreadsheet uses the existing `InitializeResult.Content` field to pass base64-encoded Excel data. This keeps the API simple while supporting both text and binary content.
+
+2. **Import complete notification**: Added `import/complete` notification (JS to C#) to signal when SpreadJS has finished importing data. This replaces the old `import_complete` message and provides structured success/error information.
+
+3. **No separate SpreadsheetBridgeHandlers.cs**: Following the Markdown pattern, handlers are defined inline in `SpreadsheetDocumentView.xaml.cs` rather than a separate file.
+
+**Design Decisions:**
+1. **Binary document API**: Created separate `document/saveBinary` and `document/loadBinary` methods that use base64 encoding. This keeps the API explicit about data types rather than overloading the text-based methods.
+
+2. **Import state tracking**: The `_isImportInProgress` and `_hasPendingImport` flags are preserved from the original implementation to handle race conditions when multiple file changes occur during import.
+
+3. **Removed legacy message handlers**: The old `editor_ready`, `request_save`, `data_changed`, `import_complete`, and `load_excel_data` message patterns are all replaced by the bridge API.
+
+4. **ES module conversion**: Changed the script block in index.html from inline script to ES module (`type="module"`) to import the bridge.
+
+5. **Shared assets mapping**: Added `WebView2Helper.MapSharedAssets()` call to map the shared assets virtual host (required for importing the bridge JS module).
+
+**Changes to Bridge API:**
+- `WebViewBridge.Document.OnSaveBinary()` - Register handler for binary save requests
+- `WebViewBridge.Document.OnLoadBinary()` - Register handler for binary load requests  
+- `WebViewBridge.Document.OnImportComplete()` - Register handler for import completion notifications
+- JS `bridge.document.saveBinary(base64)` - Save binary content
+- JS `bridge.document.loadBinary()` - Load binary content from disk
+- JS `bridge.document.notifyImportComplete(success, error)` - Notify import completion
+
+**Test Results:**
+- Build: Successful
+
+**Manual Testing Required:**
+- [ ] Create/open spreadsheet - displays correctly
+- [ ] Edit cells, formulas - changes detected
+- [ ] Wait for auto-save - file saved to disk
+- [ ] External file change - reloads spreadsheet
+- [ ] Large dataset performance acceptable
 
 ---
 

@@ -71,95 +71,79 @@
 
     <script src="lib/license.js"></script>
 
-    <script>
-        function listenForWebViewMessages() {
-            if (!window.isWebView) return;
+    <script type="module">
+        import { getBridge } from 'https://shared.celbridge/webview-bridge.js';
 
-            if (window.chrome?.webview) {
-                chrome.webview.addEventListener('message', event => onWebViewMessage(event.data));
-            } else if (window.unoWebView) {
-                window.unoWebViewReceiveMessage = data => onWebViewMessage(data);
-            } else if (window.webkit?.messageHandlers) {
-                window.webkit.messageHandlers.unoWebViewReceiveMessage = data => onWebViewMessage(data);
-            }
+        // Only proceed if running in WebView
+        if (!window.isWebView) {
+            console.log('Not running in WebView, skipping bridge initialization');
         }
 
-        function postWebViewMessage(message) {
-            if (!window.isWebView) return;
+        // Get the bridge instance
+        const bridge = getBridge();
 
-            try {
-                if (window.chrome?.webview) {
-                    chrome.webview.postMessage(message);
-                } else if (window.unoWebView) {
-                    unoWebView.postMessage(JSON.stringify(message));
-                } else if (window.webkit?.messageHandlers?.unoWebView) {
-                    window.webkit.messageHandlers.unoWebView.postMessage(JSON.stringify(message));
-                }
-            } catch (ex) {
-                console.error('WebView postMessage failed:', ex);
-            }
-        }
+        // SpreadJS designer instance (set in initializeSpreadsheet)
+        let designer = null;
 
-        function onWebViewMessage(webViewMessage) {
-
-            // The C# side handles the automatic save timer logic, sending a "request_save" message when a
-            // save should be performed. On the JS side, we serialize the spreadsheet to base 64 and send it back in response.
-            if (webViewMessage == "request_save") {
-                serializeExcelData();
-                return;
-            }
-
-            // Assume that any other message contains base 64 encoded Excel data to be loaded into SpreadJS.
-            deserializeExcelData(webViewMessage)
-        }
+        // ---------------------------------------------------------------------------
+        // Spreadsheet Import/Export Functions
+        // ---------------------------------------------------------------------------
 
         async function deserializeExcelData(base64Data) {
-            if (!window.isWebView) return;
+            if (!base64Data) {
+                console.log('No data to import');
+                bridge.document.notifyImportComplete(true);
+                return;
+            }
 
             try {
                 const binary = atob(base64Data);
                 const bytes = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
 
-                const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const blob = new Blob([bytes], { 
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                });
                 const file = new File([blob], 'imported.xlsx', { type: blob.type });
 
-                const spread = window.designer.getWorkbook();
+                const spread = designer.getWorkbook();
 
                 await spread.import(file, () => {
                     console.log("Base64 data import completed.");
-                    
-                    // Notify C# that the import is complete (both for initial load and reload)
-                    postWebViewMessage("import_complete");
+                    bridge.document.notifyImportComplete(true);
                 }, (error) => {
                     console.error("Import error:", error);
-                    
-                    // Even on error, notify C# that the import attempt is complete
-                    postWebViewMessage("import_complete");
+                    bridge.document.notifyImportComplete(false, error?.message || 'Import failed');
                 }, {
                     fileType: GC.Spread.Sheets.FileType.excel
                 });
             } catch (err) {
                 console.error("Import failed:", err);
-                
-                // Even on error, notify C# that the import attempt is complete
-                postWebViewMessage("import_complete");
+                bridge.document.notifyImportComplete(false, err?.message || 'Import exception');
             }
         }
 
         async function serializeExcelData() {
-            const spread = window.designer.getWorkbook();
-            try {
-                spread.export(async (blob) => {
-                    const base64 = await blobToBase64(blob);
-                    postWebViewMessage(base64);
-                    console.log("Exported workbook");
-                }, console.error, {
-                    fileType: GC.Spread.Sheets.FileType.excel
-                });
-            } catch (err) {
-                console.error("Export failed:", err);
-            }
+            const spread = designer.getWorkbook();
+
+            return new Promise((resolve, reject) => {
+                try {
+                    spread.export(async (blob) => {
+                        const base64 = await blobToBase64(blob);
+                        resolve(base64);
+                    }, (error) => {
+                        console.error("Export error:", error);
+                        reject(error);
+                    }, {
+                        fileType: GC.Spread.Sheets.FileType.excel
+                    });
+                } catch (err) {
+                    console.error("Export failed:", err);
+                    reject(err);
+                }
+            });
         }
 
         function blobToBase64(blob) {
@@ -171,21 +155,52 @@
             });
         }
 
-        function listenForChanges() {
-            const workbook = window.designer.getWorkbook();
-            commandManager = workbook.commandManager();
+        // ---------------------------------------------------------------------------
+        // Change Tracking
+        // ---------------------------------------------------------------------------
 
-            // SpreadJS doesn't have a unified way to detect when the spreadsheet is modified, but as all
-            // modifications are performed via the command system we can just listen for any executing commands and
-            // assume that the data has changed.
-            // https://developer.mescius.com/forums/spreadjs/how-to-detect-if-there-is-any-modification-in-spreadjs
+        function listenForChanges() {
+            const workbook = designer.getWorkbook();
+            const commandManager = workbook.commandManager();
+
+            // SpreadJS doesn't have a unified way to detect when the spreadsheet is modified,
+            // but as all modifications are performed via the command system we can just 
+            // listen for any executing commands and assume that the data has changed.
             commandManager.addListener('appListener', (args) => {
-                postWebViewMessage("data_changed")
+                bridge.document.notifyChanged();
             });
         }
 
-        window.onload = function () {
+        // ---------------------------------------------------------------------------
+        // Bridge Event Handlers
+        // ---------------------------------------------------------------------------
 
+        // Handle external file changes - reload from disk
+        bridge.document.onExternalChange(async () => {
+            try {
+                const result = await bridge.document.loadBinary();
+                await deserializeExcelData(result.contentBase64);
+            } catch (e) {
+                console.error('[Spreadsheet] Failed to reload content:', e);
+            }
+        });
+
+        // Handle save requests from host
+        bridge.document.onRequestSave(async () => {
+            try {
+                const base64Data = await serializeExcelData();
+                await bridge.document.saveBinary(base64Data);
+                console.log("Exported workbook to host");
+            } catch (e) {
+                console.error('[Spreadsheet] Failed to save:', e);
+            }
+        });
+
+        // ---------------------------------------------------------------------------
+        // Initialization
+        // ---------------------------------------------------------------------------
+
+        function initializeSpreadsheet() {
             // Apply license keys
             GC.Spread.Sheets.LicenseKey = SPREAD_JS_LICENSE_KEY;
             GC.Spread.Sheets.Designer.LicenseKey = SPREAD_JS_DESIGNER_LICENSE_KEY;
@@ -193,45 +208,41 @@
             const config = GC.Spread.Sheets.Designer.DefaultConfig;
             delete config.fileMenu;
 
-            // Custom save / load buttons
-            // These are no longer required since I implemented auto save, but keeping the code here for future reference.
-            //config.ribbon[0].buttonGroups.unshift({
-            //    label: "File",
-            //    commandGroup: {
-            //        children: [
-            //            { direction: "vertical", commands: ["cmdLoadData", "cmdSaveData"] },
-            //        ]
-            //    }
-            //});
-
-            //config.commandMap = {
-            //    cmdLoadData: {
-            //        title: "Load Excel File",
-            //        text: "Load",
-            //        bigButton: false,
-            //        iconClass: "ribbon-button-loadschema",
-            //        execute: loadExcelData
-            //    },
-            //    cmdSaveData: {
-            //        title: "Save Excel File",
-            //        text: "Save",
-            //        bigButton: false,
-            //        iconClass: "ribbon-button-saveschema",
-            //        execute: saveExcelData
-            //    }
-            //};
-
-            const designer = new GC.Spread.Sheets.Designer.Designer(
+            designer = new GC.Spread.Sheets.Designer.Designer(
                 document.getElementById("gc-designer-container"), config
             );
 
             window.designer = designer;
 
-            listenForWebViewMessages();
             listenForChanges();
+        }
 
-            postWebViewMessage("editor_ready");
-        };
+        async function initializeEditor() {
+            try {
+                // Initialize the SpreadJS designer
+                initializeSpreadsheet();
+
+                // Enable debug logging during development
+                // bridge.setLogLevel('debug');
+
+                // Initialize the bridge - this loads content from C#
+                const result = await bridge.initialize();
+
+                // Import the spreadsheet data (content contains base64 Excel data)
+                if (result.content) {
+                    await deserializeExcelData(result.content);
+                } else {
+                    // No content means new/empty spreadsheet
+                    bridge.document.notifyImportComplete(true);
+                }
+
+            } catch (e) {
+                console.error('[Spreadsheet] Failed to initialize:', e);
+            }
+        }
+
+        // Start initialization
+        initializeEditor();
     </script>
 </body>
 

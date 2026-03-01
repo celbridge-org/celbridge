@@ -400,6 +400,27 @@ class DocumentAPI {
     }
 
     /**
+     * Saves binary document content (as base64).
+     * @param {string} contentBase64 - The base64-encoded binary content.
+     * @returns {Promise<SaveResult>}
+     */
+    async saveBinary(contentBase64) {
+        return this.#bridge._request('document/saveBinary', { contentBase64 });
+    }
+
+    /**
+     * Loads binary document content from disk.
+     * @param {Object} [options]
+     * @param {boolean} [options.includeMetadata=false] - Whether to include metadata.
+     * @returns {Promise<{contentBase64: string, metadata?: DocumentMetadata}>}
+     */
+    async loadBinary(options = {}) {
+        return this.#bridge._request('document/loadBinary', {
+            includeMetadata: options.includeMetadata ?? false
+        });
+    }
+
+    /**
      * Gets the document metadata.
      * @returns {Promise<DocumentMetadata>}
      */
@@ -430,6 +451,16 @@ class DocumentAPI {
      */
     onRequestSave(handler) {
         this.#bridge._addEventListener('document/requestSave', handler);
+    }
+
+    /**
+     * Notifies the host that an import operation has completed.
+     * Used by editors that load binary content (e.g., spreadsheets).
+     * @param {boolean} success - Whether the import succeeded.
+     * @param {string} [error] - Error message if import failed.
+     */
+    notifyImportComplete(success, error = null) {
+        this.#bridge._notify('import/complete', { success, error });
     }
 }
 

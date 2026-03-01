@@ -384,6 +384,30 @@ public class WebViewBridge : IDisposable
         }
 
         /// <summary>
+        /// Registers a handler for document/saveBinary requests (binary content as base64).
+        /// </summary>
+        public void OnSaveBinary(Func<SaveBinaryParams, Task<SaveBinaryResult>> handler)
+        {
+            _bridge.RegisterHandler("document/saveBinary", handler);
+        }
+
+        /// <summary>
+        /// Registers a handler for document/loadBinary requests.
+        /// </summary>
+        public void OnLoadBinary(Func<LoadParams, Task<LoadBinaryResult>> handler)
+        {
+            _bridge.RegisterHandler("document/loadBinary", handler);
+        }
+
+        /// <summary>
+        /// Registers a handler for import/complete notifications (JS notifying C# that import finished).
+        /// </summary>
+        public void OnImportComplete(Action<ImportCompleteNotification> handler)
+        {
+            _bridge.RegisterNotificationHandler<ImportCompleteNotification>("import/complete", handler);
+        }
+
+        /// <summary>
         /// Sends a document/requestSave notification to trigger the WebView to save.
         /// JS should respond by calling document.save(content).
         /// </summary>
