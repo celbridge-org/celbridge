@@ -31,23 +31,22 @@ This is a **living design document** that serves as both specification and imple
 
 ## Current Status
 
-**Next Phase:** Phase 5 - WebApp Viewer Migration
+**Next Phase:** Phase 6 - Cleanup and Documentation
 
 **Key Files to Review:**
-- `Modules/Celbridge.WebApp/Views/WebAppDocumentView.xaml.cs`
-- `Modules/Celbridge.WebApp/Web/`
-- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
+- `Core/Celbridge.UserInterface/Helpers/WebView2Messenger.cs` - To be removed
+- All migrated editor views - Verify no legacy references remain
 
 **Verification:**
-- [ ] `dotnet build` succeeds
-- [ ] WebApp viewer loads content
-- [ ] Navigation works
+- [ ] `dotnet build` succeeds (no references to removed code)
+- [ ] All editors still work
+- [ ] Documentation complete
 
 ## Rationale
 
 ### Current Problems
 
-The existing WebView2 editors (Markdown, Spreadsheet, Screenplay, WebApp) each implement their own message-passing patterns:
+The existing WebView2 editors with custom JavaScript (Markdown, Spreadsheet, Screenplay) each implement their own message-passing patterns. (Note: WebApp is a URL browser without custom JS, so it doesn't have these issues.)
 
 1. **Race Conditions**: No coordination between "editor ready" and "content loaded" states. The recent Markdown editor bug where documents were overwritten with empty content stemmed from this.
 
@@ -304,17 +303,16 @@ C# Host                          JavaScript
 4. Migrate JavaScript to use bridge
 5. Test all screenplay editor workflows
 
-### Phase 5: WebApp Viewer Migration ⬜
+### Phase 5: WebApp Viewer Migration ✅
 
-**Deliverables:**
-- `WebAppBridgeHandlers.cs`
-- Updated WebApp viewer JavaScript
+**Analysis Result:** No migration needed.
 
-**Tasks:**
-1. Analyze current WebApp viewer requirements
-2. Implement necessary bridge methods
-3. Migrate to bridge API
-4. Test navigation, content loading, etc.
+The WebApp viewer is a URL browser that navigates directly to external URLs using WebView2's native APIs. Unlike Markdown/Spreadsheet/Screenplay which load custom HTML/JS pages, the WebApp viewer does not have a JavaScript layer to bridge.
+
+**Verification:**
+- [x] Analyzed WebApp viewer architecture
+- [x] Confirmed no custom JS communication layer exists
+- [x] Build succeeds (no changes required)
 
 ### Phase 6: Cleanup and Documentation ⬜
 

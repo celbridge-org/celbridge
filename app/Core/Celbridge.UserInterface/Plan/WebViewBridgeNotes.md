@@ -180,7 +180,33 @@ Keep notes concise—this file may be referenced in future sessions.
 
 ## Phase 5: WebApp Viewer Migration
 
-*(To be filled during implementation)*
+**Completed:** Yes
+
+**Files Modified:** None
+
+**Analysis:**
+The WebApp viewer is fundamentally different from the other editors (Markdown, Spreadsheet, Screenplay). It is a **URL browser** that:
+1. Reads a `.webapp` JSON file to extract a URL
+2. Navigates directly to external URLs using WebView2's native `CoreWebView2.Navigate()` API
+3. Uses WebView2's native APIs for navigation (GoBack, GoForward, Reload)
+4. Handles downloads through WebView2's native download events
+5. Does NOT have any custom JavaScript layer or HTML page to communicate with
+
+**Conclusion:**
+No bridge migration is needed for the WebApp viewer because there is no custom JavaScript to bridge. The viewer operates correctly using WebView2's native APIs. The plan's deliverables (`WebAppBridgeHandlers.cs`, "Updated WebApp viewer JavaScript") are not applicable.
+
+**Key Differences from Other Editors:**
+- Markdown/Spreadsheet/Screenplay: Load custom HTML/JS into WebView2, communicate via postMessage
+- WebApp: Navigate directly to external URLs, no custom JS communication layer
+
+**Test Results:**
+- Build: Successful
+- No code changes required
+
+**Manual Testing Required:**
+- [ ] Open .webapp file - navigates to URL
+- [ ] Navigation (back/forward/refresh) works
+- [ ] Download from web page works
 
 ---
 
