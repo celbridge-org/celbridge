@@ -4,6 +4,54 @@
 
 This document outlines the design for a standardized communication layer between WebView2-hosted editors and the Celbridge host application. The bridge replaces ad-hoc message passing with a robust JSON-RPC based API.
 
+## How to Use This Document
+
+This is a **living design document** that serves as both specification and implementation tracker.
+
+**For the AI assistant (Copilot):** When the user says "Implement the next phase", you should:
+1. Read this document to understand the current status and next phase
+2. Review the "Key Files" listed in Current Status for context
+3. Implement the phase according to the tasks listed
+4. Update the phase status from ⬜ to ✅ when complete
+5. Record any deviations or decisions in [WebViewBridgeNotes.md](WebViewBridgeNotes.md)
+6. Update the "Current Status" section using the Phase Context Templates at the end
+7. If the design changes during implementation, update the relevant sections in this doc
+
+**Status indicators:**
+- ⬜ Not started
+- 🔄 In progress  
+- ✅ Complete
+
+**Deviation policy:** Minor implementation details can be updated freely. Significant deviations from Requirements should be discussed with the user first.
+
+**After completing a phase:**
+1. Update the phase status indicator (⬜ → ✅)
+2. Replace the "Current Status" section with the next phase's context (see templates at end)
+3. Add notes to [WebViewBridgeNotes.md](WebViewBridgeNotes.md)
+
+## Current Status
+
+**Next Phase:** Phase 1 - Core Infrastructure
+
+
+**Key Files to Review:**
+- `Core/Celbridge.UserInterface/Helpers/WebView2Helper.cs` - Existing WebView2 setup (understand current patterns)
+- `Core/Celbridge.UserInterface/Helpers/WebView2Messenger.cs` - Legacy messaging (to be deprecated, not modified)
+- `Core/Celbridge.UserInterface/WebAssets/celbridge-localization.js` - Existing shared JS module (reference for style)
+- `Celbridge.Tests/` - Existing test project (add WebViewBridge tests here)
+
+**Verification:**
+- [ ] `dotnet build` succeeds
+- [ ] C# unit tests pass (`dotnet test`)
+- [ ] JS tests pass (`npm test` in WebAssets folder)
+- [ ] Existing editors still work (legacy code untouched)
+
+**Implementation Details (Phase 1 specific):**
+- C# record types (`InitializeParams`, etc.) → Define in `Helpers/WebViewBridgeContracts.cs`
+- C# unit tests → Add to `Celbridge.Tests/WebViewBridgeTests.cs`
+- No CI workflow exists yet → Skip task 10, note in Implementation Notes
+- Deprecate `WebView2Messenger.cs` → Add `[Obsolete("Use WebViewBridge instead")]` attribute
+
 ## Rationale
 
 ### Current Problems
@@ -194,7 +242,7 @@ C# Host                          JavaScript
 
 ## Implementation Plan
 
-### Phase 1: Core Infrastructure
+### Phase 1: Core Infrastructure ⬜
 
 **Deliverables:**
 - `Core/Celbridge.UserInterface/` - Add to existing project:
@@ -220,10 +268,7 @@ C# Host                          JavaScript
 9. Write unit tests (C# xUnit + JS Vitest)
 10. Add JS test step to CI workflow
 
-**Estimated Effort:** 3-4 days
-
-
-### Phase 2: Markdown Editor Migration
+### Phase 2: Markdown Editor Migration ⬜
 
 **Deliverables:**
 - `MarkdownBridgeHandlers.cs` - Markdown-specific method handlers
@@ -239,9 +284,7 @@ C# Host                          JavaScript
 6. Remove `_isContentLoaded`, `isDocumentLoaded`, `isLoadingContent` guards
 7. Test thoroughly: new document, existing document, reload, external changes
 
-**Estimated Effort:** 2-3 days
-
-### Phase 3: Spreadsheet Editor Migration
+### Phase 3: Spreadsheet Editor Migration ⬜
 
 **Deliverables:**
 - `SpreadsheetBridgeHandlers.cs`
@@ -254,11 +297,9 @@ C# Host                          JavaScript
 4. Migrate JavaScript to use bridge
 5. Test all spreadsheet workflows: editing, formulas, formatting, large datasets
 
-**Estimated Effort:** 2-3 days
-
 **Note:** The Spreadsheet editor is likely the most complex due to SpreadJS integration and the variety of data operations. This migration may surface additional bridge requirements.
 
-### Phase 4: Screenplay Editor Migration
+### Phase 4: Screenplay Editor Migration ⬜
 
 **Deliverables:**
 - `ScreenplayBridgeHandlers.cs`
@@ -271,9 +312,7 @@ C# Host                          JavaScript
 4. Migrate JavaScript to use bridge
 5. Test all screenplay editor workflows
 
-**Estimated Effort:** 1-2 days
-
-### Phase 5: WebApp Viewer Migration
+### Phase 5: WebApp Viewer Migration ⬜
 
 **Deliverables:**
 - `WebAppBridgeHandlers.cs`
@@ -285,9 +324,7 @@ C# Host                          JavaScript
 3. Migrate to bridge API
 4. Test navigation, content loading, etc.
 
-**Estimated Effort:** 1-2 days
-
-### Phase 6: Cleanup and Documentation
+### Phase 6: Cleanup and Documentation ⬜
 
 **Deliverables:**
 - Remove legacy message handling code
@@ -299,8 +336,6 @@ C# Host                          JavaScript
 2. Document bridge API methods
 3. Create template/guide for new editors
 4. Update any affected tests
-
-**Estimated Effort:** 1 day
 
 ## Testing Strategy
 
@@ -604,3 +639,115 @@ Logs include:
 - **Cancellation**: Add support for cancelling in-flight requests
 - **Batching**: Multiple requests in a single message for performance
 - **Visual inspector**: Browser DevTools-style panel for message inspection
+
+---
+
+## Implementation Notes
+
+See **[WebViewBridgeNotes.md](WebViewBridgeNotes.md)** for detailed implementation notes, decisions, and deviations recorded during each phase.
+
+---
+
+## Phase Context Templates
+
+When completing a phase, copy the appropriate template below into the "Current Status" section:
+
+<details>
+<summary>Phase 2 Context (click to expand)</summary>
+
+```markdown
+**Next Phase:** Phase 2 - Markdown Editor Migration
+
+**Key Files to Review:**
+- `Modules/Celbridge.Markdown/Views/MarkdownDocumentView.xaml.cs` - C# side to migrate
+- `Modules/Celbridge.Markdown/Web/markdown.js` - JS side to migrate
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Bridge API (from Phase 1)
+- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - JS bridge (from Phase 1)
+
+**Verification:**
+- [ ] `dotnet build` succeeds
+- [ ] Create new markdown document → editor loads, can type
+- [ ] Open existing markdown document → content displays correctly
+- [ ] Edit and wait for auto-save → file saved to disk
+- [ ] Insert image via toolbar → image picker works
+- [ ] External file change (clean) → reloads without prompt
+- [ ] External file change (dirty) → conflict dialog appears
+```
+
+</details>
+
+<details>
+<summary>Phase 3 Context (click to expand)</summary>
+
+```markdown
+**Next Phase:** Phase 3 - Spreadsheet Editor Migration
+
+**Key Files to Review:**
+- `Modules/Celbridge.Spreadsheet/Views/SpreadsheetDocumentView.xaml.cs`
+- `Modules/Celbridge.Spreadsheet/Web/` - SpreadJS integration
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
+
+**Verification:**
+- [ ] `dotnet build` succeeds
+- [ ] Create/open spreadsheet → displays correctly
+- [ ] Edit cells, formulas → auto-save works
+- [ ] Large dataset performance acceptable
+```
+
+</details>
+
+<details>
+<summary>Phase 4 Context (click to expand)</summary>
+
+```markdown
+**Next Phase:** Phase 4 - Screenplay Editor Migration
+
+**Key Files to Review:**
+- `Modules/Celbridge.Screenplay/Views/ScreenplayDocumentView.xaml.cs`
+- `Modules/Celbridge.Screenplay/Web/`
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
+
+**Verification:**
+- [ ] `dotnet build` succeeds
+- [ ] Create/open screenplay → displays correctly
+- [ ] Edit and auto-save works
+```
+
+</details>
+
+<details>
+<summary>Phase 5 Context (click to expand)</summary>
+
+```markdown
+**Next Phase:** Phase 5 - WebApp Viewer Migration
+
+**Key Files to Review:**
+- `Modules/Celbridge.WebApp/Views/WebAppDocumentView.xaml.cs`
+- `Modules/Celbridge.WebApp/Web/`
+- `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
+
+**Verification:**
+- [ ] `dotnet build` succeeds
+- [ ] WebApp viewer loads content
+- [ ] Navigation works
+```
+
+</details>
+
+<details>
+<summary>Phase 6 Context (click to expand)</summary>
+
+```markdown
+**Next Phase:** Phase 6 - Cleanup and Documentation
+
+**Key Files to Review:**
+- `Core/Celbridge.UserInterface/Helpers/WebView2Messenger.cs` - To be removed
+- All migrated editor views - Verify no legacy references remain
+
+**Verification:**
+- [ ] `dotnet build` succeeds (no references to removed code)
+- [ ] All editors still work
+- [ ] Documentation complete
+```
+
+</details>
