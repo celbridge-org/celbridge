@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celbridge Screenplay</title>
+    <link rel="stylesheet" href="screenplay.css">
+</head>
+
+<body class="theme-light">
+    <div id="screenplay-container">
+        <!-- Content will be injected here -->
+    </div>
+
+    <script type="module">
+        import { getBridge } from 'https://shared.celbridge/webview-bridge.js';
+
+        // Only proceed if running in WebView
+        if (!window.isWebView) {
+            console.log('Not running in WebView, skipping bridge initialization');
+        }
+
+        const bridge = getBridge();
+
+        // Apply theme to the body element
+        function applyTheme(isDark) {
+            document.body.className = isDark ? 'theme-dark' : 'theme-light';
+        }
+
+        // Listen for theme changes
+        bridge.theme.onChanged((theme) => {
+            applyTheme(theme.isDark);
+        });
+
+        // Listen for external content changes (when scene data is updated)
+        bridge.document.onExternalChange(async () => {
+            try {
+                const result = await bridge.document.load();
+                document.getElementById('screenplay-container').innerHTML = result.content;
+            } catch (e) {
+                console.error('[Screenplay] Failed to reload content:', e);
+            }
+        });
+
+        // Initialize the editor
+        async function initializeEditor() {
+            try {
+                // Enable debug logging during development
+                // bridge.setLogLevel('debug');
+
+                // Initialize the bridge - this loads content from C#
+                const result = await bridge.initialize();
+
+                // Apply initial theme
+                applyTheme(result.theme.isDark);
+
+                // Set the screenplay content
+                document.getElementById('screenplay-container').innerHTML = result.content;
+
+            } catch (e) {
+                console.error('[Screenplay] Failed to initialize:', e);
+            }
+        }
+
+        // Start initialization
+        initializeEditor();
+    </script>
+</body>
+
+</html>

@@ -142,7 +142,39 @@ Keep notes concise—this file may be referenced in future sessions.
 
 ## Phase 4: Screenplay Editor Migration
 
-*(To be filled during implementation)*
+**Completed:** Yes
+
+**Files Created:**
+- `Modules/Celbridge.Screenplay/Web/Screenplay/index.html` - Static HTML viewer with bridge integration
+
+**Files Modified:**
+- `Modules/Celbridge.Screenplay/Celbridge.Screenplay.csproj` - Added Web content include and UserInterface project reference
+- `Modules/Celbridge.Screenplay/Views/SceneDocumentView.xaml.cs` - Full migration to WebViewBridge
+- `Modules/Celbridge.Screenplay/ViewModels/SceneDocumentViewModel.cs` - Changed to generate body content only (not full HTML document)
+
+**Deviations from Plan:**
+1. **Read-only viewer pattern**: The Screenplay editor is fundamentally different from Markdown/Spreadsheet - it's a read-only viewer that generates HTML on the C# side. The bridge is used for initialization and theme changes only, not for editing/saving.
+
+2. **HTML content generation**: Moved CSS styling to the static `index.html` file. The ViewModel now generates only the body content (screenplay/page div structure), which is injected via the `content` field in `InitializeResult`.
+
+3. **Theme changes via notification**: Instead of regenerating the entire HTML and re-navigating (old approach), theme changes now send a `theme/changed` notification. The JS applies the theme by changing the body class.
+
+4. **Content updates via external change**: When scene content is updated (via `SceneContentUpdatedMessage`), the view notifies JS via `document/externalChange`. JS then calls `document.load()` to fetch the updated content and re-renders.
+
+**Design Decisions:**
+1. **Static HTML with injected content**: The HTML structure and CSS are in the static `index.html` file. The C# side generates only the screenplay content, which is injected into the `#screenplay-container` div. This separates concerns and makes theme switching efficient.
+
+2. **No save functionality**: Since this is a read-only viewer, no save handlers are registered. The bridge only handles `initialize` and `load` requests.
+
+3. **Virtual host naming**: Used `screenplay.celbridge` as the virtual host name, following the pattern established by `spreadjs.celbridge`.
+
+**Test Results:**
+- Build: Successful
+
+**Manual Testing Required:**
+- [ ] Create/open screenplay - displays correctly
+- [ ] Scene content updates - viewer refreshes
+- [ ] Theme change (light/dark) - applies without page reload
 
 ---
 

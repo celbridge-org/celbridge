@@ -31,17 +31,17 @@ This is a **living design document** that serves as both specification and imple
 
 ## Current Status
 
-**Next Phase:** Phase 4 - Screenplay Editor Migration
+**Next Phase:** Phase 5 - WebApp Viewer Migration
 
 **Key Files to Review:**
-- `Modules/Celbridge.Screenplay/Views/ScreenplayDocumentView.xaml.cs`
-- `Modules/Celbridge.Screenplay/Web/`
+- `Modules/Celbridge.WebApp/Views/WebAppDocumentView.xaml.cs`
+- `Modules/Celbridge.WebApp/Web/`
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs`
 
 **Verification:**
 - [ ] `dotnet build` succeeds
-- [ ] Create/open screenplay - displays correctly
-- [ ] Edit and auto-save works
+- [ ] WebApp viewer loads content
+- [ ] Navigation works
 
 ## Rationale
 
@@ -290,11 +290,12 @@ C# Host                          JavaScript
 
 **Note:** The Spreadsheet editor is likely the most complex due to SpreadJS integration and the variety of data operations. This migration may surface additional bridge requirements.
 
-### Phase 4: Screenplay Editor Migration ⬜
+### Phase 4: Screenplay Editor Migration ✅
 
 **Deliverables:**
-- `ScreenplayBridgeHandlers.cs`
-- Updated screenplay editor JavaScript
+- `Modules/Celbridge.Screenplay/Web/Screenplay/index.html` - Static HTML viewer
+- Updated `SceneDocumentView.xaml.cs` using bridge API
+- Updated `SceneDocumentViewModel.cs` to generate body content only
 
 **Tasks:**
 1. Analyze current screenplay editor message patterns
@@ -626,6 +627,7 @@ Logs include:
 
 ## Future Considerations
 
+- **External change conflict resolution**: The bridge APIs support tracking dirty state (`document/changed` notification) and notifying of external changes (`document/externalChange` notification). The design doc describes a conflict resolution flow where, if the document is dirty when an external change is detected, a dialog should ask the user to Reload/Overwrite/Save As. This logic is not yet implemented—external changes currently trigger an immediate reload. The APIs are ready; only the C# conflict resolution logic needs to be added.
 - **Bidirectional streaming**: For large documents, consider chunked transfer. However, prefer using the Virtual Host mapping (`https://project.celbridge/...`) which allows the WebView to stream large assets directly from disk using the browser's native optimized network stack. Only implement custom chunking if specific performance metrics (e.g., >10MB text files) prove problematic during testing.
 - **Cancellation**: Add support for cancelling in-flight requests
 - **Batching**: Multiple requests in a single message for performance

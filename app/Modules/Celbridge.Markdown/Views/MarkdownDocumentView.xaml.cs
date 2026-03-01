@@ -29,9 +29,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
     private WebViewBridge? _bridge;
     private WebView2MessageChannel? _messageChannel;
 
-    // Track dirty state for external change conflict resolution
-    private bool _isDirty;
-
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
         ILogger<MarkdownDocumentView> logger,
@@ -238,7 +235,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
                 ViewModel.OnDataChanged();
             }
 
-            _isDirty = false;
             return new SaveResult(true);
         }
         catch (Exception ex)
@@ -267,7 +263,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     private void OnDocumentChanged()
     {
-        _isDirty = true;
         ViewModel.OnDataChanged();
     }
 
