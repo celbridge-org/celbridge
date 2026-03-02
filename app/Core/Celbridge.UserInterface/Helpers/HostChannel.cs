@@ -3,13 +3,13 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Implementation of IWebViewMessageChannel that wraps CoreWebView2.
+/// Implementation of IHostChannel that wraps CoreWebView2.
 /// </summary>
-public class WebView2MessageChannel : IWebViewMessageChannel
+public class HostChannel : IHostChannel
 {
     private readonly CoreWebView2 _coreWebView2;
 
-    public WebView2MessageChannel(CoreWebView2 coreWebView2)
+    public HostChannel(CoreWebView2 coreWebView2)
     {
         _coreWebView2 = coreWebView2;
         _coreWebView2.WebMessageReceived += OnWebMessageReceived;

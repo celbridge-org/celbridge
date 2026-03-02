@@ -2,10 +2,10 @@ namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
 /// Abstraction over WebView2 message passing for testability.
-/// Production code uses WebView2MessageChannel which wraps CoreWebView2.
+/// Production code uses HostChannel which wraps CoreWebView2.
 /// Tests inject a mock implementation.
 /// </summary>
-public interface IWebViewMessageChannel
+public interface IHostChannel
 {
     /// <summary>
     /// Posts a JSON message to the WebView.

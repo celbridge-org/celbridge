@@ -17,7 +17,7 @@ public class CelbridgeHost : IDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly IWebViewMessageChannel _channel;
+    private readonly IHostChannel _channel;
     private readonly ILogger? _logger;
     private readonly ConcurrentDictionary<string, Func<JsonElement?, Task<object?>>> _handlers = new();
     private readonly ConcurrentDictionary<string, Action<JsonElement?>> _notificationHandlers = new();
@@ -46,7 +46,7 @@ public class CelbridgeHost : IDisposable
     /// <summary>
     /// Creates a new CelbridgeHost with the specified message channel.
     /// </summary>
-    public CelbridgeHost(IWebViewMessageChannel channel, ILogger? logger = null)
+    public CelbridgeHost(IHostChannel channel, ILogger? logger = null)
     {
         _channel = channel;
         _logger = logger;
@@ -63,7 +63,7 @@ public class CelbridgeHost : IDisposable
     /// </summary>
     public void OnInitialize(Func<InitializeParams, Task<InitializeResult>> handler)
     {
-        RegisterHandler(InitializeParams.Method, handler);
+        RegisterHandler(HostRpcMethods.Initialize, handler);
     }
 
     /// <summary>
@@ -350,7 +350,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnLoad(Func<LoadParams, Task<LoadResult>> handler)
         {
-            _host.RegisterHandler(LoadParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DocumentLoad, handler);
         }
 
         /// <summary>
@@ -358,7 +358,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnSave(Func<SaveParams, Task<SaveResult>> handler)
         {
-            _host.RegisterHandler(SaveParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DocumentSave, handler);
         }
 
         /// <summary>
@@ -366,7 +366,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnGetMetadata(Func<GetMetadataParams, Task<DocumentMetadata>> handler)
         {
-            _host.RegisterHandler(GetMetadataParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DocumentGetMetadata, handler);
         }
 
         /// <summary>
@@ -374,7 +374,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnChanged(Action handler)
         {
-            _host.RegisterNotificationHandler<DocumentChangedNotification>(DocumentChangedNotification.Method, _ => handler());
+            _host.RegisterNotificationHandler<DocumentChangedNotification>(HostRpcMethods.DocumentChanged, _ => handler());
         }
 
         /// <summary>
@@ -382,7 +382,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnSaveBinary(Func<SaveBinaryParams, Task<SaveBinaryResult>> handler)
         {
-            _host.RegisterHandler(SaveBinaryParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DocumentSaveBinary, handler);
         }
 
         /// <summary>
@@ -390,7 +390,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnLoadBinary(Func<LoadBinaryParams, Task<LoadBinaryResult>> handler)
         {
-            _host.RegisterHandler(LoadBinaryParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DocumentLoadBinary, handler);
         }
 
         /// <summary>
@@ -398,7 +398,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnImportComplete(Action<ImportCompleteNotification> handler)
         {
-            _host.RegisterNotificationHandler(ImportCompleteNotification.Method, handler);
+            _host.RegisterNotificationHandler(HostRpcMethods.ImportComplete, handler);
         }
 
         /// <summary>
@@ -407,7 +407,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void RequestSave()
         {
-            _host.SendNotification(RequestSaveNotification.Method);
+            _host.SendNotification(HostRpcMethods.DocumentRequestSave);
         }
 
         /// <summary>
@@ -415,7 +415,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void NotifyExternalChange()
         {
-            _host.SendNotification(ExternalChangeNotification.Method);
+            _host.SendNotification(HostRpcMethods.DocumentExternalChange);
         }
 
         /// <summary>
@@ -423,7 +423,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnLinkClicked(Action<string> handler)
         {
-            _host.RegisterNotificationHandler<LinkClickedParams>(LinkClickedParams.Method, p => handler(p.Href));
+            _host.RegisterNotificationHandler<LinkClickedParams>(HostRpcMethods.LinkClicked, p => handler(p.Href));
         }
     }
 
@@ -444,7 +444,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnPickImage(Func<PickImageParams, Task<PickImageResult>> handler)
         {
-            _host.RegisterHandler(PickImageParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DialogPickImage, handler);
         }
 
         /// <summary>
@@ -452,7 +452,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnPickFile(Func<PickFileParams, Task<PickFileResult>> handler)
         {
-            _host.RegisterHandler(PickFileParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DialogPickFile, handler);
         }
 
         /// <summary>
@@ -460,7 +460,7 @@ public class CelbridgeHost : IDisposable
         /// </summary>
         public void OnAlert(Func<AlertParams, Task<AlertResult>> handler)
         {
-            _host.RegisterHandler(AlertParams.Method, handler);
+            _host.RegisterHandler(HostRpcMethods.DialogAlert, handler);
         }
     }
 
@@ -486,7 +486,7 @@ public class CelbridgeHost : IDisposable
         public void NotifyUpdated(Dictionary<string, string> strings)
         {
             var notification = new LocalizationUpdatedNotification(strings);
-            _host.SendNotification(LocalizationUpdatedNotification.Method, notification);
+            _host.SendNotification(HostRpcMethods.LocalizationUpdated, notification);
         }
     }
 }

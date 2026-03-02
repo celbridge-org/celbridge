@@ -4,9 +4,9 @@ using Celbridge.UserInterface.Helpers;
 namespace Celbridge.Tests.Helpers;
 
 /// <summary>
-/// Mock implementation of IWebViewMessageChannel for testing.
+/// Mock implementation of IHostChannel for testing.
 /// </summary>
-public class MockWebViewMessageChannel : IWebViewMessageChannel
+public class MockHostChannel : IHostChannel
 {
     public List<string> SentMessages { get; } = new();
 
@@ -49,13 +49,13 @@ public class MockWebViewMessageChannel : IWebViewMessageChannel
 [TestFixture]
 public class CelbridgeHostTests
 {
-    private MockWebViewMessageChannel _channel = null!;
+    private MockHostChannel _channel = null!;
     private CelbridgeHost _host = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _channel = new MockWebViewMessageChannel();
+        _channel = new MockHostChannel();
         _host = new CelbridgeHost(_channel);
     }
 

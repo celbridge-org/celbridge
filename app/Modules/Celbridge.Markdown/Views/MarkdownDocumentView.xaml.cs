@@ -27,7 +27,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
     private CelbridgeHost? _host;
-    private WebView2MessageChannel? _messageChannel;
+    private HostChannel? _messageChannel;
 
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
@@ -157,7 +157,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             };
 
             // Initialize the host BEFORE navigation
-            _messageChannel = new WebView2MessageChannel(WebView.CoreWebView2);
+            _messageChannel = new HostChannel(WebView.CoreWebView2);
             _host = new CelbridgeHost(_messageChannel);
 
             // Register host handlers

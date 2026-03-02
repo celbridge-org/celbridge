@@ -24,7 +24,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
     private CelbridgeHost? _host;
-    private WebView2MessageChannel? _messageChannel;
+    private HostChannel? _messageChannel;
 
     // Track import state to prevent race conditions during initial load and reloads
     private bool _isImportInProgress;
@@ -142,7 +142,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
             };
 
             // Initialize the host BEFORE navigation
-            _messageChannel = new WebView2MessageChannel(WebView.CoreWebView2);
+            _messageChannel = new HostChannel(WebView.CoreWebView2);
             _host = new CelbridgeHost(_messageChannel);
 
             // Register host handlers

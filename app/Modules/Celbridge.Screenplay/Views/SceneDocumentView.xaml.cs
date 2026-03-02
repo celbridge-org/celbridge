@@ -24,7 +24,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
     private CelbridgeHost? _host;
-    private WebView2MessageChannel? _messageChannel;
+    private HostChannel? _messageChannel;
 
     public SceneDocumentView(
         IServiceProvider serviceProvider,
@@ -153,7 +153,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
             await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             // Initialize the host BEFORE navigation
-            _messageChannel = new WebView2MessageChannel(WebView.CoreWebView2);
+            _messageChannel = new HostChannel(WebView.CoreWebView2);
             _host = new CelbridgeHost(_messageChannel);
 
             // Register host handlers

@@ -47,10 +47,7 @@ public class BridgeException : Exception
 /// <summary>
 /// Parameters for the bridge/initialize request.
 /// </summary>
-public record InitializeParams(string ProtocolVersion)
-{
-    public const string Method = "bridge/initialize";
-}
+public record InitializeParams(string ProtocolVersion);
 
 /// <summary>
 /// Metadata about the document being edited.
@@ -72,10 +69,7 @@ public record InitializeResult(
 /// <summary>
 /// Parameters for the document/load request.
 /// </summary>
-public record LoadParams(bool IncludeMetadata = false)
-{
-    public const string Method = "document/load";
-}
+public record LoadParams(bool IncludeMetadata = false);
 
 /// <summary>
 /// Result of the document/load request.
@@ -85,10 +79,7 @@ public record LoadResult(string Content, DocumentMetadata? Metadata = null);
 /// <summary>
 /// Parameters for the document/save request.
 /// </summary>
-public record SaveParams(string Content)
-{
-    public const string Method = "document/save";
-}
+public record SaveParams(string Content);
 
 /// <summary>
 /// Result of the document/save request.
@@ -98,10 +89,7 @@ public record SaveResult(bool Success, string? Error = null);
 /// <summary>
 /// Parameters for the document/getMetadata request.
 /// </summary>
-public record GetMetadataParams()
-{
-    public const string Method = "document/getMetadata";
-}
+public record GetMetadataParams();
 
 // =============================================================================
 // Dialog Operations
@@ -110,10 +98,7 @@ public record GetMetadataParams()
 /// <summary>
 /// Parameters for the dialog/pickImage request.
 /// </summary>
-public record PickImageParams(string[] Extensions)
-{
-    public const string Method = "dialog/pickImage";
-}
+public record PickImageParams(string[] Extensions);
 
 /// <summary>
 /// Result of the dialog/pickImage request.
@@ -123,10 +108,7 @@ public record PickImageResult(string? Path);
 /// <summary>
 /// Parameters for the dialog/pickFile request.
 /// </summary>
-public record PickFileParams(string[] Extensions)
-{
-    public const string Method = "dialog/pickFile";
-}
+public record PickFileParams(string[] Extensions);
 
 /// <summary>
 /// Result of the dialog/pickFile request.
@@ -136,10 +118,7 @@ public record PickFileResult(string? Path);
 /// <summary>
 /// Parameters for the dialog/alert request.
 /// </summary>
-public record AlertParams(string Title, string Message)
-{
-    public const string Method = "dialog/alert";
-}
+public record AlertParams(string Title, string Message);
 
 /// <summary>
 /// Result of the dialog/alert request.
@@ -153,34 +132,22 @@ public record AlertResult();
 /// <summary>
 /// Notification sent when document content changes (JS to C#).
 /// </summary>
-public record DocumentChangedNotification()
-{
-    public const string Method = "document/changed";
-}
+public record DocumentChangedNotification();
 
 /// <summary>
 /// Notification sent to request the WebView to save (C# to JS).
 /// </summary>
-public record RequestSaveNotification()
-{
-    public const string Method = "document/requestSave";
-}
+public record RequestSaveNotification();
 
 /// <summary>
 /// Notification sent when external file changes are detected (C# to JS).
 /// </summary>
-public record ExternalChangeNotification()
-{
-    public const string Method = "document/externalChange";
-}
+public record ExternalChangeNotification();
 
 /// <summary>
 /// Notification sent when localization is updated (C# to JS).
 /// </summary>
-public record LocalizationUpdatedNotification(Dictionary<string, string> Strings)
-{
-    public const string Method = "localization/updated";
-}
+public record LocalizationUpdatedNotification(Dictionary<string, string> Strings);
 
 // =============================================================================
 // Link/Navigation Operations
@@ -189,10 +156,7 @@ public record LocalizationUpdatedNotification(Dictionary<string, string> Strings
 /// <summary>
 /// Parameters for the link/clicked notification (JS to C#).
 /// </summary>
-public record LinkClickedParams(string Href)
-{
-    public const string Method = "link/clicked";
-}
+public record LinkClickedParams(string Href);
 
 // =============================================================================
 // Binary Document Operations (for spreadsheets, etc.)
@@ -201,10 +165,7 @@ public record LinkClickedParams(string Href)
 /// <summary>
 /// Parameters for the document/saveBinary request (binary content as base64).
 /// </summary>
-public record SaveBinaryParams(string ContentBase64)
-{
-    public const string Method = "document/saveBinary";
-}
+public record SaveBinaryParams(string ContentBase64);
 
 /// <summary>
 /// Result of the document/saveBinary request.
@@ -214,10 +175,7 @@ public record SaveBinaryResult(bool Success, string? Error = null);
 /// <summary>
 /// Parameters for the document/loadBinary request.
 /// </summary>
-public record LoadBinaryParams(bool IncludeMetadata = false)
-{
-    public const string Method = "document/loadBinary";
-}
+public record LoadBinaryParams(bool IncludeMetadata = false);
 
 /// <summary>
 /// Result of the document/loadBinary request (binary content as base64).
@@ -231,7 +189,4 @@ public record LoadBinaryResult(string ContentBase64, DocumentMetadata? Metadata 
 /// <summary>
 /// Notification sent when import operation completes (JS to C#).
 /// </summary>
-public record ImportCompleteNotification(bool Success, string? Error = null)
-{
-    public const string Method = "import/complete";
-}
+public record ImportCompleteNotification(bool Success, string? Error = null);
