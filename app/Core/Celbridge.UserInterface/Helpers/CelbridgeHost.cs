@@ -6,10 +6,10 @@ using Microsoft.Extensions.Logging;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// JSON-RPC 2.0 bridge for WebView2 communication.
+/// JSON-RPC 2.0 host for WebView2 communication.
 /// Provides typed handler registration and automatic request/response correlation.
 /// </summary>
-public class WebViewBridge : IDisposable
+public class CelbridgeHost : IDisposable
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -44,9 +44,9 @@ public class WebViewBridge : IDisposable
     public LocalizationHandlers Localization { get; }
 
     /// <summary>
-    /// Creates a new WebViewBridge with the specified message channel.
+    /// Creates a new CelbridgeHost with the specified message channel.
     /// </summary>
-    public WebViewBridge(IWebViewMessageChannel channel, ILogger? logger = null)
+    public CelbridgeHost(IWebViewMessageChannel channel, ILogger? logger = null)
     {
         _channel = channel;
         _logger = logger;
@@ -63,7 +63,7 @@ public class WebViewBridge : IDisposable
     /// </summary>
     public void OnInitialize(Func<InitializeParams, Task<InitializeResult>> handler)
     {
-        RegisterHandler("bridge/initialize", handler);
+        RegisterHandler(InitializeParams.Method, handler);
     }
 
     /// <summary>
@@ -309,13 +309,13 @@ public class WebViewBridge : IDisposable
     {
         if (EnableDetailedLogging)
         {
-            _logger?.LogDebug("[WebViewBridge] {Message}", message);
+            _logger?.LogDebug("[CelbridgeHost] {Message}", message);
         }
     }
 
     private void LogError(string message)
     {
-        _logger?.LogError("[WebViewBridge] {Message}", message);
+        _logger?.LogError("[CelbridgeHost] {Message}", message);
     }
 
     public void Dispose()
@@ -338,11 +338,11 @@ public class WebViewBridge : IDisposable
     /// </summary>
     public class DocumentHandlers
     {
-        private readonly WebViewBridge _bridge;
+        private readonly CelbridgeHost _host;
 
-        internal DocumentHandlers(WebViewBridge bridge)
+        internal DocumentHandlers(CelbridgeHost host)
         {
-            _bridge = bridge;
+            _host = host;
         }
 
         /// <summary>
@@ -350,7 +350,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnLoad(Func<LoadParams, Task<LoadResult>> handler)
         {
-            _bridge.RegisterHandler("document/load", handler);
+            _host.RegisterHandler(LoadParams.Method, handler);
         }
 
         /// <summary>
@@ -358,7 +358,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnSave(Func<SaveParams, Task<SaveResult>> handler)
         {
-            _bridge.RegisterHandler("document/save", handler);
+            _host.RegisterHandler(SaveParams.Method, handler);
         }
 
         /// <summary>
@@ -366,7 +366,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnGetMetadata(Func<GetMetadataParams, Task<DocumentMetadata>> handler)
         {
-            _bridge.RegisterHandler("document/getMetadata", handler);
+            _host.RegisterHandler(GetMetadataParams.Method, handler);
         }
 
         /// <summary>
@@ -374,7 +374,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnChanged(Action handler)
         {
-            _bridge.RegisterNotificationHandler<DocumentChangedNotification>("document/changed", _ => handler());
+            _host.RegisterNotificationHandler<DocumentChangedNotification>(DocumentChangedNotification.Method, _ => handler());
         }
 
         /// <summary>
@@ -382,15 +382,15 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnSaveBinary(Func<SaveBinaryParams, Task<SaveBinaryResult>> handler)
         {
-            _bridge.RegisterHandler("document/saveBinary", handler);
+            _host.RegisterHandler(SaveBinaryParams.Method, handler);
         }
 
         /// <summary>
         /// Registers a handler for document/loadBinary requests.
         /// </summary>
-        public void OnLoadBinary(Func<LoadParams, Task<LoadBinaryResult>> handler)
+        public void OnLoadBinary(Func<LoadBinaryParams, Task<LoadBinaryResult>> handler)
         {
-            _bridge.RegisterHandler("document/loadBinary", handler);
+            _host.RegisterHandler(LoadBinaryParams.Method, handler);
         }
 
         /// <summary>
@@ -398,7 +398,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnImportComplete(Action<ImportCompleteNotification> handler)
         {
-            _bridge.RegisterNotificationHandler<ImportCompleteNotification>("import/complete", handler);
+            _host.RegisterNotificationHandler(ImportCompleteNotification.Method, handler);
         }
 
         /// <summary>
@@ -407,7 +407,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void RequestSave()
         {
-            _bridge.SendNotification("document/requestSave");
+            _host.SendNotification(RequestSaveNotification.Method);
         }
 
         /// <summary>
@@ -415,7 +415,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void NotifyExternalChange()
         {
-            _bridge.SendNotification("document/externalChange");
+            _host.SendNotification(ExternalChangeNotification.Method);
         }
 
         /// <summary>
@@ -423,7 +423,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnLinkClicked(Action<string> handler)
         {
-            _bridge.RegisterNotificationHandler<LinkClickedParams>("link/clicked", p => handler(p.Href));
+            _host.RegisterNotificationHandler<LinkClickedParams>(LinkClickedParams.Method, p => handler(p.Href));
         }
     }
 
@@ -432,11 +432,11 @@ public class WebViewBridge : IDisposable
     /// </summary>
     public class DialogHandlers
     {
-        private readonly WebViewBridge _bridge;
+        private readonly CelbridgeHost _host;
 
-        internal DialogHandlers(WebViewBridge bridge)
+        internal DialogHandlers(CelbridgeHost host)
         {
-            _bridge = bridge;
+            _host = host;
         }
 
         /// <summary>
@@ -444,7 +444,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnPickImage(Func<PickImageParams, Task<PickImageResult>> handler)
         {
-            _bridge.RegisterHandler("dialog/pickImage", handler);
+            _host.RegisterHandler(PickImageParams.Method, handler);
         }
 
         /// <summary>
@@ -452,7 +452,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnPickFile(Func<PickFileParams, Task<PickFileResult>> handler)
         {
-            _bridge.RegisterHandler("dialog/pickFile", handler);
+            _host.RegisterHandler(PickFileParams.Method, handler);
         }
 
         /// <summary>
@@ -460,7 +460,7 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void OnAlert(Func<AlertParams, Task<AlertResult>> handler)
         {
-            _bridge.RegisterHandler("dialog/alert", handler);
+            _host.RegisterHandler(AlertParams.Method, handler);
         }
     }
 
@@ -473,11 +473,11 @@ public class WebViewBridge : IDisposable
     /// </summary>
     public class LocalizationHandlers
     {
-        private readonly WebViewBridge _bridge;
+        private readonly CelbridgeHost _host;
 
-        internal LocalizationHandlers(WebViewBridge bridge)
+        internal LocalizationHandlers(CelbridgeHost host)
         {
-            _bridge = bridge;
+            _host = host;
         }
 
         /// <summary>
@@ -485,7 +485,8 @@ public class WebViewBridge : IDisposable
         /// </summary>
         public void NotifyUpdated(Dictionary<string, string> strings)
         {
-            _bridge.SendNotification("localization/updated", new LocalizationUpdatedNotification(strings));
+            var notification = new LocalizationUpdatedNotification(strings);
+            _host.SendNotification(LocalizationUpdatedNotification.Method, notification);
         }
     }
 }

@@ -47,22 +47,22 @@ public class MockWebViewMessageChannel : IWebViewMessageChannel
 }
 
 [TestFixture]
-public class WebViewBridgeTests
+public class CelbridgeHostTests
 {
     private MockWebViewMessageChannel _channel = null!;
-    private WebViewBridge _bridge = null!;
+    private CelbridgeHost _host = null!;
 
     [SetUp]
     public void SetUp()
     {
         _channel = new MockWebViewMessageChannel();
-        _bridge = new WebViewBridge(_channel);
+        _host = new CelbridgeHost(_channel);
     }
 
     [TearDown]
     public void TearDown()
     {
-        _bridge.Dispose();
+        _host.Dispose();
     }
 
     [Test]
@@ -70,7 +70,7 @@ public class WebViewBridgeTests
     {
         // Arrange
         var handlerCalled = false;
-        _bridge.OnInitialize(async (request) =>
+        _host.OnInitialize(async (request) =>
         {
             handlerCalled = true;
             request.ProtocolVersion.Should().Be("1.0");
@@ -120,7 +120,7 @@ public class WebViewBridgeTests
     public async Task HandleRequest_HandlerThrowsBridgeException_SendsErrorWithCode()
     {
         // Arrange
-        _bridge.OnInitialize(async (request) =>
+        _host.OnInitialize(async (request) =>
         {
             throw new BridgeException(JsonRpcErrorCodes.InvalidVersion, "Unsupported version", new { expected = "1.0" });
         });
@@ -141,7 +141,7 @@ public class WebViewBridgeTests
     public async Task HandleRequest_HandlerThrowsException_SendsInternalError()
     {
         // Arrange
-        _bridge.OnInitialize(async (request) =>
+        _host.OnInitialize(async (request) =>
         {
             throw new InvalidOperationException("Something went wrong");
         });
@@ -163,7 +163,7 @@ public class WebViewBridgeTests
     {
         // Arrange
         var notificationReceived = false;
-        _bridge.Document.OnChanged(() =>
+        _host.Document.OnChanged(() =>
         {
             notificationReceived = true;
         });
@@ -182,7 +182,7 @@ public class WebViewBridgeTests
     public void SendNotification_SendsCorrectJsonRpcFormat()
     {
         // Act
-        _bridge.Document.NotifyExternalChange();
+        _host.Document.NotifyExternalChange();
 
         // Assert
         _channel.SentMessages.Should().HaveCount(1);
@@ -199,7 +199,7 @@ public class WebViewBridgeTests
     {
         // Arrange
         string? savedContent = null;
-        _bridge.Document.OnSave(async (request) =>
+        _host.Document.OnSave(async (request) =>
         {
             savedContent = request.Content;
             return new SaveResult(true);
@@ -218,7 +218,7 @@ public class WebViewBridgeTests
     public async Task DocumentOnLoad_ReturnsContent()
     {
         // Arrange
-        _bridge.Document.OnLoad(async (request) =>
+        _host.Document.OnLoad(async (request) =>
         {
             return new LoadResult("# Loaded content");
         });
@@ -238,7 +238,7 @@ public class WebViewBridgeTests
     public async Task DialogOnPickImage_ReturnsPath()
     {
         // Arrange
-        _bridge.Dialog.OnPickImage(async (request) =>
+        _host.Dialog.OnPickImage(async (request) =>
         {
             request.Extensions.Should().Contain(".png");
             return new PickImageResult("/images/photo.png");
@@ -261,7 +261,7 @@ public class WebViewBridgeTests
         // Arrange
         string? alertTitle = null;
         string? alertMessage = null;
-        _bridge.Dialog.OnAlert(async (request) =>
+        _host.Dialog.OnAlert(async (request) =>
         {
             alertTitle = request.Title;
             alertMessage = request.Message;
@@ -304,10 +304,10 @@ public class WebViewBridgeTests
     {
         // Arrange
         var handlerCalled = false;
-        _bridge.Document.OnChanged(() => handlerCalled = true);
+        _host.Document.OnChanged(() => handlerCalled = true);
 
         // Act
-        _bridge.Dispose();
+        _host.Dispose();
         _channel.SimulateNotification("document/changed", new { });
 
         // Assert

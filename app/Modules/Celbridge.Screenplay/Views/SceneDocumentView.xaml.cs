@@ -23,7 +23,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    private WebViewBridge? _bridge;
+    private CelbridgeHost? _host;
     private WebView2MessageChannel? _messageChannel;
 
     public SceneDocumentView(
@@ -102,7 +102,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         }
 
         // Notify JS to reload content
-        _bridge?.Document.NotifyExternalChange();
+        _host?.Document.NotifyExternalChange();
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
@@ -152,13 +152,13 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
             await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-            // Initialize the bridge BEFORE navigation
+            // Initialize the host BEFORE navigation
             _messageChannel = new WebView2MessageChannel(WebView.CoreWebView2);
-            _bridge = new WebViewBridge(_messageChannel);
+            _host = new CelbridgeHost(_messageChannel);
 
-            // Register bridge handlers
-            _bridge.OnInitialize(HandleInitializeAsync);
-            _bridge.Document.OnLoad(HandleDocumentLoadAsync);
+            // Register host handlers
+            _host.OnInitialize(HandleInitializeAsync);
+            _host.Document.OnLoad(HandleDocumentLoadAsync);
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://screenplay.celbridge/index.html");
@@ -223,7 +223,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         _messengerService.Unregister<SceneContentUpdatedMessage>(this);
         _messengerService.Unregister<ThemeChangedMessage>(this);
 
-        _bridge?.Dispose();
+        _host?.Dispose();
         _messageChannel?.Detach();
 
         await base.PrepareToClose();

@@ -26,7 +26,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    private WebViewBridge? _bridge;
+    private CelbridgeHost? _host;
     private WebView2MessageChannel? _messageChannel;
 
     public MarkdownDocumentView(
@@ -71,9 +71,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        if (_bridge is null)
+        if (_host is null)
         {
-            _logger.LogDebug("Save skipped - bridge not initialized");
+            _logger.LogDebug("Save skipped - host not initialized");
             return Result.Ok();
         }
 
@@ -85,7 +85,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
         // Request the JS side to save - it will call document.save(content)
         // which triggers our OnSaveDocument handler
-        _bridge.Document.RequestSave();
+        _host.Document.RequestSave();
 
         return await ViewModel.SaveDocument();
     }
@@ -156,18 +156,18 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
                 args.Handled = true;
             };
 
-            // Initialize the bridge BEFORE navigation
+            // Initialize the host BEFORE navigation
             _messageChannel = new WebView2MessageChannel(WebView.CoreWebView2);
-            _bridge = new WebViewBridge(_messageChannel);
+            _host = new CelbridgeHost(_messageChannel);
 
-            // Register bridge handlers
-            _bridge.OnInitialize(HandleInitializeAsync);
-            _bridge.Document.OnSave(HandleSaveDocumentAsync);
-            _bridge.Document.OnLoad(HandleLoadDocumentAsync);
-            _bridge.Document.OnChanged(OnDocumentChanged);
-            _bridge.Document.OnLinkClicked(HandleLinkClicked);
-            _bridge.Dialog.OnPickImage(HandlePickImageAsync);
-            _bridge.Dialog.OnPickFile(HandlePickFileAsync);
+            // Register host handlers
+            _host.OnInitialize(HandleInitializeAsync);
+            _host.Document.OnSave(HandleSaveDocumentAsync);
+            _host.Document.OnLoad(HandleLoadDocumentAsync);
+            _host.Document.OnChanged(OnDocumentChanged);
+            _host.Document.OnLinkClicked(HandleLinkClicked);
+            _host.Dialog.OnPickImage(HandlePickImageAsync);
+            _host.Dialog.OnPickFile(HandlePickFileAsync);
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
@@ -538,8 +538,8 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
         // Detach the message channel to stop receiving messages
         _messageChannel?.Detach();
-        _bridge?.Dispose();
-        _bridge = null;
+        _host?.Dispose();
+        _host = null;
         _messageChannel = null;
 
         await base.PrepareToClose();
@@ -565,6 +565,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
     {
         // External file change detected - notify JS to reload
         // The dirty state conflict handling is done in the ViewModel before raising this event
-        _bridge?.Document.NotifyExternalChange();
+        _host?.Document.NotifyExternalChange();
     }
 }

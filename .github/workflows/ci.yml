@@ -44,3 +44,24 @@ jobs:
           path: '**/test-results.trx'
           reporter: dotnet-trx
           fail-on-error: true
+
+  js-test:
+    name: Run JS Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./app/Core/Celbridge.UserInterface/Web
+        run: npm install
+
+      - name: Run JS tests
+        working-directory: ./app/Core/Celbridge.UserInterface/Web
+        run: npm test

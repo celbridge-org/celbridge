@@ -23,7 +23,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    private WebViewBridge? _bridge;
+    private CelbridgeHost? _host;
     private WebView2MessageChannel? _messageChannel;
 
     // Track import state to prevent race conditions during initial load and reloads
@@ -68,9 +68,9 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        if (_bridge is null)
+        if (_host is null)
         {
-            _logger.LogDebug("Save skipped - bridge not initialized");
+            _logger.LogDebug("Save skipped - host not initialized");
             return Result.Ok();
         }
 
@@ -82,7 +82,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
         // Request the JS side to save - it will call document.saveBinary(contentBase64)
         // which triggers our HandleSaveBinaryAsync handler
-        _bridge.Document.RequestSave();
+        _host.Document.RequestSave();
 
         return await ViewModel.SaveDocument();
     }
@@ -141,16 +141,16 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
                 OpenSystemBrowser(uri);
             };
 
-            // Initialize the bridge BEFORE navigation
+            // Initialize the host BEFORE navigation
             _messageChannel = new WebView2MessageChannel(WebView.CoreWebView2);
-            _bridge = new WebViewBridge(_messageChannel);
+            _host = new CelbridgeHost(_messageChannel);
 
-            // Register bridge handlers
-            _bridge.OnInitialize(HandleInitializeAsync);
-            _bridge.Document.OnSaveBinary(HandleSaveBinaryAsync);
-            _bridge.Document.OnLoadBinary(HandleLoadBinaryAsync);
-            _bridge.Document.OnChanged(OnDocumentChanged);
-            _bridge.Document.OnImportComplete(OnImportComplete);
+            // Register host handlers
+            _host.OnInitialize(HandleInitializeAsync);
+            _host.Document.OnSaveBinary(HandleSaveBinaryAsync);
+            _host.Document.OnLoadBinary(HandleLoadBinaryAsync);
+            _host.Document.OnChanged(OnDocumentChanged);
+            _host.Document.OnImportComplete(OnImportComplete);
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
@@ -263,7 +263,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         }
     }
 
-    private async Task<LoadBinaryResult> HandleLoadBinaryAsync(LoadParams request)
+    private async Task<LoadBinaryResult> HandleLoadBinaryAsync(LoadBinaryParams request)
     {
         // Mark import as in progress
         _isImportInProgress = true;
@@ -306,7 +306,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         {
             _logger.LogDebug("Processing pending import request");
             _hasPendingImport = false;
-            _bridge?.Document.NotifyExternalChange();
+            _host?.Document.NotifyExternalChange();
         }
     }
 
@@ -362,8 +362,8 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
         // Detach the message channel to stop receiving messages
         _messageChannel?.Detach();
-        _bridge?.Dispose();
-        _bridge = null;
+        _host?.Dispose();
+        _host = null;
         _messageChannel = null;
 
         await base.PrepareToClose();
@@ -380,6 +380,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         }
 
         // Notify JS to reload the spreadsheet from disk
-        _bridge?.Document.NotifyExternalChange();
+        _host?.Document.NotifyExternalChange();
     }
 }

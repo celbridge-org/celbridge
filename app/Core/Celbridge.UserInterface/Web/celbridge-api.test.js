@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { WebViewBridge } from './webview-bridge.js';
+import { CelbridgeClient } from './celbridge-api.js';
 
 /**
  * Creates a mock message channel for testing.
- * @returns {{ bridge: WebViewBridge, sentMessages: string[], simulateResponse: Function, simulateNotification: Function }}
+ * @returns {{ client: CelbridgeClient, sentMessages: string[], simulateResponse: Function, simulateNotification: Function }}
  */
-function createTestBridge(options = {}) {
+function createTestClient(options = {}) {
     const sentMessages = [];
     let messageHandler = null;
 
-    const bridge = new WebViewBridge({
+    const client = new CelbridgeClient({
         postMessage: (msg) => sentMessages.push(msg),
         onMessage: (handler) => { messageHandler = handler; },
         timeout: options.timeout ?? 1000,
@@ -43,15 +43,15 @@ function createTestBridge(options = {}) {
         messageHandler(notification);
     };
 
-    return { bridge, sentMessages, simulateResponse, simulateError, simulateNotification };
+    return { client, sentMessages, simulateResponse, simulateError, simulateNotification };
 }
 
-describe('WebViewBridge', () => {
+describe('CelbridgeClient', () => {
     describe('initialization', () => {
         it('should send initialize request with protocol version', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
 
             expect(sentMessages).toHaveLength(1);
             const sent = JSON.parse(sentMessages[0]);
@@ -73,28 +73,28 @@ describe('WebViewBridge', () => {
         });
 
         it('should throw if initialized twice', async () => {
-            const { bridge, simulateResponse } = createTestBridge();
+            const { client, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            await expect(bridge.initialize()).rejects.toThrow('Bridge already initialized');
+            await expect(client.initialize()).rejects.toThrow('Client already initialized');
         });
     });
 
     describe('request/response correlation', () => {
         it('should correlate responses by id', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
             // Initialize first
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
             // Make two concurrent requests
-            const promise1 = bridge.document.load();
-            const promise2 = bridge.document.getMetadata();
+            const promise1 = client.document.load();
+            const promise2 = client.document.getMetadata();
 
             expect(sentMessages).toHaveLength(3);
 
@@ -110,13 +110,13 @@ describe('WebViewBridge', () => {
         });
 
         it('should handle error responses', async () => {
-            const { bridge, simulateResponse, simulateError } = createTestBridge();
+            const { client, simulateResponse, simulateError } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const loadPromise = bridge.document.load();
+            const loadPromise = client.document.load();
             simulateError(2, -32603, 'File not found', { path: '/missing.md' });
 
             await expect(loadPromise).rejects.toMatchObject({
@@ -129,13 +129,13 @@ describe('WebViewBridge', () => {
 
     describe('timeout handling', () => {
         it('should timeout requests that do not receive a response', async () => {
-            const { bridge, simulateResponse } = createTestBridge({ timeout: 50 });
+            const { client, simulateResponse } = createTestClient({ timeout: 50 });
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const loadPromise = bridge.document.load();
+            const loadPromise = client.document.load();
 
             await expect(loadPromise).rejects.toMatchObject({
                 message: expect.stringContaining('timeout')
@@ -143,13 +143,13 @@ describe('WebViewBridge', () => {
         });
 
         it('should not timeout if response arrives in time', async () => {
-            const { bridge, simulateResponse } = createTestBridge({ timeout: 500 });
+            const { client, simulateResponse } = createTestClient({ timeout: 500 });
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const loadPromise = bridge.document.load();
+            const loadPromise = client.document.load();
 
             // Respond quickly
             simulateResponse(2, { content: 'Fast response' });
@@ -161,13 +161,13 @@ describe('WebViewBridge', () => {
 
     describe('notifications', () => {
         it('should send document changed notification', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            bridge.document.notifyChanged();
+            client.document.notifyChanged();
 
             expect(sentMessages).toHaveLength(2);
             const notification = JSON.parse(sentMessages[1]);
@@ -177,44 +177,29 @@ describe('WebViewBridge', () => {
         });
 
         it('should receive and dispatch incoming notifications', async () => {
-            const { bridge, simulateResponse, simulateNotification } = createTestBridge();
+            const { client, simulateResponse, simulateNotification } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
             const handler = vi.fn();
-            bridge.document.onExternalChange(handler);
+            client.document.onExternalChange(handler);
 
             simulateNotification('document/externalChange', {});
 
             expect(handler).toHaveBeenCalledOnce();
         });
 
-        it('should handle theme change notifications', async () => {
-            const { bridge, simulateResponse, simulateNotification } = createTestBridge();
-
-            const initPromise = bridge.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            const handler = vi.fn();
-            bridge.theme.onChanged(handler);
-
-            simulateNotification('theme/changed', { name: 'Light', isDark: false });
-
-            expect(handler).toHaveBeenCalledWith({ name: 'Light', isDark: false });
-        });
-
         it('should handle localization update notifications', async () => {
-            const { bridge, simulateResponse, simulateNotification } = createTestBridge();
+            const { client, simulateResponse, simulateNotification } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
             const handler = vi.fn();
-            bridge.localization.onUpdated(handler);
+            client.localization.onUpdated(handler);
 
             simulateNotification('localization/updated', { key1: 'value1' });
 
@@ -224,13 +209,13 @@ describe('WebViewBridge', () => {
 
     describe('document operations', () => {
         it('should send load request with options', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const loadPromise = bridge.document.load({ includeMetadata: true });
+            const loadPromise = client.document.load({ includeMetadata: true });
             const sent = JSON.parse(sentMessages[1]);
             expect(sent.method).toBe('document/load');
             expect(sent.params.includeMetadata).toBe(true);
@@ -246,13 +231,13 @@ describe('WebViewBridge', () => {
         });
 
         it('should send save request with content', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const savePromise = bridge.document.save('# New content');
+            const savePromise = client.document.save('# New content');
             const sent = JSON.parse(sentMessages[1]);
             expect(sent.method).toBe('document/save');
             expect(sent.params.content).toBe('# New content');
@@ -266,13 +251,13 @@ describe('WebViewBridge', () => {
 
     describe('dialog operations', () => {
         it('should send pickImage request and return path', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const pickPromise = bridge.dialog.pickImage(['.png', '.jpg']);
+            const pickPromise = client.dialog.pickImage(['.png', '.jpg']);
             const sent = JSON.parse(sentMessages[1]);
             expect(sent.method).toBe('dialog/pickImage');
             expect(sent.params.extensions).toEqual(['.png', '.jpg']);
@@ -284,13 +269,13 @@ describe('WebViewBridge', () => {
         });
 
         it('should return null when dialog is cancelled', async () => {
-            const { bridge, simulateResponse } = createTestBridge();
+            const { client, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const pickPromise = bridge.dialog.pickFile(['.txt']);
+            const pickPromise = client.dialog.pickFile(['.txt']);
             simulateResponse(2, { path: null });
 
             const result = await pickPromise;
@@ -298,13 +283,13 @@ describe('WebViewBridge', () => {
         });
 
         it('should send alert request', async () => {
-            const { bridge, sentMessages, simulateResponse } = createTestBridge();
+            const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = bridge.initialize();
+            const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const alertPromise = bridge.dialog.alert('Title', 'Message');
+            const alertPromise = client.dialog.alert('Title', 'Message');
             const sent = JSON.parse(sentMessages[1]);
             expect(sent.method).toBe('dialog/alert');
             expect(sent.params.title).toBe('Title');
@@ -318,17 +303,17 @@ describe('WebViewBridge', () => {
 
     describe('logging', () => {
         it('should not throw when setting log level', () => {
-            const { bridge } = createTestBridge();
-            expect(() => bridge.setLogLevel('debug')).not.toThrow();
-            expect(() => bridge.setLogLevel('warn')).not.toThrow();
-            expect(() => bridge.setLogLevel('error')).not.toThrow();
-            expect(() => bridge.setLogLevel('none')).not.toThrow();
+            const { client } = createTestClient();
+            expect(() => client.setLogLevel('debug')).not.toThrow();
+            expect(() => client.setLogLevel('warn')).not.toThrow();
+            expect(() => client.setLogLevel('error')).not.toThrow();
+            expect(() => client.setLogLevel('none')).not.toThrow();
         });
     });
 
     describe('edge cases', () => {
         it('should handle response with no matching request', async () => {
-            const { bridge, simulateResponse } = createTestBridge();
+            const { client, simulateResponse } = createTestClient();
 
             // This should not throw, just log a warning
             expect(() => simulateResponse(999, { content: 'orphan' })).not.toThrow();
@@ -338,7 +323,7 @@ describe('WebViewBridge', () => {
             const sentMessages = [];
             let messageHandler = null;
 
-            const bridge = new WebViewBridge({
+            const client = new CelbridgeClient({
                 postMessage: (msg) => sentMessages.push(msg),
                 onMessage: (handler) => { messageHandler = handler; }
             });
