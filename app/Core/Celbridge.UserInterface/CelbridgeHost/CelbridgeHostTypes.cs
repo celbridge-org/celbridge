@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.CelbridgeHost;
 
 /// <summary>
 /// JSON-RPC error codes as defined in the specification.

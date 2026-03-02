@@ -1,6 +1,6 @@
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.CelbridgeHost;
 
 /// <summary>
 /// Helper class for centralized WebView2 keyboard shortcut handling.

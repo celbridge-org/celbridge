@@ -1,5 +1,5 @@
 using Celbridge.Messaging;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.CelbridgeHost;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;

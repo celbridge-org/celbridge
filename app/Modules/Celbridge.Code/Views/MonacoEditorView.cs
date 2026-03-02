@@ -4,7 +4,7 @@ using Celbridge.Documents;
 using Celbridge.Documents.Views;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.CelbridgeHost;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 

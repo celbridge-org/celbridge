@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Celbridge.Logging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.CelbridgeHost;
 using Microsoft.Web.WebView2.Core;
 using Windows.Foundation;
 

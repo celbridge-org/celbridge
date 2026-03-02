@@ -5,7 +5,7 @@ using Celbridge.Logging;
 using Celbridge.Markdown.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.CelbridgeHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;

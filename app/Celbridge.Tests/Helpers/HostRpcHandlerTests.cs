@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.CelbridgeHost;
 using StreamJsonRpc;
 
 namespace Celbridge.Tests.Helpers;

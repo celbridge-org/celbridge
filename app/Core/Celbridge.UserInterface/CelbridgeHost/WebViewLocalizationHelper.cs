@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.CelbridgeHost;
 
 /// <summary>
 /// Helper for gathering localized strings from .NET resources for WebView editors.

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.CelbridgeHost;
 
 namespace Celbridge.Tests.Helpers;
 

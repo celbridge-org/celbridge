@@ -5,7 +5,7 @@ using System.Threading.Channels;
 using StreamJsonRpc;
 using StreamJsonRpc.Protocol;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.UserInterface.CelbridgeHost;
 
 /// <summary>
 /// Custom IJsonRpcMessageHandler implementation that bridges WebView2's push-based
