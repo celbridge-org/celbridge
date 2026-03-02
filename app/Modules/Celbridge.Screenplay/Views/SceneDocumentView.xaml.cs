@@ -112,10 +112,10 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
             return;
         }
 
-        var isDark = message.Theme == UserInterfaceTheme.Dark;
-        var themeName = isDark ? "Dark" : "Light";
-        var themeInfo = new ThemeInfo(themeName, isDark);
-        _bridge.Theme.NotifyChanged(themeInfo);
+        var theme = message.Theme == UserInterfaceTheme.Dark
+            ? WebViewTheme.Dark
+            : WebViewTheme.Light;
+        _bridge.Theme.NotifyChanged(theme);
     }
 
     private async void SceneDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -184,9 +184,9 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         var localization = new Dictionary<string, string>();
 
         // Build theme info
-        var isDark = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
-        var themeName = isDark ? "Dark" : "Light";
-        var theme = new ThemeInfo(themeName, isDark);
+        var theme = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark
+            ? WebViewTheme.Dark
+            : WebViewTheme.Light;
 
         // Content is the generated HTML body content
         return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata, localization, theme));

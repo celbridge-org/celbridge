@@ -187,7 +187,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         var localization = new Dictionary<string, string>();
 
         // Build theme info (SpreadJS handles its own theming)
-        var theme = new ThemeInfo("Light", false);
+        var theme = WebViewTheme.Light;
 
         // Mark import as in progress - JS will notify us when complete
         _isImportInProgress = true;

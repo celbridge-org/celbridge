@@ -60,12 +60,16 @@ public record InitializeResult(
     string Content,
     DocumentMetadata Metadata,
     Dictionary<string, string> Localization,
-    ThemeInfo Theme);
+    WebViewTheme Theme);
 
 /// <summary>
-/// Theme information sent to the WebView.
+/// Theme values for WebView communication.
 /// </summary>
-public record ThemeInfo(string Name, bool IsDark);
+public enum WebViewTheme
+{
+    Light,
+    Dark
+}
 
 // =============================================================================
 // Document Operations
@@ -147,7 +151,7 @@ public record ExternalChangeNotification();
 /// <summary>
 /// Notification sent when theme changes.
 /// </summary>
-public record ThemeChangedNotification(ThemeInfo Theme);
+public record ThemeChangedNotification(WebViewTheme Theme);
 
 /// <summary>
 /// Notification sent when localization is updated.

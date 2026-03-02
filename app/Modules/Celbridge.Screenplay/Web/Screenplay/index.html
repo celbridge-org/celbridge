@@ -24,13 +24,14 @@
         const bridge = getBridge();
 
         // Apply theme to the body element
-        function applyTheme(isDark) {
+        function applyTheme(theme) {
+            const isDark = theme === 'Dark';
             document.body.className = isDark ? 'theme-dark' : 'theme-light';
         }
 
         // Listen for theme changes
         bridge.theme.onChanged((theme) => {
-            applyTheme(theme.isDark);
+            applyTheme(theme);
         });
 
         // Listen for external content changes (when scene data is updated)
@@ -53,7 +54,7 @@
                 const result = await bridge.initialize();
 
                 // Apply initial theme
-                applyTheme(result.theme.isDark);
+                applyTheme(result.theme);
 
                 // Set the screenplay content
                 document.getElementById('screenplay-container').innerHTML = result.content;

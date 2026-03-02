@@ -9,9 +9,7 @@
  */
 
 /**
- * @typedef {Object} ThemeInfo
- * @property {string} name - Theme name (e.g., "Light", "Dark").
- * @property {boolean} isDark - Whether the theme is a dark theme.
+ * @typedef {'Light' | 'Dark'} WebViewTheme
  */
 
 /**
@@ -19,7 +17,7 @@
  * @property {string} content - The document content.
  * @property {DocumentMetadata} metadata - Document metadata.
  * @property {Object<string, string>} localization - Localized strings dictionary.
- * @property {ThemeInfo} theme - Current theme information.
+ * @property {WebViewTheme} theme - Current theme.
  */
 
 /**
@@ -525,10 +523,10 @@ class ThemeAPI {
 
     /**
      * Registers a handler for theme change notifications.
-     * @param {(theme: ThemeInfo) => void} handler - Called when the theme changes.
+     * @param {(theme: WebViewTheme) => void} handler - Called when the theme changes.
      */
     onChanged(handler) {
-        this.#bridge._addEventListener('theme/changed', handler);
+        this.#bridge._addEventListener('theme/changed', (params) => handler(params.theme));
     }
 }
 

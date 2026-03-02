@@ -78,7 +78,7 @@ public class WebViewBridgeTests
                 "# Content",
                 new DocumentMetadata("/path/test.md", "test", "test.md"),
                 new Dictionary<string, string> { { "key", "value" } },
-                new ThemeInfo("Dark", true));
+                WebViewTheme.Dark);
         });
 
         // Act

@@ -208,8 +208,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         var localization = WebViewLocalizationHelper.GetLocalizedStrings(_stringLocalizer, "Markdown_");
 
         // Build theme info
-        var isDark = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
-        var theme = new ThemeInfo(isDark ? "Dark" : "Light", isDark);
+        var theme = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark
+            ? WebViewTheme.Dark
+            : WebViewTheme.Light;
 
         return new InitializeResult(content, metadata, localization, theme);
     }
@@ -558,8 +559,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             // Notify the JS side of theme change
             if (_bridge is not null)
             {
-                var isDark = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
-                var theme = new ThemeInfo(isDark ? "Dark" : "Light", isDark);
+                var theme = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark
+                    ? WebViewTheme.Dark
+                    : WebViewTheme.Light;
                 _bridge.Theme.NotifyChanged(theme);
             }
         }

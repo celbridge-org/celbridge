@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -14,7 +15,8 @@ public class WebViewBridge : IDisposable
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     private readonly IWebViewMessageChannel _channel;
@@ -489,7 +491,7 @@ public class WebViewBridge : IDisposable
         /// <summary>
         /// Sends a theme/changed notification to the WebView.
         /// </summary>
-        public void NotifyChanged(ThemeInfo theme)
+        public void NotifyChanged(WebViewTheme theme)
         {
             _bridge.SendNotification("theme/changed", new ThemeChangedNotification(theme));
         }
