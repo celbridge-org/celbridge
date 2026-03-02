@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -47,7 +48,7 @@ public class ActivityDispatcher
             }
         }
 
-        _messengerService.Register<SelectedResourceChangedMessage>(this, (s, e) => OnUpdateMessage(e.Resource));
+        _messengerService.Register<SelectedDocumentChangedMessage>(this, (s, e) => OnUpdateMessage(e.DocumentResource));
         _messengerService.Register<ComponentChangedMessage>(this, (s, e) => OnUpdateMessage(e.ComponentKey.Resource));
 
         void OnUpdateMessage(ResourceKey resource)

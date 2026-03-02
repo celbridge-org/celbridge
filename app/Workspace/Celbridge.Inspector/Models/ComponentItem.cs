@@ -61,6 +61,9 @@ public partial class ComponentItem : ObservableObject
             showWarningIcon = Visibility.Collapsed;
         }
 
+        // Default indent to 0 when no annotation
+        var indentWidth = new GridLength(0);
+
         if (Annotation is not null)
         {
             if (Annotation.ComponentErrors.Count > 0)
@@ -81,12 +84,13 @@ public partial class ComponentItem : ObservableObject
                 }
             }
 
-            IndentWidth = new GridLength(Annotation.IndentLevel * 20);
+            indentWidth = new GridLength(Annotation.IndentLevel * 20);
         }
 
         Description = description;
         Tooltip = tooltip;
         ShowErrorIcon = showErrorIcon;
         ShowWarningIcon = showWarningIcon;
-    }        
+        IndentWidth = indentWidth;
+    }
 }
