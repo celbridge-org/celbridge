@@ -117,7 +117,7 @@ export function init(context) {
     document.getElementById('image-popover-src-browse').addEventListener('click', async () => {
         isPickerOpen = true;
         try {
-            const path = await ctx.bridge.dialog.pickImage([]);
+            const path = await ctx.client.dialog.pickImage([]);
             isPickerOpen = false;
             if (path) {
                 srcInputEl.value = path;

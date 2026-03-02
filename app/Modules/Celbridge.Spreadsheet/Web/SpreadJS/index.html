@@ -72,15 +72,15 @@
     <script src="lib/license.js"></script>
 
     <script type="module">
-        import { getBridge } from 'https://shared.celbridge/webview-bridge.js';
+        import { getClient } from 'https://shared.celbridge/celbridge-api.js';
 
         // Only proceed if running in WebView
         if (!window.isWebView) {
-            console.log('Not running in WebView, skipping bridge initialization');
+            console.log('Not running in WebView, skipping client initialization');
         }
 
-        // Get the bridge instance
-        const bridge = getBridge();
+        // Get the client instance
+        const client = getClient();
 
         // SpreadJS designer instance (set in initializeSpreadsheet)
         let designer = null;
@@ -92,7 +92,7 @@
         async function deserializeExcelData(base64Data) {
             if (!base64Data) {
                 console.log('No data to import');
-                bridge.document.notifyImportComplete(true);
+                client.document.notifyImportComplete(true);
                 return;
             }
 
@@ -112,16 +112,16 @@
 
                 await spread.import(file, () => {
                     console.log("Base64 data import completed.");
-                    bridge.document.notifyImportComplete(true);
+                    client.document.notifyImportComplete(true);
                 }, (error) => {
                     console.error("Import error:", error);
-                    bridge.document.notifyImportComplete(false, error?.message || 'Import failed');
+                    client.document.notifyImportComplete(false, error?.message || 'Import failed');
                 }, {
                     fileType: GC.Spread.Sheets.FileType.excel
                 });
             } catch (err) {
                 console.error("Import failed:", err);
-                bridge.document.notifyImportComplete(false, err?.message || 'Import exception');
+                client.document.notifyImportComplete(false, err?.message || 'Import exception');
             }
         }
 
@@ -167,18 +167,18 @@
             // but as all modifications are performed via the command system we can just 
             // listen for any executing commands and assume that the data has changed.
             commandManager.addListener('appListener', (args) => {
-                bridge.document.notifyChanged();
+                client.document.notifyChanged();
             });
         }
 
         // ---------------------------------------------------------------------------
-        // Bridge Event Handlers
+        // Client Event Handlers
         // ---------------------------------------------------------------------------
 
         // Handle external file changes - reload from disk
-        bridge.document.onExternalChange(async () => {
+        client.document.onExternalChange(async () => {
             try {
-                const result = await bridge.document.loadBinary();
+                const result = await client.document.loadBinary();
                 await deserializeExcelData(result.contentBase64);
             } catch (e) {
                 console.error('[Spreadsheet] Failed to reload content:', e);
@@ -186,10 +186,10 @@
         });
 
         // Handle save requests from host
-        bridge.document.onRequestSave(async () => {
+        client.document.onRequestSave(async () => {
             try {
                 const base64Data = await serializeExcelData();
-                await bridge.document.saveBinary(base64Data);
+                await client.document.saveBinary(base64Data);
                 console.log("Exported workbook to host");
             } catch (e) {
                 console.error('[Spreadsheet] Failed to save:', e);
@@ -223,17 +223,17 @@
                 initializeSpreadsheet();
 
                 // Enable debug logging during development
-                // bridge.setLogLevel('debug');
+                // client.setLogLevel('debug');
 
-                // Initialize the bridge - this loads content from C#
-                const result = await bridge.initialize();
+                // Initialize the client - this loads content from C#
+                const result = await client.initialize();
 
                 // Import the spreadsheet data (content contains base64 Excel data)
                 if (result.content) {
                     await deserializeExcelData(result.content);
                 } else {
                     // No content means new/empty spreadsheet
-                    bridge.document.notifyImportComplete(true);
+                    client.document.notifyImportComplete(true);
                 }
 
             } catch (e) {

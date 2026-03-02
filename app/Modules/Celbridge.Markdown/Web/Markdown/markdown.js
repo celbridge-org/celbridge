@@ -3,7 +3,7 @@
 
 import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
-import { getBridge } from 'https://shared.celbridge/webview-bridge.js';
+import { getClient } from 'https://shared.celbridge/celbridge-api.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './markdown-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './markdown-link-popover.js';
@@ -102,8 +102,8 @@ const CHANGE_DEBOUNCE_MS = 300;
 let projectBaseUrl = '';
 let documentBaseUrl = '';
 
-// Get the bridge instance
-const bridge = getBridge();
+// Get the client instance
+const client = getClient();
 
 // Resource key resolution for images
 function resolveImageSrc(src) {
@@ -129,7 +129,7 @@ function unresolveImageSrc(resolvedSrc) {
 // Shared context object for popover modules
 const ctx = {
     editor: null,
-    bridge,
+    client,
     resolveImageSrc,
     unresolveImageSrc,
 };
@@ -207,7 +207,7 @@ const editor = new Editor({
         // Debounce change notifications
         if (changeTimer) clearTimeout(changeTimer);
         changeTimer = setTimeout(() => {
-            bridge.document.notifyChanged();
+            client.document.notifyChanged();
         }, CHANGE_DEBOUNCE_MS);
     },
 });
@@ -411,17 +411,17 @@ editor.on('transaction', ({ transaction }) => {
 });
 
 // ---------------------------------------------------------------------------
-// Bridge-based initialization and event handling
+// Client-based initialization and event handling
 // ---------------------------------------------------------------------------
 
 // Handle external file changes
-bridge.document.onExternalChange(async () => {
+client.document.onExternalChange(async () => {
     // Preserve editor state during reload
     const scrollTop = editorWrapperEl.scrollTop;
     const { from, to } = editor.state.selection;
 
     try {
-        const { content } = await bridge.document.load();
+        const { content } = await client.document.load();
         const cleanContent = (content || '').replace(/&nbsp;/g, '');
         editor.commands.setContent(cleanContent, { contentType: 'markdown' });
 
@@ -439,25 +439,25 @@ bridge.document.onExternalChange(async () => {
 });
 
 // Handle save requests from host
-bridge.document.onRequestSave(async () => {
+client.document.onRequestSave(async () => {
     let markdown = editor.getMarkdown();
     markdown = markdown.replace(/&nbsp;/g, '');
 
     try {
-        await bridge.document.save(markdown);
+        await client.document.save(markdown);
     } catch (e) {
         console.error('[Markdown] Failed to save:', e);
     }
 });
 
 // Handle theme changes
-bridge.theme.onChanged((theme) => {
+client.theme.onChanged((theme) => {
     // Theme is handled by CSS prefers-color-scheme via WebView2 settings
     // but we could add custom handling here if needed
 });
 
 // Handle localization updates
-bridge.localization.onUpdated((strings) => {
+client.localization.onUpdated((strings) => {
     setStrings(strings);
     // Update the TipTap placeholder text dynamically
     const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
@@ -467,13 +467,13 @@ bridge.localization.onUpdated((strings) => {
     }
 });
 
-// Initialize the bridge and load content
+// Initialize the client and load content
 async function initializeEditor() {
     try {
         // Enable debug logging during development
-        // bridge.setLogLevel('debug');
+        // client.setLogLevel('debug');
 
-        const result = await bridge.initialize();
+        const result = await client.initialize();
 
         // Set base URLs for resolving relative paths
         projectBaseUrl = 'https://project.celbridge/';

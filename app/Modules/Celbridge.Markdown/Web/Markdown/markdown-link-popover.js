@@ -44,8 +44,8 @@ export function init(context) {
         if (e.ctrlKey || e.metaKey) {
             const href = link.getAttribute('href');
             if (href) {
-                // Send link clicked notification via bridge
-                ctx.bridge._notify('link/clicked', { href });
+                // Send link clicked notification via client
+                ctx.client._notify('link/clicked', { href });
             }
         } else {
             showPopoverForLink(link);
@@ -75,11 +75,11 @@ export function init(context) {
         }
     });
 
-    // Browse button — pick a resource
+    // Browse button - pick a resource
     document.getElementById('link-popover-browse').addEventListener('click', async () => {
         isPickerOpen = true;
         try {
-            const path = await ctx.bridge.dialog.pickFile([]);
+            const path = await ctx.client.dialog.pickFile([]);
             isPickerOpen = false;
             if (path) {
                 linkInputEl.value = path;
@@ -96,7 +96,7 @@ export function init(context) {
     openBtnEl.addEventListener('click', () => {
         const href = linkInputEl.value.trim();
         if (href) {
-            ctx.bridge._notify('link/clicked', { href });
+            ctx.client._notify('link/clicked', { href });
         }
     });
 
