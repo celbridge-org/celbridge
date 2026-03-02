@@ -20,10 +20,10 @@ Keep notes concise—this file may be referenced in future sessions.
 - `Core/Celbridge.UserInterface/Helpers/IWebViewMessageChannel.cs` - Interface for WebView2 abstraction
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridgeContracts.cs` - Typed records for all request/response types
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Core C# bridge with typed handler registration
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - JavaScript bridge module with JSDoc
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.test.js` - 18 Vitest unit tests
-- `Core/Celbridge.UserInterface/WebAssets/package.json` - npm config for Vitest
-- `Core/Celbridge.UserInterface/WebAssets/vitest.config.js` - Vitest configuration
+- `Core/Celbridge.UserInterface/Web/webview-bridge.js` - JavaScript bridge module with JSDoc
+- `Core/Celbridge.UserInterface/Web/webview-bridge.test.js` - 18 Vitest unit tests
+- `Core/Celbridge.UserInterface/Web/package.json` - npm config for Vitest
+- `Core/Celbridge.UserInterface/Web/vitest.config.js` - Vitest configuration
 - `Celbridge.Tests/Helpers/WebViewBridgeTests.cs` - 13 NUnit unit tests
 
 **Deviations from Plan:**
@@ -55,7 +55,7 @@ Keep notes concise—this file may be referenced in future sessions.
 **Files Modified:**
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Added Theme, Localization handlers; Document.RequestSave(), Document.OnLinkClicked()
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridgeContracts.cs` - Added LinkClickedParams, MarkdownEditorConfig
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - Added document.onRequestSave() event
+- `Core/Celbridge.UserInterface/Web/webview-bridge.js` - Added document.onRequestSave() event
 - `Modules/Celbridge.Markdown/Views/MarkdownDocumentView.xaml.cs` - Full migration to WebViewBridge
 - `Modules/Celbridge.Markdown/Web/Markdown/markdown.js` - Full migration to bridge API
 - `Modules/Celbridge.Markdown/Web/Markdown/markdown-image-popover.js` - Use bridge.dialog.pickImage()
@@ -98,7 +98,7 @@ Keep notes concise—this file may be referenced in future sessions.
 **Files Modified:**
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Added Document.OnSaveBinary(), Document.OnLoadBinary(), Document.OnImportComplete()
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridgeTypes.cs` - Added SaveBinaryParams, SaveBinaryResult, LoadBinaryResult, ImportCompleteNotification
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - Added document.saveBinary(), document.loadBinary(), document.notifyImportComplete()
+- `Core/Celbridge.UserInterface/Web/webview-bridge.js` - Added document.saveBinary(), document.loadBinary(), document.notifyImportComplete()
 - `Modules/Celbridge.Spreadsheet/Views/SpreadsheetDocumentView.xaml.cs` - Full migration to WebViewBridge
 - `Modules/Celbridge.Spreadsheet/Web/SpreadJS/index.html` - Full migration to bridge API (ES module)
 
@@ -263,11 +263,11 @@ All phases of the WebView Bridge implementation are complete:
 - `Core/Celbridge.UserInterface/Helpers/IWebViewMessageChannel.cs` - Testability interface
 - `Core/Celbridge.UserInterface/Helpers/WebView2MessageChannel.cs` - Production implementation
 - `Core/Celbridge.UserInterface/Helpers/WebViewLocalizationHelper.cs` - Localization extraction
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - JavaScript bridge module
+- `Core/Celbridge.UserInterface/Web/webview-bridge.js` - JavaScript bridge module
 
 *Tests:*
 - `Celbridge.Tests/Helpers/WebViewBridgeTests.cs` - C# unit tests (NUnit)
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.test.js` - JS unit tests (Vitest)
+- `Core/Celbridge.UserInterface/Web/webview-bridge.test.js` - JS unit tests (Vitest)
 
 *Documentation:*
 - `Core/Celbridge.UserInterface/Plan/WebViewBridge.md` - Design document

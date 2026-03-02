@@ -116,7 +116,7 @@ A shared JSON-RPC bridge that provides:
 
 2. **Type Safety via JSDoc**: Use JSDoc annotations in the JavaScript source for IDE intellisense. No TypeScript compilation—the `.js` file ships as-is. This is sufficient for AI-assisted development where code review matters more than autocomplete.
 
-3. **Modularity Preserved**: The shared bridge lives in `Core/Celbridge.UserInterface/WebAssets` alongside `celbridge-localization.js`. This allows use by Home Page, Community Page, and other non-workspace contexts. Editor-specific JS (markdown.js, spreadsheet.js) stays in their respective modules.
+3. **Modularity Preserved**: The shared bridge lives in `Core/Celbridge.UserInterface/Web` alongside `celbridge-localization.js`. This allows use by Home Page, Community Page, and other non-workspace contexts. Editor-specific JS (markdown.js, spreadsheet.js) stays in their respective modules.
 
 4. **Backward Compatibility**: Existing editors can migrate incrementally; old message patterns continue to work during transition.
 
@@ -239,10 +239,10 @@ C# Host                          JavaScript
 
 **Deliverables:**
 - `Core/Celbridge.UserInterface/` - Add to existing project:
-  - `WebAssets/webview-bridge.js` - Shared JavaScript module with JSDoc annotations
-  - `WebAssets/webview-bridge.test.js` - Vitest unit tests
-  - `WebAssets/package.json` - Minimal npm config for Vitest
-  - `WebAssets/vitest.config.js` - Vitest configuration
+  - `Web/webview-bridge.js` - Shared JavaScript module with JSDoc annotations
+  - `Web/webview-bridge.test.js` - Vitest unit tests
+  - `Web/package.json` - Minimal npm config for Vitest
+  - `Web/vitest.config.js` - Vitest configuration
   - `Helpers/WebViewBridge.cs` - Core C# bridge class with typed handler registration
   - `Helpers/IWebViewMessageChannel.cs` - Interface abstracting WebView2 (for testability)
 - Typed request/response records: `InitializeParams`, `InitializeResult`, `LoadResult`, `SaveParams`, etc.
@@ -377,7 +377,7 @@ WebView2 is Windows-only, but our CI runs on Linux. We need to test the bridge w
 ```
 Core/
   Celbridge.UserInterface/                # Existing project
-    WebAssets/
+    Web/
       celbridge-localization.js           # Existing shared localization
       webview-bridge.js                   # NEW - Shared bridge module
       webview-bridge.test.js              # NEW - Bridge tests
@@ -421,7 +421,7 @@ Single additional step in GitHub Actions workflow:
 
 ```yaml
 - name: Test WebView Bridge (JS)
-  working-directory: Core/Celbridge.UserInterface/WebAssets
+  working-directory: Core/Celbridge.UserInterface/Web
   run: |
     npm ci
     npm test
@@ -656,7 +656,7 @@ When completing a phase, copy the appropriate template below into the "Current S
 - `Modules/Celbridge.Markdown/Views/MarkdownDocumentView.xaml.cs` - C# side to migrate
 - `Modules/Celbridge.Markdown/Web/markdown.js` - JS side to migrate
 - `Core/Celbridge.UserInterface/Helpers/WebViewBridge.cs` - Bridge API (from Phase 1)
-- `Core/Celbridge.UserInterface/WebAssets/webview-bridge.js` - JS bridge (from Phase 1)
+- `Core/Celbridge.UserInterface/Web/webview-bridge.js` - JS bridge (from Phase 1)
 
 **Verification:**
 - [ ] `dotnet build` succeeds

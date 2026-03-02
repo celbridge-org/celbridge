@@ -331,10 +331,10 @@ WebView2Helper.MapLocalFolder(
 
 ### JavaScript Tests
 
-The shared bridge has Vitest tests in `Core/Celbridge.UserInterface/WebAssets/`:
+The shared bridge has Vitest tests in `Core/Celbridge.UserInterface/Web/`:
 
 ```bash
-cd Core/Celbridge.UserInterface/WebAssets
+cd Core/Celbridge.UserInterface/Web
 npm ci
 npm test
 ```

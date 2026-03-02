@@ -17,7 +17,7 @@ public static class WebView2Helper
     /// <summary>
     /// Folder path (relative to the app output directory) containing shared web assets.
     /// </summary>
-    public const string SharedAssetsFolderPath = "Celbridge.UserInterface/WebAssets";  // virtual host root maps here; subfolders (e.g. bootstrap-icons/) are path-resolved automatically
+    public const string SharedAssetsFolderPath = "Celbridge.UserInterface/Web";  // virtual host root maps here; subfolders (e.g. bootstrap-icons/) are path-resolved automatically
 
     /// <summary>
     /// JavaScript that captures global keyboard shortcuts and sends them to the C# host.
