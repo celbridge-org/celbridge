@@ -9,10 +9,11 @@ using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Markdown.Views;
 
-public sealed partial class MarkdownDocumentView : WebView2DocumentView
+public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostInit, IHostDocument, IHostDialog, IHostNotifications
 {
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
@@ -26,7 +27,8 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    private CelbridgeHost? _host;
+    private JsonRpc? _rpc;
+    private HostRpcHandler? _rpcHandler;
     private HostChannel? _messageChannel;
 
     public MarkdownDocumentView(
@@ -71,9 +73,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        if (_host is null)
+        if (_rpc is null)
         {
-            _logger.LogDebug("Save skipped - host not initialized");
+            _logger.LogDebug("Save skipped - RPC not initialized");
             return Result.Ok();
         }
 
@@ -83,9 +85,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             return Result.Ok();
         }
 
-        // Request the JS side to save - it will call document.save(content)
-        // which triggers our OnSaveDocument handler
-        _host.Document.RequestSave();
+        // Request the JS side to save - it will call document/save
+        // which triggers our HandleSaveDocumentAsync handler
+        await _rpc.NotifyRequestSaveAsync();
 
         return await ViewModel.SaveDocument();
     }
@@ -156,18 +158,21 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
                 args.Handled = true;
             };
 
-            // Initialize the host BEFORE navigation
+            // Initialize StreamJsonRpc with this view as the handler
             _messageChannel = new HostChannel(WebView.CoreWebView2);
-            _host = new CelbridgeHost(_messageChannel);
+            _rpcHandler = new HostRpcHandler(_messageChannel);
+            _rpc = new JsonRpc(_rpcHandler);
 
-            // Register host handlers
-            _host.OnInitialize(HandleInitializeAsync);
-            _host.Document.OnSave(HandleSaveDocumentAsync);
-            _host.Document.OnLoad(HandleLoadDocumentAsync);
-            _host.Document.OnChanged(OnDocumentChanged);
-            _host.Document.OnLinkClicked(HandleLinkClicked);
-            _host.Dialog.OnPickImage(HandlePickImageAsync);
-            _host.Dialog.OnPickFile(HandlePickFileAsync);
+            // Ensure RPC method handlers run on the UI thread
+            _rpc.SynchronizationContext = SynchronizationContext.Current;
+
+            // Register this view as the handler for all RPC interfaces
+            _rpc.AddLocalRpcTarget<IHostInit>(this, null);
+            _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
+            _rpc.AddLocalRpcTarget<IHostDialog>(this, null);
+            _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+
+            _rpc.StartListening();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
@@ -185,14 +190,16 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         }
     }
 
-    private async Task<InitializeResult> HandleInitializeAsync(InitializeParams request)
+    #region IHostInit
+
+    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         // Validate protocol version
-        if (request.ProtocolVersion != "1.0")
+        if (protocolVersion != "1.0")
         {
-            throw new BridgeException(
+            throw new HostRpcException(
                 JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {request.ProtocolVersion}. Expected: 1.0");
+                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
         }
 
         // Load content from file
@@ -210,11 +217,14 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         return new InitializeResult(content, metadata, localization);
     }
 
-    private async Task<SaveResult> HandleSaveDocumentAsync(SaveParams request)
+    #endregion
+
+    #region IHostDocument
+
+    public async Task<SaveResult> SaveAsync(string content)
     {
         try
         {
-            var content = request.Content;
             var saveResult = await ViewModel.SaveMarkdownToFile(content);
 
             if (saveResult.IsFailure)
@@ -241,12 +251,12 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         }
     }
 
-    private async Task<LoadResult> HandleLoadDocumentAsync(LoadParams request)
+    public async Task<LoadResult> LoadAsync(bool includeMetadata = false)
     {
         var content = await ViewModel.LoadMarkdownContent();
 
         DocumentMetadata? metadata = null;
-        if (request.IncludeMetadata)
+        if (includeMetadata)
         {
             metadata = new DocumentMetadata(
                 ViewModel.FilePath,
@@ -257,17 +267,35 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         return new LoadResult(content, metadata);
     }
 
-    private void OnDocumentChanged()
+    public Task<DocumentMetadata> GetMetadataAsync()
     {
-        ViewModel.OnDataChanged();
+        var metadata = new DocumentMetadata(
+            ViewModel.FilePath,
+            ViewModel.FileResource.ToString(),
+            Path.GetFileName(ViewModel.FilePath));
+        return Task.FromResult(metadata);
     }
 
-    private async Task<PickImageResult> HandlePickImageAsync(PickImageParams request)
+    public Task<SaveBinaryResult> SaveBinaryAsync(string contentBase64)
     {
-        var extensions = request.Extensions;
-        if (extensions is null || extensions.Length == 0)
+        throw new NotSupportedException("Binary save is not supported by the Markdown editor.");
+    }
+
+    public Task<LoadBinaryResult> LoadBinaryAsync(bool includeMetadata = false)
+    {
+        throw new NotSupportedException("Binary load is not supported by the Markdown editor.");
+    }
+
+    #endregion
+
+    #region IHostDialog
+
+    public async Task<PickImageResult> PickImageAsync(IReadOnlyList<string>? extensions = null)
+    {
+        var extensionsArray = extensions?.ToArray();
+        if (extensionsArray is null || extensionsArray.Length == 0)
         {
-            extensions =
+            extensionsArray =
             [
                 ".png",
                 ".jpg",
@@ -280,7 +308,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         }
 
         var title = _stringLocalizer.GetString("Markdown_SelectImage_Title");
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensions, title, showPreview: true);
+        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title, showPreview: true);
 
         if (result.IsSuccess)
         {
@@ -292,10 +320,11 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         return new PickImageResult(null);
     }
 
-    private async Task<PickFileResult> HandlePickFileAsync(PickFileParams request)
+    public async Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null)
     {
         var title = _stringLocalizer.GetString("Markdown_SelectFile_Title");
-        var result = await _dialogService.ShowResourcePickerDialogAsync(request.Extensions ?? [], title);
+        var extensionsArray = extensions?.ToArray() ?? [];
+        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title);
 
         if (result.IsSuccess)
         {
@@ -306,6 +335,13 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
         return new PickFileResult(null);
     }
+
+    public Task<AlertResult> AlertAsync(string title, string message)
+    {
+        throw new NotSupportedException("Alert dialog is not used by the Markdown editor.");
+    }
+
+    #endregion
 
     private void OpenSystemBrowser(string? uri)
     {
@@ -351,19 +387,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         var fileResourcePath = ViewModel.FileResource.ToString();
         var directoryName = Path.GetDirectoryName(fileResourcePath);
         return directoryName?.Replace('\\', '/') ?? "";
-    }
-
-    /// <summary>
-    /// Gets the full URL base for the current document's folder.
-    /// Used by JavaScript to resolve relative image/link paths.
-    /// </summary>
-    private string GetDocumentBaseUrl()
-    {
-        const string projectBaseUrl = "https://project.celbridge/";
-        var documentBasePath = GetDocumentBasePath();
-        return string.IsNullOrEmpty(documentBasePath)
-            ? projectBaseUrl
-            : $"{projectBaseUrl}{documentBasePath}/";
     }
 
     /// <summary>
@@ -454,7 +477,14 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         return Result<ResourceKey>.Fail($"Could not resolve resource path: {path}");
     }
 
-    private void HandleLinkClicked(string href)
+    #region IHostNotifications
+
+    public void OnDocumentChanged()
+    {
+        ViewModel.OnDataChanged();
+    }
+
+    public void OnLinkClicked(string href)
     {
         if (string.IsNullOrEmpty(href))
         {
@@ -491,6 +521,13 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             _ = ShowLinkErrorAsync(href);
         }
     }
+
+    public void OnImportComplete(bool success, string? error = null)
+    {
+        // Import completion is not used by the Markdown editor
+    }
+
+    #endregion
 
     private async Task ShowLinkErrorAsync(string href)
     {
@@ -536,10 +573,12 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
         ViewModel.Cleanup();
 
-        // Detach the message channel to stop receiving messages
+        // Dispose RPC and detach the message channel
+        _rpc?.Dispose();
+        _rpcHandler?.Dispose();
         _messageChannel?.Detach();
-        _host?.Dispose();
-        _host = null;
+        _rpc = null;
+        _rpcHandler = null;
         _messageChannel = null;
 
         await base.PrepareToClose();
@@ -561,10 +600,13 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             : CoreWebView2PreferredColorScheme.Light;
     }
 
-    private void ViewModel_ReloadRequested(object? sender, EventArgs e)
+    private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
         // External file change detected - notify JS to reload
         // The dirty state conflict handling is done in the ViewModel before raising this event
-        _host?.Document.NotifyExternalChange();
+        if (_rpc is not null)
+        {
+            await _rpc.NotifyExternalChangeAsync();
+        }
     }
 }

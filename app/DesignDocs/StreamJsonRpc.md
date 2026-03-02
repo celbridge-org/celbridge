@@ -5,7 +5,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Infrastructure | ✅ Complete |
-| Phase 2 | Markdown Editor Migration | ⏳ Pending |
+| Phase 2 | Markdown Editor Migration | ✅ Complete |
 | Phase 3 | Spreadsheet Editor Migration | ⏳ Pending |
 | Phase 4 | Screenplay Editor Migration | ⏳ Pending |
 | Phase 5 | Monaco Editor Migration | ⏳ Pending |
@@ -89,8 +89,8 @@ This document outlines the transition from our custom JSON-RPC implementation (`
 
 | Component | Purpose |
 |-----------|---------|
-| `HostRpcHandler` | Bridges WebView2's push-based events to StreamJsonRpc's pull-based `ReadAsync()` using `Channel<T>` |
-| `IHostChannel` / `HostChannel` | Abstraction over `CoreWebView2.PostWebMessageAsString` |
+| `HostRpcHandler` | Bridges WebView2's push-based events to StreamJsonRpc's pull-based `ReadAsync()` using `Channel<T>`. Uses `SystemTextJsonFormatter` with camelCase naming for JavaScript interop. |
+| `IHostChannel` / `HostChannel` | Abstraction over `CoreWebView2.PostWebMessageAsString`. Uses `DispatcherQueue` to marshal `PostMessage` calls to the UI thread. |
 | `HostNotificationExtensions` | Extension methods for sending notifications to JS |
 | `HostRpcMethods` | String constants for all RPC method names |
 
@@ -98,26 +98,32 @@ This document outlines the transition from our custom JSON-RPC implementation (`
 
 - **Naming Convention**: Interfaces use `IHost` prefix to indicate host-side (C#) RPC services and avoid conflicts with existing `IDocumentService` and `IDialogService`.
 - **Channel Buffering**: StreamJsonRpc's `IJsonRpcMessageHandler` uses pull-based `ReadAsync()`, while WebView2's `MessageReceived` is push-based. We bridge this using `Channel<T>`.
-- **Handler Implementations**: Each editor module provides its own handler implementations - no shared base class initially.
+- **JSON Serialization**: Uses `SystemTextJsonFormatter` (not the Newtonsoft-based `JsonMessageFormatter`) configured with `PropertyNamingPolicy = JsonNamingPolicy.CamelCase` and `PropertyNameCaseInsensitive = true` for JavaScript interop.
+- **Direct Interface Implementation**: Each document view implements the RPC interfaces directly (e.g., `MarkdownDocumentView : WebView2DocumentView, IHostInit, IHostDocument, IHostDialog, IHostNotifications`). This avoids creating separate handler classes that would just delegate back to the view.
+- **Direct Method Parameters**: Interfaces use direct method parameters instead of wrapper record types. StreamJsonRpc automatically maps JSON-RPC named parameters to method parameters. Record types are only used for results that bundle multiple values.
+- **UI Thread Dispatching**: Set `JsonRpc.SynchronizationContext` to the UI thread's `SynchronizationContext.Current` so that all RPC method handlers run on the UI thread. This allows handlers to safely show dialogs and interact with UI elements.
 
 ## Usage Pattern (After Migration)
 
-Each editor implements the service interfaces and registers them with `JsonRpc`:
+Each editor view implements the service interfaces directly and registers itself with `JsonRpc`:
 
 ```csharp
+// In document view that implements IHostInit, IHostDocument, IHostDialog, IHostNotifications
 var channel = new HostChannel(WebView.CoreWebView2);
 var handler = new HostRpcHandler(channel);
 var rpc = new JsonRpc(handler);
 
-rpc.AddLocalRpcTarget<IHostInit>(new EditorHostInit(this), options);
-rpc.AddLocalRpcTarget<IHostDocument>(new EditorHostDocument(this), options);
-rpc.AddLocalRpcTarget<IHostDialog>(new EditorHostDialog(this), options);
-rpc.AddLocalRpcTarget<IHostNotifications>(new EditorHostNotifications(this), options);
+// Ensure RPC method handlers run on the UI thread
+rpc.SynchronizationContext = SynchronizationContext.Current;
+
+// Register this view as the handler for all RPC interfaces
+rpc.AddLocalRpcTarget<IHostInit>(this, null);
+rpc.AddLocalRpcTarget<IHostDocument>(this, null);
+rpc.AddLocalRpcTarget<IHostDialog>(this, null);
+rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
 
 rpc.StartListening();
 ```
-
-**Important:** Use `JsonRpcTargetOptions` with `UseSingleObjectParameterDeserialization = true` to match the JS client's parameter format.
 
 ## Implementation Plan
 
@@ -134,65 +140,55 @@ rpc.StartListening();
 - Updated `CelbridgeHostTypes.cs` - Removed `Method` constants (pure data types)
 - `HostRpcHandlerTests.cs` - Unit tests for the RPC handler
 
-### Phase 2: Markdown Editor Migration (Pilot)
+### Phase 2: Markdown Editor Migration (Pilot) ✅ Complete
 
 **Goal**: Migrate the Markdown editor as a pilot to validate the approach.
 
 **Tasks**:
-1. Create handler implementations in `Celbridge.Markdown/Handlers/`:
-   - `MarkdownHostInitHandler : IHostInit`
-   - `MarkdownHostDocumentHandler : IHostDocument`
-   - `MarkdownHostDialogHandler : IHostDialog`
-   - `MarkdownHostNotificationsHandler : IHostNotifications`
-2. Update `MarkdownDocumentView.xaml.cs` to use `JsonRpc` instead of `CelbridgeHost`
+1. Update `MarkdownDocumentView` to implement `IHostInit`, `IHostDocument`, `IHostDialog`, `IHostNotifications` directly
+2. Replace `CelbridgeHost` with `JsonRpc` and register `this` as the RPC target
 3. Verify all existing functionality works
-4. Update tests
 
 **Deliverables**:
-- Updated `MarkdownDocumentView.xaml.cs`
-- Handler implementations in `Celbridge.Markdown`
+- Updated `MarkdownDocumentView.xaml.cs` implementing all RPC interfaces directly
+
+**Design Decision**: Rather than creating separate handler classes that delegate back to the view, each view implements the RPC interfaces directly. This eliminates boilerplate and keeps the handler logic where it belongs.
 
 ### Phase 3: Spreadsheet Editor Migration
 
 **Goal**: Migrate the Spreadsheet editor, validating binary content handling.
 
 **Tasks**:
-1. Create handler implementations in `Celbridge.Spreadsheet`
-2. Update `SpreadsheetDocumentView.xaml.cs` to use StreamJsonRpc
+1. Update `SpreadsheetDocumentView` to implement `IHostInit`, `IHostDocument`, `IHostDialog`, `IHostNotifications`
+2. Replace `CelbridgeHost` with `JsonRpc` and register `this` as the RPC target
 3. Verify binary load/save functionality (`SaveBinaryAsync`, `LoadBinaryAsync`)
-4. Update tests
 
 **Deliverables**:
-- Updated `SpreadsheetDocumentView.xaml.cs`
-- Handler implementations in `Celbridge.Spreadsheet`
+- Updated `SpreadsheetDocumentView.xaml.cs` implementing all RPC interfaces directly
 
 ### Phase 4: Screenplay Editor Migration
 
 **Goal**: Migrate the Screenplay scene editor.
 
 **Tasks**:
-1. Create handler implementations in `Celbridge.Screenplay`
-2. Update `SceneDocumentView.xaml.cs` to use StreamJsonRpc
+1. Update `SceneDocumentView` to implement `IHostInit`, `IHostDocument`, `IHostDialog`, `IHostNotifications`
+2. Replace `CelbridgeHost` with `JsonRpc` and register `this` as the RPC target
 3. Verify all existing functionality
-4. Update tests
 
 **Deliverables**:
-- Updated `SceneDocumentView.xaml.cs`
-- Handler implementations in `Celbridge.Screenplay`
+- Updated `SceneDocumentView.xaml.cs` implementing all RPC interfaces directly
 
 ### Phase 5: Monaco Editor Migration
 
 **Goal**: Migrate the Monaco code editor.
 
 **Tasks**:
-1. Create handler implementations in `Celbridge.Code`
-2. Update `MonacoEditorView.cs` to use StreamJsonRpc
+1. Update `MonacoEditorView` to implement `IHostInit`, `IHostDocument`, `IHostDialog`, `IHostNotifications`
+2. Replace `CelbridgeHost` with `JsonRpc` and register `this` as the RPC target
 3. Verify all existing functionality
-4. Update tests
 
 **Deliverables**:
-- Updated `MonacoEditorView.cs`
-- Handler implementations in `Celbridge.Code`
+- Updated `MonacoEditorView.cs` implementing all RPC interfaces directly
 
 ### Phase 6: Cleanup
 

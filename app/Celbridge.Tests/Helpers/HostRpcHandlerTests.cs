@@ -157,7 +157,7 @@ public class HostRpcHandlerTests
     {
         public bool InitializeCalled { get; private set; }
 
-        public Task<InitializeResult> InitializeAsync(InitializeParams request)
+        public Task<InitializeResult> InitializeAsync(string protocolVersion)
         {
             InitializeCalled = true;
             var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
@@ -181,12 +181,12 @@ public class HostRpcHandlerTests
             DocumentChangedCalled = true;
         }
 
-        public void OnLinkClicked(LinkClickedParams request)
+        public void OnLinkClicked(string href)
         {
             LinkClickedCalled = true;
         }
 
-        public void OnImportComplete(ImportCompleteNotification notification)
+        public void OnImportComplete(bool success, string? error = null)
         {
             ImportCompleteCalled = true;
         }

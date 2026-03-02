@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Channels;
 using StreamJsonRpc;
 using StreamJsonRpc.Protocol;
@@ -38,7 +39,14 @@ public class HostRpcHandler : IJsonRpcMessageHandler, IDisposable
     public HostRpcHandler(IHostChannel channel)
     {
         _channel = channel;
-        Formatter = new JsonMessageFormatter();
+
+        // Configure JSON serialization for JavaScript interop (camelCase)
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
+        Formatter = new SystemTextJsonFormatter { JsonSerializerOptions = jsonOptions };
 
         var options = new UnboundedChannelOptions
         {

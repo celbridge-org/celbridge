@@ -177,7 +177,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         // Validate protocol version
         if (request.ProtocolVersion != "1.0")
         {
-            throw new BridgeException(
+            throw new HostRpcException(
                 JsonRpcErrorCodes.InvalidVersion,
                 $"Unsupported protocol version: {request.ProtocolVersion}. Expected: 1.0");
         }
@@ -201,7 +201,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         var loadResult = ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {
-            throw new BridgeException(
+            throw new HostRpcException(
                 JsonRpcErrorCodes.InternalError,
                 $"Failed to load scene content: {loadResult}");
         }

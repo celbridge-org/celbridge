@@ -11,29 +11,29 @@ public interface IHostDocument
     /// Loads the document content from the host.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentLoad)]
-    Task<LoadResult> LoadAsync(LoadParams request);
+    Task<LoadResult> LoadAsync(bool includeMetadata = false);
 
     /// <summary>
     /// Saves the document content to the host.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentSave)]
-    Task<SaveResult> SaveAsync(SaveParams request);
+    Task<SaveResult> SaveAsync(string content);
 
     /// <summary>
     /// Gets metadata about the current document.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentGetMetadata)]
-    Task<DocumentMetadata> GetMetadataAsync(GetMetadataParams request);
+    Task<DocumentMetadata> GetMetadataAsync();
 
     /// <summary>
     /// Saves binary content (base64 encoded) to the host.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentSaveBinary)]
-    Task<SaveBinaryResult> SaveBinaryAsync(SaveBinaryParams request);
+    Task<SaveBinaryResult> SaveBinaryAsync(string contentBase64);
 
     /// <summary>
     /// Loads binary content (base64 encoded) from the host.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentLoadBinary)]
-    Task<LoadBinaryResult> LoadBinaryAsync(LoadBinaryParams request);
+    Task<LoadBinaryResult> LoadBinaryAsync(bool includeMetadata = false);
 }

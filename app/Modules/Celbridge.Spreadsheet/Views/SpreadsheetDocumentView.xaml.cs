@@ -169,7 +169,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         // Validate protocol version
         if (request.ProtocolVersion != "1.0")
         {
-            throw new BridgeException(
+            throw new HostRpcException(
                 JsonRpcErrorCodes.InvalidVersion,
                 $"Unsupported protocol version: {request.ProtocolVersion}. Expected: 1.0");
         }

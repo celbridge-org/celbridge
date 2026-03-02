@@ -244,7 +244,7 @@ public class CelbridgeHost : IDisposable
             var result = await handler(paramsElement);
             SendSuccessResponse(id, result, startTime);
         }
-        catch (BridgeException ex)
+        catch (HostRpcException ex)
         {
             SendErrorResponse(id, ex.Code, ex.Message, ex.Data);
         }

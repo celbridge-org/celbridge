@@ -26,14 +26,14 @@ public static class JsonRpcErrorCodes
 }
 
 /// <summary>
-/// Base class for bridge exceptions that map to JSON-RPC errors.
+/// Exception that maps to JSON-RPC errors for WebView2 RPC communication.
 /// </summary>
-public class BridgeException : Exception
+public class HostRpcException : Exception
 {
     public int Code { get; }
     public new object? Data { get; }
 
-    public BridgeException(int code, string message, object? data = null) : base(message)
+    public HostRpcException(int code, string message, object? data = null) : base(message)
     {
         Code = code;
         Data = data;
@@ -41,13 +41,8 @@ public class BridgeException : Exception
 }
 
 // =============================================================================
-// Initialize Request/Response
+// Initialize Result
 // =============================================================================
-
-/// <summary>
-/// Parameters for the bridge/initialize request.
-/// </summary>
-public record InitializeParams(string ProtocolVersion);
 
 /// <summary>
 /// Metadata about the document being edited.
@@ -63,13 +58,8 @@ public record InitializeResult(
     Dictionary<string, string> Localization);
 
 // =============================================================================
-// Document Operations
+// Document Operation Results
 // =============================================================================
-
-/// <summary>
-/// Parameters for the document/load request.
-/// </summary>
-public record LoadParams(bool IncludeMetadata = false);
 
 /// <summary>
 /// Result of the document/load request.
@@ -77,95 +67,9 @@ public record LoadParams(bool IncludeMetadata = false);
 public record LoadResult(string Content, DocumentMetadata? Metadata = null);
 
 /// <summary>
-/// Parameters for the document/save request.
-/// </summary>
-public record SaveParams(string Content);
-
-/// <summary>
 /// Result of the document/save request.
 /// </summary>
 public record SaveResult(bool Success, string? Error = null);
-
-/// <summary>
-/// Parameters for the document/getMetadata request.
-/// </summary>
-public record GetMetadataParams();
-
-// =============================================================================
-// Dialog Operations
-// =============================================================================
-
-/// <summary>
-/// Parameters for the dialog/pickImage request.
-/// </summary>
-public record PickImageParams(string[] Extensions);
-
-/// <summary>
-/// Result of the dialog/pickImage request.
-/// </summary>
-public record PickImageResult(string? Path);
-
-/// <summary>
-/// Parameters for the dialog/pickFile request.
-/// </summary>
-public record PickFileParams(string[] Extensions);
-
-/// <summary>
-/// Result of the dialog/pickFile request.
-/// </summary>
-public record PickFileResult(string? Path);
-
-/// <summary>
-/// Parameters for the dialog/alert request.
-/// </summary>
-public record AlertParams(string Title, string Message);
-
-/// <summary>
-/// Result of the dialog/alert request.
-/// </summary>
-public record AlertResult();
-
-// =============================================================================
-// Notifications (no response expected)
-// =============================================================================
-
-/// <summary>
-/// Notification sent when document content changes (JS to C#).
-/// </summary>
-public record DocumentChangedNotification();
-
-/// <summary>
-/// Notification sent to request the WebView to save (C# to JS).
-/// </summary>
-public record RequestSaveNotification();
-
-/// <summary>
-/// Notification sent when external file changes are detected (C# to JS).
-/// </summary>
-public record ExternalChangeNotification();
-
-/// <summary>
-/// Notification sent when localization is updated (C# to JS).
-/// </summary>
-public record LocalizationUpdatedNotification(Dictionary<string, string> Strings);
-
-// =============================================================================
-// Link/Navigation Operations
-// =============================================================================
-
-/// <summary>
-/// Parameters for the link/clicked notification (JS to C#).
-/// </summary>
-public record LinkClickedParams(string Href);
-
-// =============================================================================
-// Binary Document Operations (for spreadsheets, etc.)
-// =============================================================================
-
-/// <summary>
-/// Parameters for the document/saveBinary request (binary content as base64).
-/// </summary>
-public record SaveBinaryParams(string ContentBase64);
 
 /// <summary>
 /// Result of the document/saveBinary request.
@@ -173,18 +77,97 @@ public record SaveBinaryParams(string ContentBase64);
 public record SaveBinaryResult(bool Success, string? Error = null);
 
 /// <summary>
-/// Parameters for the document/loadBinary request.
-/// </summary>
-public record LoadBinaryParams(bool IncludeMetadata = false);
-
-/// <summary>
 /// Result of the document/loadBinary request (binary content as base64).
 /// </summary>
 public record LoadBinaryResult(string ContentBase64, DocumentMetadata? Metadata = null);
 
 // =============================================================================
-// Import Complete Notification (for spreadsheets)
+// Dialog Operation Results
 // =============================================================================
+
+/// <summary>
+/// Result of the dialog/pickImage request.
+/// </summary>
+public record PickImageResult(string? Path);
+
+/// <summary>
+/// Result of the dialog/pickFile request.
+/// </summary>
+public record PickFileResult(string? Path);
+
+/// <summary>
+/// Result of the dialog/alert request.
+/// </summary>
+public record AlertResult();
+
+// =============================================================================
+// Outbound Notification Types (C# to JS)
+// =============================================================================
+
+/// <summary>
+/// Notification sent when localization is updated (C# to JS).
+/// </summary>
+public record LocalizationUpdatedNotification(Dictionary<string, string> Strings);
+
+// =============================================================================
+// Legacy CelbridgeHost Types (used by editors not yet migrated to StreamJsonRpc)
+// These will be removed in Phase 6 cleanup.
+// =============================================================================
+
+/// <summary>
+/// Parameters for the bridge/initialize request.
+/// </summary>
+public record InitializeParams(string ProtocolVersion);
+
+/// <summary>
+/// Parameters for the document/load request.
+/// </summary>
+public record LoadParams(bool IncludeMetadata = false);
+
+/// <summary>
+/// Parameters for the document/save request.
+/// </summary>
+public record SaveParams(string Content);
+
+/// <summary>
+/// Parameters for the document/getMetadata request.
+/// </summary>
+public record GetMetadataParams();
+
+/// <summary>
+/// Parameters for the dialog/pickImage request.
+/// </summary>
+public record PickImageParams(string[] Extensions);
+
+/// <summary>
+/// Parameters for the dialog/pickFile request.
+/// </summary>
+public record PickFileParams(string[] Extensions);
+
+/// <summary>
+/// Parameters for the dialog/alert request.
+/// </summary>
+public record AlertParams(string Title, string Message);
+
+/// <summary>
+/// Parameters for the document/saveBinary request (binary content as base64).
+/// </summary>
+public record SaveBinaryParams(string ContentBase64);
+
+/// <summary>
+/// Parameters for the document/loadBinary request.
+/// </summary>
+public record LoadBinaryParams(bool IncludeMetadata = false);
+
+/// <summary>
+/// Parameters for the link/clicked notification (JS to C#).
+/// </summary>
+public record LinkClickedParams(string Href);
+
+/// <summary>
+/// Notification sent when document content changes (JS to C#).
+/// </summary>
+public record DocumentChangedNotification();
 
 /// <summary>
 /// Notification sent when import operation completes (JS to C#).

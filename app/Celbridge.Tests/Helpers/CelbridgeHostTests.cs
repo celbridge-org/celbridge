@@ -122,7 +122,7 @@ public class CelbridgeHostTests
         // Arrange
         _host.OnInitialize(async (request) =>
         {
-            throw new BridgeException(JsonRpcErrorCodes.InvalidVersion, "Unsupported version", new { expected = "1.0" });
+            throw new HostRpcException(JsonRpcErrorCodes.InvalidVersion, "Unsupported version", new { expected = "1.0" });
         });
 
         // Act

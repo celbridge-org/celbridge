@@ -17,11 +17,11 @@ public interface IHostNotifications
     /// Called when a link is clicked in the WebView.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.LinkClicked)]
-    void OnLinkClicked(LinkClickedParams request);
+    void OnLinkClicked(string href);
 
     /// <summary>
     /// Called when an import operation completes in the WebView.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.ImportComplete)]
-    void OnImportComplete(ImportCompleteNotification notification);
+    void OnImportComplete(bool success, string? error = null);
 }

@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -8,10 +9,12 @@ namespace Celbridge.UserInterface.Helpers;
 public class HostChannel : IHostChannel
 {
     private readonly CoreWebView2 _coreWebView2;
+    private readonly DispatcherQueue _dispatcherQueue;
 
     public HostChannel(CoreWebView2 coreWebView2)
     {
         _coreWebView2 = coreWebView2;
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _coreWebView2.WebMessageReceived += OnWebMessageReceived;
     }
 
@@ -19,7 +22,14 @@ public class HostChannel : IHostChannel
 
     public void PostMessage(string json)
     {
-        _coreWebView2.PostWebMessageAsString(json);
+        if (_dispatcherQueue.HasThreadAccess)
+        {
+            _coreWebView2.PostWebMessageAsString(json);
+        }
+        else
+        {
+            _dispatcherQueue.TryEnqueue(() => _coreWebView2.PostWebMessageAsString(json));
+        }
     }
 
     private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)

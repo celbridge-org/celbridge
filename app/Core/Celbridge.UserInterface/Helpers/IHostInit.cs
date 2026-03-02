@@ -12,5 +12,5 @@ public interface IHostInit
     /// Returns the document content, metadata, and localization strings.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.Initialize)]
-    Task<InitializeResult> InitializeAsync(InitializeParams request);
+    Task<InitializeResult> InitializeAsync(string protocolVersion);
 }
