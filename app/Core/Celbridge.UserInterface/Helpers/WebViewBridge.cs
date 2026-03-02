@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace Celbridge.UserInterface.Helpers;
@@ -15,8 +14,7 @@ public class WebViewBridge : IDisposable
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
+        PropertyNameCaseInsensitive = true
     };
 
     private readonly IWebViewMessageChannel _channel;
@@ -41,11 +39,6 @@ public class WebViewBridge : IDisposable
     public DialogHandlers Dialog { get; }
 
     /// <summary>
-    /// Theme-related notifications.
-    /// </summary>
-    public ThemeHandlers Theme { get; }
-
-    /// <summary>
     /// Localization-related notifications.
     /// </summary>
     public LocalizationHandlers Localization { get; }
@@ -60,7 +53,6 @@ public class WebViewBridge : IDisposable
 
         Document = new DocumentHandlers(this);
         Dialog = new DialogHandlers(this);
-        Theme = new ThemeHandlers(this);
         Localization = new LocalizationHandlers(this);
 
         _channel.MessageReceived += OnMessageReceived;
@@ -120,7 +112,7 @@ public class WebViewBridge : IDisposable
         };
 
         var json = message.ToJsonString(_jsonOptions);
-        LogDebug($"→ notification: {method}");
+        LogDebug($"-> notification: {method}");
         _channel.PostMessage(json);
     }
 
@@ -136,7 +128,7 @@ public class WebViewBridge : IDisposable
         };
 
         var json = message.ToJsonString(_jsonOptions);
-        LogDebug($"→ notification: {method}");
+        LogDebug($"-> notification: {method}");
         _channel.PostMessage(json);
     }
 
@@ -198,13 +190,13 @@ public class WebViewBridge : IDisposable
             // Notification (no id)
             if (!hasId)
             {
-                LogDebug($"← notification: {method}");
+                LogDebug($"<- notification: {method}");
                 HandleNotification(method, paramsElement);
                 return;
             }
 
             // Request (has id)
-            LogDebug($"← request #{id}: {method}");
+            LogDebug($"<- request #{id}: {method}");
             await HandleRequestAsync(method, paramsElement, id.Value);
         }
         catch (JsonException ex)
@@ -276,7 +268,7 @@ public class WebViewBridge : IDisposable
         };
 
         var json = message.ToJsonString(_jsonOptions);
-        LogDebug($"→ response #{id}: success ({elapsed:F0}ms)");
+        LogDebug($"-> response #{id}: success ({elapsed:F0}ms)");
         _channel.PostMessage(json);
     }
 
@@ -309,7 +301,7 @@ public class WebViewBridge : IDisposable
         }
 
         var json = responseObj.ToJsonString(_jsonOptions);
-        LogDebug($"→ response #{id}: error {code} - {message}");
+        LogDebug($"-> response #{id}: error {code} - {message}");
         _channel.PostMessage(json);
     }
 
@@ -473,29 +465,8 @@ public class WebViewBridge : IDisposable
     }
 
     // =========================================================================
-    // Theme Notification Helpers
+    // Localization Notification Helpers
     // =========================================================================
-
-    /// <summary>
-    /// Theme-related notification methods.
-    /// </summary>
-    public class ThemeHandlers
-    {
-        private readonly WebViewBridge _bridge;
-
-        internal ThemeHandlers(WebViewBridge bridge)
-        {
-            _bridge = bridge;
-        }
-
-        /// <summary>
-        /// Sends a theme/changed notification to the WebView.
-        /// </summary>
-        public void NotifyChanged(WebViewTheme theme)
-        {
-            _bridge.SendNotification("theme/changed", new ThemeChangedNotification(theme));
-        }
-    }
 
     /// <summary>
     /// Localization-related notification methods.

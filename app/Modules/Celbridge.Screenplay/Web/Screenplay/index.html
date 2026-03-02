@@ -54,7 +54,7 @@
                 const result = await bridge.initialize();
 
                 // Apply initial theme
-                applyTheme(result.theme);
+                applyTheme(bridge.theme.current);
 
                 // Set the screenplay content
                 document.getElementById('screenplay-container').innerHTML = result.content;

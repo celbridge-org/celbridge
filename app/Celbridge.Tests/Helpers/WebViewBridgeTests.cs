@@ -77,8 +77,7 @@ public class WebViewBridgeTests
             return new InitializeResult(
                 "# Content",
                 new DocumentMetadata("/path/test.md", "test", "test.md"),
-                new Dictionary<string, string> { { "key", "value" } },
-                WebViewTheme.Dark);
+                new Dictionary<string, string> { { "key", "value" } });
         });
 
         // Act

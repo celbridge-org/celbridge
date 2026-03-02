@@ -17,7 +17,6 @@
  * @property {string} content - The document content.
  * @property {DocumentMetadata} metadata - Document metadata.
  * @property {Object<string, string>} localization - Localized strings dictionary.
- * @property {WebViewTheme} theme - Current theme.
  */
 
 /**
@@ -120,7 +119,7 @@ class WebViewBridge {
         // Initialize sub-APIs
         this.document = new DocumentAPI(this);
         this.dialog = new DialogAPI(this);
-        this.theme = new ThemeAPI(this);
+        this.theme = new ThemeAPI();
         this.localization = new LocalizationAPI(this);
     }
 
@@ -193,7 +192,7 @@ class WebViewBridge {
                 id
             };
 
-            this.#log('debug', `→ request #${id}: ${method}`, params);
+            this.#log('debug', `-> request #${id}: ${method}`, params);
             this.#postMessage(JSON.stringify(message));
         });
     }
@@ -211,7 +210,7 @@ class WebViewBridge {
         };
         // No id field for notifications
 
-        this.#log('debug', `→ notification: ${method}`, params);
+        this.#log('debug', `-> notification: ${method}`, params);
         this.#postMessage(JSON.stringify(message));
     }
 
@@ -256,13 +255,13 @@ class WebViewBridge {
         const elapsed = Date.now() - pending.startTime;
 
         if ('error' in message) {
-            this.#log('debug', `← response #${message.id}: error (${elapsed}ms)`, message.error);
+            this.#log('debug', `<- response #${message.id}: error (${elapsed}ms)`, message.error);
             const error = new Error(message.error.message);
             error.code = message.error.code;
             error.data = message.error.data;
             pending.reject(error);
         } else {
-            this.#log('debug', `← response #${message.id}: success (${elapsed}ms)`);
+            this.#log('debug', `<- response #${message.id}: success (${elapsed}ms)`);
             pending.resolve(message.result);
         }
     }
@@ -273,7 +272,7 @@ class WebViewBridge {
      */
     #handleNotification(message) {
         const { method, params } = message;
-        this.#log('debug', `← notification: ${method}`, params);
+        this.#log('debug', `<- notification: ${method}`, params);
 
         const handlers = this.#eventHandlers[method];
         if (handlers) {
@@ -509,16 +508,49 @@ class DialogAPI {
 
 /**
  * Theme events API.
+ * Detects theme from the browser's prefers-color-scheme media query.
  */
 class ThemeAPI {
-    /** @type {WebViewBridge} */
-    #bridge;
+    /** @type {MediaQueryList} */
+    #darkModeQuery;
+
+    /** @type {Function[]} */
+    #handlers = [];
+
+    constructor() {
+        // Check if matchMedia is available (not available in Node.js tests)
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            this.#darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            this.#darkModeQuery.addEventListener('change', (e) => {
+                const theme = e.matches ? 'Dark' : 'Light';
+                for (const handler of this.#handlers) {
+                    try {
+                        handler(theme);
+                    } catch (error) {
+                        console.error('[ThemeAPI] Error in theme change handler:', error);
+                    }
+                }
+            });
+        }
+    }
 
     /**
-     * @param {WebViewBridge} bridge
+     * Gets the current theme based on the browser's prefers-color-scheme.
+     * @returns {WebViewTheme} 'Light' or 'Dark'
      */
-    constructor(bridge) {
-        this.#bridge = bridge;
+    get current() {
+        if (this.#darkModeQuery) {
+            return this.#darkModeQuery.matches ? 'Dark' : 'Light';
+        }
+        return 'Light';
+    }
+
+    /**
+     * Gets whether the current theme is dark.
+     * @returns {boolean}
+     */
+    get isDark() {
+        return this.current === 'Dark';
     }
 
     /**
@@ -526,7 +558,7 @@ class ThemeAPI {
      * @param {(theme: WebViewTheme) => void} handler - Called when the theme changes.
      */
     onChanged(handler) {
-        this.#bridge._addEventListener('theme/changed', (params) => handler(params.theme));
+        this.#handlers.push(handler);
     }
 }
 

@@ -124,7 +124,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
             }
 
             // Sync WebView2 color scheme with the app theme
-            ApplyThemeToWebView(WebView);
+            ApplyThemeToWebView();
 
             WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
             var settings = WebView.CoreWebView2.Settings;
@@ -207,12 +207,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
         // Gather localization strings
         var localization = WebViewLocalizationHelper.GetLocalizedStrings(_stringLocalizer, "Markdown_");
 
-        // Build theme info
-        var theme = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark
-            ? WebViewTheme.Dark
-            : WebViewTheme.Light;
-
-        return new InitializeResult(content, metadata, localization, theme);
+        return new InitializeResult(content, metadata, localization);
     }
 
     private async Task<SaveResult> HandleSaveDocumentAsync(SaveParams request)
@@ -552,25 +547,16 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
     {
-        if (WebView is not null)
+        if (WebView?.CoreWebView2 is not null)
         {
-            ApplyThemeToWebView(WebView);
-
-            // Notify the JS side of theme change
-            if (_bridge is not null)
-            {
-                var theme = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark
-                    ? WebViewTheme.Dark
-                    : WebViewTheme.Light;
-                _bridge.Theme.NotifyChanged(theme);
-            }
+            ApplyThemeToWebView();
         }
     }
 
-    private void ApplyThemeToWebView(WebView2 webView)
+    private void ApplyThemeToWebView()
     {
         var theme = _userInterfaceService.UserInterfaceTheme;
-        webView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+        WebView!.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
             ? CoreWebView2PreferredColorScheme.Dark
             : CoreWebView2PreferredColorScheme.Light;
     }

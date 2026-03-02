@@ -186,14 +186,11 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         // Gather localization strings (none needed for spreadsheet currently)
         var localization = new Dictionary<string, string>();
 
-        // Build theme info (SpreadJS handles its own theming)
-        var theme = WebViewTheme.Light;
-
         // Mark import as in progress - JS will notify us when complete
         _isImportInProgress = true;
 
         // Use content field to pass base64 data for spreadsheet
-        return new InitializeResult(base64Content, metadata, localization, theme);
+        return new InitializeResult(base64Content, metadata, localization);
     }
 
     private async Task<string> LoadSpreadsheetAsBase64Async()

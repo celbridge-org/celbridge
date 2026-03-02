@@ -107,15 +107,20 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
     {
-        if (_bridge is null)
+        // Theme change is detected by JavaScript via matchMedia
+        // WebView2's PreferredColorScheme triggers the matchMedia change event
+        if (WebView?.CoreWebView2 is not null)
         {
-            return;
+            ApplyThemeToWebView();
         }
+    }
 
-        var theme = message.Theme == UserInterfaceTheme.Dark
-            ? WebViewTheme.Dark
-            : WebViewTheme.Light;
-        _bridge.Theme.NotifyChanged(theme);
+    private void ApplyThemeToWebView()
+    {
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        WebView!.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+            ? CoreWebView2PreferredColorScheme.Dark
+            : CoreWebView2PreferredColorScheme.Light;
     }
 
     private async void SceneDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -132,6 +137,9 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
             Guard.IsNotNull(WebView);
 
             await WebView.EnsureCoreWebView2Async();
+
+            // Set initial theme before navigation
+            ApplyThemeToWebView();
 
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "screenplay.celbridge",
@@ -183,13 +191,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         // No localization strings needed for screenplay viewer
         var localization = new Dictionary<string, string>();
 
-        // Build theme info
-        var theme = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark
-            ? WebViewTheme.Dark
-            : WebViewTheme.Light;
-
         // Content is the generated HTML body content
-        return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata, localization, theme));
+        return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata, localization));
     }
 
     private Task<LoadResult> HandleDocumentLoadAsync(LoadParams request)

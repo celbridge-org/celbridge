@@ -59,17 +59,7 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 public record InitializeResult(
     string Content,
     DocumentMetadata Metadata,
-    Dictionary<string, string> Localization,
-    WebViewTheme Theme);
-
-/// <summary>
-/// Theme values for WebView communication.
-/// </summary>
-public enum WebViewTheme
-{
-    Light,
-    Dark
-}
+    Dictionary<string, string> Localization);
 
 // =============================================================================
 // Document Operations
@@ -147,11 +137,6 @@ public record DocumentChangedNotification();
 /// Notification sent when external file changes are detected.
 /// </summary>
 public record ExternalChangeNotification();
-
-/// <summary>
-/// Notification sent when theme changes.
-/// </summary>
-public record ThemeChangedNotification(WebViewTheme Theme);
 
 /// <summary>
 /// Notification sent when localization is updated.
