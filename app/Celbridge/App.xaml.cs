@@ -112,7 +112,6 @@ public partial class App : Application
                         "Celbridge.Code",
                         "Celbridge.Core",
                         "Celbridge.FileViewer",
-                        "Celbridge.HTML",
                         "Celbridge.Markdown",
                         "Celbridge.Screenplay",
                         "Celbridge.Spreadsheet",
