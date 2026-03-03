@@ -96,7 +96,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
 
         // Set up virtual host mapping for Monaco editor assets
         _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-            "MonacoEditor",
+            "monaco.celbridge",
             "Celbridge.Code/Web/Monaco",
             CoreWebView2HostResourceAccessKind.Allow);
 
@@ -131,7 +131,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         _clientReadyTcs = new TaskCompletionSource();
 
         // Navigate to Monaco editor
-        _webView.CoreWebView2.Navigate("http://MonacoEditor/index.html");
+        _webView.CoreWebView2.Navigate("http://monaco.celbridge/index.html");
 
         // Wait for the JS client to signal it's ready
         await _clientReadyTcs.Task;

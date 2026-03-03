@@ -181,10 +181,10 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         // Register for messages now so that we will get notified when the terminal first resizes during init.
         TerminalWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
 
-        TerminalWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("Terminal",
+        TerminalWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("terminal.celbridge",
             "Celbridge.Console/Assets/Terminal",
             CoreWebView2HostResourceAccessKind.Allow);
-        TerminalWebView.CoreWebView2.Navigate("http://Terminal/index.html");
+        TerminalWebView.CoreWebView2.Navigate("http://terminal.celbridge/index.html");
 
         // Wait for navigation to complete
         bool success = await tcs.Task;
