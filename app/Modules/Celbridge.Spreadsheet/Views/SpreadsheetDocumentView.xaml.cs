@@ -8,10 +8,11 @@ using Celbridge.UserInterface.CelbridgeHost;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Spreadsheet.Views;
 
-public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
+public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHostDocument, IHostNotifications
 {
     private readonly ILogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
@@ -23,7 +24,8 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    private CelbridgeHost? _host;
+    private JsonRpc? _rpc;
+    private HostRpcHandler? _rpcHandler;
     private HostChannel? _messageChannel;
 
     // Track import state to prevent race conditions during initial load and reloads
@@ -68,9 +70,9 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        if (_host is null)
+        if (_rpc is null)
         {
-            _logger.LogDebug("Save skipped - host not initialized");
+            _logger.LogDebug("Save skipped - RPC not initialized");
             return Result.Ok();
         }
 
@@ -80,9 +82,9 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
             return Result.Ok();
         }
 
-        // Request the JS side to save - it will call document.saveBinary(contentBase64)
-        // which triggers our HandleSaveBinaryAsync handler
-        _host.Document.RequestSave();
+        // Request the JS side to save - it will call document/save
+        // which triggers our SaveAsync handler
+        await _rpc.NotifyRequestSaveAsync();
 
         return await ViewModel.SaveDocument();
     }
@@ -141,16 +143,19 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
                 OpenSystemBrowser(uri);
             };
 
-            // Initialize the host BEFORE navigation
+            // Initialize StreamJsonRpc with this view as the handler
             _messageChannel = new HostChannel(WebView.CoreWebView2);
-            _host = new CelbridgeHost(_messageChannel);
+            _rpcHandler = new HostRpcHandler(_messageChannel);
+            _rpc = new JsonRpc(_rpcHandler);
 
-            // Register host handlers
-            _host.OnInitialize(HandleInitializeAsync);
-            _host.Document.OnSaveBinary(HandleSaveBinaryAsync);
-            _host.Document.OnLoadBinary(HandleLoadBinaryAsync);
-            _host.Document.OnChanged(OnDocumentChanged);
-            _host.Document.OnImportComplete(OnImportComplete);
+            // Ensure RPC method handlers run on the UI thread
+            _rpc.SynchronizationContext = SynchronizationContext.Current;
+
+            // Register this view as the handler for RPC interfaces
+            _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
+            _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+
+            _rpc.StartListening();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
@@ -164,24 +169,22 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         }
     }
 
-    private async Task<InitializeResult> HandleInitializeAsync(InitializeParams request)
+    #region IHostDocument
+
+    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         // Validate protocol version
-        if (request.ProtocolVersion != "1.0")
+        if (protocolVersion != "1.0")
         {
             throw new HostRpcException(
                 JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {request.ProtocolVersion}. Expected: 1.0");
+                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
         }
 
         // Load spreadsheet as base64 - content is stored in the result
         var base64Content = await LoadSpreadsheetAsBase64Async();
 
-        // Build metadata
-        var metadata = new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
+        var metadata = CreateMetadata();
 
         // Gather localization strings (none needed for spreadsheet currently)
         var localization = new Dictionary<string, string>();
@@ -191,6 +194,106 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
 
         // Use content field to pass base64 data for spreadsheet
         return new InitializeResult(base64Content, metadata, localization);
+    }
+
+    public async Task<LoadResult> LoadAsync()
+    {
+        // Mark import as in progress
+        _isImportInProgress = true;
+
+        var base64Content = await LoadSpreadsheetAsBase64Async();
+        var metadata = CreateMetadata();
+
+        return new LoadResult(base64Content, metadata);
+    }
+
+    public async Task<SaveResult> SaveAsync(string content)
+    {
+        try
+        {
+            var saveResult = await ViewModel.SaveSpreadsheetDataToFile(content);
+
+            if (saveResult.IsFailure)
+            {
+                _logger.LogError(saveResult, "Failed to save spreadsheet data");
+                CompleteSave();
+
+                // Alert the user that the document failed to save
+                var file = ViewModel.FilePath;
+                var title = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");
+                var message = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", file);
+                await _dialogService.ShowAlertDialogAsync(title, message);
+
+                return new SaveResult(false, saveResult.Error);
+            }
+
+            // Check if there's a pending save that needs processing
+            if (CompleteSave())
+            {
+                _logger.LogDebug("Processing pending save request");
+                ViewModel.OnDataChanged();
+            }
+
+            return new SaveResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception during save");
+            CompleteSave();
+            return new SaveResult(false, ex.Message);
+        }
+    }
+
+    #endregion
+
+    #region IHostNotifications
+
+    public void OnDocumentChanged()
+    {
+        // Flag the document as modified so it will attempt to save after a short delay.
+        ViewModel.OnDataChanged();
+    }
+
+    public void OnLinkClicked(string href)
+    {
+        // Link clicked is not used by the Spreadsheet editor
+    }
+
+    public void OnImportComplete(bool success, string? error = null)
+    {
+        _isImportInProgress = false;
+
+        if (!success)
+        {
+            _logger.LogWarning($"Spreadsheet import failed: {error}");
+        }
+        else
+        {
+            _logger.LogDebug("Spreadsheet import completed successfully");
+        }
+
+        // If another file change occurred while we were importing, we need to import again
+        if (_hasPendingImport)
+        {
+            _logger.LogDebug("Processing pending import request");
+            _hasPendingImport = false;
+            _rpc?.NotifyExternalChangeAsync();
+        }
+    }
+
+    public void OnClientReady()
+    {
+        // Client ready is handled during initialization for Spreadsheet
+    }
+
+    #endregion
+
+    private DocumentMetadata CreateMetadata()
+    {
+        return new DocumentMetadata(
+            ViewModel.FilePath,
+            ViewModel.FileResource.ToString(),
+            Path.GetFileName(ViewModel.FilePath));
     }
 
     private async Task<string> LoadSpreadsheetAsBase64Async()
@@ -217,100 +320,16 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
             var base64 = Convert.ToBase64String(bytes);
 
             _logger.LogDebug($"Successfully loaded spreadsheet as base64: {filePath}");
-            return base64;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
-            return string.Empty;
-        }
-    }
-
-    private async Task<SaveBinaryResult> HandleSaveBinaryAsync(SaveBinaryParams request)
-    {
-        try
-        {
-            var saveResult = await ViewModel.SaveSpreadsheetDataToFile(request.ContentBase64);
-
-            if (saveResult.IsFailure)
-            {
-                _logger.LogError(saveResult, "Failed to save spreadsheet data");
-                CompleteSave();
-
-                // Alert the user that the document failed to save
-                var file = ViewModel.FilePath;
-                var title = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");
-                var message = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", file);
-                await _dialogService.ShowAlertDialogAsync(title, message);
-
-                return new SaveBinaryResult(false, saveResult.Error);
+                return base64;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
+                    return string.Empty;
+                }
             }
 
-            // Check if there's a pending save that needs processing
-            if (CompleteSave())
-            {
-                _logger.LogDebug("Processing pending save request");
-                ViewModel.OnDataChanged();
-            }
-
-            return new SaveBinaryResult(true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception during save");
-            CompleteSave();
-            return new SaveBinaryResult(false, ex.Message);
-        }
-    }
-
-    private async Task<LoadBinaryResult> HandleLoadBinaryAsync(LoadBinaryParams request)
-    {
-        // Mark import as in progress
-        _isImportInProgress = true;
-
-        var base64Content = await LoadSpreadsheetAsBase64Async();
-
-        DocumentMetadata? metadata = null;
-        if (request.IncludeMetadata)
-        {
-            metadata = new DocumentMetadata(
-                ViewModel.FilePath,
-                ViewModel.FileResource.ToString(),
-                Path.GetFileName(ViewModel.FilePath));
-        }
-
-        return new LoadBinaryResult(base64Content, metadata);
-    }
-
-    private void OnDocumentChanged()
-    {
-        // Flag the document as modified so it will attempt to save after a short delay.
-        ViewModel.OnDataChanged();
-    }
-
-    private void OnImportComplete(ImportCompleteNotification notification)
-    {
-        _isImportInProgress = false;
-
-        if (!notification.Success)
-        {
-            _logger.LogWarning($"Spreadsheet import failed: {notification.Error}");
-        }
-        else
-        {
-            _logger.LogDebug("Spreadsheet import completed successfully");
-        }
-
-        // If another file change occurred while we were importing, we need to import again
-        if (_hasPendingImport)
-        {
-            _logger.LogDebug("Processing pending import request");
-            _hasPendingImport = false;
-            _host?.Document.NotifyExternalChange();
-        }
-    }
-
-    private void OpenSystemBrowser(string? uri)
+            private void OpenSystemBrowser(string? uri)
     {
         if (string.IsNullOrEmpty(uri))
         {
@@ -360,10 +379,12 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         // Cleanup ViewModel message handlers
         ViewModel.Cleanup();
 
-        // Detach the message channel to stop receiving messages
+        // Dispose RPC and detach the message channel
+        _rpc?.Dispose();
+        _rpcHandler?.Dispose();
         _messageChannel?.Detach();
-        _host?.Dispose();
-        _host = null;
+        _rpc = null;
+        _rpcHandler = null;
         _messageChannel = null;
 
         await base.PrepareToClose();
@@ -380,6 +401,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView
         }
 
         // Notify JS to reload the spreadsheet from disk
-        _host?.Document.NotifyExternalChange();
+        _rpc?.NotifyExternalChangeAsync();
     }
 }

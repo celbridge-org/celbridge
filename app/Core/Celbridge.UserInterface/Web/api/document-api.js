@@ -22,52 +22,21 @@ export class DocumentAPI {
 
     /**
      * Loads the current document content from disk.
-     * @param {Object} [options]
-     * @param {boolean} [options.includeMetadata=false] - Whether to include metadata.
+     * Content is text for text documents or base64-encoded for binary documents.
      * @returns {Promise<LoadResult>}
      */
-    async load(options = {}) {
-        return this.#transport.request('document/load', {
-            includeMetadata: options.includeMetadata ?? false
-        });
+    async load() {
+        return this.#transport.request('document/load', {});
     }
 
     /**
      * Saves the document content.
+     * Content is text for text documents or base64-encoded for binary documents.
      * @param {string} content - The content to save.
      * @returns {Promise<SaveResult>}
      */
     async save(content) {
         return this.#transport.request('document/save', { content });
-    }
-
-    /**
-     * Saves binary document content (as base64).
-     * @param {string} contentBase64 - The base64-encoded binary content.
-     * @returns {Promise<SaveResult>}
-     */
-    async saveBinary(contentBase64) {
-        return this.#transport.request('document/saveBinary', { contentBase64 });
-    }
-
-    /**
-     * Loads binary document content from disk.
-     * @param {Object} [options]
-     * @param {boolean} [options.includeMetadata=false] - Whether to include metadata.
-     * @returns {Promise<{contentBase64: string, metadata?: DocumentMetadata}>}
-     */
-    async loadBinary(options = {}) {
-        return this.#transport.request('document/loadBinary', {
-            includeMetadata: options.includeMetadata ?? false
-        });
-    }
-
-    /**
-     * Gets the document metadata.
-     * @returns {Promise<DocumentMetadata>}
-     */
-    async getMetadata() {
-        return this.#transport.request('document/getMetadata', {});
     }
 
     /**

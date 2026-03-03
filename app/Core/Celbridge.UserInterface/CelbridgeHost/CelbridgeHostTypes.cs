@@ -63,23 +63,14 @@ public record InitializeResult(
 
 /// <summary>
 /// Result of the document/load request.
+/// Content is text for text documents or base64-encoded for binary documents.
 /// </summary>
-public record LoadResult(string Content, DocumentMetadata? Metadata = null);
+public record LoadResult(string Content, DocumentMetadata Metadata);
 
 /// <summary>
 /// Result of the document/save request.
 /// </summary>
 public record SaveResult(bool Success, string? Error = null);
-
-/// <summary>
-/// Result of the document/saveBinary request.
-/// </summary>
-public record SaveBinaryResult(bool Success, string? Error = null);
-
-/// <summary>
-/// Result of the document/loadBinary request (binary content as base64).
-/// </summary>
-public record LoadBinaryResult(string ContentBase64, DocumentMetadata? Metadata = null);
 
 // =============================================================================
 // Dialog Operation Results
@@ -120,19 +111,9 @@ public record LocalizationUpdatedNotification(Dictionary<string, string> Strings
 public record InitializeParams(string ProtocolVersion);
 
 /// <summary>
-/// Parameters for the document/load request.
-/// </summary>
-public record LoadParams(bool IncludeMetadata = false);
-
-/// <summary>
 /// Parameters for the document/save request.
 /// </summary>
 public record SaveParams(string Content);
-
-/// <summary>
-/// Parameters for the document/getMetadata request.
-/// </summary>
-public record GetMetadataParams();
 
 /// <summary>
 /// Parameters for the dialog/pickImage request.
@@ -148,16 +129,6 @@ public record PickFileParams(string[] Extensions);
 /// Parameters for the dialog/alert request.
 /// </summary>
 public record AlertParams(string Title, string Message);
-
-/// <summary>
-/// Parameters for the document/saveBinary request (binary content as base64).
-/// </summary>
-public record SaveBinaryParams(string ContentBase64);
-
-/// <summary>
-/// Parameters for the document/loadBinary request.
-/// </summary>
-public record LoadBinaryParams(bool IncludeMetadata = false);
 
 /// <summary>
 /// Parameters for the link/clicked notification (JS to C#).

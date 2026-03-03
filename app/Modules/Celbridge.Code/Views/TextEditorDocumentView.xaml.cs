@@ -22,8 +22,6 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
 
         ViewModel = ServiceLocator.AcquireService<TextEditorDocumentViewModel>();
         _logger = ServiceLocator.AcquireService<ILogger<TextEditorDocumentView>>();
-
-        ViewModel.OnSetContent += ViewModel_OnSetContent;
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -76,16 +74,5 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
         CloseEditorViews();
 
         await Task.CompletedTask;
-    }
-
-    private void ViewModel_OnSetContent(string content)
-    {
-        if (MonacoEditor.ViewModel.CachedText == content)
-        {
-            // The current content already matches the new content, no need to update it.
-            return;
-        }
-
-        MonacoEditor.SetContent(content);
     }
 }

@@ -7,10 +7,11 @@ using Celbridge.UserInterface;
 using Celbridge.UserInterface.CelbridgeHost;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Screenplay.Views;
 
-public sealed partial class SceneDocumentView : WebView2DocumentView
+public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocument
 {
     private readonly ILogger<SceneDocumentView> _logger;
     private readonly IMessengerService _messengerService;
@@ -23,7 +24,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
 
-    private CelbridgeHost? _host;
+    private JsonRpc? _rpc;
+    private HostRpcHandler? _rpcHandler;
     private HostChannel? _messageChannel;
 
     public SceneDocumentView(
@@ -102,7 +104,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         }
 
         // Notify JS to reload content
-        _host?.Document.NotifyExternalChange();
+        _rpc?.NotifyExternalChangeAsync();
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
@@ -152,13 +154,18 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
             await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-            // Initialize the host BEFORE navigation
+            // Initialize StreamJsonRpc with this view as the handler
             _messageChannel = new HostChannel(WebView.CoreWebView2);
-            _host = new CelbridgeHost(_messageChannel);
+            _rpcHandler = new HostRpcHandler(_messageChannel);
+            _rpc = new JsonRpc(_rpcHandler);
 
-            // Register host handlers
-            _host.OnInitialize(HandleInitializeAsync);
-            _host.Document.OnLoad(HandleDocumentLoadAsync);
+            // Ensure RPC method handlers run on the UI thread
+            _rpc.SynchronizationContext = SynchronizationContext.Current;
+
+            // Register this view as the handler for RPC interface
+            _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
+
+            _rpc.StartListening();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://screenplay.celbridge/index.html");
@@ -172,21 +179,28 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         }
     }
 
-    private Task<InitializeResult> HandleInitializeAsync(InitializeParams request)
+    private DocumentMetadata CreateMetadata()
     {
-        // Validate protocol version
-        if (request.ProtocolVersion != "1.0")
-        {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {request.ProtocolVersion}. Expected: 1.0");
-        }
-
-        // Build metadata
-        var metadata = new DocumentMetadata(
+        return new DocumentMetadata(
             ViewModel.FilePath,
             ViewModel.FileResource.ToString(),
             Path.GetFileName(ViewModel.FilePath));
+    }
+
+    #region IHostDocument
+
+    public Task<InitializeResult> InitializeAsync(string protocolVersion)
+    {
+        // Validate protocol version
+        if (protocolVersion != "1.0")
+        {
+            throw new HostRpcException(
+                JsonRpcErrorCodes.InvalidVersion,
+                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+        }
+
+        // Build metadata
+        var metadata = CreateMetadata();
 
         // No localization strings needed for screenplay viewer
         var localization = new Dictionary<string, string>();
@@ -195,7 +209,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata, localization));
     }
 
-    private Task<LoadResult> HandleDocumentLoadAsync(LoadParams request)
+    public Task<LoadResult> LoadAsync()
     {
         // Reload content from the ViewModel
         var loadResult = ViewModel.LoadContent();
@@ -206,25 +220,30 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
                 $"Failed to load scene content: {loadResult}");
         }
 
-        DocumentMetadata? metadata = null;
-        if (request.IncludeMetadata)
-        {
-            metadata = new DocumentMetadata(
-                ViewModel.FilePath,
-                ViewModel.FileResource.ToString(),
-                Path.GetFileName(ViewModel.FilePath));
-        }
+        var metadata = CreateMetadata();
 
         return Task.FromResult(new LoadResult(ViewModel.HtmlContent, metadata));
     }
+
+    public Task<SaveResult> SaveAsync(string content)
+    {
+        throw new NotSupportedException("Save is not supported by the Screenplay viewer (read-only).");
+    }
+
+    #endregion
 
     public override async Task PrepareToClose()
     {
         _messengerService.Unregister<SceneContentUpdatedMessage>(this);
         _messengerService.Unregister<ThemeChangedMessage>(this);
 
-        _host?.Dispose();
+        // Dispose RPC and detach the message channel
+        _rpc?.Dispose();
+        _rpcHandler?.Dispose();
         _messageChannel?.Detach();
+        _rpc = null;
+        _rpcHandler = null;
+        _messageChannel = null;
 
         await base.PrepareToClose();
     }

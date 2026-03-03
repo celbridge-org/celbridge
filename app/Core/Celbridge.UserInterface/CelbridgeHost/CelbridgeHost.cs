@@ -348,9 +348,9 @@ public class CelbridgeHost : IDisposable
         /// <summary>
         /// Registers a handler for document/load requests.
         /// </summary>
-        public void OnLoad(Func<LoadParams, Task<LoadResult>> handler)
+        public void OnLoad(Func<Task<LoadResult>> handler)
         {
-            _host.RegisterHandler(HostRpcMethods.DocumentLoad, handler);
+            _host.RegisterHandler<object?, LoadResult>(HostRpcMethods.DocumentLoad, _ => handler());
         }
 
         /// <summary>
@@ -362,35 +362,11 @@ public class CelbridgeHost : IDisposable
         }
 
         /// <summary>
-        /// Registers a handler for document/getMetadata requests.
-        /// </summary>
-        public void OnGetMetadata(Func<GetMetadataParams, Task<DocumentMetadata>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DocumentGetMetadata, handler);
-        }
-
-        /// <summary>
         /// Registers a handler for document/changed notifications.
         /// </summary>
         public void OnChanged(Action handler)
         {
             _host.RegisterNotificationHandler<DocumentChangedNotification>(HostRpcMethods.DocumentChanged, _ => handler());
-        }
-
-        /// <summary>
-        /// Registers a handler for document/saveBinary requests (binary content as base64).
-        /// </summary>
-        public void OnSaveBinary(Func<SaveBinaryParams, Task<SaveBinaryResult>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DocumentSaveBinary, handler);
-        }
-
-        /// <summary>
-        /// Registers a handler for document/loadBinary requests.
-        /// </summary>
-        public void OnLoadBinary(Func<LoadBinaryParams, Task<LoadBinaryResult>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DocumentLoadBinary, handler);
         }
 
         /// <summary>

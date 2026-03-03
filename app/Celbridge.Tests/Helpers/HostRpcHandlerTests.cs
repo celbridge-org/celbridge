@@ -37,8 +37,8 @@ public class HostRpcHandlerTests
     public async Task HandleRequest_WithRegisteredTarget_CallsHandlerAndSendsResponse()
     {
         // Arrange
-        var service = new TestHostInit();
-        _rpc.AddLocalRpcTarget<IHostInit>(service, RpcTargetOptions);
+        var service = new TestHostDocument();
+        _rpc.AddLocalRpcTarget<IHostDocument>(service, RpcTargetOptions);
         _rpc.StartListening();
 
         // Act
@@ -151,9 +151,9 @@ public class HostRpcHandlerTests
     }
 
     /// <summary>
-    /// Test implementation of IHostInit.
+    /// Test implementation of IHostDocument.
     /// </summary>
-    private class TestHostInit : IHostInit
+    private class TestHostDocument : IHostDocument
     {
         public bool InitializeCalled { get; private set; }
 
@@ -165,6 +165,23 @@ public class HostRpcHandlerTests
             var result = new InitializeResult("# Content", metadata, localization);
             return Task.FromResult(result);
         }
+
+        public Task<LoadResult> LoadAsync()
+        {
+            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
+            return Task.FromResult(new LoadResult("# Content", metadata));
+        }
+
+        public Task<SaveResult> SaveAsync(string content)
+        {
+            return Task.FromResult(new SaveResult(true));
+        }
+
+        public Task<DocumentMetadata> GetMetadataAsync()
+        {
+            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
+            return Task.FromResult(metadata);
+        }
     }
 
     /// <summary>
@@ -175,6 +192,7 @@ public class HostRpcHandlerTests
         public bool DocumentChangedCalled { get; private set; }
         public bool LinkClickedCalled { get; private set; }
         public bool ImportCompleteCalled { get; private set; }
+        public bool ClientReadyCalled { get; private set; }
 
         public void OnDocumentChanged()
         {
@@ -189,6 +207,11 @@ public class HostRpcHandlerTests
         public void OnImportComplete(bool success, string? error = null)
         {
             ImportCompleteCalled = true;
+        }
+
+        public void OnClientReady()
+        {
+            ClientReadyCalled = true;
         }
     }
 }

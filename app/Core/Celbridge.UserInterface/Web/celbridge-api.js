@@ -79,7 +79,7 @@ export class CelbridgeClient {
             throw new Error('Client already initialized');
         }
 
-        const result = await this.#transport.request('bridge/initialize', {
+        const result = await this.#transport.request('host/initialize', {
             protocolVersion: RpcTransport.protocolVersion
         });
 

@@ -24,4 +24,10 @@ public interface IHostNotifications
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.ImportComplete)]
     void OnImportComplete(bool success, string? error = null);
+
+    /// <summary>
+    /// Called when the JavaScript client has finished initializing and is ready for communication.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.ClientReady)]
+    void OnClientReady();
 }

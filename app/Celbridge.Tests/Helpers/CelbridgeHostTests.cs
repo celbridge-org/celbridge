@@ -218,13 +218,14 @@ public class CelbridgeHostTests
     public async Task DocumentOnLoad_ReturnsContent()
     {
         // Arrange
-        _host.Document.OnLoad(async (request) =>
+        _host.Document.OnLoad(async () =>
         {
-            return new LoadResult("# Loaded content");
+            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
+            return new LoadResult("# Loaded content", metadata);
         });
 
         // Act
-        _channel.SimulateRequest(1, "document/load", new { includeMetadata = false });
+        _channel.SimulateRequest(1, "document/load", new { });
 
         await Task.Delay(50);
 

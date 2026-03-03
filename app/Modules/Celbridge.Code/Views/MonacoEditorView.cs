@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Code.MonacoHost;
 using Celbridge.Code.ViewModels;
 using Celbridge.Documents;
 using Celbridge.Documents.Views;
@@ -7,26 +8,31 @@ using Celbridge.UserInterface;
 using Celbridge.UserInterface.CelbridgeHost;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Code.Views;
 
-public sealed partial class MonacoEditorView : DocumentView
+public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHostNotifications
 {
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IDocumentsService _documentsService;
+    private readonly IWebViewFactory _webViewFactory;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
 
     public MonacoEditorViewModel ViewModel { get; }
 
     private WebView2? _webView;
+    private JsonRpc? _rpc;
+    private HostRpcHandler? _rpcHandler;
+    private HostChannel? _messageChannel;
+    private TaskCompletionSource? _clientReadyTcs;
 
     public MonacoEditorView()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
@@ -42,21 +48,6 @@ public sealed partial class MonacoEditorView : DocumentView
         // The webview is not created until LoadContent is called, so we can pool webviews
 
         this.DataContext(ViewModel);
-    }
-
-    public Result SetContent(string content)
-    {
-        if (_webView is null ||
-            _webView.CoreWebView2 is null)
-        {
-            return Result.Fail("WebView is not initialized");
-        }
-
-        // Send the updated text content to Monaco editor
-        _webView.CoreWebView2.PostWebMessageAsString(content);
-        ViewModel.CachedText = content;
-
-        return Result.Ok();
     }
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -88,37 +79,66 @@ public sealed partial class MonacoEditorView : DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        var pool = _documentsService.TextEditorWebViewPool;
-
-        _webView = await pool.AcquireInstance();
-
-        // Sync Monaco theme with the current app theme in case the pooled instance was created with a different theme
-        await ApplyThemeToWebViewAsync();
-
-        await UpdateTextEditorLanguage();
+        _webView = await _webViewFactory.AcquireAsync();
 
         this.Content(_webView);
 
+        // Load the document content
         var loadResult = await ViewModel.LoadDocument();
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to load content for resource: {ViewModel.FileResource}")
                 .WithErrors(loadResult);
         }
-        var text = loadResult.Value;
 
-        // Send the loaded text content to Monaco editor
-        _webView.CoreWebView2.PostWebMessageAsString(text);
+        // Store the loaded text for the initialize handler
+        ViewModel.CachedText = loadResult.Value;
+
+        // Set up virtual host mapping for Monaco editor assets
+        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "MonacoEditor",
+            "Celbridge.Code/Web/Monaco",
+            CoreWebView2HostResourceAccessKind.Allow);
+
+        // Map shared assets so Monaco can access celbridge-api.js
+        WebView2Helper.MapSharedAssets(_webView.CoreWebView2);
 
         // Ensure we only register the event handlers once
-        _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
         _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
         _webView.GotFocus -= WebView_GotFocus;
 
-        // Start listening for text updates from the web view
-        _webView.WebMessageReceived += TextDocumentView_WebMessageReceived;
         _webView.CoreWebView2.NewWindowRequested += TextDocumentView_NewWindowRequested;
         _webView.GotFocus += WebView_GotFocus;
+
+        // Initialize StreamJsonRpc with this view as the handler
+        _messageChannel = new HostChannel(_webView.CoreWebView2);
+        _rpcHandler = new HostRpcHandler(_messageChannel);
+        _rpc = new JsonRpc(_rpcHandler);
+
+        // Ensure RPC method handlers run on the UI thread
+        _rpc.SynchronizationContext = SynchronizationContext.Current;
+
+        // Register this view as the handler for RPC interfaces
+        _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
+        _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+
+        _rpc.StartListening();
+
+        // Sync WebView2 color scheme with the app theme
+        ApplyThemeToWebView();
+
+        // Prepare to wait for client ready notification
+        _clientReadyTcs = new TaskCompletionSource();
+
+        // Navigate to Monaco editor
+        _webView.CoreWebView2.Navigate("http://MonacoEditor/index.html");
+
+        // Wait for the JS client to signal it's ready
+        await _clientReadyTcs.Task;
+
+        // Initialize the Monaco editor via JSON-RPC
+        var language = ViewModel.GetDocumentLanguage();
+        await _rpc.NotifyEditorInitializeAsync(language);
 
         return Result.Ok();
     }
@@ -132,23 +152,23 @@ public sealed partial class MonacoEditorView : DocumentView
 
     public override async Task<Result> SaveDocument()
     {
-        var readResult = await ReadTextData();
-        if (readResult.IsFailure)
+        if (_rpc is null)
         {
-            return Result.Fail($"Failed to save document: '{ViewModel.FileResource}'")
-                .WithErrors(readResult);
+            return Result.Fail("RPC not initialized");
         }
-        var textData = readResult.Value;
 
-        return await ViewModel.SaveDocument(textData);
+        // Request the JS side to save - it will call document/save
+        // which triggers our SaveAsync handler
+        await _rpc.NotifyRequestSaveAsync();
+
+        return await ViewModel.SaveDocument(ViewModel.CachedText ?? string.Empty);
     }
 
     public override async Task<Result> NavigateToLocation(string location)
     {
-        if (_webView == null ||
-            _webView.CoreWebView2 == null)
+        if (_rpc is null)
         {
-            return Result.Fail("WebView is not initialized");
+            return Result.Fail("RPC is not initialized");
         }
 
         if (string.IsNullOrEmpty(location))
@@ -165,9 +185,8 @@ public sealed partial class MonacoEditorView : DocumentView
             var lineNumber = root.TryGetProperty("lineNumber", out var lineProp) ? lineProp.GetInt32() : 1;
             var column = root.TryGetProperty("column", out var colProp) ? colProp.GetInt32() : 1;
 
-            // Call the JavaScript function to navigate to the location
-            var script = $"navigateToLocation({lineNumber}, {column});";
-            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            // Navigate via JSON-RPC
+            await _rpc.NotifyEditorNavigateToLocationAsync(lineNumber, column);
 
             return Result.Ok();
         }
@@ -187,7 +206,6 @@ public sealed partial class MonacoEditorView : DocumentView
             return;
         }
 
-        _webView.WebMessageReceived -= TextDocumentView_WebMessageReceived;
         _webView.GotFocus -= WebView_GotFocus;
 
         if (_webView.CoreWebView2 != null)
@@ -201,29 +219,17 @@ public sealed partial class MonacoEditorView : DocumentView
         // Cleanup ViewModel message handlers
         ViewModel.Cleanup();
 
-        // Release the webview back to the pool.
-        var pool = _documentsService.TextEditorWebViewPool;
+        // Dispose RPC and detach the message channel
+        _rpc?.Dispose();
+        _rpcHandler?.Dispose();
+        _messageChannel?.Detach();
+        _rpc = null;
+        _rpcHandler = null;
+        _messageChannel = null;
 
-        await pool.ReleaseInstanceAsync(_webView);
-
+        // Close and dispose the WebView2 instance
+        _webView.Close();
         _webView = null;
-    }
-
-    private void TextDocumentView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs e)
-    {
-        var message = e.TryGetWebMessageAsString();
-
-        // Try to handle as a global keyboard shortcut first
-        if (WebView2Helper.HandleKeyboardShortcut(message))
-        {
-            return;
-        }
-
-        if (message == "did_change_content")
-        {
-            // Mark the document as pending a save
-            ViewModel.OnTextChanged();
-        }
     }
 
     private void TextDocumentView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
@@ -248,69 +254,135 @@ public sealed partial class MonacoEditorView : DocumentView
 
     private async Task UpdateTextEditorLanguage()
     {
-        Guard.IsNotNull(_webView);
-
-        var language = ViewModel.GetDocumentLanguage();
-
-        var script = $"setLanguage('{language}');";
-        await _webView.CoreWebView2.ExecuteScriptAsync(script);
-    }
-
-    private async Task<Result<string>> ReadTextData()
-    {
-        if (_webView == null)
+        if (_rpc is null)
         {
-            return Result<string>.Fail("WebView is null");
+            return;
         }
 
+        var language = ViewModel.GetDocumentLanguage();
+        await _rpc.NotifyEditorSetLanguageAsync(language);
+    }
+
+    private void ViewModel_ReloadRequested(object? sender, EventArgs e)
+    {
+        // Notify JS to reload the document from disk
+        _rpc?.NotifyExternalChangeAsync();
+    }
+
+    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    {
+        if (_webView?.CoreWebView2 is not null)
+        {
+            ApplyThemeToWebView();
+        }
+    }
+
+    private void ApplyThemeToWebView()
+    {
+        Guard.IsNotNull(_webView);
+
+        // Use WebView2's PreferredColorScheme API - Monaco JS listens for prefers-color-scheme changes
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        _webView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+            ? CoreWebView2PreferredColorScheme.Dark
+            : CoreWebView2PreferredColorScheme.Light;
+    }
+
+    private DocumentMetadata CreateMetadata()
+    {
+        return new DocumentMetadata(
+            ViewModel.FilePath,
+            ViewModel.FileResource.ToString(),
+            Path.GetFileName(ViewModel.FilePath));
+    }
+
+    #region IHostDocument
+
+    public Task<InitializeResult> InitializeAsync(string protocolVersion)
+    {
+        // Validate protocol version
+        if (protocolVersion != "1.0")
+        {
+            throw new HostRpcException(
+                JsonRpcErrorCodes.InvalidVersion,
+                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+        }
+
+        // Build metadata
+        var metadata = CreateMetadata();
+
+        // No localization strings needed for Monaco
+        var localization = new Dictionary<string, string>();
+
+        // Return the cached content
+        var content = ViewModel.CachedText ?? string.Empty;
+
+        return Task.FromResult(new InitializeResult(content, metadata, localization));
+    }
+
+    public async Task<LoadResult> LoadAsync()
+    {
+        var loadResult = await ViewModel.LoadDocument();
+        if (loadResult.IsFailure)
+        {
+            throw new HostRpcException(
+                JsonRpcErrorCodes.InternalError,
+                $"Failed to load document: {loadResult.Error}");
+        }
+
+        var content = loadResult.Value;
+        ViewModel.CachedText = content;
+
+        var metadata = CreateMetadata();
+
+        return new LoadResult(content, metadata);
+    }
+
+    public async Task<SaveResult> SaveAsync(string content)
+    {
         try
         {
-            var script = "getTextData();";
-            var editorContent = await _webView.ExecuteScriptAsync(script);
-            var textData = JsonSerializer.Deserialize<string>(editorContent);
+            ViewModel.CachedText = content;
+            var saveResult = await ViewModel.SaveDocument(content);
 
-            if (textData != null)
+            if (saveResult.IsFailure)
             {
-                return Result<string>.Ok(textData);
+                return new SaveResult(false, saveResult.Error);
             }
+
+            return new SaveResult(true);
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail("An exception occured while reading the text data")
-                .WithException(ex);
-        }
-
-        return Result<string>.Fail("Failed to read text data");
-    }
-
-    private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
-    {
-        // Reload the document from disk when an external change is detected
-        if (_webView != null)
-        {
-            var loadResult = await ViewModel.LoadDocument();
-            if (loadResult.IsSuccess)
-            {
-                var text = loadResult.Value;
-                _webView.CoreWebView2.PostWebMessageAsString(text);
-            }
+            return new SaveResult(false, ex.Message);
         }
     }
 
-    private async void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    #endregion
+
+    #region IHostNotifications
+
+    public void OnDocumentChanged()
     {
-        if (_webView?.CoreWebView2 != null)
-        {
-            await ApplyThemeToWebViewAsync();
-        }
+        // Mark the document as pending a save
+        ViewModel.OnTextChanged();
     }
 
-    private async Task ApplyThemeToWebViewAsync()
+    public void OnLinkClicked(string href)
     {
-        Guard.IsNotNull(_webView);
-
-        var theme = _userInterfaceService.UserInterfaceTheme;
-        var vsTheme = theme == UserInterfaceTheme.Light ? "vs-light" : "vs-dark";
-        await _webView.CoreWebView2.ExecuteScriptAsync($"monaco.editor.setTheme('{vsTheme}')");
+        // Link clicks are not used by the Monaco editor
     }
+
+    public void OnImportComplete(bool success, string? error = null)
+    {
+        // Import completion is not used by the Monaco editor
+    }
+
+    public void OnClientReady()
+    {
+        // Signal that the JS client is ready
+        _clientReadyTcs?.TrySetResult();
+    }
+
+    #endregion
 }

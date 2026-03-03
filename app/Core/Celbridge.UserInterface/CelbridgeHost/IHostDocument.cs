@@ -8,32 +8,23 @@ namespace Celbridge.UserInterface.CelbridgeHost;
 public interface IHostDocument
 {
     /// <summary>
+    /// Initializes the host connection with the WebView.
+    /// Returns the document content, metadata, and localization strings.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.Initialize)]
+    Task<InitializeResult> InitializeAsync(string protocolVersion);
+
+    /// <summary>
     /// Loads the document content from the host.
+    /// Content is text for text documents or base64-encoded for binary documents.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentLoad)]
-    Task<LoadResult> LoadAsync(bool includeMetadata = false);
+    Task<LoadResult> LoadAsync();
 
     /// <summary>
     /// Saves the document content to the host.
+    /// Content is text for text documents or base64-encoded for binary documents.
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentSave)]
     Task<SaveResult> SaveAsync(string content);
-
-    /// <summary>
-    /// Gets metadata about the current document.
-    /// </summary>
-    [JsonRpcMethod(HostRpcMethods.DocumentGetMetadata)]
-    Task<DocumentMetadata> GetMetadataAsync();
-
-    /// <summary>
-    /// Saves binary content (base64 encoded) to the host.
-    /// </summary>
-    [JsonRpcMethod(HostRpcMethods.DocumentSaveBinary)]
-    Task<SaveBinaryResult> SaveBinaryAsync(string contentBase64);
-
-    /// <summary>
-    /// Loads binary content (base64 encoded) from the host.
-    /// </summary>
-    [JsonRpcMethod(HostRpcMethods.DocumentLoadBinary)]
-    Task<LoadBinaryResult> LoadBinaryAsync(bool includeMetadata = false);
 }

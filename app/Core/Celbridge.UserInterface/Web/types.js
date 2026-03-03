@@ -21,8 +21,8 @@
 
 /**
  * @typedef {Object} LoadResult
- * @property {string} content - The document content from disk.
- * @property {DocumentMetadata} [metadata] - Optional metadata if requested.
+ * @property {string} content - The document content from disk (text or base64 for binary).
+ * @property {DocumentMetadata} metadata - Document metadata.
  */
 
 /**

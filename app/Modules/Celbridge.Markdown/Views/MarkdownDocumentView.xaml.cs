@@ -13,7 +13,7 @@ using StreamJsonRpc;
 
 namespace Celbridge.Markdown.Views;
 
-public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostInit, IHostDocument, IHostDialog, IHostNotifications
+public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDocument, IHostDialog, IHostNotifications
 {
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
@@ -166,8 +166,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostIn
             // Ensure RPC method handlers run on the UI thread
             _rpc.SynchronizationContext = SynchronizationContext.Current;
 
-            // Register this view as the handler for all RPC interfaces
-            _rpc.AddLocalRpcTarget<IHostInit>(this, null);
+            // Register this view as the handler for RPC interfaces
             _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
             _rpc.AddLocalRpcTarget<IHostDialog>(this, null);
             _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
@@ -190,7 +189,15 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostIn
         }
     }
 
-    #region IHostInit
+    private DocumentMetadata CreateMetadata()
+    {
+        return new DocumentMetadata(
+            ViewModel.FilePath,
+            ViewModel.FileResource.ToString(),
+            Path.GetFileName(ViewModel.FilePath));
+    }
+
+    #region IHostDocument
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
@@ -205,21 +212,13 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostIn
         // Load content from file
         var content = await ViewModel.LoadMarkdownContent();
 
-        // Build metadata
-        var metadata = new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
+        var metadata = CreateMetadata();
 
         // Gather localization strings
         var localization = WebViewLocalizationHelper.GetLocalizedStrings(_stringLocalizer, "Markdown_");
 
         return new InitializeResult(content, metadata, localization);
     }
-
-    #endregion
-
-    #region IHostDocument
 
     public async Task<SaveResult> SaveAsync(string content)
     {
@@ -251,39 +250,12 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostIn
         }
     }
 
-    public async Task<LoadResult> LoadAsync(bool includeMetadata = false)
+    public async Task<LoadResult> LoadAsync()
     {
         var content = await ViewModel.LoadMarkdownContent();
-
-        DocumentMetadata? metadata = null;
-        if (includeMetadata)
-        {
-            metadata = new DocumentMetadata(
-                ViewModel.FilePath,
-                ViewModel.FileResource.ToString(),
-                Path.GetFileName(ViewModel.FilePath));
-        }
+        var metadata = CreateMetadata();
 
         return new LoadResult(content, metadata);
-    }
-
-    public Task<DocumentMetadata> GetMetadataAsync()
-    {
-        var metadata = new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
-        return Task.FromResult(metadata);
-    }
-
-    public Task<SaveBinaryResult> SaveBinaryAsync(string contentBase64)
-    {
-        throw new NotSupportedException("Binary save is not supported by the Markdown editor.");
-    }
-
-    public Task<LoadBinaryResult> LoadBinaryAsync(bool includeMetadata = false)
-    {
-        throw new NotSupportedException("Binary load is not supported by the Markdown editor.");
     }
 
     #endregion
@@ -525,6 +497,11 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostIn
     public void OnImportComplete(bool success, string? error = null)
     {
         // Import completion is not used by the Markdown editor
+    }
+
+    public void OnClientReady()
+    {
+        // Client ready is handled during initialization for Markdown
     }
 
     #endregion

@@ -56,7 +56,7 @@ describe('CelbridgeClient', () => {
             expect(sentMessages).toHaveLength(1);
             const sent = JSON.parse(sentMessages[0]);
             expect(sent.jsonrpc).toBe('2.0');
-            expect(sent.method).toBe('bridge/initialize');
+            expect(sent.method).toBe('host/initialize');
             expect(sent.params.protocolVersion).toBe('1.0');
             expect(sent.id).toBe(1);
 
@@ -94,19 +94,19 @@ describe('CelbridgeClient', () => {
 
             // Make two concurrent requests
             const promise1 = client.document.load();
-            const promise2 = client.document.getMetadata();
+            const promise2 = client.document.save('test content');
 
             expect(sentMessages).toHaveLength(3);
 
             // Respond out of order
-            simulateResponse(3, { filePath: '/test.md', resourceKey: 'test', fileName: 'test.md' });
-            simulateResponse(2, { content: 'Content here' });
+            simulateResponse(3, { success: true });
+            simulateResponse(2, { content: 'Content here', metadata: {} });
 
             const result1 = await promise1;
             const result2 = await promise2;
 
             expect(result1.content).toBe('Content here');
-            expect(result2.filePath).toBe('/test.md');
+            expect(result2.success).toBe(true);
         });
 
         it('should handle error responses', async () => {
@@ -208,17 +208,16 @@ describe('CelbridgeClient', () => {
     });
 
     describe('document operations', () => {
-        it('should send load request with options', async () => {
+        it('should send load request', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
             const initPromise = client.initialize();
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            const loadPromise = client.document.load({ includeMetadata: true });
+            const loadPromise = client.document.load();
             const sent = JSON.parse(sentMessages[1]);
             expect(sent.method).toBe('document/load');
-            expect(sent.params.includeMetadata).toBe(true);
 
             simulateResponse(2, {
                 content: '# Test',

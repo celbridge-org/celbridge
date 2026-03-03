@@ -6,8 +6,6 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
 
-public record SetTextDocumentContentMessage(ResourceKey Resource, string Content);
-
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private const string DocumentLayoutKey = "DocumentLayout";
@@ -31,11 +29,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// Gets all open documents with their addresses (UI positions).
     /// </summary>
     public Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; } = new();
-
-    /// <summary>
-    /// Gets the text editor WebView2 pool for efficient reuse of Monaco editor instances.
-    /// </summary>
-    public ITextEditorWebViewPool TextEditorWebViewPool { get; }
 
     private bool _isWorkspaceLoaded;
 
@@ -63,9 +56,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
-
-        // Initialize the TextEditorWebViewPool
-        TextEditorWebViewPool = new TextEditorWebViewPool(3);
 
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
@@ -349,30 +339,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> SetTextDocumentContentAsync(ResourceKey fileResource, string content)
-    {
-        try
-        {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
-
-            // Udpate the document file with the new content
-            await File.WriteAllTextAsync(filePath, content);
-
-            // Update the document view with the new content
-            var message = new SetTextDocumentContentMessage(fileResource, content);
-            _messengerService.Send(message);
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to set text document content")
-                .WithException(ex);
-        }
-    }
-
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
     {
         var saveResult = await DocumentsPanel.SaveModifiedDocuments(deltaTime);
@@ -637,8 +603,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
-
-                TextEditorWebViewPool.Shutdown();
             }
 
             _disposed = true;
