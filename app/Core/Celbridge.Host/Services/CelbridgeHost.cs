@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// JSON-RPC 2.0 host for WebView2 communication.
@@ -195,9 +195,10 @@ public class CelbridgeHost : IDisposable
                 return;
             }
 
-            // Request (has id)
-            LogDebug($"<- request #{id}: {method}");
-            await HandleRequestAsync(method, paramsElement, id.Value);
+            // Request (has id) - id is guaranteed to have value here since hasId is true
+            var requestId = id!.Value;
+            LogDebug($"<- request #{requestId}: {method}");
+            await HandleRequestAsync(method, paramsElement, requestId);
         }
         catch (JsonException ex)
         {
@@ -250,7 +251,7 @@ public class CelbridgeHost : IDisposable
         }
         catch (Exception ex)
         {
-            // Requirement 9: wrap unhandled exceptions in JSON-RPC error
+            // Wrap unhandled exceptions in JSON-RPC error
             LogError($"Handler exception for {method}: {ex}");
             SendErrorResponse(id, JsonRpcErrorCodes.InternalError, ex.Message);
         }

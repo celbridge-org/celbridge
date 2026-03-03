@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Celbridge.UserInterface.CelbridgeHost;
+using Celbridge.Host;
 using StreamJsonRpc;
 
 namespace Celbridge.Tests.Helpers;
@@ -10,13 +10,6 @@ public class HostRpcHandlerTests
     private MockHostChannel _channel = null!;
     private HostRpcHandler _handler = null!;
     private JsonRpc _rpc = null!;
-
-    // Options to enable JsonRpcMethod attribute-based method name mapping
-    private static readonly JsonRpcTargetOptions RpcTargetOptions = new()
-    {
-        MethodNameTransform = CommonMethodNameTransforms.CamelCase,
-        UseSingleObjectParameterDeserialization = true
-    };
 
     [SetUp]
     public void SetUp()
@@ -38,7 +31,7 @@ public class HostRpcHandlerTests
     {
         // Arrange
         var service = new TestHostDocument();
-        _rpc.AddLocalRpcTarget<IHostDocument>(service, RpcTargetOptions);
+        _rpc.AddLocalRpcTarget<IHostDocument>(service, null);
         _rpc.StartListening();
 
         // Act
@@ -84,7 +77,7 @@ public class HostRpcHandlerTests
     {
         // Arrange
         var service = new TestHostNotifications();
-        _rpc.AddLocalRpcTarget<IHostNotifications>(service, RpcTargetOptions);
+        _rpc.AddLocalRpcTarget<IHostNotifications>(service, null);
         _rpc.StartListening();
 
         // Act
@@ -121,7 +114,7 @@ public class HostRpcHandlerTests
     {
         // Arrange
         var service = new TestHostNotifications();
-        _rpc.AddLocalRpcTarget<IHostNotifications>(service, RpcTargetOptions);
+        _rpc.AddLocalRpcTarget<IHostNotifications>(service, null);
         _rpc.StartListening();
 
         // Act

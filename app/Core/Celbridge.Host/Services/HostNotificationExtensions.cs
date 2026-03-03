@@ -1,6 +1,6 @@
 using StreamJsonRpc;
 
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// Extension methods for sending notifications from C# to JavaScript via StreamJsonRpc.

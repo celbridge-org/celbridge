@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// Abstraction over WebView2 message passing for testability.

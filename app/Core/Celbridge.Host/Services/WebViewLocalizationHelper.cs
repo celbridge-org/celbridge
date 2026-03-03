@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// Helper for gathering localized strings from .NET resources for WebView editors.
@@ -16,7 +16,11 @@ public static class WebViewLocalizationHelper
     {
         var assembly = typeof(WebViewLocalizationHelper).Assembly;
         using var stream = assembly.GetManifestResourceStream("Celbridge.Strings.Resources.resw");
-        Guard.IsNotNull(stream);
+
+        if (stream is null)
+        {
+            throw new InvalidOperationException("Could not find embedded resource: Celbridge.Strings.Resources.resw");
+        }
 
         var reswDoc = XDocument.Load(stream);
         var strings = new Dictionary<string, string>();

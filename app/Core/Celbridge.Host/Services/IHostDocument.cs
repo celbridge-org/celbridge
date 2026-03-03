@@ -1,6 +1,6 @@
 using StreamJsonRpc;
 
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// RPC service interface for document operations.

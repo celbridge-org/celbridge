@@ -5,7 +5,7 @@ using System.Threading.Channels;
 using StreamJsonRpc;
 using StreamJsonRpc.Protocol;
 
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// Custom IJsonRpcMessageHandler implementation that bridges WebView2's push-based
@@ -64,11 +64,15 @@ public class HostRpcHandler : IJsonRpcMessageHandler, IDisposable
         {
             var sequence = new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(json));
             var message = Formatter.Deserialize(sequence);
-            _incomingMessages.Writer.TryWrite(message);
+            if (message != null)
+            {
+                _incomingMessages.Writer.TryWrite(message);
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore malformed messages - StreamJsonRpc will handle protocol errors
+            // Log but don't rethrow - StreamJsonRpc will handle protocol errors
+            System.Diagnostics.Debug.WriteLine($"[HostRpcHandler] Failed to deserialize message: {ex.Message}");
         }
     }
 

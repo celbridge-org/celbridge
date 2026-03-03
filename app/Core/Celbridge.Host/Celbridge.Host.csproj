@@ -25,29 +25,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Host\Celbridge.Host.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="StreamJsonRpc" />
   </ItemGroup>
 
+  <!-- Link the shared resw localization file so that WebViewLocalizationHelper can enumerate the available string keys -->
   <ItemGroup>
-    <Content Include="Web\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Link the shared resw localization file so that WebView2Helper can enumerate the available string keys -->
     <EmbeddedResource Include="..\..\Celbridge\Resources\Strings\en-US\Resources.resw"
                       Link="Assets\Resources.resw"
                       LogicalName="Celbridge.Strings.Resources.resw" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons-icon-theme.json" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\devopicons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\fontawesome.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\mfixx.ttf" />
-    <EmbeddedResource Include="Assets\Fonts\FileIcons\octicons.ttf" />
   </ItemGroup>
 
 </Project>
-

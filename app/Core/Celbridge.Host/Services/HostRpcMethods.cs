@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// JSON-RPC method names used for WebView2 communication.

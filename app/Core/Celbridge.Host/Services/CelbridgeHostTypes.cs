@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface.CelbridgeHost;
+namespace Celbridge.Host;
 
 /// <summary>
 /// JSON-RPC error codes as defined in the specification.
@@ -101,8 +101,7 @@ public record AlertResult();
 public record LocalizationUpdatedNotification(Dictionary<string, string> Strings);
 
 // =============================================================================
-// Legacy CelbridgeHost Types (used by editors not yet migrated to StreamJsonRpc)
-// These will be removed in Phase 6 cleanup.
+// Inbound Parameter Types (JS to C#)
 // =============================================================================
 
 /// <summary>

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Celbridge.UserInterface.CelbridgeHost;
+using Celbridge.Host;
 
 namespace Celbridge.Tests.Helpers;
 
@@ -24,24 +24,49 @@ public class MockHostChannel : IHostChannel
 
     public void SimulateRequest(int id, string method, object? parameters = null)
     {
-        var request = new
+        object request;
+        if (parameters != null)
         {
-            jsonrpc = "2.0",
-            method,
-            @params = parameters,
-            id
-        };
+            request = new
+            {
+                jsonrpc = "2.0",
+                method,
+                @params = parameters,
+                id
+            };
+        }
+        else
+        {
+            request = new
+            {
+                jsonrpc = "2.0",
+                method,
+                id
+            };
+        }
         SimulateMessage(JsonSerializer.Serialize(request));
     }
 
     public void SimulateNotification(string method, object? parameters = null)
     {
-        var notification = new
+        object notification;
+        if (parameters != null)
         {
-            jsonrpc = "2.0",
-            method,
-            @params = parameters
-        };
+            notification = new
+            {
+                jsonrpc = "2.0",
+                method,
+                @params = parameters
+            };
+        }
+        else
+        {
+            notification = new
+            {
+                jsonrpc = "2.0",
+                method
+            };
+        }
         SimulateMessage(JsonSerializer.Serialize(notification));
     }
 }
@@ -81,7 +106,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "bridge/initialize", new { protocolVersion = "1.0" });
+        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
 
         // Allow async handler to complete
         await Task.Delay(50);
@@ -126,7 +151,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "bridge/initialize", new { protocolVersion = "0.5" });
+        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "0.5" });
 
         await Task.Delay(50);
 
@@ -147,7 +172,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "bridge/initialize", new { protocolVersion = "1.0" });
+        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
 
         await Task.Delay(50);
 
@@ -169,7 +194,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateNotification("document/changed", new { });
+        _channel.SimulateNotification(HostRpcMethods.DocumentChanged, new { });
 
         await Task.Delay(50);
 
@@ -190,7 +215,7 @@ public class CelbridgeHostTests
         var notification = JsonDocument.Parse(_channel.SentMessages[0]);
         var root = notification.RootElement;
         root.GetProperty("jsonrpc").GetString().Should().Be("2.0");
-        root.GetProperty("method").GetString().Should().Be("document/externalChange");
+        root.GetProperty("method").GetString().Should().Be(HostRpcMethods.DocumentExternalChange);
         root.TryGetProperty("id", out _).Should().BeFalse(); // Notifications have no id
     }
 
@@ -206,7 +231,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "document/save", new { content = "# Hello World" });
+        _channel.SimulateRequest(1, HostRpcMethods.DocumentSave, new { content = "# Hello World" });
 
         await Task.Delay(50);
 
@@ -225,7 +250,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "document/load", new { });
+        _channel.SimulateRequest(1, HostRpcMethods.DocumentLoad, new { });
 
         await Task.Delay(50);
 
@@ -246,7 +271,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "dialog/pickImage", new { extensions = new[] { ".png", ".jpg" } });
+        _channel.SimulateRequest(1, HostRpcMethods.DialogPickImage, new { extensions = new[] { ".png", ".jpg" } });
 
         await Task.Delay(50);
 
@@ -270,7 +295,7 @@ public class CelbridgeHostTests
         });
 
         // Act
-        _channel.SimulateRequest(1, "dialog/alert", new { title = "Warning", message = "Something happened" });
+        _channel.SimulateRequest(1, HostRpcMethods.DialogAlert, new { title = "Warning", message = "Something happened" });
 
         await Task.Delay(50);
 
@@ -309,7 +334,7 @@ public class CelbridgeHostTests
 
         // Act
         _host.Dispose();
-        _channel.SimulateNotification("document/changed", new { });
+        _channel.SimulateNotification(HostRpcMethods.DocumentChanged, new { });
 
         // Assert
         handlerCalled.Should().BeFalse();
