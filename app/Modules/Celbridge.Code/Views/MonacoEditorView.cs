@@ -3,8 +3,8 @@ using Celbridge.Code.MonacoHost;
 using Celbridge.Code.ViewModels;
 using Celbridge.Documents;
 using Celbridge.Documents.Views;
-using Celbridge.Messaging;
 using Celbridge.Host;
+using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
@@ -103,6 +103,9 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
 
         // Map shared assets so Monaco can access celbridge-api.js
         WebView2Helper.MapSharedAssets(_webView.CoreWebView2);
+
+        // Inject keyboard shortcut handler for F11 and other global shortcuts
+        await WebView2Helper.InjectShortcutHandlerAsync(_webView.CoreWebView2);
 
         // Ensure we only register the event handlers once
         _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
@@ -383,6 +386,12 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
     {
         // Signal that the JS client is ready
         _clientReadyTcs?.TrySetResult();
+    }
+
+    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    {
+        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
 
     #endregion

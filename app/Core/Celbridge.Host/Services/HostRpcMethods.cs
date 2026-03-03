@@ -8,6 +8,9 @@ public static class HostRpcMethods
     // Host initialization
     public const string Initialize = "host/initialize";
 
+    // Keyboard shortcuts
+    public const string KeyboardShortcut = "host/keyboardShortcut";
+
     // Document operations
     public const string DocumentLoad = "document/load";
     public const string DocumentSave = "document/save";

@@ -1,16 +1,28 @@
+using Celbridge.Host;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Base class for document views that use a WebView2 control.
-/// Provides common initialization, keyboard shortcut handling, and cleanup patterns.
+/// Provides JSON-RPC communication, keyboard shortcut handling, focus handling, and cleanup patterns.
 /// </summary>
-public abstract partial class WebView2DocumentView : DocumentView
+public abstract partial class WebView2DocumentView : DocumentView, IHostNotifications
 {
     private readonly IMessengerService _messengerService;
+
+    // JSON-RPC infrastructure
+    private HostChannel? _hostChannel;
+    private HostRpcHandler? _rpcHandler;
+
+    /// <summary>
+    /// The JSON-RPC instance for communication with the WebView.
+    /// Subclasses can use this to register additional RPC targets (e.g., IHostDocument).
+    /// </summary>
+    protected JsonRpc? Rpc { get; private set; }
 
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
@@ -33,28 +45,102 @@ public abstract partial class WebView2DocumentView : DocumentView
     }
 
     /// <summary>
-    /// Initializes the WebView2 control with common settings.
-    /// Call this after assigning the WebView property or after EnsureCoreWebView2Async().
+    /// Initializes the JSON-RPC infrastructure for WebView communication.
+    /// Call this after EnsureCoreWebView2Async() and any custom WebView setup.
+    /// This registers the base class as a handler for IHostNotifications (keyboard shortcuts, etc.).
+    /// Subclasses should call this, then register additional RPC targets using the Rpc property.
     /// </summary>
-    protected async Task InitializeWebViewAsync()
+    protected void InitializeJsonRpc()
+    {
+        if (WebView?.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        // Create the JSON-RPC channel
+        _hostChannel = new HostChannel(WebView.CoreWebView2);
+        _rpcHandler = new HostRpcHandler(_hostChannel);
+        Rpc = new JsonRpc(_rpcHandler);
+
+        // Ensure RPC method handlers run on the UI thread
+        Rpc.SynchronizationContext = SynchronizationContext.Current;
+
+        // Register this view as the handler for IHostNotifications
+        // This provides keyboard shortcut handling for all WebView-based documents
+        Rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+    }
+
+    /// <summary>
+    /// Starts the JSON-RPC listener. Call this after registering all RPC targets.
+    /// </summary>
+    protected void StartJsonRpc()
+    {
+        Rpc?.StartListening();
+    }
+
+    /// <summary>
+    /// Initializes focus handling for the WebView2 control.
+    /// </summary>
+    protected void InitializeFocusHandling()
     {
         if (WebView is null)
         {
             return;
         }
 
-        await WebView.EnsureCoreWebView2Async();
-
-        // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-        await WebView2Helper.InjectKeyboardShortcutHandlerAsync(WebView.CoreWebView2);
-
-        // Subscribe to events
         WebView.GotFocus -= WebView_GotFocus;
         WebView.GotFocus += WebView_GotFocus;
-
-        WebView.WebMessageReceived -= WebView_WebMessageReceived;
-        WebView.WebMessageReceived += WebView_WebMessageReceived;
     }
+
+    #region IHostNotifications
+
+    /// <summary>
+    /// Called when the document content has changed in the WebView.
+    /// Override in subclasses to handle document changes.
+    /// </summary>
+    public virtual void OnDocumentChanged()
+    {
+        // Default implementation does nothing
+    }
+
+    /// <summary>
+    /// Called when a link is clicked in the WebView.
+    /// Override in subclasses to handle link clicks.
+    /// </summary>
+    public virtual void OnLinkClicked(string href)
+    {
+        // Default implementation does nothing
+    }
+
+    /// <summary>
+    /// Called when an import operation completes in the WebView.
+    /// Override in subclasses to handle import completion.
+    /// </summary>
+    public virtual void OnImportComplete(bool success, string? error = null)
+    {
+        // Default implementation does nothing
+    }
+
+    /// <summary>
+    /// Called when the JavaScript client has finished initializing.
+    /// Override in subclasses to handle client ready notification.
+    /// </summary>
+    public virtual void OnClientReady()
+    {
+        // Default implementation does nothing
+    }
+
+    /// <summary>
+    /// Called when a keyboard shortcut is pressed in the WebView.
+    /// Default implementation forwards to the keyboard shortcut service.
+    /// </summary>
+    public virtual void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    {
+        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
+    }
+
+    #endregion
 
     #region Save Tracking
 
@@ -100,16 +186,6 @@ public abstract partial class WebView2DocumentView : DocumentView
     #endregion
 
     /// <summary>
-    /// Called when a web message is received from the WebView.
-    /// Override to handle custom messages. Call base implementation for keyboard shortcut handling.
-    /// </summary>
-    protected virtual void OnWebMessageReceived(string? message)
-    {
-        // Handle keyboard shortcuts via centralized helper
-        WebView2Helper.HandleKeyboardShortcut(message);
-    }
-
-    /// <summary>
     /// Called when the WebView gains focus.
     /// Override to add custom focus handling. Call base implementation to send focus message.
     /// </summary>
@@ -125,10 +201,18 @@ public abstract partial class WebView2DocumentView : DocumentView
         if (WebView is not null)
         {
             WebView.GotFocus -= WebView_GotFocus;
-            WebView.WebMessageReceived -= WebView_WebMessageReceived;
             WebView.Close();
             WebView = null;
         }
+
+        // Dispose RPC infrastructure
+        Rpc?.Dispose();
+        _rpcHandler?.Dispose();
+        _hostChannel?.Detach();
+
+        Rpc = null;
+        _rpcHandler = null;
+        _hostChannel = null;
 
         await base.PrepareToClose();
     }
@@ -136,11 +220,5 @@ public abstract partial class WebView2DocumentView : DocumentView
     private void WebView_GotFocus(object sender, RoutedEventArgs e)
     {
         OnWebViewGotFocus();
-    }
-
-    private void WebView_WebMessageReceived(WebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
-    {
-        var message = args.TryGetWebMessageAsString();
-        OnWebMessageReceived(message);
     }
 }

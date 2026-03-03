@@ -30,4 +30,10 @@ public interface IHostNotifications
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.ClientReady)]
     void OnClientReady();
+
+    /// <summary>
+    /// Called when a keyboard shortcut is pressed in the WebView.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.KeyboardShortcut)]
+    void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey);
 }

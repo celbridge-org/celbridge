@@ -1,20 +1,19 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.Views;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Markdown.ViewModels;
 using Celbridge.Messaging;
-using Celbridge.Host;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
-using StreamJsonRpc;
 
 namespace Celbridge.Markdown.Views;
 
-public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDocument, IHostDialog, IHostNotifications
+public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDocument, IHostDialog
 {
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
@@ -27,10 +26,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
     public MarkdownDocumentViewModel ViewModel { get; }
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
-
-    private JsonRpc? _rpc;
-    private HostRpcHandler? _rpcHandler;
-    private HostChannel? _messageChannel;
 
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
@@ -74,7 +69,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
     public override async Task<Result> SaveDocument()
     {
-        if (_rpc is null)
+        if (Rpc is null)
         {
             _logger.LogDebug("Save skipped - RPC not initialized");
             return Result.Ok();
@@ -88,7 +83,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
         // Request the JS side to save - it will call document/save
         // which triggers our HandleSaveDocumentAsync handler
-        await _rpc.NotifyRequestSaveAsync();
+        await Rpc.NotifyRequestSaveAsync();
 
         return await ViewModel.SaveDocument();
     }
@@ -115,6 +110,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
                 CoreWebView2HostResourceAccessKind.Allow);
 
             WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
+
+            // Inject keyboard shortcut handler for F11 and other global shortcuts
+            await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
 
             // Map the project folder so resource key image paths resolve correctly
             var projectFolder = _resourceRegistry.ProjectFolderPath;
@@ -159,30 +157,20 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
                 args.Handled = true;
             };
 
-            // Initialize StreamJsonRpc with this view as the handler
-            _messageChannel = new HostChannel(WebView.CoreWebView2);
-            _rpcHandler = new HostRpcHandler(_messageChannel);
-            _rpc = new JsonRpc(_rpcHandler);
+            // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
+            InitializeJsonRpc();
 
-            // Ensure RPC method handlers run on the UI thread
-            _rpc.SynchronizationContext = SynchronizationContext.Current;
+            // Register this view as the handler for additional RPC interfaces
+            Rpc!.AddLocalRpcTarget<IHostDocument>(this, null);
+            Rpc.AddLocalRpcTarget<IHostDialog>(this, null);
 
-            // Register this view as the handler for RPC interfaces
-            _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
-            _rpc.AddLocalRpcTarget<IHostDialog>(this, null);
-            _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+            StartJsonRpc();
 
-            _rpc.StartListening();
+            // Initialize focus handling
+            InitializeFocusHandling();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
-
-            // The bridge initialization is now handled by the JS side calling bridge.initialize()
-            // which triggers our HandleInitializeAsync handler. We don't need to wait for
-            // editor-ready separately - the bridge handles the handshake.
-
-            // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
-            await InitializeWebViewAsync();
         }
         catch (Exception ex)
         {
@@ -450,14 +438,14 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
         return Result<ResourceKey>.Fail($"Could not resolve resource path: {path}");
     }
 
-    #region IHostNotifications
+    #region IHostNotifications overrides
 
-    public void OnDocumentChanged()
+    public override void OnDocumentChanged()
     {
         ViewModel.OnDataChanged();
     }
 
-    public void OnLinkClicked(string href)
+    public override void OnLinkClicked(string href)
     {
         if (string.IsNullOrEmpty(href))
         {
@@ -493,16 +481,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
             _logger.LogWarning($"Failed to handle link click for '{href}': {ex.Message}");
             _ = ShowLinkErrorAsync(href);
         }
-    }
-
-    public void OnImportComplete(bool success, string? error = null)
-    {
-        // Import completion is not used by the Markdown editor
-    }
-
-    public void OnClientReady()
-    {
-        // Client ready is handled during initialization for Markdown
     }
 
     #endregion
@@ -551,14 +529,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
         ViewModel.Cleanup();
 
-        // Dispose RPC and detach the message channel
-        _rpc?.Dispose();
-        _rpcHandler?.Dispose();
-        _messageChannel?.Detach();
-        _rpc = null;
-        _rpcHandler = null;
-        _messageChannel = null;
-
         await base.PrepareToClose();
     }
 
@@ -582,9 +552,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
     {
         // External file change detected - notify JS to reload
         // The dirty state conflict handling is done in the ViewModel before raising this event
-        if (_rpc is not null)
+        if (Rpc is not null)
         {
-            await _rpc.NotifyExternalChangeAsync();
+            await Rpc.NotifyExternalChangeAsync();
         }
     }
 }

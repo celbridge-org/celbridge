@@ -1,19 +1,19 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.Views;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
-using Celbridge.Host;
+using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
-using StreamJsonRpc;
 
 namespace Celbridge.Spreadsheet.Views;
 
-public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHostDocument, IHostNotifications
+public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHostDocument
 {
     private readonly ILogger _logger;
     private readonly IStringLocalizer _stringLocalizer;
@@ -24,10 +24,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
-
-    private JsonRpc? _rpc;
-    private HostRpcHandler? _rpcHandler;
-    private HostChannel? _messageChannel;
 
     // Track import state to prevent race conditions during initial load and reloads
     private bool _isImportInProgress;
@@ -71,7 +67,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     public override async Task<Result> SaveDocument()
     {
-        if (_rpc is null)
+        if (Rpc is null)
         {
             _logger.LogDebug("Save skipped - RPC not initialized");
             return Result.Ok();
@@ -85,7 +81,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
         // Request the JS side to save - it will call document/save
         // which triggers our SaveAsync handler
-        await _rpc.NotifyRequestSaveAsync();
+        await Rpc.NotifyRequestSaveAsync();
 
         return await ViewModel.SaveDocument();
     }
@@ -113,6 +109,9 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
                 CoreWebView2HostResourceAccessKind.Allow);
 
             WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
+
+            // Inject keyboard shortcut handler for F11 and other global shortcuts
+            await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
 
             WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
@@ -144,25 +143,19 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
                 OpenSystemBrowser(uri);
             };
 
-            // Initialize StreamJsonRpc with this view as the handler
-            _messageChannel = new HostChannel(WebView.CoreWebView2);
-            _rpcHandler = new HostRpcHandler(_messageChannel);
-            _rpc = new JsonRpc(_rpcHandler);
+            // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
+            InitializeJsonRpc();
 
-            // Ensure RPC method handlers run on the UI thread
-            _rpc.SynchronizationContext = SynchronizationContext.Current;
+            // Register this view as the handler for additional RPC interfaces
+            Rpc!.AddLocalRpcTarget<IHostDocument>(this, null);
 
-            // Register this view as the handler for RPC interfaces
-            _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
-            _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+            StartJsonRpc();
 
-            _rpc.StartListening();
+            // Initialize focus handling
+            InitializeFocusHandling();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
-
-            // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
-            await InitializeWebViewAsync();
         }
         catch (Exception ex)
         {
@@ -247,20 +240,15 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     #endregion
 
-    #region IHostNotifications
+    #region IHostNotifications overrides
 
-    public void OnDocumentChanged()
+    public override void OnDocumentChanged()
     {
         // Flag the document as modified so it will attempt to save after a short delay.
         ViewModel.OnDataChanged();
     }
 
-    public void OnLinkClicked(string href)
-    {
-        // Link clicked is not used by the Spreadsheet editor
-    }
-
-    public void OnImportComplete(bool success, string? error = null)
+    public override void OnImportComplete(bool success, string? error = null)
     {
         _isImportInProgress = false;
 
@@ -278,13 +266,8 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         {
             _logger.LogDebug("Processing pending import request");
             _hasPendingImport = false;
-            _rpc?.NotifyExternalChangeAsync();
+            Rpc?.NotifyExternalChangeAsync();
         }
-    }
-
-    public void OnClientReady()
-    {
-        // Client ready is handled during initialization for Spreadsheet
     }
 
     #endregion
@@ -321,16 +304,16 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
             var base64 = Convert.ToBase64String(bytes);
 
             _logger.LogDebug($"Successfully loaded spreadsheet as base64: {filePath}");
-                return base64;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
-                    return string.Empty;
-                }
-            }
+            return base64;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
+            return string.Empty;
+        }
+    }
 
-            private void OpenSystemBrowser(string? uri)
+    private void OpenSystemBrowser(string? uri)
     {
         if (string.IsNullOrEmpty(uri))
         {
@@ -380,14 +363,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         // Cleanup ViewModel message handlers
         ViewModel.Cleanup();
 
-        // Dispose RPC and detach the message channel
-        _rpc?.Dispose();
-        _rpcHandler?.Dispose();
-        _messageChannel?.Detach();
-        _rpc = null;
-        _rpcHandler = null;
-        _messageChannel = null;
-
         await base.PrepareToClose();
     }
 
@@ -402,6 +377,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         }
 
         // Notify JS to reload the spreadsheet from disk
-        _rpc?.NotifyExternalChangeAsync();
+        Rpc?.NotifyExternalChangeAsync();
     }
 }

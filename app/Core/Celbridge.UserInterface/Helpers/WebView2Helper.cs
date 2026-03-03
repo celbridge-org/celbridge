@@ -20,7 +20,7 @@ public static class WebView2Helper
     public const string SharedAssetsFolderPath = "Celbridge.UserInterface/Web";  // virtual host root maps here; subfolders (e.g. bootstrap-icons/) are path-resolved automatically
 
     /// <summary>
-    /// JavaScript that captures global keyboard shortcuts and sends them to the C# host.
+    /// JavaScript that captures global keyboard shortcuts and sends them to the C# host via JSON-RPC.
     /// Uses capture phase to intercept before other handlers.
     /// </summary>
     public const string KeyboardShortcutScript = @"
@@ -28,16 +28,23 @@ public static class WebView2Helper
             window.addEventListener('keydown', function(event) {
                 // Handle F11 for fullscreen toggle
                 if (event.key === 'F11') {
+                    // Prevent default browser fullscreen and stop all propagation
                     event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
                     if (window.chrome && window.chrome.webview) {
                         window.chrome.webview.postMessage(JSON.stringify({
-                            type: 'keyboard_shortcut',
-                            key: 'F11',
-                            ctrlKey: event.ctrlKey,
-                            shiftKey: event.shiftKey,
-                            altKey: event.altKey
+                            jsonrpc: '2.0',
+                            method: 'host/keyboardShortcut',
+                            params: {
+                                key: 'F11',
+                                ctrlKey: event.ctrlKey,
+                                shiftKey: event.shiftKey,
+                                altKey: event.altKey
+                            }
                         }));
                     }
+                    return false;
                 }
             }, true); // Use capture phase to intercept before other handlers
         })();
@@ -47,7 +54,7 @@ public static class WebView2Helper
     /// Injects the keyboard shortcut handler into a WebView2 control.
     /// This should be called after EnsureCoreWebView2Async() completes.
     /// </summary>
-    public static async Task InjectKeyboardShortcutHandlerAsync(CoreWebView2 coreWebView2)
+    public static async Task InjectShortcutHandlerAsync(CoreWebView2 coreWebView2)
     {
         await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
     }
@@ -63,14 +70,5 @@ public static class WebView2Helper
             SharedAssetsHostName,
             SharedAssetsFolderPath,
             CoreWebView2HostResourceAccessKind.Allow);
-    }
-
-    /// <summary>
-    /// Attempts to handle a WebView2 message as a keyboard shortcut.
-    /// </summary>
-    public static bool HandleKeyboardShortcut(string? message)
-    {
-        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
-        return keyboardShortcutService.HandleWebView2KeyboardShortcut(message);
     }
 }

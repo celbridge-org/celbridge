@@ -3,6 +3,7 @@ using Celbridge.Documents;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
@@ -162,10 +163,19 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
 
     private async Task InitWebAppViewAsync()
     {
-        // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
-        await InitializeWebViewAsync();
-
         Guard.IsNotNull(WebView);
+
+        await WebView.EnsureCoreWebView2Async();
+
+        // Inject keyboard shortcut handler
+        await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
+
+        // Initialize JSON-RPC (provides keyboard shortcut handling via IHostNotifications)
+        InitializeJsonRpc();
+        StartJsonRpc();
+
+        // Initialize focus handling
+        InitializeFocusHandling();
 
         // Ensure we only register once for these events
         WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;

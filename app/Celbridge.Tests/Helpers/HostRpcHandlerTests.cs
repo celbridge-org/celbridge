@@ -186,6 +186,7 @@ public class HostRpcHandlerTests
         public bool LinkClickedCalled { get; private set; }
         public bool ImportCompleteCalled { get; private set; }
         public bool ClientReadyCalled { get; private set; }
+        public bool KeyboardShortcutCalled { get; private set; }
 
         public void OnDocumentChanged()
         {
@@ -205,6 +206,11 @@ public class HostRpcHandlerTests
         public void OnClientReady()
         {
             ClientReadyCalled = true;
+        }
+
+        public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+        {
+            KeyboardShortcutCalled = true;
         }
     }
 }

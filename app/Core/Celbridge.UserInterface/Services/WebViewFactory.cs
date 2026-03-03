@@ -251,7 +251,7 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
         // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-        await WebView2Helper.InjectKeyboardShortcutHandlerAsync(webView.CoreWebView2);
+        await WebView2Helper.InjectShortcutHandlerAsync(webView.CoreWebView2);
 
         return webView;
     }

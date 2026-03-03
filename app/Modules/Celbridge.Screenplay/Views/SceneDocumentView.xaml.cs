@@ -1,14 +1,13 @@
 using Celbridge.Documents.Views;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
-using Celbridge.Host;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
-using StreamJsonRpc;
 
 namespace Celbridge.Screenplay.Views;
 
@@ -24,10 +23,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
     public SceneDocumentViewModel ViewModel { get; }
 
     protected override ResourceKey FileResource => ViewModel.FileResource;
-
-    private JsonRpc? _rpc;
-    private HostRpcHandler? _rpcHandler;
-    private HostChannel? _messageChannel;
 
     public SceneDocumentView(
         IServiceProvider serviceProvider,
@@ -105,7 +100,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         }
 
         // Notify JS to reload content
-        _rpc?.NotifyExternalChangeAsync();
+        Rpc?.NotifyExternalChangeAsync();
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
@@ -151,28 +146,26 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
 
             WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
 
+            // Inject keyboard shortcut handler for F11 and other global shortcuts
+            await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
+
             WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
             await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
-            // Initialize StreamJsonRpc with this view as the handler
-            _messageChannel = new HostChannel(WebView.CoreWebView2);
-            _rpcHandler = new HostRpcHandler(_messageChannel);
-            _rpc = new JsonRpc(_rpcHandler);
+            // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
+            InitializeJsonRpc();
 
-            // Ensure RPC method handlers run on the UI thread
-            _rpc.SynchronizationContext = SynchronizationContext.Current;
+            // Register this view as the handler for additional RPC interfaces
+            Rpc!.AddLocalRpcTarget<IHostDocument>(this, null);
 
-            // Register this view as the handler for RPC interface
-            _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
+            StartJsonRpc();
 
-            _rpc.StartListening();
+            // Initialize focus handling
+            InitializeFocusHandling();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://screenplay.celbridge/index.html");
-
-            // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
-            await InitializeWebViewAsync();
         }
         catch (Exception ex)
         {
@@ -237,14 +230,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
     {
         _messengerService.Unregister<SceneContentUpdatedMessage>(this);
         _messengerService.Unregister<ThemeChangedMessage>(this);
-
-        // Dispose RPC and detach the message channel
-        _rpc?.Dispose();
-        _rpcHandler?.Dispose();
-        _messageChannel?.Detach();
-        _rpc = null;
-        _rpcHandler = null;
-        _messageChannel = null;
 
         await base.PrepareToClose();
     }
