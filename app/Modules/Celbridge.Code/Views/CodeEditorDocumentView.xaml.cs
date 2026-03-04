@@ -1,18 +1,15 @@
-using Celbridge.Code.ViewModels;
 using Celbridge.Documents;
 using Celbridge.Logging;
 
 namespace Celbridge.Code.Views;
 
 /// <summary>
-/// This control contains a Monaco editor for editing text documents.
-/// It acts as a facade for the MonacoEditor control, forwarding on all the IDocumentView interface methods.
+/// Document view for editing code/text files using the Monaco editor.
+/// Delegates to MonacoEditorControl for the actual editing functionality.
 /// </summary>
 public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
 {
     private readonly ILogger<CodeEditorDocumentView> _logger;
-
-    public CodeEditorDocumentViewModel ViewModel { get; }
 
     public bool HasUnsavedChanges => MonacoEditor.HasUnsavedChanges;
 
@@ -20,14 +17,11 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
     {
         this.InitializeComponent();
 
-        ViewModel = ServiceLocator.AcquireService<CodeEditorDocumentViewModel>();
         _logger = ServiceLocator.AcquireService<ILogger<CodeEditorDocumentView>>();
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        ViewModel.SetFileResource(fileResource);
-
         return await MonacoEditor.SetFileResource(fileResource);
     }
 
@@ -58,21 +52,13 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
 
     public async Task PrepareToClose()
     {
-        async void CloseEditorViews()
+        try
         {
-            try
-            {
-                await MonacoEditor.PrepareToClose();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred while preparing CodeEditorDocumentView to close");
-            }
+            await MonacoEditor.PrepareToClose();
         }
-
-        // Quick fire-and-forget call to avoid blocking the UI thread.
-        CloseEditorViews();
-
-        await Task.CompletedTask;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while preparing CodeEditorDocumentView to close");
+        }
     }
 }

@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Code.ViewModels;
 
-public partial class CodeEditorViewModel : DocumentViewModel
+public partial class MonacoEditorViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
@@ -20,7 +20,7 @@ public partial class CodeEditorViewModel : DocumentViewModel
     [ObservableProperty]
     private string _cachedText = string.Empty;
 
-    public CodeEditorViewModel(
+    public MonacoEditorViewModel(
         ICommandService commandService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)

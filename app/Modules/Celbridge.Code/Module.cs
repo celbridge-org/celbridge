@@ -24,14 +24,13 @@ public class Module : IModule
         //
 
         services.AddTransient<CodeEditorDocumentView>();
-        services.AddTransient<MonacoEditorView>();
+        services.AddTransient<MonacoEditorControl>();
 
         //
         // Register view models
         //
 
-        services.AddTransient<CodeEditorDocumentViewModel>();
-        services.AddTransient<CodeEditorViewModel>();
+        services.AddTransient<MonacoEditorViewModel>();
     }
 
     public Result Initialize()

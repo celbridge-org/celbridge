@@ -2,7 +2,6 @@ using System.Text.Json;
 using Celbridge.Code.MonacoHost;
 using Celbridge.Code.ViewModels;
 using Celbridge.Documents;
-using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -13,14 +12,18 @@ using StreamJsonRpc;
 
 namespace Celbridge.Code.Views;
 
-public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHostNotifications
+/// <summary>
+/// A reusable control that hosts a Monaco code editor via WebView2.
+/// This control can be embedded in any document view that needs code editing capabilities.
+/// </summary>
+public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IHostNotifications
 {
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    public CodeEditorViewModel ViewModel { get; }
+    public MonacoEditorViewModel ViewModel { get; }
 
     private WebView2? _webView;
     private JsonRpc? _rpc;
@@ -28,7 +31,9 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
     private HostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
 
-    public MonacoEditorView()
+    public bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
+
+    public MonacoEditorControl()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
 
@@ -37,7 +42,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
-        ViewModel = ServiceLocator.AcquireService<CodeEditorViewModel>();
+        ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
 
         // Monitor theme changes to update Monaco editor theme
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
@@ -45,13 +50,10 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         // Subscribe to reload requests from the ViewModel
         ViewModel.ReloadRequested += ViewModel_ReloadRequested;
 
-        // Set the data context
-        // The webview is not created until LoadContent is called, so we can pool webviews
-
         this.DataContext(ViewModel);
     }
 
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
+    public async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
 
@@ -71,14 +73,14 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         if (_webView is not null)
         {
             // If _webView has already been created, then this method is being called as part of a resource rename/move.
-            // Update the text editor language in case the file extension has changed.
-            await UpdateTextEditorLanguage();
+            // Update the code editor language in case the file extension has changed.
+            await UpdateCodeEditorLanguage();
         }
 
         return Result.Ok();
     }
 
-    public override async Task<Result> LoadContent()
+    public async Task<Result> LoadContent()
     {
         _webView = await _webViewFactory.AcquireAsync();
 
@@ -108,13 +110,13 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         await WebView2Helper.InjectShortcutHandlerAsync(_webView.CoreWebView2);
 
         // Ensure we only register the event handlers once
-        _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
+        _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
         _webView.GotFocus -= WebView_GotFocus;
 
-        _webView.CoreWebView2.NewWindowRequested += TextDocumentView_NewWindowRequested;
+        _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
         _webView.GotFocus += WebView_GotFocus;
 
-        // Initialize StreamJsonRpc with this view as the handler
+        // Initialize StreamJsonRpc with this control as the handler
         _messageChannel = new HostChannel(_webView.CoreWebView2);
         _rpcHandler = new HostRpcHandler(_messageChannel);
         _rpc = new JsonRpc(_rpcHandler);
@@ -122,7 +124,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         // Ensure RPC method handlers run on the UI thread
         _rpc.SynchronizationContext = SynchronizationContext.Current;
 
-        // Register this view as the handler for RPC interfaces
+        // Register this control as the handler for RPC interfaces
         _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
         _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
 
@@ -147,14 +149,12 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         return Result.Ok();
     }
 
-    public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
-
-    public override Result<bool> UpdateSaveTimer(double deltaTime)
+    public Result<bool> UpdateSaveTimer(double deltaTime)
     {
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public override async Task<Result> SaveDocument()
+    public async Task<Result> SaveDocument()
     {
         if (_rpc is null)
         {
@@ -168,7 +168,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         return await ViewModel.SaveDocument(ViewModel.CachedText ?? string.Empty);
     }
 
-    public override async Task<Result> NavigateToLocation(string location)
+    public async Task<Result> NavigateToLocation(string location)
     {
         if (_rpc is null)
         {
@@ -201,7 +201,13 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         }
     }
 
-    public override async Task PrepareToClose()
+    public async Task<bool> CanClose()
+    {
+        await Task.CompletedTask;
+        return true;
+    }
+
+    public async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);
 
@@ -214,7 +220,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
 
         if (_webView.CoreWebView2 != null)
         {
-            _webView.CoreWebView2.NewWindowRequested -= TextDocumentView_NewWindowRequested;
+            _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
         }
 
         // Unsubscribe from ViewModel events
@@ -234,9 +240,11 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         // Close and dispose the WebView2 instance
         _webView.Close();
         _webView = null;
+
+        await Task.CompletedTask;
     }
 
-    private void TextDocumentView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
+    private void OnNewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
     {
         // Prevent the new window from being created
         args.Handled = true;
@@ -256,7 +264,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         _messengerService.Send(message);
     }
 
-    private async Task UpdateTextEditorLanguage()
+    private async Task UpdateCodeEditorLanguage()
     {
         if (_rpc is null)
         {
