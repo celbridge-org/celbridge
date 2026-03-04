@@ -86,7 +86,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
             "Celbridge.Code/Web/Monaco",
             CoreWebView2HostResourceAccessKind.Allow);
 
-        // Map shared assets so Monaco can access celbridge-api.js
+        // Map shared assets so Monaco can access celbridge-client.js
         WebView2Helper.MapSharedAssets(_webView.CoreWebView2);
 
         // Inject keyboard shortcut handler for F11 and other global shortcuts

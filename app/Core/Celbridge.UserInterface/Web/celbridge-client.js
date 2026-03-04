@@ -1,4 +1,4 @@
-// Celbridge API: JavaScript client for communicating with the Celbridge .NET host.
+// Celbridge Client: JavaScript client for communicating with the Celbridge .NET host.
 // Provides promise-based async API with automatic request/response correlation.
 
 import { RpcTransport } from './core/rpc-transport.js';

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CelbridgeClient } from './celbridge-api.js';
+import { CelbridgeClient } from './celbridge-client.js';
 
 /**
  * Creates a mock message channel for testing.
