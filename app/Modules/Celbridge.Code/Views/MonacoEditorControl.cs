@@ -34,6 +34,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private TaskCompletionSource? _clientReadyTcs;
     private TaskCompletionSource<string>? _getContentTcs;
 
+    private bool _isPreInitialized;
     private string _content = string.Empty;
     private string _language = "plaintext";
     private string _filePath = string.Empty;
@@ -67,15 +68,16 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     }
 
     /// <summary>
-    /// Initializes the Monaco editor with content and language.
-    /// Call this after the control is added to the visual tree.
+    /// Pre-initializes the Monaco editor by setting up WebView2 and waiting for the client to be ready.
+    /// This performs the expensive initialization steps without loading any content.
+    /// Call InitializeAsync() later to load actual content.
     /// </summary>
-    public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey)
+    public async Task<Result> PreInitializeAsync()
     {
-        _content = content;
-        _language = language;
-        _filePath = filePath;
-        _resourceKey = resourceKey;
+        if (_isPreInitialized)
+        {
+            return Result.Ok();
+        }
 
         _webView = await _webViewFactory.AcquireAsync();
 
@@ -133,7 +135,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
             _clientReadyTcs = null;
 
             var errorMessage = $"Monaco editor client failed to initialize within {ClientInitializationTimeoutSeconds} seconds. " +
-                               $"The JavaScript module may have failed to load. File: {_filePath}";
+                               "The JavaScript module may have failed to load during pre-initialization.";
 
             _logger.LogError(errorMessage);
 
@@ -141,9 +143,35 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         }
 
         _clientReadyTcs = null;
+        _isPreInitialized = true;
 
-        // Initialize the Monaco editor via JSON-RPC
-        await _rpc.NotifyEditorInitializeAsync(_language);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Initializes the Monaco editor with content and language.
+    /// If PreInitializeAsync() was called, this only sets the content and language.
+    /// Otherwise, performs full initialization.
+    /// </summary>
+    public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey)
+    {
+        _content = content;
+        _language = language;
+        _filePath = filePath;
+        _resourceKey = resourceKey;
+
+        // If not pre-initialized, do the full initialization now
+        if (!_isPreInitialized)
+        {
+            var preInitResult = await PreInitializeAsync();
+            if (preInitResult.IsFailure)
+            {
+                return preInitResult;
+            }
+        }
+
+        // Initialize the Monaco editor via JSON-RPC with the content and language
+        await _rpc!.NotifyEditorInitializeAsync(_language);
 
         return Result.Ok();
     }

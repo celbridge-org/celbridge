@@ -22,6 +22,15 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
 
     public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
+    /// <summary>
+    /// Pre-warms the Monaco editor by performing expensive initialization without loading content.
+    /// Call this to prepare an instance for fast reuse later.
+    /// </summary>
+    public async Task<Result> PreWarmAsync()
+    {
+        return await MonacoEditor.PreInitializeAsync();
+    }
+
     public CodeEditorDocumentView()
     {
         this.InitializeComponent();
