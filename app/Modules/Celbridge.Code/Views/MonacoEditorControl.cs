@@ -19,6 +19,7 @@ namespace Celbridge.Code.Views;
 public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IHostNotifications
 {
     private const int ContentRequestTimeoutSeconds = 5;
+    private const int ClientInitializationTimeoutSeconds = 10;
 
     private readonly ILogger<MonacoEditorControl> _logger;
     private readonly IWebViewFactory _webViewFactory;
@@ -122,8 +123,24 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         // Navigate to Monaco editor
         _webView.CoreWebView2.Navigate("http://monaco.celbridge/index.html");
 
-        // Wait for the JS client to signal it's ready
-        await _clientReadyTcs.Task;
+        // Wait for the JS client to signal it's ready, with timeout to prevent infinite hang
+        var timeout = TimeSpan.FromSeconds(ClientInitializationTimeoutSeconds);
+        var timeoutTask = Task.Delay(timeout);
+        var completedTask = await Task.WhenAny(_clientReadyTcs.Task, timeoutTask);
+
+        if (completedTask == timeoutTask)
+        {
+            _clientReadyTcs = null;
+
+            var errorMessage = $"Monaco editor client failed to initialize within {ClientInitializationTimeoutSeconds} seconds. " +
+                               $"The JavaScript module may have failed to load. File: {_filePath}";
+
+            _logger.LogError(errorMessage);
+
+            return Result.Fail(errorMessage);
+        }
+
+        _clientReadyTcs = null;
 
         // Initialize the Monaco editor via JSON-RPC
         await _rpc.NotifyEditorInitializeAsync(_language);
