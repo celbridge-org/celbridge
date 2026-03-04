@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Dialog;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
@@ -7,17 +6,17 @@ using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Spreadsheet.Views;
 
 public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHostDocument
 {
+    // Spreadsheets can be large and take significant time to serialize/save.
+    private const int SaveRequestTimeoutSeconds = 60;
+
     private readonly ILogger _logger;
-    private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
-    private readonly IDialogService _dialogService;
     private readonly IResourceRegistry _resourceRegistry;
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
@@ -28,12 +27,13 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
     private bool _isImportInProgress;
     private bool _hasPendingImport;
 
+    // Track save result from async RPC callback
+    private TaskCompletionSource<Result>? _saveResultTcs;
+
     public SpreadsheetDocumentView(
         IServiceProvider serviceProvider,
         ILogger<SpreadsheetDocumentView> logger,
-        IStringLocalizer stringLocalizer,
         ICommandService commandService,
-        IDialogService dialogService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
         : base(messengerService)
@@ -42,8 +42,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
         _logger = logger;
         _commandService = commandService;
-        _stringLocalizer = stringLocalizer;
-        _dialogService = dialogService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         this.InitializeComponent();
@@ -78,11 +76,35 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
             return Result.Ok();
         }
 
+        // Set up completion source to receive the save result from SaveAsync
+        _saveResultTcs = new TaskCompletionSource<Result>();
+
         // Request the JS side to save - it will call document/save
         // which triggers our SaveAsync handler
         await Rpc.NotifyRequestSaveAsync();
 
-        return await ViewModel.SaveDocument();
+        // Wait for SaveAsync to complete, with timeout to prevent hanging
+        var timeout = TimeSpan.FromSeconds(SaveRequestTimeoutSeconds);
+        var timeoutTask = Task.Delay(timeout);
+        var completedTask = await Task.WhenAny(_saveResultTcs.Task, timeoutTask);
+
+        if (completedTask == timeoutTask)
+        {
+            _saveResultTcs = null;
+            CompleteSave();
+
+            var errorMessage = $"Spreadsheet editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
+                               $"The editor may be in an unstable state. File: {ViewModel.FilePath}";
+
+            _logger.LogError(errorMessage);
+
+            return Result.Fail(errorMessage);
+        }
+
+        var result = await _saveResultTcs.Task;
+        _saveResultTcs = null;
+
+        return result;
     }
 
     private async void SpreadsheetDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -200,41 +222,60 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         return new LoadResult(base64Content, metadata);
     }
 
+    /// <summary>
+    /// Called by JS via RPC when the spreadsheet data needs to be saved.
+    /// Saves the data to disk and signals the waiting SaveDocument() method with the result.
+    /// </summary>
     public async Task<SaveResult> SaveAsync(string content)
     {
         try
         {
+            // Write the spreadsheet data to disk
             var saveResult = await ViewModel.SaveSpreadsheetDataToFile(content);
 
             if (saveResult.IsFailure)
             {
                 _logger.LogError(saveResult, "Failed to save spreadsheet data");
-                CompleteSave();
-
-                // Alert the user that the document failed to save
-                var file = ViewModel.FilePath;
-                var title = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");
-                var message = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", file);
-                await _dialogService.ShowAlertDialogAsync(title, message);
-
-                return new SaveResult(false, saveResult.Error);
+                return CompleteSaveWithResult(saveResult);
             }
 
-            // Check if there's a pending save that needs processing
+            // Reset the ViewModel's save state flags
+            await ViewModel.SaveDocument();
+
+            // Check if another save was requested while this one was in progress
             if (CompleteSave())
             {
                 _logger.LogDebug("Processing pending save request");
                 ViewModel.OnDataChanged();
             }
 
-            return new SaveResult(true);
+            return SignalSaveResult(Result.Ok(), success: true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception during save");
-            CompleteSave();
-            return new SaveResult(false, ex.Message);
+            var failResult = Result.Fail("Exception during save").WithException(ex);
+            return CompleteSaveWithResult(failResult, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Completes a failed save operation: signals the waiting SaveDocument() and returns failure to JS.
+    /// </summary>
+    private SaveResult CompleteSaveWithResult(Result failResult, string? errorMessage = null)
+    {
+        CompleteSave();
+        _saveResultTcs?.TrySetResult(failResult);
+        return new SaveResult(false, errorMessage ?? failResult.Error);
+    }
+
+    /// <summary>
+    /// Signals the waiting SaveDocument() method and returns the result to JS.
+    /// </summary>
+    private SaveResult SignalSaveResult(Result result, bool success, string? errorMessage = null)
+    {
+        _saveResultTcs?.TrySetResult(result);
+        return new SaveResult(success, errorMessage);
     }
 
     #endregion

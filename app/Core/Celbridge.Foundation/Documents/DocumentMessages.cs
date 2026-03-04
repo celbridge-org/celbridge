@@ -28,11 +28,6 @@ public record SectionRatiosChangedMessage(List<double> SectionRatios);
 public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKey NewResource);
 
 /// <summary>
-/// A message sent when a previously modified document has been requested to save to disk.
-/// </summary>
-public record DocumentSaveRequestedMessage(ResourceKey DocumentResource);
-
-/// <summary>
 /// A message sent when a document save operation has completed.
 /// This message is only sent for specific document types with complex async save sequences (e.g. spreadsheets).
 /// </summary>
