@@ -2,6 +2,7 @@ using Celbridge.Code.Services;
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Host;
+using Celbridge.Host.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;

@@ -1,5 +1,6 @@
 using Celbridge.Documents.Views;
 using Celbridge.Host;
+using Celbridge.Host.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
