@@ -1,6 +1,6 @@
 using StreamJsonRpc;
 
-namespace Celbridge.Code.MonacoHost;
+namespace Celbridge.Code.Services;
 
 /// <summary>
 /// JSON-RPC method names specific to Monaco editor operations.

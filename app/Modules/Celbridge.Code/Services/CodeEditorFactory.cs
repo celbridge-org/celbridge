@@ -13,8 +13,6 @@ namespace Celbridge.Code.Services;
 public class CodeEditorFactory : IDocumentEditorFactory
 {
     private const string CodeEditorTypesResourceName = "Celbridge.Code.Assets.CodeEditorTypes.json";
-    private const string PlaintextLanguage = "plaintext";
-
     private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<string, string> _extensionToLanguage;
 
