@@ -15,7 +15,13 @@ public class MockHostChannel : IHostChannel
     public void PostMessage(string json)
     {
         SentMessages.Add(json);
+        MessagePosted?.Invoke();
     }
+
+    /// <summary>
+    /// Event raised when a message is posted, for deterministic test synchronization.
+    /// </summary>
+    public event Action? MessagePosted;
 
     public void SimulateMessage(string json)
     {
@@ -74,6 +80,7 @@ public class MockHostChannel : IHostChannel
 [TestFixture]
 public class CelbridgeHostTests
 {
+    private const int TestTimeoutMs = 1000;
     private MockHostChannel _channel = null!;
     private CelbridgeHost _host = null!;
 
@@ -82,6 +89,38 @@ public class CelbridgeHostTests
     {
         _channel = new MockHostChannel();
         _host = new CelbridgeHost(_channel);
+    }
+
+    /// <summary>
+    /// Waits for the expected number of messages to be sent, with timeout.
+    /// </summary>
+    private async Task WaitForMessagesAsync(int expectedCount)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        var cts = new CancellationTokenSource(TestTimeoutMs);
+        cts.Token.Register(() => tcs.TrySetResult(false));
+
+        void OnMessagePosted()
+        {
+            if (_channel.SentMessages.Count >= expectedCount)
+            {
+                tcs.TrySetResult(true);
+            }
+        }
+
+        _channel.MessagePosted += OnMessagePosted;
+        try
+        {
+            if (_channel.SentMessages.Count >= expectedCount)
+            {
+                return;
+            }
+            await tcs.Task;
+        }
+        finally
+        {
+            _channel.MessagePosted -= OnMessagePosted;
+        }
     }
 
     [TearDown]
@@ -107,9 +146,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
-
-        // Allow async handler to complete
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         handlerCalled.Should().BeTrue();
@@ -127,8 +164,7 @@ public class CelbridgeHostTests
     {
         // Act
         _channel.SimulateRequest(1, "unknown/method", null);
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         _channel.SentMessages.Should().HaveCount(1);
@@ -152,8 +188,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "0.5" });
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         var response = JsonDocument.Parse(_channel.SentMessages[0]);
@@ -173,8 +208,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         var response = JsonDocument.Parse(_channel.SentMessages[0]);
@@ -184,7 +218,7 @@ public class CelbridgeHostTests
     }
 
     [Test]
-    public async Task HandleNotification_CallsRegisteredHandler()
+    public void HandleNotification_CallsRegisteredHandler()
     {
         // Arrange
         var notificationReceived = false;
@@ -196,11 +230,9 @@ public class CelbridgeHostTests
         // Act
         _channel.SimulateNotification(HostRpcMethods.DocumentChanged, new { });
 
-        await Task.Delay(50);
-
-        // Assert
+        // Assert - notification handlers are synchronous
         notificationReceived.Should().BeTrue();
-        _channel.SentMessages.Should().BeEmpty(); // Notifications don't get responses
+        _channel.SentMessages.Should().BeEmpty();
     }
 
     [Test]
@@ -232,8 +264,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.DocumentSave, new { content = "# Hello World" });
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         savedContent.Should().Be("# Hello World");
@@ -251,8 +282,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.DocumentLoad, new { });
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         var response = JsonDocument.Parse(_channel.SentMessages[0]);
@@ -272,8 +302,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.DialogPickImage, new { extensions = new[] { ".png", ".jpg" } });
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         var response = JsonDocument.Parse(_channel.SentMessages[0]);
@@ -296,8 +325,7 @@ public class CelbridgeHostTests
 
         // Act
         _channel.SimulateRequest(1, HostRpcMethods.DialogAlert, new { title = "Warning", message = "Something happened" });
-
-        await Task.Delay(50);
+        await WaitForMessagesAsync(1);
 
         // Assert
         alertTitle.Should().Be("Warning");

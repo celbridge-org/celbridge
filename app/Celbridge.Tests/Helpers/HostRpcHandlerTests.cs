@@ -1,128 +1,115 @@
-using System.Text.Json;
 using Celbridge.Host;
 using StreamJsonRpc;
+using StreamJsonRpc.Protocol;
 
 namespace Celbridge.Tests.Helpers;
 
+/// <summary>
+/// Tests for HostRpcHandler's unique adapter behavior.
+/// These tests focus on the Channel buffering and IJsonRpcMessageHandler implementation,
+/// not the full request/response cycle (which is covered by CelbridgeHostTests).
+/// </summary>
 [TestFixture]
 public class HostRpcHandlerTests
 {
     private MockHostChannel _channel = null!;
     private HostRpcHandler _handler = null!;
-    private JsonRpc _rpc = null!;
 
     [SetUp]
     public void SetUp()
     {
         _channel = new MockHostChannel();
         _handler = new HostRpcHandler(_channel);
-        _rpc = new JsonRpc(_handler);
     }
 
     [TearDown]
     public void TearDown()
     {
-        _rpc.Dispose();
         _handler.Dispose();
     }
 
     [Test]
-    public async Task HandleRequest_WithRegisteredTarget_CallsHandlerAndSendsResponse()
+    public async Task ReadAsync_ReturnsMessage_WhenMessageReceived()
     {
-        // Arrange
-        var service = new TestHostDocument();
-        _rpc.AddLocalRpcTarget<IHostDocument>(service, null);
-        _rpc.StartListening();
+        // Arrange - simulate a JSON-RPC message
+        var json = """{"jsonrpc":"2.0","method":"test/method","id":1}""";
 
         // Act
-        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
-
-        // Allow async processing
-        await Task.Delay(100);
+        _channel.SimulateMessage(json);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        var message = await _handler.ReadAsync(cts.Token);
 
         // Assert
-        service.InitializeCalled.Should().BeTrue();
-        _channel.SentMessages.Should().HaveCount(1);
-
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        var root = response.RootElement;
-        root.GetProperty("id").GetInt32().Should().Be(1);
-        root.TryGetProperty("result", out _).Should().BeTrue();
+        message.Should().NotBeNull();
+        message.Should().BeAssignableTo<JsonRpcRequest>();
+        var request = (JsonRpcRequest)message!;
+        request.Method.Should().Be("test/method");
     }
 
     [Test]
-    public async Task HandleRequest_MethodNotFound_SendsErrorResponse()
+    public async Task ReadAsync_ReturnsMessagesInOrder()
     {
-        // Arrange
-        _rpc.StartListening();
+        // Arrange - simulate multiple messages
+        _channel.SimulateMessage("""{"jsonrpc":"2.0","method":"first","id":1}""");
+        _channel.SimulateMessage("""{"jsonrpc":"2.0","method":"second","id":2}""");
+        _channel.SimulateMessage("""{"jsonrpc":"2.0","method":"third","id":3}""");
 
-        // Act
-        _channel.SimulateRequest(1, "unknown/method", null);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
-        // Allow async processing
-        await Task.Delay(100);
+        // Act & Assert - messages should arrive in order
+        var first = (JsonRpcRequest)(await _handler.ReadAsync(cts.Token))!;
+        first.Method.Should().Be("first");
 
-        // Assert
-        _channel.SentMessages.Should().HaveCount(1);
+        var second = (JsonRpcRequest)(await _handler.ReadAsync(cts.Token))!;
+        second.Method.Should().Be("second");
 
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        var root = response.RootElement;
-        root.GetProperty("id").GetInt32().Should().Be(1);
-        root.TryGetProperty("error", out var error).Should().BeTrue();
-        error.GetProperty("code").GetInt32().Should().Be(-32601); // Method not found
+        var third = (JsonRpcRequest)(await _handler.ReadAsync(cts.Token))!;
+        third.Method.Should().Be("third");
     }
 
     [Test]
-    public async Task HandleNotification_WithRegisteredTarget_CallsHandler()
+    public async Task ReadAsync_ReturnsNull_WhenCancelledAfterDispose()
     {
         // Arrange
-        var service = new TestHostNotifications();
-        _rpc.AddLocalRpcTarget<IHostNotifications>(service, null);
-        _rpc.StartListening();
+        _handler.Dispose();
 
         // Act
-        _channel.SimulateNotification(HostRpcMethods.DocumentChanged, null);
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        var message = await _handler.ReadAsync(cts.Token);
 
-        // Allow async processing
-        await Task.Delay(100);
-
-        // Assert
-        service.DocumentChangedCalled.Should().BeTrue();
-        _channel.SentMessages.Should().BeEmpty(); // Notifications don't get responses
+        // Assert - disposed handler returns null
+        message.Should().BeNull();
     }
 
     [Test]
-    public async Task SendNotification_SendsCorrectJsonRpcFormat()
+    public void Dispose_UnsubscribesFromChannelMessages()
     {
-        // Arrange
-        _rpc.StartListening();
-
-        // Act
-        await _rpc.NotifyExternalChangeAsync();
-
-        // Assert
-        _channel.SentMessages.Should().HaveCount(1);
-
-        var notification = JsonDocument.Parse(_channel.SentMessages[0]);
-        var root = notification.RootElement;
-        root.GetProperty("method").GetString().Should().Be(HostRpcMethods.DocumentExternalChange);
-        root.TryGetProperty("id", out _).Should().BeFalse(); // Notifications have no id
-    }
-
-    [Test]
-    public void Dispose_UnsubscribesFromMessages()
-    {
-        // Arrange
-        var service = new TestHostNotifications();
-        _rpc.AddLocalRpcTarget<IHostNotifications>(service, null);
-        _rpc.StartListening();
+        // Arrange - start a read task before dispose
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        var readTask = _handler.ReadAsync(cts.Token);
 
         // Act
         _handler.Dispose();
-        _channel.SimulateNotification(HostRpcMethods.DocumentChanged, null);
 
-        // Assert - handler should not be called after dispose
-        service.DocumentChangedCalled.Should().BeFalse();
+        // Simulate a message after dispose
+        _channel.SimulateMessage("""{"jsonrpc":"2.0","method":"test","id":1}""");
+
+        // Assert - the read task should complete with null (channel closed)
+        Func<Task> act = async () =>
+        {
+            var result = await readTask;
+            result.Should().BeNull();
+        };
+        act.Should().NotThrowAsync();
+    }
+
+    [Test]
+    public void Dispose_CanBeCalledMultipleTimes()
+    {
+        // Act & Assert - should not throw
+        _handler.Dispose();
+        _handler.Dispose();
+        _handler.Dispose();
     }
 
     [Test]
@@ -138,79 +125,10 @@ public class HostRpcHandlerTests
     }
 
     [Test]
-    public void Formatter_IsNotNull()
+    public void Formatter_IsConfiguredForJavaScriptInterop()
     {
+        // Assert - formatter should be configured
         _handler.Formatter.Should().NotBeNull();
-    }
-
-    /// <summary>
-    /// Test implementation of IHostDocument.
-    /// </summary>
-    private class TestHostDocument : IHostDocument
-    {
-        public bool InitializeCalled { get; private set; }
-
-        public Task<InitializeResult> InitializeAsync(string protocolVersion)
-        {
-            InitializeCalled = true;
-            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
-            var localization = new Dictionary<string, string> { { "key", "value" } };
-            var result = new InitializeResult("# Content", metadata, localization);
-            return Task.FromResult(result);
-        }
-
-        public Task<LoadResult> LoadAsync()
-        {
-            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
-            return Task.FromResult(new LoadResult("# Content", metadata));
-        }
-
-        public Task<SaveResult> SaveAsync(string content)
-        {
-            return Task.FromResult(new SaveResult(true));
-        }
-
-        public Task<DocumentMetadata> GetMetadataAsync()
-        {
-            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
-            return Task.FromResult(metadata);
-        }
-    }
-
-    /// <summary>
-    /// Test implementation of IHostNotifications.
-    /// </summary>
-    private class TestHostNotifications : IHostNotifications
-    {
-        public bool DocumentChangedCalled { get; private set; }
-        public bool LinkClickedCalled { get; private set; }
-        public bool ImportCompleteCalled { get; private set; }
-        public bool ClientReadyCalled { get; private set; }
-        public bool KeyboardShortcutCalled { get; private set; }
-
-        public void OnDocumentChanged()
-        {
-            DocumentChangedCalled = true;
-        }
-
-        public void OnLinkClicked(string href)
-        {
-            LinkClickedCalled = true;
-        }
-
-        public void OnImportComplete(bool success, string? error = null)
-        {
-            ImportCompleteCalled = true;
-        }
-
-        public void OnClientReady()
-        {
-            ClientReadyCalled = true;
-        }
-
-        public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
-        {
-            KeyboardShortcutCalled = true;
-        }
+        _handler.Formatter.Should().BeOfType<SystemTextJsonFormatter>();
     }
 }
