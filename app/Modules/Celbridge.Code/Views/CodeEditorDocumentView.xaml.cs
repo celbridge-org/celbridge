@@ -44,9 +44,11 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
 
         _viewModel = ServiceLocator.AcquireService<CodeEditorViewModel>();
 
+        // Set up content loader callback for Monaco to pull content when needed
+        MonacoEditor.ContentLoader = LoadContentFromDiskAsync;
+
         // Subscribe to MonacoEditorControl events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
-        MonacoEditor.ReloadRequested += OnMonacoReloadRequested;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
 
         // Subscribe to ViewModel reload requests (external file changes)
@@ -94,6 +96,21 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
             _viewModel.FileResource.ToString());
 
         return initResult;
+    }
+
+    /// <summary>
+    /// Loads content from disk. Used as the ContentLoader callback for Monaco.
+    /// </summary>
+    private async Task<string> LoadContentFromDiskAsync()
+    {
+        var loadResult = await _viewModel.LoadDocument();
+        if (loadResult.IsFailure)
+        {
+            _logger.LogError(loadResult, $"Failed to load content for resource: {_viewModel.FileResource}");
+            return string.Empty;
+        }
+
+        return loadResult.Value;
     }
 
     public Result<bool> UpdateSaveTimer(double deltaTime)
@@ -153,10 +170,10 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
     {
         try
         {
-            // Unsubscribe from events
+            // Unsubscribe from events and clear callback
             MonacoEditor.ContentChanged -= OnMonacoContentChanged;
-            MonacoEditor.ReloadRequested -= OnMonacoReloadRequested;
             MonacoEditor.EditorFocused -= OnMonacoEditorFocused;
+            MonacoEditor.ContentLoader = null;
             _viewModel.ReloadRequested -= OnViewModelReloadRequested;
 
             // Cleanup ViewModel
@@ -175,16 +192,6 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
     {
         // Mark document as having unsaved changes
         _viewModel.OnTextChanged();
-    }
-
-    private async void OnMonacoReloadRequested(object? sender, EventArgs e)
-    {
-        // Monaco requested a reload - load fresh content from disk
-        var loadResult = await _viewModel.LoadDocument();
-        if (loadResult.IsSuccess)
-        {
-            MonacoEditor.SetContent(loadResult.Value);
-        }
     }
 
     private void OnMonacoEditorFocused()

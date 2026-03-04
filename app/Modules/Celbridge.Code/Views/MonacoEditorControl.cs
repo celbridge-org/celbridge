@@ -40,14 +40,15 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private string _resourceKey = string.Empty;
 
     /// <summary>
+    /// Callback to load content from the parent. Set this before calling InitializeAsync().
+    /// The parent is responsible for reading from disk or other source.
+    /// </summary>
+    public Func<Task<string>>? ContentLoader { get; set; }
+
+    /// <summary>
     /// Raised when the content changes in the Monaco editor (user editing).
     /// </summary>
     public event Action? ContentChanged;
-
-    /// <summary>
-    /// Raised when an external reload is requested (e.g., file changed on disk).
-    /// </summary>
-    public event EventHandler? ReloadRequested;
 
     /// <summary>
     /// Raised when the editor receives focus.
@@ -219,14 +220,6 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     }
 
     /// <summary>
-    /// Sets the content in the Monaco editor.
-    /// </summary>
-    public void SetContent(string content)
-    {
-        _content = content;
-    }
-
-    /// <summary>
     /// Sets the language mode of the Monaco editor.
     /// </summary>
     public async Task SetLanguageAsync(string language)
@@ -388,13 +381,18 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
     public async Task<LoadResult> LoadAsync()
     {
-        // Raise event so the parent can reload content from disk
-        ReloadRequested?.Invoke(this, EventArgs.Empty);
+        // Use the content loader callback to get fresh content from the parent
+        if (ContentLoader is not null)
+        {
+            _content = await ContentLoader();
+        }
+        else
+        {
+            _logger.LogWarning($"LoadAsync has no ContentLoader for file: {_resourceKey}");
+        }
 
         var metadata = CreateMetadata();
         var result = new LoadResult(_content, metadata);
-
-        await Task.CompletedTask;
 
         return result;
     }

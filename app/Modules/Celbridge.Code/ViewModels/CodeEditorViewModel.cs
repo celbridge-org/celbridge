@@ -65,7 +65,14 @@ public partial class CodeEditorViewModel : DocumentViewModel
 
         try
         {
+            // Set flag to suppress reload requests triggered by our own save
+            IsSavingFile = true;
+
             await File.WriteAllTextAsync(FilePath, text);
+
+            // Update tracking info BEFORE sending completion message to avoid race condition
+            // with file watcher events that may arrive before the message is processed
+            UpdateFileTrackingInfo();
 
             var message = new DocumentSaveCompletedMessage(FileResource);
             _messengerService.Send(message);
@@ -74,6 +81,10 @@ public partial class CodeEditorViewModel : DocumentViewModel
         {
             return Result.Fail($"Failed to save document file: '{FilePath}'")
                 .WithException(ex);
+        }
+        finally
+        {
+            IsSavingFile = false;
         }
 
         return Result.Ok();
@@ -112,6 +123,12 @@ public partial class CodeEditorViewModel : DocumentViewModel
         // Check if the changed resource is the current document
         if (message.Resource == FileResource)
         {
+            // Ignore file watcher events triggered by our own save operation
+            if (IsSavingFile)
+            {
+                return;
+            }
+
             // Check if this change is genuinely different from our last save
             if (IsFileChangedExternally())
             {
