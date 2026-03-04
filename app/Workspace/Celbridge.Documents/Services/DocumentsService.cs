@@ -603,6 +603,9 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
+
+                // Dispose the document editor registry to clean up factories
+                _documentEditorRegistry.Dispose();
             }
 
             _disposed = true;
