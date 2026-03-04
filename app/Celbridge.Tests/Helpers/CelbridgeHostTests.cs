@@ -1,86 +1,13 @@
-using System.Text.Json;
 using Celbridge.Host;
 
 namespace Celbridge.Tests.Helpers;
 
 /// <summary>
-/// Mock implementation of IHostChannel for testing.
+/// Tests for CelbridgeHost facade behavior.
 /// </summary>
-public class MockHostChannel : IHostChannel
-{
-    public List<string> SentMessages { get; } = new();
-
-    public event EventHandler<string>? MessageReceived;
-
-    public void PostMessage(string json)
-    {
-        SentMessages.Add(json);
-        MessagePosted?.Invoke();
-    }
-
-    /// <summary>
-    /// Event raised when a message is posted, for deterministic test synchronization.
-    /// </summary>
-    public event Action? MessagePosted;
-
-    public void SimulateMessage(string json)
-    {
-        MessageReceived?.Invoke(this, json);
-    }
-
-    public void SimulateRequest(int id, string method, object? parameters = null)
-    {
-        object request;
-        if (parameters != null)
-        {
-            request = new
-            {
-                jsonrpc = "2.0",
-                method,
-                @params = parameters,
-                id
-            };
-        }
-        else
-        {
-            request = new
-            {
-                jsonrpc = "2.0",
-                method,
-                id
-            };
-        }
-        SimulateMessage(JsonSerializer.Serialize(request));
-    }
-
-    public void SimulateNotification(string method, object? parameters = null)
-    {
-        object notification;
-        if (parameters != null)
-        {
-            notification = new
-            {
-                jsonrpc = "2.0",
-                method,
-                @params = parameters
-            };
-        }
-        else
-        {
-            notification = new
-            {
-                jsonrpc = "2.0",
-                method
-            };
-        }
-        SimulateMessage(JsonSerializer.Serialize(notification));
-    }
-}
-
 [TestFixture]
 public class CelbridgeHostTests
 {
-    private const int TestTimeoutMs = 1000;
     private MockHostChannel _channel = null!;
     private CelbridgeHost _host = null!;
 
@@ -91,38 +18,6 @@ public class CelbridgeHostTests
         _host = new CelbridgeHost(_channel);
     }
 
-    /// <summary>
-    /// Waits for the expected number of messages to be sent, with timeout.
-    /// </summary>
-    private async Task WaitForMessagesAsync(int expectedCount)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-        var cts = new CancellationTokenSource(TestTimeoutMs);
-        cts.Token.Register(() => tcs.TrySetResult(false));
-
-        void OnMessagePosted()
-        {
-            if (_channel.SentMessages.Count >= expectedCount)
-            {
-                tcs.TrySetResult(true);
-            }
-        }
-
-        _channel.MessagePosted += OnMessagePosted;
-        try
-        {
-            if (_channel.SentMessages.Count >= expectedCount)
-            {
-                return;
-            }
-            await tcs.Task;
-        }
-        finally
-        {
-            _channel.MessagePosted -= OnMessagePosted;
-        }
-    }
-
     [TearDown]
     public void TearDown()
     {
@@ -130,241 +25,66 @@ public class CelbridgeHostTests
     }
 
     [Test]
-    public async Task HandleRequest_CallsRegisteredHandler_AndSendsResponse()
+    public void Rpc_IsNotNull_AfterConstruction()
     {
-        // Arrange
-        var handlerCalled = false;
-        _host.OnInitialize(async (request) =>
-        {
-            handlerCalled = true;
-            request.ProtocolVersion.Should().Be("1.0");
-            return new InitializeResult(
-                "# Content",
-                new DocumentMetadata("/path/test.md", "test", "test.md"),
-                new Dictionary<string, string> { { "key", "value" } });
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        handlerCalled.Should().BeTrue();
-        _channel.SentMessages.Should().HaveCount(1);
-
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        var root = response.RootElement;
-        root.GetProperty("jsonrpc").GetString().Should().Be("2.0");
-        root.GetProperty("id").GetInt32().Should().Be(1);
-        root.GetProperty("result").GetProperty("content").GetString().Should().Be("# Content");
+        _host.Rpc.Should().NotBeNull();
     }
 
     [Test]
-    public async Task HandleRequest_MethodNotFound_SendsErrorResponse()
-    {
-        // Act
-        _channel.SimulateRequest(1, "unknown/method", null);
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        _channel.SentMessages.Should().HaveCount(1);
-
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        var root = response.RootElement;
-        root.GetProperty("id").GetInt32().Should().Be(1);
-        var error = root.GetProperty("error");
-        error.GetProperty("code").GetInt32().Should().Be(JsonRpcErrorCodes.MethodNotFound);
-        error.GetProperty("message").GetString().Should().Contain("Method not found");
-    }
-
-    [Test]
-    public async Task HandleRequest_HandlerThrowsBridgeException_SendsErrorWithCode()
-    {
-        // Arrange
-        _host.OnInitialize(async (request) =>
-        {
-            throw new HostRpcException(JsonRpcErrorCodes.InvalidVersion, "Unsupported version", new { expected = "1.0" });
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "0.5" });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        var error = response.RootElement.GetProperty("error");
-        error.GetProperty("code").GetInt32().Should().Be(JsonRpcErrorCodes.InvalidVersion);
-        error.GetProperty("message").GetString().Should().Be("Unsupported version");
-    }
-
-    [Test]
-    public async Task HandleRequest_HandlerThrowsException_SendsInternalError()
-    {
-        // Arrange
-        _host.OnInitialize(async (request) =>
-        {
-            throw new InvalidOperationException("Something went wrong");
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.Initialize, new { protocolVersion = "1.0" });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        var error = response.RootElement.GetProperty("error");
-        error.GetProperty("code").GetInt32().Should().Be(JsonRpcErrorCodes.InternalError);
-        error.GetProperty("message").GetString().Should().Contain("Something went wrong");
-    }
-
-    [Test]
-    public void HandleNotification_CallsRegisteredHandler()
-    {
-        // Arrange
-        var notificationReceived = false;
-        _host.Document.OnChanged(() =>
-        {
-            notificationReceived = true;
-        });
-
-        // Act
-        _channel.SimulateNotification(HostRpcMethods.DocumentChanged, new { });
-
-        // Assert - notification handlers are synchronous
-        notificationReceived.Should().BeTrue();
-        _channel.SentMessages.Should().BeEmpty();
-    }
-
-    [Test]
-    public void SendNotification_SendsCorrectJsonRpcFormat()
-    {
-        // Act
-        _host.Document.NotifyExternalChange();
-
-        // Assert
-        _channel.SentMessages.Should().HaveCount(1);
-
-        var notification = JsonDocument.Parse(_channel.SentMessages[0]);
-        var root = notification.RootElement;
-        root.GetProperty("jsonrpc").GetString().Should().Be("2.0");
-        root.GetProperty("method").GetString().Should().Be(HostRpcMethods.DocumentExternalChange);
-        root.TryGetProperty("id", out _).Should().BeFalse(); // Notifications have no id
-    }
-
-    [Test]
-    public async Task DocumentOnSave_HandlerReceivesContent()
-    {
-        // Arrange
-        string? savedContent = null;
-        _host.Document.OnSave(async (request) =>
-        {
-            savedContent = request.Content;
-            return new SaveResult(true);
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.DocumentSave, new { content = "# Hello World" });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        savedContent.Should().Be("# Hello World");
-    }
-
-    [Test]
-    public async Task DocumentOnLoad_ReturnsContent()
-    {
-        // Arrange
-        _host.Document.OnLoad(async () =>
-        {
-            var metadata = new DocumentMetadata("/path/test.md", "test", "test.md");
-            return new LoadResult("# Loaded content", metadata);
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.DocumentLoad, new { });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        response.RootElement.GetProperty("result").GetProperty("content").GetString()
-            .Should().Be("# Loaded content");
-    }
-
-    [Test]
-    public async Task DialogOnPickImage_ReturnsPath()
-    {
-        // Arrange
-        _host.Dialog.OnPickImage(async (request) =>
-        {
-            request.Extensions.Should().Contain(".png");
-            return new PickImageResult("/images/photo.png");
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.DialogPickImage, new { extensions = new[] { ".png", ".jpg" } });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        response.RootElement.GetProperty("result").GetProperty("path").GetString()
-            .Should().Be("/images/photo.png");
-    }
-
-    [Test]
-    public async Task DialogOnAlert_Completes()
-    {
-        // Arrange
-        string? alertTitle = null;
-        string? alertMessage = null;
-        _host.Dialog.OnAlert(async (request) =>
-        {
-            alertTitle = request.Title;
-            alertMessage = request.Message;
-            return new AlertResult();
-        });
-
-        // Act
-        _channel.SimulateRequest(1, HostRpcMethods.DialogAlert, new { title = "Warning", message = "Something happened" });
-        await WaitForMessagesAsync(1);
-
-        // Assert
-        alertTitle.Should().Be("Warning");
-        alertMessage.Should().Be("Something happened");
-        _channel.SentMessages.Should().HaveCount(1);
-    }
-
-    [Test]
-    public void InvalidJson_DoesNotThrow()
+    public void Dispose_CanBeCalledMultipleTimes()
     {
         // Act & Assert - should not throw
-        _channel.SimulateMessage("{ invalid json");
+        _host.Dispose();
+        _host.Dispose();
+        _host.Dispose();
     }
 
     [Test]
-    public void MissingMethod_SendsErrorForRequestWithId()
-    {
-        // Act
-        _channel.SimulateMessage("""{"jsonrpc":"2.0","id":1}""");
-
-        // Assert - should send error response
-        _channel.SentMessages.Should().HaveCount(1);
-        var response = JsonDocument.Parse(_channel.SentMessages[0]);
-        response.RootElement.GetProperty("error").GetProperty("code").GetInt32()
-            .Should().Be(JsonRpcErrorCodes.InvalidRequest);
-    }
-
-    [Test]
-    public void Dispose_UnsubscribesFromMessages()
+    public async Task NotifyRequestSaveAsync_SendsCorrectMethod()
     {
         // Arrange
-        var handlerCalled = false;
-        _host.Document.OnChanged(() => handlerCalled = true);
+        _host.StartListening();
 
         // Act
-        _host.Dispose();
-        _channel.SimulateNotification(HostRpcMethods.DocumentChanged, new { });
+        await _host.NotifyRequestSaveAsync();
 
         // Assert
-        handlerCalled.Should().BeFalse();
+        _channel.SentMessages.Should().HaveCount(1);
+        _channel.SentMessages[0].Should().Contain("document/requestSave");
+    }
+
+    [Test]
+    public async Task NotifyExternalChangeAsync_SendsCorrectMethod()
+    {
+        // Arrange
+        _host.StartListening();
+
+        // Act
+        await _host.NotifyExternalChangeAsync();
+
+        // Assert
+        _channel.SentMessages.Should().HaveCount(1);
+        _channel.SentMessages[0].Should().Contain("document/externalChange");
+    }
+
+    [Test]
+    public async Task NotifyLocalizationUpdatedAsync_SendsCorrectMethodWithStrings()
+    {
+        // Arrange
+        _host.StartListening();
+        var strings = new Dictionary<string, string>
+        {
+            { "key1", "value1" },
+            { "key2", "value2" }
+        };
+
+        // Act
+        await _host.NotifyLocalizationUpdatedAsync(strings);
+
+        // Assert
+        _channel.SentMessages.Should().HaveCount(1);
+        _channel.SentMessages[0].Should().Contain("localization/updated");
+        _channel.SentMessages[0].Should().Contain("key1");
+        _channel.SentMessages[0].Should().Contain("value1");
     }
 }

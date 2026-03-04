@@ -1,6 +1,5 @@
 using Celbridge.Documents.Views;
 using Celbridge.Host;
-using Celbridge.Host.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
@@ -9,6 +8,7 @@ using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Screenplay.Views;
 
@@ -101,7 +101,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         }
 
         // Notify JS to reload content
-        Rpc?.NotifyExternalChangeAsync();
+        Host?.NotifyExternalChangeAsync();
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
@@ -157,8 +157,14 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
             // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
             InitializeJsonRpc();
 
+            if (Host is null)
+            {
+                _logger.LogError("Failed to initialize JSON-RPC host");
+                return;
+            }
+
             // Register this view as the handler for additional RPC interfaces
-            Rpc!.AddLocalRpcTarget<IHostDocument>(this, null);
+            Host.AddLocalRpcTarget<IHostDocument>(this);
 
             StartJsonRpc();
 
@@ -189,9 +195,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         // Validate protocol version
         if (protocolVersion != "1.0")
         {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
         }
 
         // Build metadata
@@ -210,9 +214,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         var loadResult = ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InternalError,
-                $"Failed to load scene content: {loadResult}");
+            throw new LocalRpcException($"Failed to load scene content: {loadResult}");
         }
 
         var metadata = CreateMetadata();

@@ -1,324 +1,83 @@
-using System.Collections.Concurrent;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging;
+using StreamJsonRpc;
 
 namespace Celbridge.Host;
 
 /// <summary>
-/// JSON-RPC 2.0 host for WebView2 communication.
-/// Provides typed handler registration and automatic request/response correlation.
+/// Host-side JSON-RPC communication facade for WebView2.
+/// This is the C# counterpart to CelbridgeClient in JavaScript.
+/// Owns the RPC infrastructure and provides a clean API for document views.
 /// </summary>
 public class CelbridgeHost : IDisposable
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true
-    };
-
     private readonly IHostChannel _channel;
-    private readonly ILogger? _logger;
-    private readonly ConcurrentDictionary<string, Func<JsonElement?, Task<object?>>> _handlers = new();
-    private readonly ConcurrentDictionary<string, Action<JsonElement?>> _notificationHandlers = new();
+    private readonly WebViewRpcHandler _rpcHandler;
     private bool _disposed;
 
     /// <summary>
-    /// Gets or sets whether detailed logging is enabled.
+    /// Gets the underlying JsonRpc instance for advanced scenarios (e.g., module-specific RPC methods).
+    /// Prefer using the typed methods on CelbridgeHost for standard operations.
     /// </summary>
-    public bool EnableDetailedLogging { get; set; }
+    public JsonRpc Rpc { get; }
 
     /// <summary>
-    /// Document-related operations.
+    /// Creates a new CelbridgeHost with the specified channel.
     /// </summary>
-    public DocumentHandlers Document { get; }
-
-    /// <summary>
-    /// Dialog-related operations.
-    /// </summary>
-    public DialogHandlers Dialog { get; }
-
-    /// <summary>
-    /// Localization-related notifications.
-    /// </summary>
-    public LocalizationHandlers Localization { get; }
-
-    /// <summary>
-    /// Creates a new CelbridgeHost with the specified message channel.
-    /// </summary>
-    public CelbridgeHost(IHostChannel channel, ILogger? logger = null)
+    public CelbridgeHost(IHostChannel channel)
     {
         _channel = channel;
-        _logger = logger;
+        _rpcHandler = new WebViewRpcHandler(channel);
+        Rpc = new JsonRpc(_rpcHandler);
 
-        Document = new DocumentHandlers(this);
-        Dialog = new DialogHandlers(this);
-        Localization = new LocalizationHandlers(this);
-
-        _channel.MessageReceived += OnMessageReceived;
+        // Ensure RPC method handlers run on the UI thread
+        Rpc.SynchronizationContext = SynchronizationContext.Current;
     }
 
     /// <summary>
-    /// Registers a handler for the bridge/initialize request.
+    /// Registers a target object that implements RPC methods.
     /// </summary>
-    public void OnInitialize(Func<InitializeParams, Task<InitializeResult>> handler)
+    public void AddLocalRpcTarget<T>(T target) where T : class
     {
-        RegisterHandler(HostRpcMethods.Initialize, handler);
+        Rpc.AddLocalRpcTarget<T>(target, null);
     }
 
     /// <summary>
-    /// Registers a typed handler for a specific method.
+    /// Starts listening for incoming RPC messages.
+    /// Call this after registering all RPC targets.
     /// </summary>
-    public void RegisterHandler<TParams, TResult>(string method, Func<TParams, Task<TResult>> handler)
+    public void StartListening()
     {
-        _handlers[method] = async (paramsElement) =>
-        {
-            var parameters = paramsElement.HasValue
-                ? JsonSerializer.Deserialize<TParams>(paramsElement.Value.GetRawText(), _jsonOptions)
-                : default;
-            var result = await handler(parameters!);
-            return result;
-        };
-
-        LogDebug($"Registered handler for method: {method}");
+        Rpc.StartListening();
     }
 
     /// <summary>
-    /// Registers a notification handler (no response expected).
+    /// Requests the WebView to save the current document content.
+    /// JS should respond by calling document/save.
     /// </summary>
-    public void RegisterNotificationHandler<TParams>(string method, Action<TParams> handler)
+    public Task NotifyRequestSaveAsync()
     {
-        _notificationHandlers[method] = (paramsElement) =>
-        {
-            var parameters = paramsElement.HasValue
-                ? JsonSerializer.Deserialize<TParams>(paramsElement.Value.GetRawText(), _jsonOptions)
-                : default;
-            handler(parameters!);
-        };
-
-        LogDebug($"Registered notification handler for method: {method}");
+        return Rpc.NotifyAsync(RpcMethodNames.DocumentRequestSave);
     }
 
     /// <summary>
-    /// Sends a notification to the WebView (no response expected).
+    /// Notifies the WebView that the document has been externally modified.
     /// </summary>
-    public void SendNotification<T>(string method, T parameters)
+    public Task NotifyExternalChangeAsync()
     {
-        var message = new JsonObject
-        {
-            ["jsonrpc"] = "2.0",
-            ["method"] = method,
-            ["params"] = JsonSerializer.SerializeToNode(parameters, _jsonOptions)
-        };
-
-        var json = message.ToJsonString(_jsonOptions);
-        LogDebug($"-> notification: {method}");
-        _channel.PostMessage(json);
+        return Rpc.NotifyAsync(RpcMethodNames.DocumentExternalChange);
     }
 
     /// <summary>
-    /// Sends a notification to the WebView with no parameters.
+    /// Notifies the WebView that localization strings have been updated.
     /// </summary>
-    public void SendNotification(string method)
+    public Task NotifyLocalizationUpdatedAsync(Dictionary<string, string> strings)
     {
-        var message = new JsonObject
-        {
-            ["jsonrpc"] = "2.0",
-            ["method"] = method
-        };
-
-        var json = message.ToJsonString(_jsonOptions);
-        LogDebug($"-> notification: {method}");
-        _channel.PostMessage(json);
+        var notification = new LocalizationUpdatedNotification(strings);
+        return Rpc.NotifyAsync(RpcMethodNames.LocalizationUpdated, notification);
     }
 
-    private async void OnMessageReceived(object? sender, string json)
-    {
-        try
-        {
-            await HandleMessageAsync(json);
-        }
-        catch (Exception ex)
-        {
-            LogError($"Error handling message: {ex.Message}");
-        }
-    }
-
-    private async Task HandleMessageAsync(string json)
-    {
-        JsonDocument? doc = null;
-        JsonElement? id = null;
-
-        try
-        {
-            doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            // Extract common fields
-            var hasId = root.TryGetProperty("id", out var idElement);
-            if (hasId)
-            {
-                id = idElement;
-            }
-
-            if (!root.TryGetProperty("method", out var methodElement))
-            {
-                if (hasId)
-                {
-                    SendErrorResponse(id, JsonRpcErrorCodes.InvalidRequest, "Missing method field");
-                }
-                return;
-            }
-
-            var method = methodElement.GetString();
-            if (string.IsNullOrEmpty(method))
-            {
-                if (hasId)
-                {
-                    SendErrorResponse(id, JsonRpcErrorCodes.InvalidRequest, "Empty method field");
-                }
-                return;
-            }
-
-            // Extract params (optional)
-            JsonElement? paramsElement = null;
-            if (root.TryGetProperty("params", out var paramsElem))
-            {
-                paramsElement = paramsElem;
-            }
-
-            // Notification (no id)
-            if (!hasId)
-            {
-                LogDebug($"<- notification: {method}");
-                HandleNotification(method, paramsElement);
-                return;
-            }
-
-            // Request (has id) - id is guaranteed to have value here since hasId is true
-            var requestId = id!.Value;
-            LogDebug($"<- request #{requestId}: {method}");
-            await HandleRequestAsync(method, paramsElement, requestId);
-        }
-        catch (JsonException ex)
-        {
-            LogError($"JSON parse error: {ex.Message}");
-            SendErrorResponse(id, JsonRpcErrorCodes.ParseError, "Invalid JSON");
-        }
-        finally
-        {
-            doc?.Dispose();
-        }
-    }
-
-    private void HandleNotification(string method, JsonElement? paramsElement)
-    {
-        if (_notificationHandlers.TryGetValue(method, out var handler))
-        {
-            try
-            {
-                handler(paramsElement);
-            }
-            catch (Exception ex)
-            {
-                LogError($"Notification handler error for {method}: {ex.Message}");
-            }
-        }
-        else
-        {
-            LogDebug($"No handler registered for notification: {method}");
-        }
-    }
-
-    private async Task HandleRequestAsync(string method, JsonElement? paramsElement, JsonElement id)
-    {
-        var startTime = DateTime.UtcNow;
-
-        if (!_handlers.TryGetValue(method, out var handler))
-        {
-            SendErrorResponse(id, JsonRpcErrorCodes.MethodNotFound, $"Method not found: {method}");
-            return;
-        }
-
-        try
-        {
-            var result = await handler(paramsElement);
-            SendSuccessResponse(id, result, startTime);
-        }
-        catch (HostRpcException ex)
-        {
-            SendErrorResponse(id, ex.Code, ex.Message, ex.Data);
-        }
-        catch (Exception ex)
-        {
-            // Wrap unhandled exceptions in JSON-RPC error
-            LogError($"Handler exception for {method}: {ex}");
-            SendErrorResponse(id, JsonRpcErrorCodes.InternalError, ex.Message);
-        }
-    }
-
-    private void SendSuccessResponse(JsonElement id, object? result, DateTime startTime)
-    {
-        var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
-
-        var message = new JsonObject
-        {
-            ["jsonrpc"] = "2.0",
-            ["result"] = JsonSerializer.SerializeToNode(result, _jsonOptions),
-            ["id"] = JsonNode.Parse(id.GetRawText())
-        };
-
-        var json = message.ToJsonString(_jsonOptions);
-        LogDebug($"-> response #{id}: success ({elapsed:F0}ms)");
-        _channel.PostMessage(json);
-    }
-
-    private void SendErrorResponse(JsonElement? id, int code, string message, object? data = null)
-    {
-        var errorObj = new JsonObject
-        {
-            ["code"] = code,
-            ["message"] = message
-        };
-
-        if (data != null)
-        {
-            errorObj["data"] = JsonSerializer.SerializeToNode(data, _jsonOptions);
-        }
-
-        var responseObj = new JsonObject
-        {
-            ["jsonrpc"] = "2.0",
-            ["error"] = errorObj
-        };
-
-        if (id.HasValue)
-        {
-            responseObj["id"] = JsonNode.Parse(id.Value.GetRawText());
-        }
-        else
-        {
-            responseObj["id"] = null;
-        }
-
-        var json = responseObj.ToJsonString(_jsonOptions);
-        LogDebug($"-> response #{id}: error {code} - {message}");
-        _channel.PostMessage(json);
-    }
-
-    private void LogDebug(string message)
-    {
-        if (EnableDetailedLogging)
-        {
-            _logger?.LogDebug("[CelbridgeHost] {Message}", message);
-        }
-    }
-
-    private void LogError(string message)
-    {
-        _logger?.LogError("[CelbridgeHost] {Message}", message);
-    }
-
+    /// <summary>
+    /// Disposes the host and releases resources.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -326,144 +85,8 @@ public class CelbridgeHost : IDisposable
             return;
         }
 
-        _channel.MessageReceived -= OnMessageReceived;
         _disposed = true;
-    }
-
-    // =========================================================================
-    // Nested Handler Classes for Fluent API
-    // =========================================================================
-
-    /// <summary>
-    /// Document-related handler registration.
-    /// </summary>
-    public class DocumentHandlers
-    {
-        private readonly CelbridgeHost _host;
-
-        internal DocumentHandlers(CelbridgeHost host)
-        {
-            _host = host;
-        }
-
-        /// <summary>
-        /// Registers a handler for document/load requests.
-        /// </summary>
-        public void OnLoad(Func<Task<LoadResult>> handler)
-        {
-            _host.RegisterHandler<object?, LoadResult>(HostRpcMethods.DocumentLoad, _ => handler());
-        }
-
-        /// <summary>
-        /// Registers a handler for document/save requests.
-        /// </summary>
-        public void OnSave(Func<SaveParams, Task<SaveResult>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DocumentSave, handler);
-        }
-
-        /// <summary>
-        /// Registers a handler for document/changed notifications.
-        /// </summary>
-        public void OnChanged(Action handler)
-        {
-            _host.RegisterNotificationHandler<DocumentChangedNotification>(HostRpcMethods.DocumentChanged, _ => handler());
-        }
-
-        /// <summary>
-        /// Registers a handler for import/complete notifications (JS notifying C# that import finished).
-        /// </summary>
-        public void OnImportComplete(Action<ImportCompleteNotification> handler)
-        {
-            _host.RegisterNotificationHandler(HostRpcMethods.ImportComplete, handler);
-        }
-
-        /// <summary>
-        /// Sends a document/requestSave notification to trigger the WebView to save.
-        /// JS should respond by calling document.save(content).
-        /// </summary>
-        public void RequestSave()
-        {
-            _host.SendNotification(HostRpcMethods.DocumentRequestSave);
-        }
-
-        /// <summary>
-        /// Sends a document/externalChange notification to the WebView.
-        /// </summary>
-        public void NotifyExternalChange()
-        {
-            _host.SendNotification(HostRpcMethods.DocumentExternalChange);
-        }
-
-        /// <summary>
-        /// Registers a handler for link/clicked notifications.
-        /// </summary>
-        public void OnLinkClicked(Action<string> handler)
-        {
-            _host.RegisterNotificationHandler<LinkClickedParams>(HostRpcMethods.LinkClicked, p => handler(p.Href));
-        }
-    }
-
-    /// <summary>
-    /// Dialog-related handler registration.
-    /// </summary>
-    public class DialogHandlers
-    {
-        private readonly CelbridgeHost _host;
-
-        internal DialogHandlers(CelbridgeHost host)
-        {
-            _host = host;
-        }
-
-        /// <summary>
-        /// Registers a handler for dialog/pickImage requests.
-        /// </summary>
-        public void OnPickImage(Func<PickImageParams, Task<PickImageResult>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DialogPickImage, handler);
-        }
-
-        /// <summary>
-        /// Registers a handler for dialog/pickFile requests.
-        /// </summary>
-        public void OnPickFile(Func<PickFileParams, Task<PickFileResult>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DialogPickFile, handler);
-        }
-
-        /// <summary>
-        /// Registers a handler for dialog/alert requests.
-        /// </summary>
-        public void OnAlert(Func<AlertParams, Task<AlertResult>> handler)
-        {
-            _host.RegisterHandler(HostRpcMethods.DialogAlert, handler);
-        }
-    }
-
-    // =========================================================================
-    // Localization Notification Helpers
-    // =========================================================================
-
-    /// <summary>
-    /// Localization-related notification methods.
-    /// </summary>
-    public class LocalizationHandlers
-    {
-        private readonly CelbridgeHost _host;
-
-        internal LocalizationHandlers(CelbridgeHost host)
-        {
-            _host = host;
-        }
-
-        /// <summary>
-        /// Sends a localization/updated notification to the WebView.
-        /// </summary>
-        public void NotifyUpdated(Dictionary<string, string> strings)
-        {
-            var notification = new LocalizationUpdatedNotification(strings);
-            _host.SendNotification(HostRpcMethods.LocalizationUpdated, notification);
-        }
+        Rpc.Dispose();
+        _rpcHandler.Dispose();
     }
 }

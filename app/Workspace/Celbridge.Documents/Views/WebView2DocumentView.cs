@@ -2,7 +2,6 @@ using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using StreamJsonRpc;
 
 namespace Celbridge.Documents.Views;
 
@@ -16,13 +15,12 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
 
     // JSON-RPC infrastructure
     private HostChannel? _hostChannel;
-    private HostRpcHandler? _rpcHandler;
 
     /// <summary>
-    /// The JSON-RPC instance for communication with the WebView.
-    /// Subclasses can use this to register additional RPC targets (e.g., IHostDocument).
+    /// The Celbridge host for JSON-RPC communication with the WebView.
+    /// Subclasses can use this to register additional RPC targets and send notifications.
     /// </summary>
-    protected JsonRpc? Rpc { get; private set; }
+    protected CelbridgeHost? Host { get; private set; }
 
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
@@ -48,7 +46,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     /// Initializes the JSON-RPC infrastructure for WebView communication.
     /// Call this after EnsureCoreWebView2Async() and any custom WebView setup.
     /// This registers the base class as a handler for IHostNotifications (keyboard shortcuts, etc.).
-    /// Subclasses should call this, then register additional RPC targets using the Rpc property.
+    /// Subclasses should call this, then register additional RPC targets using the Host property.
     /// </summary>
     protected void InitializeJsonRpc()
     {
@@ -57,17 +55,12 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
             return;
         }
 
-        // Create the JSON-RPC channel
         _hostChannel = new HostChannel(WebView.CoreWebView2);
-        _rpcHandler = new HostRpcHandler(_hostChannel);
-        Rpc = new JsonRpc(_rpcHandler);
-
-        // Ensure RPC method handlers run on the UI thread
-        Rpc.SynchronizationContext = SynchronizationContext.Current;
+        Host = new CelbridgeHost(_hostChannel);
 
         // Register this view as the handler for IHostNotifications
         // This provides keyboard shortcut handling for all WebView-based documents
-        Rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+        Host.AddLocalRpcTarget<IHostNotifications>(this);
     }
 
     /// <summary>
@@ -75,7 +68,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     /// </summary>
     protected void StartJsonRpc()
     {
-        Rpc?.StartListening();
+        Host?.StartListening();
     }
 
     /// <summary>
@@ -206,12 +199,10 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
         }
 
         // Dispose RPC infrastructure
-        Rpc?.Dispose();
-        _rpcHandler?.Dispose();
+        Host?.Dispose();
         _hostChannel?.Detach();
 
-        Rpc = null;
-        _rpcHandler = null;
+        Host = null;
         _hostChannel = null;
 
         await base.PrepareToClose();

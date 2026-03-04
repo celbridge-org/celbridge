@@ -11,6 +11,7 @@ using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Markdown.Views;
 
@@ -70,9 +71,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
     public override async Task<Result> SaveDocument()
     {
-        if (Rpc is null)
+        if (Host is null)
         {
-            _logger.LogDebug("Save skipped - RPC not initialized");
+            _logger.LogDebug("Save skipped - Host not initialized");
             return Result.Ok();
         }
 
@@ -84,7 +85,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
         // Request the JS side to save - it will call document/save
         // which triggers our HandleSaveDocumentAsync handler
-        await Rpc.NotifyRequestSaveAsync();
+        await Host.NotifyRequestSaveAsync();
 
         return await ViewModel.SaveDocument();
     }
@@ -161,9 +162,15 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
             // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
             InitializeJsonRpc();
 
+            if (Host is null)
+            {
+                _logger.LogError("Failed to initialize JSON-RPC host");
+                return;
+            }
+
             // Register this view as the handler for additional RPC interfaces
-            Rpc!.AddLocalRpcTarget<IHostDocument>(this, null);
-            Rpc.AddLocalRpcTarget<IHostDialog>(this, null);
+            Host.AddLocalRpcTarget<IHostDocument>(this);
+            Host.AddLocalRpcTarget<IHostDialog>(this);
 
             StartJsonRpc();
 
@@ -194,9 +201,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
         // Validate protocol version
         if (protocolVersion != "1.0")
         {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
         }
 
         // Load content from file
@@ -553,9 +558,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
     {
         // External file change detected - notify JS to reload
         // The dirty state conflict handling is done in the ViewModel before raising this event
-        if (Rpc is not null)
+        if (Host is not null)
         {
-            await Rpc.NotifyExternalChangeAsync();
+            await Host.NotifyExternalChangeAsync();
         }
     }
 }

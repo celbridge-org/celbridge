@@ -8,35 +8,21 @@ using StreamJsonRpc.Protocol;
 namespace Celbridge.Host;
 
 /// <summary>
-/// Custom IJsonRpcMessageHandler implementation that bridges WebView2's push-based
+/// IJsonRpcMessageHandler implementation that bridges WebView2's push-based
 /// MessageReceived event with StreamJsonRpc's pull-based ReadAsync API.
 /// Uses a Channel as a message buffer between the event-driven WebView2 and StreamJsonRpc.
 /// </summary>
-public class HostRpcHandler : IJsonRpcMessageHandler, IDisposable
+internal class WebViewRpcHandler : IJsonRpcMessageHandler, IDisposable
 {
     private readonly IHostChannel _channel;
     private readonly Channel<JsonRpcMessage> _incomingMessages;
     private bool _disposed;
 
-    /// <summary>
-    /// Gets the message formatter used for serialization/deserialization.
-    /// </summary>
     public IJsonRpcMessageFormatter Formatter { get; }
-
-    /// <summary>
-    /// Indicates whether this handler can read messages.
-    /// </summary>
     public bool CanRead => true;
-
-    /// <summary>
-    /// Indicates whether this handler can write messages.
-    /// </summary>
     public bool CanWrite => true;
 
-    /// <summary>
-    /// Creates a new HostRpcHandler with the specified channel.
-    /// </summary>
-    public HostRpcHandler(IHostChannel channel)
+    public WebViewRpcHandler(IHostChannel channel)
     {
         _channel = channel;
 
@@ -71,14 +57,10 @@ public class HostRpcHandler : IJsonRpcMessageHandler, IDisposable
         }
         catch (Exception ex)
         {
-            // Log but don't rethrow - StreamJsonRpc will handle protocol errors
-            System.Diagnostics.Debug.WriteLine($"[HostRpcHandler] Failed to deserialize message: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[WebViewRpcHandler] Failed to deserialize message: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// Reads the next message from the channel. Called by StreamJsonRpc.
-    /// </summary>
     public async ValueTask<JsonRpcMessage?> ReadAsync(CancellationToken cancellationToken)
     {
         try
@@ -95,9 +77,6 @@ public class HostRpcHandler : IJsonRpcMessageHandler, IDisposable
         }
     }
 
-    /// <summary>
-    /// Writes a message to the WebView. Called by StreamJsonRpc.
-    /// </summary>
     public ValueTask WriteAsync(JsonRpcMessage message, CancellationToken cancellationToken)
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -107,9 +86,6 @@ public class HostRpcHandler : IJsonRpcMessageHandler, IDisposable
         return ValueTask.CompletedTask;
     }
 
-    /// <summary>
-    /// Disposes the handler and releases resources.
-    /// </summary>
     public void Dispose()
     {
         if (_disposed)

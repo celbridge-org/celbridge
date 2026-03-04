@@ -1,9 +1,9 @@
 namespace Celbridge.Host;
 
 /// <summary>
-/// JSON-RPC method names used for WebView2 communication.
+/// JSON-RPC method names used for WebView2 communication between C# host and JavaScript client.
 /// </summary>
-public static class HostRpcMethods
+public static class RpcMethodNames
 {
     // Host initialization
     public const string Initialize = "host/initialize";

@@ -2,7 +2,6 @@ using Celbridge.Code.Services;
 using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Host;
-using Celbridge.Host.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -29,8 +28,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private readonly ICommandService _commandService;
 
     private WebView2? _webView;
-    private JsonRpc? _rpc;
-    private HostRpcHandler? _rpcHandler;
+    private CelbridgeHost? _host;
     private HostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
     private TaskCompletionSource<string>? _getContentTcs;
@@ -103,19 +101,15 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
         _webView.GotFocus += WebView_GotFocus;
 
-        // Initialize StreamJsonRpc with this control as the handler
+        // Initialize CelbridgeHost for RPC communication
         _messageChannel = new HostChannel(_webView.CoreWebView2);
-        _rpcHandler = new HostRpcHandler(_messageChannel);
-        _rpc = new JsonRpc(_rpcHandler);
-
-        // Ensure RPC method handlers run on the UI thread
-        _rpc.SynchronizationContext = SynchronizationContext.Current;
+        _host = new CelbridgeHost(_messageChannel);
 
         // Register this control as the handler for RPC interfaces
-        _rpc.AddLocalRpcTarget<IHostDocument>(this, null);
-        _rpc.AddLocalRpcTarget<IHostNotifications>(this, null);
+        _host.AddLocalRpcTarget<IHostDocument>(this);
+        _host.AddLocalRpcTarget<IHostNotifications>(this);
 
-        _rpc.StartListening();
+        _host.StartListening();
 
         // Sync WebView2 color scheme with the app theme
         ApplyThemeToWebView();
@@ -171,8 +165,13 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
             }
         }
 
+        if (_host is null)
+        {
+            return Result.Fail("Failed to initialize JSON-RPC host");
+        }
+
         // Initialize the Monaco editor via JSON-RPC with the content and language
-        await _rpc!.NotifyEditorInitializeAsync(_language);
+        await _host.Rpc.NotifyEditorInitializeAsync(_language);
 
         return Result.Ok();
     }
@@ -184,7 +183,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// </summary>
     public async Task<string> GetContentAsync()
     {
-        if (_rpc is null)
+        if (_host is null)
         {
             return _content;
         }
@@ -193,7 +192,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         _getContentTcs = new TaskCompletionSource<string>();
 
         // Request content from Monaco - it will call SaveAsync with the content
-        await _rpc.NotifyRequestSaveAsync();
+        await _host.NotifyRequestSaveAsync();
 
         // Wait for SaveAsync to be called, with timeout to prevent hanging forever
         var timeout = TimeSpan.FromSeconds(ContentRequestTimeoutSeconds);
@@ -233,9 +232,9 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     {
         _language = language;
 
-        if (_rpc is not null)
+        if (_host is not null)
         {
-            await _rpc.NotifyEditorSetLanguageAsync(language);
+            await _host.Rpc.NotifyEditorSetLanguageAsync(language);
         }
     }
 
@@ -258,14 +257,14 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// </summary>
     public async Task<Result> NavigateToLocationAsync(int lineNumber, int column)
     {
-        if (_rpc is null)
+        if (_host is null)
         {
-            return Result.Fail("RPC is not initialized");
+            return Result.Fail("Host is not initialized");
         }
 
         try
         {
-            await _rpc.NotifyEditorNavigateToLocationAsync(lineNumber, column);
+            await _host.Rpc.NotifyEditorNavigateToLocationAsync(lineNumber, column);
             return Result.Ok();
         }
         catch (Exception ex)
@@ -280,7 +279,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// </summary>
     public void NotifyExternalChange()
     {
-        _rpc?.NotifyExternalChangeAsync();
+        _host?.NotifyExternalChangeAsync();
     }
 
     /// <summary>
@@ -303,11 +302,9 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         }
 
         // Dispose RPC and detach the message channel
-        _rpc?.Dispose();
-        _rpcHandler?.Dispose();
+        _host?.Dispose();
         _messageChannel?.Detach();
-        _rpc = null;
-        _rpcHandler = null;
+        _host = null;
         _messageChannel = null;
 
         // Close and dispose the WebView2 instance
@@ -372,9 +369,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         // Validate protocol version
         if (protocolVersion != "1.0")
         {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
         }
 
         // Build metadata

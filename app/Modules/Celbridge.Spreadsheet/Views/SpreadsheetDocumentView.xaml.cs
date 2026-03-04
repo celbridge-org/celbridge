@@ -1,13 +1,13 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
-using Celbridge.Host.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Spreadsheet.Views;
 
@@ -65,9 +65,9 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     public override async Task<Result> SaveDocument()
     {
-        if (Rpc is null)
+        if (Host is null)
         {
-            _logger.LogDebug("Save skipped - RPC not initialized");
+            _logger.LogDebug("Save skipped - Host not initialized");
             return Result.Ok();
         }
 
@@ -82,7 +82,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
         // Request the JS side to save - it will call document/save
         // which triggers our SaveAsync handler
-        await Rpc.NotifyRequestSaveAsync();
+        await Host.NotifyRequestSaveAsync();
 
         // Wait for SaveAsync to complete, with timeout to prevent hanging
         var timeout = TimeSpan.FromSeconds(SaveRequestTimeoutSeconds);
@@ -168,8 +168,14 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
             // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
             InitializeJsonRpc();
 
+            if (Host is null)
+            {
+                _logger.LogError("Failed to initialize JSON-RPC host");
+                return;
+            }
+
             // Register this view as the handler for additional RPC interfaces
-            Rpc!.AddLocalRpcTarget<IHostDocument>(this, null);
+            Host.AddLocalRpcTarget<IHostDocument>(this);
 
             StartJsonRpc();
 
@@ -192,9 +198,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         // Validate protocol version
         if (protocolVersion != "1.0")
         {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InvalidVersion,
-                $"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
         }
 
         // Load spreadsheet as base64 - content is stored in the result
@@ -307,7 +311,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         {
             _logger.LogDebug("Processing pending import request");
             _hasPendingImport = false;
-            Rpc?.NotifyExternalChangeAsync();
+            Host?.NotifyExternalChangeAsync();
         }
     }
 
@@ -418,6 +422,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         }
 
         // Notify JS to reload the spreadsheet from disk
-        Rpc?.NotifyExternalChangeAsync();
+        Host?.NotifyExternalChangeAsync();
     }
 }
