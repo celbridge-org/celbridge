@@ -1,5 +1,5 @@
 ﻿<UserControl
-x:Class="Celbridge.Code.Views.TextEditorDocumentView"
+x:Class="Celbridge.Code.Views.CodeEditorDocumentView"
 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 xmlns:local="using:Celbridge.Code.Views"

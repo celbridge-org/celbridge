@@ -23,7 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\TextEditorTypes.json" />
+    <EmbeddedResource Include="Assets\CodeEditorTypes.json" />
   </ItemGroup>
 
   <ItemGroup>

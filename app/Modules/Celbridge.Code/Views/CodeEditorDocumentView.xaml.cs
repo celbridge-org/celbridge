@@ -8,20 +8,20 @@ namespace Celbridge.Code.Views;
 /// This control contains a Monaco editor for editing text documents.
 /// It acts as a facade for the MonacoEditor control, forwarding on all the IDocumentView interface methods.
 /// </summary>
-public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
+public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
 {
-    private readonly ILogger<TextEditorDocumentView> _logger;
+    private readonly ILogger<CodeEditorDocumentView> _logger;
 
-    public TextEditorDocumentViewModel ViewModel { get; }
+    public CodeEditorDocumentViewModel ViewModel { get; }
 
     public bool HasUnsavedChanges => MonacoEditor.HasUnsavedChanges;
 
-    public TextEditorDocumentView()
+    public CodeEditorDocumentView()
     {
         this.InitializeComponent();
 
-        ViewModel = ServiceLocator.AcquireService<TextEditorDocumentViewModel>();
-        _logger = ServiceLocator.AcquireService<ILogger<TextEditorDocumentView>>();
+        ViewModel = ServiceLocator.AcquireService<CodeEditorDocumentViewModel>();
+        _logger = ServiceLocator.AcquireService<ILogger<CodeEditorDocumentView>>();
     }
 
     public async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -66,7 +66,7 @@ public sealed partial class TextEditorDocumentView : UserControl, IDocumentView
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while preparing TextEditorDocumentView to close");
+                _logger.LogError(ex, "An error occurred while preparing CodeEditorDocumentView to close");
             }
         }
 

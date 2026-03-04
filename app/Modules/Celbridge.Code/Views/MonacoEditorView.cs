@@ -20,7 +20,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
 
-    public MonacoEditorViewModel ViewModel { get; }
+    public CodeEditorViewModel ViewModel { get; }
 
     private WebView2? _webView;
     private JsonRpc? _rpc;
@@ -37,7 +37,7 @@ public sealed partial class MonacoEditorView : DocumentView, IHostDocument, IHos
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
-        ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
+        ViewModel = ServiceLocator.AcquireService<CodeEditorViewModel>();
 
         // Monitor theme changes to update Monaco editor theme
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);

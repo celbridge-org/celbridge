@@ -12,7 +12,7 @@ namespace Celbridge.Code.Services;
 /// </summary>
 public class CodeEditorFactory : IDocumentEditorFactory
 {
-    private const string TextEditorTypesResourceName = "Celbridge.Code.Assets.TextEditorTypes.json";
+    private const string CodeEditorTypesResourceName = "Celbridge.Code.Assets.CodeEditorTypes.json";
     private const string PlaintextLanguage = "plaintext";
 
     private readonly IServiceProvider _serviceProvider;
@@ -27,7 +27,7 @@ public class CodeEditorFactory : IDocumentEditorFactory
         _serviceProvider = serviceProvider;
 
         // Load the extension to language mappings from the embedded JSON resource.
-        _extensionToLanguage = LoadTextEditorTypes();
+        _extensionToLanguage = LoadCodeEditorTypes();
 
         // The supported extensions are the keys from the loaded mappings.
         SupportedExtensions = _extensionToLanguage.Keys.ToList().AsReadOnly();
@@ -42,7 +42,7 @@ public class CodeEditorFactory : IDocumentEditorFactory
     public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
-        var view = _serviceProvider.GetRequiredService<TextEditorDocumentView>();
+        var view = _serviceProvider.GetRequiredService<CodeEditorDocumentView>();
         return Result<IDocumentView>.Ok(view);
 #else
         var view = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
@@ -62,14 +62,14 @@ public class CodeEditorFactory : IDocumentEditorFactory
         return null;
     }
 
-    private static Dictionary<string, string> LoadTextEditorTypes()
+    private static Dictionary<string, string> LoadCodeEditorTypes()
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        var stream = assembly.GetManifestResourceStream(TextEditorTypesResourceName);
+        var stream = assembly.GetManifestResourceStream(CodeEditorTypesResourceName);
         if (stream is null)
         {
-            throw new InvalidOperationException($"Embedded resource not found: {TextEditorTypesResourceName}");
+            throw new InvalidOperationException($"Embedded resource not found: {CodeEditorTypesResourceName}");
         }
 
         using (stream)
@@ -80,7 +80,7 @@ public class CodeEditorFactory : IDocumentEditorFactory
 
             if (dictionary is null)
             {
-                throw new InvalidOperationException($"Failed to deserialize embedded resource: {TextEditorTypesResourceName}");
+                throw new InvalidOperationException($"Failed to deserialize embedded resource: {CodeEditorTypesResourceName}");
             }
 
             return dictionary;
