@@ -1,12 +1,11 @@
-using System.Text.Json;
 using Celbridge.Code.MonacoHost;
-using Celbridge.Code.ViewModels;
-using Celbridge.Documents;
+using Celbridge.Commands;
+using Celbridge.Explorer;
 using Celbridge.Host;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
 
@@ -14,88 +13,72 @@ namespace Celbridge.Code.Views;
 
 /// <summary>
 /// A reusable control that hosts a Monaco code editor via WebView2.
-/// This control can be embedded in any document view that needs code editing capabilities.
+/// This is a pure text editing control that can be embedded in any document view.
+/// The parent view is responsible for file I/O and document management.
 /// </summary>
 public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IHostNotifications
 {
-    private readonly IResourceRegistry _resourceRegistry;
+    private const int ContentRequestTimeoutSeconds = 5;
+
+    private readonly ILogger<MonacoEditorControl> _logger;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
-
-    public MonacoEditorViewModel ViewModel { get; }
+    private readonly ICommandService _commandService;
 
     private WebView2? _webView;
     private JsonRpc? _rpc;
     private HostRpcHandler? _rpcHandler;
     private HostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
+    private TaskCompletionSource<string>? _getContentTcs;
 
-    public bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
+    private string _content = string.Empty;
+    private string _language = "plaintext";
+    private string _filePath = string.Empty;
+    private string _resourceKey = string.Empty;
+
+    /// <summary>
+    /// Raised when the content changes in the Monaco editor (user editing).
+    /// </summary>
+    public event Action? ContentChanged;
+
+    /// <summary>
+    /// Raised when an external reload is requested (e.g., file changed on disk).
+    /// </summary>
+    public event EventHandler? ReloadRequested;
+
+    /// <summary>
+    /// Raised when the editor receives focus.
+    /// </summary>
+    public event Action? EditorFocused;
 
     public MonacoEditorControl()
     {
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _logger = ServiceLocator.AcquireService<ILogger<MonacoEditorControl>>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
-
-        ViewModel = ServiceLocator.AcquireService<MonacoEditorViewModel>();
+        _commandService = ServiceLocator.AcquireService<ICommandService>();
 
         // Monitor theme changes to update Monaco editor theme
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
-
-        // Subscribe to reload requests from the ViewModel
-        ViewModel.ReloadRequested += ViewModel_ReloadRequested;
-
-        this.DataContext(ViewModel);
     }
 
-    public async Task<Result> SetFileResource(ResourceKey fileResource)
+    /// <summary>
+    /// Initializes the Monaco editor with content and language.
+    /// Call this after the control is added to the visual tree.
+    /// </summary>
+    public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey)
     {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
+        _content = content;
+        _language = language;
+        _filePath = filePath;
+        _resourceKey = resourceKey;
 
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        if (_webView is not null)
-        {
-            // If _webView has already been created, then this method is being called as part of a resource rename/move.
-            // Update the code editor language in case the file extension has changed.
-            await UpdateCodeEditorLanguage();
-        }
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> LoadContent()
-    {
         _webView = await _webViewFactory.AcquireAsync();
 
         this.Content(_webView);
-
-        // Load the document content
-        var loadResult = await ViewModel.LoadDocument();
-        if (loadResult.IsFailure)
-        {
-            return Result.Fail($"Failed to load content for resource: {ViewModel.FileResource}")
-                .WithErrors(loadResult);
-        }
-
-        // Store the loaded text for the initialize handler
-        ViewModel.CachedText = loadResult.Value;
 
         // Set up virtual host mapping for Monaco editor assets
         _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -143,71 +126,121 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         await _clientReadyTcs.Task;
 
         // Initialize the Monaco editor via JSON-RPC
-        var language = ViewModel.GetDocumentLanguage();
-        await _rpc.NotifyEditorInitializeAsync(language);
+        await _rpc.NotifyEditorInitializeAsync(_language);
 
         return Result.Ok();
     }
 
-    public Result<bool> UpdateSaveTimer(double deltaTime)
-    {
-        return ViewModel.UpdateSaveTimer(deltaTime);
-    }
-
-    public async Task<Result> SaveDocument()
+    /// <summary>
+    /// Gets the current content from the Monaco editor.
+    /// This requests the content via RPC and waits for the response.
+    /// Throws an exception if the Monaco editor fails to respond within the timeout period.
+    /// </summary>
+    public async Task<string> GetContentAsync()
     {
         if (_rpc is null)
         {
-            return Result.Fail("RPC not initialized");
+            return _content;
         }
 
-        // Request the JS side to save - it will call document/save
-        // which triggers our SaveAsync handler
+        // Set up completion source to receive the content
+        _getContentTcs = new TaskCompletionSource<string>();
+
+        // Request content from Monaco - it will call SaveAsync with the content
         await _rpc.NotifyRequestSaveAsync();
 
-        return await ViewModel.SaveDocument(ViewModel.CachedText ?? string.Empty);
+        // Wait for SaveAsync to be called, with timeout to prevent hanging forever
+        var timeout = TimeSpan.FromSeconds(ContentRequestTimeoutSeconds);
+        var timeoutTask = Task.Delay(timeout);
+        var completedTask = await Task.WhenAny(_getContentTcs.Task, timeoutTask);
+
+        if (completedTask == timeoutTask)
+        {
+            _getContentTcs = null;
+
+            var errorMessage = $"Monaco editor failed to respond within {ContentRequestTimeoutSeconds} seconds. " +
+                               $"The editor may be in an unstable state. File: {_filePath}";
+
+            _logger.LogError(errorMessage);
+
+            throw new TimeoutException(errorMessage);
+        }
+
+        var content = await _getContentTcs.Task;
+        _getContentTcs = null;
+
+        return content;
     }
 
-    public async Task<Result> NavigateToLocation(string location)
+    /// <summary>
+    /// Sets the content in the Monaco editor.
+    /// </summary>
+    public void SetContent(string content)
+    {
+        _content = content;
+    }
+
+    /// <summary>
+    /// Sets the language mode of the Monaco editor.
+    /// </summary>
+    public async Task SetLanguageAsync(string language)
+    {
+        _language = language;
+
+        if (_rpc is not null)
+        {
+            await _rpc.NotifyEditorSetLanguageAsync(language);
+        }
+    }
+
+    /// <summary>
+    /// Updates the file metadata (for display and after rename operations).
+    /// </summary>
+    public async Task UpdateFileInfoAsync(string filePath, string resourceKey, string? newLanguage = null)
+    {
+        _filePath = filePath;
+        _resourceKey = resourceKey;
+
+        if (newLanguage is not null)
+        {
+            await SetLanguageAsync(newLanguage);
+        }
+    }
+
+    /// <summary>
+    /// Navigates to a specific location in the editor.
+    /// </summary>
+    public async Task<Result> NavigateToLocationAsync(int lineNumber, int column)
     {
         if (_rpc is null)
         {
             return Result.Fail("RPC is not initialized");
         }
 
-        if (string.IsNullOrEmpty(location))
-        {
-            return Result.Ok();
-        }
-
         try
         {
-            // Parse the location JSON to extract line number and column
-            using var doc = JsonDocument.Parse(location);
-            var root = doc.RootElement;
-
-            var lineNumber = root.TryGetProperty("lineNumber", out var lineProp) ? lineProp.GetInt32() : 1;
-            var column = root.TryGetProperty("column", out var colProp) ? colProp.GetInt32() : 1;
-
-            // Navigate via JSON-RPC
             await _rpc.NotifyEditorNavigateToLocationAsync(lineNumber, column);
-
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to navigate to location: {location}")
+            return Result.Fail($"Failed to navigate to location: line {lineNumber}, column {column}")
                 .WithException(ex);
         }
     }
 
-    public async Task<bool> CanClose()
+    /// <summary>
+    /// Notifies the Monaco editor that the file has changed externally and should reload.
+    /// </summary>
+    public void NotifyExternalChange()
     {
-        await Task.CompletedTask;
-        return true;
+        _rpc?.NotifyExternalChangeAsync();
     }
 
-    public async Task PrepareToClose()
+    /// <summary>
+    /// Prepares the control for disposal.
+    /// </summary>
+    public async Task CleanupAsync()
     {
         _messengerService.UnregisterAll(this);
 
@@ -222,12 +255,6 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         {
             _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;
         }
-
-        // Unsubscribe from ViewModel events
-        ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
-
-        // Cleanup ViewModel message handlers
-        ViewModel.Cleanup();
 
         // Dispose RPC and detach the message channel
         _rpc?.Dispose();
@@ -249,36 +276,20 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         // Prevent the new window from being created
         args.Handled = true;
 
-        // Open the url in the default system browser
+        // Open the URL in the default system browser
         var url = args.Uri;
         if (!string.IsNullOrEmpty(url))
         {
-            ViewModel.NavigateToURL(url);
+            _commandService.Execute<IOpenBrowserCommand>(command =>
+            {
+                command.URL = url;
+            });
         }
     }
 
     private void WebView_GotFocus(object sender, RoutedEventArgs e)
     {
-        // Set this document as the active document when the WebView2 receives focus
-        var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
-        _messengerService.Send(message);
-    }
-
-    private async Task UpdateCodeEditorLanguage()
-    {
-        if (_rpc is null)
-        {
-            return;
-        }
-
-        var language = ViewModel.GetDocumentLanguage();
-        await _rpc.NotifyEditorSetLanguageAsync(language);
-    }
-
-    private void ViewModel_ReloadRequested(object? sender, EventArgs e)
-    {
-        // Notify JS to reload the document from disk
-        _rpc?.NotifyExternalChangeAsync();
+        EditorFocused?.Invoke();
     }
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
@@ -303,14 +314,14 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private DocumentMetadata CreateMetadata()
     {
         return new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
+            _filePath,
+            _resourceKey,
+            Path.GetFileName(_filePath));
     }
 
     #region IHostDocument
 
-    public Task<InitializeResult> InitializeAsync(string protocolVersion)
+    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
         // Validate protocol version
         if (protocolVersion != "1.0")
@@ -326,48 +337,38 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         // No localization strings needed for Monaco
         var localization = new Dictionary<string, string>();
 
-        // Return the cached content
-        var content = ViewModel.CachedText ?? string.Empty;
+        var result = new InitializeResult(_content, metadata, localization);
 
-        return Task.FromResult(new InitializeResult(content, metadata, localization));
+        await Task.CompletedTask;
+
+        return result;
     }
 
     public async Task<LoadResult> LoadAsync()
     {
-        var loadResult = await ViewModel.LoadDocument();
-        if (loadResult.IsFailure)
-        {
-            throw new HostRpcException(
-                JsonRpcErrorCodes.InternalError,
-                $"Failed to load document: {loadResult.Error}");
-        }
-
-        var content = loadResult.Value;
-        ViewModel.CachedText = content;
+        // Raise event so the parent can reload content from disk
+        ReloadRequested?.Invoke(this, EventArgs.Empty);
 
         var metadata = CreateMetadata();
+        var result = new LoadResult(_content, metadata);
 
-        return new LoadResult(content, metadata);
+        await Task.CompletedTask;
+
+        return result;
     }
 
     public async Task<SaveResult> SaveAsync(string content)
     {
-        try
-        {
-            ViewModel.CachedText = content;
-            var saveResult = await ViewModel.SaveDocument(content);
+        // Update cached content
+        _content = content;
 
-            if (saveResult.IsFailure)
-            {
-                return new SaveResult(false, saveResult.Error);
-            }
+        // If we're waiting for content (GetContentAsync was called), complete the task
+        _getContentTcs?.TrySetResult(content);
 
-            return new SaveResult(true);
-        }
-        catch (Exception ex)
-        {
-            return new SaveResult(false, ex.Message);
-        }
+        await Task.CompletedTask;
+
+        // Return success - the actual file save is handled by the parent
+        return new SaveResult(true);
     }
 
     #endregion
@@ -376,8 +377,8 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
     public void OnDocumentChanged()
     {
-        // Mark the document as pending a save
-        ViewModel.OnTextChanged();
+        // Notify parent that content has changed
+        ContentChanged?.Invoke();
     }
 
     public void OnLinkClicked(string href)

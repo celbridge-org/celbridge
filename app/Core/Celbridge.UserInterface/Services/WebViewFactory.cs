@@ -1,5 +1,4 @@
 using Celbridge.Logging;
-using Celbridge.UserInterface.Helpers;
 
 namespace Celbridge.UserInterface.Services;
 

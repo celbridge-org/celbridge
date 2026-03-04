@@ -9,7 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Code.ViewModels;
 
-public partial class MonacoEditorViewModel : DocumentViewModel
+public partial class CodeEditorViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
@@ -20,7 +20,7 @@ public partial class MonacoEditorViewModel : DocumentViewModel
     [ObservableProperty]
     private string _cachedText = string.Empty;
 
-    public MonacoEditorViewModel(
+    public CodeEditorViewModel(
         ICommandService commandService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
@@ -79,11 +79,6 @@ public partial class MonacoEditorViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    public string GetDocumentLanguage()
-    {
-        return _documentsService.GetDocumentLanguage(FileResource);
-    }
-
     public void OnTextChanged()
     {
         HasUnsavedChanges = true;
@@ -128,17 +123,17 @@ public partial class MonacoEditorViewModel : DocumentViewModel
 
     private void OnDocumentSaveCompletedMessage(object recipient, DocumentSaveCompletedMessage message)
     {
-            // Check if this is a save completion for the current document
-                if (message.DocumentResource == FileResource)
-                {
-                    // Update our tracking information after a successful save
-                    UpdateFileTrackingInfo();
-                }
-            }
-
-            public override void Cleanup()
-            {
-                // Unregister message handlers
-                _messengerService.UnregisterAll(this);
-            }
+        // Check if this is a save completion for the current document
+        if (message.DocumentResource == FileResource)
+        {
+            // Update our tracking information after a successful save
+            UpdateFileTrackingInfo();
         }
+    }
+
+    public override void Cleanup()
+    {
+        // Unregister message handlers
+        _messengerService.UnregisterAll(this);
+    }
+}
