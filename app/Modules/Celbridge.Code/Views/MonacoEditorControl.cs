@@ -28,7 +28,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private readonly ICommandService _commandService;
 
     private WebView2? _webView;
-    private CelbridgeHost? _host;
+    private MonacoHost? _host;
     private HostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
     private TaskCompletionSource<string>? _getContentTcs;
@@ -101,9 +101,10 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
         _webView.GotFocus += WebView_GotFocus;
 
-        // Initialize CelbridgeHost for RPC communication
+        // Initialize MonacoHost for RPC communication
         _messageChannel = new HostChannel(_webView.CoreWebView2);
-        _host = new CelbridgeHost(_messageChannel);
+        var celbridgeHost = new CelbridgeHost(_messageChannel);
+        _host = new MonacoHost(celbridgeHost);
 
         // Register this control as the handler for RPC interfaces
         _host.AddLocalRpcTarget<IHostDocument>(this);
@@ -171,7 +172,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         }
 
         // Initialize the Monaco editor via JSON-RPC with the content and language
-        await _host.Rpc.NotifyEditorInitializeAsync(_language);
+        await _host.InitializeEditorAsync(_language);
 
         return Result.Ok();
     }
@@ -234,7 +235,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
         if (_host is not null)
         {
-            await _host.Rpc.NotifyEditorSetLanguageAsync(language);
+            await _host.SetLanguageAsync(language);
         }
     }
 
@@ -264,7 +265,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
         try
         {
-            await _host.Rpc.NotifyEditorNavigateToLocationAsync(lineNumber, column);
+            await _host.NavigateToLocationAsync(lineNumber, column);
             return Result.Ok();
         }
         catch (Exception ex)
