@@ -222,6 +222,10 @@ public partial class App : Application
             Guard.IsNotNull(commandService);
             commandService.StopExecution();
 
+            // Clean up pooled WebView2 instances
+            var webViewFactory = Host.Services.GetRequiredService<IWebViewFactory>();
+            webViewFactory.Shutdown();
+
             // Flush any events that are still pending in the logger
             var appLogger = Host.Services.GetRequiredService<Logging.ILogger<App>>();
             appLogger.Shutdown();

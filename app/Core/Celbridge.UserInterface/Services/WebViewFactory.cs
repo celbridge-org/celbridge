@@ -2,11 +2,6 @@ using Celbridge.Logging;
 
 namespace Celbridge.UserInterface.Services;
 
-/// <summary>
-/// Pre-warming factory for WebView2 instances.
-/// Creates pre-initialized WebView2 instances with CoreWebView2 ready.
-/// Clients are responsible for closing/disposing acquired instances.
-/// </summary>
 public class WebViewFactory : IWebViewFactory, IDisposable
 {
     private const int DefaultPoolSize = 3;

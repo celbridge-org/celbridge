@@ -1,8 +1,7 @@
 namespace Celbridge.UserInterface;
 
 /// <summary>
-/// Pre-warming factory for WebView2 instances.
-/// Clients are responsible for closing/disposing instances when done.
+/// Factory for acquiring WebView2 instances.
 /// </summary>
 public interface IWebViewFactory
 {
