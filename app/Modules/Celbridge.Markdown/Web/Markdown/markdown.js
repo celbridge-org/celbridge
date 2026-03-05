@@ -4,6 +4,7 @@
 import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
 import celbridge from 'https://shared.celbridge/celbridge.js';
+import { markdownClient } from './markdown-client.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './markdown-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './markdown-link-popover.js';
@@ -466,6 +467,41 @@ client.localization.onUpdated((strings) => {
         editor.view.dispatch(editor.state.tr);
     }
 });
+
+// ---------------------------------------------------------------------------
+// Markdown-specific host commands
+// ---------------------------------------------------------------------------
+
+// Handle navigation to heading requests from host
+markdownClient.onNavigateToHeading((heading) => {
+    const headings = collectHeadings();
+    const target = headings.find(h =>
+        h.text.toLowerCase() === heading.toLowerCase()
+    );
+
+    if (target) {
+        editor.chain().focus().setTextSelection(target.pos + 1).run();
+        const domPos = editor.view.domAtPos(target.pos + 1);
+        const el = domPos.node.nodeType === 1 ? domPos.node : domPos.node.parentElement;
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+});
+
+// Handle TOC visibility toggle from host
+markdownClient.onSetTocVisibility((visible) => {
+    const isVisible = tocPanel.classList.contains('visible');
+    if (visible !== isVisible) {
+        toggleToc();
+    }
+});
+
+// Handle focus requests from host
+markdownClient.onFocus(() => {
+    editor.commands.focus();
+});
+
 
 // Initialize the client and load content
 async function initializeEditor() {

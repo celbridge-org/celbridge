@@ -4,6 +4,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Host.Helpers;
 using Celbridge.Logging;
+using Celbridge.Markdown.Services;
 using Celbridge.Markdown.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -23,6 +24,8 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
+
+    private MarkdownHost? _markdownHost;
 
     public MarkdownDocumentViewModel ViewModel { get; }
 
@@ -71,9 +74,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
     public override async Task<Result> SaveDocument()
     {
-        if (Host is null)
+        if (_markdownHost is null)
         {
-            _logger.LogDebug("Save skipped - Host not initialized");
+            _logger.LogDebug("Save skipped - MarkdownHost not initialized");
             return Result.Ok();
         }
 
@@ -85,7 +88,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
         // Request the JS side to save - it will call document/save
         // which triggers our HandleSaveDocumentAsync handler
-        await Host.NotifyRequestSaveAsync();
+        await _markdownHost.NotifyRequestSaveAsync();
 
         return await ViewModel.SaveDocument();
     }
@@ -159,11 +162,14 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
                 return;
             }
 
-            // Register this view as the handler for additional RPC interfaces
-            Host.AddLocalRpcTarget<IHostDocument>(this);
-            Host.AddLocalRpcTarget<IHostDialog>(this);
+            // Create the Markdown-specific host wrapper
+            _markdownHost = new MarkdownHost(Host);
 
-            StartHostListener();
+            // Register this view as the handler for additional RPC interfaces
+            _markdownHost.AddLocalRpcTarget<IHostDocument>(this);
+            _markdownHost.AddLocalRpcTarget<IHostDialog>(this);
+
+            _markdownHost.StartListening();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");
@@ -546,9 +552,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
     {
         // External file change detected - notify JS to reload
         // The dirty state conflict handling is done in the ViewModel before raising this event
-        if (Host is not null)
+        if (_markdownHost is not null)
         {
-            await Host.NotifyExternalChangeAsync();
+            await _markdownHost.NotifyExternalChangeAsync();
         }
     }
 }
