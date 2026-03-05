@@ -29,8 +29,9 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         ILogger<SceneDocumentView> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IUserInterfaceService userInterfaceService)
-        : base(messengerService)
+        IUserInterfaceService userInterfaceService,
+        IWebViewFactory webViewFactory)
+        : base(messengerService, webViewFactory)
     {
         this.InitializeComponent();
 
@@ -41,7 +42,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
 
         ViewModel = serviceProvider.GetRequiredService<SceneDocumentViewModel>();
 
-        WebView = SceneWebView;
+        // Set the container where the WebView will be placed
+        WebViewContainer = SceneWebViewContainer;
 
         Loaded += SceneDocumentView_Loaded;
 
@@ -132,10 +134,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
     {
         try
         {
-            Guard.IsNotNull(WebView);
-
-            // Common WebView2 setup
-            await SetupCoreWebViewAsync();
+            // Acquire WebView from factory and add to container
+            await AcquireWebViewAsync();
 
             // Set initial theme before navigation
             ApplyThemeToWebView();
@@ -158,9 +158,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
             Host.AddLocalRpcTarget<IHostDocument>(this);
 
             StartHostListener();
-
-            // Initialize focus handling
-            InitializeFocusHandling();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://screenplay.celbridge/index.html");

@@ -36,8 +36,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
         IUserInterfaceService userInterfaceService,
         IWorkspaceWrapper workspaceWrapper,
         IStringLocalizer stringLocalizer,
-        IDialogService dialogService)
-        : base(messengerService)
+        IDialogService dialogService,
+        IWebViewFactory webViewFactory)
+        : base(messengerService, webViewFactory)
     {
         ViewModel = serviceProvider.GetRequiredService<MarkdownDocumentViewModel>();
 
@@ -51,8 +52,8 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
         this.InitializeComponent();
 
-        // Assign the WebView from XAML to the base class property
-        WebView = MarkdownWebView;
+        // Set the container where the WebView will be placed
+        WebViewContainer = MarkdownWebViewContainer;
 
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
@@ -100,10 +101,8 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
     {
         try
         {
-            Guard.IsNotNull(WebView);
-
-            // Common WebView2 setup
-            await SetupCoreWebViewAsync();
+            // Acquire WebView from factory and add to container
+            await AcquireWebViewAsync();
 
             // Set up virtual host mapping for Markdown editor assets
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -165,9 +164,6 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
             Host.AddLocalRpcTarget<IHostDialog>(this);
 
             StartHostListener();
-
-            // Initialize focus handling
-            InitializeFocusHandling();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://markdown.celbridge/index.html");

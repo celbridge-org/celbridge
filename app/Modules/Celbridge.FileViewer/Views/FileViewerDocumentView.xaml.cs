@@ -1,6 +1,7 @@
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
 namespace Celbridge.FileViewer.Views;
@@ -16,8 +17,9 @@ public sealed partial class FileViewerDocumentView : WebView2DocumentView
     public FileViewerDocumentView(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper,
-        IMessengerService messengerService)
-        : base(messengerService)
+        IMessengerService messengerService,
+        IWebViewFactory webViewFactory)
+        : base(messengerService, webViewFactory)
     {
         ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
 
@@ -25,8 +27,8 @@ public sealed partial class FileViewerDocumentView : WebView2DocumentView
 
         this.InitializeComponent();
 
-        // Assign the WebView from XAML to the base class property
-        WebView = FileWebView;
+        // Set the container where the WebView will be placed
+        WebViewContainer = FileWebViewContainer;
     }
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
@@ -53,15 +55,20 @@ public sealed partial class FileViewerDocumentView : WebView2DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        await SetupCoreWebViewAsync();
+        // Acquire WebView from factory and add to container
+        await AcquireWebViewAsync();
 
         // Initialize the host
         InitializeHost();
         StartHostListener();
 
-        // Initialize focus handling
-        InitializeFocusHandling();
+        // Load content and navigate to the file
+        var loadResult = await ViewModel.LoadContent();
+        if (loadResult.IsSuccess && !string.IsNullOrEmpty(ViewModel.Source))
+        {
+            WebView.CoreWebView2.Navigate(ViewModel.Source);
+        }
 
-        return await ViewModel.LoadContent();
+        return loadResult;
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -7,11 +8,11 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Base class for document views that use a WebView2 control.
-/// Provides JSON-RPC communication, keyboard shortcut handling, focus handling, and cleanup patterns.
 /// </summary>
 public abstract partial class WebView2DocumentView : DocumentView, IHostNotifications
 {
     private readonly IMessengerService _messengerService;
+    private readonly IWebViewFactory _webViewFactory;
 
     // JSON-RPC infrastructure
     private HostChannel? _hostChannel;
@@ -27,9 +28,15 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     private bool _hasPendingSave;
 
     /// <summary>
-    /// The WebView2 control. Subclasses should assign this in their constructor or XAML.
+    /// The WebView2 control acquired from the factory.
     /// </summary>
-    protected WebView2? WebView { get; set; }
+    protected WebView2? WebView { get; private set; }
+
+    /// <summary>
+    /// The container panel where the WebView will be placed.
+    /// Subclasses must set this in their constructor before calling AcquireWebViewAsync().
+    /// </summary>
+    protected Panel? WebViewContainer { get; set; }
 
     /// <summary>
     /// Gets the file resource key for this document.
@@ -37,35 +44,47 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     /// </summary>
     public abstract override ResourceKey FileResource { get; }
 
-    protected WebView2DocumentView(IMessengerService messengerService)
+    protected WebView2DocumentView(
+        IMessengerService messengerService,
+        IWebViewFactory webViewFactory)
     {
         _messengerService = messengerService;
+        _webViewFactory = webViewFactory;
     }
 
     /// <summary>
-    /// Performs common WebView2 initialization that all document views require.
-    /// Call this after assigning the WebView property and before any view-specific setup.
+    /// Acquires a WebView from the factory and adds it to the WebViewContainer.
+    /// Call this once during document view initialization, typically in a Loaded event handler.
     /// </summary>
-    protected async Task SetupCoreWebViewAsync()
+    [MemberNotNull(nameof(WebView))]
+    protected async Task AcquireWebViewAsync()
     {
-        if (WebView is null)
+        if (WebViewContainer is null)
         {
-            return;
+            throw new InvalidOperationException("WebViewContainer must be set before calling AcquireWebViewAsync().");
         }
 
-        await WebView.EnsureCoreWebView2Async();
+        if (WebView is not null)
+        {
+            throw new InvalidOperationException("AcquireWebViewAsync() has already been called. ");
+        }
 
-        WebView2Setup.MapSharedAssets(WebView.CoreWebView2);
-        await WebView2Setup.InjectShortcutHandlerAsync(WebView.CoreWebView2);
+        // Acquire a pre-configured WebView from the factory
+#pragma warning disable CS8774 // Member must have a non-null value when exiting
+        WebView = await _webViewFactory.AcquireAsync();
+#pragma warning restore CS8774
 
-        WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+        // Add to the visual tree
+        WebViewContainer.Children.Add(WebView);
 
-        await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
+        // Set up focus handling
+        WebView.GotFocus -= WebView_GotFocus;
+        WebView.GotFocus += WebView_GotFocus;
     }
 
     /// <summary>
     /// Initializes the host channel for WebView communication.
-    /// Call this after EnsureCoreWebView2Async() and any custom WebView setup.
+    /// Call this after AcquireWebViewAsync() and any view-specific WebView setup.
     /// This registers the base class as a handler for IHostNotifications (keyboard shortcuts, etc.).
     /// Subclasses should call this, then register additional RPC targets using the Host property.
     /// </summary>
@@ -90,20 +109,6 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     protected void StartHostListener()
     {
         Host?.StartListening();
-    }
-
-    /// <summary>
-    /// Initializes focus handling for the WebView2 control.
-    /// </summary>
-    protected void InitializeFocusHandling()
-    {
-        if (WebView is null)
-        {
-            return;
-        }
-
-        WebView.GotFocus -= WebView_GotFocus;
-        WebView.GotFocus += WebView_GotFocus;
     }
 
     #region IHostNotifications

@@ -4,6 +4,7 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
+using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
@@ -35,8 +36,9 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         ILogger<SpreadsheetDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
-        : base(messengerService)
+        IWorkspaceWrapper workspaceWrapper,
+        IWebViewFactory webViewFactory)
+        : base(messengerService, webViewFactory)
     {
         ViewModel = serviceProvider.GetRequiredService<SpreadsheetDocumentViewModel>();
 
@@ -46,8 +48,8 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
         this.InitializeComponent();
 
-        // Assign the WebView from XAML to the base class property
-        WebView = SpreadsheetWebView;
+        // Set the container where the WebView will be placed
+        WebViewContainer = SpreadsheetWebViewContainer;
 
         Loaded += SpreadsheetDocumentView_Loaded;
 
@@ -120,10 +122,8 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
     {
         try
         {
-            Guard.IsNotNull(WebView);
-
-            // Common WebView2 setup
-            await SetupCoreWebViewAsync();
+            // Acquire WebView from factory and add to container
+            await AcquireWebViewAsync();
 
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "spreadjs.celbridge",
@@ -169,9 +169,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
             Host.AddLocalRpcTarget<IHostDocument>(this);
 
             StartHostListener();
-
-            // Initialize focus handling
-            InitializeFocusHandling();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://spreadjs.celbridge/index.html");
