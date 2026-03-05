@@ -172,7 +172,8 @@ public sealed partial class LayoutToolbar : UserControl
         // Request focus when showing the console
         if (isVisible)
         {
-            _messengerService.Send(new RequestConsoleFocusMessage(true));
+            var message = new RequestConsoleFocusMessage();
+            _messengerService.Send(message);
         }
     }
 

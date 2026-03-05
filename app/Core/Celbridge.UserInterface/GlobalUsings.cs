@@ -1,4 +1,5 @@
 global using Celbridge.Core;
+global using Celbridge.Host;
 global using Celbridge.Messaging;
 global using Celbridge.Resources;
 global using Celbridge.UserInterface.Helpers;

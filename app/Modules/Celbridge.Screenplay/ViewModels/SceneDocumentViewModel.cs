@@ -31,12 +31,12 @@ public partial class SceneDocumentViewModel : DocumentViewModel
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Result LoadContent(bool isDarkMode)
+    public Result LoadContent()
     {
-        var generateResult = GenerateScreenplayHTML(FileResource, isDarkMode);
+        var generateResult = GenerateScreenplayContent(FileResource);
         if (generateResult.IsFailure)
         {
-            return Result.Fail($"Failed to generate screenplay HTML")
+            return Result.Fail($"Failed to generate screenplay content")
                 .WithErrors(generateResult);
         }
 
@@ -44,7 +44,7 @@ public partial class SceneDocumentViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    private Result<string> GenerateScreenplayHTML(ResourceKey sceneResource, bool isDarkMode)
+    private Result<string> GenerateScreenplayContent(ResourceKey sceneResource)
     {
         var getComponentsResult = EntityService.GetComponents(sceneResource);
         if (getComponentsResult.IsFailure)
@@ -78,55 +78,7 @@ public partial class SceneDocumentViewModel : DocumentViewModel
 
         var sb = new StringBuilder();
 
-        sb.AppendLine("<!DOCTYPE html>");
-        sb.AppendLine("<html>");
-        sb.AppendLine("<head>");
-        sb.AppendLine("<meta charset=\"UTF-8\">");
-
-        sb.AppendLine("<style>");
-        sb.AppendLine(".theme-light {");
-        sb.AppendLine("  --bg-color: #ffffff;");
-        sb.AppendLine("  --text-color: #1a1a1a;");
-        sb.AppendLine("  --scene-note-color: #555555;");
-        sb.AppendLine("  --direction-color: #666666;");
-        sb.AppendLine("  --player-color: hsl(220, 80%, 40%);");
-        sb.AppendLine("  --npc-color: hsl(10, 70%, 40%);");
-        sb.AppendLine("  --scrollbar-track: #f0f0f0;");
-        sb.AppendLine("  --scrollbar-thumb: #c0c0c0;");
-        sb.AppendLine("  --scrollbar-thumb-hover: #a0a0a0;");
-        sb.AppendLine("}");
-        sb.AppendLine(".theme-dark {");
-        sb.AppendLine("  --bg-color: #1e1e1e;");
-        sb.AppendLine("  --text-color: #e8e8e8;");
-        sb.AppendLine("  --scene-note-color: #aaaaaa;");
-        sb.AppendLine("  --direction-color: #999999;");
-        sb.AppendLine("  --player-color: hsl(220, 80%, 65%);");
-        sb.AppendLine("  --npc-color: hsl(10, 70%, 60%);");
-        sb.AppendLine("  --scrollbar-track: #2d2d2d;");
-        sb.AppendLine("  --scrollbar-thumb: #555555;");
-        sb.AppendLine("  --scrollbar-thumb-hover: #707070;");
-        sb.AppendLine("}");
-        sb.AppendLine("::-webkit-scrollbar { width: 12px; height: 12px; }");
-        sb.AppendLine("::-webkit-scrollbar-track { background: var(--scrollbar-track); }");
-        sb.AppendLine("::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 6px; }");
-        sb.AppendLine("::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }");
-        sb.AppendLine("body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: var(--bg-color); color: var(--text-color); }");
-        sb.AppendLine(".screenplay { max-width: 800px; width: 100%; margin: 0 auto; }");
-        sb.AppendLine(".page { max-width: 794px; margin: 0 auto; padding: 1em 1.5em; }");
-        sb.AppendLine(".scene { text-align: left; font-size: 2em; font-weight: bold; margin: 0 0 0.5em 0; }");
-        sb.AppendLine(".scene-note { text-align: left; margin-bottom: 2.5em; font-style: italic; color: var(--scene-note-color); }");
-        sb.AppendLine(".line { margin-bottom: 3em; text-align: center; }");
-        sb.AppendLine(".character { display: block; font-weight: bold; text-transform: uppercase; margin-bottom: 0.75em; }");
-        sb.AppendLine(".direction { text-align: center; color: var(--direction-color); }");
-        sb.AppendLine(".dialogue { display: block; white-space: pre-wrap; }");
-        sb.AppendLine(".variant { margin-right: 3em; margin-left: auto; text-align: right; font-style: italic; }");
-        sb.AppendLine(".player-color { color: var(--player-color); }");
-        sb.AppendLine(".npc-color { color: var(--npc-color); }");
-        sb.AppendLine("</style>");
-
-        sb.AppendLine("</head>");
-        var themeClass = isDarkMode ? "theme-dark" : "theme-light";
-        sb.AppendLine($"<body class=\"{themeClass}\">");
+        // Generate only the body content (HTML structure is in index.html)
         sb.AppendLine("<div class=\"screenplay\">");
         sb.AppendLine("<div class=\"page\">");
 
@@ -208,8 +160,6 @@ public partial class SceneDocumentViewModel : DocumentViewModel
 
         sb.AppendLine("</div>"); // page
         sb.AppendLine("</div>"); // screenplay
-        sb.AppendLine("</body>");
-        sb.AppendLine("</html>");
 
         return Result<string>.Ok(sb.ToString());
     }

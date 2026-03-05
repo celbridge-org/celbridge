@@ -23,7 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\**" />
+    <Content Include="Web\**" />
   </ItemGroup>
 
   <ItemGroup>

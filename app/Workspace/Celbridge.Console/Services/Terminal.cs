@@ -11,8 +11,6 @@ public class Terminal : ITerminal, IDisposable
     public event EventHandler? ProcessExited;
 #pragma warning restore CS0067
 
-    public string CommandBuffer { get; set; } = string.Empty;
-
     public Terminal()
     {
 #if WINDOWS

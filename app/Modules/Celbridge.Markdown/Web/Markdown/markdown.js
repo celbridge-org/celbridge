@@ -3,9 +3,11 @@
 
 import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
+import celbridge from 'https://shared.celbridge/celbridge.js';
+import { markdownClient } from './markdown-client.js';
 
-import { createImageExtension, init as initImagePopover, toggleImage, onPickImageResourceResult } from './markdown-image-popover.js';
-import { init as initLinkPopover, toggleLink, onPickLinkResourceResult } from './markdown-link-popover.js';
+import { createImageExtension, init as initImagePopover, toggleImage } from './markdown-image-popover.js';
+import { init as initLinkPopover, toggleLink } from './markdown-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './markdown-table-popover.js';
 
 // ---------------------------------------------------------------------------
@@ -98,18 +100,11 @@ const tocEmpty = document.getElementById('toc-empty');
 // State
 let changeTimer = null;
 const CHANGE_DEBOUNCE_MS = 300;
-let isLoadingContent = false;
-let isDocumentLoaded = false;  // Set true after first load-doc completes; guards against spurious doc-changed
 let projectBaseUrl = '';
 let documentBaseUrl = '';
 
-// WebView2 messaging
-function sendMessage(msg) {
-    const json = JSON.stringify(msg);
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage(json);
-    }
-}
+// Get the client instance
+const client = celbridge;
 
 // Resource key resolution for images
 function resolveImageSrc(src) {
@@ -135,7 +130,7 @@ function unresolveImageSrc(resolvedSrc) {
 // Shared context object for popover modules
 const ctx = {
     editor: null,
-    sendMessage,
+    client,
     resolveImageSrc,
     unresolveImageSrc,
 };
@@ -210,13 +205,10 @@ const editor = new Editor({
     ],
     content: '',
     onUpdate: () => {
-        // Don't send doc-changed during content loading or before document is first loaded.
-        // This prevents spurious saves during initialization (e.g., from localization updates).
-        if (isLoadingContent || !isDocumentLoaded) return;
-
+        // Debounce change notifications
         if (changeTimer) clearTimeout(changeTimer);
         changeTimer = setTimeout(() => {
-            sendMessage({ type: 'doc-changed' });
+            client.document.notifyChanged();
         }, CHANGE_DEBOUNCE_MS);
     },
 });
@@ -419,70 +411,139 @@ editor.on('transaction', ({ transaction }) => {
     }
 });
 
-// WebView2 message handling
-if (window.chrome && window.chrome.webview) {
-    window.chrome.webview.addEventListener('message', (event) => {
-        let msg;
-        try {
-            msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        } catch (e) {
-            return;
+// ---------------------------------------------------------------------------
+// Client-based initialization and event handling
+// ---------------------------------------------------------------------------
+
+// Handle external file changes
+client.document.onExternalChange(async () => {
+    // Preserve editor state during reload
+    const scrollTop = editorWrapperEl.scrollTop;
+    const { from, to } = editor.state.selection;
+
+    try {
+        const { content } = await client.document.load();
+        const cleanContent = (content || '').replace(/&nbsp;/g, '');
+        editor.commands.setContent(cleanContent, { contentType: 'markdown' });
+
+        // Restore selection if possible
+        const maxPos = editor.state.doc.content.size;
+        const newFrom = Math.min(from, maxPos);
+        const newTo = Math.min(to, maxPos);
+        editor.commands.setTextSelection({ from: newFrom, to: newTo });
+
+        // Restore scroll position
+        editorWrapperEl.scrollTop = scrollTop;
+    } catch (e) {
+        console.error('[Markdown] Failed to reload content:', e);
+    }
+});
+
+// Handle save requests from host
+client.document.onRequestSave(async () => {
+    let markdown = editor.getMarkdown();
+    markdown = markdown.replace(/&nbsp;/g, '');
+
+    try {
+        await client.document.save(markdown);
+    } catch (e) {
+        console.error('[Markdown] Failed to save:', e);
+    }
+});
+
+// Handle theme changes
+client.theme.onChanged((theme) => {
+    // Theme is handled by CSS prefers-color-scheme via WebView2 settings
+    // but we could add custom handling here if needed
+});
+
+// Handle localization updates
+client.localization.onUpdated((strings) => {
+    setStrings(strings);
+    // Update the TipTap placeholder text dynamically
+    const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
+    if (placeholderExt) {
+        placeholderExt.options.placeholder = t('Markdown_NoteEditor_Placeholder');
+        editor.view.dispatch(editor.state.tr);
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Markdown-specific host commands
+// ---------------------------------------------------------------------------
+
+// Handle navigation to heading requests from host
+markdownClient.onNavigateToHeading((heading) => {
+    const headings = collectHeadings();
+    const target = headings.find(h =>
+        h.text.toLowerCase() === heading.toLowerCase()
+    );
+
+    if (target) {
+        editor.chain().focus().setTextSelection(target.pos + 1).run();
+        const domPos = editor.view.domAtPos(target.pos + 1);
+        const el = domPos.node.nodeType === 1 ? domPos.node : domPos.node.parentElement;
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+});
+
+// Handle TOC visibility toggle from host
+markdownClient.onSetTocVisibility((visible) => {
+    const isVisible = tocPanel.classList.contains('visible');
+    if (visible !== isVisible) {
+        toggleToc();
+    }
+});
+
+// Handle focus requests from host
+markdownClient.onFocus(() => {
+    editor.commands.focus();
+});
+
+
+// Initialize the client and load content
+async function initializeEditor() {
+    try {
+        // Enable debug logging during development
+        // client.setLogLevel('debug');
+
+        const result = await client.initialize();
+
+        // Set base URLs for resolving relative paths
+        projectBaseUrl = 'https://project.celbridge/';
+        const resourceKey = result.metadata?.resourceKey || '';
+        const lastSlash = resourceKey.lastIndexOf('/');
+        documentBaseUrl = lastSlash >= 0
+            ? `${projectBaseUrl}${resourceKey.substring(0, lastSlash + 1)}`
+            : projectBaseUrl;
+
+        // Set localization strings
+        if (result.localization) {
+            setStrings(result.localization);
+            const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
+            if (placeholderExt) {
+                placeholderExt.options.placeholder = t('Markdown_NoteEditor_Placeholder');
+                editor.view.dispatch(editor.state.tr);
+            }
         }
 
-        switch (msg.type) {
-            case 'set-localization': {
-                setStrings(msg.payload.strings);
-                // Update the TipTap placeholder text dynamically, i.e. "Start writing..."
-                const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
-                if (placeholderExt) {
-                    placeholderExt.options.placeholder = t('NoteEditor_Placeholder');
-                    editor.view.dispatch(editor.state.tr);
-                }
-                break;
-            }
-            case 'load-doc': {
-                isLoadingContent = true;
-                try {
-                    if (msg.payload.projectBaseUrl) {
-                        projectBaseUrl = msg.payload.projectBaseUrl;
-                    }
-                    if (msg.payload.documentBaseUrl) {
-                        documentBaseUrl = msg.payload.documentBaseUrl;
-                    }
-                    let content = msg.payload.content || '';
-                    content = content.replace(/&nbsp;/g, '');
-                    editor.commands.setContent(content, { contentType: 'markdown' });
-                } catch (e) {
-                    console.error('[Note] Failed to load doc:', e);
-                }
-                isLoadingContent = false;
-                isDocumentLoaded = true;  // Enable doc-changed notifications now that content is loaded
-                editorWrapperEl.classList.add('visible');  // Show editor now that content is ready
-                break;
-            }
-            case 'request-save': {
-                let markdown = editor.getMarkdown();
-                markdown = markdown.replace(/&nbsp;/g, '');
-                sendMessage({
-                    type: 'save-response',
-                    payload: { content: markdown }
-                });
-                break;
-            }
-            case 'pick-image-resource-result': {
-                onPickImageResourceResult(msg.payload.resourceKey);
-                break;
-            }
-            case 'pick-link-resource-result': {
-                onPickLinkResourceResult(msg.payload.resourceKey);
-                break;
-            }
-        }
-    });
+        // Load content into editor
+        const content = (result.content || '').replace(/&nbsp;/g, '');
+        editor.commands.setContent(content, { contentType: 'markdown' });
+
+        // Show the editor
+        editorWrapperEl.classList.add('visible');
+        toolbarEl.classList.add('visible');
+
+    } catch (e) {
+        console.error('[Markdown] Failed to initialize:', e);
+    }
 }
 
-// Show UI after initialization
-toolbarEl.classList.add('visible');
+// Start initialization
+initializeEditor();
 
 // Main toolbar resize observer
 new ResizeObserver(() => {
@@ -490,6 +551,3 @@ new ResizeObserver(() => {
         updateToolbarSeparators();
     });
 }).observe(toolbarEl);
-
-// Signal ready to C# host
-sendMessage({ type: 'editor-ready' });

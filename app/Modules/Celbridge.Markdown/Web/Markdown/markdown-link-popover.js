@@ -44,7 +44,8 @@ export function init(context) {
         if (e.ctrlKey || e.metaKey) {
             const href = link.getAttribute('href');
             if (href) {
-                ctx.sendMessage({ type: 'link-clicked', payload: { href } });
+                // Send link clicked notification via client
+                ctx.client._notify('link/clicked', { href });
             }
         } else {
             showPopoverForLink(link);
@@ -74,17 +75,28 @@ export function init(context) {
         }
     });
 
-    // Browse button — pick a resource
-    document.getElementById('link-popover-browse').addEventListener('click', () => {
+    // Browse button - pick a resource
+    document.getElementById('link-popover-browse').addEventListener('click', async () => {
         isPickerOpen = true;
-        ctx.sendMessage({ type: 'pick-link-resource' });
+        try {
+            const path = await ctx.client.dialog.pickFile([]);
+            isPickerOpen = false;
+            if (path) {
+                linkInputEl.value = path;
+                updateButtonStates(path);
+                applyLinkFromPicker(path);
+            }
+        } catch (e) {
+            isPickerOpen = false;
+            console.error('[LinkPopover] Failed to pick file:', e);
+        }
     });
 
     // Open link button
     openBtnEl.addEventListener('click', () => {
         const href = linkInputEl.value.trim();
         if (href) {
-            ctx.sendMessage({ type: 'link-clicked', payload: { href } });
+            ctx.client._notify('link/clicked', { href });
         }
     });
 
@@ -306,14 +318,10 @@ export function toggleLink() {
     showPopoverForSelection();
 }
 
-// --- Resource picker result (called from markdown.js when C# responds) ---
+// --- Apply link from picker (inlined from async browse handler) ---
 
-export function onPickLinkResourceResult(resourceKey) {
-    isPickerOpen = false;
+function applyLinkFromPicker(resourceKey) {
     if (!resourceKey) return;
-
-    linkInputEl.value = resourceKey;
-    updateButtonStates(resourceKey);
 
     const { state } = ctx.editor;
 

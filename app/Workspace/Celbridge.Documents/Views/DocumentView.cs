@@ -2,6 +2,8 @@ namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
+    public abstract ResourceKey FileResource { get; }
+
     public abstract Task<Result> SetFileResource(ResourceKey fileResource);
 
     public abstract Task<Result> LoadContent();

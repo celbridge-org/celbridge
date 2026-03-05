@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Windows.System;
@@ -25,7 +24,7 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         _logger = logger;
     }
 
-    public bool HandleGlobalShortcut(VirtualKey key, bool control, bool shift, bool alt)
+    public bool HandleShortcut(VirtualKey key, bool control, bool shift, bool alt)
     {
         // F11 shortcut toggles Zen Mode (fullscreen with panels hidden)
         if (key == VirtualKey.F11)
@@ -67,61 +66,21 @@ public class KeyboardShortcutService : IKeyboardShortcutService
         return false;
     }
 
-    public bool HandleWebView2KeyboardShortcut(string? jsonMessage)
+    public bool HandleShortcut(string key, bool control, bool shift, bool alt)
     {
-        if (string.IsNullOrEmpty(jsonMessage))
-        {
-            return false;
-        }
-
-        // Quick check: keyboard shortcut messages are JSON objects starting with '{'
-        if (!jsonMessage.StartsWith('{'))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(jsonMessage);
-            var root = doc.RootElement;
-
-            // Check if this is a keyboard shortcut message
-            if (!root.TryGetProperty("type", out var typeProp) ||
-                typeProp.GetString() != "keyboard_shortcut")
-            {
-                return false;
-            }
-
-            // Extract key and modifier information
-            var keyString = root.TryGetProperty("key", out var keyProp) ? keyProp.GetString() : null;
-            var ctrlKey = root.TryGetProperty("ctrlKey", out var ctrlProp) && ctrlProp.GetBoolean();
-            var shiftKey = root.TryGetProperty("shiftKey", out var shiftProp) && shiftProp.GetBoolean();
-            var altKey = root.TryGetProperty("altKey", out var altProp) && altProp.GetBoolean();
-
-            // Convert key string to VirtualKey
-            var virtualKey = MapKeyStringToVirtualKey(keyString);
-            if (virtualKey == VirtualKey.None)
-            {
-                return false;
-            }
-
-            return HandleGlobalShortcut(virtualKey, ctrlKey, shiftKey, altKey);
-        }
-        catch (JsonException)
-        {
-            // Not a valid JSON message, not handled as keyboard shortcut
-            return false;
-        }
-    }
-
-    private static VirtualKey MapKeyStringToVirtualKey(string? keyString)
-    {
-        return keyString switch
+        var virtualKey = key switch
         {
             "F11" => VirtualKey.F11,
             "z" or "Z" => VirtualKey.Z,
             "y" or "Y" => VirtualKey.Y,
             _ => VirtualKey.None
         };
+
+        if (virtualKey == VirtualKey.None)
+        {
+            return false;
+        }
+
+        return HandleShortcut(virtualKey, control, shift, alt);
     }
 }

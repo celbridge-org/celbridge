@@ -1,5 +1,7 @@
 using Celbridge.Dialog;
 using Celbridge.Projects;
+using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
+using FocusNavigationDirection = Microsoft.UI.Xaml.Input.FocusNavigationDirection;
 
 namespace Celbridge.UserInterface.Views;
 

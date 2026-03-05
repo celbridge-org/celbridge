@@ -1,11 +1,13 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
+using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
 
@@ -17,6 +19,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWindowModeService _windowModeService;
+    private readonly IDialogService _dialogService;
+    private readonly IStringLocalizer _stringLocalizer;
 
     private bool _isShuttingDown = false;
 
@@ -46,7 +50,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IMessengerService messengerService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IWindowModeService windowModeService)
+        IWindowModeService windowModeService,
+        IDialogService dialogService,
+        IStringLocalizer stringLocalizer)
     {
         InitializeComponent();
 
@@ -54,6 +60,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _messengerService = messengerService;
         _commandService = commandService;
         _windowModeService = windowModeService;
+        _dialogService = dialogService;
+        _stringLocalizer = stringLocalizer;
 
         ViewModel = serviceProvider.AcquireService<DocumentsPanelViewModel>();
 
@@ -505,11 +513,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     }
                     else
                     {
-                        var savedResource = documentTab.ViewModel.FileResource;
-                        var message = new DocumentSaveRequestedMessage(savedResource);
-
-                        _messengerService.Send(message);
-
                         savedCount++;
                     }
                 }
@@ -518,7 +521,20 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         if (failedSaves.Count > 0)
         {
-            return Result.Fail($"Failed to save the following documents: {string.Join(", ", failedSaves)}");
+            // Log the error with all failed files
+            var errorMessage = $"Failed to save the following documents: {string.Join(", ", failedSaves)}";
+            _logger.LogError(errorMessage);
+
+            // Show localized alert to the user with just the first file name
+            // Multiple simultaneous failures are extremely unlikely
+            var firstFailedFile = failedSaves[0].ToString();
+            var alertTitle = _stringLocalizer.GetString("Documents_SaveDocumentFailedTitle");
+            var alertMessage = _stringLocalizer.GetString("Documents_SaveDocumentFailedGeneric", firstFailedFile);
+
+            // Fire-and-forget to avoid blocking the save loop
+            _ = _dialogService.ShowAlertDialogAsync(alertTitle, alertMessage);
+
+            return Result.Fail(errorMessage);
         }
 
         if (savedCount > 0)

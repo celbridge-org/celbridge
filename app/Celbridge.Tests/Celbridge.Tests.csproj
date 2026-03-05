@@ -14,12 +14,14 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="StreamJsonRpc" />
     <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Commands\Celbridge.Commands.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Host\Celbridge.Host.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Messaging\Celbridge.Messaging.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Modules\Celbridge.Modules.csproj" />
