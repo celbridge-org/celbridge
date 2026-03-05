@@ -83,11 +83,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         foreach (var factory in factories)
         {
             var result = _documentEditorRegistry.RegisterFactory(factory);
-            if (result.IsSuccess)
-            {
-                _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
-            }
-            else
+            if (result.IsFailure)
             {
                 _logger.LogWarning(result, $"Failed to register document editor factory");
             }
