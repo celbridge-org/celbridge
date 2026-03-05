@@ -33,6 +33,8 @@ npm run test:watch
 
 ## Files
 
-- `celbridge-client.js` - The client library for WebView-to-host communication
-- `celbridge-client.test.js` - Unit tests for the client library
+- `celbridge.js` - The client library for WebView-to-host communication
+- `celbridge-localization.js` - Localization utilities for web-based editors
+- `types.js` - Type definitions
+- `celbridge.test.js` - Unit tests for the client library
 - `vitest.config.js` - Vitest test runner configuration
