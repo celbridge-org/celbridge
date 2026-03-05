@@ -1,4 +1,4 @@
-// Celbridge Client: JavaScript client for communicating with the Celbridge .NET host.
+// Celbridge: JavaScript SDK for communicating with the Celbridge .NET host.
 // Provides promise-based async API with automatic request/response correlation.
 
 import { RpcTransport } from './core/rpc-transport.js';
@@ -13,10 +13,10 @@ import { LocalizationAPI } from './api/localization-api.js';
  */
 
 /**
- * Celbridge Client.
+ * Celbridge SDK.
  * Main entry point for communicating with the Celbridge .NET host.
  */
-export class CelbridgeClient {
+export class Celbridge {
     /** @type {RpcTransport} */
     #transport;
 
@@ -45,7 +45,7 @@ export class CelbridgeClient {
     localization;
 
     /**
-     * Creates a new CelbridgeClient instance.
+     * Creates a new Celbridge instance.
      * @param {Object} [options] - Configuration options.
      * @param {Function} [options.postMessage] - Custom postMessage function (for testing).
      * @param {Function} [options.onMessage] - Custom message handler setup (for testing).
@@ -107,20 +107,23 @@ export class CelbridgeClient {
     }
 }
 
-// Singleton instance for typical browser usage.
-let _client = null;
+// Lazy singleton instance for typical usage
+// Uses a proxy to defer instantiation until first property access,
+// avoiding errors in non-browser test environments.
+let _instance = null;
 
-/**
- * Gets the singleton client instance.
- * Creates the instance lazily to avoid errors in non-browser environments.
- * @returns {CelbridgeClient}
- */
-export function getClient() {
-    if (!_client) {
-        _client = new CelbridgeClient();
+const celbridge = new Proxy({}, {
+    get(_, prop) {
+        if (!_instance) {
+            _instance = new Celbridge();
+        }
+        const value = _instance[prop];
+        return typeof value === 'function' ? value.bind(_instance) : value;
     }
-    return _client;
-}
+});
+
+// Default export is the singleton instance
+export default celbridge;
 
 // Re-export types for convenience
 export * from './types.js';

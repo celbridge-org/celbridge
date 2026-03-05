@@ -1,14 +1,14 @@
 // Screenplay viewer initialization for Celbridge WebView integration.
-// Uses celbridge-client.js for JSON-RPC communication with the host.
+// Uses celbridge.js for JSON-RPC communication with the host.
 
-import { getClient } from 'https://shared.celbridge/celbridge-client.js';
+import celbridge from 'https://shared.celbridge/celbridge.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {
     console.log('Not running in WebView, skipping client initialization');
 }
 
-const client = getClient();
+const client = celbridge;
 
 // Apply theme to the body element
 function applyTheme(theme) {

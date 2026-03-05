@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CelbridgeClient } from './celbridge-client.js';
+import { Celbridge } from './celbridge.js';
 
 /**
  * Creates a mock message channel for testing.
- * @returns {{ client: CelbridgeClient, sentMessages: string[], simulateResponse: Function, simulateNotification: Function }}
+ * @returns {{ client: Celbridge, sentMessages: string[], simulateResponse: Function, simulateNotification: Function }}
  */
 function createTestClient(options = {}) {
     const sentMessages = [];
     let messageHandler = null;
 
-    const client = new CelbridgeClient({
+    const client = new Celbridge({
         postMessage: (msg) => sentMessages.push(msg),
         onMessage: (handler) => { messageHandler = handler; },
         timeout: options.timeout ?? 1000,
@@ -46,7 +46,7 @@ function createTestClient(options = {}) {
     return { client, sentMessages, simulateResponse, simulateError, simulateNotification };
 }
 
-describe('CelbridgeClient', () => {
+describe('Celbridge', () => {
     describe('initialization', () => {
         it('should send initialize request with protocol version', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
@@ -322,7 +322,7 @@ describe('CelbridgeClient', () => {
             const sentMessages = [];
             let messageHandler = null;
 
-            const client = new CelbridgeClient({
+            const client = new Celbridge({
                 postMessage: (msg) => sentMessages.push(msg),
                 onMessage: (handler) => { messageHandler = handler; }
             });

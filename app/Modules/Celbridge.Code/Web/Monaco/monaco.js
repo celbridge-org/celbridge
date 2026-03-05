@@ -1,7 +1,7 @@
 // Monaco Editor initialization for Celbridge WebView integration.
-// Uses celbridge-client.js for JSON-RPC communication with the host.
+// Uses celbridge.js for JSON-RPC communication with the host.
 
-import { getClient } from 'https://shared.celbridge/celbridge-client.js';
+import celbridge from 'https://shared.celbridge/celbridge.js';
 import { monacoClient } from './monaco-client.js';
 
 // State
@@ -95,7 +95,7 @@ async function handleEditorInitialize(language) {
     }
 
     try {
-        client = getClient();
+        client = celbridge;
 
         // Set language before loading content
         if (language) {

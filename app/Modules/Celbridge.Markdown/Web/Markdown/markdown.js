@@ -3,7 +3,7 @@
 
 import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
-import { getClient } from 'https://shared.celbridge/celbridge-client.js';
+import celbridge from 'https://shared.celbridge/celbridge.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './markdown-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './markdown-link-popover.js';
@@ -103,7 +103,7 @@ let projectBaseUrl = '';
 let documentBaseUrl = '';
 
 // Get the client instance
-const client = getClient();
+const client = celbridge;
 
 // Resource key resolution for images
 function resolveImageSrc(src) {

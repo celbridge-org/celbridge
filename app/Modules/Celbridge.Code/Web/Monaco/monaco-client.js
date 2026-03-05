@@ -1,5 +1,5 @@
 // Monaco Client: Monaco-specific API for communicating with the Celbridge Monaco host.
-// Uses the shared RPC transport from celbridge-client.js.
+// Uses the shared RPC transport from celbridge.js.
 
 import { RpcTransport } from 'http://shared.celbridge/core/rpc-transport.js';
 

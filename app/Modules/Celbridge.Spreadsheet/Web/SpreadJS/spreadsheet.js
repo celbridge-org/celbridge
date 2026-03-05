@@ -1,7 +1,7 @@
 // Spreadsheet editor initialization for Celbridge WebView integration.
-// Uses celbridge-client.js for JSON-RPC communication with the host.
+// Uses celbridge.js for JSON-RPC communication with the host.
 
-import { getClient } from 'https://shared.celbridge/celbridge-client.js';
+import celbridge from 'https://shared.celbridge/celbridge.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {
@@ -9,7 +9,7 @@ if (!window.isWebView) {
 }
 
 // Get the client instance
-const client = getClient();
+const client = celbridge;
 
 // SpreadJS designer instance (set in initializeSpreadsheet)
 let designer = null;
