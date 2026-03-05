@@ -50,4 +50,4 @@ public record ConsoleErrorMessage(ConsoleErrorType ErrorType, string ConfigFileN
 /// <summary>
 /// Message sent to request the console terminal to receive focus.
 /// </summary>
-public record RequestConsoleFocusMessage(bool ShouldFocus);
+public record RequestConsoleFocusMessage();

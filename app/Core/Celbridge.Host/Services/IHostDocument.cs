@@ -11,20 +11,20 @@ public interface IHostDocument
     /// Initializes the host connection with the WebView.
     /// Returns the document content, metadata, and localization strings.
     /// </summary>
-    [JsonRpcMethod(RpcMethodNames.Initialize)]
+    [JsonRpcMethod(HostRpcMethods.Initialize)]
     Task<InitializeResult> InitializeAsync(string protocolVersion);
 
     /// <summary>
     /// Loads the document content from the host.
     /// Content is text for text documents or base64-encoded for binary documents.
     /// </summary>
-    [JsonRpcMethod(RpcMethodNames.DocumentLoad)]
+    [JsonRpcMethod(HostRpcMethods.DocumentLoad)]
     Task<LoadResult> LoadAsync();
 
     /// <summary>
     /// Saves the document content to the host.
     /// Content is text for text documents or base64-encoded for binary documents.
     /// </summary>
-    [JsonRpcMethod(RpcMethodNames.DocumentSave)]
+    [JsonRpcMethod(HostRpcMethods.DocumentSave)]
     Task<SaveResult> SaveAsync(string content);
 }

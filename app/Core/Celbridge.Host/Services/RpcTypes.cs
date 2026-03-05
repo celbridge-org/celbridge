@@ -50,12 +50,3 @@ public record PickFileResult(string? Path);
 /// Result of the dialog/alert request.
 /// </summary>
 public record AlertResult();
-
-// =============================================================================
-// Outbound Notification Types (C# to JS)
-// =============================================================================
-
-/// <summary>
-/// Notification sent when localization is updated (C# to JS).
-/// </summary>
-public record LocalizationUpdatedNotification(Dictionary<string, string> Strings);

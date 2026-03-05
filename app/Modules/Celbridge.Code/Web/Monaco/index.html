@@ -24,6 +24,7 @@
         // Uses celbridge-client.js for JSON-RPC communication with the host
 
         import { getClient } from 'https://shared.celbridge/celbridge-client.js';
+        import { monacoClient } from './monaco-client.js';
 
         // State
         let editor = null;
@@ -110,36 +111,6 @@
             });
         }
 
-        // Register handlers for host-to-client RPC notifications
-        function registerRpcHandlers() {
-            if (!window.chrome?.webview) {
-                return;
-            }
-
-            window.chrome.webview.addEventListener('message', (event) => {
-                const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-
-                // Only handle notifications (no id field) for editor operations
-                if (message.jsonrpc === '2.0' && !message.id) {
-                    handleRpcNotification(message.method, message.params || {});
-                }
-            });
-        }
-
-        function handleRpcNotification(method, params) {
-            switch (method) {
-                case 'editor/initialize':
-                    handleEditorInitialize(params.language);
-                    break;
-                case 'editor/setLanguage':
-                    handleEditorSetLanguage(params.language);
-                    break;
-                case 'editor/navigateToLocation':
-                    handleEditorNavigateToLocation(params.lineNumber, params.column);
-                    break;
-            }
-        }
-
         async function handleEditorInitialize(language) {
             if (!window.isWebView) {
                 return;
@@ -209,9 +180,11 @@
             editor.focus();
         }
 
-        // Register RPC handlers immediately
+        // Register RPC handlers via monaco-client
         if (window.isWebView) {
-            registerRpcHandlers();
+            monacoClient.onInitialize(handleEditorInitialize);
+            monacoClient.onSetLanguage(handleEditorSetLanguage);
+            monacoClient.onNavigateToLocation(handleEditorNavigateToLocation);
         }
 
     </script>

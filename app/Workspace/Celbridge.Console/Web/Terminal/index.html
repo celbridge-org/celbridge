@@ -32,7 +32,8 @@
 
     <script src="terminal-themes.js"></script>
 
-    <script>
+    <script type="module">
+        import { consoleClient } from './console-client.js';
 
         const darkTheme = window.VSCodeTerminalThemes.dark;
         const lightTheme = window.VSCodeTerminalThemes.light;
@@ -101,25 +102,16 @@
             console.log(`Terminal now ${cols} cols by ${rows} rows`);
 
             // Notify console host that the terminal has resized
-            data = `console_size,${cols},${rows}`
-            window.chrome.webview.postMessage(data);
+            consoleClient.sendResize(cols, rows);
         });
 
         // Fit the terminal size to the available space in the host WebView2 control.
         fitAddon.fit();
 
         term.attachCustomKeyEventHandler((ev) => {
-
-            // F11 toggles full screen layout (only on keydown, not keyup)
-            if (ev.type === 'keydown' && ev.key === 'F11') {
-                ev.preventDefault?.();
-                if (window.chrome && window.chrome.webview) {
-                    window.chrome.webview.postMessage('toggle_fullscreen');
-                }
-                return false; // consume the event
-            }
-            // Also consume keyup for F11 to prevent any default behavior
-            if (ev.type === 'keyup' && ev.key === 'F11') {
+            // F11 is handled by WebViewFactory's injected script via JSON-RPC
+            // Just consume the event here to prevent default browser behavior
+            if (ev.key === 'F11') {
                 return false;
             }
 
@@ -148,31 +140,28 @@
             return true;
         });
 
-        // Send terminal input to host
+        // Send terminal input to host via JSON-RPC
         term.onData(data => {
-            window.chrome.webview.postMessage(data);
+            consoleClient.sendInput(data);
         });
 
-        // Receive data from host and write it to the terminal
-        window.chrome.webview.addEventListener('message', event => {
-            const data = event.data;
-            if (typeof data === "string") {
-                // Handle focus request from host
-                if (data === "focus_terminal") {
-                    term.focus();
-                    return;
-                }
-                
-                // Handle theme change messages from host
-                if (data.startsWith("theme_change,")) {
-                    const themeName = data.split(',')[1];
-                    applyTheme(themeName === 'dark');
-                    return;
-                }
-                
-                // Handle regular terminal data
-                term.write(data);
-            }
+        // Register handlers for host notifications
+        consoleClient.onWrite((text) => {
+            term.write(text);
+        });
+
+        consoleClient.onFocus(() => {
+            term.focus();
+        });
+
+        consoleClient.onSetTheme((theme) => {
+            applyTheme(theme === 'dark');
+        });
+
+        consoleClient.onInjectCommand((command) => {
+            // Send Ctrl+C to cancel any current input, then inject the command
+            // Use \r (carriage return) as this is what terminals send for Enter
+            consoleClient.sendInput('\x03' + command + '\r');
         });
     </script>
 </body>

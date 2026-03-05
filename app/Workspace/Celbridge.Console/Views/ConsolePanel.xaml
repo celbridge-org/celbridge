@@ -78,12 +78,11 @@
              Message="{x:Bind ViewModel.MigrationBannerMessage, Mode=OneWay}"
              Closed="{x:Bind ViewModel.OnMigrationBannerClosed}"/>
 
-    <WebView2 x:Name="TerminalWebView"
-              Grid.Row="4"
-              Margin="0"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Stretch"
-              DefaultBackgroundColor="Transparent"/>
+    <!-- Container for dynamically acquired WebView2 from factory -->
+    <Grid x:Name="WebViewContainer"
+          Grid.Row="4"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"/>
   </Grid>
 </UserControl>
 

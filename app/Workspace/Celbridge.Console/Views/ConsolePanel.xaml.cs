@@ -1,9 +1,12 @@
 using Celbridge.Commands;
+using Celbridge.Console.Services;
 using Celbridge.Console.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
@@ -11,7 +14,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl, IConsolePanel
+public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostNotifications
 {
     private readonly ILogger<ConsolePanel> _logger;
     private readonly ICommandService _commandService;
@@ -19,6 +22,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IPanelFocusService _panelFocusService;
+    private readonly IWebViewFactory _webViewFactory;
+    private readonly IKeyboardShortcutService _keyboardShortcutService;
 
     private string TitleText => _stringLocalizer.GetString("ConsolePanel_Title");
 
@@ -26,6 +31,10 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
 
     private ITerminal? _terminal;
     private UserInterfaceTheme _currentTheme;
+    private WebView2? _consoleWebView;
+    private HostChannel? _hostChannel;
+    private ConsoleHost? _consoleHost;
+    private DispatcherQueue? _dispatcher;
 
     public ConsolePanel()
     {
@@ -37,6 +46,8 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _panelFocusService = ServiceLocator.AcquireService<IPanelFocusService>();
+        _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
+        _keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
 
         ViewModel = ServiceLocator.AcquireService<ConsolePanelViewModel>();
 
@@ -44,7 +55,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         _currentTheme = _userInterfaceService.UserInterfaceTheme;
         _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
 
-        // Listen for terminal focus requests
+        // Listen for console focus requests
         _messengerService.Register<RequestConsoleFocusMessage>(this, OnRequestConsoleFocus);
 
         this.Loaded += ConsolePanel_Loaded;
@@ -57,7 +68,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         if (_currentTheme != currentTheme)
         {
             _currentTheme = currentTheme;
-            SendThemeToTerminal();
+            SendThemeToConsole();
         }
     }
 
@@ -71,37 +82,20 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         if (_currentTheme != message.Theme)
         {
             _currentTheme = message.Theme;
-            SendThemeToTerminal();
+            SendThemeToConsole();
         }
     }
 
     private void OnRequestConsoleFocus(object recipient, RequestConsoleFocusMessage message)
     {
-        if (message.ShouldFocus && TerminalWebView?.CoreWebView2 != null)
-        {
-            // Use dispatcher to ensure focus happens after any pending layout updates
-            _ = this.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
-            {
-                // Focus the WebView2 control first
-                TerminalWebView.Focus(FocusState.Programmatic);
-
-                // Then send a message to the terminal to focus the Xterm.js instance
-                try
-                {
-                    TerminalWebView.CoreWebView2.PostWebMessageAsString("focus_terminal");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to send focus message to terminal");
-                }
-            });
-        }
+        // Use dispatcher to ensure focus happens after any pending layout updates
+        _ = this.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, FocusConsole);
     }
 
     private void TitleBar_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        // When user clicks on the title bar, focus the terminal
-        FocusTerminal();
+        // When user clicks on the title bar, focus the console
+        FocusConsole();
     }
 
     private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
@@ -115,122 +109,116 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         ViewModel.ToggleConsoleMaximized();
     }
 
-    private void FocusTerminal()
+    private void FocusConsole()
     {
-        if (TerminalWebView?.CoreWebView2 != null)
+        if (_consoleWebView is not { CoreWebView2: not null } || _consoleHost is null)
         {
-            // Focus the WebView2 control first
-            TerminalWebView.Focus(FocusState.Programmatic);
-
-            // Then send a message to the terminal to focus the Xterm.js instance
-            try
-            {
-                TerminalWebView.CoreWebView2.PostWebMessageAsString("focus_terminal");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send focus message to terminal");
-            }
+            return;
         }
+
+        _consoleWebView.Focus(FocusState.Programmatic);
+        _ = _consoleHost.FocusAsync();
     }
 
-    private void SendThemeToTerminal()
+    private void SendThemeToConsole()
     {
-        if (TerminalWebView?.CoreWebView2 != null)
+        if (_consoleHost is null)
         {
-            var themeMessage = $"theme_change,{(_currentTheme == UserInterfaceTheme.Dark ? "dark" : "light")}";
-            try
-            {
-                TerminalWebView.CoreWebView2.PostWebMessageAsString(themeMessage);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to send theme change message to terminal");
-            }
+            return;
         }
+
+        var themeName = _currentTheme == UserInterfaceTheme.Dark ? "dark" : "light";
+        _ = _consoleHost.SetThemeAsync(themeName);
     }
 
-    public async Task<Result> ExecuteCommand(string command, bool logCommand)
+    public void RunCommand(string command)
     {
-        await Task.CompletedTask;
-        return Result.Ok();
+        if (_consoleHost is null)
+        {
+            _logger.LogWarning("Cannot run command - console host not initialized");
+            return;
+        }
+
+        var trimmedCommand = command.Trim();
+        _ = _consoleHost.InjectCommandAsync(trimmedCommand);
     }
 
     public async Task<Result> InitializeTerminalWindow(ITerminal terminal)
     {
         _terminal = terminal;
+        _dispatcher = DispatcherQueue.GetForCurrentThread();
 
         // Listen for process exit events
         _terminal.ProcessExited += OnTerminalProcessExited;
 
-        await TerminalWebView.EnsureCoreWebView2Async();
+        // Acquire a pre-configured WebView from the factory
+        _consoleWebView = await _webViewFactory.AcquireAsync();
+
+        // Add to the visual tree
+        WebViewContainer.Children.Add(_consoleWebView);
 
         // Hide the "Inspect" context menu option
-        var settings = TerminalWebView.CoreWebView2.Settings;
+        var settings = _consoleWebView.CoreWebView2.Settings;
         settings.AreDevToolsEnabled = false;
         settings.AreDefaultContextMenusEnabled = true;
+
+        // Set up JSON-RPC host channel
+        _hostChannel = new HostChannel(_consoleWebView.CoreWebView2);
+        var celbridgeHost = new CelbridgeHost(_hostChannel);
+        _consoleHost = new ConsoleHost(celbridgeHost);
+
+        // Register this panel as handler for console notifications
+        _consoleHost.AddLocalRpcTarget<IConsoleNotifications>(this);
+        _consoleHost.AddLocalRpcTarget<IHostNotifications>(this);
+        _consoleHost.StartListening();
 
         var tcs = new TaskCompletionSource<bool>();
         void Handler(object? sender, CoreWebView2NavigationCompletedEventArgs args)
         {
-            TerminalWebView.NavigationCompleted -= Handler;
+            _consoleWebView.NavigationCompleted -= Handler;
             tcs.TrySetResult(args.IsSuccess);
         }
-        TerminalWebView.NavigationCompleted += Handler;
+        _consoleWebView.NavigationCompleted += Handler;
 
-        // Register for messages now so that we will get notified when the terminal first resizes during init.
-        TerminalWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
-
-        TerminalWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("terminal.celbridge",
-            "Celbridge.Console/Assets/Terminal",
+        _consoleWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("console.celbridge",
+            "Celbridge.Console/Web/Terminal",
             CoreWebView2HostResourceAccessKind.Allow);
-        TerminalWebView.CoreWebView2.Navigate("http://terminal.celbridge/index.html");
+        _consoleWebView.CoreWebView2.Navigate("http://console.celbridge/index.html");
 
         // Wait for navigation to complete
         bool success = await tcs.Task;
 
         if (!success)
         {
-            return Result.Fail($"Failed to navigate to terminal HTML page.");
+            _logger.LogError("Failed to navigate to console HTML page");
+            return Result.Fail("Failed to navigate to console HTML page.");
         }
 
-        // Send initial theme to terminal after navigation completes
-        SendThemeToTerminal();
+        _logger.LogDebug("Console WebView initialized successfully");
 
-        // Clicking weblinks in the terminal triggers a navigation event.
+        // Send initial theme to console after navigation completes
+        SendThemeToConsole();
+
+        // Clicking weblinks in the console triggers a navigation event.
         // We intercept those navigation events here and instead open the URI in the system browser.
-        TerminalWebView.NavigationStarting += (s, args) =>
+        _consoleWebView.NavigationStarting += (s, args) =>
         {
             args.Cancel = true;
             var uri = args.Uri;
             OpenSystemBrowser(uri);
         };
 
-        DispatcherQueue dispatcher = DispatcherQueue.GetForCurrentThread();
-
         _terminal.OutputReceived += (_, output) =>
         {
-            dispatcher.TryEnqueue(() =>
+            _dispatcher.TryEnqueue(() =>
             {
-                if (!IsLoaded)
+                if (!IsLoaded || _consoleHost is null)
                 {
-                    // We can't write the queued console input because the console panel has since unloaded.
-                    // At this point there's no way to handle this input so we can just ignore it.
+                    // We can't write the queued console output because the console panel has since unloaded.
                     return;
                 }
 
-                SendToTerminalAsync(output);
-
-                // We use the keyboard interrupt as a hacky way to inject commands from outside the REPL.
-                if (output == "\u001b[?12l")
-                {
-                    var command = _terminal.CommandBuffer;
-                    if (!string.IsNullOrEmpty(command))
-                    {
-                        _terminal.Write($"{command}\n");
-                        _terminal.CommandBuffer = string.Empty;
-                    }
-                }
+                _ = _consoleHost.WriteAsync(output);
             });
         };
 
@@ -250,65 +238,61 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
         });
     }
 
-    private void CoreWebView2_WebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
+    #region IConsoleNotifications
+
+    public void OnConsoleInput(string data)
     {
-        string message = args.TryGetWebMessageAsString();
-
-        if (string.IsNullOrEmpty(message))
-        {
-            return;
-        }
-
-        // Handle full screen toggle request from the terminal
-        if (message == "toggle_fullscreen")
-        {
-            _commandService.Execute<ISetLayoutCommand>(command =>
-            {
-                command.Transition = WindowModeTransition.ToggleZenMode;
-            });
-            return;
-        }
-
-        if (_terminal is not null)
-        {
-            if (message.StartsWith("console_size,"))
-            {
-                var fields = message.Split(',');
-                if (fields.Length == 3)
-                {
-                    var cols = int.Parse(fields[1]);
-                    var rows = int.Parse(fields[2]);
-
-                    _terminal.SetSize(cols, rows);
-                    return;
-                }
-            }
-
-            _terminal.Write(message);
-        }
+        _terminal?.Write(data);
     }
 
-    private void SendToTerminalAsync(string text)
+    public void OnConsoleResize(int cols, int rows)
     {
-        try
-        {
-            TerminalWebView.CoreWebView2.PostWebMessageAsString(text);
-        }
-        catch (Exception ex)
-        {
-            // Speculative fix for a rare crash on application exit.
-            _logger.LogWarning(ex, "An error occurred when posting a message to WebView2");
-        }
+        _terminal?.SetSize(cols, rows);
     }
+
+    #endregion
+
+    #region IHostNotifications
+
+    public void OnDocumentChanged()
+    {
+        // Not used by console
+    }
+
+    public void OnLinkClicked(string href)
+    {
+        // Not used by console
+    }
+
+    public void OnImportComplete(bool success, string? error = null)
+    {
+        // Not used by console
+    }
+
+    public void OnClientReady()
+    {
+        // Not used by console
+    }
+
+    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    {
+        _keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
+    }
+
+    #endregion
 
     private void OnTerminalProcessExited(object? sender, EventArgs e)
     {
+        _logger.LogDebug("Console terminal process exited");
+
         // Delegate handling to the ViewModel
         ViewModel?.OnTerminalProcessExited();
     }
 
     public void Shutdown()
     {
+        _logger.LogDebug("Console panel shutting down");
+
         _messengerService.UnregisterAll(this);
 
         if (_terminal != null)
@@ -316,14 +300,16 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel
             _terminal.ProcessExited -= OnTerminalProcessExited;
         }
 
-        if (TerminalWebView?.CoreWebView2 != null)
-        {
-            TerminalWebView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
-        }
+        _consoleHost?.Dispose();
+        _consoleHost = null;
 
-        if (TerminalWebView != null)
+        _hostChannel?.Detach();
+        _hostChannel = null;
+
+        if (_consoleWebView != null)
         {
-            TerminalWebView.Close();
+            _consoleWebView.Close();
+            _consoleWebView = null;
         }
 
         this.Loaded -= ConsolePanel_Loaded;

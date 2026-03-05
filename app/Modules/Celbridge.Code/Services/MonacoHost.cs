@@ -3,8 +3,18 @@ using Celbridge.Host;
 namespace Celbridge.Code.Services;
 
 /// <summary>
+/// JSON-RPC method names for Monaco editor operations (host to client).
+/// </summary>
+internal static class MonacoRpcMethods
+{
+    public const string EditorInitialize = "editor/initialize";
+    public const string EditorSetLanguage = "editor/setLanguage";
+    public const string EditorNavigateToLocation = "editor/navigateToLocation";
+}
+
+/// <summary>
 /// Monaco-specific host facade that provides a clean API for Monaco editor RPC operations.
-/// Wraps CelbridgeHost and adds Monaco-specific functionality.
+/// Wraps CelbridgeHost and uses JSON-RPC notifications for editor communication.
 /// </summary>
 public class MonacoHost : IDisposable
 {
@@ -53,9 +63,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task InitializeEditorAsync(string language)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(
-            MonacoRpcMethods.EditorInitialize,
-            new { language });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorInitialize, new { language });
     }
 
     /// <summary>
@@ -63,9 +71,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task SetLanguageAsync(string language)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(
-            MonacoRpcMethods.EditorSetLanguage,
-            new { language });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorSetLanguage, new { language });
     }
 
     /// <summary>
@@ -73,9 +79,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task NavigateToLocationAsync(int lineNumber, int column)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(
-            MonacoRpcMethods.EditorNavigateToLocation,
-            new { lineNumber, column });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorNavigateToLocation, new { lineNumber, column });
     }
 
     public void Dispose()
