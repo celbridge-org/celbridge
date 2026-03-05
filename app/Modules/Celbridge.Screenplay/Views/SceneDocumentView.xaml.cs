@@ -5,7 +5,6 @@ using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
@@ -23,7 +22,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
 
     public SceneDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     public SceneDocumentView(
         IServiceProvider serviceProvider,
@@ -135,7 +134,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         {
             Guard.IsNotNull(WebView);
 
-            await WebView.EnsureCoreWebView2Async();
+            // Common WebView2 setup
+            await SetupCoreWebViewAsync();
 
             // Set initial theme before navigation
             ApplyThemeToWebView();
@@ -144,15 +144,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
                 "screenplay.celbridge",
                 "Celbridge.Screenplay/Web/Screenplay",
                 CoreWebView2HostResourceAccessKind.Allow);
-
-            WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
-
-            // Inject keyboard shortcut handler for F11 and other global shortcuts
-            await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
-
-            WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
-
-            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             // Initialize the host
             InitializeHost();

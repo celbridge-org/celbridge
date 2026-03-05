@@ -241,11 +241,14 @@ public class WebViewFactory : IWebViewFactory, IDisposable
 
         await webView.EnsureCoreWebView2Async();
 
+        // Map shared assets (Bootstrap Icons, etc.) for all factory-created WebViews
+        WebView2Setup.MapSharedAssets(webView.CoreWebView2);
+
         // Mark this as a WebView running in the Celbridge host
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
         // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-        await WebView2Helper.InjectShortcutHandlerAsync(webView.CoreWebView2);
+        await WebView2Setup.InjectShortcutHandlerAsync(webView.CoreWebView2);
 
         return webView;
     }

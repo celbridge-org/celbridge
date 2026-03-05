@@ -1,7 +1,6 @@
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.Messaging;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.FileViewer.Views;
@@ -12,7 +11,7 @@ public sealed partial class FileViewerDocumentView : WebView2DocumentView
 
     public FileViewerDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     public FileViewerDocumentView(
         IServiceProvider serviceProvider,
@@ -54,10 +53,7 @@ public sealed partial class FileViewerDocumentView : WebView2DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        await WebView!.EnsureCoreWebView2Async();
-
-        // Inject keyboard shortcut handler
-        await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
+        await SetupCoreWebViewAsync();
 
         // Initialize the host
         InitializeHost();

@@ -3,7 +3,6 @@ using Celbridge.Documents;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
@@ -21,7 +20,7 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
 
     public WebAppDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     public WebAppDocumentView(
         IServiceProvider serviceProvider,
@@ -165,10 +164,8 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
     {
         Guard.IsNotNull(WebView);
 
-        await WebView.EnsureCoreWebView2Async();
-
-        // Inject keyboard shortcut handler
-        await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
+        // Common WebView2 setup
+        await SetupCoreWebViewAsync();
 
         // Initialize the host
         InitializeHost();

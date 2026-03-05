@@ -35,11 +35,32 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     /// Gets the file resource key for this document.
     /// Used to send focus messages when the WebView gains focus.
     /// </summary>
-    protected abstract ResourceKey FileResource { get; }
+    public abstract override ResourceKey FileResource { get; }
 
     protected WebView2DocumentView(IMessengerService messengerService)
     {
         _messengerService = messengerService;
+    }
+
+    /// <summary>
+    /// Performs common WebView2 initialization that all document views require.
+    /// Call this after assigning the WebView property and before any view-specific setup.
+    /// </summary>
+    protected async Task SetupCoreWebViewAsync()
+    {
+        if (WebView is null)
+        {
+            return;
+        }
+
+        await WebView.EnsureCoreWebView2Async();
+
+        WebView2Setup.MapSharedAssets(WebView.CoreWebView2);
+        await WebView2Setup.InjectShortcutHandlerAsync(WebView.CoreWebView2);
+
+        WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+
+        await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
     }
 
     /// <summary>

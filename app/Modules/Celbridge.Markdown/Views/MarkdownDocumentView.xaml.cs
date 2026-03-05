@@ -7,7 +7,6 @@ using Celbridge.Logging;
 using Celbridge.Markdown.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
@@ -27,7 +26,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
 
     public MarkdownDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     public MarkdownDocumentView(
         IServiceProvider serviceProvider,
@@ -103,18 +102,14 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
         {
             Guard.IsNotNull(WebView);
 
-            await WebView.EnsureCoreWebView2Async();
+            // Common WebView2 setup
+            await SetupCoreWebViewAsync();
 
-            // Set up virtual host mappings
+            // Set up virtual host mapping for Markdown editor assets
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "markdown.celbridge",
                 "Celbridge.Markdown/Web/Markdown",
                 CoreWebView2HostResourceAccessKind.Allow);
-
-            WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
-
-            // Inject keyboard shortcut handler for F11 and other global shortcuts
-            await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
 
             // Map the project folder so resource key image paths resolve correctly
             var projectFolder = _resourceRegistry.ProjectFolderPath;
@@ -129,12 +124,9 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
             // Sync WebView2 color scheme with the app theme
             ApplyThemeToWebView();
 
-            WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
             var settings = WebView.CoreWebView2.Settings;
             settings.AreDevToolsEnabled = true;
             settings.AreDefaultContextMenusEnabled = true;
-
-            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             // Cancel all navigations except the initial editor page load
             WebView.NavigationStarting += (s, args) =>

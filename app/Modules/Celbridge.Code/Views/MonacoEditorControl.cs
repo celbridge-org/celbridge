@@ -79,6 +79,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
             return Result.Ok();
         }
 
+        // Acquire a WebView from the factory
         _webView = await _webViewFactory.AcquireAsync();
 
         this.Content(_webView);
@@ -88,12 +89,6 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
             "monaco.celbridge",
             "Celbridge.Code/Web/Monaco",
             CoreWebView2HostResourceAccessKind.Allow);
-
-        // Map shared assets so Monaco can access celbridge-client.js
-        WebView2Helper.MapSharedAssets(_webView.CoreWebView2);
-
-        // Inject keyboard shortcut handler for F11 and other global shortcuts
-        await WebView2Helper.InjectShortcutHandlerAsync(_webView.CoreWebView2);
 
         // Ensure we only register the event handlers once
         _webView.CoreWebView2.NewWindowRequested -= OnNewWindowRequested;

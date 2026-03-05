@@ -21,6 +21,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private readonly CodeEditorViewModel _viewModel;
 
+    public override ResourceKey FileResource => _viewModel.FileResource;
+
     public override bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
     /// <summary>

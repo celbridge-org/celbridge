@@ -4,7 +4,6 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
@@ -22,7 +21,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     // Track import state to prevent race conditions during initial load and reloads
     private bool _isImportInProgress;
@@ -123,21 +122,13 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         {
             Guard.IsNotNull(WebView);
 
-            await WebView.EnsureCoreWebView2Async();
+            // Common WebView2 setup
+            await SetupCoreWebViewAsync();
 
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "spreadjs.celbridge",
                 "Celbridge.Spreadsheet/Web/SpreadJS",
                 CoreWebView2HostResourceAccessKind.Allow);
-
-            WebView2Helper.MapSharedAssets(WebView.CoreWebView2);
-
-            // Inject keyboard shortcut handler for F11 and other global shortcuts
-            await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
-
-            WebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
-
-            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
             // Use the system browser if the user clicks on links in the spreadsheet UI.
             WebView.NavigationStarting += (s, args) =>

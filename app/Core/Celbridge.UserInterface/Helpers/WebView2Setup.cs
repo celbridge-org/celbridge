@@ -3,10 +3,10 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>
-/// Helper class for centralized WebView2 keyboard shortcut handling.
-/// Provides JavaScript injection and message handling for global shortcuts.
+/// Provides centralized WebView2 setup utilities including keyboard shortcut handling,
+/// shared asset mapping, and common initialization scripts.
 /// </summary>
-public static class WebView2Helper
+public static class WebView2Setup
 {
     /// <summary>
     /// Virtual host name used to serve shared web assets (e.g. Bootstrap Icons)
@@ -56,6 +56,7 @@ public static class WebView2Helper
     /// </summary>
     public static async Task InjectShortcutHandlerAsync(CoreWebView2 coreWebView2)
     {
+        // Note: AddScriptToExecuteOnDocumentCreatedAsync persists across all navigations
         await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
     }
 
