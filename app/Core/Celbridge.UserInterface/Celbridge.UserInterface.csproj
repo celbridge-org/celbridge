@@ -1,4 +1,4 @@
-﻿<Project Sdk="Uno.Sdk">
+<Project Sdk="Uno.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
@@ -25,10 +25,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.Host\Celbridge.Host.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="WebAssets\**" />
+    <PackageReference Include="StreamJsonRpc" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Web\**" />
   </ItemGroup>
 
   <ItemGroup>

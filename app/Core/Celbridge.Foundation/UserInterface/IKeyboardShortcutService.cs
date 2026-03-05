@@ -8,12 +8,14 @@ namespace Celbridge.UserInterface;
 public interface IKeyboardShortcutService
 {
     /// <summary>
-    /// Handles a global keyboard shortcut.
+    /// Handles a global keyboard shortcut using a VirtualKey.
+    /// Used by WinUI keyboard handlers.
     /// </summary>
-    bool HandleGlobalShortcut(VirtualKey key, bool control, bool shift, bool alt);
+    bool HandleShortcut(VirtualKey key, bool control, bool shift, bool alt);
 
     /// <summary>
-    /// Handles a keyboard shortcut message received from a WebView2 control.
+    /// Handles a global keyboard shortcut using a key name string.
+    /// Used by JSON-RPC notifications from WebView2.
     /// </summary>
-    bool HandleWebView2KeyboardShortcut(string? jsonMessage);
+    bool HandleShortcut(string key, bool control, bool shift, bool alt);
 }

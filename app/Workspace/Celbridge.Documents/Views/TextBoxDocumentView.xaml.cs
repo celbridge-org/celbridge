@@ -9,6 +9,8 @@ public sealed partial class TextBoxDocumentView : DocumentView
 
     public DefaultDocumentViewModel ViewModel { get; }
 
+    public override ResourceKey FileResource => ViewModel.FileResource;
+
     public TextBoxDocumentView(
         IServiceProvider serviceProvider,
         IWorkspaceWrapper workspaceWrapper)

@@ -23,15 +23,13 @@ public class Module : IModule
         // Register views
         //
 
-        services.AddTransient<TextEditorDocumentView>();
-        services.AddTransient<MonacoEditorView>();
+        services.AddTransient<CodeEditorDocumentView>();
 
         //
         // Register view models
         //
 
-        services.AddTransient<TextEditorDocumentViewModel>();
-        services.AddTransient<MonacoEditorViewModel>();
+        services.AddTransient<CodeEditorViewModel>();
     }
 
     public Result Initialize()

@@ -11,9 +11,9 @@ public interface IConsolePanel
     Task<Result> InitializeTerminalWindow(ITerminal terminal);
 
     /// <summary>
-    /// Execute a command using the console script context.
+    /// Runs a command in the console as if the user typed it.
     /// </summary>
-    Task<Result> ExecuteCommand(string command, bool logCommand);
+    void RunCommand(string command);
 
     /// <summary>
     /// Shuts down the console panel and releases resources.

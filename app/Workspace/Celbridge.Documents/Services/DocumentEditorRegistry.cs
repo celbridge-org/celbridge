@@ -4,8 +4,9 @@ namespace Celbridge.Documents.Services;
 /// Registry for document editor factories.
 /// Manages the mapping between file extensions and factories that create document views.
 /// </summary>
-public class DocumentEditorRegistry : IDocumentEditorRegistry
+public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
+    private bool _disposed;
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
 
@@ -117,5 +118,27 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry
     public IReadOnlyList<string> GetAllSupportedExtensions()
     {
         return _extensionToFactories.Keys.ToList().AsReadOnly();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        // Dispose all registered factories that implement IDisposable
+        foreach (var factory in _factories)
+        {
+            if (factory is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
+        _factories.Clear();
+        _extensionToFactories.Clear();
     }
 }

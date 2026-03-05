@@ -1,0 +1,122 @@
+/* Celbridge Screenplay Viewer Styles */
+
+/* Theme Variables */
+.theme-light {
+    --bg-color: #ffffff;
+    --text-color: #1a1a1a;
+    --scene-note-color: #555555;
+    --direction-color: #666666;
+    --player-color: hsl(220, 80%, 40%);
+    --npc-color: hsl(10, 70%, 40%);
+    --scrollbar-track: #f0f0f0;
+    --scrollbar-thumb: #c0c0c0;
+    --scrollbar-thumb-hover: #a0a0a0;
+}
+
+.theme-dark {
+    --bg-color: #1e1e1e;
+    --text-color: #e8e8e8;
+    --scene-note-color: #aaaaaa;
+    --direction-color: #999999;
+    --player-color: hsl(220, 80%, 65%);
+    --npc-color: hsl(10, 70%, 60%);
+    --scrollbar-track: #2d2d2d;
+    --scrollbar-thumb: #555555;
+    --scrollbar-thumb-hover: #707070;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* Base Layout */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+.screenplay {
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.page {
+    max-width: 794px;
+    margin: 0 auto;
+    padding: 1em 1.5em;
+}
+
+/* Scene Header */
+.scene {
+    text-align: left;
+    font-size: 2em;
+    font-weight: bold;
+    margin: 0 0 0.5em 0;
+}
+
+.scene-note {
+    text-align: left;
+    margin-bottom: 2.5em;
+    font-style: italic;
+    color: var(--scene-note-color);
+}
+
+/* Dialogue Lines */
+.line {
+    margin-bottom: 3em;
+    text-align: center;
+}
+
+.character {
+    display: block;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 0.75em;
+}
+
+.direction {
+    display: block;
+    text-align: center;
+    color: var(--direction-color);
+    margin-bottom: 0.5em;
+}
+
+.dialogue {
+    display: block;
+    white-space: pre-wrap;
+}
+
+.variant {
+    margin-right: 3em;
+    margin-left: auto;
+    text-align: right;
+    font-style: italic;
+}
+
+/* Character Colors */
+.player-color {
+    color: var(--player-color);
+}
+
+.npc-color {
+    color: var(--npc-color);
+}

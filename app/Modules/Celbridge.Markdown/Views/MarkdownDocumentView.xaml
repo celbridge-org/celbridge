@@ -6,13 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     DataContext="{x:Bind ViewModel}">
 
-    <Grid HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch">
-        <!--
-          DefaultBackgroundColor fixes a visual bug where WebView2 shows white background briefly when switching tabs.
-          See: https://github.com/MicrosoftEdge/WebView2Feedback/issues/1412
-        -->
-        <WebView2 x:Name="MarkdownWebView"
-                  DefaultBackgroundColor="Transparent" />
-    </Grid>
+    <Grid x:Name="MarkdownWebViewContainer"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
 </views:WebView2DocumentView>

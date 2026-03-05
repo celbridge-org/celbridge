@@ -1,6 +1,5 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 
 namespace Celbridge.Markdown.ViewModels;
 

@@ -65,13 +65,6 @@ public interface IDocumentsService
     Result SelectDocument(ResourceKey fileResource);
 
     /// <summary>
-    /// Writes text content to the specified file resource.
-    /// If the document is open for editing, the updated content is displayed in the document view.
-    /// The file on disk is updated regardless of whether the document is open for editing or not.
-    /// </summary>
-    Task<Result> SetTextDocumentContentAsync(ResourceKey fileResource, string content);
-
-    /// <summary>
     /// Save any modified documents to disk.
     /// This method is called on a timer to save modified documents at regular intervals.
     /// Delta time is the time since this method was last called.
@@ -104,9 +97,4 @@ public interface IDocumentsService
     /// Gets the document editor registry.
     /// </summary>
     IDocumentEditorRegistry DocumentEditorRegistry { get; }
-
-    /// <summary>
-    /// Gets the text editor WebView2 pool for efficient reuse of Monaco editor instances.
-    /// </summary>
-    ITextEditorWebViewPool TextEditorWebViewPool { get; }
 }

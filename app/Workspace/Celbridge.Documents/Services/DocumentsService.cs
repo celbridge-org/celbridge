@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
@@ -6,8 +5,6 @@ using Celbridge.Messaging;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
-
-public record SetTextDocumentContentMessage(ResourceKey Resource, string Content);
 
 public class DocumentsService : IDocumentsService, IDisposable
 {
@@ -32,11 +29,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// Gets all open documents with their addresses (UI positions).
     /// </summary>
     public Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; } = new();
-
-    /// <summary>
-    /// Gets the text editor WebView2 pool for efficient reuse of Monaco editor instances.
-    /// </summary>
-    public ITextEditorWebViewPool TextEditorWebViewPool { get; }
 
     private bool _isWorkspaceLoaded;
 
@@ -65,9 +57,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
 
-        // Initialize the TextEditorWebViewPool
-        TextEditorWebViewPool = new TextEditorWebViewPool(3);
-
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
@@ -94,11 +83,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         foreach (var factory in factories)
         {
             var result = _documentEditorRegistry.RegisterFactory(factory);
-            if (result.IsSuccess)
-            {
-                _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
-            }
-            else
+            if (result.IsFailure)
             {
                 _logger.LogWarning(result, $"Failed to register document editor factory");
             }
@@ -348,30 +333,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         _logger.LogTrace($"Selected document for file resource '{fileResource}'");
 
         return Result.Ok();
-    }
-
-    public async Task<Result> SetTextDocumentContentAsync(ResourceKey fileResource, string content)
-    {
-        try
-        {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
-
-            // Udpate the document file with the new content
-            await File.WriteAllTextAsync(filePath, content);
-
-            // Update the document view with the new content
-            var message = new SetTextDocumentContentMessage(fileResource, content);
-            _messengerService.Send(message);
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to set text document content")
-                .WithException(ex);
-        }
     }
 
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
@@ -639,7 +600,8 @@ public class DocumentsService : IDocumentsService, IDisposable
                 // Dispose managed objects here
                 _messengerService.UnregisterAll(this);
 
-                TextEditorWebViewPool.Shutdown();
+                // Dispose the document editor registry to clean up factories
+                _documentEditorRegistry.Dispose();
             }
 
             _disposed = true;

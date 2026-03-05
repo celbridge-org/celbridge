@@ -6,6 +6,12 @@ namespace Celbridge.Documents;
 public interface IDocumentView
 {
     /// <summary>
+    /// Gets the file resource key for this document.
+    /// Returns an empty ResourceKey if SetFileResource has not been called.
+    /// </summary>
+    ResourceKey FileResource { get; }
+
+    /// <summary>
     /// Sets the file resource for the document view.
     /// Fails if the resource does not exist in the resource registry or in the file system.
     /// </summary>

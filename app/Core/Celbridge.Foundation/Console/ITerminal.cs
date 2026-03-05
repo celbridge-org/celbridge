@@ -16,11 +16,6 @@ public interface ITerminal : IDisposable
     event EventHandler? ProcessExited;
 
     /// <summary>
-    /// Stores a command temporarily until the system is ready to inject it into the terminal input.
-    /// </summary>
-    string CommandBuffer { get; set; }
-
-    /// <summary>
     /// Starts the terminal session by executing a command line program.
     /// </summary>
     void Start(string commandLine, string workingDir);

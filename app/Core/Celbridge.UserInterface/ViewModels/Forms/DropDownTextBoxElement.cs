@@ -2,6 +2,8 @@ using Celbridge.UserInterface.Services.Forms;
 using Celbridge.UserInterface.Views.Controls;
 using System.Text.Json;
 using Windows.System;
+using FocusManager = Microsoft.UI.Xaml.Input.FocusManager;
+using FocusNavigationDirection = Microsoft.UI.Xaml.Input.FocusNavigationDirection;
 
 namespace Celbridge.UserInterface.ViewModels.Forms;
 

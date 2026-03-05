@@ -1,9 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
@@ -21,15 +21,16 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
 
     public WebAppDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     public WebAppDocumentView(
         IServiceProvider serviceProvider,
         ILogger<WebAppDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
-        : base(messengerService)
+        IWorkspaceWrapper workspaceWrapper,
+        IWebViewFactory webViewFactory)
+        : base(messengerService, webViewFactory)
     {
         this.InitializeComponent();
 
@@ -40,8 +41,8 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
 
         ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
 
-        // Assign the WebView from XAML to the base class property
-        WebView = AppWebView;
+        // Set the container where the WebView will be placed
+        WebViewContainer = AppWebViewContainer;
 
         Loaded += WebAppDocumentView_Loaded;
 
@@ -163,10 +164,12 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
 
     private async Task InitWebAppViewAsync()
     {
-        // Initialize base WebView2 functionality (keyboard shortcuts, focus handling)
-        await InitializeWebViewAsync();
+        // Acquire WebView from factory and add to container
+        await AcquireWebViewAsync();
 
-        Guard.IsNotNull(WebView);
+        // Initialize the host
+        InitializeHost();
+        StartHostListener();
 
         // Ensure we only register once for these events
         WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;

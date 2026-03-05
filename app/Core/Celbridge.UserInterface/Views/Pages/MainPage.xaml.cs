@@ -154,7 +154,7 @@ public partial class MainPage : Page
             .HasFlag(CoreVirtualKeyStates.Down);
 
         var shortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
-        return shortcutService.HandleGlobalShortcut(key, control, shift, alt);
+        return shortcutService.HandleShortcut(key, control, shift, alt);
     }
 
     public Result NavigateToPage(Type pageType, object? parameter = null)

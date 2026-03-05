@@ -1,15 +1,17 @@
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
+using Microsoft.Web.WebView2.Core;
+using StreamJsonRpc;
 
 namespace Celbridge.Screenplay.Views;
 
-public sealed partial class SceneDocumentView : WebView2DocumentView
+public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocument
 {
     private readonly ILogger<SceneDocumentView> _logger;
     private readonly IMessengerService _messengerService;
@@ -20,15 +22,16 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     public SceneDocumentViewModel ViewModel { get; }
 
-    protected override ResourceKey FileResource => ViewModel.FileResource;
+    public override ResourceKey FileResource => ViewModel.FileResource;
 
     public SceneDocumentView(
         IServiceProvider serviceProvider,
         ILogger<SceneDocumentView> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IUserInterfaceService userInterfaceService)
-        : base(messengerService)
+        IUserInterfaceService userInterfaceService,
+        IWebViewFactory webViewFactory)
+        : base(messengerService, webViewFactory)
     {
         this.InitializeComponent();
 
@@ -39,7 +42,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
         ViewModel = serviceProvider.GetRequiredService<SceneDocumentViewModel>();
 
-        WebView = SceneWebView;
+        // Set the container where the WebView will be placed
+        WebViewContainer = SceneWebViewContainer;
 
         Loaded += SceneDocumentView_Loaded;
 
@@ -71,8 +75,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     public override async Task<Result> LoadContent()
     {
-        var isDarkMode = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
-        var loadResult = ViewModel.LoadContent(isDarkMode);
+        var loadResult = ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to load scene content")
@@ -84,35 +87,40 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
         return Result.Ok();
     }
 
-    private async void OnSceneContentUpdated(object recipient, SceneContentUpdatedMessage message)
+    private void OnSceneContentUpdated(object recipient, SceneContentUpdatedMessage message)
     {
         if (message.SceneResource != ViewModel.FileResource)
         {
             return;
         }
 
-        var isDarkMode = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
-        var loadResult = ViewModel.LoadContent(isDarkMode);
+        var loadResult = ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {
             _logger.LogError($"Failed to reload scene content: {loadResult}");
             return;
         }
 
-        await NavigateToHtmlContent();
+        // Notify JS to reload content
+        Host?.NotifyExternalChangeAsync();
     }
 
-    private async void OnThemeChanged(object recipient, ThemeChangedMessage message)
+    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
     {
-        var isDarkMode = message.Theme == UserInterfaceTheme.Dark;
-        var loadResult = ViewModel.LoadContent(isDarkMode);
-        if (loadResult.IsFailure)
+        // Theme change is detected by JavaScript via matchMedia
+        // WebView2's PreferredColorScheme triggers the matchMedia change event
+        if (WebView?.CoreWebView2 is not null)
         {
-            _logger.LogError($"Failed to reload scene content after theme change: {loadResult}");
-            return;
+            ApplyThemeToWebView();
         }
+    }
 
-        await NavigateToHtmlContent();
+    private void ApplyThemeToWebView()
+    {
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        WebView!.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+            ? CoreWebView2PreferredColorScheme.Dark
+            : CoreWebView2PreferredColorScheme.Light;
     }
 
     private async void SceneDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -124,38 +132,90 @@ public sealed partial class SceneDocumentView : WebView2DocumentView
 
     private async Task InitSceneViewAsync()
     {
-        await InitializeWebViewAsync();
-
-        Guard.IsNotNull(WebView);
-
-        var isDarkMode = _userInterfaceService.UserInterfaceTheme == UserInterfaceTheme.Dark;
-        var loadResult = ViewModel.LoadContent(isDarkMode);
-        if (loadResult.IsFailure)
-        {
-            _logger.LogError($"Failed to load scene content: {loadResult}");
-            return;
-        }
-
-        await NavigateToHtmlContent();
-    }
-
-    private async Task NavigateToHtmlContent()
-    {
-        if (WebView is null)
-        {
-            return;
-        }
-
         try
         {
-            await WebView.EnsureCoreWebView2Async();
-            WebView.CoreWebView2.NavigateToString(ViewModel.HtmlContent);
+            // Acquire WebView from factory and add to container
+            await AcquireWebViewAsync();
+
+            // Set initial theme before navigation
+            ApplyThemeToWebView();
+
+            WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "screenplay.celbridge",
+                "Celbridge.Screenplay/Web/Screenplay",
+                CoreWebView2HostResourceAccessKind.Allow);
+
+            // Initialize the host
+            InitializeHost();
+
+            if (Host is null)
+            {
+                _logger.LogError("Failed to initialize host");
+                return;
+            }
+
+            // Register this view as the handler for additional RPC interfaces
+            Host.AddLocalRpcTarget<IHostDocument>(this);
+
+            StartHostListener();
+
+            // Navigate to the editor
+            WebView.CoreWebView2.Navigate("https://screenplay.celbridge/index.html");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to navigate to HTML content");
+            _logger.LogError(ex, "Failed to initialize Screenplay Web View.");
         }
     }
+
+    private DocumentMetadata CreateMetadata()
+    {
+        return new DocumentMetadata(
+            ViewModel.FilePath,
+            ViewModel.FileResource.ToString(),
+            Path.GetFileName(ViewModel.FilePath));
+    }
+
+    #region IHostDocument
+
+    public Task<InitializeResult> InitializeAsync(string protocolVersion)
+    {
+        // Validate protocol version
+        if (protocolVersion != "1.0")
+        {
+            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
+        }
+
+        // Build metadata
+        var metadata = CreateMetadata();
+
+        // No localization strings needed for screenplay viewer
+        var localization = new Dictionary<string, string>();
+
+        // Content is the generated HTML body content
+        return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata, localization));
+    }
+
+    public Task<LoadResult> LoadAsync()
+    {
+        // Reload content from the ViewModel
+        var loadResult = ViewModel.LoadContent();
+        if (loadResult.IsFailure)
+        {
+            throw new LocalRpcException($"Failed to load scene content: {loadResult}");
+        }
+
+        var metadata = CreateMetadata();
+
+        return Task.FromResult(new LoadResult(ViewModel.HtmlContent, metadata));
+    }
+
+    public Task<SaveResult> SaveAsync(string content)
+    {
+        throw new NotSupportedException("Save is not supported by the Screenplay viewer (read-only).");
+    }
+
+    #endregion
 
     public override async Task PrepareToClose()
     {
