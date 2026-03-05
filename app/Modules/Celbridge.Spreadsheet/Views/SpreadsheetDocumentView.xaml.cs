@@ -165,19 +165,19 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
                 OpenSystemBrowser(uri);
             };
 
-            // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
-            InitializeJsonRpc();
+            // Initialize the host
+            InitializeHost();
 
             if (Host is null)
             {
-                _logger.LogError("Failed to initialize JSON-RPC host");
+                _logger.LogError("Failed to initialize host");
                 return;
             }
 
             // Register this view as the handler for additional RPC interfaces
             Host.AddLocalRpcTarget<IHostDocument>(this);
 
-            StartJsonRpc();
+            StartHostListener();
 
             // Initialize focus handling
             InitializeFocusHandling();

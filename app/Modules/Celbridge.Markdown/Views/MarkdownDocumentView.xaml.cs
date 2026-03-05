@@ -159,12 +159,12 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
                 args.Handled = true;
             };
 
-            // Initialize JSON-RPC (base class handles IHostNotifications including keyboard shortcuts)
-            InitializeJsonRpc();
+            // Initialize the host
+            InitializeHost();
 
             if (Host is null)
             {
-                _logger.LogError("Failed to initialize JSON-RPC host");
+                _logger.LogError("Failed to initialize host");
                 return;
             }
 
@@ -172,7 +172,7 @@ public sealed partial class MarkdownDocumentView : WebView2DocumentView, IHostDo
             Host.AddLocalRpcTarget<IHostDocument>(this);
             Host.AddLocalRpcTarget<IHostDialog>(this);
 
-            StartJsonRpc();
+            StartHostListener();
 
             // Initialize focus handling
             InitializeFocusHandling();

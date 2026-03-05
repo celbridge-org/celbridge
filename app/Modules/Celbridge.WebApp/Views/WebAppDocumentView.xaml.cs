@@ -170,9 +170,9 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
         // Inject keyboard shortcut handler
         await WebView2Helper.InjectShortcutHandlerAsync(WebView.CoreWebView2);
 
-        // Initialize JSON-RPC (provides keyboard shortcut handling via IHostNotifications)
-        InitializeJsonRpc();
-        StartJsonRpc();
+        // Initialize the host
+        InitializeHost();
+        StartHostListener();
 
         // Initialize focus handling
         InitializeFocusHandling();

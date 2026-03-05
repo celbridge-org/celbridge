@@ -1,12 +1,13 @@
-﻿<UserControl
-x:Class="Celbridge.Code.Views.CodeEditorDocumentView"
-xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-xmlns:local="using:Celbridge.Code.Views"
-xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+﻿<views:DocumentView
+  x:Class="Celbridge.Code.Views.CodeEditorDocumentView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:Celbridge.Code.Views"
+  xmlns:views="using:Celbridge.Documents.Views"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <Grid HorizontalAlignment="Stretch">
     <local:MonacoEditorControl x:Name="MonacoEditor"
                                HorizontalAlignment="Stretch"/>
   </Grid>
-</UserControl>
+</views:DocumentView>

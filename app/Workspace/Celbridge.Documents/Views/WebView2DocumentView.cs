@@ -43,12 +43,12 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     }
 
     /// <summary>
-    /// Initializes the JSON-RPC infrastructure for WebView communication.
+    /// Initializes the host channel for WebView communication.
     /// Call this after EnsureCoreWebView2Async() and any custom WebView setup.
     /// This registers the base class as a handler for IHostNotifications (keyboard shortcuts, etc.).
     /// Subclasses should call this, then register additional RPC targets using the Host property.
     /// </summary>
-    protected void InitializeJsonRpc()
+    protected void InitializeHost()
     {
         if (WebView?.CoreWebView2 is null)
         {
@@ -64,9 +64,9 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     }
 
     /// <summary>
-    /// Starts the JSON-RPC listener. Call this after registering all RPC targets.
+    /// Starts the host listener. Call this after registering all RPC targets.
     /// </summary>
-    protected void StartJsonRpc()
+    protected void StartHostListener()
     {
         Host?.StartListening();
     }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Celbridge.Code.ViewModels;
 using Celbridge.Documents;
+using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -11,7 +12,7 @@ namespace Celbridge.Code.Views;
 /// Document view for editing code/text files using the Monaco editor.
 /// Handles file I/O and document management, delegating text editing to MonacoEditorControl.
 /// </summary>
-public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
+public sealed partial class CodeEditorDocumentView : DocumentView
 {
     private readonly ILogger<CodeEditorDocumentView> _logger;
     private readonly IMessengerService _messengerService;
@@ -20,7 +21,7 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
 
     private readonly CodeEditorViewModel _viewModel;
 
-    public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
+    public override bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
     /// <summary>
     /// Pre-warms the Monaco editor by performing expensive initialization without loading content.
@@ -55,7 +56,7 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
         _viewModel.ReloadRequested += OnViewModelReloadRequested;
     }
 
-    public async Task<Result> SetFileResource(ResourceKey fileResource)
+    public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var filePath = _resourceRegistry.GetResourcePath(fileResource);
 
@@ -75,7 +76,7 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
         return await Task.FromResult(Result.Ok());
     }
 
-    public async Task<Result> LoadContent()
+    public override async Task<Result> LoadContent()
     {
         // Load file content via ViewModel
         var loadResult = await _viewModel.LoadDocument();
@@ -113,12 +114,12 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
         return loadResult.Value;
     }
 
-    public Result<bool> UpdateSaveTimer(double deltaTime)
+    public override Result<bool> UpdateSaveTimer(double deltaTime)
     {
         return _viewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public async Task<Result> SaveDocument()
+    public override async Task<Result> SaveDocument()
     {
         try
         {
@@ -135,7 +136,7 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
         }
     }
 
-    public async Task<Result> NavigateToLocation(string location)
+    public override async Task<Result> NavigateToLocation(string location)
     {
         if (string.IsNullOrEmpty(location))
         {
@@ -160,13 +161,7 @@ public sealed partial class CodeEditorDocumentView : UserControl, IDocumentView
         }
     }
 
-    public async Task<bool> CanClose()
-    {
-        await Task.CompletedTask;
-        return true;
-    }
-
-    public async Task PrepareToClose()
+    public override async Task PrepareToClose()
     {
         try
         {
