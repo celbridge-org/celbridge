@@ -1,10 +1,40 @@
 using Celbridge.Logging;
+using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.UserInterface.Services;
 
 public class WebViewFactory : IWebViewFactory, IDisposable
 {
     private const int DefaultPoolSize = 3;
+    private const string SharedAssetsHostName = "shared.celbridge";
+    private const string SharedAssetsFolderPath = "Celbridge.UserInterface/Web";
+
+    private const string KeyboardShortcutScript = """
+        (function() {
+            window.addEventListener('keydown', function(event) {
+                // Handle F11 for fullscreen toggle
+                if (event.key === 'F11') {
+                    // Prevent default browser fullscreen and stop all propagation
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    if (window.chrome && window.chrome.webview) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            jsonrpc: '2.0',
+                            method: 'host/keyboardShortcut',
+                            params: {
+                                key: 'F11',
+                                ctrlKey: event.ctrlKey,
+                                shiftKey: event.shiftKey,
+                                altKey: event.altKey
+                            }
+                        }));
+                    }
+                    return false;
+                }
+            }, true); // Use capture phase to intercept before other handlers
+        })();
+        """;
 
     private readonly ILogger<WebViewFactory> _logger;
     private readonly Queue<WebView2> _pool;
@@ -242,13 +272,16 @@ public class WebViewFactory : IWebViewFactory, IDisposable
         await webView.EnsureCoreWebView2Async();
 
         // Map shared assets (Bootstrap Icons, etc.) for all factory-created WebViews
-        WebView2Setup.MapSharedAssets(webView.CoreWebView2);
+        webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            SharedAssetsHostName,
+            SharedAssetsFolderPath,
+            CoreWebView2HostResourceAccessKind.Allow);
 
         // Mark this as a WebView running in the Celbridge host
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("window.isWebView = true;");
 
         // Inject centralized keyboard shortcut handler for F11 and other global shortcuts
-        await WebView2Setup.InjectShortcutHandlerAsync(webView.CoreWebView2);
+        await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(KeyboardShortcutScript);
 
         return webView;
     }
