@@ -1,27 +1,27 @@
 using Celbridge.Host;
 
-namespace Celbridge.Markdown.Services;
+namespace Celbridge.Notes.Services;
 
 /// <summary>
-/// JSON-RPC method names for Markdown editor operations (host to client).
+/// JSON-RPC method names for Note editor operations (host to client).
 /// </summary>
-internal static class MarkdownRpcMethods
+internal static class NoteRpcMethods
 {
-    public const string NavigateToHeading = "markdown/navigateToHeading";
-    public const string SetTocVisibility = "markdown/setTocVisibility";
-    public const string Focus = "markdown/focus";
+    public const string NavigateToHeading = "note/navigateToHeading";
+    public const string SetTocVisibility = "note/setTocVisibility";
+    public const string Focus = "note/focus";
 }
 
 /// <summary>
-/// Markdown-specific host facade that provides a clean API for Markdown editor RPC operations.
+/// Note-specific host facade that provides a clean API for Note editor RPC operations.
 /// Wraps CelbridgeHost and uses JSON-RPC notifications for editor communication.
 /// </summary>
-public class MarkdownHost : IDisposable
+public class NoteHost : IDisposable
 {
     private readonly CelbridgeHost _host;
     private bool _disposed;
 
-    public MarkdownHost(CelbridgeHost host)
+    public NoteHost(CelbridgeHost host)
     {
         _host = host;
     }
@@ -59,11 +59,11 @@ public class MarkdownHost : IDisposable
     }
 
     /// <summary>
-    /// Navigates to a specific heading in the Markdown editor.
+    /// Navigates to a specific heading in the Note editor.
     /// </summary>
     public Task NavigateToHeadingAsync(string heading)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MarkdownRpcMethods.NavigateToHeading, new { heading });
+        return _host.Rpc.NotifyWithParameterObjectAsync(NoteRpcMethods.NavigateToHeading, new { heading });
     }
 
     /// <summary>
@@ -71,15 +71,15 @@ public class MarkdownHost : IDisposable
     /// </summary>
     public Task SetTocVisibilityAsync(bool visible)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MarkdownRpcMethods.SetTocVisibility, new { visible });
+        return _host.Rpc.NotifyWithParameterObjectAsync(NoteRpcMethods.SetTocVisibility, new { visible });
     }
 
     /// <summary>
-    /// Focuses the Markdown editor.
+    /// Focuses the Note editor.
     /// </summary>
     public Task FocusAsync()
     {
-        return _host.Rpc.NotifyAsync(MarkdownRpcMethods.Focus);
+        return _host.Rpc.NotifyAsync(NoteRpcMethods.Focus);
     }
 
     public void Dispose()

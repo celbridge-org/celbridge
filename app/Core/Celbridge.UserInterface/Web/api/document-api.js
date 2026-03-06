@@ -73,4 +73,12 @@ export class DocumentAPI {
     notifyImportComplete(success, error = null) {
         this.#transport.notify('import/complete', { success, error });
     }
+
+    /**
+     * Notifies the host that the JavaScript client has fully initialized.
+     * Call this after the editor is ready to receive RPC commands.
+     */
+    notifyClientReady() {
+        this.#transport.notify('client/ready', {});
+    }
 }

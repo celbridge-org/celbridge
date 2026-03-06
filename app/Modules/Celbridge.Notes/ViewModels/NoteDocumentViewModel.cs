@@ -1,21 +1,16 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 
-namespace Celbridge.Markdown.ViewModels;
+namespace Celbridge.Notes.ViewModels;
 
-/// <summary>
-/// View model for markdown document editing with Monaco editor.
-/// Handles file I/O and document state management.
-/// </summary>
-public partial class MarkdownDocumentViewModel : DocumentViewModel
+public partial class NoteDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
 
-    public MarkdownDocumentViewModel(IMessengerService messengerService)
+    public NoteDocumentViewModel(IMessengerService messengerService)
     {
         _messengerService = messengerService;
 
-        // Register for resource change messages
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
     }
@@ -45,62 +40,73 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         }
     }
 
-    public async Task<Result<string>> LoadDocument()
+    public async Task<Result> LoadContent()
     {
         try
         {
-            // Read the file contents
-            var text = await File.ReadAllTextAsync(FilePath);
-
-            // Track the initial file state when loading
             UpdateFileTrackingInfo();
 
-            return Result<string>.Ok(text);
+            await Task.CompletedTask;
+
+            return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"Failed to load markdown file: '{FilePath}'")
+            return Result.Fail($"An exception occurred when loading document from file: {FilePath}")
                 .WithException(ex);
         }
     }
 
-    public async Task<Result> SaveDocument(string text)
+    public async Task<string> LoadNoteContent()
     {
-        // Don't immediately try to save again if the save fails.
+        if (!File.Exists(FilePath))
+        {
+            // Return empty TipTap JSON document structure for new files
+            return "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+        }
+
+        var content = await File.ReadAllTextAsync(FilePath);
+        return content ?? "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+    }
+
+    public async Task<Result> SaveDocument()
+    {
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
-        try
-        {
-            // Set flag to suppress reload requests triggered by our own save
-            IsSavingFile = true;
-
-            await File.WriteAllTextAsync(FilePath, text);
-
-            // Update tracking info BEFORE sending completion message to avoid race condition
-            // with file watcher events that may arrive before the message is processed
-            UpdateFileTrackingInfo();
-
-            var message = new DocumentSaveCompletedMessage(FileResource);
-            _messengerService.Send(message);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save markdown file: '{FilePath}'")
-                .WithException(ex);
-        }
-        finally
-        {
-            IsSavingFile = false;
-        }
+        // The actual saving is handled in NoteDocumentView
+        await Task.CompletedTask;
 
         return Result.Ok();
     }
 
-    public void OnTextChanged()
+    public async Task<Result> SaveNoteToFile(string jsonContent)
     {
-        HasUnsavedChanges = true;
-        SaveTimer = SaveDelay;
+        try
+        {
+            // Set flag before writing to suppress file watcher reload requests
+            IsSavingFile = true;
+
+            await File.WriteAllTextAsync(FilePath, jsonContent);
+
+            // Update file tracking info immediately after writing
+            UpdateFileTrackingInfo();
+
+            var message = new DocumentSaveCompletedMessage(FileResource);
+            _messengerService.Send(message);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to save note file: '{FilePath}'")
+                .WithException(ex);
+        }
+        finally
+        {
+            // Clear the flag after save completes (success or failure)
+            IsSavingFile = false;
+        }
     }
 
     public override void Cleanup()

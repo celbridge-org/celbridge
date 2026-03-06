@@ -1,10 +1,10 @@
 using Celbridge.Activities;
-using Celbridge.Markdown.Services;
-using Celbridge.Markdown.ViewModels;
-using Celbridge.Markdown.Views;
 using Celbridge.Modules;
+using Celbridge.Notes.Services;
+using Celbridge.Notes.ViewModels;
+using Celbridge.Notes.Views;
 
-namespace Celbridge.Markdown;
+namespace Celbridge.Notes;
 
 public class Module : IModule
 {
@@ -16,19 +16,19 @@ public class Module : IModule
         // Register document editor factories
         //
 
-        services.AddTransient<IDocumentEditorFactory, MarkdownEditorFactory>();
+        services.AddTransient<IDocumentEditorFactory, NoteEditorFactory>();
 
         //
         // Register views
         //
 
-        services.AddTransient<MarkdownDocumentView>();
+        services.AddTransient<NoteDocumentView>();
 
         //
         // Register view models
         //
 
-        services.AddTransient<MarkdownDocumentViewModel>();
+        services.AddTransient<NoteDocumentViewModel>();
     }
 
     public Result Initialize()

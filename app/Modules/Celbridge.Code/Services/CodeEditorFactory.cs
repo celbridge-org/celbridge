@@ -4,6 +4,7 @@ using Celbridge.Code.Views;
 using Celbridge.Documents;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
+using Celbridge.Utilities;
 
 namespace Celbridge.Code.Services;
 
@@ -47,7 +48,27 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        return _extensionToLanguage.ContainsKey(extension);
+
+        // First check if this is a recognized code/text extension
+        if (_extensionToLanguage.ContainsKey(extension))
+        {
+            return true;
+        }
+
+#if WINDOWS
+        // On Windows, also handle any unrecognized text file using Monaco as the fallback editor
+        // This provides a better editing experience than TextBoxDocumentView
+        if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+        {
+            var sniffResult = TextBinarySniffer.IsTextFile(filePath);
+            if (sniffResult.IsSuccess && sniffResult.Value)
+            {
+                return true;
+            }
+        }
+#endif
+
+        return false;
     }
 
     public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
@@ -108,25 +129,16 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
     {
         var assembly = Assembly.GetExecutingAssembly();
 
-        var stream = assembly.GetManifestResourceStream(CodeEditorTypesResourceName);
-        if (stream is null)
-        {
-            throw new InvalidOperationException($"Embedded resource not found: {CodeEditorTypesResourceName}");
-        }
+        using var stream = assembly.GetManifestResourceStream(CodeEditorTypesResourceName)
+            ?? throw new InvalidOperationException($"Embedded resource not found: {CodeEditorTypesResourceName}");
 
-        using (stream)
-        using (var reader = new StreamReader(stream))
-        {
-            var json = reader.ReadToEnd();
-            var dictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+        using var reader = new StreamReader(stream);
+        var json = reader.ReadToEnd();
 
-            if (dictionary is null)
-            {
-                throw new InvalidOperationException($"Failed to deserialize embedded resource: {CodeEditorTypesResourceName}");
-            }
+        var dictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+            ?? throw new InvalidOperationException($"Failed to deserialize embedded resource: {CodeEditorTypesResourceName}");
 
-            return dictionary;
-        }
+        return dictionary;
     }
 
 #if WINDOWS

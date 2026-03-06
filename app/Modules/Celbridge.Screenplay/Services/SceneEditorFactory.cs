@@ -11,7 +11,7 @@ public class SceneEditorFactory : IDocumentEditorFactory
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = new List<string> { ".scene" };
+    public IReadOnlyList<string> SupportedExtensions { get; } = [".scene"];
 
     /// <summary>
     /// Higher priority than the default CodeEditorFactory to ensure .scene files
@@ -26,7 +26,8 @@ public class SceneEditorFactory : IDocumentEditorFactory
 
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        return true;
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        return SupportedExtensions.Contains(extension);
     }
 
     public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

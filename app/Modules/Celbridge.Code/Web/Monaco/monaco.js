@@ -50,21 +50,8 @@ function notifyClientReady() {
         return;
     }
 
-    // Send standard JSON-RPC 2.0 notification to signal readiness
-    const message = {
-        jsonrpc: '2.0',
-        method: 'client/ready',
-        params: {}
-    };
-
-    try {
-        if (window.chrome && typeof chrome.webview !== 'undefined') {
-            chrome.webview.postMessage(JSON.stringify(message));
-        }
-    }
-    catch (ex) {
-        console.error('Failed to send clientReady notification:', ex);
-    }
+    // Signal readiness via the standard celbridge document API
+    celbridge.document.notifyClientReady();
 }
 
 function setupLineEndings() {

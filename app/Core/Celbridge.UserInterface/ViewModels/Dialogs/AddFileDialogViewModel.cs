@@ -1,7 +1,7 @@
+using System.ComponentModel;
 using Celbridge.Explorer;
 using Celbridge.Settings;
 using Celbridge.Validators;
-using System.ComponentModel;
 
 namespace Celbridge.UserInterface.ViewModels;
 
@@ -49,7 +49,8 @@ public partial class AddFileDialogViewModel : ObservableObject
 
     public AddFileDialogViewModel(
         IEditorSettings editorSettings,
-        IStringLocalizer stringLocalizer)
+        IStringLocalizer stringLocalizer,
+        IFeatureFlagService featureFlagService)
     {
         _editorSettings = editorSettings;
         _stringLocalizer = stringLocalizer;
@@ -64,12 +65,29 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
         ];
 
+        // Add Note file type if feature flag is enabled
+        if (featureFlagService.IsEnabled("EnableNotesEditor"))
+        {
+            // Insert Note after Markdown to keep document file types together
+            var markdownIndex = FileTypes.FindIndex(ft => ft.Format == ResourceFormat.Markdown);
+            var noteItem = new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Note"), ResourceFormat.Note, ExplorerConstants.NoteExtension);
+            if (markdownIndex >= 0)
+            {
+                FileTypes.Insert(markdownIndex + 1, noteItem);
+            }
+            else
+            {
+                // Insert before "Other" if Markdown not found
+                FileTypes.Insert(FileTypes.Count - 1, noteItem);
+            }
+        }
+
         // Select the dropdown based on the previously saved extension
         var previousExtension = _editorSettings.PreviousNewFileExtension;
         var index = FileTypes.FindIndex(ft =>
             !string.IsNullOrEmpty(ft.Extension) &&
             ft.Extension.Equals(previousExtension, StringComparison.OrdinalIgnoreCase));
-        
+
         // If extension matches a known type, select it; otherwise select "Other"
         _selectedFileTypeIndex = index >= 0 ? index : OtherFileTypeIndex;
 
