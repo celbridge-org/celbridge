@@ -1,7 +1,7 @@
 {
-  "name": "celbridge",
+  "name": "celbridge-client",
   "version": "0.1.0",
-  "description": "JavaScript SDK for building Celbridge extensions",
+  "description": "JavaScript client SDK for communicating with the Celbridge .NET host",
   "type": "module",
   "main": "celbridge.js",
   "exports": {

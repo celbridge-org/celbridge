@@ -1,4 +1,5 @@
 <Project Sdk="Uno.Sdk">
+
   <PropertyGroup>
     <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
@@ -24,10 +25,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
-    <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.Host\Celbridge.Host.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <Content Include="Web\**" />
+  </ItemGroup>
+
 </Project>

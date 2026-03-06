@@ -1,7 +1,7 @@
 // Markdown Client: Markdown-specific API for communicating with the Celbridge Markdown host.
 // Uses the shared RPC transport from celbridge.js.
 
-import { RpcTransport } from 'https://shared.celbridge/core/rpc-transport.js';
+import { RpcTransport } from 'https://shared.celbridge/celbridge-client/core/rpc-transport.js';
 
 /**
  * Markdown Client for editor communication.

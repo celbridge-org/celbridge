@@ -6,6 +6,7 @@ using Celbridge.Modules;
 using Celbridge.UserInterface.Services;
 using Celbridge.UserInterface.Views;
 using Celbridge.UserInterface;
+using Celbridge.WebView;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
@@ -293,12 +294,14 @@ public partial class App : Application
         Settings.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);
+        WebView.ServiceConfiguration.ConfigureServices(services);
         Workspace.ServiceConfiguration.ConfigureServices(services);
     }
 
     private void InitializeCoreServices()
     {
         UserInterface.ServiceConfiguration.Initialize();
+        WebView.ServiceConfiguration.Initialize();
         Workspace.ServiceConfiguration.Initialize();
     }
 

@@ -4,7 +4,7 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
-using Celbridge.UserInterface;
+using Celbridge.WebView;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;

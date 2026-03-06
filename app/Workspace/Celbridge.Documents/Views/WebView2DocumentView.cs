@@ -2,7 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.WebView;
+using Celbridge.WebView.Services;
 
 namespace Celbridge.Documents.Views;
 
@@ -15,7 +16,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     private readonly IWebViewFactory _webViewFactory;
 
     // JSON-RPC infrastructure
-    private HostChannel? _hostChannel;
+    private WebViewHostChannel? _hostChannel;
 
     /// <summary>
     /// The Celbridge host for JSON-RPC communication with the WebView.
@@ -95,7 +96,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
             return;
         }
 
-        _hostChannel = new HostChannel(WebView.CoreWebView2);
+        _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
         Host = new CelbridgeHost(_hostChannel);
 
         // Register this view as the handler for IHostNotifications

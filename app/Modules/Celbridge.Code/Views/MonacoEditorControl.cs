@@ -5,7 +5,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.WebView;
+using Celbridge.WebView.Services;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
 
@@ -29,7 +30,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
     private WebView2? _webView;
     private MonacoHost? _host;
-    private HostChannel? _messageChannel;
+    private WebViewHostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
     private TaskCompletionSource<string>? _getContentTcs;
 
@@ -98,7 +99,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         _webView.GotFocus += WebView_GotFocus;
 
         // Initialize MonacoHost for RPC communication
-        _messageChannel = new HostChannel(_webView.CoreWebView2);
+        _messageChannel = new WebViewHostChannel(_webView.CoreWebView2);
         var celbridgeHost = new CelbridgeHost(_messageChannel);
         _host = new MonacoHost(celbridgeHost);
 

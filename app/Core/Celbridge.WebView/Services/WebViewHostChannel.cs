@@ -1,17 +1,17 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.UserInterface.Helpers;
+namespace Celbridge.WebView.Services;
 
 /// <summary>
 /// Implementation of IHostChannel that wraps CoreWebView2.
 /// </summary>
-public class HostChannel : IHostChannel
+public class WebViewHostChannel : IHostChannel
 {
     private readonly CoreWebView2 _coreWebView2;
     private readonly DispatcherQueue _dispatcherQueue;
 
-    public HostChannel(CoreWebView2 coreWebView2)
+    public WebViewHostChannel(CoreWebView2 coreWebView2)
     {
         _coreWebView2 = coreWebView2;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();

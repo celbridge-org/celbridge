@@ -1,4 +1,4 @@
-namespace Celbridge.UserInterface;
+namespace Celbridge.WebView;
 
 /// <summary>
 /// Factory for acquiring WebView2 instances.

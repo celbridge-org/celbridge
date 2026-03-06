@@ -2,8 +2,8 @@
 // Slim module that creates the TipTap editor and wires up popover modules
 
 import { Editor, StarterKit, Link, Placeholder, Markdown, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
-import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
-import celbridge from 'https://shared.celbridge/celbridge.js';
+import { setStrings, t } from 'https://shared.celbridge/celbridge-client/localization.js';
+import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { markdownClient } from './markdown-client.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './markdown-image-popover.js';

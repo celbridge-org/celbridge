@@ -1,7 +1,7 @@
 // Note Client: Note-specific API for communicating with the Celbridge Note host.
 // Uses the shared RPC transport from celbridge.js.
 
-import { RpcTransport } from 'https://shared.celbridge/core/rpc-transport.js';
+import { RpcTransport } from 'https://shared.celbridge/celbridge-client/core/rpc-transport.js';
 
 /**
  * Note Client for editor communication.

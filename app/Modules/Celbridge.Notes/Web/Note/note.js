@@ -2,8 +2,8 @@
 // TipTap-based rich text editor using native JSON storage format
 
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
-import { setStrings, t } from 'https://shared.celbridge/celbridge-localization.js';
-import celbridge from 'https://shared.celbridge/celbridge.js';
+import { setStrings, t } from 'https://shared.celbridge/celbridge-client/localization.js';
+import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { noteClient } from './note-client.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';

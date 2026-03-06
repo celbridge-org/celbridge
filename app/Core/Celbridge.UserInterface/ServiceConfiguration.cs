@@ -33,7 +33,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IUndoService, UndoService>();
         services.AddSingleton<IKeyboardShortcutService, KeyboardShortcutService>();
         services.AddSingleton<IFormService, FormService>();
-        services.AddSingleton<IWebViewFactory, WebViewFactory>();
         services.AddSingleton<MainMenuUtils>();
         services.AddTransient<FormBuilder>();
 

@@ -8,6 +8,7 @@ using Celbridge.Notes.Services;
 using Celbridge.Notes.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.WebView;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;

@@ -8,11 +8,11 @@ using StreamJsonRpc.Protocol;
 namespace Celbridge.Host;
 
 /// <summary>
-/// IJsonRpcMessageHandler implementation that bridges WebView2's push-based
+/// IJsonRpcMessageHandler implementation that bridges a push-based
 /// MessageReceived event with StreamJsonRpc's pull-based ReadAsync API.
-/// Uses a Channel as a message buffer between the event-driven WebView2 and StreamJsonRpc.
+/// Uses a Channel as a message buffer between the event-driven transport and StreamJsonRpc.
 /// </summary>
-internal class WebViewRpcHandler : IJsonRpcMessageHandler, IDisposable
+internal class RpcMessageHandler : IJsonRpcMessageHandler, IDisposable
 {
     private readonly IHostChannel _channel;
     private readonly Channel<JsonRpcMessage> _incomingMessages;
@@ -22,7 +22,7 @@ internal class WebViewRpcHandler : IJsonRpcMessageHandler, IDisposable
     public bool CanRead => true;
     public bool CanWrite => true;
 
-    public WebViewRpcHandler(IHostChannel channel)
+    public RpcMessageHandler(IHostChannel channel)
     {
         _channel = channel;
 
@@ -57,7 +57,7 @@ internal class WebViewRpcHandler : IJsonRpcMessageHandler, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[WebViewRpcHandler] Failed to deserialize message: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[RpcMessageHandler] Failed to deserialize message: {ex.Message}");
         }
     }
 

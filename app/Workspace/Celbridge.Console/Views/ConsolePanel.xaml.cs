@@ -6,7 +6,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.WebView;
+using Celbridge.WebView.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
@@ -32,7 +33,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private ITerminal? _terminal;
     private UserInterfaceTheme _currentTheme;
     private WebView2? _consoleWebView;
-    private HostChannel? _hostChannel;
+    private WebViewHostChannel? _hostChannel;
     private ConsoleHost? _consoleHost;
     private DispatcherQueue? _dispatcher;
 
@@ -163,7 +164,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         settings.AreDefaultContextMenusEnabled = true;
 
         // Set up JSON-RPC host channel
-        _hostChannel = new HostChannel(_consoleWebView.CoreWebView2);
+        _hostChannel = new WebViewHostChannel(_consoleWebView.CoreWebView2);
         var celbridgeHost = new CelbridgeHost(_hostChannel);
         _consoleHost = new ConsoleHost(celbridgeHost);
 

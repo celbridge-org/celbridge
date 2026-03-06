@@ -48,7 +48,7 @@ public static class HostRpcMethods
 public class CelbridgeHost : IDisposable
 {
     private readonly IHostChannel _channel;
-    private readonly WebViewRpcHandler _rpcHandler;
+    private readonly RpcMessageHandler _rpcHandler;
     private bool _disposed;
 
     /// <summary>
@@ -63,7 +63,7 @@ public class CelbridgeHost : IDisposable
     public CelbridgeHost(IHostChannel channel)
     {
         _channel = channel;
-        _rpcHandler = new WebViewRpcHandler(channel);
+        _rpcHandler = new RpcMessageHandler(channel);
         Rpc = new JsonRpc(_rpcHandler);
 
         // Ensure RPC method handlers run on the UI thread
