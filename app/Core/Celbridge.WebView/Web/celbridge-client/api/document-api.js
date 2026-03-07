@@ -71,7 +71,7 @@ export class DocumentAPI {
      * @param {string} [error] - Error message if import failed.
      */
     notifyImportComplete(success, error = null) {
-        this.#transport.notify('import/complete', { success, error });
+        this.#transport.notify('document/importComplete', { success, error });
     }
 
     /**
@@ -79,6 +79,6 @@ export class DocumentAPI {
      * Call this after the editor is ready to receive RPC commands.
      */
     notifyClientReady() {
-        this.#transport.notify('client/ready', {});
+        this.#transport.notify('document/clientReady', {});
     }
 }

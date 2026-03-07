@@ -4,50 +4,39 @@ namespace Celbridge.Host;
 
 /// <summary>
 /// JSON-RPC method names used for WebView2 communication between C# host and JavaScript client.
+/// Names follow the pattern "{domain}/{action}" where domain matches the interface name.
 /// </summary>
 public static class HostRpcMethods
 {
-    // Host initialization
-    public const string Initialize = "host/initialize";
-
-    // Keyboard shortcuts
-    public const string KeyboardShortcut = "host/keyboardShortcut";
-
-    // Document operations
+    // IHostDocument: document operations and notifications
+    public const string Initialize = "document/initialize";
     public const string DocumentLoad = "document/load";
     public const string DocumentSave = "document/save";
-
-    // Document notifications
     public const string DocumentChanged = "document/changed";
     public const string DocumentRequestSave = "document/requestSave";
     public const string DocumentExternalChange = "document/externalChange";
+    public const string ImportComplete = "document/importComplete";
+    public const string ClientReady = "document/clientReady";
 
-    // Dialog operations
+    // IHostDialog: dialog operations
     public const string DialogPickImage = "dialog/pickImage";
     public const string DialogPickFile = "dialog/pickFile";
     public const string DialogAlert = "dialog/alert";
 
-    // Link operations
-    public const string LinkClicked = "link/clicked";
+    // IHostInput: user input notifications
+    public const string KeyboardShortcut = "input/keyboardShortcut";
+    public const string LinkClicked = "input/linkClicked";
+    public const string EditorScrollChanged = "input/scrollChanged";
 
-    // Import operations
-    public const string ImportComplete = "import/complete";
-
-    // Lifecycle notifications
-    public const string ClientReady = "client/ready";
-
-    // Localization
+    // Localization: host-to-client notifications
     public const string LocalizationUpdated = "localization/updated";
 
-    // Editor scroll notifications
-    public const string EditorScrollChanged = "editor/scrollChanged";
-
-    // Preview operations (host to client notifications)
+    // IHostPreview: host-to-client notifications
     public const string PreviewSetContext = "preview/setContext";
     public const string PreviewUpdate = "preview/update";
     public const string PreviewScroll = "preview/scroll";
 
-    // Preview operations (client to host notifications)
+    // IHostPreview: client-to-host notifications
     public const string PreviewOpenResource = "preview/openResource";
     public const string PreviewOpenExternal = "preview/openExternal";
     public const string PreviewSyncToEditor = "preview/syncToEditor";

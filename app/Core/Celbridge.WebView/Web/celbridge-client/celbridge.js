@@ -96,7 +96,7 @@ export class Celbridge {
             throw new Error('Client already initialized');
         }
 
-        const result = await this.#transport.request('host/initialize', {
+        const result = await this.#transport.request('document/initialize', {
             protocolVersion: RpcTransport.protocolVersion
         });
 

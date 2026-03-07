@@ -20,7 +20,7 @@ export class InputAPI {
      * @param {string} href - The href of the clicked link.
      */
     notifyLinkClicked(href) {
-        this.#transport.notify('link/clicked', { href });
+        this.#transport.notify('input/linkClicked', { href });
     }
 
     /**
@@ -29,6 +29,6 @@ export class InputAPI {
      * @param {number} percentage - The scroll position as a percentage (0.0 to 1.0).
      */
     notifyScrollChanged(percentage) {
-        this.#transport.notify('editor/scrollChanged', { scrollPercentage: percentage });
+        this.#transport.notify('input/scrollChanged', { scrollPercentage: percentage });
     }
 }

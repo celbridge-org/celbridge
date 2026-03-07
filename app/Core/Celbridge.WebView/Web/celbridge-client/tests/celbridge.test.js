@@ -56,7 +56,7 @@ describe('Celbridge', () => {
             expect(sentMessages).toHaveLength(1);
             const sent = JSON.parse(sentMessages[0]);
             expect(sent.jsonrpc).toBe('2.0');
-            expect(sent.method).toBe('host/initialize');
+            expect(sent.method).toBe('document/initialize');
             expect(sent.params.protocolVersion).toBe('1.0');
             expect(sent.id).toBe(1);
 

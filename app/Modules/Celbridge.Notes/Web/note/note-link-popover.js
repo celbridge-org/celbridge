@@ -45,7 +45,7 @@ export function init(context) {
             const href = link.getAttribute('href');
             if (href) {
                 // Send link clicked notification via client
-                ctx.client._notify('link/clicked', { href });
+                ctx.client.input.notifyLinkClicked(href);
             }
         } else {
             showPopoverForLink(link);
@@ -96,7 +96,7 @@ export function init(context) {
     openBtnEl.addEventListener('click', () => {
         const href = linkInputEl.value.trim();
         if (href) {
-            ctx.client._notify('link/clicked', { href });
+            ctx.client.input.notifyLinkClicked(href);
         }
     });
 
