@@ -30,7 +30,7 @@
   <ItemGroup>
     <Content Include="Web\**" />
     <!-- Exclude TipTap vendoring toolchain (only lib/tiptap.js is needed at runtime) -->
-    <Content Remove="Web\Note\lib\build\**" />
+    <Content Remove="Web\note\lib\build\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,114 @@
+/* Syntax highlighting styles for code blocks */
+/* Based on GitHub's syntax highlighting */
+
+:root {
+    --hl-keyword: #cf222e;
+    --hl-string: #0a3069;
+    --hl-comment: #6e7781;
+    --hl-number: #0550ae;
+    --hl-function: #8250df;
+    --hl-variable: #953800;
+    --hl-type: #0550ae;
+    --hl-attribute: #116329;
+    --hl-tag: #116329;
+    --hl-operator: #24292f;
+    --hl-punctuation: #24292f;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --hl-keyword: #ff7b72;
+        --hl-string: #a5d6ff;
+        --hl-comment: #8b949e;
+        --hl-number: #79c0ff;
+        --hl-function: #d2a8ff;
+        --hl-variable: #ffa657;
+        --hl-type: #79c0ff;
+        --hl-attribute: #7ee787;
+        --hl-tag: #7ee787;
+        --hl-operator: #e6edf3;
+        --hl-punctuation: #e6edf3;
+    }
+}
+
+/* highlight.js classes */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-deletion {
+    color: var(--hl-keyword);
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-addition {
+    color: var(--hl-string);
+}
+
+.hljs-comment,
+.hljs-quote {
+    color: var(--hl-comment);
+    font-style: italic;
+}
+
+.hljs-number,
+.hljs-literal {
+    color: var(--hl-number);
+}
+
+.hljs-function,
+.hljs-title.function_,
+.hljs-title.class_ {
+    color: var(--hl-function);
+}
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-property {
+    color: var(--hl-variable);
+}
+
+.hljs-type,
+.hljs-class,
+.hljs-title {
+    color: var(--hl-type);
+}
+
+.hljs-attribute,
+.hljs-symbol,
+.hljs-bullet {
+    color: var(--hl-attribute);
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+    color: var(--hl-tag);
+}
+
+.hljs-operator,
+.hljs-punctuation {
+    color: var(--hl-operator);
+}
+
+.hljs-meta,
+.hljs-meta-keyword {
+    color: var(--hl-keyword);
+}
+
+.hljs-meta-string {
+    color: var(--hl-string);
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
+}
+
+.hljs-link {
+    text-decoration: underline;
+}

@@ -111,7 +111,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
             // Set up virtual host mapping for Note editor assets
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "note.celbridge",
-                "Celbridge.Notes/Web/Note",
+                "Celbridge.Notes/Web/note",
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // Map the project folder so resource key image paths resolve correctly

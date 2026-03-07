@@ -27,13 +27,17 @@
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Celbridge.Code\Celbridge.Code.csproj" />
   </ItemGroup>
 
+  <!-- Include Web assets as content (copied to output) -->
   <ItemGroup>
-    <Folder Include="ComponentEditors\" />
+    <Content Include="Web\**" />
+    <!-- Exclude the build folder - it's only used for vendoring -->
+    <Content Remove="Web\markdown-preview\lib\build\**" />
   </ItemGroup>
 
-  </Project>
+</Project>
 

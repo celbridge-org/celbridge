@@ -1,0 +1,15 @@
+{
+  "name": "markdown-preview-vendor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "vendor": "node vendor.js"
+  },
+  "dependencies": {
+    "marked": "^15.0.12"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.0"
+  }
+}

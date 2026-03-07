@@ -7,7 +7,7 @@ namespace Celbridge.Console.Services;
 /// Implement this interface in ConsolePanel to receive console events.
 /// </summary>
 [JsonRpcContract]
-public interface IConsoleNotifications
+public partial interface IConsoleNotifications
 {
     /// <summary>
     /// Called when the user types input in the console.

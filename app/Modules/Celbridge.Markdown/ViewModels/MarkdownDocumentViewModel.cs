@@ -1,15 +1,27 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Markdown.ViewModels;
 
 /// <summary>
 /// View model for markdown document editing with Monaco editor.
-/// Handles file I/O and document state management.
+/// Handles file I/O, document state management, and preview visibility.
 /// </summary>
 public partial class MarkdownDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
+
+    /// <summary>
+    /// Whether the preview panel is currently visible.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isPreviewVisible;
+
+    /// <summary>
+    /// Event raised when preview visibility changes.
+    /// </summary>
+    public event EventHandler<bool>? PreviewVisibilityChanged;
 
     public MarkdownDocumentViewModel(IMessengerService messengerService)
     {
@@ -18,6 +30,11 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         // Register for resource change messages
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
+    }
+
+    partial void OnIsPreviewVisibleChanged(bool value)
+    {
+        PreviewVisibilityChanged?.Invoke(this, value);
     }
 
     private void OnMonitoredResourceChangedMessage(object recipient, MonitoredResourceChangedMessage message)
