@@ -39,12 +39,22 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private string _language = "plaintext";
     private string _filePath = string.Empty;
     private string _resourceKey = string.Empty;
+    private MonacoEditorOptions _options = MonacoEditorOptions.Default;
 
     /// <summary>
     /// Callback to load content from the parent. Set this before calling InitializeAsync().
     /// The parent is responsible for reading from disk or other source.
     /// </summary>
     public Func<Task<string>>? ContentLoader { get; set; }
+
+    /// <summary>
+    /// Editor options. Set this before calling InitializeAsync() or PreInitializeAsync().
+    /// </summary>
+    public MonacoEditorOptions Options
+    {
+        get => _options;
+        set => _options = value;
+    }
 
     /// <summary>
     /// Raised when the content changes in the Monaco editor (user editing).
@@ -174,8 +184,8 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
             return Result.Fail("Failed to initialize JSON-RPC host");
         }
 
-        // Initialize the Monaco editor via JSON-RPC with the content and language
-        await _host.InitializeEditorAsync(_language);
+        // Initialize the Monaco editor via JSON-RPC with the content, language, and options
+        await _host.InitializeEditorAsync(_language, _options.ScrollBeyondLastLine);
 
         return Result.Ok();
     }

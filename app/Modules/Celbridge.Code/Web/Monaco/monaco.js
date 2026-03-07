@@ -21,13 +21,14 @@ function initializeEditor() {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = prefersDark ? 'vs-dark' : 'vs-light';
 
+    // Create editor with default options
+    // scrollBeyondLastLine will be updated during handleEditorInitialize if specified
     editor = monaco.editor.create(document.getElementById('container'), {
         language: 'plaintext',
         automaticLayout: true,
         theme: initialTheme,
         minimap: { autohide: true },
-        wordWrap: 'on',
-        scrollBeyondLastLine: false
+        wordWrap: 'on'
     });
 
     setupLineEndings();
@@ -124,13 +125,18 @@ function handleScrollToPercentage(percentage) {
     editor.setScrollTop(scrollTop);
 }
 
-async function handleEditorInitialize(language) {
+async function handleEditorInitialize(language, scrollBeyondLastLine) {
     if (!window.isWebView) {
         return;
     }
 
     try {
         client = celbridge;
+
+        // Apply editor options
+        if (scrollBeyondLastLine !== undefined) {
+            editor.updateOptions({ scrollBeyondLastLine: scrollBeyondLastLine });
+        }
 
         // Set language before loading content
         if (language) {

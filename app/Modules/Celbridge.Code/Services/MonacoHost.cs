@@ -60,11 +60,15 @@ public class MonacoHost : IDisposable
     }
 
     /// <summary>
-    /// Initializes the Monaco editor with the specified language.
+    /// Initializes the Monaco editor with the specified language and options.
     /// </summary>
-    public Task InitializeEditorAsync(string language)
+    public Task InitializeEditorAsync(string language, bool scrollBeyondLastLine = true)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorInitialize, new { language });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorInitialize, new 
+        { 
+            language,
+            scrollBeyondLastLine
+        });
     }
 
     /// <summary>

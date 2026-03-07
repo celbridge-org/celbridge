@@ -38,35 +38,10 @@
             </StackPanel>
         </Border>
 
-        <!-- Editor and Preview Container -->
-        <Grid x:Name="EditorContainer"
-              Grid.Row="1"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="EditorColumn" Width="*" />
-                <ColumnDefinition x:Name="SplitterColumn" Width="Auto" />
-                <ColumnDefinition x:Name="PreviewColumn" Width="0" />
-            </Grid.ColumnDefinitions>
-
-            <!-- Monaco Editor -->
-            <code:MonacoEditorControl x:Name="MonacoEditor"
-                                      Grid.Column="0"
-                                      HorizontalAlignment="Stretch" />
-
-            <!-- Splitter -->
-            <Border x:Name="Splitter"
-                    Grid.Column="1"
-                    Width="1"
-                    Background="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Visibility="Collapsed" />
-
-            <!-- Preview WebView Container -->
-            <Grid x:Name="PreviewContainer"
-                  Grid.Column="2"
-                  Visibility="Collapsed"
-                  HorizontalAlignment="Stretch"
-                  VerticalAlignment="Stretch" />
-        </Grid>
+        <!-- Split Editor Control -->
+        <code:SplitEditorControl x:Name="SplitEditor"
+                                 Grid.Row="1"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Stretch" />
     </Grid>
 </views:DocumentView>

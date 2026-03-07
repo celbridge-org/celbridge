@@ -16,11 +16,11 @@ class MonacoClient {
 
     /**
      * Registers a handler for editor initialization requests from the host.
-     * @param {function(string): void} handler - The handler function receiving the language.
+     * @param {function(string, boolean): void} handler - The handler function receiving the language and scrollBeyondLastLine option.
      */
     onInitialize(handler) {
         this.#transport.addEventListener('editor/initialize', (params) => {
-            handler(params.language);
+            handler(params.language, params.scrollBeyondLastLine);
         });
     }
 
