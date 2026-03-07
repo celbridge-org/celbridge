@@ -15,7 +15,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostNotifications
+public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostInput
 {
     private readonly ILogger<ConsolePanel> _logger;
     private readonly ICommandService _commandService;
@@ -170,7 +170,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
         // Register this panel as handler for console notifications
         _consoleHost.AddLocalRpcTarget<IConsoleNotifications>(this);
-        _consoleHost.AddLocalRpcTarget<IHostNotifications>(this);
+        _consoleHost.AddLocalRpcTarget<IHostInput>(this);
         _consoleHost.StartListening();
 
         var tcs = new TaskCompletionSource<bool>();
@@ -253,36 +253,11 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
     #endregion
 
-    #region IHostNotifications
-
-    public void OnDocumentChanged()
-    {
-        // Not used by console
-    }
-
-    public void OnLinkClicked(string href)
-    {
-        // Not used by console
-    }
-
-    public void OnImportComplete(bool success, string? error = null)
-    {
-        // Not used by console
-    }
-
-    public void OnClientReady()
-    {
-        // Not used by console
-    }
+    #region IHostInput
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {
         _keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
-    }
-
-    public void OnScrollPositionChanged(double scrollPercentage)
-    {
-        // Not used by console
     }
 
     #endregion

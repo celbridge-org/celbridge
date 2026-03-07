@@ -10,7 +10,7 @@ namespace Celbridge.Documents.Views;
 /// <summary>
 /// Base class for document views that use a WebView2 control.
 /// </summary>
-public abstract partial class WebView2DocumentView : DocumentView, IHostNotifications
+public abstract partial class WebView2DocumentView : DocumentView, IHostInput
 {
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
@@ -86,7 +86,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     /// <summary>
     /// Initializes the host channel for WebView communication.
     /// Call this after AcquireWebViewAsync() and any view-specific WebView setup.
-    /// This registers the base class as a handler for IHostNotifications (keyboard shortcuts, etc.).
+    /// This registers the base class as a handler for IHostInput (keyboard shortcuts, etc.).
     /// Subclasses should call this, then register additional RPC targets using the Host property.
     /// </summary>
     protected void InitializeHost()
@@ -99,9 +99,9 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
         _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
         Host = new CelbridgeHost(_hostChannel);
 
-        // Register this view as the handler for IHostNotifications
+        // Register this view as the handler for IHostInput
         // This provides keyboard shortcut handling for all WebView-based documents
-        Host.AddLocalRpcTarget<IHostNotifications>(this);
+        Host.AddLocalRpcTarget<IHostInput>(this);
     }
 
     /// <summary>
@@ -112,22 +112,13 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
         Host?.StartListening();
     }
 
-    #region IHostNotifications
+    #region IHostDocument virtual methods
 
     /// <summary>
     /// Called when the document content has changed in the WebView.
     /// Override in subclasses to handle document changes.
     /// </summary>
     public virtual void OnDocumentChanged()
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when a link is clicked in the WebView.
-    /// Override in subclasses to handle link clicks.
-    /// </summary>
-    public virtual void OnLinkClicked(string href)
     {
         // Default implementation does nothing
     }
@@ -150,6 +141,10 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
         // Default implementation does nothing
     }
 
+    #endregion
+
+    #region IHostInput
+
     /// <summary>
     /// Called when a keyboard shortcut is pressed in the WebView.
     /// Default implementation forwards to the keyboard shortcut service.
@@ -158,6 +153,15 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     {
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
+    }
+
+    /// <summary>
+    /// Called when a link is clicked in the WebView.
+    /// Override in subclasses to handle link clicks.
+    /// </summary>
+    public virtual void OnLinkClicked(string href)
+    {
+        // Default implementation does nothing
     }
 
     /// <summary>

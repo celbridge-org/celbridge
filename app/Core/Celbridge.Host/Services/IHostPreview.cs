@@ -6,7 +6,7 @@ namespace Celbridge.Host;
 /// RPC service interface for handling notifications from preview JavaScript (no response expected).
 /// Implement this interface to handle preview-related messages from the WebView.
 /// </summary>
-public interface IPreviewNotifications
+public interface IHostPreview
 {
     /// <summary>
     /// Called when the preview requests to open a local resource (e.g., a linked document).

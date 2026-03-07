@@ -3,7 +3,7 @@ using StreamJsonRpc;
 namespace Celbridge.Host;
 
 /// <summary>
-/// RPC service interface for document operations.
+/// RPC service interface for document operations and document-related notifications.
 /// </summary>
 public interface IHostDocument
 {
@@ -27,4 +27,25 @@ public interface IHostDocument
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.DocumentSave)]
     Task<SaveResult> SaveAsync(string content);
+
+    /// <summary>
+    /// Called when the document content has changed in the WebView.
+    /// Override to handle document changes.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.DocumentChanged)]
+    void OnDocumentChanged() { }
+
+    /// <summary>
+    /// Called when an import operation completes in the WebView.
+    /// Override to handle import completion.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.ImportComplete)]
+    void OnImportComplete(bool success, string? error = null) { }
+
+    /// <summary>
+    /// Called when the JavaScript client has finished initializing and is ready for communication.
+    /// Override to handle client ready notification.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.ClientReady)]
+    void OnClientReady() { }
 }

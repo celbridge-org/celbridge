@@ -14,7 +14,7 @@ namespace Celbridge.Code.Views;
 /// The preview panel is rendered by an IPreviewRenderer implementation.
 /// Uses JSON-RPC via CelbridgeHost for communication with the preview WebView.
 /// </summary>
-public sealed partial class SplitEditorControl : UserControl, IPreviewNotifications
+public sealed partial class SplitEditorControl : UserControl, IHostPreview
 {
     private readonly ILogger<SplitEditorControl> _logger;
     private readonly ICommandService _commandService;
@@ -265,7 +265,7 @@ public sealed partial class SplitEditorControl : UserControl, IPreviewNotificati
             _previewHost = new CelbridgeHost(_previewHostChannel);
 
             // Register this control as the handler for preview notifications
-            _previewHost.AddLocalRpcTarget<IPreviewNotifications>(this);
+            _previewHost.AddLocalRpcTarget<IHostPreview>(this);
             _previewHost.StartListening();
 
             // Apply theme
@@ -363,7 +363,7 @@ public sealed partial class SplitEditorControl : UserControl, IPreviewNotificati
         await Task.CompletedTask;
     }
 
-    #region IPreviewNotifications
+    #region IHostPreview
 
     public void OnOpenResource(string href)
     {

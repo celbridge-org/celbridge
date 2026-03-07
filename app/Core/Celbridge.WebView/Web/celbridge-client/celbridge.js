@@ -4,6 +4,7 @@
 import { RpcTransport } from './core/rpc-transport.js';
 import { DocumentAPI } from './api/document-api.js';
 import { DialogAPI } from './api/dialog-api.js';
+import { InputAPI } from './api/input-api.js';
 import { ThemeAPI } from './api/theme-api.js';
 import { LocalizationAPI } from './api/localization-api.js';
 import { PreviewAPI } from './api/preview-api.js';
@@ -32,6 +33,12 @@ export class Celbridge {
      * @type {DialogAPI}
      */
     dialog;
+
+    /**
+     * Input events API.
+     * @type {InputAPI}
+     */
+    input;
 
     /**
      * Theme events API.
@@ -65,6 +72,7 @@ export class Celbridge {
         // Initialize sub-APIs
         this.document = new DocumentAPI(this.#transport);
         this.dialog = new DialogAPI(this.#transport);
+        this.input = new InputAPI(this.#transport);
         this.theme = new ThemeAPI();
         this.localization = new LocalizationAPI(this.#transport);
         this.preview = new PreviewAPI(this.#transport);

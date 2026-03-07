@@ -107,7 +107,7 @@ function setupScrollListener() {
                 : 0;
 
             // Notify host of scroll position change
-            client.document.notifyScrollChanged(percentage);
+            client.input.notifyScrollChanged(percentage);
         }, 33);
     });
 }

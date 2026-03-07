@@ -16,7 +16,7 @@ namespace Celbridge.Code.Views;
 /// This is a pure text editing control that can be embedded in any document view.
 /// The parent view is responsible for file I/O and document management.
 /// </summary>
-public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IHostNotifications
+public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IHostInput
 {
     private const int ContentRequestTimeoutSeconds = 5;
     private const int ClientInitializationTimeoutSeconds = 10;
@@ -120,7 +120,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
         // Register this control as the handler for RPC interfaces
         _host.AddLocalRpcTarget<IHostDocument>(this);
-        _host.AddLocalRpcTarget<IHostNotifications>(this);
+        _host.AddLocalRpcTarget<IHostInput>(this);
 
         _host.StartListening();
 
@@ -433,24 +433,10 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         return new SaveResult(true);
     }
 
-    #endregion
-
-    #region IHostNotifications
-
     public void OnDocumentChanged()
     {
         // Notify parent that content has changed
         ContentChanged?.Invoke();
-    }
-
-    public void OnLinkClicked(string href)
-    {
-        // Link clicks are not used by the Monaco editor
-    }
-
-    public void OnImportComplete(bool success, string? error = null)
-    {
-        // Import completion is not used by the Monaco editor
     }
 
     public void OnClientReady()
@@ -458,6 +444,10 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         // Signal that the JS client is ready
         _clientReadyTcs?.TrySetResult();
     }
+
+    #endregion
+
+    #region IHostInput
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {

@@ -273,7 +273,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     #endregion
 
-    #region IHostNotifications overrides
+    #region IHostDocument overrides
 
     public override void OnDocumentChanged()
     {

@@ -81,22 +81,4 @@ export class DocumentAPI {
     notifyClientReady() {
         this.#transport.notify('client/ready', {});
     }
-
-    /**
-     * Notifies the host that a link was clicked in the document.
-     * Used for opening local resources in the editor.
-     * @param {string} href - The href of the clicked link.
-     */
-    notifyLinkClicked(href) {
-        this.#transport.notify('link/clicked', { href });
-    }
-
-    /**
-     * Notifies the host that the scroll position has changed.
-     * Used for synchronizing scroll position with other views.
-     * @param {number} percentage - The scroll position as a percentage (0.0 to 1.0).
-     */
-    notifyScrollChanged(percentage) {
-        this.#transport.notify('editor/scrollChanged', { scrollPercentage: percentage });
-    }
 }
