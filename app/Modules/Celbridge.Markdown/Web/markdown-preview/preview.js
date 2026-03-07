@@ -1,7 +1,7 @@
 // Markdown Preview - Renders markdown content using marked.js
 // This is a read-only preview pane that receives markdown content via JavaScript calls
 
-import { marked } from './lib/marked.esm.js';
+import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
 
 // Document base path (relative to project root, e.g., "01_markdown/")
 // Set by the host before rendering
@@ -14,6 +14,27 @@ marked.setOptions({
     pedantic: false,
     silent: true  // Don't throw on errors, return error text instead
 });
+
+// Configure syntax highlighting using highlight.js
+marked.use(markedHighlight({
+    langPrefix: 'hljs language-',
+    highlight(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                return hljs.highlight(code, { language: lang }).value;
+            } catch (err) {
+                console.warn('Highlight error for language:', lang, err);
+            }
+        }
+        // Auto-detect language if not specified or not recognized
+        try {
+            return hljs.highlightAuto(code).value;
+        } catch (err) {
+            console.warn('Highlight auto-detect error:', err);
+            return code;
+        }
+    }
+}));
 
 /**
  * Resolves a relative path against the document's base path.
