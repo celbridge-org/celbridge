@@ -10,6 +10,7 @@ internal static class MonacoRpcMethods
     public const string EditorInitialize = "editor/initialize";
     public const string EditorSetLanguage = "editor/setLanguage";
     public const string EditorNavigateToLocation = "editor/navigateToLocation";
+    public const string EditorScrollToPercentage = "editor/scrollToPercentage";
 }
 
 /// <summary>
@@ -80,6 +81,14 @@ public class MonacoHost : IDisposable
     public Task NavigateToLocationAsync(int lineNumber, int column)
     {
         return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorNavigateToLocation, new { lineNumber, column });
+    }
+
+    /// <summary>
+    /// Scrolls the Monaco editor to a specific percentage position.
+    /// </summary>
+    public Task ScrollToPercentageAsync(double percentage)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorScrollToPercentage, new { percentage });
     }
 
     public void Dispose()

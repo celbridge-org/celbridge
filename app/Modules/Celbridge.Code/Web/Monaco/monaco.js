@@ -26,11 +26,13 @@ function initializeEditor() {
         automaticLayout: true,
         theme: initialTheme,
         minimap: { autohide: true },
-        wordWrap: 'on'
+        wordWrap: 'on',
+        scrollBeyondLastLine: false
     });
 
     setupLineEndings();
     setupContentChangeListener();
+    setupScrollListener();
     setupThemeListener();
 
     // Signal that the editor is ready via JSON-RPC notification
@@ -74,6 +76,52 @@ function setupContentChangeListener() {
             client.document.notifyChanged();
         }
     });
+}
+
+function setupScrollListener() {
+    // Throttle scroll events to avoid flooding the host
+    let scrollThrottleTimeout = null;
+
+    editor.onDidScrollChange((event) => {
+        if (!window.isWebView || !isInitialized || !client) {
+            return;
+        }
+
+        // Throttle to max ~30 updates per second
+        if (scrollThrottleTimeout) {
+            return;
+        }
+
+        scrollThrottleTimeout = setTimeout(() => {
+            scrollThrottleTimeout = null;
+
+            const scrollTop = editor.getScrollTop();
+            const clientHeight = editor.getLayoutInfo().height;
+            const contentHeight = editor.getContentHeight();
+            const maxScroll = contentHeight - clientHeight;
+
+            // Calculate scroll percentage (0.0 to 1.0)
+            const percentage = maxScroll > 0
+                ? Math.min(1, Math.max(0, scrollTop / maxScroll))
+                : 0;
+
+            // Notify host of scroll position change
+            client.document.notifyScrollChanged(percentage);
+        }, 33);
+    });
+}
+
+function handleScrollToPercentage(percentage) {
+    if (!editor) {
+        return;
+    }
+
+    const clientHeight = editor.getLayoutInfo().height;
+    const contentHeight = editor.getContentHeight();
+    const maxScroll = contentHeight - clientHeight;
+    const scrollTop = maxScroll * Math.max(0, Math.min(1, percentage));
+
+    editor.setScrollTop(scrollTop);
 }
 
 async function handleEditorInitialize(language) {
@@ -150,4 +198,5 @@ if (window.isWebView) {
     monacoClient.onInitialize(handleEditorInitialize);
     monacoClient.onSetLanguage(handleEditorSetLanguage);
     monacoClient.onNavigateToLocation(handleEditorNavigateToLocation);
+    monacoClient.onScrollToPercentage(handleScrollToPercentage);
 }

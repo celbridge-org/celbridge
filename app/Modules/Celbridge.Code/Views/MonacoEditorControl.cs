@@ -56,6 +56,12 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// </summary>
     public event Action? EditorFocused;
 
+    /// <summary>
+    /// Raised when the scroll position changes in the Monaco editor.
+    /// The parameter is the scroll percentage (0.0 to 1.0).
+    /// </summary>
+    public event Action<double>? ScrollPositionChanged;
+
     public MonacoEditorControl()
     {
         _logger = ServiceLocator.AcquireService<ILogger<MonacoEditorControl>>();
@@ -273,6 +279,17 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     }
 
     /// <summary>
+    /// Scrolls the Monaco editor to a specific percentage position.
+    /// </summary>
+    public async Task ScrollToPercentageAsync(double percentage)
+    {
+        if (_host is not null)
+        {
+            await _host.ScrollToPercentageAsync(percentage);
+        }
+    }
+
+    /// <summary>
     /// Prepares the control for disposal.
     /// </summary>
     public async Task CleanupAsync()
@@ -437,6 +454,11 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     {
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
+    }
+
+    public void OnScrollPositionChanged(double scrollPercentage)
+    {
+        ScrollPositionChanged?.Invoke(scrollPercentage);
     }
 
     #endregion

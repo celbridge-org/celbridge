@@ -280,6 +280,11 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
 
+    public void OnScrollPositionChanged(double scrollPercentage)
+    {
+        // Not used by console
+    }
+
     #endregion
 
     private void OnTerminalProcessExited(object? sender, EventArgs e)

@@ -90,4 +90,13 @@ export class DocumentAPI {
     notifyLinkClicked(href) {
         this.#transport.notify('link/clicked', { href });
     }
+
+    /**
+     * Notifies the host that the scroll position has changed.
+     * Used for synchronizing scroll position with other views.
+     * @param {number} percentage - The scroll position as a percentage (0.0 to 1.0).
+     */
+    notifyScrollChanged(percentage) {
+        this.#transport.notify('editor/scrollChanged', { scrollPercentage: percentage });
+    }
 }

@@ -38,6 +38,9 @@ public static class HostRpcMethods
 
     // Localization
     public const string LocalizationUpdated = "localization/updated";
+
+    // Editor scroll notifications
+    public const string EditorScrollChanged = "editor/scrollChanged";
 }
 
 /// <summary>

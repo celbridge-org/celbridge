@@ -59,6 +59,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
         // Subscribe to MonacoEditorControl events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
+        MonacoEditor.ScrollPositionChanged += OnMonacoScrollPositionChanged;
 
         // Subscribe to ViewModel events
         ViewModel.ReloadRequested += OnViewModelReloadRequested;
@@ -154,6 +155,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
             // Unsubscribe from events and clear callback
             MonacoEditor.ContentChanged -= OnMonacoContentChanged;
             MonacoEditor.EditorFocused -= OnMonacoEditorFocused;
+            MonacoEditor.ScrollPositionChanged -= OnMonacoScrollPositionChanged;
             MonacoEditor.ContentLoader = null;
             ViewModel.ReloadRequested -= OnViewModelReloadRequested;
             ViewModel.PreviewVisibilityChanged -= OnPreviewVisibilityChanged;
@@ -191,6 +193,33 @@ public sealed partial class MarkdownDocumentView : DocumentView
         // Notify the system that this document view has focus
         var message = new DocumentViewFocusedMessage(ViewModel.FileResource);
         _messengerService.Send(message);
+    }
+
+    private void OnMonacoScrollPositionChanged(double scrollPercentage)
+    {
+        // Sync editor scroll position to preview (one-way: editor -> preview)
+        if (ViewModel.IsPreviewVisible && _isPreviewInitialized && _previewWebView?.CoreWebView2 is not null)
+        {
+            _ = SyncScrollToPreviewAsync(scrollPercentage);
+        }
+    }
+
+    private async Task SyncScrollToPreviewAsync(double scrollPercentage)
+    {
+        if (_previewWebView?.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = $"window.celbridge.scrollToPosition({scrollPercentage});";
+            await _previewWebView.CoreWebView2.ExecuteScriptAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to sync scroll to preview");
+        }
     }
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)
@@ -428,27 +457,52 @@ public sealed partial class MarkdownDocumentView : DocumentView
             var root = doc.RootElement;
 
             var type = root.GetProperty("type").GetString();
-            var href = root.GetProperty("href").GetString();
-
-            if (string.IsNullOrEmpty(href))
-            {
-                return;
-            }
 
             switch (type)
             {
                 case "openResource":
-                    OpenLocalResource(href);
+                    {
+                        var href = root.GetProperty("href").GetString();
+                        if (!string.IsNullOrEmpty(href))
+                        {
+                            OpenLocalResource(href);
+                        }
+                    }
                     break;
 
                 case "openExternal":
-                    OpenExternalUrl(href);
+                    {
+                        var href = root.GetProperty("href").GetString();
+                        if (!string.IsNullOrEmpty(href))
+                        {
+                            OpenExternalUrl(href);
+                        }
+                    }
+                    break;
+
+                case "syncToEditor":
+                    {
+                        var percentage = root.GetProperty("percentage").GetDouble();
+                        _ = SyncScrollToEditorAsync(percentage);
+                    }
                     break;
             }
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Failed to handle preview web message");
+        }
+    }
+
+    private async Task SyncScrollToEditorAsync(double scrollPercentage)
+    {
+        try
+        {
+            await MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to sync scroll to editor");
         }
     }
 

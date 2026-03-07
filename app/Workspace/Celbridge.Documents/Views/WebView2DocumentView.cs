@@ -160,6 +160,15 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
 
+    /// <summary>
+    /// Called when the scroll position changes in the editor.
+    /// Override in subclasses to handle scroll position changes.
+    /// </summary>
+    public virtual void OnScrollPositionChanged(double scrollPercentage)
+    {
+        // Default implementation does nothing
+    }
+
     #endregion
 
     #region Save Tracking

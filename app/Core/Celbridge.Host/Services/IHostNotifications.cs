@@ -36,4 +36,10 @@ public interface IHostNotifications
     /// </summary>
     [JsonRpcMethod(HostRpcMethods.KeyboardShortcut)]
     void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey);
+
+    /// <summary>
+    /// Called when the scroll position changes in the editor.
+    /// </summary>
+    [JsonRpcMethod(HostRpcMethods.EditorScrollChanged)]
+    void OnScrollPositionChanged(double scrollPercentage);
 }

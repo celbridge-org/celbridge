@@ -309,10 +309,42 @@ window.celbridge.scrollToPosition = function(percentage) {
     scrollToPosition(percentage);
 };
 
+/**
+ * Sets up click-to-sync functionality.
+ * When the user clicks in the preview (not on a link), sends the click position
+ * to the host so the editor can scroll to the corresponding location.
+ */
+function setupClickToSync() {
+    const container = document.getElementById('preview-container');
+
+    container.addEventListener('click', (e) => {
+        // Ignore clicks on links (they have their own handlers)
+        if (e.target.closest('a')) {
+            return;
+        }
+
+        // Calculate click position as a percentage of the scroll height
+        const containerRect = container.getBoundingClientRect();
+        const clickY = e.clientY - containerRect.top + container.scrollTop;
+        const totalHeight = container.scrollHeight;
+
+        const percentage = totalHeight > 0 ? clickY / totalHeight : 0;
+
+        // Send click position to host for editor scroll sync
+        window.chrome.webview.postMessage({
+            type: 'syncToEditor',
+            percentage: Math.max(0, Math.min(1, percentage))
+        });
+    });
+}
+
 // Notify the host that the preview is ready
 function init() {
     // Preview is ready - no RPC notification needed since we use WebMessageReceived
     console.log('Markdown preview initialized');
+
+    // Set up click-to-sync handler
+    setupClickToSync();
 }
 
 // Initialize when DOM is ready

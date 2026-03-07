@@ -43,6 +43,16 @@ class MonacoClient {
             handler(params.lineNumber, params.column);
         });
     }
+
+    /**
+     * Registers a handler for scroll-to-percentage requests from the host.
+     * @param {function(number): void} handler - The handler function receiving the scroll percentage (0-1).
+     */
+    onScrollToPercentage(handler) {
+        this.#transport.addEventListener('editor/scrollToPercentage', (params) => {
+            handler(params.percentage);
+        });
+    }
 }
 
 // Export singleton instance
