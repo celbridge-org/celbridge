@@ -32,3 +32,10 @@ public record SearchResults(
     int TotalFiles,
     bool WasCancelled,
     bool ReachedMaxResults);
+
+/// <summary>
+/// Represents the result of a replace operation in a single file.
+/// </summary>
+public record ReplaceResult(
+    bool Success,
+    int ReplacementsCount);

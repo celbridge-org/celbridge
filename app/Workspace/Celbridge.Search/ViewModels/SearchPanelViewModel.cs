@@ -3,7 +3,6 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -58,6 +57,15 @@ public partial class SearchPanelViewModel : ObservableObject
     [ObservableProperty]
     private bool _showNoResults;
 
+    [ObservableProperty]
+    private bool _isReplaceModeEnabled;
+
+    [ObservableProperty]
+    private string _replaceText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isReplacing;
+
     // Tooltip properties
     public string MatchCaseTooltip { get; private set; } = string.Empty;
 
@@ -66,6 +74,10 @@ public partial class SearchPanelViewModel : ObservableObject
     public string SearchTooltip { get; private set; } = string.Empty;
 
     public string CollapseAllTooltip { get; private set; } = string.Empty;
+
+    public string ReplaceToggleTooltip { get; private set; } = string.Empty;
+
+    public string ReplacePlaceholder { get; private set; } = string.Empty;
 
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
 
@@ -91,10 +103,13 @@ public partial class SearchPanelViewModel : ObservableObject
         WholeWordTooltip = _stringLocalizer.GetString("SearchPanel_WholeWordTooltip");
         SearchTooltip = _stringLocalizer.GetString("SearchPanel_SearchTooltip");
         CollapseAllTooltip = _stringLocalizer.GetString("SearchPanel_CollapseAllTooltip");
+        ReplaceToggleTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceToggleTooltip");
+        ReplacePlaceholder = _stringLocalizer.GetString("SearchPanel_ReplacePlaceholder");
 
         // Load saved search options from editor settings
         MatchCase = _editorSettings.SearchMatchCase;
         WholeWord = _editorSettings.SearchWholeWord;
+        IsReplaceModeEnabled = _editorSettings.SearchReplaceMode;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -136,6 +151,12 @@ public partial class SearchPanelViewModel : ObservableObject
         {
             _ = ExecuteSearchAsync();
         }
+    }
+
+    partial void OnIsReplaceModeEnabledChanged(bool value)
+    {
+        // Save to editor settings
+        _editorSettings.SearchReplaceMode = value;
     }
 
     [RelayCommand]
@@ -253,6 +274,44 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private void ToggleReplaceMode()
+    {
+        IsReplaceModeEnabled = !IsReplaceModeEnabled;
+    }
+
+    public async Task ReplaceInFileAsync(SearchFileResultViewModel fileResult)
+    {
+        if (string.IsNullOrEmpty(SearchText))
+        {
+            return;
+        }
+
+        IsReplacing = true;
+
+        try
+        {
+            var result = await _searchService.ReplaceInFileAsync(
+                fileResult.Resource,
+                SearchText,
+                ReplaceText,
+                MatchCase,
+                WholeWord,
+                CancellationToken.None);
+
+            if (result.Success && result.ReplacementsCount > 0)
+            {
+                // Refresh search results to reflect the changes
+                // The ResourceMonitor will handle notifying open documents about file changes
+                await ExecuteSearchAsync();
+            }
+        }
+        finally
+        {
+            IsReplacing = false;
+        }
+    }
+
     public void NavigateToResult(ResourceKey resource, int lineNumber, int column)
     {
         // Create location JSON for text document navigation
@@ -265,138 +324,5 @@ public partial class SearchPanelViewModel : ObservableObject
             command.ForceReload = false;
             command.Location = location;
         });
-    }
-}
-
-public partial class SearchFileResultViewModel : ObservableObject
-{
-    internal readonly SearchPanelViewModel Parent;
-
-    public ResourceKey Resource { get; }
-    public string FileName { get; }
-    public string RelativePath { get; }
-    public int MatchCount { get; }
-    public FileIconDefinition FileIcon { get; }
-
-    [ObservableProperty]
-    private bool _isExpanded = true;
-
-    public ObservableCollection<SearchMatchLineViewModel> Matches { get; } = new();
-
-    public SearchFileResultViewModel(SearchFileResult result, SearchPanelViewModel parent, IWorkspaceWrapper workspaceWrapper)
-    {
-        Parent = parent;
-        Resource = result.Resource;
-        FileName = result.FileName;
-        RelativePath = result.RelativePath;
-        MatchCount = result.Matches.Count;
-
-        // Get the file icon from the explorer service
-        var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        FileIcon = explorerService.GetIconForResource(result.Resource);
-
-        foreach (var match in result.Matches)
-        {
-            Matches.Add(new SearchMatchLineViewModel(match, this));
-        }
-    }
-
-    [RelayCommand]
-    private void ToggleExpanded()
-    {
-        IsExpanded = !IsExpanded;
-    }
-
-    [RelayCommand]
-    private void NavigateToFile()
-    {
-        if (Matches.Count > 0)
-        {
-            var firstMatch = Matches[0];
-            Parent.NavigateToResult(Resource, firstMatch.LineNumber, firstMatch.OriginalMatchStart + 1);
-        }
-    }
-}
-
-public partial class SearchMatchLineViewModel : ObservableObject
-{
-    private readonly SearchFileResultViewModel _parent;
-
-    public int LineNumber { get; }
-
-    /// <summary>
-    /// The full context line text (used for tooltip).
-    /// </summary>
-    public string LineText { get; }
-
-    /// <summary>
-    /// Text before the match (for display).
-    /// </summary>
-    public string TextBeforeMatch { get; }
-
-    /// <summary>
-    /// The matched text (for highlighted display).
-    /// </summary>
-    public string MatchedText { get; }
-
-    /// <summary>
-    /// Text after the match (for display).
-    /// </summary>
-    public string TextAfterMatch { get; }
-
-    /// <summary>
-    /// The position where the match starts in the display text.
-    /// </summary>
-    public int MatchStart { get; }
-
-    /// <summary>
-    /// The length of the match.
-    /// </summary>
-    public int MatchLength { get; }
-
-    /// <summary>
-    /// The position where the match starts in the original unformatted line (0-based).
-    /// This is used for navigation to the correct column in the editor.
-    /// </summary>
-    public int OriginalMatchStart { get; }
-
-    public SearchMatchLineViewModel(SearchMatchLine match, SearchFileResultViewModel parent)
-    {
-        _parent = parent;
-        LineNumber = match.LineNumber;
-        LineText = match.LineText;
-        MatchStart = match.MatchStart;
-        MatchLength = match.MatchLength;
-        OriginalMatchStart = match.OriginalMatchStart;
-
-        // Split the line text into before, match, and after segments for highlighting
-        var displayText = match.LineText;
-        var matchStart = match.MatchStart;
-        var matchLength = match.MatchLength;
-
-        // Ensure bounds are valid
-        if (matchStart >= 0 && matchStart < displayText.Length)
-        {
-            var matchEnd = Math.Min(matchStart + matchLength, displayText.Length);
-
-            TextBeforeMatch = displayText.Substring(0, matchStart);
-            MatchedText = displayText.Substring(matchStart, matchEnd - matchStart);
-            TextAfterMatch = matchEnd < displayText.Length ? displayText.Substring(matchEnd) : string.Empty;
-        }
-        else
-        {
-            // Fallback if match position is invalid
-            TextBeforeMatch = displayText;
-            MatchedText = string.Empty;
-            TextAfterMatch = string.Empty;
-        }
-    }
-
-    [RelayCommand]
-    private void Navigate()
-    {
-        // Navigate to the line and column position of the match
-        // Use OriginalMatchStart (0-based) + 1 to get the 1-based column position for Monaco
-        _parent.Parent.NavigateToResult(_parent.Resource, LineNumber, OriginalMatchStart + 1);
     }
 }
