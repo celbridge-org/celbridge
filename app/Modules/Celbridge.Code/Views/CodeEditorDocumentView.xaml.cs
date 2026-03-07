@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Celbridge.Code.ViewModels;
-using Celbridge.Documents;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;

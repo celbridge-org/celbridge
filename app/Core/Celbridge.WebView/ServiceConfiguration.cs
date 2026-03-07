@@ -1,4 +1,3 @@
-using Celbridge.Core;
 using Celbridge.WebView.Services;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -1,6 +1,4 @@
-using Celbridge.Code.Views;
 using Celbridge.Documents.Views;
-using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Markdown.Services;
 using Celbridge.Markdown.ViewModels;

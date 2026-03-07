@@ -1,7 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
