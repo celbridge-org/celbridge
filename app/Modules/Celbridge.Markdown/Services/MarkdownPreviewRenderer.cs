@@ -1,12 +1,12 @@
 using Celbridge.Code.Views;
 using Microsoft.Web.WebView2.Core;
-using System.Text.Json;
 
 namespace Celbridge.Markdown.Services;
 
 /// <summary>
 /// Preview renderer for Markdown files.
 /// Uses marked.js to render Markdown to HTML in a WebView.
+/// Communication with the WebView is handled via JSON-RPC through CelbridgeHost.
 /// </summary>
 public class MarkdownPreviewRenderer : IPreviewRenderer
 {
@@ -30,7 +30,7 @@ public class MarkdownPreviewRenderer : IPreviewRenderer
         return Task.CompletedTask;
     }
 
-    public async Task SetDocumentContextAsync(CoreWebView2 webView, string documentPath, string projectFolderPath)
+    public string ComputeBasePath(string documentPath, string projectFolderPath)
     {
         // Get the document's directory path relative to the project root
         var documentDir = Path.GetDirectoryName(documentPath);
@@ -46,71 +46,6 @@ public class MarkdownPreviewRenderer : IPreviewRenderer
             }
         }
 
-        // Escape the path for JavaScript
-        var escapedPath = basePath.Replace("\\", "\\\\").Replace("`", "\\`");
-        var script = $"window.celbridge.setBasePath(`{escapedPath}`);";
-        await webView.ExecuteScriptAsync(script);
-    }
-
-    public async Task UpdatePreviewAsync(CoreWebView2 webView, string content)
-    {
-        // Escape the content for JavaScript template literal
-        var escapedContent = EscapeForJavaScript(content);
-        var script = $"window.celbridge.updatePreview(`{escapedContent}`);";
-        await webView.ExecuteScriptAsync(script);
-    }
-
-    public async Task ScrollToPositionAsync(CoreWebView2 webView, double scrollPercentage)
-    {
-        var script = $"window.celbridge.scrollToPosition({scrollPercentage});";
-        await webView.ExecuteScriptAsync(script);
-    }
-
-    public bool HandlePreviewMessage(
-        string messageType,
-        JsonElement messageData,
-        Action<string> openLocalResource,
-        Action<string> openExternalUrl)
-    {
-        switch (messageType)
-        {
-            case "openResource":
-                {
-                    if (messageData.TryGetProperty("href", out var hrefElement))
-                    {
-                        var href = hrefElement.GetString();
-                        if (!string.IsNullOrEmpty(href))
-                        {
-                            openLocalResource(href);
-                            return true;
-                        }
-                    }
-                }
-                break;
-
-            case "openExternal":
-                {
-                    if (messageData.TryGetProperty("href", out var hrefElement))
-                    {
-                        var href = hrefElement.GetString();
-                        if (!string.IsNullOrEmpty(href))
-                        {
-                            openExternalUrl(href);
-                            return true;
-                        }
-                    }
-                }
-                break;
-        }
-
-        return false;
-    }
-
-    private static string EscapeForJavaScript(string content)
-    {
-        return content
-            .Replace("\\", "\\\\")
-            .Replace("`", "\\`")
-            .Replace("$", "\\$");
+        return basePath;
     }
 }

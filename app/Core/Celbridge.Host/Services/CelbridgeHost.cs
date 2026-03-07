@@ -41,6 +41,16 @@ public static class HostRpcMethods
 
     // Editor scroll notifications
     public const string EditorScrollChanged = "editor/scrollChanged";
+
+    // Preview operations (host to client notifications)
+    public const string PreviewSetContext = "preview/setContext";
+    public const string PreviewUpdate = "preview/update";
+    public const string PreviewScroll = "preview/scroll";
+
+    // Preview operations (client to host notifications)
+    public const string PreviewOpenResource = "preview/openResource";
+    public const string PreviewOpenExternal = "preview/openExternal";
+    public const string PreviewSyncToEditor = "preview/syncToEditor";
 }
 
 /// <summary>
@@ -113,6 +123,30 @@ public class CelbridgeHost : IDisposable
     public Task NotifyLocalizationUpdatedAsync(Dictionary<string, string> strings)
     {
         return Rpc.NotifyWithParameterObjectAsync(HostRpcMethods.LocalizationUpdated, new { strings });
+    }
+
+    /// <summary>
+    /// Sets the document context for the preview pane (base path for resolving relative resources).
+    /// </summary>
+    public Task NotifyPreviewSetContextAsync(string basePath)
+    {
+        return Rpc.NotifyWithParameterObjectAsync(HostRpcMethods.PreviewSetContext, new { basePath });
+    }
+
+    /// <summary>
+    /// Updates the preview content.
+    /// </summary>
+    public Task NotifyPreviewUpdateAsync(string content)
+    {
+        return Rpc.NotifyWithParameterObjectAsync(HostRpcMethods.PreviewUpdate, new { content });
+    }
+
+    /// <summary>
+    /// Scrolls the preview to a specific position (0.0 to 1.0).
+    /// </summary>
+    public Task NotifyPreviewScrollAsync(double scrollPercentage)
+    {
+        return Rpc.NotifyWithParameterObjectAsync(HostRpcMethods.PreviewScroll, new { scrollPercentage });
     }
 
     /// <summary>

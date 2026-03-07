@@ -5,6 +5,7 @@ namespace Celbridge.Code.Views;
 /// <summary>
 /// Interface for rendering preview content in a WebView.
 /// Implementations provide preview functionality for specific file types (e.g., Markdown, AsciiDoc).
+/// Preview renderers use JSON-RPC via CelbridgeHost for communication with the WebView.
 /// </summary>
 public interface IPreviewRenderer
 {
@@ -32,25 +33,8 @@ public interface IPreviewRenderer
     Task ConfigureWebViewAsync(CoreWebView2 webView, string projectFolderPath);
 
     /// <summary>
-    /// Sets the document context for resolving relative paths.
-    /// Called after navigation completes and before the first preview update.
+    /// Computes the base path for resolving relative resources in the preview.
+    /// This path is sent to the preview JavaScript via JSON-RPC.
     /// </summary>
-    Task SetDocumentContextAsync(CoreWebView2 webView, string documentPath, string projectFolderPath);
-
-    /// <summary>
-    /// Updates the preview with new content.
-    /// Called whenever the editor content changes.
-    /// </summary>
-    Task UpdatePreviewAsync(CoreWebView2 webView, string content);
-
-    /// <summary>
-    /// Scrolls the preview to a specific position.
-    /// </summary>
-    Task ScrollToPositionAsync(CoreWebView2 webView, double scrollPercentage);
-
-    /// <summary>
-    /// Handles messages received from the preview WebView.
-    /// Return true if the message was handled, false otherwise.
-    /// </summary>
-    bool HandlePreviewMessage(string messageType, System.Text.Json.JsonElement messageData, Action<string> openLocalResource, Action<string> openExternalUrl);
+    string ComputeBasePath(string documentPath, string projectFolderPath);
 }

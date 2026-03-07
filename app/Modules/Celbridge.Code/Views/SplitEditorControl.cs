@@ -1,9 +1,10 @@
-using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
+using Celbridge.WebView.Services;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Code.Views;
@@ -11,8 +12,9 @@ namespace Celbridge.Code.Views;
 /// <summary>
 /// A reusable control that combines a Monaco code editor with an optional preview panel.
 /// The preview panel is rendered by an IPreviewRenderer implementation.
+/// Uses JSON-RPC via CelbridgeHost for communication with the preview WebView.
 /// </summary>
-public sealed partial class SplitEditorControl : UserControl
+public sealed partial class SplitEditorControl : UserControl, IPreviewNotifications
 {
     private readonly ILogger<SplitEditorControl> _logger;
     private readonly ICommandService _commandService;
@@ -21,6 +23,8 @@ public sealed partial class SplitEditorControl : UserControl
     private readonly IUserInterfaceService _userInterfaceService;
 
     private WebView2? _previewWebView;
+    private WebViewHostChannel? _previewHostChannel;
+    private CelbridgeHost? _previewHost;
     private bool _isPreviewInitialized;
     private bool _isPreviewUpdateInProgress;
     private string _lastPreviewContent = string.Empty;
@@ -149,9 +153,10 @@ public sealed partial class SplitEditorControl : UserControl
     {
         _documentPath = documentPath;
 
-        if (_isPreviewInitialized && _previewRenderer is not null && _previewWebView?.CoreWebView2 is not null)
+        if (_isPreviewInitialized && _previewRenderer is not null && _previewHost is not null)
         {
-            _ = _previewRenderer.SetDocumentContextAsync(_previewWebView.CoreWebView2, _documentPath, _projectFolderPath);
+            var basePath = _previewRenderer.ComputeBasePath(_documentPath, _projectFolderPath);
+            _ = _previewHost.NotifyPreviewSetContextAsync(basePath);
         }
     }
 
@@ -193,9 +198,9 @@ public sealed partial class SplitEditorControl : UserControl
 
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
-        if (IsPreviewVisible && _isPreviewInitialized && _previewRenderer is not null && _previewWebView?.CoreWebView2 is not null)
+        if (IsPreviewVisible && _isPreviewInitialized && _previewHost is not null)
         {
-            _ = _previewRenderer.ScrollToPositionAsync(_previewWebView.CoreWebView2, scrollPercentage);
+            _ = _previewHost.NotifyPreviewScrollAsync(scrollPercentage);
         }
     }
 
@@ -246,17 +251,22 @@ public sealed partial class SplitEditorControl : UserControl
                 _previewRenderer.PreviewAssetFolder,
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            // Set up shared celbridge-client mapping
+            // Set up shared celbridge-client mapping for the preview to use celbridge.js
             _previewWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "shared.celbridge",
-                "Celbridge.WebView/Web",
+                "celbridge-client.celbridge",
+                "Celbridge.WebView/Web/celbridge-client",
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // Allow the renderer to configure additional mappings
             await _previewRenderer.ConfigureWebViewAsync(_previewWebView.CoreWebView2, _projectFolderPath);
 
-            // Handle messages from preview
-            _previewWebView.CoreWebView2.WebMessageReceived += OnPreviewWebMessageReceived;
+            // Set up JSON-RPC host for preview communication
+            _previewHostChannel = new WebViewHostChannel(_previewWebView.CoreWebView2);
+            _previewHost = new CelbridgeHost(_previewHostChannel);
+
+            // Register this control as the handler for preview notifications
+            _previewHost.AddLocalRpcTarget<IPreviewNotifications>(this);
+            _previewHost.StartListening();
 
             // Apply theme
             ApplyThemeToPreview();
@@ -283,8 +293,9 @@ public sealed partial class SplitEditorControl : UserControl
 
             _isPreviewInitialized = true;
 
-            // Set document context
-            await _previewRenderer.SetDocumentContextAsync(_previewWebView.CoreWebView2, _documentPath, _projectFolderPath);
+            // Set document context via JSON-RPC
+            var basePath = _previewRenderer.ComputeBasePath(_documentPath, _projectFolderPath);
+            await _previewHost.NotifyPreviewSetContextAsync(basePath);
 
             // Initial preview update
             await UpdatePreviewAsync();
@@ -297,7 +308,7 @@ public sealed partial class SplitEditorControl : UserControl
 
     private async Task UpdatePreviewAsync()
     {
-        if (_previewWebView?.CoreWebView2 is null || !_isPreviewInitialized || _previewRenderer is null)
+        if (_previewHost is null || !_isPreviewInitialized)
         {
             return;
         }
@@ -320,7 +331,7 @@ public sealed partial class SplitEditorControl : UserControl
 
             _lastPreviewContent = content;
 
-            await _previewRenderer.UpdatePreviewAsync(_previewWebView.CoreWebView2, content);
+            await _previewHost.NotifyPreviewUpdateAsync(content);
         }
         catch (Exception ex)
         {
@@ -334,9 +345,15 @@ public sealed partial class SplitEditorControl : UserControl
 
     private async Task CleanupPreviewAsync()
     {
+        // Dispose RPC infrastructure
+        _previewHost?.Dispose();
+        _previewHostChannel?.Detach();
+
+        _previewHost = null;
+        _previewHostChannel = null;
+
         if (_previewWebView is not null)
         {
-            _previewWebView.CoreWebView2.WebMessageReceived -= OnPreviewWebMessageReceived;
             _previewWebView.Close();
             _previewWebView = null;
         }
@@ -346,47 +363,9 @@ public sealed partial class SplitEditorControl : UserControl
         await Task.CompletedTask;
     }
 
-    private void OnPreviewWebMessageReceived(CoreWebView2 sender, CoreWebView2WebMessageReceivedEventArgs args)
-    {
-        if (_previewRenderer is null)
-        {
-            return;
-        }
+    #region IPreviewNotifications
 
-        try
-        {
-            var message = args.WebMessageAsJson;
-            using var doc = JsonDocument.Parse(message);
-            var root = doc.RootElement;
-
-            var type = root.GetProperty("type").GetString() ?? string.Empty;
-
-            // Let the renderer handle the message first
-            var handled = _previewRenderer.HandlePreviewMessage(
-                type,
-                root,
-                OpenLocalResource,
-                OpenExternalUrl);
-
-            if (!handled)
-            {
-                // Handle common message types
-                switch (type)
-                {
-                    case "syncToEditor":
-                        var percentage = root.GetProperty("percentage").GetDouble();
-                        _ = MonacoEditor.ScrollToPercentageAsync(percentage);
-                        break;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to handle preview web message");
-        }
-    }
-
-    private void OpenLocalResource(string relativePath)
+    public void OnOpenResource(string href)
     {
         if (string.IsNullOrEmpty(_documentPath))
         {
@@ -399,11 +378,11 @@ public sealed partial class SplitEditorControl : UserControl
             return;
         }
 
-        var fullPath = Path.GetFullPath(Path.Combine(documentDir, relativePath));
+        var fullPath = Path.GetFullPath(Path.Combine(documentDir, href));
 
         if (!fullPath.StartsWith(_projectFolderPath, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning($"Link path is outside project folder: {relativePath}");
+            _logger.LogWarning($"Link path is outside project folder: {href}");
             return;
         }
 
@@ -416,13 +395,20 @@ public sealed partial class SplitEditorControl : UserControl
         });
     }
 
-    private void OpenExternalUrl(string url)
+    public void OnOpenExternal(string href)
     {
         _commandService.Execute<IOpenBrowserCommand>(command =>
         {
-            command.URL = url;
+            command.URL = href;
         });
     }
+
+    public void OnSyncToEditor(double scrollPercentage)
+    {
+        _ = MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
+    }
+
+    #endregion
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
     {

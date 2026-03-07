@@ -6,6 +6,7 @@ import { DocumentAPI } from './api/document-api.js';
 import { DialogAPI } from './api/dialog-api.js';
 import { ThemeAPI } from './api/theme-api.js';
 import { LocalizationAPI } from './api/localization-api.js';
+import { PreviewAPI } from './api/preview-api.js';
 
 /**
  * @typedef {import('./types.js').InitializeResult} InitializeResult
@@ -45,6 +46,13 @@ export class Celbridge {
     localization;
 
     /**
+     * Preview operations API.
+     * Used by preview panes to communicate with the host.
+     * @type {PreviewAPI}
+     */
+    preview;
+
+    /**
      * Creates a new Celbridge instance.
      * @param {Object} [options] - Configuration options.
      * @param {Function} [options.postMessage] - Custom postMessage function (for testing).
@@ -59,6 +67,7 @@ export class Celbridge {
         this.dialog = new DialogAPI(this.#transport);
         this.theme = new ThemeAPI();
         this.localization = new LocalizationAPI(this.#transport);
+        this.preview = new PreviewAPI(this.#transport);
     }
 
     /**

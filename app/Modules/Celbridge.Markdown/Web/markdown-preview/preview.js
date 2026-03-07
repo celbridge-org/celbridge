@@ -1,10 +1,14 @@
 // Markdown Preview - Renders markdown content using marked.js
-// This is a read-only preview pane that receives markdown content via JavaScript calls
+// Uses celbridge.js SDK for JSON-RPC communication with the .NET host
 
 import { marked, markedHighlight, hljs } from './lib/marked.esm.js';
+import { Celbridge } from 'https://celbridge-client.celbridge/celbridge.js';
+
+// Create Celbridge instance for RPC communication
+const celbridge = new Celbridge();
 
 // Document base path (relative to project root, e.g., "01_markdown/")
-// Set by the host before rendering
+// Set by the host via preview/setContext notification
 let documentBasePath = '';
 
 // Configure marked with GitHub-flavored markdown options and error handling
@@ -241,14 +245,10 @@ function setupLinkHandlers() {
         );
 
         if (isLocalResource) {
-            // Local resource link - handle click to open in editor
+            // Local resource link - use celbridge.js to open in editor
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Send message to host to open this resource
-                window.chrome.webview.postMessage({
-                    type: 'openResource',
-                    href: href
-                });
+                celbridge.preview.openResource(href);
             });
         } else if (isAnchorLink) {
             // Anchor link - scroll within preview
@@ -263,13 +263,10 @@ function setupLinkHandlers() {
                 }
             });
         } else if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
-            // External link - send to host to open in browser
+            // External link - use celbridge.js to open in browser
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.chrome.webview.postMessage({
-                    type: 'openExternal',
-                    href: href
-                });
+                celbridge.preview.openExternal(href);
             });
         }
     });
@@ -284,30 +281,6 @@ function scrollToPosition(scrollPercentage) {
     const scrollHeight = container.scrollHeight - container.clientHeight;
     container.scrollTop = scrollHeight * scrollPercentage;
 }
-
-// Register RPC methods that the host can call
-window.celbridge = window.celbridge || {};
-
-// Method for the host to set the document base path (relative to project root)
-// This should be called before updatePreview to ensure paths resolve correctly
-window.celbridge.setBasePath = function(basePath) {
-    // Ensure the base path ends with a slash if not empty
-    if (basePath && !basePath.endsWith('/')) {
-        basePath += '/';
-    }
-    documentBasePath = basePath || '';
-    console.log('Document base path set to:', documentBasePath);
-};
-
-// Method for the host to update the preview content
-window.celbridge.updatePreview = function(markdown) {
-    renderMarkdown(markdown);
-};
-
-// Method for the host to sync scroll position
-window.celbridge.scrollToPosition = function(percentage) {
-    scrollToPosition(percentage);
-};
 
 /**
  * Sets up click-to-sync functionality.
@@ -330,21 +303,39 @@ function setupClickToSync() {
 
         const percentage = totalHeight > 0 ? clickY / totalHeight : 0;
 
-        // Send click position to host for editor scroll sync
-        window.chrome.webview.postMessage({
-            type: 'syncToEditor',
-            percentage: Math.max(0, Math.min(1, percentage))
-        });
+        // Use celbridge.js to sync editor scroll position
+        celbridge.preview.syncToEditor(Math.max(0, Math.min(1, percentage)));
     });
 }
 
-// Notify the host that the preview is ready
+// Initialize preview and set up RPC handlers
 function init() {
-    // Preview is ready - no RPC notification needed since we use WebMessageReceived
-    console.log('Markdown preview initialized');
+    console.log('Markdown preview initializing with celbridge.js SDK');
+
+    // Register handler for document context updates
+    celbridge.preview.onSetContext((basePath) => {
+        // Ensure the base path ends with a slash if not empty
+        if (basePath && !basePath.endsWith('/')) {
+            basePath += '/';
+        }
+        documentBasePath = basePath || '';
+        console.log('Document base path set to:', documentBasePath);
+    });
+
+    // Register handler for content updates
+    celbridge.preview.onUpdate((content) => {
+        renderMarkdown(content);
+    });
+
+    // Register handler for scroll position changes
+    celbridge.preview.onScroll((percentage) => {
+        scrollToPosition(percentage);
+    });
 
     // Set up click-to-sync handler
     setupClickToSync();
+
+    console.log('Markdown preview initialized');
 }
 
 // Initialize when DOM is ready
