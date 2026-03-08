@@ -17,17 +17,17 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --hl-keyword: #ff7b72;
-        --hl-string: #a5d6ff;
-        --hl-comment: #8b949e;
-        --hl-number: #79c0ff;
-        --hl-function: #d2a8ff;
-        --hl-variable: #ffa657;
-        --hl-type: #79c0ff;
-        --hl-attribute: #7ee787;
-        --hl-tag: #7ee787;
-        --hl-operator: #e6edf3;
-        --hl-punctuation: #e6edf3;
+        --hl-keyword: #569cd6;
+        --hl-string: #ce9178;
+        --hl-comment: #6a9955;
+        --hl-number: #b5cea8;
+        --hl-function: #dcdcaa;
+        --hl-variable: #9cdcfe;
+        --hl-type: #4ec9b0;
+        --hl-attribute: #9cdcfe;
+        --hl-tag: #569cd6;
+        --hl-operator: #d4d4d4;
+        --hl-punctuation: #d4d4d4;
     }
 }
 
