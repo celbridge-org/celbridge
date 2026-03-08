@@ -5,6 +5,12 @@ public static class LocalizationRpcMethods
     public const string Updated = "localization/updated";
 }
 
+/// <summary>
+/// RPC service interface for localization
+/// </summary>
+public interface IHostLocalization
+{ }
+
 public static class HostLocalizationExtensions
 {
     /// <summary>
