@@ -3,6 +3,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
+using Celbridge.UserInterface.Helpers;
+using Celbridge.UserInterface.Views.Controls;
 using Celbridge.WebView;
 using Celbridge.WebView.Services;
 using Microsoft.Web.WebView2.Core;
@@ -37,8 +39,14 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
     private readonly ColumnDefinition _editorColumn;
     private readonly ColumnDefinition _splitterColumn;
     private readonly ColumnDefinition _previewColumn;
-    private readonly Border _splitter;
+    private readonly Splitter _splitter;
     private readonly Grid _previewContainer;
+    private SplitterHelper? _splitterHelper;
+    private double _editorRatio = 1.0;
+    private double _previewRatio = 1.0;
+    private double _totalDragDelta;
+    private const double MinDragDistance = 3.0;
+    private const int MinSectionSize = 200;
 
     /// <summary>
     /// The Monaco editor control.
@@ -94,11 +102,15 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
         _rootGrid.Children.Add(MonacoEditor);
 
         // Create splitter
-        _splitter = new Border
+        _splitter = new Splitter
         {
-            Width = 1,
+            Orientation = Orientation.Vertical,
             Visibility = Visibility.Collapsed
         };
+        _splitter.DragStarted += OnSplitterDragStarted;
+        _splitter.DragDelta += OnSplitterDragDelta;
+        _splitter.DragCompleted += OnSplitterDragCompleted;
+        _splitter.DoubleClicked += OnSplitterDoubleClicked;
         Grid.SetColumn(_splitter, 1);
         _rootGrid.Children.Add(_splitter);
 
@@ -173,6 +185,10 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
         MonacoEditor.ContentChanged -= OnMonacoContentChanged;
         MonacoEditor.EditorFocused -= OnMonacoEditorFocused;
         MonacoEditor.ScrollPositionChanged -= OnMonacoScrollPositionChanged;
+        _splitter.DragStarted -= OnSplitterDragStarted;
+        _splitter.DragDelta -= OnSplitterDragDelta;
+        _splitter.DragCompleted -= OnSplitterDragCompleted;
+        _splitter.DoubleClicked -= OnSplitterDoubleClicked;
 
         _messengerService.UnregisterAll(this);
 
@@ -196,6 +212,63 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
         EditorFocused?.Invoke();
     }
 
+    private void OnSplitterDragStarted(object? sender, EventArgs e)
+    {
+        _totalDragDelta = 0;
+
+        _splitterHelper ??= new SplitterHelper(
+            _rootGrid,
+            GridResizeMode.Columns,
+            firstIndex: 0,
+            secondIndex: 2,
+            minSize: MinSectionSize);
+
+        _splitterHelper.OnDragStarted();
+    }
+
+    private void OnSplitterDragDelta(object? sender, double delta)
+    {
+        _totalDragDelta += Math.Abs(delta);
+        _splitterHelper?.OnDragDelta(delta);
+    }
+
+    private void OnSplitterDragCompleted(object? sender, EventArgs e)
+    {
+        if (_totalDragDelta < MinDragDistance)
+        {
+            return;
+        }
+
+        ConvertColumnsToStar();
+    }
+
+    private void OnSplitterDoubleClicked(object? sender, EventArgs e)
+    {
+        _editorRatio = 1.0;
+        _previewRatio = 1.0;
+
+        _editorColumn.Width = new GridLength(1, GridUnitType.Star);
+        _previewColumn.Width = new GridLength(1, GridUnitType.Star);
+    }
+
+    private void ConvertColumnsToStar()
+    {
+        var editorWidth = _editorColumn.ActualWidth;
+        var previewWidth = _previewColumn.ActualWidth;
+        var totalWidth = editorWidth + previewWidth;
+
+        if (totalWidth <= 0)
+        {
+            return;
+        }
+
+        _editorRatio = editorWidth / totalWidth;
+        _previewRatio = previewWidth / totalWidth;
+
+        _editorColumn.Width = new GridLength(_editorRatio, GridUnitType.Star);
+        _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
+    }
+
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
         if (IsPreviewVisible && _isPreviewInitialized && _previewHost is not null)
@@ -208,9 +281,9 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
     {
         if (showPreview)
         {
-            _editorColumn.Width = new GridLength(1, GridUnitType.Star);
+            _editorColumn.Width = new GridLength(_editorRatio, GridUnitType.Star);
             _splitterColumn.Width = new GridLength(1, GridUnitType.Pixel);
-            _previewColumn.Width = new GridLength(1, GridUnitType.Star);
+            _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
             _splitter.Visibility = Visibility.Visible;
             _previewContainer.Visibility = Visibility.Visible;
 
