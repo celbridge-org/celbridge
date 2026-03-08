@@ -1049,4 +1049,22 @@ Do you wish to continue?</value>
   <data name="Markdown_TOC_Empty" xml:space="preserve">
     <value>No headings found</value>
   </data>
+  <data name="Markdown_ViewMode_Preview" xml:space="preserve">
+    <value>Rendered preview</value>
+  </data>
+  <data name="Markdown_ViewMode_Split" xml:space="preserve">
+    <value>Editor and preview side by side</value>
+  </data>
+  <data name="Markdown_ViewMode_Source" xml:space="preserve">
+    <value>Source editor</value>
+  </data>
+  <data name="Markdown_ViewMode_Preview_Label" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="Markdown_ViewMode_Split_Label" xml:space="preserve">
+    <value>Split</value>
+  </data>
+  <data name="Markdown_ViewMode_Source_Label" xml:space="preserve">
+    <value>Source</value>
+  </data>
 </root>

@@ -9,6 +9,7 @@ let editor = null;
 let client = null;
 let isInitialized = false;
 let currentLanguage = 'plaintext';
+let pendingNavigation = null;
 
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
@@ -167,6 +168,13 @@ async function handleEditorInitialize(language, scrollBeyondLastLine) {
         });
 
         isInitialized = true;
+
+        // Apply any navigation that arrived before content was loaded
+        if (pendingNavigation) {
+            const nav = pendingNavigation;
+            pendingNavigation = null;
+            applyNavigation(nav.lineNumber, nav.column, nav.endLineNumber, nav.endColumn);
+        }
     }
     catch (ex) {
         console.error('Failed to initialize host connection:', ex);
@@ -180,7 +188,28 @@ function handleEditorSetLanguage(language) {
     }
 }
 
-function handleEditorNavigateToLocation(lineNumber, column) {
+function applyNavigation(lineNumber, column, endLineNumber, endColumn) {
+    if (endLineNumber > 0) {
+        // Select the matched text range (supports both single-line and multi-line selections)
+        editor.setSelection({
+            startLineNumber: lineNumber,
+            startColumn: column,
+            endLineNumber: endLineNumber,
+            endColumn: endColumn
+        });
+    } else {
+        // No range provided - just position the cursor
+        editor.setPosition({ lineNumber: lineNumber, column: column });
+    }
+
+    // Reveal the line in the center of the editor viewport
+    editor.revealLineInCenter(lineNumber);
+
+    // Focus the editor to make the cursor visible
+    editor.focus();
+}
+
+function handleEditorNavigateToLocation(lineNumber, column, endLineNumber, endColumn) {
     if (!editor) {
         return;
     }
@@ -189,14 +218,13 @@ function handleEditorNavigateToLocation(lineNumber, column) {
     lineNumber = Math.max(1, lineNumber || 1);
     column = Math.max(1, column || 1);
 
-    // Set the cursor position
-    editor.setPosition({ lineNumber: lineNumber, column: column });
+    if (!isInitialized) {
+        // Content has not been loaded yet - buffer this request and replay it after setValue
+        pendingNavigation = { lineNumber, column, endLineNumber, endColumn };
+        return;
+    }
 
-    // Reveal the line in the center of the editor viewport
-    editor.revealLineInCenter(lineNumber);
-
-    // Focus the editor to make the cursor visible
-    editor.focus();
+    applyNavigation(lineNumber, column, endLineNumber, endColumn);
 }
 
 // Register RPC handlers via monaco-client

@@ -19,22 +19,44 @@
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="8,4">
+                Padding="8,4,16,4">
             <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Left">
-                <ToggleButton x:Name="PreviewToggleButton"
+                        HorizontalAlignment="Left"
+                        Spacing="4">
+                <ToggleButton x:Name="PreviewModeButton"
+                              Width="32"
                               Height="32"
-                              Padding="12,0"
-                              ToolTipService.ToolTip="Toggle Preview (Ctrl+Shift+V)"
-                              IsChecked="{x:Bind ViewModel.IsPreviewVisible, Mode=TwoWay}"
-                              Click="PreviewToggleButton_Click">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE8A1;"
-                                  FontSize="14" />
-                        <TextBlock Text="Preview"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
+                              Padding="0"
+                              ToolTipService.ToolTip="{x:Bind ViewModePreviewTooltip}"
+                              Click="PreviewModeButton_Click">
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xE736;"
+                              FontSize="14" />
                 </ToggleButton>
+                <ToggleButton x:Name="SplitModeButton"
+                              Width="32"
+                              Height="32"
+                              Padding="0"
+                              ToolTipService.ToolTip="{x:Bind ViewModeSplitTooltip}"
+                              Click="SplitModeButton_Click">
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xE8B2;"
+                              FontSize="14" />
+                </ToggleButton>
+                <ToggleButton x:Name="SourceModeButton"
+                              Width="32"
+                              Height="32"
+                              Padding="0"
+                              ToolTipService.ToolTip="{x:Bind ViewModeSourceTooltip}"
+                              Click="SourceModeButton_Click">
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xE943;"
+                              FontSize="14" />
+                </ToggleButton>
+                <TextBlock x:Name="ViewModeLabel"
+                           VerticalAlignment="Center"
+                           Margin="8,0,0,0"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Border>
 

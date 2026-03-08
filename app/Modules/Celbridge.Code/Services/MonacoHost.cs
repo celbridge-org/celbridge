@@ -82,9 +82,9 @@ public class MonacoHost : IDisposable
     /// <summary>
     /// Navigates to a specific location in the Monaco editor.
     /// </summary>
-    public Task NavigateToLocationAsync(int lineNumber, int column)
+    public Task NavigateToLocationAsync(int lineNumber, int column, int endLineNumber = 0, int endColumn = 0)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorNavigateToLocation, new { lineNumber, column });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorNavigateToLocation, new { lineNumber, column, endLineNumber, endColumn });
     }
 
     /// <summary>

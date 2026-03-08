@@ -146,14 +146,16 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         try
         {
-            // Parse the location JSON to extract line number and column
+            // Parse the location JSON to extract start position and optional selection end range
             using var doc = JsonDocument.Parse(location);
             var root = doc.RootElement;
 
             var lineNumber = root.TryGetProperty("lineNumber", out var lineProp) ? lineProp.GetInt32() : 1;
             var column = root.TryGetProperty("column", out var colProp) ? colProp.GetInt32() : 1;
+            var endLineNumber = root.TryGetProperty("endLineNumber", out var endLineProp) ? endLineProp.GetInt32() : 0;
+            var endColumn = root.TryGetProperty("endColumn", out var endColProp) ? endColProp.GetInt32() : 0;
 
-            return await MonacoEditor.NavigateToLocationAsync(lineNumber, column);
+            return await MonacoEditor.NavigateToLocationAsync(lineNumber, column, endLineNumber, endColumn);
         }
         catch (Exception ex)
         {

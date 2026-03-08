@@ -12,6 +12,16 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.Code.Views;
 
 /// <summary>
+/// Controls how the SplitEditorControl arranges its editor and preview panels.
+/// </summary>
+public enum SplitEditorViewMode
+{
+    Source,
+    Split,
+    Preview
+}
+
+/// <summary>
 /// A reusable control that combines a Monaco code editor with an optional preview panel.
 /// The preview panel is rendered by an IPreviewRenderer implementation.
 /// Uses JSON-RPC via CelbridgeHost for communication with the preview WebView.
@@ -54,9 +64,14 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
     public MonacoEditorControl MonacoEditor { get; }
 
     /// <summary>
+    /// The current view mode of the editor.
+    /// </summary>
+    public SplitEditorViewMode ViewMode { get; private set; } = SplitEditorViewMode.Source;
+
+    /// <summary>
     /// Whether the preview panel is currently visible.
     /// </summary>
-    public bool IsPreviewVisible { get; private set; }
+    public bool IsPreviewVisible => ViewMode == SplitEditorViewMode.Split || ViewMode == SplitEditorViewMode.Preview;
 
     /// <summary>
     /// Raised when the content changes in the Monaco editor.
@@ -145,17 +160,17 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
     }
 
     /// <summary>
-    /// Shows or hides the preview panel.
+    /// Sets the view mode, updating the editor and preview panel layout accordingly.
     /// </summary>
-    public void SetPreviewVisible(bool visible)
+    public void SetViewMode(SplitEditorViewMode viewMode)
     {
-        if (visible == IsPreviewVisible)
+        if (viewMode == ViewMode)
         {
             return;
         }
 
-        IsPreviewVisible = visible;
-        UpdatePreviewLayout(visible);
+        ViewMode = viewMode;
+        UpdatePreviewLayout(viewMode);
     }
 
     /// <summary>
@@ -277,25 +292,38 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
         }
     }
 
-    private void UpdatePreviewLayout(bool showPreview)
+    private void UpdatePreviewLayout(SplitEditorViewMode viewMode)
     {
-        if (showPreview)
+        switch (viewMode)
         {
-            _editorColumn.Width = new GridLength(_editorRatio, GridUnitType.Star);
-            _splitterColumn.Width = new GridLength(1, GridUnitType.Pixel);
-            _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
-            _splitter.Visibility = Visibility.Visible;
-            _previewContainer.Visibility = Visibility.Visible;
+            case SplitEditorViewMode.Source:
+                MonacoEditor.Visibility = Visibility.Visible;
+                _editorColumn.Width = new GridLength(1, GridUnitType.Star);
+                _splitterColumn.Width = new GridLength(0);
+                _previewColumn.Width = new GridLength(0);
+                _splitter.Visibility = Visibility.Collapsed;
+                _previewContainer.Visibility = Visibility.Collapsed;
+                break;
 
-            _ = InitializePreviewAsync();
-        }
-        else
-        {
-            _editorColumn.Width = new GridLength(1, GridUnitType.Star);
-            _splitterColumn.Width = new GridLength(0);
-            _previewColumn.Width = new GridLength(0);
-            _splitter.Visibility = Visibility.Collapsed;
-            _previewContainer.Visibility = Visibility.Collapsed;
+            case SplitEditorViewMode.Split:
+                MonacoEditor.Visibility = Visibility.Visible;
+                _editorColumn.Width = new GridLength(_editorRatio, GridUnitType.Star);
+                _splitterColumn.Width = new GridLength(1, GridUnitType.Pixel);
+                _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
+                _splitter.Visibility = Visibility.Visible;
+                _previewContainer.Visibility = Visibility.Visible;
+                _ = InitializePreviewAsync();
+                break;
+
+            case SplitEditorViewMode.Preview:
+                MonacoEditor.Visibility = Visibility.Collapsed;
+                _editorColumn.Width = new GridLength(0);
+                _splitterColumn.Width = new GridLength(0);
+                _previewColumn.Width = new GridLength(1, GridUnitType.Star);
+                _splitter.Visibility = Visibility.Collapsed;
+                _previewContainer.Visibility = Visibility.Visible;
+                _ = InitializePreviewAsync();
+                break;
         }
     }
 

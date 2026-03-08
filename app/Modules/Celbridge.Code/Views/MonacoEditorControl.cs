@@ -260,7 +260,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// <summary>
     /// Navigates to a specific location in the editor.
     /// </summary>
-    public async Task<Result> NavigateToLocationAsync(int lineNumber, int column)
+    public async Task<Result> NavigateToLocationAsync(int lineNumber, int column, int endLineNumber = 0, int endColumn = 0)
     {
         if (_host is null)
         {
@@ -269,7 +269,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
 
         try
         {
-            await _host.NavigateToLocationAsync(lineNumber, column);
+            await _host.NavigateToLocationAsync(lineNumber, column, endLineNumber, endColumn);
             return Result.Ok();
         }
         catch (Exception ex)

@@ -40,7 +40,7 @@ class MonacoClient {
      */
     onNavigateToLocation(handler) {
         this.#transport.addEventListener('editor/navigateToLocation', (params) => {
-            handler(params.lineNumber, params.column);
+            handler(params.lineNumber, params.column, params.endLineNumber || 0, params.endColumn || 0);
         });
     }
 
