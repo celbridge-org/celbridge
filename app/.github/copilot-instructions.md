@@ -12,6 +12,7 @@
 - Never use `/// <param>` XML documentation in doc strings because they are verbose and hard to keep synchronized.
 - Do not use special characters like arrows or emojis in code comments. Use only standard ASCII characters.
 - Always use localized strings for all user-facing text in this codebase. Never hardcode strings directly in XAML or C# UI code — add entries to Resources.resw and access them via IStringLocalizer.GetString() in code-behind, then bind with `{x:Bind}`.
+- Unit tests should be practical and cover the happy case and the most common failure modes. Do not aim for complete code coverage for its own sake — keep the test set tight and focused.
 
 ## Code Style
 - Use specific formatting rules
