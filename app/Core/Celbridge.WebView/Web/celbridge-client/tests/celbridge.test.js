@@ -267,6 +267,20 @@ describe('Celbridge', () => {
             expect(result).toBe('/images/photo.png');
         });
 
+        it('should return path when file is selected', async () => {
+            const { client, simulateResponse } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            const pickPromise = client.dialog.pickFile(['.txt']);
+            simulateResponse(2, { path: '/documents/notes.txt' });
+
+            const result = await pickPromise;
+            expect(result).toBe('/documents/notes.txt');
+        });
+
         it('should return null when dialog is cancelled', async () => {
             const { client, simulateResponse } = createTestClient();
 
@@ -297,6 +311,140 @@ describe('Celbridge', () => {
             simulateResponse(2, {});
 
             await alertPromise; // Should resolve without error
+        });
+    });
+
+    describe('input operations', () => {
+        it('should send link clicked notification with href', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            client.input.notifyLinkClicked('/docs/intro.md');
+
+            expect(sentMessages).toHaveLength(2);
+            const notification = JSON.parse(sentMessages[1]);
+            expect(notification.jsonrpc).toBe('2.0');
+            expect(notification.method).toBe('input/linkClicked');
+            expect(notification.params.href).toBe('/docs/intro.md');
+            expect(notification.id).toBeUndefined();
+        });
+
+        it('should send scroll changed notification with percentage', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            client.input.notifyScrollChanged(0.75);
+
+            expect(sentMessages).toHaveLength(2);
+            const notification = JSON.parse(sentMessages[1]);
+            expect(notification.method).toBe('input/scrollChanged');
+            expect(notification.params.scrollPercentage).toBe(0.75);
+            expect(notification.id).toBeUndefined();
+        });
+    });
+
+    describe('preview operations', () => {
+        it('should start with empty basePath', () => {
+            const { client } = createTestClient();
+            expect(client.preview.basePath).toBe('');
+        });
+
+        it('should update basePath and call handler on setContext notification', async () => {
+            const { client, simulateResponse, simulateNotification } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            const handler = vi.fn();
+            client.preview.onSetContext(handler);
+
+            simulateNotification('preview/setContext', { basePath: '/projects/myproject' });
+
+            expect(client.preview.basePath).toBe('/projects/myproject');
+            expect(handler).toHaveBeenCalledWith('/projects/myproject');
+        });
+
+        it('should call handler on update notification with content', async () => {
+            const { client, simulateResponse, simulateNotification } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            const handler = vi.fn();
+            client.preview.onUpdate(handler);
+
+            simulateNotification('preview/update', { content: '<h1>Hello</h1>' });
+
+            expect(handler).toHaveBeenCalledWith('<h1>Hello</h1>');
+        });
+
+        it('should call handler on scroll notification with percentage', async () => {
+            const { client, simulateResponse, simulateNotification } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            const handler = vi.fn();
+            client.preview.onScroll(handler);
+
+            simulateNotification('preview/scroll', { scrollPercentage: 0.5 });
+
+            expect(handler).toHaveBeenCalledWith(0.5);
+        });
+
+        it('should send openResource notification with href', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            client.preview.openResource('docs/intro.md');
+
+            expect(sentMessages).toHaveLength(2);
+            const notification = JSON.parse(sentMessages[1]);
+            expect(notification.method).toBe('preview/openResource');
+            expect(notification.params.href).toBe('docs/intro.md');
+            expect(notification.id).toBeUndefined();
+        });
+
+        it('should send openExternal notification with href', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            client.preview.openExternal('https://example.com');
+
+            const notification = JSON.parse(sentMessages[1]);
+            expect(notification.method).toBe('preview/openExternal');
+            expect(notification.params.href).toBe('https://example.com');
+            expect(notification.id).toBeUndefined();
+        });
+
+        it('should send syncToEditor notification with scroll percentage', async () => {
+            const { client, sentMessages, simulateResponse } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            client.preview.syncToEditor(0.25);
+
+            const notification = JSON.parse(sentMessages[1]);
+            expect(notification.method).toBe('preview/syncToEditor');
+            expect(notification.params.scrollPercentage).toBe(0.25);
+            expect(notification.id).toBeUndefined();
         });
     });
 
