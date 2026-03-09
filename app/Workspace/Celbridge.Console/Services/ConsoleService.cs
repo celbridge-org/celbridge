@@ -22,12 +22,22 @@ public class ConsoleService : IConsoleService, IDisposable
     public async Task<Result> InitializeTerminalWindow()
     {
         var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel;
+        if (consolePanel is null)
+        {
+            return Result.Fail("Console panel is not available");
+        }
+
         return await consolePanel.InitializeTerminalWindow(Terminal);
     }
 
     public void RunCommand(string command)
     {
         var consolePanel = _workspaceWrapper.WorkspaceService.ConsolePanel;
+        if (consolePanel is null)
+        {
+            return;
+        }
+
         consolePanel.RunCommand(command);
     }
 

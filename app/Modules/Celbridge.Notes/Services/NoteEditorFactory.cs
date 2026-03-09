@@ -24,7 +24,7 @@ public class NoteEditorFactory : IDocumentEditorFactory
 
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        if (!_workspaceFeatures.IsEnabled("notes-editor"))
+        if (!_workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor))
         {
             return false;
         }

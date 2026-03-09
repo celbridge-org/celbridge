@@ -66,7 +66,7 @@ public partial class AddFileDialogViewModel : ObservableObject
         ];
 
         // Add Note file type if feature flag is enabled
-        if (workspaceFeatures.IsEnabled("notes-editor"))
+        if (workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor))
         {
             // Insert Note after Markdown to keep document file types together
             var markdownIndex = FileTypes.FindIndex(ft => ft.Format == ResourceFormat.Markdown);

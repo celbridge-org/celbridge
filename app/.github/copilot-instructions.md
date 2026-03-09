@@ -48,4 +48,7 @@
   - Feature flag names use kebab-case (e.g., "notes-editor", "console")
   - In appsettings.json, feature flags are under the "FeatureFlags" section using kebab-case
   - In .celbridge files, users can override app-level features using the top-level [features] section
+  - For optional features controlled by feature flags, use nullable types (e.g., `IConsolePanel?`) instead of the Null Object pattern. This is more scalable, maintainable, and honest. Make the service/panel nullable, return null when the feature is disabled, and add null checks at call sites. Never use Null Object implementations for feature flags.
+
+- In Celbridge architecture, the Foundation project (Core\Celbridge.Foundation) should only contain abstractions (interfaces, abstract classes). Never place concrete implementations in Foundation - they belong in workspace or module projects.
 

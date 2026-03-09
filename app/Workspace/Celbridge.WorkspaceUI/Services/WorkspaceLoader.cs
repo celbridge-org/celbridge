@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 
 namespace Celbridge.WorkspaceUI.Services;
@@ -11,15 +12,18 @@ public class WorkspaceLoader
     private readonly ILogger<WorkspaceLoader> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUserInterfaceService _userInterfaceService;
+    private readonly IWorkspaceFeatures _workspaceFeatures;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
         IWorkspaceWrapper workspaceWrapper,
-        IUserInterfaceService userInterfaceService)
+        IUserInterfaceService userInterfaceService,
+        IWorkspaceFeatures workspaceFeatures)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _userInterfaceService = userInterfaceService;
+        _workspaceFeatures = workspaceFeatures;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -141,18 +145,26 @@ public class WorkspaceLoader
         // the workspace UI from being functional.
         //
 
-
-        var consoleService = workspaceService.ConsoleService;
-        var initTerminal = await consoleService.InitializeTerminalWindow();
-        if (initTerminal.IsFailure)
+        // Only initialize console and Python if the console-panel feature is enabled
+        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        if (isConsolePanelEnabled)
         {
-            // Workspace loading continues even if terminal initialization fails
-            _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
-        }
+            var consoleService = workspaceService.ConsoleService;
+            var initTerminal = await consoleService.InitializeTerminalWindow();
+            if (initTerminal.IsFailure)
+            {
+                // Workspace loading continues even if terminal initialization fails
+                _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
+            }
 
-        // Initialize Python scripting
-        // If Python fails to initialize, the error is reported and the project continues to load.
-        await TryInitializePythonAsync(workspaceService);
+            // Initialize Python scripting
+            // If Python fails to initialize, the error is reported and the project continues to load.
+            await TryInitializePythonAsync(workspaceService);
+        }
+        else
+        {
+            _logger.LogInformation("Console panel is disabled by feature flag");
+        }
 
         return Result.Ok();
     }
@@ -196,6 +208,13 @@ public class WorkspaceLoader
 
     private void PopulateTitleBarShortcuts()
     {
+        // Only populate shortcuts if console panel is enabled
+        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        if (!isConsolePanelEnabled)
+        {
+            return;
+        }
+
         var projectService = ServiceLocator.AcquireService<IProjectService>();
         var currentProject = projectService.CurrentProject;
         if (currentProject is null)

@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Console;
 using Celbridge.Documents;
 using Celbridge.Inspector;
+using Celbridge.Settings;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.WorkspaceUI.ViewModels;
 
@@ -29,6 +30,7 @@ public sealed partial class WorkspacePage : Page
     public WorkspacePageViewModel ViewModel { get; }
 
     private bool _initialized = false;
+    private IWorkspaceFeatures? _workspaceFeatures;
 
     private SplitterHelper? _primaryPanelSplitterHelper;
     private SplitterHelper? _secondaryPanelSplitterHelper;
@@ -131,11 +133,30 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
+        _workspaceFeatures = ServiceLocator.AcquireService<IWorkspaceFeatures>();
+        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+
         // Create panels via DI
         var activityPanel = ServiceLocator.AcquireService<IActivityPanel>();
         var documentsPanel = ServiceLocator.AcquireService<IDocumentsPanel>();
         var inspectorPanel = ServiceLocator.AcquireService<IInspectorPanel>();
-        var consolePanel = ServiceLocator.AcquireService<IConsolePanel>();
+
+        IConsolePanel? consolePanel;
+        if (isConsolePanelEnabled)
+        {
+            consolePanel = ServiceLocator.AcquireService<IConsolePanel>();
+            ConsolePanel.Children.Add(consolePanel as UIElement);
+        }
+        else
+        {
+            consolePanel = null;
+
+            // Hide console panel row and splitter completely when feature is disabled
+            ConsolePanelRow.Height = new GridLength(0);
+            ConsolePanelRow.MinHeight = 0;
+            ConsolePanelSplitter.Visibility = Visibility.Collapsed;
+            ConsolePanel.Visibility = Visibility.Collapsed;
+        }
 
         // Register panels with the workspace service
         workspaceService.SetPanels(activityPanel, documentsPanel, inspectorPanel, consolePanel);
@@ -144,7 +165,10 @@ public sealed partial class WorkspacePage : Page
         PrimaryPanel.Children.Add(activityPanel as UIElement);
         DocumentsPanel.Children.Add(documentsPanel as UIElement);
         SecondaryPanel.Children.Add(inspectorPanel as UIElement);
-        ConsolePanel.Children.Add(consolePanel as UIElement);
+
+        // Listen for workspace loaded message to update console visibility
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
         _ = ViewModel.LoadWorkspaceAsync();
     }
@@ -166,13 +190,24 @@ public sealed partial class WorkspacePage : Page
 
         ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
 
+        // Unregister message handlers
+        var messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        messengerService.UnregisterAll(this);
+
         // Close all open documents and clean up their WebView2 resources
         workspaceService.DocumentsPanel.Shutdown();
-        workspaceService.ConsolePanel.Shutdown();
+
+        workspaceService.ConsolePanel?.Shutdown();
 
         ViewModel.OnWorkspacePageUnloaded();
 
         _initialized = false;
+    }
+
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
+    {
+        // Update console panel visibility now that workspace has loaded with potentially different feature flag settings
+        UpdatePanels();
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -253,7 +288,9 @@ public sealed partial class WorkspacePage : Page
             SecondaryPanelColumn.Width = new GridLength(0);
         }
 
-        if (ViewModel.IsConsolePanelVisible)
+        var isConsolePanelEnabled = _workspaceFeatures?.IsEnabled(FeatureFlags.ConsolePanel) ?? false;
+
+        if (isConsolePanelEnabled && ViewModel.IsConsolePanelVisible)
         {
             ConsolePanelSplitter.Visibility = Visibility.Visible;
             ConsolePanel.Visibility = Visibility.Visible;
@@ -274,6 +311,13 @@ public sealed partial class WorkspacePage : Page
 
     private void UpdateConsoleMaximized()
     {
+        // Skip if console panel feature is disabled
+        var isConsolePanelEnabled = _workspaceFeatures?.IsEnabled(FeatureFlags.ConsolePanel) ?? false;
+        if (!isConsolePanelEnabled)
+        {
+            return;
+        }
+
         if (!ViewModel.IsConsolePanelVisible)
         {
             // Console is hidden, nothing to maximize
