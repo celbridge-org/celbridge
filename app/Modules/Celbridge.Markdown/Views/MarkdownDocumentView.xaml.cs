@@ -265,7 +265,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
         SplitEditor.SetViewMode(splitEditorViewMode);
     }
 
-    #region GFM snippet insertion
+    #region Markdown snippet insertion
 
     private const string BoldSnippet = "**bold text**";
     private const string ItalicSnippet = "*italic text*";
