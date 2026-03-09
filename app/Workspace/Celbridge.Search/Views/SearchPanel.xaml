@@ -107,9 +107,9 @@
     <!-- Search Options -->
     <StackPanel Grid.Row="3"
                 Orientation="Horizontal"
-                Padding="12,4,48,8"
+                Padding="12,4,12,8"
                 Spacing="4"
-                HorizontalAlignment="Right">
+                HorizontalAlignment="Center">
       <!-- Match Case toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.MatchCase, Mode=TwoWay}"
                     ToolTipService.ToolTip="{x:Bind ViewModel.MatchCaseTooltip, Mode=OneWay}"
