@@ -349,10 +349,10 @@ describe('Celbridge', () => {
         });
     });
 
-    describe('preview operations', () => {
+    describe('code preview operations', () => {
         it('should start with empty basePath', () => {
             const { client } = createTestClient();
-            expect(client.preview.basePath).toBe('');
+            expect(client.codePreview.basePath).toBe('');
         });
 
         it('should update basePath and call handler on setContext notification', async () => {
@@ -363,11 +363,11 @@ describe('Celbridge', () => {
             await initPromise;
 
             const handler = vi.fn();
-            client.preview.onSetContext(handler);
+            client.codePreview.onSetContext(handler);
 
-            simulateNotification('preview/setContext', { basePath: '/projects/myproject' });
+            simulateNotification('codePreview/setContext', { basePath: '/projects/myproject' });
 
-            expect(client.preview.basePath).toBe('/projects/myproject');
+            expect(client.codePreview.basePath).toBe('/projects/myproject');
             expect(handler).toHaveBeenCalledWith('/projects/myproject');
         });
 
@@ -379,9 +379,9 @@ describe('Celbridge', () => {
             await initPromise;
 
             const handler = vi.fn();
-            client.preview.onUpdate(handler);
+            client.codePreview.onUpdate(handler);
 
-            simulateNotification('preview/update', { content: '<h1>Hello</h1>' });
+            simulateNotification('codePreview/update', { content: '<h1>Hello</h1>' });
 
             expect(handler).toHaveBeenCalledWith('<h1>Hello</h1>');
         });
@@ -394,9 +394,9 @@ describe('Celbridge', () => {
             await initPromise;
 
             const handler = vi.fn();
-            client.preview.onScroll(handler);
+            client.codePreview.onScroll(handler);
 
-            simulateNotification('preview/scroll', { scrollPercentage: 0.5 });
+            simulateNotification('codePreview/scroll', { scrollPercentage: 0.5 });
 
             expect(handler).toHaveBeenCalledWith(0.5);
         });
@@ -408,11 +408,11 @@ describe('Celbridge', () => {
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            client.preview.openResource('docs/intro.md');
+            client.codePreview.openResource('docs/intro.md');
 
             expect(sentMessages).toHaveLength(2);
             const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('preview/openResource');
+            expect(notification.method).toBe('codePreview/openResource');
             expect(notification.params.href).toBe('docs/intro.md');
             expect(notification.id).toBeUndefined();
         });
@@ -424,10 +424,10 @@ describe('Celbridge', () => {
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            client.preview.openExternal('https://example.com');
+            client.codePreview.openExternal('https://example.com');
 
             const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('preview/openExternal');
+            expect(notification.method).toBe('codePreview/openExternal');
             expect(notification.params.href).toBe('https://example.com');
             expect(notification.id).toBeUndefined();
         });
@@ -439,10 +439,10 @@ describe('Celbridge', () => {
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            client.preview.syncToEditor(0.25);
+            client.codePreview.syncToEditor(0.25);
 
             const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('preview/syncToEditor');
+            expect(notification.method).toBe('codePreview/syncToEditor');
             expect(notification.params.scrollPercentage).toBe(0.25);
             expect(notification.id).toBeUndefined();
         });

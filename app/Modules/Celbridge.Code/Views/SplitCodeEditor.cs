@@ -26,7 +26,7 @@ public enum SplitEditorViewMode
 /// The preview panel is rendered by an IPreviewRenderer implementation.
 /// Uses JSON-RPC via CelbridgeHost for communication with the preview WebView.
 /// </summary>
-public sealed partial class SplitCodeEditor : UserControl, IHostPreview
+public sealed partial class SplitCodeEditor : UserControl, IHostCodePreview
 {
     private readonly ILogger<SplitCodeEditor> _logger;
     private readonly ICommandService _commandService;
@@ -183,7 +183,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
         if (_isPreviewInitialized && _previewRenderer is not null && _previewHost is not null)
         {
             var basePath = _previewRenderer.ComputeBasePath(_documentPath, _projectFolderPath);
-            _ = _previewHost.NotifyPreviewSetContextAsync(basePath);
+            _ = _previewHost.NotifyCodePreviewSetContextAsync(basePath);
         }
     }
 
@@ -293,7 +293,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
     {
         if (IsPreviewVisible && _isPreviewInitialized && _previewHost is not null)
         {
-            _ = _previewHost.NotifyPreviewScrollAsync(scrollPercentage);
+            _ = _previewHost.NotifyCodePreviewScrollAsync(scrollPercentage);
         }
     }
 
@@ -370,8 +370,8 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
             _previewHostChannel = new WebViewHostChannel(_previewWebView.CoreWebView2);
             _previewHost = new CelbridgeHost(_previewHostChannel);
 
-            // Register this control as the handler for preview notifications
-            _previewHost.AddLocalRpcTarget<IHostPreview>(this);
+            // Register this control as the handler for code preview notifications
+            _previewHost.AddLocalRpcTarget<IHostCodePreview>(this);
             _previewHost.StartListening();
 
             // Apply theme
@@ -401,7 +401,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
 
             // Set document context via JSON-RPC
             var basePath = _previewRenderer.ComputeBasePath(_documentPath, _projectFolderPath);
-            await _previewHost.NotifyPreviewSetContextAsync(basePath);
+            await _previewHost.NotifyCodePreviewSetContextAsync(basePath);
 
             // Initial preview update
             await UpdatePreviewAsync();
@@ -437,7 +437,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
 
             _lastPreviewContent = content;
 
-            await _previewHost.NotifyPreviewUpdateAsync(content);
+            await _previewHost.NotifyCodePreviewUpdateAsync(content);
         }
         catch (Exception ex)
         {
@@ -469,7 +469,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
         await Task.CompletedTask;
     }
 
-    #region IHostPreview
+    #region IHostCodePreview
 
     public void OnOpenResource(string href)
     {

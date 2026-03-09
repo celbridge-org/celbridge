@@ -1,11 +1,11 @@
-// Preview API: Operations for preview panes that display rendered content.
-// Used by preview renderers (e.g., Markdown, AsciiDoc) to communicate with the host.
+// Code Preview API: Operations for code preview panes that display rendered content.
+// Used by code preview renderers (e.g., Markdown, AsciiDoc) to communicate with the host.
 
 /**
- * Preview operations API.
- * Handles communication between preview panes and the .NET host via JSON-RPC.
+ * Code preview operations API.
+ * Handles communication between code preview panes and the .NET host via JSON-RPC.
  */
-export class PreviewAPI {
+export class CodePreviewAPI {
     /** @type {import('../core/rpc-transport.js').RpcTransport} */
     #transport;
 
@@ -28,20 +28,20 @@ export class PreviewAPI {
         this.#transport = transport;
 
         // Register handlers for host notifications
-        this.#transport.addEventListener('preview/setContext', (params) => {
+        this.#transport.addEventListener('codePreview/setContext', (params) => {
             this.#basePath = params.basePath || '';
             if (this.#onSetContextHandler) {
                 this.#onSetContextHandler(this.#basePath);
             }
         });
 
-        this.#transport.addEventListener('preview/update', (params) => {
+        this.#transport.addEventListener('codePreview/update', (params) => {
             if (this.#onUpdateHandler) {
                 this.#onUpdateHandler(params.content);
             }
         });
 
-        this.#transport.addEventListener('preview/scroll', (params) => {
+        this.#transport.addEventListener('codePreview/scroll', (params) => {
             if (this.#onScrollHandler) {
                 this.#onScrollHandler(params.scrollPercentage);
             }
@@ -61,7 +61,7 @@ export class PreviewAPI {
      * @param {string} href - The relative path to the resource.
      */
     openResource(href) {
-        this.#transport.notify('preview/openResource', { href });
+        this.#transport.notify('codePreview/openResource', { href });
     }
 
     /**
@@ -69,7 +69,7 @@ export class PreviewAPI {
      * @param {string} href - The URL to open.
      */
     openExternal(href) {
-        this.#transport.notify('preview/openExternal', { href });
+        this.#transport.notify('codePreview/openExternal', { href });
     }
 
     /**
@@ -77,7 +77,7 @@ export class PreviewAPI {
      * @param {number} scrollPercentage - The scroll position as a percentage (0-1).
      */
     syncToEditor(scrollPercentage) {
-        this.#transport.notify('preview/syncToEditor', { scrollPercentage });
+        this.#transport.notify('codePreview/syncToEditor', { scrollPercentage });
     }
 
     /**

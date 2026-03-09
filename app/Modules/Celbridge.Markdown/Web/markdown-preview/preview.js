@@ -8,7 +8,7 @@ import { Celbridge } from 'https://celbridge-client.celbridge/celbridge.js';
 const celbridge = new Celbridge();
 
 // Document base path (relative to project root, e.g., "01_markdown/")
-// Set by the host via preview/setContext notification
+// Set by the host via codePreview/setContext notification
 let documentBasePath = '';
 
 // Configure marked with GitHub-flavored markdown options and error handling
@@ -248,7 +248,7 @@ function setupLinkHandlers() {
             // Local resource link - use celbridge.js to open in editor
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                celbridge.preview.openResource(href);
+                celbridge.codePreview.openResource(href);
             });
         } else if (isAnchorLink) {
             // Anchor link - scroll within preview
@@ -266,7 +266,7 @@ function setupLinkHandlers() {
             // External link - use celbridge.js to open in browser
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                celbridge.preview.openExternal(href);
+                celbridge.codePreview.openExternal(href);
             });
         }
     });
@@ -304,7 +304,7 @@ function setupClickToSync() {
         const percentage = totalHeight > 0 ? clickY / totalHeight : 0;
 
         // Use celbridge.js to sync editor scroll position
-        celbridge.preview.syncToEditor(Math.max(0, Math.min(1, percentage)));
+        celbridge.codePreview.syncToEditor(Math.max(0, Math.min(1, percentage)));
     });
 }
 
@@ -313,7 +313,7 @@ function init() {
     console.log('Markdown preview initializing with celbridge.js SDK');
 
     // Register handler for document context updates
-    celbridge.preview.onSetContext((basePath) => {
+    celbridge.codePreview.onSetContext((basePath) => {
         // Ensure the base path ends with a slash if not empty
         if (basePath && !basePath.endsWith('/')) {
             basePath += '/';
@@ -323,12 +323,12 @@ function init() {
     });
 
     // Register handler for content updates
-    celbridge.preview.onUpdate((content) => {
+    celbridge.codePreview.onUpdate((content) => {
         renderMarkdown(content);
     });
 
     // Register handler for scroll position changes
-    celbridge.preview.onScroll((percentage) => {
+    celbridge.codePreview.onScroll((percentage) => {
         scrollToPosition(percentage);
     });
 
