@@ -8,5 +8,5 @@ public record Project(
     string ProjectName,
     string ProjectFolderPath,
     string ProjectDataFolderPath,
-    IProjectConfigService ProjectConfig,
+    ProjectConfig Config,
     MigrationResult MigrationResult) : IProject;

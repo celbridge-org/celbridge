@@ -7,7 +7,7 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
   <Grid HorizontalAlignment="Stretch">
-    <local:MonacoEditorControl x:Name="MonacoEditor"
-                               HorizontalAlignment="Stretch"/>
+    <local:CodeEditor x:Name="MonacoEditor"
+                      HorizontalAlignment="Stretch"/>
   </Grid>
 </views:DocumentView>

@@ -83,7 +83,7 @@ public class PythonService : IPythonService, IDisposable
             var projectFileName = Path.GetFileName(project.ProjectFilePath);
 
             // Read python version from project config
-            var pythonConfig = project.ProjectConfig?.Config?.Project!;
+            var pythonConfig = project.Config.Project;
             if (pythonConfig is null)
             {
                 var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.InvalidProjectConfig, projectFileName);

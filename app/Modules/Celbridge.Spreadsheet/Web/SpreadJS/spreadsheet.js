@@ -1,7 +1,7 @@
 // Spreadsheet editor initialization for Celbridge WebView integration.
 // Uses celbridge.js for JSON-RPC communication with the host.
 
-import celbridge from 'https://shared.celbridge/celbridge.js';
+import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {

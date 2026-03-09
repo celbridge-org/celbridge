@@ -1,0 +1,404 @@
+/* Markdown Preview Styles */
+
+/* Reset and base styles */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    /* Use light color scheme by default for native elements (scrollbars, etc.) */
+    color-scheme: light;
+}
+
+/* Theme detection via prefers-color-scheme (controlled by WebView2) */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #24292f;
+    --heading-color: #1f2328;
+    --link-color: #0969da;
+    --link-hover-color: #0550ae;
+    --code-bg: #f6f8fa;
+    --code-text: #24292f;
+    --blockquote-border: #d0d7de;
+    --blockquote-text: #656d76;
+    --table-border: #d0d7de;
+    --table-header-bg: #f6f8fa;
+    --hr-color: #d0d7de;
+    --kbd-bg: #f6f8fa;
+    --kbd-border: #d0d7de;
+}
+
+@media (prefers-color-scheme: dark) {
+    html, body {
+        /* Use dark color scheme for native elements (scrollbars, etc.) */
+        color-scheme: dark;
+    }
+
+    :root {
+        --bg-color: #1e1e1e;
+        --text-color: #d4d4d4;
+        --heading-color: #e0e0e0;
+        --link-color: #58a6ff;
+        --link-hover-color: #79c0ff;
+        --code-bg: #282828;
+        --code-text: #d4d4d4;
+        --blockquote-border: #444;
+        --blockquote-text: #9e9e9e;
+        --table-border: #444;
+        --table-header-bg: #282828;
+        --hr-color: #444;
+        --kbd-bg: #282828;
+        --kbd-border: #444;
+    }
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+}
+
+#preview-container {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#preview-content {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+}
+
+/* Empty state */
+#preview-content:empty::before {
+    content: 'No preview available';
+    color: var(--blockquote-text);
+    font-style: italic;
+}
+
+/* Error state */
+.markdown-error {
+    background-color: rgba(248, 81, 73, 0.1);
+    border: 1px solid #f85149;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.markdown-error p {
+    margin: 0 0 8px 0;
+    color: #f85149;
+}
+
+.markdown-error p:last-child {
+    margin-bottom: 0;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--heading-color);
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+h1 {
+    font-size: 2em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--hr-color);
+}
+
+h2 {
+    font-size: 1.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--hr-color);
+}
+
+h3 {
+    font-size: 1.25em;
+}
+
+h4 {
+    font-size: 1em;
+}
+
+h5 {
+    font-size: 0.875em;
+}
+
+h6 {
+    font-size: 0.85em;
+    color: var(--blockquote-text);
+}
+
+/* Paragraphs */
+p {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+/* Links */
+a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
+}
+
+/* Lists */
+ul, ol {
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding-left: 2em;
+}
+
+ul ul, ul ol, ol ul, ol ol {
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
+li {
+    margin-bottom: 4px;
+    display: list-item;
+}
+
+li + li {
+    margin-top: 4px;
+}
+
+li > p {
+    margin: 0;
+}
+
+li > p + p {
+    margin-top: 8px;
+}
+
+/* Task lists */
+.task-list-item {
+    list-style: none;
+    position: relative;
+    margin-left: -1.5em;
+    padding-left: 1.5em;
+}
+
+.task-list-item > input[type="checkbox"] {
+    position: absolute;
+    left: 0;
+    top: 0.25em;
+    pointer-events: none;
+}
+
+/* Nested lists inside task items */
+.task-list-item > ul,
+.task-list-item > ol {
+    margin-top: 4px;
+}
+
+/* Code */
+code {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.875em;
+    padding: 0.2em 0.4em;
+    background-color: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 6px;
+    word-break: break-word;
+}
+
+pre {
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 0.875em;
+    line-height: 1.45;
+    background-color: var(--code-bg);
+    border-radius: 6px;
+    max-width: 100%;
+}
+
+pre code {
+    padding: 0;
+    background-color: transparent;
+    border-radius: 0;
+    font-size: inherit;
+    word-break: normal;
+}
+
+/* Blockquotes */
+blockquote {
+    margin: 0 0 16px 0;
+    padding: 0 1em;
+    color: var(--blockquote-text);
+    border-left: 4px solid var(--blockquote-border);
+}
+
+blockquote > :first-child {
+    margin-top: 0;
+}
+
+blockquote > :last-child {
+    margin-bottom: 0;
+}
+
+/* Horizontal rules */
+hr {
+    height: 0.25em;
+    padding: 0;
+    margin: 24px 0;
+    background-color: var(--hr-color);
+    border: 0;
+}
+
+/* Tables */
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-top: 0;
+    margin-bottom: 16px;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+th, td {
+    padding: 6px 13px;
+    border: 1px solid var(--table-border);
+    white-space: nowrap;
+}
+
+th {
+    font-weight: 600;
+    background-color: var(--table-header-bg);
+}
+
+tr:nth-child(2n) {
+    background-color: var(--table-header-bg);
+}
+
+/* Images */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Keyboard inputs */
+kbd {
+    display: inline-block;
+    padding: 3px 5px;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.75em;
+    line-height: normal;
+    color: var(--text-color);
+    background-color: var(--kbd-bg);
+    border: 1px solid var(--kbd-border);
+    border-radius: 6px;
+    box-shadow: inset 0 -1px 0 var(--kbd-border);
+}
+
+/* Definition lists */
+dl {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+dt {
+    font-weight: 600;
+    margin-top: 16px;
+}
+
+dd {
+    margin-left: 0;
+    margin-bottom: 16px;
+    padding: 0 16px;
+}
+
+/* Abbreviations */
+abbr[title] {
+    text-decoration: underline dotted;
+    cursor: help;
+}
+
+/* Marks / highlights */
+mark {
+    background-color: #fff8c5;
+    color: #24292f;
+    padding: 0.1em 0.2em;
+    border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    mark {
+        background-color: rgba(187, 128, 9, 0.4);
+        color: var(--text-color);
+    }
+}
+
+/* Footnotes */
+.footnotes {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--hr-color);
+    font-size: 0.875em;
+}
+
+.footnotes ol {
+    padding-left: 1.5em;
+}
+
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+}
+
+/* Alerts / admonitions (GitHub-style) */
+.markdown-alert {
+    margin-bottom: 16px;
+    padding: 8px 16px;
+    border-left: 4px solid;
+    border-radius: 6px;
+}
+
+.markdown-alert-note {
+    border-color: #58a6ff;
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.markdown-alert-tip {
+    border-color: #3fb950;
+    background-color: rgba(63, 185, 80, 0.1);
+}
+
+.markdown-alert-important {
+    border-color: #a371f7;
+    background-color: rgba(163, 113, 247, 0.1);
+}
+
+.markdown-alert-warning {
+    border-color: #d29922;
+    background-color: rgba(210, 153, 34, 0.1);
+}
+
+.markdown-alert-caution {
+    border-color: #f85149;
+    background-color: rgba(248, 81, 73, 0.1);
+}

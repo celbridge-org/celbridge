@@ -1,0 +1,4 @@
+# Ignore node_modules and package-lock.json from source control
+# These are build-time dependencies only
+node_modules/
+package-lock.json

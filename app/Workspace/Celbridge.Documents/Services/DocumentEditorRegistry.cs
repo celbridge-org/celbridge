@@ -52,17 +52,16 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
 
-        if (!_extensionToFactories.TryGetValue(extension, out var factoryList))
+        // Check factories registered for this specific extension
+        if (_extensionToFactories.TryGetValue(extension, out var factoryList))
         {
-            return Result<IDocumentEditorFactory>.Fail($"No factory registered for extension: '{extension}'");
-        }
-
-        // Find the first factory (sorted by priority) that can handle the resource
-        foreach (var factory in factoryList)
-        {
-            if (factory.CanHandle(fileResource, filePath))
+            // Find the first factory (sorted by priority) that can handle the resource
+            foreach (var factory in factoryList)
             {
-                return Result<IDocumentEditorFactory>.Ok(factory);
+                if (factory.CanHandle(fileResource, filePath))
+                {
+                    return Result<IDocumentEditorFactory>.Ok(factory);
+                }
             }
         }
 

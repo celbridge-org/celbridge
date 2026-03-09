@@ -1,7 +1,7 @@
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.Messaging;
-using Celbridge.UserInterface;
+using Celbridge.WebView;
 using Celbridge.Workspace;
 
 namespace Celbridge.FileViewer.Views;

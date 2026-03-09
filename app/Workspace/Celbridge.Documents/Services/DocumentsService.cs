@@ -534,8 +534,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             _logger.LogWarning(createResult, $"Factory failed to create document view for: '{fileResource}'");
         }
 
-        // Fall back to TextBoxDocumentView for text files on non-Windows platforms
-        // or when no factory is registered
+        // Fall back for text files when no factory is registered
         var viewType = GetDocumentViewType(fileResource);
 
         if (viewType == DocumentViewType.UnsupportedFormat)
@@ -543,9 +542,24 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        // Use TextBoxDocumentView as the ultimate fallback for text documents
+        // For text documents with unrecognized extensions, try to find a factory that can handle them
+        // This allows CodeEditorFactory to handle arbitrary text files on Windows via TextBinarySniffer
         if (viewType == DocumentViewType.TextDocument)
         {
+            // Check all factories to see if any can handle this text file
+            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderByDescending(f => f.Priority))
+            {
+                if (factory.CanHandle(fileResource, filePath))
+                {
+                    var createResult = factory.CreateDocumentView(fileResource);
+                    if (createResult.IsSuccess)
+                    {
+                        return createResult;
+                    }
+                }
+            }
+
+            // Ultimate fallback to TextBoxDocumentView
             var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
             return Result<IDocumentView>.Ok(textBoxView);
         }

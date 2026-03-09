@@ -1,7 +1,7 @@
 // Monaco Editor initialization for Celbridge WebView integration.
 // Uses celbridge.js for JSON-RPC communication with the host.
 
-import celbridge from 'https://shared.celbridge/celbridge.js';
+import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { monacoClient } from './monaco-client.js';
 
 // State
@@ -9,6 +9,7 @@ let editor = null;
 let client = null;
 let isInitialized = false;
 let currentLanguage = 'plaintext';
+let pendingNavigation = null;
 
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
@@ -21,6 +22,8 @@ function initializeEditor() {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = prefersDark ? 'vs-dark' : 'vs-light';
 
+    // Create editor with default options
+    // scrollBeyondLastLine will be updated during handleEditorInitialize if specified
     editor = monaco.editor.create(document.getElementById('container'), {
         language: 'plaintext',
         automaticLayout: true,
@@ -31,6 +34,7 @@ function initializeEditor() {
 
     setupLineEndings();
     setupContentChangeListener();
+    setupScrollListener();
     setupThemeListener();
 
     // Signal that the editor is ready via JSON-RPC notification
@@ -50,21 +54,8 @@ function notifyClientReady() {
         return;
     }
 
-    // Send standard JSON-RPC 2.0 notification to signal readiness
-    const message = {
-        jsonrpc: '2.0',
-        method: 'client/ready',
-        params: {}
-    };
-
-    try {
-        if (window.chrome && typeof chrome.webview !== 'undefined') {
-            chrome.webview.postMessage(JSON.stringify(message));
-        }
-    }
-    catch (ex) {
-        console.error('Failed to send clientReady notification:', ex);
-    }
+    // Signal readiness via the standard celbridge document API
+    celbridge.document.notifyClientReady();
 }
 
 function setupLineEndings() {
@@ -89,13 +80,81 @@ function setupContentChangeListener() {
     });
 }
 
-async function handleEditorInitialize(language) {
+function setupScrollListener() {
+    // Throttle scroll events to avoid flooding the host
+    let scrollThrottleTimeout = null;
+
+    editor.onDidScrollChange((event) => {
+        if (!window.isWebView || !isInitialized || !client) {
+            return;
+        }
+
+        // Throttle to max ~30 updates per second
+        if (scrollThrottleTimeout) {
+            return;
+        }
+
+        scrollThrottleTimeout = setTimeout(() => {
+            scrollThrottleTimeout = null;
+
+            const scrollTop = editor.getScrollTop();
+            const clientHeight = editor.getLayoutInfo().height;
+            const contentHeight = editor.getContentHeight();
+            const maxScroll = contentHeight - clientHeight;
+
+            // Calculate scroll percentage (0.0 to 1.0)
+            const percentage = maxScroll > 0
+                ? Math.min(1, Math.max(0, scrollTop / maxScroll))
+                : 0;
+
+            // Notify host of scroll position change
+            client.input.notifyScrollChanged(percentage);
+        }, 33);
+    });
+}
+
+function handleScrollToPercentage(percentage) {
+    if (!editor) {
+        return;
+    }
+
+    const clientHeight = editor.getLayoutInfo().height;
+    const contentHeight = editor.getContentHeight();
+    const maxScroll = contentHeight - clientHeight;
+    const scrollTop = maxScroll * Math.max(0, Math.min(1, percentage));
+
+    editor.setScrollTop(scrollTop);
+}
+
+function handleInsertText(text) {
+    if (!editor) {
+        return;
+    }
+
+    const selection = editor.getSelection();
+    const range = {
+        startLineNumber: selection.startLineNumber,
+        startColumn: selection.startColumn,
+        endLineNumber: selection.endLineNumber,
+        endColumn: selection.endColumn
+    };
+
+    editor.executeEdits('insert', [{ range: range, text: text }]);
+    editor.focus();
+}
+
+async function handleEditorInitialize(language, scrollBeyondLastLine) {
     if (!window.isWebView) {
         return;
     }
 
     try {
         client = celbridge;
+
+        // Apply editor options
+        if (scrollBeyondLastLine !== undefined) {
+            editor.updateOptions({ scrollBeyondLastLine: scrollBeyondLastLine });
+        }
 
         // Set language before loading content
         if (language) {
@@ -126,6 +185,13 @@ async function handleEditorInitialize(language) {
         });
 
         isInitialized = true;
+
+        // Apply any navigation that arrived before content was loaded
+        if (pendingNavigation) {
+            const nav = pendingNavigation;
+            pendingNavigation = null;
+            applyNavigation(nav.lineNumber, nav.column, nav.endLineNumber, nav.endColumn);
+        }
     }
     catch (ex) {
         console.error('Failed to initialize host connection:', ex);
@@ -139,17 +205,19 @@ function handleEditorSetLanguage(language) {
     }
 }
 
-function handleEditorNavigateToLocation(lineNumber, column) {
-    if (!editor) {
-        return;
+function applyNavigation(lineNumber, column, endLineNumber, endColumn) {
+    if (endLineNumber > 0) {
+        // Select the matched text range (supports both single-line and multi-line selections)
+        editor.setSelection({
+            startLineNumber: lineNumber,
+            startColumn: column,
+            endLineNumber: endLineNumber,
+            endColumn: endColumn
+        });
+    } else {
+        // No range provided - just position the cursor
+        editor.setPosition({ lineNumber: lineNumber, column: column });
     }
-
-    // Ensure valid values (Monaco uses 1-based line and column numbers)
-    lineNumber = Math.max(1, lineNumber || 1);
-    column = Math.max(1, column || 1);
-
-    // Set the cursor position
-    editor.setPosition({ lineNumber: lineNumber, column: column });
 
     // Reveal the line in the center of the editor viewport
     editor.revealLineInCenter(lineNumber);
@@ -158,9 +226,29 @@ function handleEditorNavigateToLocation(lineNumber, column) {
     editor.focus();
 }
 
+function handleEditorNavigateToLocation(lineNumber, column, endLineNumber, endColumn) {
+    if (!editor) {
+        return;
+    }
+
+    // Ensure valid values (Monaco uses 1-based line and column numbers)
+    lineNumber = Math.max(1, lineNumber || 1);
+    column = Math.max(1, column || 1);
+
+    if (!isInitialized) {
+        // Content has not been loaded yet - buffer this request and replay it after setValue
+        pendingNavigation = { lineNumber, column, endLineNumber, endColumn };
+        return;
+    }
+
+    applyNavigation(lineNumber, column, endLineNumber, endColumn);
+}
+
 // Register RPC handlers via monaco-client
 if (window.isWebView) {
     monacoClient.onInitialize(handleEditorInitialize);
     monacoClient.onSetLanguage(handleEditorSetLanguage);
     monacoClient.onNavigateToLocation(handleEditorNavigateToLocation);
+    monacoClient.onScrollToPercentage(handleScrollToPercentage);
+    monacoClient.onInsertText(handleInsertText);
 }

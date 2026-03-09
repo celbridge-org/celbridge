@@ -1,0 +1,42 @@
+{
+  "name": "celbridge-client",
+  "version": "0.1.0",
+  "description": "JavaScript client SDK for communicating with the Celbridge .NET host",
+  "type": "module",
+  "main": "celbridge.js",
+  "exports": {
+    ".": "./celbridge.js",
+    "./types": "./types.js"
+  },
+  "files": [
+    "celbridge.js",
+    "types.js",
+    "core/",
+    "api/"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "celbridge",
+    "extension",
+    "sdk",
+    "webview",
+    "json-rpc"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/celbridge-org/celbridge"
+  },
+  "homepage": "https://celbridge.org",
+  "bugs": {
+    "url": "https://github.com/celbridge-org/celbridge/issues"
+  },
+  "license": "MIT",
+  "author": "Celbridge Contributors",
+  "devDependencies": {
+    "eslint": "^10.0.2",
+    "vitest": "^2.0.0"
+  }
+}

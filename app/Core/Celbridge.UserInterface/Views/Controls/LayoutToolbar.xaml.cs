@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Console;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Views;
@@ -11,6 +12,7 @@ public sealed partial class LayoutToolbar : UserControl
     private readonly ICommandService _commandService;
     private readonly IWindowModeService _windowModeService;
     private readonly ILayoutService _layoutService;
+    private readonly IWorkspaceFeatures _workspaceFeatures;
 
     private bool _isUpdatingUI = false;
     private bool _isOnWorkspacePage = false;
@@ -24,6 +26,7 @@ public sealed partial class LayoutToolbar : UserControl
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _windowModeService = ServiceLocator.AcquireService<IWindowModeService>();
         _layoutService = ServiceLocator.AcquireService<ILayoutService>();
+        _workspaceFeatures = ServiceLocator.AcquireService<IWorkspaceFeatures>();
 
         Loaded += LayoutToolbar_Loaded;
         Unloaded += LayoutToolbar_Unloaded;
@@ -41,6 +44,7 @@ public sealed partial class LayoutToolbar : UserControl
         _messengerService.Register<WindowModeChangedMessage>(this, OnWindowModeChanged);
         _messengerService.Register<RegionVisibilityChangedMessage>(this, OnRegionVisibilityChanged);
         _messengerService.Register<ActivePageChangedMessage>(this, OnActivePageChanged);
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
     }
 
     private void LayoutToolbar_Unloaded(object sender, RoutedEventArgs e)
@@ -58,6 +62,12 @@ public sealed partial class LayoutToolbar : UserControl
         PanelToggleButtons.Visibility = visibility;
         ResetLayoutSeparator.Visibility = visibility;
         ResetLayoutButton.Visibility = visibility;
+
+        // Hide console panel toggle button if console-panel feature is disabled
+        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled) 
+            ? Visibility.Visible 
+            : Visibility.Collapsed;
     }
 
     private void ApplyTooltips()
@@ -109,6 +119,12 @@ public sealed partial class LayoutToolbar : UserControl
     private void OnActivePageChanged(object recipient, ActivePageChangedMessage message)
     {
         _isOnWorkspacePage = message.ActivePage == ApplicationPage.Workspace;
+        UpdatePanelToggleVisibility();
+    }
+
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
+    {
+        // Update button visibility when workspace loads (feature flags may have changed)
         UpdatePanelToggleVisibility();
     }
 
