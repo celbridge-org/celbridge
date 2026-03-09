@@ -1,3 +1,4 @@
+using System.Text;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 
@@ -6,10 +7,14 @@ namespace Celbridge.Notes.ViewModels;
 public partial class NoteDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
+    private readonly IFileTemplateService _fileTemplateService;
 
-    public NoteDocumentViewModel(IMessengerService messengerService)
+    public NoteDocumentViewModel(
+        IMessengerService messengerService,
+        IFileTemplateService fileTemplateService)
     {
         _messengerService = messengerService;
+        _fileTemplateService = fileTemplateService;
 
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
@@ -61,12 +66,18 @@ public partial class NoteDocumentViewModel : DocumentViewModel
     {
         if (!File.Exists(FilePath))
         {
-            // Return empty TipTap JSON document structure for new files
-            return "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+            var emptyContent = _fileTemplateService.GetNewFileContent(FilePath);
+            return Encoding.UTF8.GetString(emptyContent);
         }
 
         var content = await File.ReadAllTextAsync(FilePath);
-        return content ?? "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+        if (string.IsNullOrEmpty(content))
+        {
+            var emptyContent = _fileTemplateService.GetNewFileContent(FilePath);
+            return Encoding.UTF8.GetString(emptyContent);
+        }
+
+        return content;
     }
 
     public async Task<Result> SaveDocument()
