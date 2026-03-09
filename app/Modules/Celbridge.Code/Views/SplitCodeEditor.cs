@@ -12,7 +12,7 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.Code.Views;
 
 /// <summary>
-/// Controls how the SplitEditorControl arranges its editor and preview panels.
+/// Controls how the SplitCodeEditor arranges its editor and preview panels.
 /// </summary>
 public enum SplitEditorViewMode
 {
@@ -26,9 +26,9 @@ public enum SplitEditorViewMode
 /// The preview panel is rendered by an IPreviewRenderer implementation.
 /// Uses JSON-RPC via CelbridgeHost for communication with the preview WebView.
 /// </summary>
-public sealed partial class SplitEditorControl : UserControl, IHostPreview
+public sealed partial class SplitCodeEditor : UserControl, IHostPreview
 {
-    private readonly ILogger<SplitEditorControl> _logger;
+    private readonly ILogger<SplitCodeEditor> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
@@ -83,9 +83,9 @@ public sealed partial class SplitEditorControl : UserControl, IHostPreview
     /// </summary>
     public event Action? EditorFocused;
 
-    public SplitEditorControl()
+    public SplitCodeEditor()
     {
-        _logger = ServiceLocator.AcquireService<ILogger<SplitEditorControl>>();
+        _logger = ServiceLocator.AcquireService<ILogger<SplitCodeEditor>>();
         _commandService = ServiceLocator.AcquireService<ICommandService>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();

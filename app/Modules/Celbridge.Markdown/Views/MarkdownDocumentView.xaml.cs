@@ -12,7 +12,7 @@ namespace Celbridge.Markdown.Views;
 
 /// <summary>
 /// Document view for editing markdown files using the Monaco editor with optional preview.
-/// Uses SplitEditorControl for the editor+preview functionality.
+/// Uses SplitCodeEditor for the editor+preview functionality.
 /// </summary>
 public sealed partial class MarkdownDocumentView : DocumentView
 {
@@ -53,7 +53,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
         // Set up content loader callback for Monaco to pull content when needed
         SplitEditor.MonacoEditor.ContentLoader = LoadContentFromDiskAsync;
 
-        // Subscribe to SplitEditorControl events
+        // Subscribe to SplitCodeEditor events
         SplitEditor.ContentChanged += OnContentChanged;
         SplitEditor.EditorFocused += OnEditorFocused;
 

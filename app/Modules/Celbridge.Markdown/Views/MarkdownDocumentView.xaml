@@ -61,9 +61,9 @@
         </Border>
 
         <!-- Split Editor Control -->
-        <code:SplitEditorControl x:Name="SplitEditor"
-                                 Grid.Row="1"
-                                 HorizontalAlignment="Stretch"
-                                 VerticalAlignment="Stretch" />
+        <code:SplitCodeEditor x:Name="SplitEditor"
+                              Grid.Row="1"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch" />
     </Grid>
 </views:DocumentView>
