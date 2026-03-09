@@ -241,19 +241,20 @@ public partial class SearchPanelViewModel : ObservableObject
             FileResults.Add(fileVm);
         }
 
-        // Update status text
-        var matchWord = results.TotalMatches == 1
-            ? _stringLocalizer.GetString("SearchPanel_Match")
-            : _stringLocalizer.GetString("SearchPanel_Matches");
-        var fileWord = results.TotalFiles == 1
-            ? _stringLocalizer.GetString("SearchPanel_File")
-            : _stringLocalizer.GetString("SearchPanel_Files");
+        // Update status text using localized format strings
+        var statusKey = (results.TotalMatches == 1, results.TotalFiles == 1) switch
+        {
+            (true, true) => "SearchPanel_Status_1Match1File",
+            (true, false) => "SearchPanel_Status_1MatchNFiles",
+            (false, true) => "SearchPanel_Status_NMatches1File",
+            (false, false) => "SearchPanel_Status_NMatchesNFiles"
+        };
 
-        StatusText = $"{results.TotalMatches} {matchWord} {_stringLocalizer.GetString("SearchPanel_In")} {results.TotalFiles} {fileWord}";
+        StatusText = _stringLocalizer.GetString(statusKey, results.TotalMatches, results.TotalFiles);
 
         if (results.ReachedMaxResults)
         {
-            StatusText += $" ({_stringLocalizer.GetString("SearchPanel_ResultsCapped")})";
+            StatusText = _stringLocalizer.GetString("SearchPanel_StatusResultsCapped", StatusText);
         }
     }
 
