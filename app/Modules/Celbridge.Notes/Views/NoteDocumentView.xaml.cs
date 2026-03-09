@@ -439,18 +439,18 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         return Result<ResourceKey>.Fail($"Could not resolve resource path: {path}");
     }
 
-    #region IHostDocument overrides
+    #region IHostDocument
 
-    public override void OnDocumentChanged()
+    public void OnDocumentChanged()
     {
         ViewModel.OnDataChanged();
     }
 
     #endregion
 
-    #region IHostInput overrides
+    #region IHostInput
 
-    public override void OnLinkClicked(string href)
+    public void OnLinkClicked(string href)
     {
         if (string.IsNullOrEmpty(href))
         {

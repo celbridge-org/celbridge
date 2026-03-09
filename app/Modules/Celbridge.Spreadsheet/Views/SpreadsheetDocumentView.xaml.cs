@@ -273,15 +273,15 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     #endregion
 
-    #region IHostDocument overrides
+    #region IHostDocument
 
-    public override void OnDocumentChanged()
+    public void OnDocumentChanged()
     {
         // Flag the document as modified so it will attempt to save after a short delay.
         ViewModel.OnDataChanged();
     }
 
-    public override void OnImportComplete(bool success, string? error = null)
+    public void OnImportComplete(bool success, string? error = null)
     {
         _isImportInProgress = false;
 

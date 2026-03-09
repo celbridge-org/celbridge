@@ -112,65 +112,16 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostInput
         Host?.StartListening();
     }
 
-    #region IHostDocument virtual methods
-
-    /// <summary>
-    /// Called when the document content has changed in the WebView.
-    /// Override in subclasses to handle document changes.
-    /// </summary>
-    public virtual void OnDocumentChanged()
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when an import operation completes in the WebView.
-    /// Override in subclasses to handle import completion.
-    /// </summary>
-    public virtual void OnImportComplete(bool success, string? error = null)
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when the JavaScript client has finished initializing.
-    /// Override in subclasses to handle client ready notification.
-    /// </summary>
-    public virtual void OnClientReady()
-    {
-        // Default implementation does nothing
-    }
-
-    #endregion
-
     #region IHostInput
 
     /// <summary>
     /// Called when a keyboard shortcut is pressed in the WebView.
     /// Default implementation forwards to the keyboard shortcut service.
     /// </summary>
-    public virtual void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
-    }
-
-    /// <summary>
-    /// Called when a link is clicked in the WebView.
-    /// Override in subclasses to handle link clicks.
-    /// </summary>
-    public virtual void OnLinkClicked(string href)
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when the scroll position changes in the editor.
-    /// Override in subclasses to handle scroll position changes.
-    /// </summary>
-    public virtual void OnScrollPositionChanged(double scrollPercentage)
-    {
-        // Default implementation does nothing
     }
 
     #endregion
