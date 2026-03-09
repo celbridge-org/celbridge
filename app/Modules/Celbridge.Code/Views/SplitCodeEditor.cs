@@ -193,6 +193,11 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
     public Task<string> GetContentAsync() => MonacoEditor.GetContentAsync();
 
     /// <summary>
+    /// Inserts text at the current cursor position in the Monaco editor (or replaces the current selection).
+    /// </summary>
+    public Task InsertTextAtCaretAsync(string text) => MonacoEditor.InsertTextAtCaretAsync(text);
+
+    /// <summary>
     /// Cleans up resources when the control is being disposed.
     /// </summary>
     public async Task CleanupAsync()

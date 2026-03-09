@@ -56,6 +56,56 @@
                               Glyph="&#xE943;"
                               FontSize="14" />
                 </ToggleButton>
+
+                <Border Width="1"
+                        Height="16"
+                        Margin="4,0"
+                        Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                <Button x:Name="InsertSnippetButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        ToolTipService.ToolTip="{x:Bind InsertSnippetTooltip}"
+                        ToolTipService.Placement="Bottom">
+                    <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              Glyph="&#xE710;"
+                              FontSize="14" />
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="{x:Bind SnippetBoldLabel}"
+                                            Click="InsertBold_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetItalicLabel}"
+                                            Click="InsertItalic_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetStrikethroughLabel}"
+                                            Click="InsertStrikethrough_Click" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="{x:Bind SnippetUnorderedListLabel}"
+                                            Click="InsertUnorderedList_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetOrderedListLabel}"
+                                            Click="InsertOrderedList_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetTaskListLabel}"
+                                            Click="InsertTaskList_Click" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="{x:Bind SnippetCodeBlockLabel}"
+                                            Click="InsertCodeBlock_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetBlockquoteLabel}"
+                                            Click="InsertBlockquote_Click" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="{x:Bind SnippetLinkLabel}"
+                                            Click="InsertLink_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetImageLabel}"
+                                            Click="InsertImage_Click" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="{x:Bind SnippetTableLabel}"
+                                            Click="InsertTable_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetFootnoteLabel}"
+                                            Click="InsertFootnote_Click" />
+                            <MenuFlyoutItem Text="{x:Bind SnippetHorizontalRuleLabel}"
+                                            Click="InsertHorizontalRule_Click" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
         </Border>
 

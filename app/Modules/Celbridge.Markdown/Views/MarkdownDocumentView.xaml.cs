@@ -25,6 +25,21 @@ public sealed partial class MarkdownDocumentView : DocumentView
     private string ViewModeSplitTooltip => _stringLocalizer.GetString("Markdown_ViewMode_Split");
     private string ViewModeSourceTooltip => _stringLocalizer.GetString("Markdown_ViewMode_Source");
 
+    private string InsertSnippetTooltip => _stringLocalizer.GetString("Markdown_Snippet_Insert");
+    private string SnippetBoldLabel => _stringLocalizer.GetString("Markdown_Snippet_Bold");
+    private string SnippetItalicLabel => _stringLocalizer.GetString("Markdown_Snippet_Italic");
+    private string SnippetStrikethroughLabel => _stringLocalizer.GetString("Markdown_Snippet_Strikethrough");
+    private string SnippetUnorderedListLabel => _stringLocalizer.GetString("Markdown_Snippet_UnorderedList");
+    private string SnippetOrderedListLabel => _stringLocalizer.GetString("Markdown_Snippet_OrderedList");
+    private string SnippetTaskListLabel => _stringLocalizer.GetString("Markdown_Snippet_TaskList");
+    private string SnippetCodeBlockLabel => _stringLocalizer.GetString("Markdown_Snippet_CodeBlock");
+    private string SnippetBlockquoteLabel => _stringLocalizer.GetString("Markdown_Snippet_Blockquote");
+    private string SnippetLinkLabel => _stringLocalizer.GetString("Markdown_Snippet_Link");
+    private string SnippetImageLabel => _stringLocalizer.GetString("Markdown_Snippet_Image");
+    private string SnippetTableLabel => _stringLocalizer.GetString("Markdown_Snippet_Table");
+    private string SnippetFootnoteLabel => _stringLocalizer.GetString("Markdown_Snippet_Footnote");
+    private string SnippetHorizontalRuleLabel => _stringLocalizer.GetString("Markdown_Snippet_HorizontalRule");
+
     private readonly MarkdownPreviewRenderer _previewRenderer = new();
 
     public MarkdownDocumentViewModel ViewModel { get; }
@@ -233,6 +248,7 @@ public sealed partial class MarkdownDocumentView : DocumentView
         PreviewModeButton.IsChecked = viewMode == MarkdownViewMode.Preview;
         SplitModeButton.IsChecked = viewMode == MarkdownViewMode.Split;
         SourceModeButton.IsChecked = viewMode == MarkdownViewMode.Source;
+        InsertSnippetButton.IsEnabled = viewMode != MarkdownViewMode.Preview;
 
         ViewModel.ViewMode = viewMode;
     }
@@ -248,4 +264,41 @@ public sealed partial class MarkdownDocumentView : DocumentView
         };
         SplitEditor.SetViewMode(splitEditorViewMode);
     }
+
+    #region GFM snippet insertion
+
+    private const string BoldSnippet = "**bold text**";
+    private const string ItalicSnippet = "*italic text*";
+    private const string StrikethroughSnippet = "~~strikethrough text~~";
+    private const string UnorderedListSnippet = "- Item 1\n- Item 2\n- Item 3\n";
+    private const string OrderedListSnippet = "1. Item 1\n2. Item 2\n3. Item 3\n";
+    private const string TaskListSnippet = "- [ ] Task 1\n- [ ] Task 2\n- [x] Completed task\n";
+    private const string CodeBlockSnippet = "```language\ncode here\n```\n";
+    private const string BlockquoteSnippet = "> Quoted text here\n";
+    private const string LinkSnippet = "[title](https://example.com)";
+    private const string ImageSnippet = "![alt text](image.png)";
+    private const string TableSnippet = "| Header 1 | Header 2 | Header 3 |\n| -------- | -------- | -------- |\n| Cell     | Cell     | Cell     |\n| Cell     | Cell     | Cell     |\n";
+    private const string FootnoteSnippet = "Here is a footnote reference.[^1]\n\n[^1]: Footnote text here.\n";
+    private const string HorizontalRuleSnippet = "\n---\n";
+
+    private async void InsertBold_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(BoldSnippet);
+    private async void InsertItalic_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(ItalicSnippet);
+    private async void InsertStrikethrough_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(StrikethroughSnippet);
+    private async void InsertUnorderedList_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(UnorderedListSnippet);
+    private async void InsertOrderedList_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(OrderedListSnippet);
+    private async void InsertTaskList_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(TaskListSnippet);
+    private async void InsertCodeBlock_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(CodeBlockSnippet);
+    private async void InsertBlockquote_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(BlockquoteSnippet);
+    private async void InsertLink_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(LinkSnippet);
+    private async void InsertImage_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(ImageSnippet);
+    private async void InsertTable_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(TableSnippet);
+    private async void InsertFootnote_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(FootnoteSnippet);
+    private async void InsertHorizontalRule_Click(object sender, RoutedEventArgs e) => await InsertSnippetAsync(HorizontalRuleSnippet);
+
+    private async Task InsertSnippetAsync(string snippet)
+    {
+        await SplitEditor.InsertTextAtCaretAsync(snippet);
+    }
+
+    #endregion
 }

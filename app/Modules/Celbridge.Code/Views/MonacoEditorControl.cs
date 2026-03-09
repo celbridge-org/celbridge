@@ -299,6 +299,18 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     }
 
     /// <summary>
+    /// Inserts text at the current cursor position (or replaces the current selection).
+    /// </summary>
+    public async Task InsertTextAtCaretAsync(string text)
+    {
+        if (_host is not null)
+        {
+            await _host.InsertTextAsync(text);
+            _webView?.Focus(FocusState.Programmatic);
+        }
+    }
+
+    /// <summary>
     /// Prepares the control for disposal.
     /// </summary>
     public async Task CleanupAsync()

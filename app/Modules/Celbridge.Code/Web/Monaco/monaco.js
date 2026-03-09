@@ -126,6 +126,23 @@ function handleScrollToPercentage(percentage) {
     editor.setScrollTop(scrollTop);
 }
 
+function handleInsertText(text) {
+    if (!editor) {
+        return;
+    }
+
+    const selection = editor.getSelection();
+    const range = {
+        startLineNumber: selection.startLineNumber,
+        startColumn: selection.startColumn,
+        endLineNumber: selection.endLineNumber,
+        endColumn: selection.endColumn
+    };
+
+    editor.executeEdits('insert', [{ range: range, text: text }]);
+    editor.focus();
+}
+
 async function handleEditorInitialize(language, scrollBeyondLastLine) {
     if (!window.isWebView) {
         return;
@@ -233,4 +250,5 @@ if (window.isWebView) {
     monacoClient.onSetLanguage(handleEditorSetLanguage);
     monacoClient.onNavigateToLocation(handleEditorNavigateToLocation);
     monacoClient.onScrollToPercentage(handleScrollToPercentage);
+    monacoClient.onInsertText(handleInsertText);
 }

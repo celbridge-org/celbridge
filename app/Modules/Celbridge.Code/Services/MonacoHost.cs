@@ -7,10 +7,11 @@ namespace Celbridge.Code.Services;
 /// </summary>
 internal static class MonacoRpcMethods
 {
-    public const string EditorInitialize = "editor/initialize";
-    public const string EditorSetLanguage = "editor/setLanguage";
-    public const string EditorNavigateToLocation = "editor/navigateToLocation";
-    public const string EditorScrollToPercentage = "editor/scrollToPercentage";
+    public const string Initialize = "monaco/initialize";
+    public const string SetLanguage = "monaco/setLanguage";
+    public const string NavigateToLocation = "monaco/navigateToLocation";
+    public const string ScrollToPercentage = "monaco/scrollToPercentage";
+    public const string InsertText = "monaco/insertText";
 }
 
 /// <summary>
@@ -64,7 +65,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task InitializeEditorAsync(string language, bool scrollBeyondLastLine = true)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorInitialize, new 
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.Initialize, new 
         { 
             language,
             scrollBeyondLastLine
@@ -76,7 +77,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task SetLanguageAsync(string language)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorSetLanguage, new { language });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.SetLanguage, new { language });
     }
 
     /// <summary>
@@ -84,7 +85,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task NavigateToLocationAsync(int lineNumber, int column, int endLineNumber = 0, int endColumn = 0)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorNavigateToLocation, new { lineNumber, column, endLineNumber, endColumn });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.NavigateToLocation, new { lineNumber, column, endLineNumber, endColumn });
     }
 
     /// <summary>
@@ -92,7 +93,15 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task ScrollToPercentageAsync(double percentage)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.EditorScrollToPercentage, new { percentage });
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.ScrollToPercentage, new { percentage });
+    }
+
+    /// <summary>
+    /// Inserts text at the current cursor position (or replaces the current selection).
+    /// </summary>
+    public Task InsertTextAsync(string text)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.InsertText, new { text });
     }
 
     public void Dispose()
