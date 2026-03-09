@@ -7,6 +7,8 @@ namespace Celbridge.Settings.Services;
 /// </summary>
 public class FeatureFlagService : IFeatureFlagService
 {
+    private const string FeatureFlagKey = "FeatureFlags";
+
     private readonly IConfiguration _configuration;
 
     public FeatureFlagService(IConfiguration configuration)
@@ -16,7 +18,7 @@ public class FeatureFlagService : IFeatureFlagService
 
     public bool IsEnabled(string featureName)
     {
-        var section = _configuration.GetSection("FeatureFlags");
+        var section = _configuration.GetSection(FeatureFlagKey);
         var value = section[featureName];
 
         if (string.IsNullOrEmpty(value))
