@@ -1058,13 +1058,4 @@ Do you wish to continue?</value>
   <data name="Markdown_ViewMode_Source" xml:space="preserve">
     <value>Source editor</value>
   </data>
-  <data name="Markdown_ViewMode_Preview_Label" xml:space="preserve">
-    <value>Preview</value>
-  </data>
-  <data name="Markdown_ViewMode_Split_Label" xml:space="preserve">
-    <value>Split</value>
-  </data>
-  <data name="Markdown_ViewMode_Source_Label" xml:space="preserve">
-    <value>Source</value>
-  </data>
 </root>

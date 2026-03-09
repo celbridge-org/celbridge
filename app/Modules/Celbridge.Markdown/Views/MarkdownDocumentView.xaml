@@ -28,6 +28,7 @@
                               Height="32"
                               Padding="0"
                               ToolTipService.ToolTip="{x:Bind ViewModePreviewTooltip}"
+                              ToolTipService.Placement="Bottom"
                               Click="PreviewModeButton_Click">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                               Glyph="&#xE736;"
@@ -38,6 +39,7 @@
                               Height="32"
                               Padding="0"
                               ToolTipService.ToolTip="{x:Bind ViewModeSplitTooltip}"
+                              ToolTipService.Placement="Bottom"
                               Click="SplitModeButton_Click">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                               Glyph="&#xE8B2;"
@@ -48,15 +50,12 @@
                               Height="32"
                               Padding="0"
                               ToolTipService.ToolTip="{x:Bind ViewModeSourceTooltip}"
+                              ToolTipService.Placement="Bottom"
                               Click="SourceModeButton_Click">
                     <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
                               Glyph="&#xE943;"
                               FontSize="14" />
                 </ToggleButton>
-                <TextBlock x:Name="ViewModeLabel"
-                           VerticalAlignment="Center"
-                           Margin="8,0,0,0"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Border>
 

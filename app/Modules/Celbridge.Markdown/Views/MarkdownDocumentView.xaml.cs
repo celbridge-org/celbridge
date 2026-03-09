@@ -25,10 +25,6 @@ public sealed partial class MarkdownDocumentView : DocumentView
     private string ViewModeSplitTooltip => _stringLocalizer.GetString("Markdown_ViewMode_Split");
     private string ViewModeSourceTooltip => _stringLocalizer.GetString("Markdown_ViewMode_Source");
 
-    private string ViewModePreviewLabel => _stringLocalizer.GetString("Markdown_ViewMode_Preview_Label");
-    private string ViewModeSplitLabel => _stringLocalizer.GetString("Markdown_ViewMode_Split_Label");
-    private string ViewModeSourceLabel => _stringLocalizer.GetString("Markdown_ViewMode_Source_Label");
-
     private readonly MarkdownPreviewRenderer _previewRenderer = new();
 
     public MarkdownDocumentViewModel ViewModel { get; }
@@ -237,14 +233,6 @@ public sealed partial class MarkdownDocumentView : DocumentView
         PreviewModeButton.IsChecked = viewMode == MarkdownViewMode.Preview;
         SplitModeButton.IsChecked = viewMode == MarkdownViewMode.Split;
         SourceModeButton.IsChecked = viewMode == MarkdownViewMode.Source;
-
-        ViewModeLabel.Text = viewMode switch
-        {
-            MarkdownViewMode.Preview => ViewModePreviewLabel,
-            MarkdownViewMode.Split => ViewModeSplitLabel,
-            MarkdownViewMode.Source => ViewModeSourceLabel,
-            _ => ViewModePreviewLabel
-        };
 
         ViewModel.ViewMode = viewMode;
     }
