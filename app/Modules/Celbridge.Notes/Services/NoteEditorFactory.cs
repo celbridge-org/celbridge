@@ -1,4 +1,5 @@
 using Celbridge.Notes.Views;
+using Celbridge.Workspace;
 
 namespace Celbridge.Notes.Services;
 

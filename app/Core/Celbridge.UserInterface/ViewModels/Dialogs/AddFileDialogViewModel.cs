@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Celbridge.Explorer;
 using Celbridge.Settings;
 using Celbridge.Validators;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.ViewModels;
 

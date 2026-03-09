@@ -1,4 +1,4 @@
-namespace Celbridge.Settings;
+namespace Celbridge.Workspace;
 
 /// <summary>
 /// Service for checking if features are enabled at the workspace level.
