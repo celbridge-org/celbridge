@@ -39,3 +39,18 @@ public record SearchResults(
 public record ReplaceResult(
     bool Success,
     int ReplacementsCount);
+
+/// <summary>
+/// Represents the result of a single-match replace operation.
+/// </summary>
+public record ReplaceMatchResult(
+    bool Success);
+
+/// <summary>
+/// Represents the result of a Replace All operation across multiple files.
+/// </summary>
+public record ReplaceAllResult(
+    int TotalReplacements,
+    int FilesModified,
+    int FilesFailed,
+    bool WasCancelled);

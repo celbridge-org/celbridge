@@ -91,10 +91,17 @@
                Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
                Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-      <!-- Placeholder for Replace All button (Phase 2) -->
-      <Border Grid.Column="1"
-              Width="36"
-              Margin="4,0,0,0"/>
+      <!-- Replace All button -->
+      <Button Grid.Column="1"
+              Command="{x:Bind ViewModel.ReplaceAllCommand}"
+              Padding="8,0"
+              Margin="4,0,0,0"
+              VerticalAlignment="Bottom"
+              Height="32"
+              IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
+              ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceAllTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
+      </Button>
     </Grid>
 
     <!-- Search Options -->
@@ -244,13 +251,14 @@
                               Margin="0,0,8,0">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SearchMatchLineViewModel">
-                      <Grid Padding="4,2"
+                      <Grid Padding="4,4"
                             Margin="0,1"
                             PointerPressed="MatchLine_PointerPressed"
                             Background="Transparent">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="36"/>
                           <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Line Number -->
@@ -267,6 +275,18 @@
                           <Run Text="{x:Bind TextBeforeMatch}"/><Run Text="{x:Bind MatchedText}" 
                                Foreground="{ThemeResource SearchMatchHighlightBrush}"/><Run Text="{x:Bind TextAfterMatch}"/>
                         </TextBlock>
+
+                        <!-- Per-result Replace button (visible when replace mode is enabled) -->
+                        <Button Grid.Column="2"
+                                Command="{x:Bind ReplaceMatchCommand}"
+                                Visibility="{x:Bind IsReplaceModeEnabled, Mode=OneWay}"
+                                Padding="6,0"
+                                Margin="4,0,0,0"
+                                MinHeight="0"
+                                VerticalAlignment="Stretch"
+                                ToolTipService.ToolTip="{x:Bind ReplaceMatchTooltip}">
+                          <FontIcon Glyph="&#xE8AB;" FontSize="12"/>
+                        </Button>
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

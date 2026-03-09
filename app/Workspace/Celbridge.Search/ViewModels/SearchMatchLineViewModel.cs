@@ -1,11 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Search.ViewModels;
 
 public partial class SearchMatchLineViewModel : ObservableObject
 {
-    private readonly SearchFileResultViewModel _parent;
+    internal readonly SearchFileResultViewModel Parent;
 
     public int LineNumber { get; }
 
@@ -45,14 +46,21 @@ public partial class SearchMatchLineViewModel : ObservableObject
     /// </summary>
     public int OriginalMatchStart { get; }
 
+    public bool IsReplaceModeEnabled => Parent.IsReplaceModeEnabled;
+
+    public string ReplaceMatchTooltip { get; }
+
     public SearchMatchLineViewModel(SearchMatchLine match, SearchFileResultViewModel parent)
     {
-        _parent = parent;
+        Parent = parent;
         LineNumber = match.LineNumber;
         LineText = match.LineText;
         MatchStart = match.MatchStart;
         MatchLength = match.MatchLength;
         OriginalMatchStart = match.OriginalMatchStart;
+
+        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+        ReplaceMatchTooltip = stringLocalizer.GetString("SearchPanel_ReplaceMatchTooltip");
 
         // Split the line text into before, match, and after segments for highlighting
         var displayText = match.LineText;
@@ -75,6 +83,17 @@ public partial class SearchMatchLineViewModel : ObservableObject
             MatchedText = string.Empty;
             TextAfterMatch = string.Empty;
         }
+
+        // Subscribe to parent's property changes to update IsReplaceModeEnabled binding
+        Parent.Parent.PropertyChanged += GrandParent_PropertyChanged;
+    }
+
+    private void GrandParent_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SearchPanelViewModel.IsReplaceModeEnabled))
+        {
+            OnPropertyChanged(nameof(IsReplaceModeEnabled));
+        }
     }
 
     [RelayCommand]
@@ -82,6 +101,12 @@ public partial class SearchMatchLineViewModel : ObservableObject
     {
         // Navigate to the line and column position of the match
         // Use OriginalMatchStart (0-based) + 1 to get the 1-based column position for Monaco
-        _parent.Parent.NavigateToResult(_parent.Resource, LineNumber, OriginalMatchStart + 1);
+        Parent.Parent.NavigateToResult(Parent.Resource, LineNumber, OriginalMatchStart + 1);
+    }
+
+    [RelayCommand]
+    private async Task ReplaceMatch()
+    {
+        await Parent.Parent.ReplaceMatchAsync(this);
     }
 }

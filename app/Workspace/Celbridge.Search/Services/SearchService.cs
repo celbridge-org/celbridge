@@ -349,4 +349,180 @@ public class SearchService : ISearchService, IDisposable
 
         return new ReplaceResult(true, totalReplacements);
     }
+
+    public async Task<ReplaceMatchResult> ReplaceMatchAsync(
+        ResourceKey resource,
+        string searchText,
+        string replaceText,
+        int lineNumber,
+        int originalMatchStart,
+        bool matchCase,
+        bool wholeWord,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(searchText))
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        string filePath;
+        try
+        {
+            filePath = resourceRegistry.GetResourcePath(resource);
+        }
+        catch (ArgumentException)
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        try
+        {
+            return await Task.Run(() => ReplaceMatch(
+                filePath,
+                searchText,
+                replaceText,
+                lineNumber,
+                originalMatchStart,
+                matchCase,
+                wholeWord,
+                cancellationToken), cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return new ReplaceMatchResult(false);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, $"IO error replacing match in file: {filePath}");
+            return new ReplaceMatchResult(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error replacing match in file: {filePath}");
+            return new ReplaceMatchResult(false);
+        }
+    }
+
+    private ReplaceMatchResult ReplaceMatch(
+        string filePath,
+        string searchText,
+        string replaceText,
+        int lineNumber,
+        int originalMatchStart,
+        bool matchCase,
+        bool wholeWord,
+        CancellationToken cancellationToken)
+    {
+        string content;
+        try
+        {
+            content = File.ReadAllText(filePath);
+        }
+        catch (IOException)
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        var lines = content.Split('\n');
+        var lineIndex = lineNumber - 1;
+
+        if (lineIndex < 0 || lineIndex >= lines.Length)
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var rawLine = lines[lineIndex];
+        var line = rawLine.TrimEnd('\r');
+        var carriageReturn = rawLine.EndsWith('\r') ? "\r" : string.Empty;
+
+        // Find the specific match at the expected position
+        var matches = _textMatcher.FindMatches(line, searchText, matchCase, wholeWord);
+        var targetMatch = matches.FirstOrDefault(m => m.Start == originalMatchStart);
+
+        if (targetMatch == default)
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        var modifiedLine = line.Substring(0, targetMatch.Start) +
+                           replaceText +
+                           line.Substring(targetMatch.Start + targetMatch.Length);
+        lines[lineIndex] = modifiedLine + carriageReturn;
+
+        var newContent = string.Join("\n", lines);
+
+        try
+        {
+            File.WriteAllText(filePath, newContent);
+        }
+        catch (IOException)
+        {
+            return new ReplaceMatchResult(false);
+        }
+
+        return new ReplaceMatchResult(true);
+    }
+
+    public async Task<ReplaceAllResult> ReplaceAllAsync(
+        List<SearchFileResult> fileResults,
+        string searchText,
+        string replaceText,
+        bool matchCase,
+        bool wholeWord,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(searchText))
+        {
+            return new ReplaceAllResult(0, 0, 0, false);
+        }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return new ReplaceAllResult(0, 0, 0, false);
+        }
+
+        int totalReplacements = 0;
+        int filesModified = 0;
+        int filesFailed = 0;
+
+        try
+        {
+            foreach (var fileResult in fileResults)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await ReplaceInFileAsync(
+                    fileResult.Resource,
+                    searchText,
+                    replaceText,
+                    matchCase,
+                    wholeWord,
+                    cancellationToken);
+
+                if (result.Success && result.ReplacementsCount > 0)
+                {
+                    totalReplacements += result.ReplacementsCount;
+                    filesModified++;
+                }
+                else if (!result.Success)
+                {
+                    filesFailed++;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, true);
+        }
+
+        return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, false);
+    }
 }

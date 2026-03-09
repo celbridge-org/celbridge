@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Settings;
 using Celbridge.Workspace;
@@ -18,6 +19,7 @@ public partial class SearchPanelViewModel : ObservableObject
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
+    private readonly IDialogService _dialogService;
     private readonly DispatcherQueue _dispatcherQueue;
 
     private CancellationTokenSource? _searchCancellationTokenSource;
@@ -79,18 +81,22 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public string ReplacePlaceholder { get; private set; } = string.Empty;
 
+    public string ReplaceAllTooltip { get; private set; } = string.Empty;
+
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
 
     public SearchPanelViewModel(
         ISearchService searchService,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IDialogService dialogService)
     {
         _searchService = searchService;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _editorSettings = editorSettings;
+        _dialogService = dialogService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
@@ -105,6 +111,7 @@ public partial class SearchPanelViewModel : ObservableObject
         CollapseAllTooltip = _stringLocalizer.GetString("SearchPanel_CollapseAllTooltip");
         ReplaceToggleTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceToggleTooltip");
         ReplacePlaceholder = _stringLocalizer.GetString("SearchPanel_ReplacePlaceholder");
+        ReplaceAllTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceAllTooltip");
 
         // Load saved search options from editor settings
         MatchCase = _editorSettings.SearchMatchCase;
@@ -308,6 +315,102 @@ public partial class SearchPanelViewModel : ObservableObject
         }
         finally
         {
+            IsReplacing = false;
+        }
+    }
+
+    public async Task ReplaceMatchAsync(SearchMatchLineViewModel matchLine)
+    {
+        if (string.IsNullOrEmpty(SearchText))
+        {
+            return;
+        }
+
+        IsReplacing = true;
+
+        try
+        {
+            var fileResult = matchLine.Parent;
+            var result = await _searchService.ReplaceMatchAsync(
+                fileResult.Resource,
+                SearchText,
+                ReplaceText,
+                matchLine.LineNumber,
+                matchLine.OriginalMatchStart,
+                MatchCase,
+                WholeWord,
+                CancellationToken.None);
+
+            if (result.Success)
+            {
+                // Refresh search results to reflect the changes
+                await ExecuteSearchAsync();
+            }
+        }
+        finally
+        {
+            IsReplacing = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ReplaceAll()
+    {
+        if (string.IsNullOrEmpty(SearchText) || FileResults.Count == 0)
+        {
+            return;
+        }
+
+        // Build the confirmation message
+        var totalMatches = FileResults.Sum(f => f.MatchCount);
+        var totalFiles = FileResults.Count;
+        var titleText = _stringLocalizer.GetString("SearchPanel_ReplaceAllConfirmTitle");
+        var messageText = string.Format(
+            _stringLocalizer.GetString("SearchPanel_ReplaceAllConfirmMessage"),
+            totalMatches,
+            totalFiles);
+
+        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(titleText, messageText);
+        if (!confirmResult.IsSuccess || !confirmResult.Value)
+        {
+            return;
+        }
+
+        IsReplacing = true;
+
+        // Snapshot the current file results as data for the replace operation
+        var fileResultsData = FileResults
+            .Select(f => new SearchFileResult(
+                f.Resource,
+                f.FileName,
+                f.RelativePath,
+                f.Matches.Select(m => new SearchMatchLine(
+                    m.LineNumber,
+                    m.LineText,
+                    m.MatchStart,
+                    m.MatchLength,
+                    m.OriginalMatchStart)).ToList()))
+            .ToList();
+
+        var progressTitle = _stringLocalizer.GetString("SearchPanel_ReplaceAllProgress");
+        var progressToken = _dialogService.AcquireProgressDialog(progressTitle);
+
+        try
+        {
+            var result = await _searchService.ReplaceAllAsync(
+                fileResultsData,
+                SearchText,
+                ReplaceText,
+                MatchCase,
+                WholeWord,
+                CancellationToken.None);
+
+            // Refresh search results to reflect the changes
+            await ExecuteSearchAsync();
+        }
+        finally
+        {
+            progressToken.Dispose();
             IsReplacing = false;
         }
     }
