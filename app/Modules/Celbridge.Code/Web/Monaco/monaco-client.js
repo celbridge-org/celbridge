@@ -19,7 +19,7 @@ class MonacoClient {
      * @param {function(string, boolean): void} handler - The handler function receiving the language and scrollBeyondLastLine option.
      */
     onInitialize(handler) {
-        this.#transport.addEventListener('monaco/initialize', (params) => {
+        this.#transport.addEventListener('codeEditor/initialize', (params) => {
             handler(params.language, params.scrollBeyondLastLine);
         });
     }
@@ -29,7 +29,7 @@ class MonacoClient {
      * @param {function(string): void} handler - The handler function receiving the language.
      */
     onSetLanguage(handler) {
-        this.#transport.addEventListener('monaco/setLanguage', (params) => {
+        this.#transport.addEventListener('codeEditor/setLanguage', (params) => {
             handler(params.language);
         });
     }
@@ -39,7 +39,7 @@ class MonacoClient {
      * @param {function(number, number): void} handler - The handler function receiving lineNumber and column.
      */
     onNavigateToLocation(handler) {
-        this.#transport.addEventListener('monaco/navigateToLocation', (params) => {
+        this.#transport.addEventListener('codeEditor/navigateToLocation', (params) => {
             handler(params.lineNumber, params.column, params.endLineNumber || 0, params.endColumn || 0);
         });
     }
@@ -49,7 +49,7 @@ class MonacoClient {
      * @param {function(number): void} handler - The handler function receiving the scroll percentage (0-1).
      */
     onScrollToPercentage(handler) {
-        this.#transport.addEventListener('monaco/scrollToPercentage', (params) => {
+        this.#transport.addEventListener('codeEditor/scrollToPercentage', (params) => {
             handler(params.percentage);
         });
     }
@@ -59,7 +59,7 @@ class MonacoClient {
      * @param {function(string): void} handler - The handler function receiving the text to insert.
      */
     onInsertText(handler) {
-        this.#transport.addEventListener('monaco/insertText', (params) => {
+        this.#transport.addEventListener('codeEditor/insertText', (params) => {
             handler(params.text);
         });
     }

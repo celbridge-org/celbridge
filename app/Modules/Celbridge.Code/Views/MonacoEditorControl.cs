@@ -28,7 +28,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private readonly ICommandService _commandService;
 
     private WebView2? _webView;
-    private MonacoHost? _host;
+    private CodeEditorHost? _host;
     private WebViewHostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
     private TaskCompletionSource<string>? _getContentTcs;
@@ -113,10 +113,10 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
         _webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
         _webView.GotFocus += WebView_GotFocus;
 
-        // Initialize MonacoHost for RPC communication
+        // Initialize CodeEditorHost for RPC communication
         _messageChannel = new WebViewHostChannel(_webView.CoreWebView2);
         var celbridgeHost = new CelbridgeHost(_messageChannel);
-        _host = new MonacoHost(celbridgeHost);
+        _host = new CodeEditorHost(celbridgeHost);
 
         // Register this control as the handler for RPC interfaces
         _host.AddLocalRpcTarget<IHostDocument>(this);

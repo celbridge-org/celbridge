@@ -3,27 +3,27 @@ using Celbridge.Host;
 namespace Celbridge.Code.Services;
 
 /// <summary>
-/// JSON-RPC method names for Monaco editor operations (host to client).
+/// JSON-RPC method names for code editor operations (host to client).
 /// </summary>
-internal static class MonacoRpcMethods
+internal static class CodeEditorRpcMethods
 {
-    public const string Initialize = "monaco/initialize";
-    public const string SetLanguage = "monaco/setLanguage";
-    public const string NavigateToLocation = "monaco/navigateToLocation";
-    public const string ScrollToPercentage = "monaco/scrollToPercentage";
-    public const string InsertText = "monaco/insertText";
+    public const string Initialize = "codeEditor/initialize";
+    public const string SetLanguage = "codeEditor/setLanguage";
+    public const string NavigateToLocation = "codeEditor/navigateToLocation";
+    public const string ScrollToPercentage = "codeEditor/scrollToPercentage";
+    public const string InsertText = "codeEditor/insertText";
 }
 
 /// <summary>
-/// Monaco-specific host facade that provides a clean API for Monaco editor RPC operations.
+/// Host facade that provides a clean API for code editor RPC operations.
 /// Wraps CelbridgeHost and uses JSON-RPC notifications for editor communication.
 /// </summary>
-public class MonacoHost : IDisposable
+public class CodeEditorHost : IDisposable
 {
     private readonly CelbridgeHost _host;
     private bool _disposed;
 
-    public MonacoHost(CelbridgeHost host)
+    public CodeEditorHost(CelbridgeHost host)
     {
         _host = host;
     }
@@ -61,11 +61,11 @@ public class MonacoHost : IDisposable
     }
 
     /// <summary>
-    /// Initializes the Monaco editor with the specified language and options.
+    /// Initializes the code editor with the specified language and options.
     /// </summary>
     public Task InitializeEditorAsync(string language, bool scrollBeyondLastLine = true)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.Initialize, new 
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.Initialize, new
         { 
             language,
             scrollBeyondLastLine
@@ -73,27 +73,27 @@ public class MonacoHost : IDisposable
     }
 
     /// <summary>
-    /// Sets the language mode of the Monaco editor.
+    /// Sets the language mode of the code editor.
     /// </summary>
     public Task SetLanguageAsync(string language)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.SetLanguage, new { language });
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.SetLanguage, new { language });
     }
 
     /// <summary>
-    /// Navigates to a specific location in the Monaco editor.
+    /// Navigates to a specific location in the code editor.
     /// </summary>
     public Task NavigateToLocationAsync(int lineNumber, int column, int endLineNumber = 0, int endColumn = 0)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.NavigateToLocation, new { lineNumber, column, endLineNumber, endColumn });
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.NavigateToLocation, new { lineNumber, column, endLineNumber, endColumn });
     }
 
     /// <summary>
-    /// Scrolls the Monaco editor to a specific percentage position.
+    /// Scrolls the code editor to a specific percentage position.
     /// </summary>
     public Task ScrollToPercentageAsync(double percentage)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.ScrollToPercentage, new { percentage });
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.ScrollToPercentage, new { percentage });
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public class MonacoHost : IDisposable
     /// </summary>
     public Task InsertTextAsync(string text)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(MonacoRpcMethods.InsertText, new { text });
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.InsertText, new { text });
     }
 
     public void Dispose()
