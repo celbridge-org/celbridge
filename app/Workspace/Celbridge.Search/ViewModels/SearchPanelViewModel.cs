@@ -116,7 +116,7 @@ public partial class SearchPanelViewModel : ObservableObject
         // Load saved search options from editor settings
         MatchCase = _editorSettings.SearchMatchCase;
         WholeWord = _editorSettings.SearchWholeWord;
-        IsReplaceModeEnabled = _editorSettings.SearchReplaceMode;
+        IsReplaceModeEnabled = _editorSettings.ReplaceMode;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -163,7 +163,7 @@ public partial class SearchPanelViewModel : ObservableObject
     partial void OnIsReplaceModeEnabledChanged(bool value)
     {
         // Save to editor settings
-        _editorSettings.SearchReplaceMode = value;
+        _editorSettings.ReplaceMode = value;
     }
 
     [RelayCommand]
@@ -365,8 +365,8 @@ public partial class SearchPanelViewModel : ObservableObject
         var totalMatches = FileResults.Sum(f => f.MatchCount);
         var totalFiles = FileResults.Count;
         var titleText = _stringLocalizer.GetString("SearchPanel_ReplaceAllConfirmTitle");
-        var messageText = string.Format(
-            _stringLocalizer.GetString("SearchPanel_ReplaceAllConfirmMessage"),
+        var messageText = _stringLocalizer.GetString(
+            "SearchPanel_ReplaceAllConfirmMessage",
             totalMatches,
             totalFiles);
 

@@ -128,9 +128,9 @@ public class EditorSettings : ObservableSettings, IEditorSettings
         set => SetValue(nameof(SearchWholeWord), value);
     }
 
-    public bool SearchReplaceMode
+    public bool ReplaceMode
     {
-        get => GetValue<bool>(nameof(SearchReplaceMode), false);
-        set => SetValue(nameof(SearchReplaceMode), value);
+        get => GetValue<bool>(nameof(ReplaceMode), false);
+        set => SetValue(nameof(ReplaceMode), value);
     }
 }

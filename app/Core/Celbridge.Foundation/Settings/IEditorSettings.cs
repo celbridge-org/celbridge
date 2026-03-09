@@ -142,5 +142,5 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// <summary>
     /// Whether the replace mode is enabled in the search panel.
     /// </summary>
-    bool SearchReplaceMode { get; set; }
+    bool ReplaceMode { get; set; }
 }
