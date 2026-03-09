@@ -13,6 +13,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
+    private readonly IWorkspaceFeatures _workspaceFeatures;
 
     private WindowMode _windowMode = WindowMode.Windowed;
     private LayoutRegion _regionVisibility = LayoutRegion.All;
@@ -20,11 +21,13 @@ public class LayoutManager : IWindowModeService, ILayoutService
     public LayoutManager(
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IWorkspaceFeatures workspaceFeatures)
     {
         _logger = logger;
         _messengerService = messengerService;
         _editorSettings = editorSettings;
+        _workspaceFeatures = workspaceFeatures;
 
         // Initialize from persisted preferences
         _regionVisibility = _editorSettings.PreferredRegionVisibility;
@@ -321,10 +324,14 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _editorSettings.PreferredWindowHeight = 0;
         _editorSettings.IsWindowMaximized = false;
 
-        // Reset preferred visibility to all regions
-        // Doing this both ways to be double sure
-        UpdateRegionVisibility(LayoutRegion.All, shouldPersist: true);
-        _editorSettings.PreferredRegionVisibility = LayoutRegion.All;
+        // Reset preferred visibility to all regions, but exclude Console if feature is disabled
+        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        var targetVisibility = isConsolePanelEnabled 
+            ? LayoutRegion.All 
+            : (LayoutRegion.Primary | LayoutRegion.Secondary);
+
+        UpdateRegionVisibility(targetVisibility, shouldPersist: true);
+        _editorSettings.PreferredRegionVisibility = targetVisibility;
 
         // Return to Windowed mode if in fullscreen
         if (WindowMode != WindowMode.Windowed)

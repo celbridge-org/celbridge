@@ -1,7 +1,7 @@
 // Console Client: Console-specific API for communicating with the Celbridge Console host.
 // Uses the shared RPC transport from celbridge.js.
 
-import { RpcTransport } from 'http://shared.celbridge/core/rpc-transport.js';
+import { RpcTransport } from 'https://shared.celbridge/celbridge-client/core/rpc-transport.js';
 
 /**
  * Console Client for console communication.

@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using Celbridge.Explorer;
+using System.Text;
 
 namespace Celbridge.Resources.Services;
 
@@ -8,6 +9,9 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public class FileTemplateService : IFileTemplateService
 {
+    // Empty TipTap JSON document structure
+    private const string EmptyNoteJson = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+
     public byte[] GetNewFileContent(string filePath)
     {
         string extension = Path.GetExtension(filePath).ToLowerInvariant();
@@ -25,6 +29,12 @@ public class FileTemplateService : IFileTemplateService
 
             wb.SaveAs(ms);
             return ms.ToArray();
+        }
+
+        if (extension == ExplorerConstants.NoteExtension)
+        {
+            // Create an empty TipTap JSON document
+            return Encoding.UTF8.GetBytes(EmptyNoteJson);
         }
 
         // Default: empty file

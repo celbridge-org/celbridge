@@ -25,15 +25,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Host\Celbridge.Host.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="StreamJsonRpc" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Web\**" />
   </ItemGroup>
 
   <ItemGroup>

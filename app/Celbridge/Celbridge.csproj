@@ -60,6 +60,7 @@
     <ProjectReference Include="..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
@@ -69,6 +70,7 @@
     <ProjectReference Include="..\Modules\Celbridge.Core\Celbridge.Core.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.FileViewer\Celbridge.FileViewer.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Notes\Celbridge.Notes.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.WebApp\Celbridge.WebApp.csproj" />

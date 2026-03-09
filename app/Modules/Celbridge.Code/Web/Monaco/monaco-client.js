@@ -1,7 +1,7 @@
 // Monaco Client: Monaco-specific API for communicating with the Celbridge Monaco host.
 // Uses the shared RPC transport from celbridge.js.
 
-import { RpcTransport } from 'http://shared.celbridge/core/rpc-transport.js';
+import { RpcTransport } from 'https://shared.celbridge/celbridge-client/core/rpc-transport.js';
 
 /**
  * Monaco Client for editor communication.
@@ -16,11 +16,11 @@ class MonacoClient {
 
     /**
      * Registers a handler for editor initialization requests from the host.
-     * @param {function(string): void} handler - The handler function receiving the language.
+     * @param {function(string, boolean): void} handler - The handler function receiving the language and scrollBeyondLastLine option.
      */
     onInitialize(handler) {
-        this.#transport.addEventListener('editor/initialize', (params) => {
-            handler(params.language);
+        this.#transport.addEventListener('codeEditor/initialize', (params) => {
+            handler(params.language, params.scrollBeyondLastLine);
         });
     }
 
@@ -29,7 +29,7 @@ class MonacoClient {
      * @param {function(string): void} handler - The handler function receiving the language.
      */
     onSetLanguage(handler) {
-        this.#transport.addEventListener('editor/setLanguage', (params) => {
+        this.#transport.addEventListener('codeEditor/setLanguage', (params) => {
             handler(params.language);
         });
     }
@@ -39,8 +39,28 @@ class MonacoClient {
      * @param {function(number, number): void} handler - The handler function receiving lineNumber and column.
      */
     onNavigateToLocation(handler) {
-        this.#transport.addEventListener('editor/navigateToLocation', (params) => {
-            handler(params.lineNumber, params.column);
+        this.#transport.addEventListener('codeEditor/navigateToLocation', (params) => {
+            handler(params.lineNumber, params.column, params.endLineNumber || 0, params.endColumn || 0);
+        });
+    }
+
+    /**
+     * Registers a handler for scroll-to-percentage requests from the host.
+     * @param {function(number): void} handler - The handler function receiving the scroll percentage (0-1).
+     */
+    onScrollToPercentage(handler) {
+        this.#transport.addEventListener('codeEditor/scrollToPercentage', (params) => {
+            handler(params.percentage);
+        });
+    }
+
+    /**
+     * Registers a handler for insert-text requests from the host.
+     * @param {function(string): void} handler - The handler function receiving the text to insert.
+     */
+    onInsertText(handler) {
+        this.#transport.addEventListener('codeEditor/insertText', (params) => {
+            handler(params.text);
         });
     }
 }

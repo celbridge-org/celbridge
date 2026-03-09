@@ -1,5 +1,4 @@
 using Celbridge.Activities;
-using Celbridge.Markdown.ComponentEditors;
 using Celbridge.Markdown.Services;
 using Celbridge.Markdown.ViewModels;
 using Celbridge.Markdown.Views;
@@ -9,19 +8,10 @@ namespace Celbridge.Markdown;
 
 public class Module : IModule
 {
-    public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
-    {
-        nameof(MarkdownActivity)
-    };
+    public IReadOnlyList<string> SupportedActivities { get; } = new List<string>();
 
     public void ConfigureServices(IModuleServiceCollection services)
     {
-        //
-        // Register services
-        //
-
-        services.AddTransient<MarkdownActivity>();
-
         //
         // Register document editor factories
         //
@@ -39,12 +29,6 @@ public class Module : IModule
         //
 
         services.AddTransient<MarkdownDocumentViewModel>();
-
-        //
-        // Register component editors
-        //
-
-        services.AddTransient<MarkdownEditor>();
     }
 
     public Result Initialize()
@@ -54,12 +38,6 @@ public class Module : IModule
 
     public Result<IActivity> CreateActivity(string activityName)
     {
-        if (activityName == nameof(MarkdownActivity))
-        {
-            var activity = ServiceLocator.AcquireService<MarkdownActivity>();
-            return Result<IActivity>.Ok(activity);
-        }
-
         return Result<IActivity>.Fail();
     }
 }

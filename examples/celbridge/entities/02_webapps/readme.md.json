@@ -1,8 +1,4 @@
 {
   "_entityVersion": 1,
-  "_components": [
-    {
-      "_type": "Markdown.Markdown#1"
-    }
-  ]
+  "_components": []
 }

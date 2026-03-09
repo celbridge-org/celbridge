@@ -3,13 +3,14 @@ using Celbridge.Markdown.Views;
 namespace Celbridge.Markdown.Services;
 
 /// <summary>
-/// Factory for creating Markdown document views.
+/// Factory for creating Markdown document views using Monaco editor.
+/// Handles .md and .markdown files with source-first editing.
 /// </summary>
 public class MarkdownEditorFactory : IDocumentEditorFactory
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = new List<string> { ".md" };
+    public IReadOnlyList<string> SupportedExtensions { get; } = [".md", ".markdown"];
 
     public int Priority => 0;
 
@@ -20,7 +21,8 @@ public class MarkdownEditorFactory : IDocumentEditorFactory
 
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        return true;
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        return SupportedExtensions.Contains(extension);
     }
 
     public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

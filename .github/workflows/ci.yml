@@ -59,9 +59,9 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: ./app/Core/Celbridge.UserInterface/Web
+        working-directory: ./app/Core/Celbridge.WebView/Web/celbridge-client
         run: npm install
 
       - name: Run JS tests
-        working-directory: ./app/Core/Celbridge.UserInterface/Web
+        working-directory: ./app/Core/Celbridge.WebView/Web/celbridge-client
         run: npm test

@@ -1,18 +1,50 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Markdown.ViewModels;
 
+/// <summary>
+/// Represents the active view mode for a markdown document.
+/// </summary>
+public enum MarkdownViewMode
+{
+    Preview,
+    Split,
+    Source
+}
+
+/// <summary>
+/// View model for markdown document editing with Monaco editor.
+/// Handles file I/O, document state management, and view mode.
+/// </summary>
 public partial class MarkdownDocumentViewModel : DocumentViewModel
 {
     private readonly IMessengerService _messengerService;
+
+    /// <summary>
+    /// The current view mode of the document.
+    /// </summary>
+    [ObservableProperty]
+    private MarkdownViewMode _viewMode = MarkdownViewMode.Preview;
+
+    /// <summary>
+    /// Event raised when the view mode changes.
+    /// </summary>
+    public event EventHandler<MarkdownViewMode>? ViewModeChanged;
 
     public MarkdownDocumentViewModel(IMessengerService messengerService)
     {
         _messengerService = messengerService;
 
+        // Register for resource change messages
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
+    }
+
+    partial void OnViewModeChanged(MarkdownViewMode value)
+    {
+        ViewModeChanged?.Invoke(this, value);
     }
 
     private void OnMonitoredResourceChangedMessage(object recipient, MonitoredResourceChangedMessage message)
@@ -40,61 +72,44 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         }
     }
 
-    public async Task<Result> LoadContent()
+    public async Task<Result<string>> LoadDocument()
     {
         try
         {
+            // Read the file contents
+            var text = await File.ReadAllTextAsync(FilePath);
+
+            // Track the initial file state when loading
             UpdateFileTrackingInfo();
 
-            await Task.CompletedTask;
-
-            return Result.Ok();
+            return Result<string>.Ok(text);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when loading document from file: {FilePath}")
+            return Result<string>.Fail($"Failed to load markdown file: '{FilePath}'")
                 .WithException(ex);
         }
     }
 
-    public async Task<string> LoadMarkdownContent()
+    public async Task<Result> SaveDocument(string text)
     {
-        if (!File.Exists(FilePath))
-        {
-            return string.Empty;
-        }
-
-        var content = await File.ReadAllTextAsync(FilePath);
-        return content ?? string.Empty;
-    }
-
-    public async Task<Result> SaveDocument()
-    {
+        // Don't immediately try to save again if the save fails.
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
-        // The actual saving is handled in MarkdownDocumentView
-        await Task.CompletedTask;
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> SaveMarkdownToFile(string markdownContent)
-    {
         try
         {
-            // Set flag before writing to suppress file watcher reload requests
+            // Set flag to suppress reload requests triggered by our own save
             IsSavingFile = true;
 
-            await File.WriteAllTextAsync(FilePath, markdownContent);
+            await File.WriteAllTextAsync(FilePath, text);
 
-            // Update file tracking info immediately after writing
+            // Update tracking info BEFORE sending completion message to avoid race condition
+            // with file watcher events that may arrive before the message is processed
             UpdateFileTrackingInfo();
 
             var message = new DocumentSaveCompletedMessage(FileResource);
             _messengerService.Send(message);
-
-            return Result.Ok();
         }
         catch (Exception ex)
         {
@@ -103,9 +118,16 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         }
         finally
         {
-            // Clear the flag after save completes (success or failure)
             IsSavingFile = false;
         }
+
+        return Result.Ok();
+    }
+
+    public void OnTextChanged()
+    {
+        HasUnsavedChanges = true;
+        SaveTimer = SaveDelay;
     }
 
     public override void Cleanup()

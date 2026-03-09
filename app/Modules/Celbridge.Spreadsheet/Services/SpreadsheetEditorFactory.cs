@@ -12,7 +12,7 @@ public class SpreadsheetEditorFactory : IDocumentEditorFactory
     private readonly IServiceProvider _serviceProvider;
     private readonly FileTypeHelper _fileTypeHelper;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = new List<string> { ".xlsx" };
+    public IReadOnlyList<string> SupportedExtensions { get; } = [".xlsx"];
 
     public int Priority => 0;
 
@@ -24,8 +24,9 @@ public class SpreadsheetEditorFactory : IDocumentEditorFactory
 
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        // Only handle if SpreadJS is available
-        return _fileTypeHelper.IsSpreadJSAvailable;
+        // Only handle if SpreadJS is available AND extension matches
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        return _fileTypeHelper.IsSpreadJSAvailable && SupportedExtensions.Contains(extension);
     }
 
     public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
