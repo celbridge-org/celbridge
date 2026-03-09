@@ -50,7 +50,7 @@ public partial class AddFileDialogViewModel : ObservableObject
     public AddFileDialogViewModel(
         IEditorSettings editorSettings,
         IStringLocalizer stringLocalizer,
-        IFeatureFlagService featureFlagService)
+        IWorkspaceFeatures workspaceFeatures)
     {
         _editorSettings = editorSettings;
         _stringLocalizer = stringLocalizer;
@@ -66,7 +66,7 @@ public partial class AddFileDialogViewModel : ObservableObject
         ];
 
         // Add Note file type if feature flag is enabled
-        if (featureFlagService.IsEnabled("EnableNotesEditor"))
+        if (workspaceFeatures.IsEnabled("notes-editor"))
         {
             // Insert Note after Markdown to keep document file types together
             var markdownIndex = FileTypes.FindIndex(ft => ft.Format == ResourceFormat.Markdown);

@@ -175,7 +175,7 @@ public class WorkspaceLoader
             return;
         }
 
-        var shortcutsSection = currentProject.ProjectConfig.Config.Shortcuts;
+        var shortcutsSection = currentProject.Config.Shortcuts;
         if (shortcutsSection.HasErrors)
         {
             // Log the detailed errors but don't prevent workspace loading
@@ -203,7 +203,7 @@ public class WorkspaceLoader
             return;
         }
 
-        var shortcutsSection = currentProject.ProjectConfig.Config.Shortcuts;
+        var shortcutsSection = currentProject.Config.Shortcuts;
         if (shortcutsSection.HasErrors)
         {
             // Error notification is handled by TryInitializePythonAsync

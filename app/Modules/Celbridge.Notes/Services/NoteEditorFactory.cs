@@ -4,12 +4,11 @@ namespace Celbridge.Notes.Services;
 
 /// <summary>
 /// Factory for creating Note document views.
-/// Only handles .note files when the EnableNotesEditor feature flag is enabled.
 /// </summary>
 public class NoteEditorFactory : IDocumentEditorFactory
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly IFeatureFlagService _featureFlagService;
+    private readonly IWorkspaceFeatures _workspaceFeatures;
 
     public IReadOnlyList<string> SupportedExtensions { get; } = [".note"];
 
@@ -17,15 +16,15 @@ public class NoteEditorFactory : IDocumentEditorFactory
 
     public NoteEditorFactory(
         IServiceProvider serviceProvider,
-        IFeatureFlagService featureFlagService)
+        IWorkspaceFeatures workspaceFeatures)
     {
         _serviceProvider = serviceProvider;
-        _featureFlagService = featureFlagService;
+        _workspaceFeatures = workspaceFeatures;
     }
 
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        if (!_featureFlagService.IsEnabled("EnableNotesEditor"))
+        if (!_workspaceFeatures.IsEnabled("notes-editor"))
         {
             return false;
         }
@@ -38,7 +37,7 @@ public class NoteEditorFactory : IDocumentEditorFactory
     {
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<NoteDocumentView>();
-        return Result<IDocumentView>.Ok(view);
+        return view;
 #else
         // On non-Windows platforms, Note editor is not available
         return Result<IDocumentView>.Fail("Note editor is not available on this platform");

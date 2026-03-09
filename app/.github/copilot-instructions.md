@@ -34,4 +34,18 @@
   - IEntityService
   - IGenerativeAIService
   - IActivityService
+  - IWorkspaceFeatures
+
+- Project Configuration:
+  - To access the current project, use `IProjectService.CurrentProject` (singleton)
+  - Project config is accessed via `project.Config` (simple property, not a service)
+  - To parse .celbridge files outside of project loading, use the static `ProjectConfigParser.ParseFromFile()` method
+  - Example: `var config = _projectService.CurrentProject?.Config;`
+
+- Feature Flags:
+  - For application-level feature checks, use `IFeatureFlagService` (singleton, reads from appsettings.json)
+  - For workspace-aware feature checks, use `IWorkspaceFeatures` (workspace-scoped, checks .celbridge file first, then falls back to appsettings.json)
+  - Feature flag names use kebab-case (e.g., "notes-editor", "console")
+  - In appsettings.json, feature flags are under the "FeatureFlags" section using kebab-case
+  - In .celbridge files, users can override app-level features using the top-level [features] section
 

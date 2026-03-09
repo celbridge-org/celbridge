@@ -8,6 +8,11 @@ public sealed record class ProjectConfig
     public ProjectSection Project { get; init; } = new();
     public CelbridgeSection Celbridge { get; init; } = new();
     public ShortcutsSection Shortcuts { get; init; } = new();
+
+    /// <summary>
+    /// Feature flags dictionary from [features] section.
+    /// </summary>
+    public IReadOnlyDictionary<string, bool> Features { get; init; } = new Dictionary<string, bool>();
 }
 
 /// <summary>
