@@ -38,7 +38,6 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     private string _language = "plaintext";
     private string _filePath = string.Empty;
     private string _resourceKey = string.Empty;
-    private CodeEditorOptions _options = CodeEditorOptions.Default;
 
     /// <summary>
     /// Callback to load content from the parent. Set this before calling InitializeAsync().
@@ -49,11 +48,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     /// <summary>
     /// Editor options. Set this before calling InitializeAsync() or PreInitializeAsync().
     /// </summary>
-    public CodeEditorOptions Options
-    {
-        get => _options;
-        set => _options = value;
-    }
+    public CodeEditorOptions Options { get; set; } = CodeEditorOptions.Default;
 
     /// <summary>
     /// Raised when the content changes in the Monaco editor (user editing).
@@ -184,7 +179,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         }
 
         // Initialize the Monaco editor via JSON-RPC with the content, language, and options
-        await _host.InitializeEditorAsync(_language, _options.ScrollBeyondLastLine);
+        await _host.InitializeEditorAsync(_language, Options.ScrollBeyondLastLine);
 
         return Result.Ok();
     }
