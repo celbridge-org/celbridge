@@ -1,10 +1,10 @@
 namespace Celbridge.Code.Views;
 
 /// <summary>
-/// Configuration options for the Monaco editor.
-/// These options are passed to Monaco during initialization.
+/// Configuration options for the code editor.
+/// These options are passed to the editor during initialization.
 /// </summary>
-public record MonacoEditorOptions
+public record CodeEditorOptions
 {
     /// <summary>
     /// Whether to allow scrolling beyond the last line of content.
@@ -28,5 +28,5 @@ public record MonacoEditorOptions
     /// <summary>
     /// Default options suitable for most editing scenarios.
     /// </summary>
-    public static MonacoEditorOptions Default => new();
+    public static CodeEditorOptions Default => new();
 }

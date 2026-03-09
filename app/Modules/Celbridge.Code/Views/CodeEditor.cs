@@ -12,16 +12,16 @@ using StreamJsonRpc;
 namespace Celbridge.Code.Views;
 
 /// <summary>
-/// A reusable control that hosts a Monaco code editor via WebView2.
+/// A reusable control that hosts a code editor via WebView2.
 /// This is a pure text editing control that can be embedded in any document view.
 /// The parent view is responsible for file I/O and document management.
 /// </summary>
-public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IHostInput
+public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
 {
     private const int ContentRequestTimeoutSeconds = 5;
     private const int ClientInitializationTimeoutSeconds = 10;
 
-    private readonly ILogger<MonacoEditorControl> _logger;
+    private readonly ILogger<CodeEditor> _logger;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IMessengerService _messengerService;
     private readonly IUserInterfaceService _userInterfaceService;
@@ -38,7 +38,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     private string _language = "plaintext";
     private string _filePath = string.Empty;
     private string _resourceKey = string.Empty;
-    private MonacoEditorOptions _options = MonacoEditorOptions.Default;
+    private CodeEditorOptions _options = CodeEditorOptions.Default;
 
     /// <summary>
     /// Callback to load content from the parent. Set this before calling InitializeAsync().
@@ -49,7 +49,7 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// <summary>
     /// Editor options. Set this before calling InitializeAsync() or PreInitializeAsync().
     /// </summary>
-    public MonacoEditorOptions Options
+    public CodeEditorOptions Options
     {
         get => _options;
         set => _options = value;
@@ -71,9 +71,9 @@ public sealed partial class MonacoEditorControl : UserControl, IHostDocument, IH
     /// </summary>
     public event Action<double>? ScrollPositionChanged;
 
-    public MonacoEditorControl()
+    public CodeEditor()
     {
-        _logger = ServiceLocator.AcquireService<ILogger<MonacoEditorControl>>();
+        _logger = ServiceLocator.AcquireService<ILogger<CodeEditor>>();
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();

@@ -8,8 +8,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Code.Views;
 
 /// <summary>
-/// Document view for editing code/text files using the Monaco editor.
-/// Handles file I/O and document management, delegating text editing to MonacoEditorControl.
+/// Document view for editing code/text files using a code editor.
+/// Handles file I/O and document management, delegating text editing to CodeEditor.
 /// </summary>
 public sealed partial class CodeEditorDocumentView : DocumentView
 {
@@ -25,7 +25,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     public override bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
     /// <summary>
-    /// Pre-warms the Monaco editor by performing expensive initialization without loading content.
+    /// Pre-warms the code editor by performing expensive initialization without loading content.
     /// Call this to prepare an instance for fast reuse later.
     /// </summary>
     public async Task<Result> PreWarmAsync()
@@ -46,10 +46,10 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         _viewModel = ServiceLocator.AcquireService<CodeEditorViewModel>();
 
-        // Set up content loader callback for Monaco to pull content when needed
+        // Set up content loader callback for the editor to pull content when needed
         MonacoEditor.ContentLoader = LoadContentFromDiskAsync;
 
-        // Subscribe to MonacoEditorControl events
+        // Subscribe to CodeEditor events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
 
@@ -90,7 +90,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         var content = loadResult.Value;
         var language = _documentsService.GetDocumentLanguage(_viewModel.FileResource);
 
-        // Initialize Monaco with the content
+        // Initialize the editor with the content
         var initResult = await MonacoEditor.InitializeAsync(
             content,
             language,
@@ -101,7 +101,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     }
 
     /// <summary>
-    /// Loads content from disk. Used as the ContentLoader callback for Monaco.
+    /// Loads content from disk. Used as the ContentLoader callback for the code editor.
     /// </summary>
     private async Task<string> LoadContentFromDiskAsync()
     {
@@ -124,7 +124,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     {
         try
         {
-            // Get current content from Monaco
+            // Get current content from the editor
             var content = await MonacoEditor.GetContentAsync();
 
             // Save via ViewModel
@@ -177,7 +177,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             // Cleanup ViewModel
             _viewModel.Cleanup();
 
-            // Cleanup Monaco control
+            // Cleanup code editor control
             await MonacoEditor.CleanupAsync();
         }
         catch (Exception ex)
@@ -201,7 +201,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)
     {
-        // External file change detected - notify Monaco to reload
+        // External file change detected - notify the editor to reload
         MonacoEditor.NotifyExternalChange();
     }
 }

@@ -22,7 +22,7 @@ public enum SplitEditorViewMode
 }
 
 /// <summary>
-/// A reusable control that combines a Monaco code editor with an optional preview panel.
+/// A reusable control that combines a code editor with an optional preview panel.
 /// The preview panel is rendered by an IPreviewRenderer implementation.
 /// Uses JSON-RPC via CelbridgeHost for communication with the preview WebView.
 /// </summary>
@@ -59,9 +59,9 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
     private const int MinSectionSize = 200;
 
     /// <summary>
-    /// The Monaco editor control.
+    /// The code editor.
     /// </summary>
-    public MonacoEditorControl MonacoEditor { get; }
+    public CodeEditor MonacoEditor { get; }
 
     /// <summary>
     /// The current view mode of the editor.
@@ -74,7 +74,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
     public bool IsPreviewVisible => ViewMode == SplitEditorViewMode.Split || ViewMode == SplitEditorViewMode.Preview;
 
     /// <summary>
-    /// Raised when the content changes in the Monaco editor.
+    /// Raised when the content changes in the code editor.
     /// </summary>
     public event Action? ContentChanged;
 
@@ -91,8 +91,8 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
         _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
         _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
 
-        // Create the Monaco editor
-        MonacoEditor = new MonacoEditorControl();
+        // Create the code editor
+        MonacoEditor = new CodeEditor();
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
         MonacoEditor.ScrollPositionChanged += OnMonacoScrollPositionChanged;
@@ -156,7 +156,7 @@ public sealed partial class SplitCodeEditor : UserControl, IHostPreview
         _documentPath = documentPath;
 
         // Disable scroll-beyond-last-line for proper scroll sync with preview
-        MonacoEditor.Options = new MonacoEditorOptions { ScrollBeyondLastLine = false };
+        MonacoEditor.Options = new CodeEditorOptions { ScrollBeyondLastLine = false };
     }
 
     /// <summary>
