@@ -11,7 +11,7 @@ public class WebAppEditorFactory : IDocumentEditorFactory
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = new List<string> { ".webapp" };
+    public IReadOnlyList<string> SupportedExtensions { get; } = [".webapp"];
 
     public int Priority => 0;
 
@@ -22,7 +22,8 @@ public class WebAppEditorFactory : IDocumentEditorFactory
 
     public bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        return true;
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        return SupportedExtensions.Contains(extension);
     }
 
     public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

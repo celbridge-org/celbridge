@@ -10,7 +10,8 @@
     <Grid HorizontalAlignment="Left"
           VerticalAlignment="Center">
         <TextBlock Text="{x:Bind ViewModel.MessageText, Mode=OneWay}"
-                   TextWrapping="WrapWholeWords"/>
+                   TextWrapping="WrapWholeWords"
+                   IsTextSelectionEnabled="True"/>
     </Grid>
 
 </ContentDialog>

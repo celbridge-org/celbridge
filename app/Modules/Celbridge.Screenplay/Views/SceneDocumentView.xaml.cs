@@ -5,6 +5,7 @@ using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
 using Celbridge.UserInterface;
+using Celbridge.WebView;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;

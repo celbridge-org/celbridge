@@ -103,8 +103,9 @@ public interface IWorkspaceService
 
     /// <summary>
     /// Returns the Console Panel view.
+    /// Null if the console-panel feature is disabled.
     /// </summary>
-    IConsolePanel ConsolePanel { get; }
+    IConsolePanel? ConsolePanel { get; }
 
     /// <summary>
     /// Sets all workspace panel references.
@@ -114,7 +115,7 @@ public interface IWorkspaceService
         IActivityPanel activityPanel,
         IDocumentsPanel documentsPanel,
         IInspectorPanel inspectorPanel,
-        IConsolePanel consolePanel);
+        IConsolePanel? consolePanel);
 
     /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.

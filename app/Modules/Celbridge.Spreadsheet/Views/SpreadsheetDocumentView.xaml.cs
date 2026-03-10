@@ -4,7 +4,7 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
-using Celbridge.UserInterface;
+using Celbridge.WebView;
 using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
@@ -273,15 +273,15 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     #endregion
 
-    #region IHostNotifications overrides
+    #region IHostDocument
 
-    public override void OnDocumentChanged()
+    public void OnDocumentChanged()
     {
         // Flag the document as modified so it will attempt to save after a short delay.
         ViewModel.OnDataChanged();
     }
 
-    public override void OnImportComplete(bool success, string? error = null)
+    public void OnImportComplete(bool success, string? error = null)
     {
         _isImportInProgress = false;
 

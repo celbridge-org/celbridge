@@ -2,20 +2,21 @@ using System.Diagnostics.CodeAnalysis;
 using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.WebView;
+using Celbridge.WebView.Services;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Base class for document views that use a WebView2 control.
 /// </summary>
-public abstract partial class WebView2DocumentView : DocumentView, IHostNotifications
+public abstract partial class WebView2DocumentView : DocumentView, IHostInput
 {
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
 
     // JSON-RPC infrastructure
-    private HostChannel? _hostChannel;
+    private WebViewHostChannel? _hostChannel;
 
     /// <summary>
     /// The Celbridge host for JSON-RPC communication with the WebView.
@@ -85,7 +86,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
     /// <summary>
     /// Initializes the host channel for WebView communication.
     /// Call this after AcquireWebViewAsync() and any view-specific WebView setup.
-    /// This registers the base class as a handler for IHostNotifications (keyboard shortcuts, etc.).
+    /// This registers the base class as a handler for IHostInput (keyboard shortcuts, etc.).
     /// Subclasses should call this, then register additional RPC targets using the Host property.
     /// </summary>
     protected void InitializeHost()
@@ -95,12 +96,12 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
             return;
         }
 
-        _hostChannel = new HostChannel(WebView.CoreWebView2);
+        _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
         Host = new CelbridgeHost(_hostChannel);
 
-        // Register this view as the handler for IHostNotifications
+        // Register this view as the handler for IHostInput
         // This provides keyboard shortcut handling for all WebView-based documents
-        Host.AddLocalRpcTarget<IHostNotifications>(this);
+        Host.AddLocalRpcTarget<IHostInput>(this);
     }
 
     /// <summary>
@@ -111,49 +112,13 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostNotifica
         Host?.StartListening();
     }
 
-    #region IHostNotifications
-
-    /// <summary>
-    /// Called when the document content has changed in the WebView.
-    /// Override in subclasses to handle document changes.
-    /// </summary>
-    public virtual void OnDocumentChanged()
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when a link is clicked in the WebView.
-    /// Override in subclasses to handle link clicks.
-    /// </summary>
-    public virtual void OnLinkClicked(string href)
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when an import operation completes in the WebView.
-    /// Override in subclasses to handle import completion.
-    /// </summary>
-    public virtual void OnImportComplete(bool success, string? error = null)
-    {
-        // Default implementation does nothing
-    }
-
-    /// <summary>
-    /// Called when the JavaScript client has finished initializing.
-    /// Override in subclasses to handle client ready notification.
-    /// </summary>
-    public virtual void OnClientReady()
-    {
-        // Default implementation does nothing
-    }
+    #region IHostInput
 
     /// <summary>
     /// Called when a keyboard shortcut is pressed in the WebView.
     /// Default implementation forwards to the keyboard shortcut service.
     /// </summary>
-    public virtual void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);

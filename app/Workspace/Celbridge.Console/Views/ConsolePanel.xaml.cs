@@ -6,7 +6,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
+using Celbridge.WebView;
+using Celbridge.WebView.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Dispatching;
@@ -14,7 +15,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Console.Views;
 
-public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostNotifications
+public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleNotifications, IHostInput
 {
     private readonly ILogger<ConsolePanel> _logger;
     private readonly ICommandService _commandService;
@@ -32,7 +33,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
     private ITerminal? _terminal;
     private UserInterfaceTheme _currentTheme;
     private WebView2? _consoleWebView;
-    private HostChannel? _hostChannel;
+    private WebViewHostChannel? _hostChannel;
     private ConsoleHost? _consoleHost;
     private DispatcherQueue? _dispatcher;
 
@@ -163,13 +164,13 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         settings.AreDefaultContextMenusEnabled = true;
 
         // Set up JSON-RPC host channel
-        _hostChannel = new HostChannel(_consoleWebView.CoreWebView2);
+        _hostChannel = new WebViewHostChannel(_consoleWebView.CoreWebView2);
         var celbridgeHost = new CelbridgeHost(_hostChannel);
         _consoleHost = new ConsoleHost(celbridgeHost);
 
         // Register this panel as handler for console notifications
         _consoleHost.AddLocalRpcTarget<IConsoleNotifications>(this);
-        _consoleHost.AddLocalRpcTarget<IHostNotifications>(this);
+        _consoleHost.AddLocalRpcTarget<IHostInput>(this);
         _consoleHost.StartListening();
 
         var tcs = new TaskCompletionSource<bool>();
@@ -252,27 +253,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
     #endregion
 
-    #region IHostNotifications
-
-    public void OnDocumentChanged()
-    {
-        // Not used by console
-    }
-
-    public void OnLinkClicked(string href)
-    {
-        // Not used by console
-    }
-
-    public void OnImportComplete(bool success, string? error = null)
-    {
-        // Not used by console
-    }
-
-    public void OnClientReady()
-    {
-        // Not used by console
-    }
+    #region IHostInput
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
     {

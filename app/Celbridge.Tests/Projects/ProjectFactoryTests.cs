@@ -1,7 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
-using Celbridge.Python;
 using Celbridge.Tests.Migration.TestHelpers;
 
 namespace Celbridge.Tests.Projects;
@@ -13,22 +12,13 @@ namespace Celbridge.Tests.Projects;
 public class ProjectFactoryTests
 {
     private ILogger<ProjectFactory> _mockLogger = null!;
-    private IServiceProvider _mockServiceProvider = null!;
     private ProjectFactory _factory = null!;
 
     [SetUp]
     public void Setup()
     {
         _mockLogger = MigrationTestHelper.CreateMockLogger<ProjectFactory>();
-        
-        var mockPythonConfigService = Substitute.For<IPythonConfigService>();
-        mockPythonConfigService.DefaultPythonVersion.Returns("3.12");
-
-        _mockServiceProvider = Substitute.For<IServiceProvider>();
-        _mockServiceProvider.GetService(typeof(IProjectConfigService))
-            .Returns(new ProjectConfigService(mockPythonConfigService));
-        
-        _factory = new ProjectFactory(_mockLogger, _mockServiceProvider);
+        _factory = new ProjectFactory(_mockLogger);
     }
 
     #region Input Validation Tests
@@ -129,7 +119,7 @@ public class ProjectFactoryTests
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            result.Value.ProjectConfig.Should().NotBeNull();
+            result.Value.Config.Should().NotBeNull();
         }
         finally
         {

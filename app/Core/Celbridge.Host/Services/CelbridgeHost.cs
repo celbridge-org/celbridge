@@ -3,52 +3,13 @@ using StreamJsonRpc;
 namespace Celbridge.Host;
 
 /// <summary>
-/// JSON-RPC method names used for WebView2 communication between C# host and JavaScript client.
-/// </summary>
-public static class HostRpcMethods
-{
-    // Host initialization
-    public const string Initialize = "host/initialize";
-
-    // Keyboard shortcuts
-    public const string KeyboardShortcut = "host/keyboardShortcut";
-
-    // Document operations
-    public const string DocumentLoad = "document/load";
-    public const string DocumentSave = "document/save";
-
-    // Document notifications
-    public const string DocumentChanged = "document/changed";
-    public const string DocumentRequestSave = "document/requestSave";
-    public const string DocumentExternalChange = "document/externalChange";
-
-    // Dialog operations
-    public const string DialogPickImage = "dialog/pickImage";
-    public const string DialogPickFile = "dialog/pickFile";
-    public const string DialogAlert = "dialog/alert";
-
-    // Link operations
-    public const string LinkClicked = "link/clicked";
-
-    // Import operations
-    public const string ImportComplete = "import/complete";
-
-    // Lifecycle notifications
-    public const string ClientReady = "client/ready";
-
-    // Localization
-    public const string LocalizationUpdated = "localization/updated";
-}
-
-/// <summary>
 /// Host-side JSON-RPC communication facade for WebView2.
 /// This is the C# counterpart to CelbridgeClient in JavaScript.
 /// Owns the RPC infrastructure and provides a clean API for document views.
 /// </summary>
 public class CelbridgeHost : IDisposable
 {
-    private readonly IHostChannel _channel;
-    private readonly WebViewRpcHandler _rpcHandler;
+    private readonly RpcMessageHandler _rpcHandler;
     private bool _disposed;
 
     /// <summary>
@@ -62,8 +23,7 @@ public class CelbridgeHost : IDisposable
     /// </summary>
     public CelbridgeHost(IHostChannel channel)
     {
-        _channel = channel;
-        _rpcHandler = new WebViewRpcHandler(channel);
+        _rpcHandler = new RpcMessageHandler(channel);
         Rpc = new JsonRpc(_rpcHandler);
 
         // Ensure RPC method handlers run on the UI thread
@@ -85,31 +45,6 @@ public class CelbridgeHost : IDisposable
     public void StartListening()
     {
         Rpc.StartListening();
-    }
-
-    /// <summary>
-    /// Requests the WebView to save the current document content.
-    /// JS should respond by calling document/save.
-    /// </summary>
-    public Task NotifyRequestSaveAsync()
-    {
-        return Rpc.NotifyAsync(HostRpcMethods.DocumentRequestSave);
-    }
-
-    /// <summary>
-    /// Notifies the WebView that the document has been externally modified.
-    /// </summary>
-    public Task NotifyExternalChangeAsync()
-    {
-        return Rpc.NotifyAsync(HostRpcMethods.DocumentExternalChange);
-    }
-
-    /// <summary>
-    /// Notifies the WebView that localization strings have been updated.
-    /// </summary>
-    public Task NotifyLocalizationUpdatedAsync(Dictionary<string, string> strings)
-    {
-        return Rpc.NotifyWithParameterObjectAsync(HostRpcMethods.LocalizationUpdated, new { strings });
     }
 
     /// <summary>

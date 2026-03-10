@@ -3,24 +3,20 @@ using Celbridge.Logging;
 namespace Celbridge.Projects.Services;
 
 /// <summary>
-/// Factory for creating Project instances using dependency injection.
+/// Factory for creating Project instances.
 /// </summary>
 public class ProjectFactory
 {
     private readonly ILogger<ProjectFactory> _logger;
-    private readonly IServiceProvider _serviceProvider;
 
-    public ProjectFactory(
-        ILogger<ProjectFactory> logger,
-        IServiceProvider serviceProvider)
+    public ProjectFactory(ILogger<ProjectFactory> logger)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
     /// Loads a project from the specified file path.
-    /// Creates data folder if missing, initializes config service, returns populated Project.
+    /// Creates data folder if missing, parses config, returns populated Project.
     /// </summary>
     public Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult)
     {
@@ -36,7 +32,6 @@ public class ProjectFactory
 
         try
         {
-            // Compute paths
             var projectName = Path.GetFileNameWithoutExtension(projectFilePath);
             var projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
             var projectDataFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder);
@@ -48,32 +43,36 @@ public class ProjectFactory
                 _logger.LogError(migrationResult.OperationResult, "Failed to migrate project to latest version of Celbridge.");
             }
 
-            // Initialize project config service
-            var projectConfig = _serviceProvider.AcquireService<IProjectConfigService>() as ProjectConfigService;
-            Guard.IsNotNull(projectConfig);
-
+            ProjectConfig config;
             if (migrationSucceeded)
             {
-                var initResult = projectConfig.InitializeFromFile(projectFilePath);
-                if (initResult.IsFailure)
+                var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath);
+                if (parseResult.IsFailure)
                 {
-                    _logger.LogError(initResult, "Failed to initialize project configuration");
+                    _logger.LogError(parseResult, "Failed to parse project configuration");
+                    config = new ProjectConfig();
+                }
+                else
+                {
+                    config = parseResult.Value;
                 }
             }
+            else
+            {
+                config = new ProjectConfig();
+            }
 
-            // Ensure project data folder exists
             if (!Directory.Exists(projectDataFolderPath))
             {
                 Directory.CreateDirectory(projectDataFolderPath);
             }
 
-            // Create the project instance
             var project = new Project(
                 projectFilePath,
                 projectName,
                 projectFolderPath,
                 projectDataFolderPath,
-                projectConfig,
+                config,
                 migrationResult);
 
             return Task.FromResult(Result<IProject>.Ok(project));

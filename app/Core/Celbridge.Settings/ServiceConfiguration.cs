@@ -12,6 +12,7 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<IEditorSettings, EditorSettings>();
+        services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
 
         if (IsStorageAPIAvailable)
         {
