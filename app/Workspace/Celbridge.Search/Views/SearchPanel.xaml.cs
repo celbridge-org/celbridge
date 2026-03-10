@@ -1,5 +1,7 @@
 using Celbridge.Search.ViewModels;
 using Celbridge.Workspace;
+using Windows.System;
+using Microsoft.UI.Input;
 
 namespace Celbridge.Search.Views;
 
@@ -29,7 +31,7 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void SearchTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == Windows.System.VirtualKey.Escape)
+        if (e.Key == VirtualKey.Escape)
         {
             ViewModel.ClearSearchCommand.Execute(null);
             e.Handled = true;
@@ -47,10 +49,43 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void MatchLine_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        if (sender is not FrameworkElement element ||
+            element.DataContext is not SearchMatchLineViewModel matchLine)
+        {
+            return;
+        }
+
+        // Check for modifier keys
+        var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var isShiftPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        // Handle selection
+        ViewModel.SelectMatchLine(matchLine, isCtrlPressed, isShiftPressed);
+
+        // Navigate to the result (unless using modifier keys for multi-select)
+        if (!isCtrlPressed && !isShiftPressed)
+        {
+            matchLine.NavigateCommand.Execute(null);
+        }
+    }
+
+    private void MatchLine_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
         if (sender is FrameworkElement element &&
             element.DataContext is SearchMatchLineViewModel matchLine)
         {
-            matchLine.NavigateCommand.Execute(null);
+            matchLine.IsPointerOver = true;
+        }
+    }
+
+    private void MatchLine_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element &&
+            element.DataContext is SearchMatchLineViewModel matchLine)
+        {
+            matchLine.IsPointerOver = false;
         }
     }
 

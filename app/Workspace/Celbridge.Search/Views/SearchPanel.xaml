@@ -13,6 +13,9 @@
 
   <UserControl.Resources>
     <converters:ExpanderGlyphConverter x:Key="ExpandCollapseGlyphConverter"/>
+    <converters:BoolToBrushConverter x:Key="SelectionBackgroundConverter"
+                                     TrueBrush="{ThemeResource ListItemSelectedBackgroundBrush}"
+                                     FalseBrush="Transparent"/>
   </UserControl.Resources>
 
   <Grid VerticalAlignment="Stretch"
@@ -77,35 +80,8 @@
       </Button>
     </Grid>
 
-    <!-- Replace Input (visible only when replace mode is enabled) -->
-    <Grid Grid.Row="2"
-          Padding="12,4,12,4"
-          Visibility="{x:Bind ViewModel.IsReplaceModeEnabled, Mode=OneWay}">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-
-      <TextBox x:Name="ReplaceTextBox"
-               Grid.Column="0"
-               Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
-               Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-      <!-- Replace All button -->
-      <Button Grid.Column="1"
-              Command="{x:Bind ViewModel.ReplaceAllCommand}"
-              Padding="8,0"
-              Margin="4,0,0,0"
-              VerticalAlignment="Bottom"
-              Height="32"
-              IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
-              ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceAllTooltip, Mode=OneWay}">
-        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
-      </Button>
-    </Grid>
-
     <!-- Search Options -->
-    <StackPanel Grid.Row="3"
+    <StackPanel Grid.Row="2"
                 Orientation="Horizontal"
                 Padding="12,4,12,8"
                 Spacing="4"
@@ -149,6 +125,33 @@
         <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
       </ToggleButton>
     </StackPanel>
+
+    <!-- Replace Input (visible only when replace mode is enabled) -->
+    <Grid Grid.Row="3"
+          Padding="12,0,12,8"
+          Visibility="{x:Bind ViewModel.IsReplaceModeEnabled, Mode=OneWay}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBox x:Name="ReplaceTextBox"
+               Grid.Column="0"
+               Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
+               Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+      <!-- Replace All button -->
+      <Button Grid.Column="1"
+              Command="{x:Bind ViewModel.ReplaceAllCommand}"
+              Padding="8,0"
+              Margin="4,0,0,0"
+              VerticalAlignment="Bottom"
+              Height="32"
+              IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
+              ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceAllTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
+      </Button>
+    </Grid>
 
     <!-- Results Section -->
     <Grid Grid.Row="4">
@@ -254,7 +257,9 @@
                       <Grid Padding="4,4"
                             Margin="0,1"
                             PointerPressed="MatchLine_PointerPressed"
-                            Background="Transparent">
+                            PointerEntered="MatchLine_PointerEntered"
+                            PointerExited="MatchLine_PointerExited"
+                            Background="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource SelectionBackgroundConverter}}">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="36"/>
                           <ColumnDefinition Width="*"/>
@@ -276,10 +281,10 @@
                                Foreground="{ThemeResource SearchMatchHighlightBrush}"/><Run Text="{x:Bind TextAfterMatch}"/>
                         </TextBlock>
 
-                        <!-- Per-result Replace button (visible when replace mode is enabled) -->
+                        <!-- Per-result Replace button (visible on hover or selection when replace mode is enabled) -->
                         <Button Grid.Column="2"
                                 Command="{x:Bind ReplaceMatchCommand}"
-                                Visibility="{x:Bind IsReplaceModeEnabled, Mode=OneWay}"
+                                Visibility="{x:Bind ShowReplaceButton, Mode=OneWay}"
                                 Padding="6,0"
                                 Margin="4,0,0,0"
                                 MinHeight="0"

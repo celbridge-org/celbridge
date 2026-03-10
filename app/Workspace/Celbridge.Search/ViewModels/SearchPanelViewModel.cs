@@ -68,6 +68,9 @@ public partial class SearchPanelViewModel : ObservableObject
     [ObservableProperty]
     private bool _isReplacing;
 
+    // Selection tracking for multi-select
+    private SearchMatchLineViewModel? _selectionAnchor;
+
     // Tooltip properties
     public string MatchCaseTooltip { get; private set; } = string.Empty;
 
@@ -264,6 +267,86 @@ public partial class SearchPanelViewModel : ObservableObject
         HasResults = false;
         ShowNoResults = false;
         StatusText = string.Empty;
+        _selectionAnchor = null;
+    }
+
+    /// <summary>
+    /// Handles selection of a match line item with support for Ctrl and Shift modifiers.
+    /// </summary>
+    public void SelectMatchLine(SearchMatchLineViewModel matchLine, bool isCtrlPressed, bool isShiftPressed)
+    {
+        if (isCtrlPressed)
+        {
+            // Toggle selection of the clicked item
+            matchLine.IsSelected = !matchLine.IsSelected;
+            if (matchLine.IsSelected)
+            {
+                _selectionAnchor = matchLine;
+            }
+        }
+        else if (isShiftPressed && _selectionAnchor != null)
+        {
+            // Range selection from anchor to clicked item
+            SelectRange(_selectionAnchor, matchLine);
+        }
+        else
+        {
+            // Single selection - clear all others and select this one
+            ClearAllSelections();
+            matchLine.IsSelected = true;
+            _selectionAnchor = matchLine;
+        }
+    }
+
+    private void ClearAllSelections()
+    {
+        foreach (var fileResult in FileResults)
+        {
+            foreach (var match in fileResult.Matches)
+            {
+                match.IsSelected = false;
+            }
+        }
+    }
+
+    private void SelectRange(SearchMatchLineViewModel from, SearchMatchLineViewModel to)
+    {
+        // Build a flat list of all match lines to find range
+        var allMatches = FileResults
+            .SelectMany(f => f.Matches)
+            .ToList();
+
+        var fromIndex = allMatches.IndexOf(from);
+        var toIndex = allMatches.IndexOf(to);
+
+        if (fromIndex == -1 || toIndex == -1)
+        {
+            return;
+        }
+
+        // Ensure fromIndex <= toIndex
+        if (fromIndex > toIndex)
+        {
+            (fromIndex, toIndex) = (toIndex, fromIndex);
+        }
+
+        // Clear existing selection and select the range
+        ClearAllSelections();
+        for (var i = fromIndex; i <= toIndex; i++)
+        {
+            allMatches[i].IsSelected = true;
+        }
+    }
+
+    /// <summary>
+    /// Gets all currently selected match lines.
+    /// </summary>
+    public List<SearchMatchLineViewModel> GetSelectedMatches()
+    {
+        return FileResults
+            .SelectMany(f => f.Matches)
+            .Where(m => m.IsSelected)
+            .ToList();
     }
 
     [RelayCommand]
@@ -327,6 +410,14 @@ public partial class SearchPanelViewModel : ObservableObject
             return;
         }
 
+        // If the clicked item is selected and there are multiple selections, replace all selected
+        var selectedMatches = GetSelectedMatches();
+        if (matchLine.IsSelected && selectedMatches.Count > 1)
+        {
+            await ReplaceSelectedMatchesAsync(selectedMatches);
+            return;
+        }
+
         IsReplacing = true;
 
         try
@@ -347,6 +438,55 @@ public partial class SearchPanelViewModel : ObservableObject
                 // Refresh search results to reflect the changes
                 await ExecuteSearchAsync();
             }
+        }
+        finally
+        {
+            IsReplacing = false;
+        }
+    }
+
+    private async Task ReplaceSelectedMatchesAsync(List<SearchMatchLineViewModel> selectedMatches)
+    {
+        if (selectedMatches.Count == 0)
+        {
+            return;
+        }
+
+        IsReplacing = true;
+
+        try
+        {
+            // Group selected matches by file and process in reverse order within each file
+            // to maintain correct line positions
+            var matchesByFile = selectedMatches
+                .GroupBy(m => m.Parent.Resource)
+                .ToList();
+
+            foreach (var fileGroup in matchesByFile)
+            {
+                // Process matches in reverse order (by line number, then by position) 
+                // to avoid position shifts affecting subsequent replacements
+                var orderedMatches = fileGroup
+                    .OrderByDescending(m => m.LineNumber)
+                    .ThenByDescending(m => m.OriginalMatchStart)
+                    .ToList();
+
+                foreach (var match in orderedMatches)
+                {
+                    await _searchService.ReplaceMatchAsync(
+                        match.Parent.Resource,
+                        SearchText,
+                        ReplaceText,
+                        match.LineNumber,
+                        match.OriginalMatchStart,
+                        MatchCase,
+                        WholeWord,
+                        CancellationToken.None);
+                }
+            }
+
+            // Refresh search results to reflect all changes
+            await ExecuteSearchAsync();
         }
         finally
         {
