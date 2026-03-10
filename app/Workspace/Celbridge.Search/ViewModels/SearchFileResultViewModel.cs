@@ -70,7 +70,9 @@ public partial class SearchFileResultViewModel : ObservableObject
         if (Matches.Count > 0)
         {
             var firstMatch = Matches[0];
-            Parent.NavigateToResult(Resource, firstMatch.LineNumber, firstMatch.OriginalMatchStart + 1);
+            var startColumn = firstMatch.OriginalMatchStart + 1;
+            var endColumn = startColumn + firstMatch.MatchLength;
+            Parent.NavigateToResult(Resource, firstMatch.LineNumber, startColumn, firstMatch.LineNumber, endColumn);
         }
     }
 

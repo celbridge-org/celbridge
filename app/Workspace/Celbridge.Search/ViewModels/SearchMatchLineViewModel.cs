@@ -132,7 +132,9 @@ public partial class SearchMatchLineViewModel : ObservableObject
     {
         // Navigate to the line and column position of the match
         // Use OriginalMatchStart (0-based) + 1 to get the 1-based column position for Monaco
-        Parent.Parent.NavigateToResult(Parent.Resource, LineNumber, OriginalMatchStart + 1);
+        var startColumn = OriginalMatchStart + 1;
+        var endColumn = startColumn + MatchLength;
+        Parent.Parent.NavigateToResult(Parent.Resource, LineNumber, startColumn, LineNumber, endColumn);
     }
 
     [RelayCommand]
