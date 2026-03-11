@@ -3,7 +3,6 @@ using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Search.ViewModels;
 
@@ -36,13 +35,15 @@ public partial class SearchFileResultViewModel : ObservableObject
         RelativePath = result.RelativePath;
         MatchCount = result.Matches.Count;
 
-        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        ReplaceInFileTooltip = stringLocalizer.GetString("SearchPanel_ReplaceInFileTooltip");
+        // Use cached tooltip from parent to avoid ServiceLocator call per item
+        ReplaceInFileTooltip = parent.ReplaceInFileTooltip;
 
         // Get the file icon from the explorer service
         var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
         FileIcon = explorerService.GetIconForResource(result.Resource);
 
+        // Create all match ViewModels and add to collection
+        // Using constructor initialization avoids per-item CollectionChanged events
         foreach (var match in result.Matches)
         {
             Matches.Add(new SearchMatchLineViewModel(match, this));

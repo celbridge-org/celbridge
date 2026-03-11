@@ -9,8 +9,6 @@ namespace Celbridge.Search.Services;
 /// </summary>
 public class SearchService : ISearchService, IDisposable
 {
-    private const int MaxResults = 1000;
-
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly FileFilter _fileFilter;
@@ -63,10 +61,21 @@ public class SearchService : ISearchService, IDisposable
         public bool ReachedMaxResults { get; set; }
     }
 
-    public async Task<SearchResults> SearchAsync(
+    public Task<SearchResults> SearchAsync(
         string searchTerm,
         bool matchCase,
         bool wholeWord,
+        int? maxResults,
+        CancellationToken cancellationToken)
+    {
+        return SearchInternalAsync(searchTerm, matchCase, wholeWord, maxResults, cancellationToken);
+    }
+
+    private async Task<SearchResults> SearchInternalAsync(
+        string searchTerm,
+        bool matchCase,
+        bool wholeWord,
+        int? maxResults,
         CancellationToken cancellationToken)
     {
         var fileResults = new List<SearchFileResult>();
@@ -103,11 +112,15 @@ public class SearchService : ISearchService, IDisposable
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (searchState.TotalMatches >= MaxResults)
+                    if (maxResults.HasValue && searchState.TotalMatches >= maxResults.Value)
                     {
                         searchState.ReachedMaxResults = true;
                         break;
                     }
+
+                    var remainingMatches = maxResults.HasValue
+                        ? maxResults.Value - searchState.TotalMatches
+                        : int.MaxValue;
 
                     var fileResult = SearchFile(
                         filePath,
@@ -116,7 +129,7 @@ public class SearchService : ISearchService, IDisposable
                         searchTerm,
                         matchCase,
                         wholeWord,
-                        MaxResults - searchState.TotalMatches,
+                        remainingMatches,
                         cancellationToken);
 
                     if (fileResult != null && fileResult.Matches.Count > 0)

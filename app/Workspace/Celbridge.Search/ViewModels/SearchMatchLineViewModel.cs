@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Search.ViewModels;
 
@@ -77,8 +76,8 @@ public partial class SearchMatchLineViewModel : ObservableObject
         MatchLength = match.MatchLength;
         OriginalMatchStart = match.OriginalMatchStart;
 
-        var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-        ReplaceMatchTooltip = stringLocalizer.GetString("SearchPanel_ReplaceMatchTooltip");
+        // Use cached tooltip from grandparent to avoid ServiceLocator call per item
+        ReplaceMatchTooltip = parent.Parent.ReplaceMatchTooltip;
 
         // Split the line text into before, match, and after segments for highlighting
         var displayText = match.LineText;

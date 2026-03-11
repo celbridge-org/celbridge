@@ -7,11 +7,14 @@ public interface ISearchService
 {
     /// <summary>
     /// Searches for text across all project files.
+    /// When maxResults is specified, search stops after finding that many matches (for display purposes).
+    /// When maxResults is null, all matches are returned (for Replace All operations).
     /// </summary>
     Task<SearchResults> SearchAsync(
         string searchTerm,
         bool matchCase,
         bool wholeWord,
+        int? maxResults,
         CancellationToken cancellationToken);
 
     /// <summary>

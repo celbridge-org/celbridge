@@ -93,6 +93,11 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public string ReplaceAllTooltip { get; private set; } = string.Empty;
 
+    // Cached tooltip strings for child ViewModels (avoids ServiceLocator calls per item)
+    internal string ReplaceInFileTooltip { get; private set; } = string.Empty;
+
+    internal string ReplaceMatchTooltip { get; private set; } = string.Empty;
+
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
 
     /// <summary>
@@ -136,6 +141,10 @@ public partial class SearchPanelViewModel : ObservableObject
         ReplaceToggleTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceToggleTooltip");
         ReplacePlaceholder = _stringLocalizer.GetString("SearchPanel_ReplacePlaceholder");
         ReplaceAllTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceAllTooltip");
+
+        // Cached tooltips for child ViewModels
+        ReplaceInFileTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceInFileTooltip");
+        ReplaceMatchTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceMatchTooltip");
 
         // Load saved search options from editor settings
         MatchCase = _editorSettings.SearchMatchCase;
@@ -262,6 +271,8 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
+    private const int MaxSearchResults = 1000;
+
     private async Task ExecuteSearchAsync(bool preserveExpandedState = false)
     {
         // Cancel any in-progress search
@@ -289,6 +300,7 @@ public partial class SearchPanelViewModel : ObservableObject
                 SearchText,
                 MatchCase,
                 WholeWord,
+                maxResults: MaxSearchResults,
                 cancellationToken);
 
             if (cancellationToken.IsCancellationRequested)
@@ -296,7 +308,7 @@ public partial class SearchPanelViewModel : ObservableObject
                 return;
             }
 
-            // Update UI on UI thread
+            // Update UI with results
             UpdateResults(results, expandedStates);
         }
         catch (OperationCanceledException)
@@ -314,7 +326,15 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    private void UpdateResults(SearchResults results, Dictionary<ResourceKey, bool>? expandedStates = null)
+    // When total matches exceed this threshold, use smart collapse behavior
+    private const int CollapseThreshold = 100;
+
+    // Maximum number of matches to show expanded when auto-collapsing
+    private const int MaxExpandedMatches = 50;
+
+    private void UpdateResults(
+        SearchResults results,
+        Dictionary<ResourceKey, bool>? expandedStates)
     {
         FileResults.Clear();
 
@@ -329,20 +349,7 @@ public partial class SearchPanelViewModel : ObservableObject
         ShowNoResults = false;
         HasResults = true;
 
-        foreach (var fileResult in results.FileResults)
-        {
-            var fileVm = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
-
-            // Restore expanded state if available, otherwise use default (expanded)
-            if (expandedStates != null && expandedStates.TryGetValue(fileVm.Resource, out var wasExpanded))
-            {
-                fileVm.IsExpanded = wasExpanded;
-            }
-
-            FileResults.Add(fileVm);
-        }
-
-        // Update status text using localized format strings
+        // Update status immediately so user sees feedback
         var statusKey = (results.TotalMatches == 1, results.TotalFiles == 1) switch
         {
             (true, true) => "SearchPanel_Status_1Match1File",
@@ -350,12 +357,45 @@ public partial class SearchPanelViewModel : ObservableObject
             (false, true) => "SearchPanel_Status_NMatches1File",
             (false, false) => "SearchPanel_Status_NMatchesNFiles"
         };
-
         StatusText = _stringLocalizer.GetString(statusKey, results.TotalMatches, results.TotalFiles);
 
         if (results.ReachedMaxResults)
         {
             StatusText = _stringLocalizer.GetString("SearchPanel_StatusResultsCapped", StatusText);
+        }
+
+        // When there are many matches and no previous state to restore,
+        // expand first files up to a limit, then collapse the rest
+        var useSmartCollapse = expandedStates == null && results.TotalMatches > CollapseThreshold;
+        var expandedMatchCount = 0;
+        var isFirstFile = true;
+
+        foreach (var fileResult in results.FileResults)
+        {
+            var fileVm = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
+
+            // Restore expanded state if available
+            if (expandedStates != null && expandedStates.TryGetValue(fileVm.Resource, out var wasExpanded))
+            {
+                fileVm.IsExpanded = wasExpanded;
+            }
+            else if (useSmartCollapse)
+            {
+                // Always expand the first file to guarantee visual feedback.
+                // For subsequent files, only expand if it keeps us under the limit.
+                if (isFirstFile || expandedMatchCount + fileVm.MatchCount <= MaxExpandedMatches)
+                {
+                    fileVm.IsExpanded = true;
+                    expandedMatchCount += fileVm.MatchCount;
+                }
+                else
+                {
+                    fileVm.IsExpanded = false;
+                }
+            }
+
+            isFirstFile = false;
+            FileResults.Add(fileVm);
         }
     }
 
@@ -669,21 +709,6 @@ public partial class SearchPanelViewModel : ObservableObject
             return;
         }
 
-        // Build the confirmation message
-        var totalMatches = FileResults.Sum(f => f.MatchCount);
-        var totalFiles = FileResults.Count;
-        var titleText = _stringLocalizer.GetString("SearchPanel_ReplaceAllConfirmTitle");
-        var messageText = _stringLocalizer.GetString(
-            "SearchPanel_ReplaceAllConfirmMessage",
-            totalMatches,
-            totalFiles);
-
-        var confirmResult = await _dialogService.ShowConfirmationDialogAsync(titleText, messageText);
-        if (!confirmResult.IsSuccess || !confirmResult.Value)
-        {
-            return;
-        }
-
         IsReplacing = true;
 
         var progressTitle = _stringLocalizer.GetString("SearchPanel_ReplaceAllProgress");
@@ -691,11 +716,46 @@ public partial class SearchPanelViewModel : ObservableObject
 
         try
         {
-            // Build edit list from current search results
+            // Re-run search WITHOUT limits to get ALL matches in the project
+            // This ensures Replace All replaces everything, not just displayed results
+            var allResults = await _searchService.SearchAsync(
+                SearchText,
+                MatchCase,
+                WholeWord,
+                maxResults: null,
+                CancellationToken.None);
+
+            if (allResults.TotalMatches == 0)
+            {
+                return;
+            }
+
+            // Build the confirmation message with the ACTUAL total count
+            var totalMatches = allResults.TotalMatches;
+            var totalFiles = allResults.TotalFiles;
+            var titleText = _stringLocalizer.GetString("SearchPanel_ReplaceAllConfirmTitle");
+            var messageText = _stringLocalizer.GetString(
+                "SearchPanel_ReplaceAllConfirmMessage",
+                totalMatches,
+                totalFiles);
+
+            // Hide progress dialog temporarily to show confirmation
+            progressToken.Dispose();
+
+            var confirmResult = await _dialogService.ShowConfirmationDialogAsync(titleText, messageText);
+            if (!confirmResult.IsSuccess || !confirmResult.Value)
+            {
+                return;
+            }
+
+            // Re-acquire progress dialog for the actual replacement
+            progressToken = _dialogService.AcquireProgressDialog(progressTitle);
+
+            // Build edit list from ALL search results (not just displayed)
             // Process matches in reverse order within each file to maintain correct positions
             var documentEdits = new List<DocumentEdit>();
 
-            foreach (var fileResult in FileResults)
+            foreach (var fileResult in allResults.FileResults)
             {
                 var textEdits = fileResult.Matches
                     .OrderByDescending(m => m.LineNumber)
