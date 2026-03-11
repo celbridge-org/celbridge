@@ -1,5 +1,3 @@
-using Microsoft.UI.Xaml.Media;
-
 namespace Celbridge.UserInterface.Converters;
 
 /// <summary>
