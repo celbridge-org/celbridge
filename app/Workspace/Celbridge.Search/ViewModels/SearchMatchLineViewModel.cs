@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Celbridge.Search.ViewModels;
 
-public partial class SearchMatchLineViewModel : ObservableObject
+public partial class SearchMatchLineViewModel : ObservableObject, ISelectableSearchItem
 {
     internal readonly SearchFileResultViewModel Parent;
 

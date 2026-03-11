@@ -63,10 +63,37 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void FileHeader_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        if (sender is not FrameworkElement element ||
+            element.DataContext is not SearchFileResultViewModel fileResult)
+        {
+            return;
+        }
+
+        // Check for modifier keys
+        var isCtrlPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var isShiftPressed = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        // Handle selection
+        ViewModel.SelectFileResult(fileResult, isCtrlPressed, isShiftPressed);
+    }
+
+    private void FileHeader_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
         if (sender is FrameworkElement element &&
             element.DataContext is SearchFileResultViewModel fileResult)
         {
-            fileResult.ToggleExpandedCommand.Execute(null);
+            fileResult.IsPointerOver = true;
+        }
+    }
+
+    private void FileHeader_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement element &&
+            element.DataContext is SearchFileResultViewModel fileResult)
+        {
+            fileResult.IsPointerOver = false;
         }
     }
 

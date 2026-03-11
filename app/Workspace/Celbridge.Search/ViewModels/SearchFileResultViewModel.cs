@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Celbridge.Search.ViewModels;
 
-public partial class SearchFileResultViewModel : ObservableObject
+public partial class SearchFileResultViewModel : ObservableObject, ISelectableSearchItem
 {
     internal readonly SearchPanelViewModel Parent;
 
@@ -24,6 +24,24 @@ public partial class SearchFileResultViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isExpanded = true;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    [ObservableProperty]
+    private bool _isPointerOver;
+
+    /// <summary>
+    /// Controls whether action buttons (replace in file) should be visible.
+    /// Buttons are shown when the item is hovered or selected.
+    /// </summary>
+    public bool ShowActionButtons => IsPointerOver || IsSelected;
+
+    /// <summary>
+    /// Controls whether the replace button should be visible.
+    /// Only shown when replace mode is enabled AND (hovered or selected).
+    /// </summary>
+    public bool ShowReplaceButton => IsReplaceModeEnabled && ShowActionButtons;
 
     public ObservableCollection<SearchMatchLineViewModel> Matches { get; } = new();
 
@@ -58,7 +76,20 @@ public partial class SearchFileResultViewModel : ObservableObject
         if (e.PropertyName == nameof(SearchPanelViewModel.IsReplaceModeEnabled))
         {
             OnPropertyChanged(nameof(IsReplaceModeEnabled));
+            OnPropertyChanged(nameof(ShowReplaceButton));
         }
+    }
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowActionButtons));
+        OnPropertyChanged(nameof(ShowReplaceButton));
+    }
+
+    partial void OnIsPointerOverChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowActionButtons));
+        OnPropertyChanged(nameof(ShowReplaceButton));
     }
 
     /// <summary>

@@ -186,33 +186,41 @@
                       Margin="0,4,0,0">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SearchFileResultViewModel">
-              <StackPanel Margin="0,0,0,4">
+              <StackPanel>
                 <!-- File Header -->
-                <Grid Margin="8,2,8,2"
-                      Padding="4"
+                <Grid Padding="4,4,12,4"
                       PointerPressed="FileHeader_PointerPressed"
-                      Background="Transparent">
+                      PointerEntered="FileHeader_PointerEntered"
+                      PointerExited="FileHeader_PointerExited"
+                      Background="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource SelectionBackgroundConverter}}">
                   <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
 
-                  <!-- Expand/Collapse Icon -->
-                  <FontIcon Grid.Column="0"
-                            Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpandCollapseGlyphConverter}}"
-                            FontSize="14"
-                            Margin="0,0,4,0"
-                            VerticalAlignment="Center"/>
+                  <!-- Expand/Collapse Button -->
+                  <Button Grid.Column="0"
+                          Command="{x:Bind ToggleExpandedCommand}"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="0"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center">
+                    <FontIcon Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpandCollapseGlyphConverter}}"
+                              FontSize="14"/>
+                  </Button>
 
                   <!-- File Icon -->
                   <controls:FileIcon Grid.Column="1"
                                      IconDefinition="{x:Bind FileIcon}"
                                      Size="16"
                                      MinWidth="20"
-                                     Margin="0,0,4,0"
+                                     Margin="0,0,8,0"
                                      VerticalAlignment="Center"/>
 
                   <!-- File Name -->
@@ -223,10 +231,10 @@
                              VerticalAlignment="Center"
                              ToolTipService.ToolTip="{x:Bind RelativePath}"/>
 
-                  <!-- Replace in File Button (visible when replace mode is enabled) -->
+                  <!-- Replace in File Button (visible on hover or selection when replace mode is enabled) -->
                   <Button Grid.Column="3"
                           Command="{x:Bind ReplaceInFileCommand}"
-                          Visibility="{x:Bind IsReplaceModeEnabled, Mode=OneWay}"
+                          Visibility="{x:Bind ShowReplaceButton, Mode=OneWay}"
                           Padding="6,0"
                           Margin="4,0,0,0"
                           MinHeight="0"
@@ -251,12 +259,10 @@
 
                 <!-- Match Lines -->
                 <ItemsControl ItemsSource="{x:Bind Matches}"
-                              Visibility="{x:Bind IsExpanded, Mode=OneWay}"
-                              Margin="0,0,8,0">
+                              Visibility="{x:Bind IsExpanded, Mode=OneWay}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SearchMatchLineViewModel">
-                      <Grid Padding="4,4"
-                            Margin="0,1"
+                      <Grid Padding="4,4,12,4"
                             PointerPressed="MatchLine_PointerPressed"
                             PointerEntered="MatchLine_PointerEntered"
                             PointerExited="MatchLine_PointerExited"

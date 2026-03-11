@@ -75,8 +75,8 @@ public partial class SearchPanelViewModel : ObservableObject
     [ObservableProperty]
     private bool _isReplacing;
 
-    // Selection tracking for multi-select
-    private SearchMatchLineViewModel? _selectionAnchor;
+    // Selection tracking for multi-select (can be either a file result or a match line)
+    private ISelectableSearchItem? _selectionAnchor;
 
     // Tooltip properties
     public string MatchCaseTooltip { get; private set; } = string.Empty;
@@ -436,10 +436,39 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Handles selection of a file result item with support for Ctrl and Shift modifiers.
+    /// </summary>
+    public void SelectFileResult(SearchFileResultViewModel fileResult, bool isCtrlPressed, bool isShiftPressed)
+    {
+        if (isCtrlPressed)
+        {
+            // Toggle selection of the clicked item
+            fileResult.IsSelected = !fileResult.IsSelected;
+            if (fileResult.IsSelected)
+            {
+                _selectionAnchor = fileResult;
+            }
+        }
+        else if (isShiftPressed && _selectionAnchor != null)
+        {
+            // Range selection from anchor to clicked item
+            SelectRange(_selectionAnchor, fileResult);
+        }
+        else
+        {
+            // Single selection - clear all others and select this one
+            ClearAllSelections();
+            fileResult.IsSelected = true;
+            _selectionAnchor = fileResult;
+        }
+    }
+
     private void ClearAllSelections()
     {
         foreach (var fileResult in FileResults)
         {
+            fileResult.IsSelected = false;
             foreach (var match in fileResult.Matches)
             {
                 match.IsSelected = false;
@@ -447,15 +476,21 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    private void SelectRange(SearchMatchLineViewModel from, SearchMatchLineViewModel to)
+    private void SelectRange(ISelectableSearchItem from, ISelectableSearchItem to)
     {
-        // Build a flat list of all match lines to find range
-        var allMatches = FileResults
-            .SelectMany(f => f.Matches)
-            .ToList();
+        // Build a flat list of all selectable items (file headers and match lines)
+        var allItems = new List<ISelectableSearchItem>();
+        foreach (var fileResult in FileResults)
+        {
+            allItems.Add(fileResult);
+            foreach (var match in fileResult.Matches)
+            {
+                allItems.Add(match);
+            }
+        }
 
-        var fromIndex = allMatches.IndexOf(from);
-        var toIndex = allMatches.IndexOf(to);
+        var fromIndex = allItems.IndexOf(from);
+        var toIndex = allItems.IndexOf(to);
 
         if (fromIndex == -1 || toIndex == -1)
         {
@@ -472,7 +507,7 @@ public partial class SearchPanelViewModel : ObservableObject
         ClearAllSelections();
         for (var i = fromIndex; i <= toIndex; i++)
         {
-            allMatches[i].IsSelected = true;
+            allItems[i].IsSelected = true;
         }
     }
 
