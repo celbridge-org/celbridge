@@ -29,7 +29,7 @@ public record DocumentResourceChangedMessage(ResourceKey OldResource, ResourceKe
 
 /// <summary>
 /// A message sent when a document save operation has completed.
-/// This message is only sent for specific document types with complex async save sequences (e.g. spreadsheets).
+/// Automatically sent by DocumentView.SaveDocument() after a successful save.
 /// </summary>
 public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
 

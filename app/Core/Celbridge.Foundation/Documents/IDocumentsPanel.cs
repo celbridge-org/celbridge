@@ -32,6 +32,12 @@ public interface IDocumentsPanel
     Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses();
 
     /// <summary>
+    /// Gets the document view for an already-opened document.
+    /// Returns null if the document is not open.
+    /// </summary>
+    IDocumentView? GetDocumentView(ResourceKey fileResource);
+
+    /// <summary>
     /// Open a file resource as a document in the documents panel.
     /// Opens in the default section (section 0).
     /// </summary>

@@ -13,6 +13,8 @@
 - Do not use special characters like arrows or emojis in code comments. Use only standard ASCII characters.
 - Always use localized strings for all user-facing text in this codebase. Never hardcode strings directly in XAML or C# UI code — add entries to Resources.resw and access them via IStringLocalizer.GetString() in code-behind, then bind with `{x:Bind}`.
 - Unit tests should be practical and cover the happy case and the most common failure modes. Do not aim for complete code coverage for its own sake — keep the test set tight and focused.
+- Place the `Dispose` implementation at the end of a class rather than at the start, as it's noisy boilerplate and seldom what you want to see first in a class.
+- All private variables in a class should be declared at the top where they're easy to see.
 
 ## Code Style
 - Use specific formatting rules

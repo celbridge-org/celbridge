@@ -64,7 +64,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public override async Task<Result> SaveDocument()
+    protected override async Task<Result> SaveDocumentContentAsync()
     {
         if (Host is null)
         {

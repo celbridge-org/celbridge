@@ -198,6 +198,11 @@ public sealed partial class SplitCodeEditor : UserControl, IHostCodePreview
     public Task InsertTextAtCaretAsync(string text) => MonacoEditor.InsertTextAtCaretAsync(text);
 
     /// <summary>
+    /// Applies a batch of text edits to the Monaco editor as a single undo unit.
+    /// </summary>
+    public Task ApplyEditsAsync(IEnumerable<TextEdit> edits) => MonacoEditor.ApplyEditsAsync(edits);
+
+    /// <summary>
     /// Cleans up resources when the control is being disposed.
     /// </summary>
     public async Task CleanupAsync()

@@ -32,3 +32,33 @@ public record SearchResults(
     int TotalFiles,
     bool WasCancelled,
     bool ReachedMaxResults);
+
+/// <summary>
+/// Represents the result of a replace operation in a single file.
+/// </summary>
+public record ReplaceResult(
+    bool Success,
+    int ReplacementsCount);
+
+/// <summary>
+/// Represents the result of a single-match replace operation.
+/// </summary>
+public record ReplaceMatchResult(
+    bool Success);
+
+/// <summary>
+/// Represents the result of a Replace All operation across multiple files.
+/// </summary>
+public record ReplaceAllResult(
+    int TotalReplacements,
+    int FilesModified,
+    int FilesFailed,
+    bool WasCancelled);
+
+/// <summary>
+/// Contains the search and replace history for a workspace.
+/// Stores only the search/replace terms, not the search options.
+/// </summary>
+public record SearchHistory(
+    List<string> SearchTerms,
+    List<string> ReplaceTerms);

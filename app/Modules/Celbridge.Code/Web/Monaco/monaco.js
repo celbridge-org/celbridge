@@ -143,6 +143,27 @@ function handleInsertText(text) {
     editor.focus();
 }
 
+function handleApplyEdits(edits) {
+    if (!editor || !edits || !Array.isArray(edits)) {
+        return;
+    }
+
+    // Convert edits to Monaco format and apply as a single undo unit
+    const monacoEdits = edits.map(edit => ({
+        range: {
+            startLineNumber: edit.line,
+            startColumn: edit.column,
+            endLineNumber: edit.endLine,
+            endColumn: edit.endColumn
+        },
+        text: edit.newText
+    }));
+
+    // executeEdits groups all edits as a single undo operation
+    editor.executeEdits('applyEdits', monacoEdits);
+    editor.focus();
+}
+
 async function handleEditorInitialize(language, scrollBeyondLastLine) {
     if (!window.isWebView) {
         return;
@@ -186,6 +207,9 @@ async function handleEditorInitialize(language, scrollBeyondLastLine) {
 
         isInitialized = true;
 
+        // Notify host that content is loaded and editor is ready for edits
+        client.document.notifyContentLoaded();
+
         // Apply any navigation that arrived before content was loaded
         if (pendingNavigation) {
             const nav = pendingNavigation;
@@ -206,24 +230,30 @@ function handleEditorSetLanguage(language) {
 }
 
 function applyNavigation(lineNumber, column, endLineNumber, endColumn) {
-    if (endLineNumber > 0) {
-        // Select the matched text range (supports both single-line and multi-line selections)
-        editor.setSelection({
-            startLineNumber: lineNumber,
-            startColumn: column,
-            endLineNumber: endLineNumber,
-            endColumn: endColumn
+    // Use double-requestAnimationFrame to ensure Monaco has completed its internal
+    // layout operations after setValue() before applying navigation
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            if (endLineNumber > 0) {
+                // Select the matched text range (supports both single-line and multi-line selections)
+                editor.setSelection({
+                    startLineNumber: lineNumber,
+                    startColumn: column,
+                    endLineNumber: endLineNumber,
+                    endColumn: endColumn
+                });
+            } else {
+                // No range provided - just position the cursor
+                editor.setPosition({ lineNumber: lineNumber, column: column });
+            }
+
+            // Reveal the line in the center of the editor viewport
+            editor.revealLineInCenter(lineNumber);
+
+            // Focus the editor to make the cursor visible
+            editor.focus();
         });
-    } else {
-        // No range provided - just position the cursor
-        editor.setPosition({ lineNumber: lineNumber, column: column });
-    }
-
-    // Reveal the line in the center of the editor viewport
-    editor.revealLineInCenter(lineNumber);
-
-    // Focus the editor to make the cursor visible
-    editor.focus();
+    });
 }
 
 function handleEditorNavigateToLocation(lineNumber, column, endLineNumber, endColumn) {
@@ -251,4 +281,5 @@ if (window.isWebView) {
     monacoClient.onNavigateToLocation(handleEditorNavigateToLocation);
     monacoClient.onScrollToPercentage(handleScrollToPercentage);
     monacoClient.onInsertText(handleInsertText);
+    monacoClient.onApplyEdits(handleApplyEdits);
 }

@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Documents;
+using Celbridge.Messaging;
+using Celbridge.Resources;
 using Celbridge.Settings;
-using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,21 +14,34 @@ using Microsoft.UI.Dispatching;
 
 namespace Celbridge.Search.ViewModels;
 
+/// <summary>
+/// ViewModel for the search panel. Split into partial classes for maintainability:
+/// - SearchPanelViewModel.cs (this file): Core search logic and UI state
+/// - SearchPanelViewModel.Replace.cs: Replace operations
+/// - SearchPanelViewModel.Selection.cs: Multi-select handling
+/// - SearchPanelViewModel.History.cs: Search/replace history management
+/// </summary>
 public partial class SearchPanelViewModel : ObservableObject
 {
     private readonly ISearchService _searchService;
     private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
+    private readonly IDialogService _dialogService;
     private readonly DispatcherQueue _dispatcherQueue;
 
     private CancellationTokenSource? _searchCancellationTokenSource;
     private readonly Lock _searchLock = new();
 
-    // Debounce timer
-    private Timer? _debounceTimer;
-    private const int DebounceDelayMs = 300;
+    // Unified debounce timer for all search triggers (typing, file changes, etc.)
+    private Timer? _searchDebounceTimer;
+    private const int SearchDebounceDelayMs = 300;
+
+    // Flags for pending search behavior
+    private bool _pendingSearchPreserveExpandedState;
+    private bool _pendingSearchRaiseRefreshEvents;
 
     [ObservableProperty]
     private string _titleText = string.Empty;
@@ -58,6 +73,22 @@ public partial class SearchPanelViewModel : ObservableObject
     [ObservableProperty]
     private bool _showNoResults;
 
+    [ObservableProperty]
+    private bool _isReplaceModeEnabled;
+
+    [ObservableProperty]
+    private string _replaceText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isReplacing;
+
+    // Selection tracking for multi-select (can be either a file result or a match line)
+    private ISelectableSearchItem? _selectionAnchor;
+
+    // History collections (stores only terms, not options)
+    public ObservableCollection<string> SearchHistory { get; } = new();
+    public ObservableCollection<string> ReplaceHistory { get; } = new();
+
     // Tooltip properties
     public string MatchCaseTooltip { get; private set; } = string.Empty;
 
@@ -67,18 +98,51 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public string CollapseAllTooltip { get; private set; } = string.Empty;
 
+    public string ReplaceToggleTooltip { get; private set; } = string.Empty;
+
+    public string ReplacePlaceholder { get; private set; } = string.Empty;
+
+    public string ReplaceAllTooltip { get; private set; } = string.Empty;
+
+    public string SearchHistoryTooltip { get; private set; } = string.Empty;
+
+    public string ReplaceHistoryTooltip { get; private set; } = string.Empty;
+
+    public string ClearHistoryText { get; private set; } = string.Empty;
+
+    // Cached tooltip strings for child ViewModels (avoids ServiceLocator calls per item)
+    internal string ReplaceInFileTooltip { get; private set; } = string.Empty;
+
+    internal string ReplaceMatchTooltip { get; private set; } = string.Empty;
+
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
+
+    /// <summary>
+    /// Event raised before search results are refreshed.
+    /// Subscribers should save scroll position or other UI state.
+    /// </summary>
+    public event EventHandler? BeforeResultsRefresh;
+
+    /// <summary>
+    /// Event raised after search results are refreshed.
+    /// Subscribers should restore scroll position or other UI state.
+    /// </summary>
+    public event EventHandler? AfterResultsRefresh;
 
     public SearchPanelViewModel(
         ISearchService searchService,
         ICommandService commandService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IEditorSettings editorSettings)
+        IEditorSettings editorSettings,
+        IDialogService dialogService)
     {
         _searchService = searchService;
         _commandService = commandService;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _editorSettings = editorSettings;
+        _dialogService = dialogService;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
@@ -91,16 +155,97 @@ public partial class SearchPanelViewModel : ObservableObject
         WholeWordTooltip = _stringLocalizer.GetString("SearchPanel_WholeWordTooltip");
         SearchTooltip = _stringLocalizer.GetString("SearchPanel_SearchTooltip");
         CollapseAllTooltip = _stringLocalizer.GetString("SearchPanel_CollapseAllTooltip");
+        ReplaceToggleTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceToggleTooltip");
+        ReplacePlaceholder = _stringLocalizer.GetString("SearchPanel_ReplacePlaceholder");
+        ReplaceAllTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceAllTooltip");
+        SearchHistoryTooltip = _stringLocalizer.GetString("SearchPanel_SearchHistoryTooltip");
+        ReplaceHistoryTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceHistoryTooltip");
+        ClearHistoryText = _stringLocalizer.GetString("SearchPanel_ClearHistoryText");
+
+        // Cached tooltips for child ViewModels
+        ReplaceInFileTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceInFileTooltip");
+        ReplaceMatchTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceMatchTooltip");
 
         // Load saved search options from editor settings
         MatchCase = _editorSettings.SearchMatchCase;
         WholeWord = _editorSettings.SearchWholeWord;
+        IsReplaceModeEnabled = _editorSettings.ReplaceMode;
+
+        // Listen for workspace loaded to load search/replace history from workspace settings
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+
+        // Listen for file system changes to refresh search results
+        // This catches all modifications: user edits, external editors, scripts, agents, etc.
+        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnResourceChanged);
+        _messengerService.Register<MonitoredResourceCreatedMessage>(this, OnResourceCreated);
+        _messengerService.Register<MonitoredResourceDeletedMessage>(this, OnResourceDeleted);
+        _messengerService.Register<MonitoredResourceRenamedMessage>(this, OnResourceRenamed);
+    }
+
+    private void OnResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    private void OnResourceCreated(object recipient, MonitoredResourceCreatedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    private void OnResourceDeleted(object recipient, MonitoredResourceDeletedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    private void OnResourceRenamed(object recipient, MonitoredResourceRenamedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    /// <summary>
+    /// Schedules a debounced search operation. Multiple calls within the debounce window
+    /// will reset the timer, and only the final configuration will be used.
+    /// </summary>
+    private void ScheduleSearch(bool preserveExpandedState, bool raiseRefreshEvents)
+    {
+        // Only search if there's text to search for
+        if (string.IsNullOrEmpty(SearchText))
+        {
+            return;
+        }
+
+        // Store behavior flags for when the search executes
+        _pendingSearchPreserveExpandedState = preserveExpandedState;
+        _pendingSearchRaiseRefreshEvents = raiseRefreshEvents;
+
+        // Reset debounce timer
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new Timer(
+            _ => _dispatcherQueue.TryEnqueue(() => _ = ExecutePendingSearchAsync()),
+            null,
+            SearchDebounceDelayMs,
+            Timeout.Infinite);
+    }
+
+    private async Task ExecutePendingSearchAsync()
+    {
+        if (_pendingSearchRaiseRefreshEvents)
+        {
+            BeforeResultsRefresh?.Invoke(this, EventArgs.Empty);
+        }
+
+        await ExecuteSearchAsync(preserveExpandedState: _pendingSearchPreserveExpandedState);
+
+        if (_pendingSearchRaiseRefreshEvents)
+        {
+            AfterResultsRefresh?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     partial void OnSearchTextChanged(string value)
     {
         // Cancel any pending debounce timer
-        _debounceTimer?.Dispose();
+        _searchDebounceTimer?.Dispose();
 
         if (string.IsNullOrEmpty(value))
         {
@@ -108,12 +253,8 @@ public partial class SearchPanelViewModel : ObservableObject
             return;
         }
 
-        // Start debounce timer - callback runs on thread pool, so we need to dispatch to UI thread
-        _debounceTimer = new Timer(
-            _ => _dispatcherQueue.TryEnqueue(() => _ = ExecuteSearchAsync()),
-            null,
-            DebounceDelayMs,
-            Timeout.Infinite);
+        // Schedule search without preserving state (user is typing a new query)
+        ScheduleSearch(preserveExpandedState: false, raiseRefreshEvents: false);
     }
 
     partial void OnMatchCaseChanged(bool value)
@@ -138,6 +279,12 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
+    partial void OnIsReplaceModeEnabledChanged(bool value)
+    {
+        // Save to editor settings
+        _editorSettings.ReplaceMode = value;
+    }
+
     [RelayCommand]
     private void ExecuteSearch()
     {
@@ -147,7 +294,9 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    private async Task ExecuteSearchAsync()
+    private const int MaxSearchResults = 1000;
+
+    private async Task ExecuteSearchAsync(bool preserveExpandedState = false)
     {
         // Cancel any in-progress search
         lock (_searchLock)
@@ -158,6 +307,13 @@ public partial class SearchPanelViewModel : ObservableObject
 
         var cancellationToken = _searchCancellationTokenSource!.Token;
 
+        // Capture current expanded state if preserving
+        Dictionary<ResourceKey, bool>? expandedStates = null;
+        if (preserveExpandedState && FileResults.Count > 0)
+        {
+            expandedStates = FileResults.ToDictionary(f => f.Resource, f => f.IsExpanded);
+        }
+
         try
         {
             IsSearching = true;
@@ -167,6 +323,7 @@ public partial class SearchPanelViewModel : ObservableObject
                 SearchText,
                 MatchCase,
                 WholeWord,
+                maxResults: MaxSearchResults,
                 cancellationToken);
 
             if (cancellationToken.IsCancellationRequested)
@@ -174,8 +331,8 @@ public partial class SearchPanelViewModel : ObservableObject
                 return;
             }
 
-            // Update UI on UI thread
-            UpdateResults(results);
+            // Update UI with results
+            UpdateResults(results, expandedStates);
         }
         catch (OperationCanceledException)
         {
@@ -192,7 +349,15 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    private void UpdateResults(SearchResults results)
+    // When total matches exceed this threshold, use smart collapse behavior
+    private const int CollapseThreshold = 100;
+
+    // Maximum number of matches to show expanded when auto-collapsing
+    private const int MaxExpandedMatches = 50;
+
+    private void UpdateResults(
+        SearchResults results,
+        Dictionary<ResourceKey, bool>? expandedStates)
     {
         FileResults.Clear();
 
@@ -207,25 +372,53 @@ public partial class SearchPanelViewModel : ObservableObject
         ShowNoResults = false;
         HasResults = true;
 
-        foreach (var fileResult in results.FileResults)
+        // Update status immediately so user sees feedback
+        var statusKey = (results.TotalMatches == 1, results.TotalFiles == 1) switch
         {
-            var fileVm = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
-            FileResults.Add(fileVm);
-        }
-
-        // Update status text
-        var matchWord = results.TotalMatches == 1
-            ? _stringLocalizer.GetString("SearchPanel_Match")
-            : _stringLocalizer.GetString("SearchPanel_Matches");
-        var fileWord = results.TotalFiles == 1
-            ? _stringLocalizer.GetString("SearchPanel_File")
-            : _stringLocalizer.GetString("SearchPanel_Files");
-
-        StatusText = $"{results.TotalMatches} {matchWord} {_stringLocalizer.GetString("SearchPanel_In")} {results.TotalFiles} {fileWord}";
+            (true, true) => "SearchPanel_Status_1Match1File",
+            (true, false) => "SearchPanel_Status_1MatchNFiles",
+            (false, true) => "SearchPanel_Status_NMatches1File",
+            (false, false) => "SearchPanel_Status_NMatchesNFiles"
+        };
+        StatusText = _stringLocalizer.GetString(statusKey, results.TotalMatches, results.TotalFiles);
 
         if (results.ReachedMaxResults)
         {
-            StatusText += $" ({_stringLocalizer.GetString("SearchPanel_ResultsCapped")})";
+            StatusText = _stringLocalizer.GetString("SearchPanel_StatusResultsCapped", StatusText);
+        }
+
+        // When there are many matches and no previous state to restore,
+        // expand first files up to a limit, then collapse the rest
+        var useSmartCollapse = expandedStates == null && results.TotalMatches > CollapseThreshold;
+        var expandedMatchCount = 0;
+        var isFirstFile = true;
+
+        foreach (var fileResult in results.FileResults)
+        {
+            var fileVm = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
+
+            // Restore expanded state if available
+            if (expandedStates != null && expandedStates.TryGetValue(fileVm.Resource, out var wasExpanded))
+            {
+                fileVm.IsExpanded = wasExpanded;
+            }
+            else if (useSmartCollapse)
+            {
+                // Always expand the first file to guarantee visual feedback.
+                // For subsequent files, only expand if it keeps us under the limit.
+                if (isFirstFile || expandedMatchCount + fileVm.MatchCount <= MaxExpandedMatches)
+                {
+                    fileVm.IsExpanded = true;
+                    expandedMatchCount += fileVm.MatchCount;
+                }
+                else
+                {
+                    fileVm.IsExpanded = false;
+                }
+            }
+
+            isFirstFile = false;
+            FileResults.Add(fileVm);
         }
     }
 
@@ -235,6 +428,7 @@ public partial class SearchPanelViewModel : ObservableObject
         HasResults = false;
         ShowNoResults = false;
         StatusText = string.Empty;
+        _selectionAnchor = null;
     }
 
     [RelayCommand]
@@ -251,6 +445,46 @@ public partial class SearchPanelViewModel : ObservableObject
         {
             fileResult.IsExpanded = false;
         }
+    }
+
+    [RelayCommand]
+    private void ToggleReplaceMode()
+    {
+        IsReplaceModeEnabled = !IsReplaceModeEnabled;
+    }
+
+    [RelayCommand]
+    private async Task ReplaceAll()
+    {
+        await ReplaceAllCoreAsync();
+    }
+
+    /// <summary>
+    /// Updates the status text and visibility flags based on current results.
+    /// </summary>
+    private void UpdateResultsStatus()
+    {
+        if (FileResults.Count == 0)
+        {
+            HasResults = false;
+            ShowNoResults = true;
+            StatusText = string.Empty;
+            _selectionAnchor = null;
+            return;
+        }
+
+        var totalMatches = FileResults.Sum(f => f.MatchCount);
+        var totalFiles = FileResults.Count;
+
+        var statusKey = (totalMatches == 1, totalFiles == 1) switch
+        {
+            (true, true) => "SearchPanel_Status_1Match1File",
+            (true, false) => "SearchPanel_Status_1MatchNFiles",
+            (false, true) => "SearchPanel_Status_NMatches1File",
+            (false, false) => "SearchPanel_Status_NMatchesNFiles"
+        };
+
+        StatusText = _stringLocalizer.GetString(statusKey, totalMatches, totalFiles);
     }
 
     public void NavigateToResult(ResourceKey resource, int lineNumber, int column, int endLineNumber, int endColumn)
@@ -276,141 +510,5 @@ public partial class SearchPanelViewModel : ObservableObject
             command.ForceReload = false;
             command.Location = location;
         });
-    }
-}
-
-public partial class SearchFileResultViewModel : ObservableObject
-{
-    internal readonly SearchPanelViewModel Parent;
-
-    public ResourceKey Resource { get; }
-    public string FileName { get; }
-    public string RelativePath { get; }
-    public int MatchCount { get; }
-    public FileIconDefinition FileIcon { get; }
-
-    [ObservableProperty]
-    private bool _isExpanded = true;
-
-    public ObservableCollection<SearchMatchLineViewModel> Matches { get; } = new();
-
-    public SearchFileResultViewModel(SearchFileResult result, SearchPanelViewModel parent, IWorkspaceWrapper workspaceWrapper)
-    {
-        Parent = parent;
-        Resource = result.Resource;
-        FileName = result.FileName;
-        RelativePath = result.RelativePath;
-        MatchCount = result.Matches.Count;
-
-        // Get the file icon from the explorer service
-        var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
-        FileIcon = explorerService.GetIconForResource(result.Resource);
-
-        foreach (var match in result.Matches)
-        {
-            Matches.Add(new SearchMatchLineViewModel(match, this));
-        }
-    }
-
-    [RelayCommand]
-    private void ToggleExpanded()
-    {
-        IsExpanded = !IsExpanded;
-    }
-
-    [RelayCommand]
-    private void NavigateToFile()
-    {
-        if (Matches.Count > 0)
-        {
-            var firstMatch = Matches[0];
-            var startColumn = firstMatch.OriginalMatchStart + 1;
-            var endColumn = startColumn + firstMatch.MatchLength;
-            Parent.NavigateToResult(Resource, firstMatch.LineNumber, startColumn, firstMatch.LineNumber, endColumn);
-        }
-    }
-}
-
-public partial class SearchMatchLineViewModel : ObservableObject
-{
-    private readonly SearchFileResultViewModel _parent;
-
-    public int LineNumber { get; }
-
-    /// <summary>
-    /// The full context line text (used for tooltip).
-    /// </summary>
-    public string LineText { get; }
-
-    /// <summary>
-    /// Text before the match (for display).
-    /// </summary>
-    public string TextBeforeMatch { get; }
-
-    /// <summary>
-    /// The matched text (for highlighted display).
-    /// </summary>
-    public string MatchedText { get; }
-
-    /// <summary>
-    /// Text after the match (for display).
-    /// </summary>
-    public string TextAfterMatch { get; }
-
-    /// <summary>
-    /// The position where the match starts in the display text.
-    /// </summary>
-    public int MatchStart { get; }
-
-    /// <summary>
-    /// The length of the match.
-    /// </summary>
-    public int MatchLength { get; }
-
-    /// <summary>
-    /// The position where the match starts in the original unformatted line (0-based).
-    /// This is used for navigation to the correct column in the editor.
-    /// </summary>
-    public int OriginalMatchStart { get; }
-
-    public SearchMatchLineViewModel(SearchMatchLine match, SearchFileResultViewModel parent)
-    {
-        _parent = parent;
-        LineNumber = match.LineNumber;
-        LineText = match.LineText;
-        MatchStart = match.MatchStart;
-        MatchLength = match.MatchLength;
-        OriginalMatchStart = match.OriginalMatchStart;
-
-        // Split the line text into before, match, and after segments for highlighting
-        var displayText = match.LineText;
-        var matchStart = match.MatchStart;
-        var matchLength = match.MatchLength;
-
-        // Ensure bounds are valid
-        if (matchStart >= 0 && matchStart < displayText.Length)
-        {
-            var matchEnd = Math.Min(matchStart + matchLength, displayText.Length);
-
-            TextBeforeMatch = displayText.Substring(0, matchStart);
-            MatchedText = displayText.Substring(matchStart, matchEnd - matchStart);
-            TextAfterMatch = matchEnd < displayText.Length ? displayText.Substring(matchEnd) : string.Empty;
-        }
-        else
-        {
-            // Fallback if match position is invalid
-            TextBeforeMatch = displayText;
-            MatchedText = string.Empty;
-            TextAfterMatch = string.Empty;
-        }
-    }
-
-    [RelayCommand]
-    private void Navigate()
-    {
-        // Use OriginalMatchStart (0-based) + 1 to get the 1-based column position for Monaco
-        var startColumn = OriginalMatchStart + 1;
-        var endColumn = startColumn + MatchLength;
-        _parent.Parent.NavigateToResult(_parent.Resource, LineNumber, startColumn, LineNumber, endColumn);
     }
 }

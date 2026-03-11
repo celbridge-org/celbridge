@@ -91,7 +91,7 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
         }
     }
 
-    public async Task<Result> SaveDocument(string text)
+    public async Task<Result> SaveDocumentContent(string text)
     {
         // Don't immediately try to save again if the save fails.
         HasUnsavedChanges = false;
@@ -104,12 +104,9 @@ public partial class MarkdownDocumentViewModel : DocumentViewModel
 
             await File.WriteAllTextAsync(FilePath, text);
 
-            // Update tracking info BEFORE sending completion message to avoid race condition
-            // with file watcher events that may arrive before the message is processed
+            // Update tracking info to avoid false external change detection
+            // when file watcher events arrive
             UpdateFileTrackingInfo();
-
-            var message = new DocumentSaveCompletedMessage(FileResource);
-            _messengerService.Send(message);
         }
         catch (Exception ex)
         {

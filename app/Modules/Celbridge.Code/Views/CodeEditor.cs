@@ -20,6 +20,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
 {
     private const int ContentRequestTimeoutSeconds = 5;
     private const int ClientInitializationTimeoutSeconds = 10;
+    private const int ContentLoadedTimeoutSeconds = 10;
 
     private readonly ILogger<CodeEditor> _logger;
     private readonly IWebViewFactory _webViewFactory;
@@ -31,6 +32,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     private CodeEditorHost? _host;
     private WebViewHostChannel? _messageChannel;
     private TaskCompletionSource? _clientReadyTcs;
+    private TaskCompletionSource? _contentLoadedTcs;
     private TaskCompletionSource<string>? _getContentTcs;
 
     private bool _isPreInitialized;
@@ -155,6 +157,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     /// Initializes the Monaco editor with content and language.
     /// If PreInitializeAsync() was called, this only sets the content and language.
     /// Otherwise, performs full initialization.
+    /// Waits for Monaco to signal that content is loaded before returning.
     /// </summary>
     public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey)
     {
@@ -178,8 +181,30 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
             return Result.Fail("Failed to initialize JSON-RPC host");
         }
 
+        // Prepare to wait for content loaded notification from Monaco
+        _contentLoadedTcs = new TaskCompletionSource();
+
         // Initialize the Monaco editor via JSON-RPC with the content, language, and options
         await _host.InitializeEditorAsync(_language, Options.ScrollBeyondLastLine);
+
+        // Wait for Monaco to signal content is loaded, with timeout
+        var timeout = TimeSpan.FromSeconds(ContentLoadedTimeoutSeconds);
+        var timeoutTask = Task.Delay(timeout);
+        var completedTask = await Task.WhenAny(_contentLoadedTcs.Task, timeoutTask);
+
+        if (completedTask == timeoutTask)
+        {
+            _contentLoadedTcs = null;
+
+            var errorMessage = $"Monaco editor content failed to load within {ContentLoadedTimeoutSeconds} seconds. " +
+                               $"File: {_filePath}";
+
+            _logger.LogError(errorMessage);
+
+            return Result.Fail(errorMessage);
+        }
+
+        _contentLoadedTcs = null;
 
         return Result.Ok();
     }
@@ -302,6 +327,18 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         {
             await _host.InsertTextAsync(text);
             _webView?.Focus(FocusState.Programmatic);
+        }
+    }
+
+    /// <summary>
+    /// Applies a batch of text edits to the Monaco editor as a single undo unit.
+    /// Each edit specifies a range (line, column, endLine, endColumn) and replacement text.
+    /// </summary>
+    public async Task ApplyEditsAsync(IEnumerable<TextEdit> edits)
+    {
+        if (_host is not null)
+        {
+            await _host.ApplyEditsAsync(edits);
         }
     }
 
@@ -450,6 +487,12 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     {
         // Signal that the JS client is ready
         _clientReadyTcs?.TrySetResult();
+    }
+
+    public void OnContentLoaded()
+    {
+        // Signal that content has been loaded and editor is ready for edits
+        _contentLoadedTcs?.TrySetResult();
     }
 
     #endregion

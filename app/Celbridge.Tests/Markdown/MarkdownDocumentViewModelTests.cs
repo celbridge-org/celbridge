@@ -64,11 +64,11 @@ public class MarkdownDocumentViewModelTests
     }
 
     [Test]
-    public async Task SaveDocument_WritesContentToFile()
+    public async Task SaveDocumentContent_WritesContentToFile()
     {
         var content = "# Saved Content";
 
-        var result = await _vm.SaveDocument(content);
+        var result = await _vm.SaveDocumentContent(content);
 
         result.IsSuccess.Should().BeTrue();
         var written = await File.ReadAllTextAsync(_tempFilePath);
@@ -76,34 +76,24 @@ public class MarkdownDocumentViewModelTests
     }
 
     [Test]
-    public async Task SaveDocument_ClearsUnsavedChanges_AndSendsCompletionMessage()
+    public async Task SaveDocumentContent_ClearsUnsavedChanges()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 5.0;
 
-        var messageReceived = false;
-        var receivedResource = ResourceKey.Empty;
-        _messengerService.Register<DocumentSaveCompletedMessage>(this, (_, m) =>
-        {
-            messageReceived = true;
-            receivedResource = m.DocumentResource;
-        });
-
-        await _vm.SaveDocument("content");
+        await _vm.SaveDocumentContent("content");
 
         _vm.HasUnsavedChanges.Should().BeFalse();
         _vm.SaveTimer.Should().Be(0);
-        messageReceived.Should().BeTrue();
-        receivedResource.Should().Be(_vm.FileResource);
     }
 
     [Test]
-    public async Task SaveDocument_ReturnsFailure_WhenPathIsInvalid()
+    public async Task SaveDocumentContent_ReturnsFailure_WhenPathIsInvalid()
     {
         var invalidPath = Path.Combine(_tempFolder, "nonexistent_dir", "nested", "file.md");
         _vm.FilePath = invalidPath;
 
-        var result = await _vm.SaveDocument("content");
+        var result = await _vm.SaveDocumentContent("content");
 
         result.IsFailure.Should().BeTrue();
     }
