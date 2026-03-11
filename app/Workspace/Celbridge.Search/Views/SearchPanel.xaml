@@ -81,10 +81,14 @@
         <FontIcon Glyph="&#xE70D;" FontSize="12"/>
         <Button.Flyout>
           <MenuFlyout x:Name="SearchHistoryFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="{x:Bind ViewModel.ClearHistoryText, Mode=OneWay}"
                             Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
-                            IsEnabled="{x:Bind ViewModel.SearchHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}"/>
-            <MenuFlyoutSeparator/>
+                            IsEnabled="{x:Bind ViewModel.SearchHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}">
+              <MenuFlyoutItem.Icon>
+                <SymbolIcon Symbol="Delete"/>
+              </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
           </MenuFlyout>
         </Button.Flyout>
       </Button>
@@ -173,10 +177,14 @@
         <FontIcon Glyph="&#xE70D;" FontSize="12"/>
         <Button.Flyout>
           <MenuFlyout x:Name="ReplaceHistoryFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuFlyoutSeparator/>
             <MenuFlyoutItem Text="{x:Bind ViewModel.ClearHistoryText, Mode=OneWay}"
                             Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
-                            IsEnabled="{x:Bind ViewModel.ReplaceHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}"/>
-            <MenuFlyoutSeparator/>
+                            IsEnabled="{x:Bind ViewModel.ReplaceHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}">
+              <MenuFlyoutItem.Icon>
+                <SymbolIcon Symbol="Delete"/>
+              </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
           </MenuFlyout>
         </Button.Flyout>
       </Button>
