@@ -81,4 +81,12 @@ export class DocumentAPI {
     notifyClientReady() {
         this.#transport.notify('document/clientReady', {});
     }
+
+    /**
+     * Notifies the host that document content has been loaded and the editor is ready for edits.
+     * Call this after content has been set in the editor (e.g., after setValue in Monaco).
+     */
+    notifyContentLoaded() {
+        this.#transport.notify('document/contentLoaded', {});
+    }
 }

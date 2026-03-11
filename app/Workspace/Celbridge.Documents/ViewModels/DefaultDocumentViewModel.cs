@@ -28,7 +28,7 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
         return Result.Ok();
     }
 
-    public async Task<Result> SaveDocument()
+    public async Task<Result> SaveDocumentContent()
     {
         // Don't immediately try to save again if the save fails.
         HasUnsavedChanges = false;

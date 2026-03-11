@@ -177,7 +177,8 @@
                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
       <!-- Results Tree -->
-      <ScrollViewer Grid.Row="1"
+      <ScrollViewer x:Name="ResultsScrollViewer"
+                    Grid.Row="1"
                     Visibility="{x:Bind ViewModel.HasResults, Mode=OneWay}"
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled">

@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Host;
 
 namespace Celbridge.Code.Services;
@@ -12,6 +13,7 @@ internal static class CodeEditorRpcMethods
     public const string NavigateToLocation = "codeEditor/navigateToLocation";
     public const string ScrollToPercentage = "codeEditor/scrollToPercentage";
     public const string InsertText = "codeEditor/insertText";
+    public const string ApplyEdits = "codeEditor/applyEdits";
 }
 
 /// <summary>
@@ -102,6 +104,24 @@ public class CodeEditorHost : IDisposable
     public Task InsertTextAsync(string text)
     {
         return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.InsertText, new { text });
+    }
+
+    /// <summary>
+    /// Applies a batch of text edits to the Monaco editor as a single undo unit.
+    /// </summary>
+    public Task ApplyEditsAsync(IEnumerable<TextEdit> edits)
+    {
+        // Convert to camelCase property names for Monaco editor
+        var monacoEdits = edits.Select(e => new
+        {
+            line = e.Line,
+            column = e.Column,
+            endLine = e.EndLine,
+            endColumn = e.EndColumn,
+            newText = e.NewText
+        });
+
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.ApplyEdits, new { edits = monacoEdits });
     }
 
     public void Dispose()

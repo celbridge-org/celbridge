@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -196,6 +197,11 @@ public sealed partial class SplitCodeEditor : UserControl, IHostCodePreview
     /// Inserts text at the current cursor position in the Monaco editor (or replaces the current selection).
     /// </summary>
     public Task InsertTextAtCaretAsync(string text) => MonacoEditor.InsertTextAtCaretAsync(text);
+
+    /// <summary>
+    /// Applies a batch of text edits to the Monaco editor as a single undo unit.
+    /// </summary>
+    public Task ApplyEditsAsync(IEnumerable<TextEdit> edits) => MonacoEditor.ApplyEditsAsync(edits);
 
     /// <summary>
     /// Cleans up resources when the control is being disposed.

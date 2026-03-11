@@ -63,6 +63,16 @@ class MonacoClient {
             handler(params.text);
         });
     }
+
+    /**
+     * Registers a handler for apply-edits requests from the host.
+     * @param {function(Array): void} handler - The handler function receiving the edits array.
+     */
+    onApplyEdits(handler) {
+        this.#transport.addEventListener('codeEditor/applyEdits', (params) => {
+            handler(params.edits);
+        });
+    }
 }
 
 // Export singleton instance

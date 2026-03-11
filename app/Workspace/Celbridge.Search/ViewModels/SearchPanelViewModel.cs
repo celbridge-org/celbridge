@@ -3,6 +3,8 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents;
+using Celbridge.Messaging;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,6 +18,7 @@ public partial class SearchPanelViewModel : ObservableObject
 {
     private readonly ISearchService _searchService;
     private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEditorSettings _editorSettings;
@@ -25,9 +28,13 @@ public partial class SearchPanelViewModel : ObservableObject
     private CancellationTokenSource? _searchCancellationTokenSource;
     private readonly Lock _searchLock = new();
 
-    // Debounce timer
-    private Timer? _debounceTimer;
-    private const int DebounceDelayMs = 300;
+    // Unified debounce timer for all search triggers (typing, file changes, etc.)
+    private Timer? _searchDebounceTimer;
+    private const int SearchDebounceDelayMs = 300;
+
+    // Flags for pending search behavior
+    private bool _pendingSearchPreserveExpandedState;
+    private bool _pendingSearchRaiseRefreshEvents;
 
     [ObservableProperty]
     private string _titleText = string.Empty;
@@ -88,15 +95,29 @@ public partial class SearchPanelViewModel : ObservableObject
 
     public ObservableCollection<SearchFileResultViewModel> FileResults { get; } = new();
 
+    /// <summary>
+    /// Event raised before search results are refreshed.
+    /// Subscribers should save scroll position or other UI state.
+    /// </summary>
+    public event EventHandler? BeforeResultsRefresh;
+
+    /// <summary>
+    /// Event raised after search results are refreshed.
+    /// Subscribers should restore scroll position or other UI state.
+    /// </summary>
+    public event EventHandler? AfterResultsRefresh;
+
     public SearchPanelViewModel(
         ISearchService searchService,
         ICommandService commandService,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IEditorSettings editorSettings,
         IDialogService dialogService)
     {
         _searchService = searchService;
         _commandService = commandService;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _editorSettings = editorSettings;
         _dialogService = dialogService;
@@ -120,12 +141,79 @@ public partial class SearchPanelViewModel : ObservableObject
         MatchCase = _editorSettings.SearchMatchCase;
         WholeWord = _editorSettings.SearchWholeWord;
         IsReplaceModeEnabled = _editorSettings.ReplaceMode;
+
+        // Listen for file system changes to refresh search results
+        // This catches all modifications: user edits, external editors, scripts, agents, etc.
+        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnResourceChanged);
+        _messengerService.Register<MonitoredResourceCreatedMessage>(this, OnResourceCreated);
+        _messengerService.Register<MonitoredResourceDeletedMessage>(this, OnResourceDeleted);
+        _messengerService.Register<MonitoredResourceRenamedMessage>(this, OnResourceRenamed);
+    }
+
+    private void OnResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    private void OnResourceCreated(object recipient, MonitoredResourceCreatedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    private void OnResourceDeleted(object recipient, MonitoredResourceDeletedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    private void OnResourceRenamed(object recipient, MonitoredResourceRenamedMessage message)
+    {
+        ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
+    }
+
+    /// <summary>
+    /// Schedules a debounced search operation. Multiple calls within the debounce window
+    /// will reset the timer, and only the final configuration will be used.
+    /// </summary>
+    private void ScheduleSearch(bool preserveExpandedState, bool raiseRefreshEvents)
+    {
+        // Only search if there's text to search for
+        if (string.IsNullOrEmpty(SearchText))
+        {
+            return;
+        }
+
+        // Store behavior flags for when the search executes
+        _pendingSearchPreserveExpandedState = preserveExpandedState;
+        _pendingSearchRaiseRefreshEvents = raiseRefreshEvents;
+
+        // Reset debounce timer
+        _searchDebounceTimer?.Dispose();
+        _searchDebounceTimer = new Timer(
+            _ => _dispatcherQueue.TryEnqueue(() => _ = ExecutePendingSearchAsync()),
+            null,
+            SearchDebounceDelayMs,
+            Timeout.Infinite);
+    }
+
+    private async Task ExecutePendingSearchAsync()
+    {
+        if (_pendingSearchRaiseRefreshEvents)
+        {
+            BeforeResultsRefresh?.Invoke(this, EventArgs.Empty);
+        }
+
+        await ExecuteSearchAsync(preserveExpandedState: _pendingSearchPreserveExpandedState);
+
+        if (_pendingSearchRaiseRefreshEvents)
+        {
+            AfterResultsRefresh?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     partial void OnSearchTextChanged(string value)
     {
         // Cancel any pending debounce timer
-        _debounceTimer?.Dispose();
+        _searchDebounceTimer?.Dispose();
 
         if (string.IsNullOrEmpty(value))
         {
@@ -133,12 +221,8 @@ public partial class SearchPanelViewModel : ObservableObject
             return;
         }
 
-        // Start debounce timer - callback runs on thread pool, so we need to dispatch to UI thread
-        _debounceTimer = new Timer(
-            _ => _dispatcherQueue.TryEnqueue(() => _ = ExecuteSearchAsync()),
-            null,
-            DebounceDelayMs,
-            Timeout.Infinite);
+        // Schedule search without preserving state (user is typing a new query)
+        ScheduleSearch(preserveExpandedState: false, raiseRefreshEvents: false);
     }
 
     partial void OnMatchCaseChanged(bool value)
@@ -178,7 +262,7 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    private async Task ExecuteSearchAsync()
+    private async Task ExecuteSearchAsync(bool preserveExpandedState = false)
     {
         // Cancel any in-progress search
         lock (_searchLock)
@@ -188,6 +272,13 @@ public partial class SearchPanelViewModel : ObservableObject
         }
 
         var cancellationToken = _searchCancellationTokenSource!.Token;
+
+        // Capture current expanded state if preserving
+        Dictionary<ResourceKey, bool>? expandedStates = null;
+        if (preserveExpandedState && FileResults.Count > 0)
+        {
+            expandedStates = FileResults.ToDictionary(f => f.Resource, f => f.IsExpanded);
+        }
 
         try
         {
@@ -206,7 +297,7 @@ public partial class SearchPanelViewModel : ObservableObject
             }
 
             // Update UI on UI thread
-            UpdateResults(results);
+            UpdateResults(results, expandedStates);
         }
         catch (OperationCanceledException)
         {
@@ -223,7 +314,7 @@ public partial class SearchPanelViewModel : ObservableObject
         }
     }
 
-    private void UpdateResults(SearchResults results)
+    private void UpdateResults(SearchResults results, Dictionary<ResourceKey, bool>? expandedStates = null)
     {
         FileResults.Clear();
 
@@ -241,6 +332,13 @@ public partial class SearchPanelViewModel : ObservableObject
         foreach (var fileResult in results.FileResults)
         {
             var fileVm = new SearchFileResultViewModel(fileResult, this, _workspaceWrapper);
+
+            // Restore expanded state if available, otherwise use default (expanded)
+            if (expandedStates != null && expandedStates.TryGetValue(fileVm.Resource, out var wasExpanded))
+            {
+                fileVm.IsExpanded = wasExpanded;
+            }
+
             FileResults.Add(fileVm);
         }
 
@@ -382,20 +480,32 @@ public partial class SearchPanelViewModel : ObservableObject
 
         try
         {
-            var result = await _searchService.ReplaceInFileAsync(
-                fileResult.Resource,
-                SearchText,
-                ReplaceText,
-                MatchCase,
-                WholeWord,
-                CancellationToken.None);
+            // Build edit list from all matches in the file
+            // Process matches in reverse order to maintain correct positions
+            var textEdits = fileResult.Matches
+                .OrderByDescending(m => m.LineNumber)
+                .ThenByDescending(m => m.OriginalMatchStart)
+                .Select(m => new TextEdit(
+                    Line: m.LineNumber,
+                    Column: m.OriginalMatchStart + 1, // Convert to 1-based column
+                    EndLine: m.LineNumber,
+                    EndColumn: m.OriginalMatchStart + 1 + SearchText.Length,
+                    NewText: ReplaceText))
+                .ToList();
 
-            if (result.Success && result.ReplacementsCount > 0)
+            var documentEdit = new DocumentEdit(fileResult.Resource, textEdits);
+            var documentEdits = new List<DocumentEdit> { documentEdit };
+
+            // Execute the ApplyEditsCommand to apply edits via Monaco (supports undo)
+            // Using ExecuteAsync to wait for completion so documents are opened before updating UI
+            await _commandService.ExecuteAsync<IApplyEditsCommand>(command =>
             {
-                // Refresh search results to reflect the changes
-                // The ResourceMonitor will handle notifying open documents about file changes
-                await ExecuteSearchAsync();
-            }
+                command.Edits = documentEdits;
+            });
+
+            // Remove the file from results since all its matches are replaced
+            FileResults.Remove(fileResult);
+            UpdateResultsStatus();
         }
         finally
         {
@@ -423,21 +533,35 @@ public partial class SearchPanelViewModel : ObservableObject
         try
         {
             var fileResult = matchLine.Parent;
-            var result = await _searchService.ReplaceMatchAsync(
-                fileResult.Resource,
-                SearchText,
-                ReplaceText,
-                matchLine.LineNumber,
-                matchLine.OriginalMatchStart,
-                MatchCase,
-                WholeWord,
-                CancellationToken.None);
 
-            if (result.Success)
+            // Build a single edit for this match
+            var textEdit = new TextEdit(
+                Line: matchLine.LineNumber,
+                Column: matchLine.OriginalMatchStart + 1, // Convert to 1-based column
+                EndLine: matchLine.LineNumber,
+                EndColumn: matchLine.OriginalMatchStart + 1 + SearchText.Length,
+                NewText: ReplaceText);
+
+            var documentEdit = new DocumentEdit(fileResult.Resource, new List<TextEdit> { textEdit });
+            var documentEdits = new List<DocumentEdit> { documentEdit };
+
+            // Execute the ApplyEditsCommand to apply edits via Monaco (supports undo)
+            // Using ExecuteAsync to wait for completion so documents are opened before updating UI
+            await _commandService.ExecuteAsync<IApplyEditsCommand>(command =>
             {
-                // Refresh search results to reflect the changes
-                await ExecuteSearchAsync();
+                command.Edits = documentEdits;
+            });
+
+            // Remove this match from the file's results
+            fileResult.RemoveMatch(matchLine);
+
+            // If the file has no more matches, remove it from results
+            if (fileResult.MatchCount == 0)
+            {
+                FileResults.Remove(fileResult);
             }
+
+            UpdateResultsStatus();
         }
         finally
         {
@@ -456,42 +580,85 @@ public partial class SearchPanelViewModel : ObservableObject
 
         try
         {
-            // Group selected matches by file and process in reverse order within each file
-            // to maintain correct line positions
+            // Group selected matches by file
             var matchesByFile = selectedMatches
                 .GroupBy(m => m.Parent.Resource)
                 .ToList();
 
+            var documentEdits = new List<DocumentEdit>();
+
             foreach (var fileGroup in matchesByFile)
             {
-                // Process matches in reverse order (by line number, then by position) 
-                // to avoid position shifts affecting subsequent replacements
-                var orderedMatches = fileGroup
+                // Process matches in reverse order to maintain correct positions
+                var textEdits = fileGroup
                     .OrderByDescending(m => m.LineNumber)
                     .ThenByDescending(m => m.OriginalMatchStart)
+                    .Select(m => new TextEdit(
+                        Line: m.LineNumber,
+                        Column: m.OriginalMatchStart + 1, // Convert to 1-based column
+                        EndLine: m.LineNumber,
+                        EndColumn: m.OriginalMatchStart + 1 + SearchText.Length,
+                        NewText: ReplaceText))
                     .ToList();
 
-                foreach (var match in orderedMatches)
+                var documentEdit = new DocumentEdit(fileGroup.Key, textEdits);
+                documentEdits.Add(documentEdit);
+            }
+
+            // Execute the ApplyEditsCommand to apply all edits via Monaco (supports undo)
+            // Using ExecuteAsync to wait for completion so documents are opened before updating UI
+            await _commandService.ExecuteAsync<IApplyEditsCommand>(command =>
+            {
+                command.Edits = documentEdits;
+            });
+
+            // Remove replaced matches from results
+            foreach (var match in selectedMatches)
+            {
+                var fileResult = match.Parent;
+                fileResult.RemoveMatch(match);
+
+                // If the file has no more matches, remove it from results
+                if (fileResult.MatchCount == 0)
                 {
-                    await _searchService.ReplaceMatchAsync(
-                        match.Parent.Resource,
-                        SearchText,
-                        ReplaceText,
-                        match.LineNumber,
-                        match.OriginalMatchStart,
-                        MatchCase,
-                        WholeWord,
-                        CancellationToken.None);
+                    FileResults.Remove(fileResult);
                 }
             }
 
-            // Refresh search results to reflect all changes
-            await ExecuteSearchAsync();
+            UpdateResultsStatus();
         }
         finally
         {
             IsReplacing = false;
         }
+    }
+
+    /// <summary>
+    /// Updates the status text and visibility flags based on current results.
+    /// </summary>
+    private void UpdateResultsStatus()
+    {
+        if (FileResults.Count == 0)
+        {
+            HasResults = false;
+            ShowNoResults = true;
+            StatusText = string.Empty;
+            _selectionAnchor = null;
+            return;
+        }
+
+        var totalMatches = FileResults.Sum(f => f.MatchCount);
+        var totalFiles = FileResults.Count;
+
+        var statusKey = (totalMatches == 1, totalFiles == 1) switch
+        {
+            (true, true) => "SearchPanel_Status_1Match1File",
+            (true, false) => "SearchPanel_Status_1MatchNFiles",
+            (false, true) => "SearchPanel_Status_NMatches1File",
+            (false, false) => "SearchPanel_Status_NMatchesNFiles"
+        };
+
+        StatusText = _stringLocalizer.GetString(statusKey, totalMatches, totalFiles);
     }
 
     [RelayCommand]
@@ -519,35 +686,42 @@ public partial class SearchPanelViewModel : ObservableObject
 
         IsReplacing = true;
 
-        // Snapshot the current file results as data for the replace operation
-        var fileResultsData = FileResults
-            .Select(f => new SearchFileResult(
-                f.Resource,
-                f.FileName,
-                f.RelativePath,
-                f.Matches.Select(m => new SearchMatchLine(
-                    m.LineNumber,
-                    m.LineText,
-                    m.MatchStart,
-                    m.MatchLength,
-                    m.OriginalMatchStart)).ToList()))
-            .ToList();
-
         var progressTitle = _stringLocalizer.GetString("SearchPanel_ReplaceAllProgress");
         var progressToken = _dialogService.AcquireProgressDialog(progressTitle);
 
         try
         {
-            var result = await _searchService.ReplaceAllAsync(
-                fileResultsData,
-                SearchText,
-                ReplaceText,
-                MatchCase,
-                WholeWord,
-                CancellationToken.None);
+            // Build edit list from current search results
+            // Process matches in reverse order within each file to maintain correct positions
+            var documentEdits = new List<DocumentEdit>();
 
-            // Refresh search results to reflect the changes
-            await ExecuteSearchAsync();
+            foreach (var fileResult in FileResults)
+            {
+                var textEdits = fileResult.Matches
+                    .OrderByDescending(m => m.LineNumber)
+                    .ThenByDescending(m => m.OriginalMatchStart)
+                    .Select(m => new TextEdit(
+                        Line: m.LineNumber,
+                        Column: m.OriginalMatchStart + 1, // Convert to 1-based column
+                        EndLine: m.LineNumber,
+                        EndColumn: m.OriginalMatchStart + 1 + SearchText.Length,
+                        NewText: ReplaceText))
+                    .ToList();
+
+                var documentEdit = new DocumentEdit(fileResult.Resource, textEdits);
+                documentEdits.Add(documentEdit);
+            }
+
+            // Execute the ApplyEditsCommand to apply all edits via Monaco (supports undo)
+            // Using ExecuteAsync to wait for completion so documents are opened before clearing results
+            await _commandService.ExecuteAsync<IApplyEditsCommand>(command =>
+            {
+                command.Edits = documentEdits;
+            });
+
+            // Clear all results since all matches are replaced
+            FileResults.Clear();
+            UpdateResultsStatus();
         }
         finally
         {

@@ -14,12 +14,14 @@ public partial class SearchFileResultViewModel : ObservableObject
     public ResourceKey Resource { get; }
     public string FileName { get; }
     public string RelativePath { get; }
-    public int MatchCount { get; }
     public FileIconDefinition FileIcon { get; }
 
     public bool IsReplaceModeEnabled => Parent.IsReplaceModeEnabled;
 
     public string ReplaceInFileTooltip { get; }
+
+    [ObservableProperty]
+    private int _matchCount;
 
     [ObservableProperty]
     private bool _isExpanded = true;
@@ -55,6 +57,17 @@ public partial class SearchFileResultViewModel : ObservableObject
         if (e.PropertyName == nameof(SearchPanelViewModel.IsReplaceModeEnabled))
         {
             OnPropertyChanged(nameof(IsReplaceModeEnabled));
+        }
+    }
+
+    /// <summary>
+    /// Removes a match from this file's results.
+    /// </summary>
+    public void RemoveMatch(SearchMatchLineViewModel match)
+    {
+        if (Matches.Remove(match))
+        {
+            MatchCount = Matches.Count;
         }
     }
 

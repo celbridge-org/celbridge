@@ -9,6 +9,9 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 {
     private readonly IPanelFocusService _panelFocusService;
 
+    // Saved scroll position for refresh operations
+    private double _savedScrollOffset;
+
     public SearchPanelViewModel ViewModel { get; }
 
     public SearchPanel()
@@ -17,6 +20,26 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         ViewModel = ServiceLocator.AcquireService<SearchPanelViewModel>();
 
         this.InitializeComponent();
+
+        // Subscribe to refresh events for scroll position preservation
+        ViewModel.BeforeResultsRefresh += OnBeforeResultsRefresh;
+        ViewModel.AfterResultsRefresh += OnAfterResultsRefresh;
+    }
+
+    private void OnBeforeResultsRefresh(object? sender, EventArgs e)
+    {
+        // Save the current scroll position before results are refreshed
+        _savedScrollOffset = ResultsScrollViewer.VerticalOffset;
+    }
+
+    private void OnAfterResultsRefresh(object? sender, EventArgs e)
+    {
+        // Restore scroll position after results are refreshed
+        // Use DispatcherQueue to ensure the UI has updated before scrolling
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            ResultsScrollViewer.ChangeView(null, _savedScrollOffset, null, disableAnimation: true);
+        });
     }
 
     private void UserControl_GotFocus(object sender, RoutedEventArgs e)
@@ -93,5 +116,49 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
     {
         SearchTextBox.Focus(FocusState.Programmatic);
         SearchTextBox.SelectAll();
+    }
+
+    public void SetSearchText(string searchText)
+    {
+        ViewModel.SearchText = searchText;
+    }
+
+    public void SetMatchCase(bool matchCase)
+    {
+        ViewModel.MatchCase = matchCase;
+    }
+
+    public void SetWholeWord(bool wholeWord)
+    {
+        ViewModel.WholeWord = wholeWord;
+    }
+
+    public void SetReplaceMode(bool enabled)
+    {
+        ViewModel.IsReplaceModeEnabled = enabled;
+    }
+
+    public void SetReplaceText(string replaceText)
+    {
+        ViewModel.ReplaceText = replaceText;
+    }
+
+    public void ExecuteSearch()
+    {
+        ViewModel.ExecuteSearchCommand.Execute(null);
+    }
+
+    public async Task ExecuteReplaceAllAsync()
+    {
+        await ViewModel.ReplaceAllCommand.ExecuteAsync(null);
+    }
+
+    public async Task ExecuteReplaceSelectedAsync()
+    {
+        var selectedMatches = ViewModel.GetSelectedMatches();
+        if (selectedMatches.Count > 0)
+        {
+            await ViewModel.ReplaceMatchAsync(selectedMatches[0]);
+        }
     }
 }

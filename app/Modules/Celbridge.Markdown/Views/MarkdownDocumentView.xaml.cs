@@ -145,12 +145,12 @@ public sealed partial class MarkdownDocumentView : DocumentView
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public override async Task<Result> SaveDocument()
+    protected override async Task<Result> SaveDocumentContentAsync()
     {
         try
         {
             var content = await SplitEditor.GetContentAsync();
-            return await ViewModel.SaveDocument(content);
+            return await ViewModel.SaveDocumentContent(content);
         }
         catch (Exception ex)
         {
@@ -188,6 +188,31 @@ public sealed partial class MarkdownDocumentView : DocumentView
         catch (Exception ex)
         {
             return Result.Fail($"Failed to navigate to location: {location}")
+                .WithException(ex);
+        }
+    }
+
+    public override async Task<Result> ApplyEditsAsync(IEnumerable<TextEdit> edits)
+    {
+        try
+        {
+            // Switch to Split mode when applying edits in Preview mode so
+            // the user can see the changes in the source editor.
+            if (ViewModel.ViewMode == MarkdownViewMode.Preview)
+            {
+                ApplyViewMode(MarkdownViewMode.Split);
+            }
+
+            await SplitEditor.ApplyEditsAsync(edits);
+
+            // Mark document as having unsaved changes
+            ViewModel.OnTextChanged();
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail("Failed to apply edits to document")
                 .WithException(ex);
         }
     }
