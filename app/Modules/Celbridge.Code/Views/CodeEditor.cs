@@ -96,8 +96,6 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         // Acquire a WebView from the factory
         _webView = await _webViewFactory.AcquireAsync();
 
-        _webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
-
         this.Content(_webView);
 
         // Set up virtual host mapping for Monaco editor assets

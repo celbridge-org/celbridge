@@ -15,6 +15,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
+    private bool _disposed;
 
     public SearchService(
         ILogger<SearchService> logger,
@@ -31,49 +32,13 @@ public class SearchService : ISearchService, IDisposable
         _textReplacer = new TextReplacer();
     }
 
-    private bool _disposed;
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed)
-        {
-            if (disposing)
-            {
-                // Dispose managed objects here
-            }
-
-            _disposed = true;
-        }
-    }
-
-    ~SearchService()
-    {
-        Dispose(false);
-    }
-
     private sealed record SearchState
     {
         public int TotalMatches { get; set; }
         public bool ReachedMaxResults { get; set; }
     }
 
-    public Task<SearchResults> SearchAsync(
-        string searchTerm,
-        bool matchCase,
-        bool wholeWord,
-        int? maxResults,
-        CancellationToken cancellationToken)
-    {
-        return SearchInternalAsync(searchTerm, matchCase, wholeWord, maxResults, cancellationToken);
-    }
-
-    private async Task<SearchResults> SearchInternalAsync(
+    public async Task<SearchResults> SearchAsync(
         string searchTerm,
         bool matchCase,
         bool wholeWord,
@@ -610,5 +575,29 @@ public class SearchService : ISearchService, IDisposable
 
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         await workspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Dispose managed objects here
+            }
+
+            _disposed = true;
+        }
+    }
+
+    ~SearchService()
+    {
+        Dispose(false);
     }
 }
