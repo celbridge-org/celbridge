@@ -420,6 +420,15 @@
   <data name="Documents_SaveDocumentFailedGeneric" xml:space="preserve">
     <value>An error occurred while attempting to save '{0}'.</value>
   </data>
+  <data name="Documents_ApplyEditsFailedTitle" xml:space="preserve">
+    <value>Text Replace Failed</value>
+  </data>
+  <data name="Documents_ApplyEditsFailedSingle" xml:space="preserve">
+    <value>An error occurred while attempting to apply text replacements to '{0}'.</value>
+  </data>
+  <data name="Documents_ApplyEditsFailedMultiple" xml:space="preserve">
+    <value>An error occurred while attempting to apply text replacements to {0} file(s).</value>
+  </data>
   <data name="Documents_UnsupportedFileFormatTitle" xml:space="preserve">
     <value>Unsupported File Format</value>
   </data>
@@ -812,23 +821,20 @@ Do you wish to continue?</value>
   <data name="SearchPanel_Error" xml:space="preserve">
     <value>Search error</value>
   </data>
-  <data name="SearchPanel_Match" xml:space="preserve">
-    <value>match</value>
+  <data name="SearchPanel_Status_1Match1File" xml:space="preserve">
+    <value>{0} match in {1} file</value>
   </data>
-  <data name="SearchPanel_Matches" xml:space="preserve">
-    <value>matches</value>
+  <data name="SearchPanel_Status_1MatchNFiles" xml:space="preserve">
+    <value>{0} match in {1} files</value>
   </data>
-  <data name="SearchPanel_File" xml:space="preserve">
-    <value>file</value>
+  <data name="SearchPanel_Status_NMatches1File" xml:space="preserve">
+    <value>{0} matches in {1} file</value>
   </data>
-  <data name="SearchPanel_Files" xml:space="preserve">
-    <value>files</value>
+  <data name="SearchPanel_Status_NMatchesNFiles" xml:space="preserve">
+    <value>{0} matches in {1} files</value>
   </data>
-  <data name="SearchPanel_In" xml:space="preserve">
-    <value>in</value>
-  </data>
-  <data name="SearchPanel_ResultsCapped" xml:space="preserve">
-    <value>results capped</value>
+  <data name="SearchPanel_StatusResultsCapped" xml:space="preserve">
+    <value>{0} (results capped)</value>
   </data>
   <data name="ProjectPanel_ExplorerTooltip" xml:space="preserve">
     <value>Explorer</value>
@@ -862,6 +868,39 @@ Do you wish to continue?</value>
   </data>
   <data name="SearchPanel_CollapseAllTooltip" xml:space="preserve">
     <value>Collapse All Search Results</value>
+  </data>
+  <data name="SearchPanel_ReplaceToggleTooltip" xml:space="preserve">
+    <value>Toggle Replace Mode</value>
+  </data>
+  <data name="SearchPanel_ReplacePlaceholder" xml:space="preserve">
+    <value>Replace</value>
+  </data>
+  <data name="SearchPanel_ReplaceInFileTooltip" xml:space="preserve">
+    <value>Replace All in This File</value>
+  </data>
+  <data name="SearchPanel_ReplaceAllTooltip" xml:space="preserve">
+    <value>Replace All in All Files</value>
+  </data>
+  <data name="SearchPanel_ReplaceMatchTooltip" xml:space="preserve">
+    <value>Replace This Match</value>
+  </data>
+  <data name="SearchPanel_ReplaceAllConfirmTitle" xml:space="preserve">
+    <value>Replace All</value>
+  </data>
+  <data name="SearchPanel_ReplaceAllConfirmMessage" xml:space="preserve">
+    <value>Replace {0} matches in {1} files?</value>
+  </data>
+  <data name="SearchPanel_ReplaceAllProgress" xml:space="preserve">
+    <value>Replacing...</value>
+  </data>
+  <data name="SearchPanel_SearchHistoryTooltip" xml:space="preserve">
+    <value>Search history</value>
+  </data>
+  <data name="SearchPanel_ReplaceHistoryTooltip" xml:space="preserve">
+    <value>Replace history</value>
+  </data>
+  <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
+    <value>Clear History</value>
   </data>
   <data name="Markdown_LinkError_Title" xml:space="preserve">
     <value>Link Error</value>

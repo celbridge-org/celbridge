@@ -56,8 +56,8 @@ public sealed partial class TextBoxDocumentView : DocumentView
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public override async Task<Result> SaveDocument()
+    protected override async Task<Result> SaveDocumentContentAsync()
     {
-        return await ViewModel.SaveDocument();
+        return await ViewModel.SaveDocumentContent();
     }
 }

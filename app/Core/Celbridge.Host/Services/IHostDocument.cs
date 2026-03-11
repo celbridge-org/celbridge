@@ -12,6 +12,7 @@ public static class DocumentRpcMethods
     public const string ExternalChange = "document/externalChange";
     public const string ImportComplete = "document/importComplete";
     public const string ClientReady = "document/clientReady";
+    public const string ContentLoaded = "document/contentLoaded";
 }
 
 /// <summary>
@@ -60,6 +61,13 @@ public interface IHostDocument
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ClientReady)]
     void OnClientReady() { }
+
+    /// <summary>
+    /// Called when document content has been loaded and the editor is ready for edits.
+    /// Override to handle content loaded notification.
+    /// </summary>
+    [JsonRpcMethod(DocumentRpcMethods.ContentLoaded)]
+    void OnContentLoaded() { }
 }
 
 public static class HostDocumentExtensions

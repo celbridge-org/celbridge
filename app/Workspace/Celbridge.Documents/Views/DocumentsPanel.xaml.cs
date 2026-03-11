@@ -318,7 +318,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return Result.Ok();
         }
 
-        // Open in the active section (the section containing the active document)
+        // Open in the active section
         var activeSectionIndex = SectionContainer.ActiveSectionIndex;
         var targetSection = SectionContainer.GetSection(activeSectionIndex);
 
@@ -558,6 +558,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+    }
+
+    public IDocumentView? GetDocumentView(ResourceKey fileResource)
+    {
+        var (_, documentTab) = SectionContainer.FindDocumentTab(fileResource);
+        return documentTab?.Content as IDocumentView;
     }
 
     public async Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType)

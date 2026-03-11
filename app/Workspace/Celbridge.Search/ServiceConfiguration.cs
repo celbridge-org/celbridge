@@ -1,3 +1,4 @@
+using Celbridge.Search.Commands;
 using Celbridge.Search.Services;
 using Celbridge.Search.ViewModels;
 using Celbridge.Search.Views;
@@ -26,5 +27,12 @@ public static class ServiceConfiguration
         //
 
         services.AddTransient<SearchPanelViewModel>();
+
+        //
+        // Register commands
+        //
+
+        services.AddTransient<IShowSearchCommand, ShowSearchCommand>();
+        services.AddTransient<IReplaceCommand, ReplaceCommand>();
     }
 }

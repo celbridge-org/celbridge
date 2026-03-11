@@ -13,12 +13,17 @@
 
   <UserControl.Resources>
     <converters:ExpanderGlyphConverter x:Key="ExpandCollapseGlyphConverter"/>
+    <converters:BoolToBrushConverter x:Key="SelectionBackgroundConverter"
+                                     TrueBrush="{ThemeResource ListItemSelectedBackgroundBrush}"
+                                     FalseBrush="Transparent"/>
+    <converters:CountToBoolConverter x:Key="CountToBoolConverter"/>
   </UserControl.Resources>
 
   <Grid VerticalAlignment="Stretch"
         Background="Transparent">
 
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
@@ -34,32 +39,63 @@
     <!-- Search Input -->
     <Grid Grid.Row="1"
           Padding="12,8,12,4">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
+      <!-- Search label -->
+      <TextBlock Grid.Row="0"
+                 Grid.Column="0"
+                 Text="{x:Bind ViewModel.SearchPlaceholder, Mode=OneWay}"
+                 Margin="0,0,0,4"/>
+
       <TextBox x:Name="SearchTextBox"
+               Grid.Row="1"
                Grid.Column="0"
                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-               PlaceholderText="{x:Bind ViewModel.SearchPlaceholder, Mode=OneWay}"
-               KeyDown="SearchTextBox_KeyDown"/>
+               KeyDown="SearchTextBox_KeyDown"
+               LostFocus="SearchTextBox_LostFocus"/>
 
       <!-- Progress ring overlay -->
-      <ProgressRing IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}"
+      <ProgressRing Grid.Row="1"
+                    IsActive="{x:Bind ViewModel.IsSearching, Mode=OneWay}"
                     Width="16"
                     Height="16"
                     HorizontalAlignment="Right"
-                    Margin="0,0,40,0"/>
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"/>
+
+      <!-- Search History dropdown button -->
+      <Button Grid.Row="1"
+              Grid.Column="1"
+              Padding="4,0"
+              Margin="0"
+              VerticalAlignment="Stretch"
+              ToolTipService.ToolTip="{x:Bind ViewModel.SearchHistoryTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        <Button.Flyout>
+          <MenuFlyout x:Name="SearchHistoryFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuFlyoutItem Text="{x:Bind ViewModel.ClearHistoryText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
+                            IsEnabled="{x:Bind ViewModel.SearchHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}"/>
+            <MenuFlyoutSeparator/>
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
 
       <!-- Search button -->
-      <Button Grid.Column="1"
+      <Button Grid.Row="1"
+              Grid.Column="2"
               Command="{x:Bind ViewModel.ExecuteSearchCommand}"
-              Background="Transparent"
-              BorderThickness="0"
+              Padding="8,0"
               Margin="4,0,0,0"
-              Padding="8,6"
-              VerticalAlignment="Center"
+              VerticalAlignment="Stretch"
               ToolTipService.ToolTip="{x:Bind ViewModel.SearchTooltip, Mode=OneWay}">
         <FontIcon Glyph="&#xE721;" FontSize="14"/>
       </Button>
@@ -68,9 +104,9 @@
     <!-- Search Options -->
     <StackPanel Grid.Row="2"
                 Orientation="Horizontal"
-                Padding="12,4,48,8"
+                Padding="12,4,12,8"
                 Spacing="4"
-                HorizontalAlignment="Right">
+                HorizontalAlignment="Center">
       <!-- Match Case toggle button -->
       <ToggleButton IsChecked="{x:Bind ViewModel.MatchCase, Mode=TwoWay}"
                     ToolTipService.ToolTip="{x:Bind ViewModel.MatchCaseTooltip, Mode=OneWay}"
@@ -100,10 +136,66 @@
               MinHeight="32">
         <FontIcon Glyph="&#xF165;" FontSize="14"/>
       </Button>
+
+      <!-- Replace Mode toggle button -->
+      <ToggleButton IsChecked="{x:Bind ViewModel.IsReplaceModeEnabled, Mode=TwoWay}"
+                    ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceToggleTooltip, Mode=OneWay}"
+                    Padding="8,6"
+                    MinWidth="36"
+                    MinHeight="32">
+        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
+      </ToggleButton>
     </StackPanel>
 
+    <!-- Replace Input (visible only when replace mode is enabled) -->
+    <Grid Grid.Row="3"
+          Padding="12,0,12,8"
+          Visibility="{x:Bind ViewModel.IsReplaceModeEnabled, Mode=OneWay}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBox x:Name="ReplaceTextBox"
+               Grid.Column="0"
+               Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
+               Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+               LostFocus="ReplaceTextBox_LostFocus"/>
+
+      <!-- Replace History dropdown button -->
+      <Button Grid.Column="1"
+              Padding="4,0"
+              Margin="0"
+              VerticalAlignment="Bottom"
+              Height="32"
+              ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceHistoryTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        <Button.Flyout>
+          <MenuFlyout x:Name="ReplaceHistoryFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuFlyoutItem Text="{x:Bind ViewModel.ClearHistoryText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
+                            IsEnabled="{x:Bind ViewModel.ReplaceHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}"/>
+            <MenuFlyoutSeparator/>
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
+
+      <!-- Replace All button -->
+      <Button Grid.Column="2"
+              Command="{x:Bind ViewModel.ReplaceAllCommand}"
+              Padding="8,0"
+              Margin="4,0,0,0"
+              VerticalAlignment="Bottom"
+              Height="32"
+              IsEnabled="{x:Bind ViewModel.HasResults, Mode=OneWay}"
+              ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceAllTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE8AB;" FontSize="14"/>
+      </Button>
+    </Grid>
+
     <!-- Results Section -->
-    <Grid Grid.Row="3">
+    <Grid Grid.Row="4">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="*"/>
@@ -126,7 +218,8 @@
                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
       <!-- Results Tree -->
-      <ScrollViewer Grid.Row="1"
+      <ScrollViewer x:Name="ResultsScrollViewer"
+                    Grid.Row="1"
                     Visibility="{x:Bind ViewModel.HasResults, Mode=OneWay}"
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled">
@@ -134,32 +227,41 @@
                       Margin="0,4,0,0">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SearchFileResultViewModel">
-              <StackPanel Margin="0,0,0,4">
+              <StackPanel>
                 <!-- File Header -->
-                <Grid Margin="8,2,8,2"
-                      Padding="4"
+                <Grid Padding="4,4,12,4"
                       PointerPressed="FileHeader_PointerPressed"
-                      Background="Transparent">
+                      PointerEntered="FileHeader_PointerEntered"
+                      PointerExited="FileHeader_PointerExited"
+                      Background="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource SelectionBackgroundConverter}}">
                   <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
 
-                  <!-- Expand/Collapse Icon -->
-                  <FontIcon Grid.Column="0"
-                            Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpandCollapseGlyphConverter}}"
-                            FontSize="14"
-                            Margin="0,0,4,0"
-                            VerticalAlignment="Center"/>
+                  <!-- Expand/Collapse Button -->
+                  <Button Grid.Column="0"
+                          Command="{x:Bind ToggleExpandedCommand}"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Padding="0"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center">
+                    <FontIcon Glyph="{x:Bind IsExpanded, Mode=OneWay, Converter={StaticResource ExpandCollapseGlyphConverter}}"
+                              FontSize="14"/>
+                  </Button>
 
                   <!-- File Icon -->
                   <controls:FileIcon Grid.Column="1"
                                      IconDefinition="{x:Bind FileIcon}"
                                      Size="16"
                                      MinWidth="20"
-                                     Margin="0,0,4,0"
+                                     Margin="0,0,8,0"
                                      VerticalAlignment="Center"/>
 
                   <!-- File Name -->
@@ -170,8 +272,20 @@
                              VerticalAlignment="Center"
                              ToolTipService.ToolTip="{x:Bind RelativePath}"/>
 
+                  <!-- Replace in File Button (visible on hover or selection when replace mode is enabled) -->
+                  <Button Grid.Column="3"
+                          Command="{x:Bind ReplaceInFileCommand}"
+                          Visibility="{x:Bind ShowReplaceButton, Mode=OneWay}"
+                          Padding="6,0"
+                          Margin="4,0,0,0"
+                          MinHeight="0"
+                          VerticalAlignment="Stretch"
+                          ToolTipService.ToolTip="{x:Bind ReplaceInFileTooltip}">
+                    <FontIcon Glyph="&#xE8AB;" FontSize="12"/>
+                  </Button>
+
                   <!-- Match Count Badge -->
-                  <Border Grid.Column="3"
+                  <Border Grid.Column="4"
                           Background="{ThemeResource AccentFillColorDefaultBrush}"
                           CornerRadius="8"
                           Padding="6,1,6,2"
@@ -186,17 +300,18 @@
 
                 <!-- Match Lines -->
                 <ItemsControl ItemsSource="{x:Bind Matches}"
-                              Visibility="{x:Bind IsExpanded, Mode=OneWay}"
-                              Margin="0,0,8,0">
+                              Visibility="{x:Bind IsExpanded, Mode=OneWay}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SearchMatchLineViewModel">
-                      <Grid Padding="4,2"
-                            Margin="0,1"
+                      <Grid Padding="4,4,12,4"
                             PointerPressed="MatchLine_PointerPressed"
-                            Background="Transparent">
+                            PointerEntered="MatchLine_PointerEntered"
+                            PointerExited="MatchLine_PointerExited"
+                            Background="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource SelectionBackgroundConverter}}">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="36"/>
                           <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Line Number -->
@@ -213,6 +328,18 @@
                           <Run Text="{x:Bind TextBeforeMatch}"/><Run Text="{x:Bind MatchedText}" 
                                Foreground="{ThemeResource SearchMatchHighlightBrush}"/><Run Text="{x:Bind TextAfterMatch}"/>
                         </TextBlock>
+
+                        <!-- Per-result Replace button (visible on hover or selection when replace mode is enabled) -->
+                        <Button Grid.Column="2"
+                                Command="{x:Bind ReplaceMatchCommand}"
+                                Visibility="{x:Bind ShowReplaceButton, Mode=OneWay}"
+                                Padding="6,0"
+                                Margin="4,0,0,0"
+                                MinHeight="0"
+                                VerticalAlignment="Stretch"
+                                ToolTipService.ToolTip="{x:Bind ReplaceMatchTooltip}">
+                          <FontIcon Glyph="&#xE8AB;" FontSize="12"/>
+                        </Button>
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

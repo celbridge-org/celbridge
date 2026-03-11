@@ -45,6 +45,13 @@ public interface IDocumentView
     Task<Result> NavigateToLocation(string location);
 
     /// <summary>
+    /// Applies a batch of text edits to the document as a single undo unit.
+    /// Each edit specifies a range (line, column, endLine, endColumn) and replacement text.
+    /// Returns failure if the document view does not support text editing.
+    /// </summary>
+    Task<Result> ApplyEditsAsync(IEnumerable<TextEdit> edits);
+
+    /// <summary>
     /// Returns true if the document view can be closed.
     /// For example, a document view could prompt the user to confirm closing the document, and return false
     /// here to indicate that the user cancelled the close operation. 

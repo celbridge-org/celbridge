@@ -138,4 +138,9 @@ public interface IEditorSettings : INotifyPropertyChanged
     /// Match whole word option for search panel.
     /// </summary>
     bool SearchWholeWord { get; set; }
+
+    /// <summary>
+    /// Whether the replace mode is enabled in the search panel.
+    /// </summary>
+    bool ReplaceMode { get; set; }
 }

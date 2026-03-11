@@ -18,6 +18,9 @@ namespace Celbridge.Notes.Views;
 
 public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocument, IHostDialog
 {
+    // Notes can take time to serialize, especially with embedded images
+    private const int SaveRequestTimeoutSeconds = 30;
+
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
@@ -27,6 +30,9 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
     private readonly IDialogService _dialogService;
 
     private NoteHost? _noteHost;
+
+    // Track save result from async RPC callback
+    private TaskCompletionSource<Result>? _saveResultTcs;
 
     public NoteDocumentViewModel ViewModel { get; }
 
@@ -73,7 +79,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         return ViewModel.UpdateSaveTimer(deltaTime);
     }
 
-    public override async Task<Result> SaveDocument()
+    protected override async Task<Result> SaveDocumentContentAsync()
     {
         if (_noteHost is null)
         {
@@ -87,11 +93,35 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
             return Result.Ok();
         }
 
+        // Set up completion source to receive the save result from SaveAsync
+        _saveResultTcs = new TaskCompletionSource<Result>();
+
         // Request the JS side to save - it will call document/save
-        // which triggers our HandleSaveDocumentAsync handler
+        // which triggers our SaveAsync handler
         await _noteHost.NotifyRequestSaveAsync();
 
-        return await ViewModel.SaveDocument();
+        // Wait for SaveAsync to complete, with timeout to prevent hanging
+        var timeout = TimeSpan.FromSeconds(SaveRequestTimeoutSeconds);
+        var timeoutTask = Task.Delay(timeout);
+        var completedTask = await Task.WhenAny(_saveResultTcs.Task, timeoutTask);
+
+        if (completedTask == timeoutTask)
+        {
+            _saveResultTcs = null;
+            CompleteSave();
+
+            var errorMessage = $"Note editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
+                               $"The editor may be in an unstable state. File: {ViewModel.FilePath}";
+
+            _logger.LogError(errorMessage);
+
+            return Result.Fail(errorMessage);
+        }
+
+        var result = await _saveResultTcs.Task;
+        _saveResultTcs = null;
+
+        return result;
     }
 
     private async void NoteDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -220,8 +250,12 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
             {
                 _logger.LogError(saveResult, "Failed to save note data");
                 CompleteSave();
+                _saveResultTcs?.TrySetResult(saveResult);
                 return new SaveResult(false, saveResult.Error);
             }
+
+            // Reset the ViewModel's save state flags
+            ViewModel.OnSaveCompleted();
 
             // Check if there's a pending save that needs processing
             if (CompleteSave())
@@ -230,12 +264,15 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
                 ViewModel.OnDataChanged();
             }
 
-            return new SaveResult(true);
+            _saveResultTcs?.TrySetResult(Result.Ok());
+            return new SaveResult(true, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception during save");
             CompleteSave();
+            var failResult = Result.Fail("Exception during save").WithException(ex);
+            _saveResultTcs?.TrySetResult(failResult);
             return new SaveResult(false, ex.Message);
         }
     }
@@ -275,7 +312,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         if (result.IsSuccess)
         {
             var resourceKey = result.Value.ToString();
-            var relativePath = GetRelativePathFromResourceKey(resourceKey);
+            var relativePath = ViewModel.GetRelativePathFromResourceKey(resourceKey);
             return new PickImageResult(relativePath);
         }
 
@@ -291,7 +328,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         if (result.IsSuccess)
         {
             var resourceKey = result.Value.ToString();
-            var relativePath = GetRelativePathFromResourceKey(resourceKey);
+            var relativePath = ViewModel.GetRelativePathFromResourceKey(resourceKey);
             return new PickFileResult(relativePath);
         }
 
@@ -305,138 +342,12 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
 
     #endregion
 
-    private void OpenSystemBrowser(string? uri)
+    private void OpenSystemBrowser(string uri)
     {
-        if (string.IsNullOrEmpty(uri))
-        {
-            return;
-        }
-
         _commandService.Execute<IOpenBrowserCommand>(command =>
         {
             command.URL = uri;
         });
-    }
-
-    /// <summary>
-    /// Normalizes a path by resolving '..' and '.' segments.
-    /// This is used for both link and image relative path resolution.
-    /// </summary>
-    private static string NormalizeResourcePath(string path)
-    {
-        var segments = path.Split('/');
-        var stack = new Stack<string>();
-        foreach (var segment in segments)
-        {
-            if (segment == ".." && stack.Count > 0)
-            {
-                stack.Pop();
-            }
-            else if (segment != "." && !string.IsNullOrEmpty(segment))
-            {
-                stack.Push(segment);
-            }
-        }
-        return string.Join("/", stack.Reverse());
-    }
-
-    /// <summary>
-    /// Gets the base path (folder) of the current document for resolving relative paths.
-    /// Returns an empty string if the document is at the project root.
-    /// </summary>
-    private string GetDocumentBasePath()
-    {
-        var fileResourcePath = ViewModel.FileResource.ToString();
-        var directoryName = Path.GetDirectoryName(fileResourcePath);
-        return directoryName?.Replace('\\', '/') ?? "";
-    }
-
-    /// <summary>
-    /// Converts an absolute Resource Key to a path relative to the current document.
-    /// Uses forward slashes only for consistency.
-    /// </summary>
-    private string GetRelativePathFromResourceKey(string resourceKey)
-    {
-        if (string.IsNullOrEmpty(resourceKey))
-        {
-            return string.Empty;
-        }
-
-        var documentBasePath = GetDocumentBasePath();
-        if (string.IsNullOrEmpty(documentBasePath))
-        {
-            // Document is at project root, Resource Key is already relative
-            return resourceKey;
-        }
-
-        var documentSegments = documentBasePath.Split('/');
-        var targetSegments = resourceKey.Split('/');
-
-        // Find common prefix length
-        var commonLength = 0;
-        var minLength = Math.Min(documentSegments.Length, targetSegments.Length);
-        for (var i = 0; i < minLength; i++)
-        {
-            if (documentSegments[i] == targetSegments[i])
-            {
-                commonLength++;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        // Build relative path: go up for remaining document segments, then down to target
-        var upCount = documentSegments.Length - commonLength;
-        var relativeParts = new List<string>();
-
-        for (var i = 0; i < upCount; i++)
-        {
-            relativeParts.Add("..");
-        }
-
-        for (var i = commonLength; i < targetSegments.Length; i++)
-        {
-            relativeParts.Add(targetSegments[i]);
-        }
-
-        return string.Join("/", relativeParts);
-    }
-
-    /// <summary>
-    /// Resolves a path to an absolute Resource Key.
-    /// Paths starting with '/' are resolved from the project root.
-    /// All other paths are resolved relative to the current document's folder.
-    /// </summary>
-    private Result<ResourceKey> ResolveResourcePath(string path)
-    {
-        string fullPath;
-
-        if (path.StartsWith('/'))
-        {
-            // Project-root-relative path: strip the leading '/' and use as-is
-            fullPath = path.Substring(1);
-        }
-        else
-        {
-            // Document-relative path: prepend document's folder
-            var documentBasePath = GetDocumentBasePath();
-            fullPath = string.IsNullOrEmpty(documentBasePath)
-                ? path
-                : $"{documentBasePath}/{path}";
-        }
-
-        var normalizedPath = NormalizeResourcePath(fullPath);
-        var resourceKey = new ResourceKey(normalizedPath);
-        var result = _resourceRegistry.NormalizeResourceKey(resourceKey);
-
-        if (result.IsSuccess)
-        {
-            return Result<ResourceKey>.Ok(result.Value);
-        }
-
-        return Result<ResourceKey>.Fail($"Could not resolve resource path: {path}");
     }
 
     #region IHostDocument
@@ -457,34 +368,29 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
             return;
         }
 
-        // Remote URLs: open in system browser
-        if (Uri.TryCreate(href, UriKind.Absolute, out var uri) &&
-            (uri.Scheme == "http" || uri.Scheme == "https"))
+        var resolveResult = ViewModel.ResolveLinkTarget(href);
+
+        if (resolveResult.IsFailure)
         {
-            OpenSystemBrowser(href);
+            _logger.LogWarning($"Failed to resolve link: {href}");
+            _ = ShowLinkErrorAsync(href);
             return;
         }
 
-        // Resolve the path relative to the current document's folder
-        try
-        {
-            var resolveResult = ResolveResourcePath(href);
-            if (resolveResult.IsSuccess)
-            {
-                _commandService.Execute<IOpenDocumentCommand>(command =>
-                {
-                    command.FileResource = resolveResult.Value;
-                });
-                return;
-            }
+        var resourceKey = resolveResult.Value;
 
-            // Could not resolve the link - show error asynchronously
-            _ = ShowLinkErrorAsync(href);
-        }
-        catch (Exception ex)
+        if (resourceKey is null)
         {
-            _logger.LogWarning($"Failed to handle link click for '{href}': {ex.Message}");
-            _ = ShowLinkErrorAsync(href);
+            // External URL
+            OpenSystemBrowser(href);
+        }
+        else
+        {
+            // Internal resource
+            _commandService.Execute<IOpenDocumentCommand>(command =>
+            {
+                command.FileResource = resourceKey.Value;
+            });
         }
     }
 
