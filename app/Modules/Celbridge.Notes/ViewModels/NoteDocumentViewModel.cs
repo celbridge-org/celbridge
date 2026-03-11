@@ -7,7 +7,6 @@ namespace Celbridge.Notes.ViewModels;
 
 public partial class NoteDocumentViewModel : DocumentViewModel
 {
-    private readonly IMessengerService _messengerService;
     private readonly IFileTemplateService _fileTemplateService;
     private readonly IResourceRegistry _resourceRegistry;
 
@@ -16,37 +15,10 @@ public partial class NoteDocumentViewModel : DocumentViewModel
         IFileTemplateService fileTemplateService,
         IWorkspaceWrapper workspaceWrapper)
     {
-        _messengerService = messengerService;
         _fileTemplateService = fileTemplateService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
-        _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
-    }
-
-    private void OnMonitoredResourceChangedMessage(object recipient, MonitoredResourceChangedMessage message)
-    {
-        if (message.Resource == FileResource)
-        {
-            // Skip reload if we're currently saving - this is our own file change
-            if (IsSavingFile)
-            {
-                return;
-            }
-
-            if (IsFileChangedExternally())
-            {
-                RaiseReloadRequested();
-            }
-        }
-    }
-
-    private void OnDocumentSaveCompletedMessage(object recipient, DocumentSaveCompletedMessage message)
-    {
-        if (message.DocumentResource == FileResource)
-        {
-            UpdateFileTrackingInfo();
-        }
+        EnableFileChangeMonitoring(messengerService);
     }
 
     public async Task<Result> LoadContent()
@@ -86,28 +58,7 @@ public partial class NoteDocumentViewModel : DocumentViewModel
 
     public async Task<Result> SaveNoteToFile(string jsonContent)
     {
-        try
-        {
-            // Set flag before writing to suppress file watcher reload requests
-            IsSavingFile = true;
-
-            await File.WriteAllTextAsync(FilePath, jsonContent);
-
-            // Update file tracking info immediately after writing
-            UpdateFileTrackingInfo();
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save note file: '{FilePath}'")
-                .WithException(ex);
-        }
-        finally
-        {
-            // Clear the flag after save completes (success or failure)
-            IsSavingFile = false;
-        }
+        return await SaveTextToFileAsync(jsonContent);
     }
 
     /// <summary>
@@ -261,10 +212,5 @@ public partial class NoteDocumentViewModel : DocumentViewModel
             }
         }
         return string.Join("/", stack.Reverse());
-    }
-
-    public override void Cleanup()
-    {
-        _messengerService.UnregisterAll(this);
     }
 }

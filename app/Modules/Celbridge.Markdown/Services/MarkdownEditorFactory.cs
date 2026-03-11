@@ -6,26 +6,18 @@ namespace Celbridge.Markdown.Services;
 /// Factory for creating Markdown document views using Monaco editor.
 /// Handles .md and .markdown files with source-first editing.
 /// </summary>
-public class MarkdownEditorFactory : IDocumentEditorFactory
+public class MarkdownEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = [".md", ".markdown"];
-
-    public int Priority => 0;
+    public override IReadOnlyList<string> SupportedExtensions { get; } = [".md", ".markdown"];
 
     public MarkdownEditorFactory(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
     }
 
-    public bool CanHandle(ResourceKey fileResource, string filePath)
-    {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        return SupportedExtensions.Contains(extension);
-    }
-
-    public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
+    public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<MarkdownDocumentView>();

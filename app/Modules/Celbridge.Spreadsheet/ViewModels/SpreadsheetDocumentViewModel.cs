@@ -15,39 +15,7 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
     {
         _messengerService = messengerService;
 
-        // Register for resource change messages
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
-        _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
-    }
-
-    private void OnMonitoredResourceChangedMessage(object recipient, MonitoredResourceChangedMessage message)
-    {
-        // Check if the changed resource is the current document
-        if (message.Resource == FileResource)
-        {
-            // Skip reload if we're currently saving - this is our own file change
-            if (IsSavingFile)
-            {
-                return;
-            }
-
-            // Check if this change is genuinely different from our last save
-            if (IsFileChangedExternally())
-            {
-                // This is an external change, notify the view to reload
-                RaiseReloadRequested();
-            }
-        }
-    }
-
-    private void OnDocumentSaveCompletedMessage(object recipient, DocumentSaveCompletedMessage message)
-    {
-        // Check if this is a save completion for the current document
-        if (message.DocumentResource == FileResource)
-        {
-            // Update our tracking information after a successful save
-            UpdateFileTrackingInfo();
-        }
+        EnableFileChangeMonitoring(messengerService);
     }
 
     public async Task<Result> LoadContent()
@@ -109,11 +77,5 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
             // Clear the flag after save completes (success or failure)
             IsSavingFile = false;
         }
-    }
-
-    public override void Cleanup()
-    {
-        // Unregister message handlers
-        _messengerService.UnregisterAll(this);
     }
 }

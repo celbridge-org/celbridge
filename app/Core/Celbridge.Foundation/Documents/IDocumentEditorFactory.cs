@@ -15,7 +15,7 @@ public interface IDocumentEditorFactory
     /// Priority for conflict resolution when multiple factories support the same extension.
     /// Higher values take precedence. Default factories should use 0.
     /// </summary>
-    int Priority => 0;
+    int Priority { get; }
 
     /// <summary>
     /// Determines if this factory can handle the given file resource.
@@ -33,5 +33,5 @@ public interface IDocumentEditorFactory
     /// Gets the editor language identifier for the specified file extension.
     /// Returns null if this factory doesn't provide language mapping for the extension.
     /// </summary>
-    string? GetLanguageForExtension(string extension) => null;
+    string? GetLanguageForExtension(string extension);
 }

@@ -1,3 +1,4 @@
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
@@ -6,30 +7,24 @@ using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
-using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
 
 namespace Celbridge.Screenplay.Views;
 
-public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocument
+public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocument
 {
     private readonly ILogger<SceneDocumentView> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IUserInterfaceService _userInterfaceService;
-
-    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     public SceneDocumentViewModel ViewModel { get; }
 
-    public override ResourceKey FileResource => ViewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
 
     public SceneDocumentView(
         IServiceProvider serviceProvider,
         ILogger<SceneDocumentView> logger,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
         IUserInterfaceService userInterfaceService,
         IWebViewFactory webViewFactory)
         : base(messengerService, webViewFactory)
@@ -38,8 +33,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
 
         _logger = logger;
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
-        _userInterfaceService = userInterfaceService;
 
         ViewModel = serviceProvider.GetRequiredService<SceneDocumentViewModel>();
 
@@ -49,29 +42,8 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         Loaded += SceneDocumentView_Loaded;
 
         _messengerService.Register<SceneContentUpdatedMessage>(this, OnSceneContentUpdated);
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
-    }
 
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = ResourceRegistry.GetResourcePath(fileResource);
-
-        if (ResourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
+        EnableThemeSyncing(userInterfaceService);
     }
 
     public override async Task<Result> LoadContent()
@@ -104,24 +76,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
 
         // Notify JS to reload content
         Host?.NotifyExternalChangeAsync();
-    }
-
-    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
-    {
-        // Theme change is detected by JavaScript via matchMedia
-        // WebView2's PreferredColorScheme triggers the matchMedia change event
-        if (WebView?.CoreWebView2 is not null)
-        {
-            ApplyThemeToWebView();
-        }
-    }
-
-    private void ApplyThemeToWebView()
-    {
-        var theme = _userInterfaceService.UserInterfaceTheme;
-        WebView!.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
-            ? CoreWebView2PreferredColorScheme.Dark
-            : CoreWebView2PreferredColorScheme.Light;
     }
 
     private async void SceneDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -169,26 +123,13 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
         }
     }
 
-    private DocumentMetadata CreateMetadata()
-    {
-        return new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
-    }
-
     #region IHostDocument
 
     public Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
-        // Validate protocol version
-        if (protocolVersion != "1.0")
-        {
-            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
-        }
+        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-        // Build metadata
-        var metadata = CreateMetadata();
+        var metadata = CreateDocumentMetadata();
 
         // No localization strings needed for screenplay viewer
         var localization = new Dictionary<string, string>();
@@ -206,7 +147,7 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
             throw new LocalRpcException($"Failed to load scene content: {loadResult}");
         }
 
-        var metadata = CreateMetadata();
+        var metadata = CreateDocumentMetadata();
 
         return Task.FromResult(new LoadResult(ViewModel.HtmlContent, metadata));
     }
@@ -221,7 +162,6 @@ public sealed partial class SceneDocumentView : WebView2DocumentView, IHostDocum
     public override async Task PrepareToClose()
     {
         _messengerService.Unregister<SceneContentUpdatedMessage>(this);
-        _messengerService.Unregister<ThemeChangedMessage>(this);
 
         await base.PrepareToClose();
     }

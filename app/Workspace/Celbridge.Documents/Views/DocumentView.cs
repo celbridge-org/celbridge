@@ -1,12 +1,62 @@
+using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Views;
 
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
-    public abstract ResourceKey FileResource { get; }
+    private IResourceRegistry? _resourceRegistry;
 
-    public abstract Task<Result> SetFileResource(ResourceKey fileResource);
+    /// <summary>
+    /// Provides access to the resource registry for file resource validation.
+    /// Lazily initialized from the workspace wrapper.
+    /// </summary>
+    protected IResourceRegistry ResourceRegistry
+    {
+        get
+        {
+            if (_resourceRegistry is null)
+            {
+                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+                _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+            }
+            return _resourceRegistry;
+        }
+    }
+
+    /// <summary>
+    /// Returns the ViewModel for this document view.
+    /// Used by the base class to provide default SetFileResource and FileResource implementations.
+    /// </summary>
+    protected abstract DocumentViewModel DocumentViewModel { get; }
+
+    public virtual ResourceKey FileResource => DocumentViewModel.FileResource;
+
+    /// <summary>
+    /// Sets the file resource for the document view.
+    /// Validates the resource exists in the registry and on disk, then sets the ViewModel properties.
+    /// Subclasses can override to add additional logic (call base first).
+    /// </summary>
+    public virtual Task<Result> SetFileResource(ResourceKey fileResource)
+    {
+        var filePath = ResourceRegistry.GetResourcePath(fileResource);
+
+        if (ResourceRegistry.GetResource(fileResource).IsFailure)
+        {
+            return Task.FromResult<Result>(Result.Fail($"File resource does not exist in resource registry: {fileResource}"));
+        }
+
+        if (!File.Exists(filePath))
+        {
+            return Task.FromResult<Result>(Result.Fail($"File resource does not exist on disk: {fileResource}"));
+        }
+
+        DocumentViewModel.FileResource = fileResource;
+        DocumentViewModel.FilePath = filePath;
+
+        return Task.FromResult(Result.Ok());
+    }
 
     public abstract Task<Result> LoadContent();
 

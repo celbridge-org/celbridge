@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Code.Views;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Markdown.Services;
@@ -18,7 +19,6 @@ public sealed partial class MarkdownDocumentView : DocumentView
 {
     private readonly ILogger<MarkdownDocumentView> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IResourceRegistry _resourceRegistry;
     private readonly IStringLocalizer _stringLocalizer;
 
     private string ViewModePreviewTooltip => _stringLocalizer.GetString("Markdown_ViewMode_Preview");
@@ -44,6 +44,8 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     public MarkdownDocumentViewModel ViewModel { get; }
 
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
+
     public override ResourceKey FileResource => ViewModel.FileResource;
 
     public override bool HasUnsavedChanges => ViewModel.HasUnsavedChanges;
@@ -56,7 +58,6 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
         _logger = ServiceLocator.AcquireService<ILogger<MarkdownDocumentView>>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
 
         ViewModel = ServiceLocator.AcquireService<MarkdownDocumentViewModel>();
@@ -75,28 +76,19 @@ public sealed partial class MarkdownDocumentView : DocumentView
 
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
-
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
+        var result = await base.SetFileResource(fileResource);
+        if (result.IsFailure)
         {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
+            return result;
         }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
 
         // Configure the preview renderer with document context
         SplitEditor.ConfigurePreview(
             _previewRenderer,
-            _resourceRegistry.ProjectFolderPath,
-            filePath);
+            ResourceRegistry.ProjectFolderPath,
+            DocumentViewModel.FilePath);
 
-        return await Task.FromResult(Result.Ok());
+        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()

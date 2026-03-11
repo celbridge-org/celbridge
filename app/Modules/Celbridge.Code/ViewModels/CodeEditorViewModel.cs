@@ -10,7 +10,6 @@ namespace Celbridge.Code.ViewModels;
 public partial class CodeEditorViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
-    private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
 
     // A cache of the editor text that was last saved to disk.
@@ -24,33 +23,19 @@ public partial class CodeEditorViewModel : DocumentViewModel
         IWorkspaceWrapper workspaceWrapper)
     {
         _commandService = commandService;
-        _messengerService = messengerService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
-        // Register for resource change messages
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChangedMessage);
-        _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompletedMessage);
+        EnableFileChangeMonitoring(messengerService);
     }
 
     public async Task<Result<string>> LoadDocument()
     {
-        try
+        var result = await LoadTextFromFileAsync();
+        if (result.IsSuccess)
         {
-            // Read the file contents to initialize the text editor
-            var text = await File.ReadAllTextAsync(FilePath);
-
-            CachedText = text;
-
-            // Track the initial file state when loading
-            UpdateFileTrackingInfo();
-
-            return Result<string>.Ok(text);
+            CachedText = result.Value;
         }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"Failed to load document file: '{FilePath}'")
-                .WithException(ex);
-        }
+        return result;
     }
 
     public async Task<Result> SaveDocumentContent(string text)
@@ -61,28 +46,7 @@ public partial class CodeEditorViewModel : DocumentViewModel
 
         CachedText = text;
 
-        try
-        {
-            // Set flag to suppress reload requests triggered by our own save
-            IsSavingFile = true;
-
-            await File.WriteAllTextAsync(FilePath, text);
-
-            // Update tracking info to avoid false external change detection
-            // when file watcher events arrive
-            UpdateFileTrackingInfo();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save document file: '{FilePath}'")
-                .WithException(ex);
-        }
-        finally
-        {
-            IsSavingFile = false;
-        }
-
-        return Result.Ok();
+        return await SaveTextToFileAsync(text);
     }
 
     public void OnTextChanged()
@@ -111,41 +75,5 @@ public partial class CodeEditorViewModel : DocumentViewModel
         {
             command.URL = url;
         });
-    }
-
-    private void OnMonitoredResourceChangedMessage(object recipient, MonitoredResourceChangedMessage message)
-    {
-        // Check if the changed resource is the current document
-        if (message.Resource == FileResource)
-        {
-            // Ignore file watcher events triggered by our own save operation
-            if (IsSavingFile)
-            {
-                return;
-            }
-
-            // Check if this change is genuinely different from our last save
-            if (IsFileChangedExternally())
-            {
-                // This is an external change, notify the view to reload
-                RaiseReloadRequested();
-            }
-        }
-    }
-
-    private void OnDocumentSaveCompletedMessage(object recipient, DocumentSaveCompletedMessage message)
-    {
-        // Check if this is a save completion for the current document
-        if (message.DocumentResource == FileResource)
-        {
-            // Update our tracking information after a successful save
-            UpdateFileTrackingInfo();
-        }
-    }
-
-    public override void Cleanup()
-    {
-        // Unregister message handlers
-        _messengerService.UnregisterAll(this);
     }
 }

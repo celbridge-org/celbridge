@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
@@ -11,18 +12,17 @@ using StreamJsonRpc;
 
 namespace Celbridge.Spreadsheet.Views;
 
-public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHostDocument
+public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHostDocument
 {
     // Spreadsheets can be large and take significant time to serialize/save.
     private const int SaveRequestTimeoutSeconds = 60;
 
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
-    private readonly IResourceRegistry _resourceRegistry;
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
-    public override ResourceKey FileResource => ViewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
 
     // Track import state to prevent race conditions during initial load and reloads
     private bool _isImportInProgress;
@@ -44,7 +44,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
         _logger = logger;
         _commandService = commandService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         this.InitializeComponent();
 
@@ -146,14 +145,14 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
                 }
 
                 args.Cancel = true;
-                OpenSystemBrowser(uri);
+                OpenSystemBrowser(_commandService, uri);
             };
 
             WebView.CoreWebView2.NewWindowRequested += (s, args) =>
             {
                 args.Handled = true;
                 var uri = args.Uri;
-                OpenSystemBrowser(uri);
+                OpenSystemBrowser(_commandService, uri);
             };
 
             // Initialize the host
@@ -183,16 +182,12 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
-        // Validate protocol version
-        if (protocolVersion != "1.0")
-        {
-            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
-        }
+        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
         // Load spreadsheet as base64 - content is stored in the result
         var base64Content = await LoadSpreadsheetAsBase64Async();
 
-        var metadata = CreateMetadata();
+        var metadata = CreateDocumentMetadata();
 
         // Gather localization strings (none needed for spreadsheet currently)
         var localization = new Dictionary<string, string>();
@@ -210,7 +205,7 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
         _isImportInProgress = true;
 
         var base64Content = await LoadSpreadsheetAsBase64Async();
-        var metadata = CreateMetadata();
+        var metadata = CreateDocumentMetadata();
 
         return new LoadResult(base64Content, metadata);
     }
@@ -305,14 +300,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
 
     #endregion
 
-    private DocumentMetadata CreateMetadata()
-    {
-        return new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
-    }
-
     private async Task<string> LoadSpreadsheetAsBase64Async()
     {
         var filePath = ViewModel.FilePath;
@@ -344,41 +331,6 @@ public sealed partial class SpreadsheetDocumentView : WebView2DocumentView, IHos
             _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
             return string.Empty;
         }
-    }
-
-    private void OpenSystemBrowser(string? uri)
-    {
-        if (string.IsNullOrEmpty(uri))
-        {
-            return;
-        }
-
-        _commandService.Execute<IOpenBrowserCommand>(command =>
-        {
-            command.URL = uri;
-        });
-    }
-
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
-
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()

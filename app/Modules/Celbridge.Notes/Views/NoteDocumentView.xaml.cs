@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Host.Helpers;
@@ -16,7 +17,7 @@ using StreamJsonRpc;
 
 namespace Celbridge.Notes.Views;
 
-public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocument, IHostDialog
+public sealed partial class NoteDocumentView : WebViewDocumentView, IHostDocument, IHostDialog
 {
     // Notes can take time to serialize, especially with embedded images
     private const int SaveRequestTimeoutSeconds = 30;
@@ -24,19 +25,15 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
-    private readonly IUserInterfaceService _userInterfaceService;
-    private readonly IResourceRegistry _resourceRegistry;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
-
-    private NoteHost? _noteHost;
 
     // Track save result from async RPC callback
     private TaskCompletionSource<Result>? _saveResultTcs;
 
     public NoteDocumentViewModel ViewModel { get; }
 
-    public override ResourceKey FileResource => ViewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
 
     public NoteDocumentView(
         IServiceProvider serviceProvider,
@@ -55,8 +52,6 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
-        _userInterfaceService = userInterfaceService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
 
@@ -65,7 +60,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         // Set the container where the WebView will be placed
         WebViewContainer = NoteWebViewContainer;
 
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
+        EnableThemeSyncing(userInterfaceService);
 
         Loaded += NoteDocumentView_Loaded;
 
@@ -81,9 +76,9 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
 
     protected override async Task<Result> SaveDocumentContentAsync()
     {
-        if (_noteHost is null)
+        if (Host is null)
         {
-            _logger.LogDebug("Save skipped - NoteHost not initialized");
+            _logger.LogDebug("Save skipped - Host not initialized");
             return Result.Ok();
         }
 
@@ -98,7 +93,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
 
         // Request the JS side to save - it will call document/save
         // which triggers our SaveAsync handler
-        await _noteHost.NotifyRequestSaveAsync();
+        await Host.NotifyRequestSaveAsync();
 
         // Wait for SaveAsync to complete, with timeout to prevent hanging
         var timeout = TimeSpan.FromSeconds(SaveRequestTimeoutSeconds);
@@ -145,7 +140,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // Map the project folder so resource key image paths resolve correctly
-            var projectFolder = _resourceRegistry.ProjectFolderPath;
+            var projectFolder = ResourceRegistry.ProjectFolderPath;
             if (!string.IsNullOrEmpty(projectFolder))
             {
                 WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -193,14 +188,11 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
                 return;
             }
 
-            // Create the Note-specific host wrapper
-            _noteHost = new NoteHost(Host);
-
             // Register this view as the handler for additional RPC interfaces
-            _noteHost.AddLocalRpcTarget<IHostDocument>(this);
-            _noteHost.AddLocalRpcTarget<IHostDialog>(this);
+            Host.AddLocalRpcTarget<IHostDocument>(this);
+            Host.AddLocalRpcTarget<IHostDialog>(this);
 
-            _noteHost.StartListening();
+            StartHostListener();
 
             // Navigate to the editor
             WebView.CoreWebView2.Navigate("https://note.celbridge/index.html");
@@ -211,28 +203,16 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         }
     }
 
-    private DocumentMetadata CreateMetadata()
-    {
-        return new DocumentMetadata(
-            ViewModel.FilePath,
-            ViewModel.FileResource.ToString(),
-            Path.GetFileName(ViewModel.FilePath));
-    }
-
     #region IHostDocument
 
     public async Task<InitializeResult> InitializeAsync(string protocolVersion)
     {
-        // Validate protocol version
-        if (protocolVersion != "1.0")
-        {
-            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
-        }
+        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
         // Load content from file
         var content = await ViewModel.LoadNoteContent();
 
-        var metadata = CreateMetadata();
+        var metadata = CreateDocumentMetadata();
 
         // Gather localization strings
         var localization = WebViewLocalizationHelper.GetLocalizedStrings(_stringLocalizer, "Note_");
@@ -280,7 +260,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
     public async Task<LoadResult> LoadAsync()
     {
         var content = await ViewModel.LoadNoteContent();
-        var metadata = CreateMetadata();
+        var metadata = CreateDocumentMetadata();
 
         return new LoadResult(content, metadata);
     }
@@ -342,14 +322,6 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
 
     #endregion
 
-    private void OpenSystemBrowser(string uri)
-    {
-        _commandService.Execute<IOpenBrowserCommand>(command =>
-        {
-            command.URL = uri;
-        });
-    }
-
     #region IHostDocument
 
     public void OnDocumentChanged()
@@ -382,7 +354,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         if (resourceKey.IsEmpty)
         {
             // External URL
-            OpenSystemBrowser(href);
+            OpenSystemBrowser(_commandService, href);
         }
         else
         {
@@ -403,28 +375,6 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
     }
 
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
-
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
-    }
-
     public override async Task<Result> LoadContent()
     {
         return await ViewModel.LoadContent();
@@ -443,29 +393,13 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
         await base.PrepareToClose();
     }
 
-    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
-    {
-        if (WebView?.CoreWebView2 is not null)
-        {
-            ApplyThemeToWebView();
-        }
-    }
-
-    private void ApplyThemeToWebView()
-    {
-        var theme = _userInterfaceService.UserInterfaceTheme;
-        WebView!.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
-            ? CoreWebView2PreferredColorScheme.Dark
-            : CoreWebView2PreferredColorScheme.Light;
-    }
-
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
         // External file change detected - notify JS to reload
         // The dirty state conflict handling is done in the ViewModel before raising this event
-        if (_noteHost is not null)
+        if (Host is not null)
         {
-            await _noteHost.NotifyExternalChangeAsync();
+            await Host.NotifyExternalChangeAsync();
         }
     }
 }

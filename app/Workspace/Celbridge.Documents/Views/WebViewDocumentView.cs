@@ -1,22 +1,29 @@
 using System.Diagnostics.CodeAnalysis;
+using Celbridge.Commands;
+using Celbridge.Documents.ViewModels;
+using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Celbridge.WebView.Services;
+using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Base class for document views that use a WebView2 control.
 /// </summary>
-public abstract partial class WebView2DocumentView : DocumentView, IHostInput
+public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 {
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
 
     // JSON-RPC infrastructure
     private WebViewHostChannel? _hostChannel;
+
+    // Theme syncing state
+    private IUserInterfaceService? _userInterfaceService;
 
     /// <summary>
     /// The Celbridge host for JSON-RPC communication with the WebView.
@@ -39,13 +46,7 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostInput
     /// </summary>
     protected Panel? WebViewContainer { get; set; }
 
-    /// <summary>
-    /// Gets the file resource key for this document.
-    /// Used to send focus messages when the WebView gains focus.
-    /// </summary>
-    public abstract override ResourceKey FileResource { get; }
-
-    protected WebView2DocumentView(
+    protected WebViewDocumentView(
         IMessengerService messengerService,
         IWebViewFactory webViewFactory)
     {
@@ -169,6 +170,82 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostInput
 
     #endregion
 
+    #region Theme Syncing
+
+    /// <summary>
+    /// Enables automatic theme syncing between the app and the WebView.
+    /// Registers for ThemeChangedMessage and applies theme changes to the WebView.
+    /// Call this in the view constructor or initialization.
+    /// </summary>
+    protected void EnableThemeSyncing(IUserInterfaceService userInterfaceService)
+    {
+        _userInterfaceService = userInterfaceService;
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChangedMessage);
+    }
+
+    private void OnThemeChangedMessage(object recipient, ThemeChangedMessage message)
+    {
+        if (WebView?.CoreWebView2 is not null)
+        {
+            ApplyThemeToWebView();
+        }
+    }
+
+    /// <summary>
+    /// Applies the current application theme to the WebView.
+    /// Call this after the WebView is initialized to set the initial theme.
+    /// </summary>
+    protected void ApplyThemeToWebView()
+    {
+        if (WebView?.CoreWebView2 is null || _userInterfaceService is null)
+        {
+            return;
+        }
+
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+            ? CoreWebView2PreferredColorScheme.Dark
+            : CoreWebView2PreferredColorScheme.Light;
+    }
+
+    #endregion
+
+    #region Document Metadata
+
+    /// <summary>
+    /// Creates a DocumentMetadata instance from the current document state.
+    /// Used by WebView-based editors for JSON-RPC communication.
+    /// </summary>
+    protected DocumentMetadata CreateDocumentMetadata()
+    {
+        return new DocumentMetadata(
+            DocumentViewModel.FilePath,
+            DocumentViewModel.FileResource.ToString(),
+            Path.GetFileName(DocumentViewModel.FilePath));
+    }
+
+    #endregion
+
+    #region Browser Helper
+
+    /// <summary>
+    /// Opens a URL in the system's default browser using the command service.
+    /// </summary>
+    protected static void OpenSystemBrowser(ICommandService commandService, string? uri)
+    {
+        if (string.IsNullOrEmpty(uri))
+        {
+            return;
+        }
+
+        commandService.Execute<IOpenBrowserCommand>(command =>
+        {
+            command.URL = uri;
+        });
+    }
+
+    #endregion
+
     /// <summary>
     /// Called when the WebView gains focus.
     /// Override to add custom focus handling. Call base implementation to send focus message.
@@ -182,6 +259,12 @@ public abstract partial class WebView2DocumentView : DocumentView, IHostInput
 
     public override async Task PrepareToClose()
     {
+        // Unregister theme syncing if enabled
+        if (_userInterfaceService is not null)
+        {
+            _messengerService.Unregister<ThemeChangedMessage>(this);
+        }
+
         if (WebView is not null)
         {
             WebView.GotFocus -= WebView_GotFocus;

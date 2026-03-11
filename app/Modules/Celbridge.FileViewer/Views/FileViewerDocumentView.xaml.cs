@@ -1,56 +1,29 @@
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.WebView;
-using Celbridge.Workspace;
 
 namespace Celbridge.FileViewer.Views;
 
-public sealed partial class FileViewerDocumentView : WebView2DocumentView
+public sealed partial class FileViewerDocumentView : WebViewDocumentView
 {
-    private readonly IResourceRegistry _resourceRegistry;
-
     public FileViewerDocumentViewModel ViewModel { get; }
 
-    public override ResourceKey FileResource => ViewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
 
     public FileViewerDocumentView(
         IServiceProvider serviceProvider,
-        IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
         IWebViewFactory webViewFactory)
         : base(messengerService, webViewFactory)
     {
         ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
         this.InitializeComponent();
 
         // Set the container where the WebView will be placed
         WebViewContainer = FileWebViewContainer;
-    }
-
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
-
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()

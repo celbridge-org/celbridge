@@ -6,14 +6,12 @@ namespace Celbridge.Notes.Services;
 /// <summary>
 /// Factory for creating Note document views.
 /// </summary>
-public class NoteEditorFactory : IDocumentEditorFactory
+public class NoteEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IWorkspaceFeatures _workspaceFeatures;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = [".note"];
-
-    public int Priority => 0;
+    public override IReadOnlyList<string> SupportedExtensions { get; } = [".note"];
 
     public NoteEditorFactory(
         IServiceProvider serviceProvider,
@@ -23,18 +21,17 @@ public class NoteEditorFactory : IDocumentEditorFactory
         _workspaceFeatures = workspaceFeatures;
     }
 
-    public bool CanHandle(ResourceKey fileResource, string filePath)
+    public override bool CanHandle(ResourceKey fileResource, string filePath)
     {
         if (!_workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor))
         {
             return false;
         }
 
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        return SupportedExtensions.Contains(extension);
+        return base.CanHandle(fileResource, filePath);
     }
 
-    public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
+    public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<NoteDocumentView>();

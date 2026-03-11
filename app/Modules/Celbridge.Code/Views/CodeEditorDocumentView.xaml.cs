@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Code.ViewModels;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -15,12 +16,11 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 {
     private readonly ILogger<CodeEditorDocumentView> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IResourceRegistry _resourceRegistry;
     private readonly IDocumentsService _documentsService;
 
     private readonly CodeEditorViewModel _viewModel;
 
-    public override ResourceKey FileResource => _viewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     public override bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
@@ -41,7 +41,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         _logger = ServiceLocator.AcquireService<ILogger<CodeEditorDocumentView>>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
         _viewModel = ServiceLocator.AcquireService<CodeEditorViewModel>();
@@ -55,26 +54,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         // Subscribe to ViewModel reload requests (external file changes)
         _viewModel.ReloadRequested += OnViewModelReloadRequested;
-    }
-
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
-
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        _viewModel.FileResource = fileResource;
-        _viewModel.FilePath = filePath;
-
-        return await Task.FromResult(Result.Ok());
     }
 
     public override async Task<Result> LoadContent()
