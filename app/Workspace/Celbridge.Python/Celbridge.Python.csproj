@@ -20,6 +20,10 @@
       ThemeService;
     </UnoFeatures>
 
+    <!-- Suppress PRI249 false-positive warnings caused by Python wheel filenames (e.g. py3-none-any) -->
+    <!-- being incorrectly parsed as Windows resource qualifiers by the PRI indexer. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
+
   </PropertyGroup>
 
   <ItemGroup>

@@ -20,6 +20,10 @@
       ThemeService;
     </UnoFeatures>
 
+    <!-- Suppress PRI249 false-positive warnings caused by Monaco editor bundled files with content-hashed -->
+    <!-- names (e.g. editor.worker-DbHNojjm.js) being parsed as Windows resource qualifiers. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
+
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,8 +1,10 @@
-using System.IO.Compression;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Runtime.Versioning;
 
 namespace Celbridge.Python.Services;
 
+[SupportedOSPlatform("windows10.0.10240.0")]
 public static class PythonInstaller
 {
     private const string PythonFolderName = "Python";
