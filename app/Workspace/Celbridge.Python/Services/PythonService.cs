@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
@@ -69,6 +70,7 @@ public class PythonService : IPythonService, IDisposable
         _pythonRpcClientFactory = pythonRpcClientFactory;
     }
 
+    [SupportedOSPlatform("windows10.0.10240.0")]
     public async Task<Result> InitializePython()
     {
         try
