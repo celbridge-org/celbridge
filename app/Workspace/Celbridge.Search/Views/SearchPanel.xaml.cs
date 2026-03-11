@@ -32,13 +32,14 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void OnSearchHistoryFlyoutOpening(object? sender, object e)
     {
-        // Remove all items except the Clear History item and separator (first two items)
+        // Remove all dynamic history items (keep the static separator + clear item at the end)
         while (SearchHistoryFlyout.Items.Count > 2)
         {
-            SearchHistoryFlyout.Items.RemoveAt(SearchHistoryFlyout.Items.Count - 1);
+            SearchHistoryFlyout.Items.RemoveAt(0);
         }
 
-        // Add history items
+        // Insert history items before the separator and clear item
+        var insertIndex = 0;
         foreach (var term in ViewModel.SearchHistory)
         {
             var menuItem = new MenuFlyoutItem
@@ -47,7 +48,8 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
                 Tag = term
             };
             menuItem.Click += OnSearchHistoryItemClick;
-            SearchHistoryFlyout.Items.Add(menuItem);
+            SearchHistoryFlyout.Items.Insert(insertIndex, menuItem);
+            insertIndex++;
         }
     }
 
@@ -61,13 +63,14 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
 
     private void OnReplaceHistoryFlyoutOpening(object? sender, object e)
     {
-        // Remove all items except the Clear History item and separator (first two items)
+        // Remove all dynamic history items (keep the static separator + clear item at the end)
         while (ReplaceHistoryFlyout.Items.Count > 2)
         {
-            ReplaceHistoryFlyout.Items.RemoveAt(ReplaceHistoryFlyout.Items.Count - 1);
+            ReplaceHistoryFlyout.Items.RemoveAt(0);
         }
 
-        // Add history items
+        // Insert history items before the separator and clear item
+        var insertIndex = 0;
         foreach (var term in ViewModel.ReplaceHistory)
         {
             var menuItem = new MenuFlyoutItem
@@ -76,7 +79,8 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
                 Tag = term
             };
             menuItem.Click += OnReplaceHistoryItemClick;
-            ReplaceHistoryFlyout.Items.Add(menuItem);
+            ReplaceHistoryFlyout.Items.Insert(insertIndex, menuItem);
+            insertIndex++;
         }
     }
 
