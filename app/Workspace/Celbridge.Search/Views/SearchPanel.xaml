@@ -16,6 +16,7 @@
     <converters:BoolToBrushConverter x:Key="SelectionBackgroundConverter"
                                      TrueBrush="{ThemeResource ListItemSelectedBackgroundBrush}"
                                      FalseBrush="Transparent"/>
+    <converters:CountToBoolConverter x:Key="CountToBoolConverter"/>
   </UserControl.Resources>
 
   <Grid VerticalAlignment="Stretch"
@@ -45,6 +46,7 @@
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
       <!-- Search label -->
@@ -57,7 +59,8 @@
                Grid.Row="1"
                Grid.Column="0"
                Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-               KeyDown="SearchTextBox_KeyDown"/>
+               KeyDown="SearchTextBox_KeyDown"
+               LostFocus="SearchTextBox_LostFocus"/>
 
       <!-- Progress ring overlay -->
       <ProgressRing Grid.Row="1"
@@ -68,9 +71,27 @@
                     VerticalAlignment="Center"
                     Margin="0,0,8,0"/>
 
-      <!-- Search button - in the same row as the TextBox, stretches to match its height -->
+      <!-- Search History dropdown button -->
       <Button Grid.Row="1"
               Grid.Column="1"
+              Padding="4,0"
+              Margin="0"
+              VerticalAlignment="Stretch"
+              ToolTipService.ToolTip="{x:Bind ViewModel.SearchHistoryTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        <Button.Flyout>
+          <MenuFlyout x:Name="SearchHistoryFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuFlyoutItem Text="{x:Bind ViewModel.ClearHistoryText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
+                            IsEnabled="{x:Bind ViewModel.SearchHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}"/>
+            <MenuFlyoutSeparator/>
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
+
+      <!-- Search button -->
+      <Button Grid.Row="1"
+              Grid.Column="2"
               Command="{x:Bind ViewModel.ExecuteSearchCommand}"
               Padding="8,0"
               Margin="4,0,0,0"
@@ -133,15 +154,35 @@
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
       </Grid.ColumnDefinitions>
 
       <TextBox x:Name="ReplaceTextBox"
                Grid.Column="0"
                Header="{x:Bind ViewModel.ReplacePlaceholder, Mode=OneWay}"
-               Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+               Text="{x:Bind ViewModel.ReplaceText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+               LostFocus="ReplaceTextBox_LostFocus"/>
+
+      <!-- Replace History dropdown button -->
+      <Button Grid.Column="1"
+              Padding="4,0"
+              Margin="0"
+              VerticalAlignment="Bottom"
+              Height="32"
+              ToolTipService.ToolTip="{x:Bind ViewModel.ReplaceHistoryTooltip, Mode=OneWay}">
+        <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        <Button.Flyout>
+          <MenuFlyout x:Name="ReplaceHistoryFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuFlyoutItem Text="{x:Bind ViewModel.ClearHistoryText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.ClearSearchHistoryCommand}"
+                            IsEnabled="{x:Bind ViewModel.ReplaceHistory.Count, Mode=OneWay, Converter={StaticResource CountToBoolConverter}}"/>
+            <MenuFlyoutSeparator/>
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
 
       <!-- Replace All button -->
-      <Button Grid.Column="1"
+      <Button Grid.Column="2"
               Command="{x:Bind ViewModel.ReplaceAllCommand}"
               Padding="8,0"
               Margin="4,0,0,0"

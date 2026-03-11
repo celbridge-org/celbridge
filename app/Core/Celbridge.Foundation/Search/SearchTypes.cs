@@ -54,3 +54,11 @@ public record ReplaceAllResult(
     int FilesModified,
     int FilesFailed,
     bool WasCancelled);
+
+/// <summary>
+/// Contains the search and replace history for a workspace.
+/// Stores only the search/replace terms, not the search options.
+/// </summary>
+public record SearchHistory(
+    List<string> SearchTerms,
+    List<string> ReplaceTerms);

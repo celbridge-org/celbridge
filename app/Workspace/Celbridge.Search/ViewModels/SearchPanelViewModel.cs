@@ -78,6 +78,10 @@ public partial class SearchPanelViewModel : ObservableObject
     // Selection tracking for multi-select (can be either a file result or a match line)
     private ISelectableSearchItem? _selectionAnchor;
 
+    // History collections (stores only terms, not options)
+    public ObservableCollection<string> SearchHistory { get; } = new();
+    public ObservableCollection<string> ReplaceHistory { get; } = new();
+
     // Tooltip properties
     public string MatchCaseTooltip { get; private set; } = string.Empty;
 
@@ -92,6 +96,12 @@ public partial class SearchPanelViewModel : ObservableObject
     public string ReplacePlaceholder { get; private set; } = string.Empty;
 
     public string ReplaceAllTooltip { get; private set; } = string.Empty;
+
+    public string SearchHistoryTooltip { get; private set; } = string.Empty;
+
+    public string ReplaceHistoryTooltip { get; private set; } = string.Empty;
+
+    public string ClearHistoryText { get; private set; } = string.Empty;
 
     // Cached tooltip strings for child ViewModels (avoids ServiceLocator calls per item)
     internal string ReplaceInFileTooltip { get; private set; } = string.Empty;
@@ -141,6 +151,9 @@ public partial class SearchPanelViewModel : ObservableObject
         ReplaceToggleTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceToggleTooltip");
         ReplacePlaceholder = _stringLocalizer.GetString("SearchPanel_ReplacePlaceholder");
         ReplaceAllTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceAllTooltip");
+        SearchHistoryTooltip = _stringLocalizer.GetString("SearchPanel_SearchHistoryTooltip");
+        ReplaceHistoryTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceHistoryTooltip");
+        ClearHistoryText = _stringLocalizer.GetString("SearchPanel_ClearHistoryText");
 
         // Cached tooltips for child ViewModels
         ReplaceInFileTooltip = _stringLocalizer.GetString("SearchPanel_ReplaceInFileTooltip");
@@ -151,12 +164,48 @@ public partial class SearchPanelViewModel : ObservableObject
         WholeWord = _editorSettings.SearchWholeWord;
         IsReplaceModeEnabled = _editorSettings.ReplaceMode;
 
+        // Listen for workspace loaded to load search/replace history from workspace settings
+        _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+
         // Listen for file system changes to refresh search results
         // This catches all modifications: user edits, external editors, scripts, agents, etc.
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnResourceChanged);
         _messengerService.Register<MonitoredResourceCreatedMessage>(this, OnResourceCreated);
         _messengerService.Register<MonitoredResourceDeletedMessage>(this, OnResourceDeleted);
         _messengerService.Register<MonitoredResourceRenamedMessage>(this, OnResourceRenamed);
+    }
+
+    private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
+    {
+        _ = LoadHistoryAsync();
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        var history = await _searchService.GetHistoryAsync();
+
+        SearchHistory.Clear();
+        foreach (var term in history.SearchTerms)
+        {
+            SearchHistory.Add(term);
+        }
+
+        ReplaceHistory.Clear();
+        foreach (var term in history.ReplaceTerms)
+        {
+            ReplaceHistory.Add(term);
+        }
+
+        // Restore the most recent search/replace terms (options are already restored from EditorSettings)
+        if (history.SearchTerms.Count > 0)
+        {
+            SearchText = history.SearchTerms[0];
+        }
+
+        if (history.ReplaceTerms.Count > 0)
+        {
+            ReplaceText = history.ReplaceTerms[0];
+        }
     }
 
     private void OnResourceChanged(object recipient, MonitoredResourceChangedMessage message)
@@ -544,6 +593,97 @@ public partial class SearchPanelViewModel : ObservableObject
         IsReplaceModeEnabled = !IsReplaceModeEnabled;
     }
 
+    /// <summary>
+    /// Selects a search history entry, populating the search text.
+    /// </summary>
+    public void SelectSearchHistoryEntry(string term)
+    {
+        SearchText = term;
+
+        // Trigger a search - no need to save since it's already in history
+        _ = ExecuteSearchAsync();
+    }
+
+    /// <summary>
+    /// Selects a replace history entry, populating the replace text.
+    /// </summary>
+    public void SelectReplaceHistoryEntry(string term)
+    {
+        ReplaceText = term;
+    }
+
+    [RelayCommand]
+    private async Task ClearSearchHistory()
+    {
+        await _searchService.ClearHistoryAsync();
+        SearchHistory.Clear();
+        ReplaceHistory.Clear();
+    }
+
+    /// <summary>
+    /// Saves the current search term to history.
+    /// Called when the search textbox loses focus.
+    /// </summary>
+    public void SaveSearchTermToHistory()
+    {
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            return;
+        }
+
+        // Fire and forget - don't block the UI
+        _ = SaveSearchTermToHistoryAsync();
+    }
+
+    private async Task SaveSearchTermToHistoryAsync()
+    {
+        await _searchService.AddSearchTermToHistoryAsync(SearchText);
+
+        // Update the observable collection on the UI thread
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            var existingIndex = SearchHistory.IndexOf(SearchText);
+            if (existingIndex >= 0)
+            {
+                SearchHistory.RemoveAt(existingIndex);
+            }
+
+            SearchHistory.Insert(0, SearchText);
+        });
+    }
+
+    /// <summary>
+    /// Saves the current replace term to history.
+    /// Called when the replace textbox loses focus.
+    /// </summary>
+    public void SaveReplaceTermToHistory()
+    {
+        if (string.IsNullOrWhiteSpace(ReplaceText))
+        {
+            return;
+        }
+
+        // Fire and forget - don't block the UI
+        _ = SaveReplaceTermToHistoryAsync();
+    }
+
+    private async Task SaveReplaceTermToHistoryAsync()
+    {
+        await _searchService.AddReplaceTermToHistoryAsync(ReplaceText);
+
+        // Update the observable collection on the UI thread
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            var existingIndex = ReplaceHistory.IndexOf(ReplaceText);
+            if (existingIndex >= 0)
+            {
+                ReplaceHistory.RemoveAt(existingIndex);
+            }
+
+            ReplaceHistory.Insert(0, ReplaceText);
+        });
+    }
+
     public async Task ReplaceInFileAsync(SearchFileResultViewModel fileResult)
     {
         if (string.IsNullOrEmpty(SearchText))
@@ -578,6 +718,9 @@ public partial class SearchPanelViewModel : ObservableObject
                 command.Edits = documentEdits;
             });
 
+            // Save replace term to history (fire and forget)
+            _ = SaveReplaceTermToHistoryAsync();
+
             // Remove the file from results since all its matches are replaced
             FileResults.Remove(fileResult);
             UpdateResultsStatus();
@@ -602,6 +745,9 @@ public partial class SearchPanelViewModel : ObservableObject
             await ReplaceSelectedMatchesAsync(selectedMatches);
             return;
         }
+
+        // Save replace term to history (fire and forget)
+        _ = SaveReplaceTermToHistoryAsync();
 
         IsReplacing = true;
 
@@ -813,6 +959,9 @@ public partial class SearchPanelViewModel : ObservableObject
             {
                 command.Edits = documentEdits;
             });
+
+            // Save replace term to history (fire and forget)
+            _ = SaveReplaceTermToHistoryAsync();
 
             // Clear all results since all matches are replaced
             FileResults.Clear();

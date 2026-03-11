@@ -24,6 +24,68 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
         // Subscribe to refresh events for scroll position preservation
         ViewModel.BeforeResultsRefresh += OnBeforeResultsRefresh;
         ViewModel.AfterResultsRefresh += OnAfterResultsRefresh;
+
+        // Subscribe to flyout opening events to populate history items
+        SearchHistoryFlyout.Opening += OnSearchHistoryFlyoutOpening;
+        ReplaceHistoryFlyout.Opening += OnReplaceHistoryFlyoutOpening;
+    }
+
+    private void OnSearchHistoryFlyoutOpening(object? sender, object e)
+    {
+        // Remove all items except the Clear History item and separator (first two items)
+        while (SearchHistoryFlyout.Items.Count > 2)
+        {
+            SearchHistoryFlyout.Items.RemoveAt(SearchHistoryFlyout.Items.Count - 1);
+        }
+
+        // Add history items
+        foreach (var term in ViewModel.SearchHistory)
+        {
+            var menuItem = new MenuFlyoutItem
+            {
+                Text = term,
+                Tag = term
+            };
+            menuItem.Click += OnSearchHistoryItemClick;
+            SearchHistoryFlyout.Items.Add(menuItem);
+        }
+    }
+
+    private void OnSearchHistoryItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string term)
+        {
+            ViewModel.SelectSearchHistoryEntry(term);
+        }
+    }
+
+    private void OnReplaceHistoryFlyoutOpening(object? sender, object e)
+    {
+        // Remove all items except the Clear History item and separator (first two items)
+        while (ReplaceHistoryFlyout.Items.Count > 2)
+        {
+            ReplaceHistoryFlyout.Items.RemoveAt(ReplaceHistoryFlyout.Items.Count - 1);
+        }
+
+        // Add history items
+        foreach (var term in ViewModel.ReplaceHistory)
+        {
+            var menuItem = new MenuFlyoutItem
+            {
+                Text = term,
+                Tag = term
+            };
+            menuItem.Click += OnReplaceHistoryItemClick;
+            ReplaceHistoryFlyout.Items.Add(menuItem);
+        }
+    }
+
+    private void OnReplaceHistoryItemClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is string term)
+        {
+            ViewModel.SelectReplaceHistoryEntry(term);
+        }
     }
 
     private void OnBeforeResultsRefresh(object? sender, EventArgs e)
@@ -59,6 +121,18 @@ public sealed partial class SearchPanel : UserControl, ISearchPanel
             ViewModel.ClearSearchCommand.Execute(null);
             e.Handled = true;
         }
+    }
+
+    private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // Save search term to history when focus leaves the search box
+        ViewModel.SaveSearchTermToHistory();
+    }
+
+    private void ReplaceTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // Save replace term to history when focus leaves the replace box
+        ViewModel.SaveReplaceTermToHistory();
     }
 
     private void FileHeader_PointerPressed(object sender, PointerRoutedEventArgs e)

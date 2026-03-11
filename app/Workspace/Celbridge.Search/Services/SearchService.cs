@@ -538,4 +538,115 @@ public class SearchService : ISearchService, IDisposable
 
         return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, false);
     }
+
+    private const string SearchHistoryKey = "SearchHistory";
+    private const int MaxHistoryItems = 15;
+
+    public async Task<SearchHistory> GetHistoryAsync()
+    {
+        var emptySearchTerms = new List<string>();
+        var emptyReplaceTerms = new List<string>();
+        var emptyHistory = new SearchHistory(emptySearchTerms, emptyReplaceTerms);
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return emptyHistory;
+        }
+
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+
+        try
+        {
+            var history = await workspaceSettings.GetPropertyAsync<SearchHistory>(SearchHistoryKey);
+
+            if (history is null)
+            {
+                return emptyHistory;
+            }
+
+            return history;
+        }
+        catch (Exception ex)
+        {
+            // Handle corrupted or old-format data by clearing it and returning empty history
+            _logger.LogWarning(ex, "Failed to deserialize search history, clearing corrupted data");
+            await workspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+            return emptyHistory;
+        }
+    }
+
+    public async Task AddSearchTermToHistoryAsync(string term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
+        {
+            return;
+        }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        var history = await GetHistoryAsync();
+        var searchTerms = history.SearchTerms.ToList();
+
+        // Remove any existing entry with the same term (case-sensitive)
+        searchTerms.Remove(term);
+
+        // Add new entry at the beginning
+        searchTerms.Insert(0, term);
+
+        // Trim to max size
+        if (searchTerms.Count > MaxHistoryItems)
+        {
+            searchTerms = searchTerms.Take(MaxHistoryItems).ToList();
+        }
+
+        var updatedHistory = new SearchHistory(searchTerms, history.ReplaceTerms.ToList());
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        await workspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
+    }
+
+    public async Task AddReplaceTermToHistoryAsync(string term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
+        {
+            return;
+        }
+
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        var history = await GetHistoryAsync();
+        var replaceTerms = history.ReplaceTerms.ToList();
+
+        // Remove any existing entry with the same term (case-sensitive)
+        replaceTerms.Remove(term);
+
+        // Add new entry at the beginning
+        replaceTerms.Insert(0, term);
+
+        // Trim to max size
+        if (replaceTerms.Count > MaxHistoryItems)
+        {
+            replaceTerms = replaceTerms.Take(MaxHistoryItems).ToList();
+        }
+
+        var updatedHistory = new SearchHistory(history.SearchTerms.ToList(), replaceTerms);
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        await workspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
+    }
+
+    public async Task ClearHistoryAsync()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return;
+        }
+
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        await workspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+    }
 }

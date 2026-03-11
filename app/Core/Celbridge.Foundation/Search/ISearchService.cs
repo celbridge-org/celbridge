@@ -51,4 +51,24 @@ public interface ISearchService
         bool matchCase,
         bool wholeWord,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Gets the search and replace history for the current workspace.
+    /// </summary>
+    Task<SearchHistory> GetHistoryAsync();
+
+    /// <summary>
+    /// Adds a search term to the history.
+    /// </summary>
+    Task AddSearchTermToHistoryAsync(string term);
+
+    /// <summary>
+    /// Adds a replace term to the history.
+    /// </summary>
+    Task AddReplaceTermToHistoryAsync(string term);
+
+    /// <summary>
+    /// Clears all search and replace history.
+    /// </summary>
+    Task ClearHistoryAsync();
 }
