@@ -14,6 +14,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly FileFilter _fileFilter;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
+    private readonly TextReplacer _textReplacer;
 
     public SearchService(
         ILogger<SearchService> logger,
@@ -27,6 +28,7 @@ public class SearchService : ISearchService, IDisposable
         _fileFilter = new FileFilter();
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
+        _textReplacer = new TextReplacer();
     }
 
     private bool _disposed;
@@ -301,61 +303,35 @@ public class SearchService : ISearchService, IDisposable
         bool wholeWord,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         string content;
         try
         {
             content = File.ReadAllText(filePath);
         }
-        catch (IOException ex)
+        catch (IOException)
         {
             return new ReplaceResult(false, 0);
         }
 
-        var lines = content.Split('\n');
-        var replacedLines = new List<string>();
-        int totalReplacements = 0;
-
-        foreach (var rawLine in lines)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var line = rawLine.TrimEnd('\r');
-            var carriageReturn = rawLine.EndsWith('\r') ? "\r" : string.Empty;
-
-            var matches = _textMatcher.FindMatches(line, searchText, matchCase, wholeWord);
-
-            if (matches.Count == 0)
-            {
-                replacedLines.Add(rawLine);
-                continue;
-            }
-
-            // Replace matches from end to start to preserve indices
-            var modifiedLine = line;
-            for (int i = matches.Count - 1; i >= 0; i--)
-            {
-                var match = matches[i];
-                modifiedLine = modifiedLine.Substring(0, match.Start) +
-                              replaceText +
-                              modifiedLine.Substring(match.Start + match.Length);
-                totalReplacements++;
-            }
-
-            replacedLines.Add(modifiedLine + carriageReturn);
-        }
+        var (newContent, totalReplacements) = _textReplacer.ReplaceAll(
+            content,
+            searchText,
+            replaceText,
+            matchCase,
+            wholeWord);
 
         if (totalReplacements == 0)
         {
             return new ReplaceResult(true, 0);
         }
 
-        var newContent = string.Join("\n", replacedLines);
-
         try
         {
             File.WriteAllText(filePath, newContent);
         }
-        catch (IOException ex)
+        catch (IOException)
         {
             return new ReplaceResult(false, 0);
         }
@@ -432,6 +408,8 @@ public class SearchService : ISearchService, IDisposable
         bool wholeWord,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         string content;
         try
         {
@@ -442,35 +420,19 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceMatchResult(false);
         }
 
-        var lines = content.Split('\n');
-        var lineIndex = lineNumber - 1;
+        var (newContent, success) = _textReplacer.ReplaceMatch(
+            content,
+            searchText,
+            replaceText,
+            lineNumber,
+            originalMatchStart,
+            matchCase,
+            wholeWord);
 
-        if (lineIndex < 0 || lineIndex >= lines.Length)
+        if (!success)
         {
             return new ReplaceMatchResult(false);
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var rawLine = lines[lineIndex];
-        var line = rawLine.TrimEnd('\r');
-        var carriageReturn = rawLine.EndsWith('\r') ? "\r" : string.Empty;
-
-        // Find the specific match at the expected position
-        var matches = _textMatcher.FindMatches(line, searchText, matchCase, wholeWord);
-        var targetMatch = matches.FirstOrDefault(m => m.Start == originalMatchStart);
-
-        if (targetMatch == default)
-        {
-            return new ReplaceMatchResult(false);
-        }
-
-        var modifiedLine = line.Substring(0, targetMatch.Start) +
-                           replaceText +
-                           line.Substring(targetMatch.Start + targetMatch.Length);
-        lines[lineIndex] = modifiedLine + carriageReturn;
-
-        var newContent = string.Join("\n", lines);
 
         try
         {
