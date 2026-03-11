@@ -900,7 +900,7 @@ Do you wish to continue?</value>
     <value>Replace history</value>
   </data>
   <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
-    <value>Clear History</value>
+    <value>Clear Recent</value>
   </data>
   <data name="Markdown_LinkError_Title" xml:space="preserve">
     <value>Link Error</value>
