@@ -216,30 +216,30 @@ public partial class NoteDocumentViewModel : DocumentViewModel
 
     /// <summary>
     /// Determines the action to take for a clicked link.
-    /// Returns the resolved resource key for internal links, or null for external URLs.
+    /// Returns the resolved resource key for internal links, or ResourceKey.Empty for external URLs.
     /// </summary>
-    public Result<ResourceKey?> ResolveLinkTarget(string href)
+    public Result<ResourceKey> ResolveLinkTarget(string href)
     {
         if (string.IsNullOrEmpty(href))
         {
-            return Result<ResourceKey?>.Ok(null);
+            return Result<ResourceKey>.Ok(ResourceKey.Empty);
         }
 
-        // External URLs return null to indicate browser handling
+        // External URLs return empty to indicate browser handling
         if (Uri.TryCreate(href, UriKind.Absolute, out var uri) &&
             (uri.Scheme == "http" || uri.Scheme == "https"))
         {
-            return Result<ResourceKey?>.Ok(null);
+            return Result<ResourceKey>.Ok(ResourceKey.Empty);
         }
 
         // Internal link - resolve to resource key
         var resolveResult = ResolveResourcePath(href);
         if (resolveResult.IsFailure)
         {
-            return Result<ResourceKey?>.Fail(resolveResult.Error);
+            return Result<ResourceKey>.Fail(resolveResult.Error);
         }
 
-        return Result<ResourceKey?>.Ok(resolveResult.Value);
+        return Result<ResourceKey>.Ok(resolveResult.Value);
     }
 
     /// <summary>

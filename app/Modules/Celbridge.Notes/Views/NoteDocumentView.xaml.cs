@@ -379,7 +379,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
 
         var resourceKey = resolveResult.Value;
 
-        if (resourceKey is null)
+        if (resourceKey.IsEmpty)
         {
             // External URL
             OpenSystemBrowser(href);
@@ -389,7 +389,7 @@ public sealed partial class NoteDocumentView : WebView2DocumentView, IHostDocume
             // Internal resource
             _commandService.Execute<IOpenDocumentCommand>(command =>
             {
-                command.FileResource = resourceKey.Value;
+                command.FileResource = resourceKey;
             });
         }
     }
