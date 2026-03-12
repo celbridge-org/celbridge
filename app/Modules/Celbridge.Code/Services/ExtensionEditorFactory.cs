@@ -1,6 +1,7 @@
 using Celbridge.Code.Views;
 using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Views;
+using Celbridge.Workspace;
 
 namespace Celbridge.Code.Services;
 
@@ -13,15 +14,32 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ExtensionManifest _manifest;
+    private readonly IWorkspaceFeatures? _workspaceFeatures;
 
     public override IReadOnlyList<string> SupportedExtensions => _manifest.Extensions;
 
     public override int Priority => _manifest.Priority;
 
-    public ExtensionEditorFactory(IServiceProvider serviceProvider, ExtensionManifest manifest)
+    public ExtensionEditorFactory(
+        IServiceProvider serviceProvider,
+        ExtensionManifest manifest,
+        IWorkspaceFeatures? workspaceFeatures = null)
     {
         _serviceProvider = serviceProvider;
         _manifest = manifest;
+        _workspaceFeatures = workspaceFeatures;
+    }
+
+    public override bool CanHandle(ResourceKey fileResource, string filePath)
+    {
+        if (!string.IsNullOrEmpty(_manifest.FeatureFlag) &&
+            _workspaceFeatures is not null &&
+            !_workspaceFeatures.IsEnabled(_manifest.FeatureFlag))
+        {
+            return false;
+        }
+
+        return base.CanHandle(fileResource, filePath);
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

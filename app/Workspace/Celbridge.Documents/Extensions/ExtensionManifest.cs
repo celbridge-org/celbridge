@@ -63,6 +63,37 @@ public record ExtensionMonacoOptions
 }
 
 /// <summary>
+/// A file template declared by an extension.
+/// Templates provide starter content for new files of the extension's type.
+/// </summary>
+public partial record ExtensionTemplate
+{
+    /// <summary>
+    /// Unique identifier for this template within the extension.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public string Id { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Display name or localization key for the template.
+    /// </summary>
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Path to the template file, relative to the extension directory.
+    /// </summary>
+    [JsonPropertyName("file")]
+    public string File { get; init; } = string.Empty;
+
+    /// <summary>
+    /// If true, this template is used for programmatic file creation.
+    /// </summary>
+    [JsonPropertyName("default")]
+    public bool Default { get; init; }
+}
+
+/// <summary>
 /// Represents an extension editor manifest (editor.json).
 /// Defines the configuration for a custom or code-based document editor.
 /// </summary>
@@ -99,6 +130,31 @@ public record ExtensionManifest
     /// </summary>
     [JsonPropertyName("priority")]
     public int Priority { get; init; }
+
+    /// <summary>
+    /// Optional feature flag name. When set, the editor is only available if this feature is enabled.
+    /// </summary>
+    [JsonPropertyName("featureFlag")]
+    public string? FeatureFlag { get; init; }
+
+    /// <summary>
+    /// Optional host capabilities this extension requires (e.g., "dialog", "input").
+    /// </summary>
+    [JsonPropertyName("capabilities")]
+    public IReadOnlyList<string> Capabilities { get; init; } = [];
+
+    /// <summary>
+    /// Optional path to a localization directory (relative to the extension directory)
+    /// containing locale JSON files (e.g., "en.json").
+    /// </summary>
+    [JsonPropertyName("localization")]
+    public string? Localization { get; init; }
+
+    /// <summary>
+    /// Optional list of file templates provided by this extension.
+    /// </summary>
+    [JsonPropertyName("templates")]
+    public IReadOnlyList<ExtensionTemplate> Templates { get; init; } = [];
 
     /// <summary>
     /// Preview configuration for code editors. When present, enables the split editor.

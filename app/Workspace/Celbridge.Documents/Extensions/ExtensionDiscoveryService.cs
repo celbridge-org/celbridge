@@ -3,8 +3,8 @@ using Celbridge.Logging;
 namespace Celbridge.Documents.Extensions;
 
 /// <summary>
-/// Service that discovers extension editor manifests from a project's extensions directory.
-/// Scans for editor.json files in subdirectories of the extensions/ folder.
+/// Service that discovers extension editor manifests from a project's extensions directory
+/// and from registered bundled extension paths.
 /// </summary>
 public class ExtensionDiscoveryService
 {
@@ -12,6 +12,7 @@ public class ExtensionDiscoveryService
     private const string ManifestFileName = "editor.json";
 
     private readonly ILogger<ExtensionDiscoveryService> _logger;
+    private readonly List<string> _bundledExtensionPaths = [];
 
     public ExtensionDiscoveryService(ILogger<ExtensionDiscoveryService> logger)
     {
@@ -19,10 +20,46 @@ public class ExtensionDiscoveryService
     }
 
     /// <summary>
-    /// Discovers all extension manifests in the project's extensions directory.
-    /// Returns an empty list if the extensions directory does not exist or contains no valid manifests.
+    /// Registers a bundled extension directory path.
+    /// The path should point to a directory containing an editor.json manifest.
+    /// </summary>
+    public void RegisterBundledExtensionPath(string path)
+    {
+        if (!_bundledExtensionPaths.Contains(path))
+        {
+            _bundledExtensionPaths.Add(path);
+        }
+    }
+
+    /// <summary>
+    /// Gets all registered bundled extension paths.
+    /// </summary>
+    public IReadOnlyList<string> BundledExtensionPaths => _bundledExtensionPaths.AsReadOnly();
+
+    /// <summary>
+    /// Discovers all extension manifests from both the project's extensions directory
+    /// and registered bundled extension paths.
+    /// Returns an empty list if no valid manifests are found.
     /// </summary>
     public IReadOnlyList<ExtensionManifest> DiscoverExtensions(string projectFolderPath)
+    {
+        var manifests = new List<ExtensionManifest>();
+
+        // Scan the project's extensions directory
+        var projectManifests = DiscoverProjectExtensions(projectFolderPath);
+        manifests.AddRange(projectManifests);
+
+        // Scan registered bundled extension paths
+        var bundledManifests = DiscoverBundledExtensions();
+        manifests.AddRange(bundledManifests);
+
+        return manifests.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Discovers extension manifests from the project's extensions directory.
+    /// </summary>
+    private List<ExtensionManifest> DiscoverProjectExtensions(string projectFolderPath)
     {
         var extensionsFolder = Path.Combine(projectFolderPath, ExtensionsFolderName);
 
@@ -37,27 +74,58 @@ public class ExtensionDiscoveryService
         var extensionDirs = Directory.GetDirectories(extensionsFolder);
         foreach (var extensionDir in extensionDirs)
         {
-            var manifestPath = Path.Combine(extensionDir, ManifestFileName);
-
-            if (!File.Exists(manifestPath))
+            var manifest = TryLoadManifest(extensionDir);
+            if (manifest is not null)
             {
-                continue;
+                manifests.Add(manifest);
             }
-
-            var parseResult = ExtensionManifest.Parse(manifestPath);
-
-            if (parseResult.IsFailure)
-            {
-                _logger.LogWarning(parseResult, $"Skipping invalid extension manifest: {manifestPath}");
-                continue;
-            }
-
-            var manifest = parseResult.Value;
-            manifests.Add(manifest);
-
-            _logger.LogDebug($"Discovered extension: {manifest.Name} ({manifest.Type}) for {string.Join(", ", manifest.Extensions)}");
         }
 
-        return manifests.AsReadOnly();
+        return manifests;
+    }
+
+    /// <summary>
+    /// Discovers extension manifests from registered bundled extension paths.
+    /// </summary>
+    private List<ExtensionManifest> DiscoverBundledExtensions()
+    {
+        var manifests = new List<ExtensionManifest>();
+
+        foreach (var extensionDir in _bundledExtensionPaths)
+        {
+            var manifest = TryLoadManifest(extensionDir);
+            if (manifest is not null)
+            {
+                manifests.Add(manifest);
+            }
+        }
+
+        return manifests;
+    }
+
+    /// <summary>
+    /// Attempts to load a manifest from a directory. Returns null on failure.
+    /// </summary>
+    private ExtensionManifest? TryLoadManifest(string extensionDir)
+    {
+        var manifestPath = Path.Combine(extensionDir, ManifestFileName);
+
+        if (!File.Exists(manifestPath))
+        {
+            return null;
+        }
+
+        var parseResult = ExtensionManifest.Parse(manifestPath);
+
+        if (parseResult.IsFailure)
+        {
+            _logger.LogWarning(parseResult, $"Skipping invalid extension manifest: {manifestPath}");
+            return null;
+        }
+
+        var manifest = parseResult.Value;
+        _logger.LogDebug($"Discovered extension: {manifest.Name} ({manifest.Type}) for {string.Join(", ", manifest.Extensions)}");
+
+        return manifest;
     }
 }

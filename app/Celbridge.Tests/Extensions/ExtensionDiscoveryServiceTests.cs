@@ -129,4 +129,90 @@ public class ExtensionDiscoveryServiceTests
         manifests.Should().HaveCount(1);
         manifests[0].Name.Should().Be("Found");
     }
+
+    [Test]
+    public void RegisterBundledExtensionPath_DiscoverIncludesBundled()
+    {
+        var bundledDir = Path.Combine(_tempProjectFolder, "bundled-editor");
+        Directory.CreateDirectory(bundledDir);
+        File.WriteAllText(Path.Combine(bundledDir, "editor.json"), """
+            { "name": "Bundled", "type": "custom", "extensions": [".bnd"] }
+            """);
+
+        _service.RegisterBundledExtensionPath(bundledDir);
+
+        var manifests = _service.DiscoverExtensions(_tempProjectFolder);
+
+        manifests.Should().HaveCount(1);
+        manifests[0].Name.Should().Be("Bundled");
+    }
+
+    [Test]
+    public void RegisterBundledExtensionPath_CombinesProjectAndBundled()
+    {
+        // Set up a project extension
+        var projExtDir = Path.Combine(_tempProjectFolder, "extensions", "proj-editor");
+        Directory.CreateDirectory(projExtDir);
+        File.WriteAllText(Path.Combine(projExtDir, "editor.json"), """
+            { "name": "Project", "type": "custom", "extensions": [".proj"] }
+            """);
+
+        // Set up a bundled extension
+        var bundledDir = Path.Combine(_tempProjectFolder, "bundled-editor");
+        Directory.CreateDirectory(bundledDir);
+        File.WriteAllText(Path.Combine(bundledDir, "editor.json"), """
+            { "name": "Bundled", "type": "custom", "extensions": [".bnd"] }
+            """);
+
+        _service.RegisterBundledExtensionPath(bundledDir);
+
+        var manifests = _service.DiscoverExtensions(_tempProjectFolder);
+
+        manifests.Should().HaveCount(2);
+        var names = manifests.Select(m => m.Name).ToList();
+        names.Should().Contain("Project");
+        names.Should().Contain("Bundled");
+    }
+
+    [Test]
+    public void RegisterBundledExtensionPath_DuplicatePathIgnored()
+    {
+        var bundledDir = Path.Combine(_tempProjectFolder, "bundled-editor");
+        Directory.CreateDirectory(bundledDir);
+        File.WriteAllText(Path.Combine(bundledDir, "editor.json"), """
+            { "name": "Bundled", "type": "custom", "extensions": [".bnd"] }
+            """);
+
+        _service.RegisterBundledExtensionPath(bundledDir);
+        _service.RegisterBundledExtensionPath(bundledDir);
+
+        _service.BundledExtensionPaths.Should().HaveCount(1);
+    }
+
+    [Test]
+    public void RegisterBundledExtensionPath_InvalidManifestSkipped()
+    {
+        var bundledDir = Path.Combine(_tempProjectFolder, "bad-bundled");
+        Directory.CreateDirectory(bundledDir);
+        File.WriteAllText(Path.Combine(bundledDir, "editor.json"), "{ invalid json }");
+
+        _service.RegisterBundledExtensionPath(bundledDir);
+
+        var manifests = _service.DiscoverExtensions(_tempProjectFolder);
+
+        manifests.Should().BeEmpty();
+    }
+
+    [Test]
+    public void RegisterBundledExtensionPath_MissingManifestSkipped()
+    {
+        var bundledDir = Path.Combine(_tempProjectFolder, "no-manifest-bundled");
+        Directory.CreateDirectory(bundledDir);
+
+        _service.RegisterBundledExtensionPath(bundledDir);
+
+        var manifests = _service.DiscoverExtensions(_tempProjectFolder);
+
+        manifests.Should().BeEmpty();
+    }
 }

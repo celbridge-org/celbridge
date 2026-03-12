@@ -1,3 +1,5 @@
+using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
@@ -16,14 +18,17 @@ namespace Celbridge.Documents.Extensions;
 /// Document view for custom (WebView2-based) extension editors.
 /// Configured from an ExtensionManifest, handles the IHostDocument protocol,
 /// and inherits SetFileResource, theme syncing, CreateMetadata, and save tracking from the base.
+/// Optionally implements IHostDialog and IHostInput based on manifest capabilities.
 /// </summary>
-public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDocument
+public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDocument, IHostDialog
 {
     private const int SaveRequestTimeoutSeconds = 30;
 
     private readonly ILogger<ExtensionDocumentView> _logger;
+    private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IDialogService _dialogService;
 
     private readonly ExtensionDocumentViewModel _viewModel;
 
@@ -41,15 +46,19 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
     public ExtensionDocumentView(
         IServiceProvider serviceProvider,
         ILogger<ExtensionDocumentView> logger,
+        ICommandService commandService,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
         IStringLocalizer stringLocalizer,
+        IDialogService dialogService,
         IWebViewFactory webViewFactory)
         : base(messengerService, webViewFactory)
     {
         _logger = logger;
+        _commandService = commandService;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
+        _dialogService = dialogService;
 
         _viewModel = serviceProvider.GetRequiredService<ExtensionDocumentViewModel>();
 
@@ -127,6 +136,9 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             return;
         }
 
+        // Pass the manifest to the ViewModel for template content loading
+        _viewModel.Manifest = Manifest;
+
         try
         {
             await AcquireWebViewAsync();
@@ -149,6 +161,30 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
             ApplyThemeToWebView();
 
+            // Block all navigations except the extension's own host name
+            var allowedHostPrefix = $"https://{Manifest.HostName}/";
+            WebView.NavigationStarting += (s, args) =>
+            {
+                var uri = args.Uri;
+                if (string.IsNullOrEmpty(uri))
+                {
+                    return;
+                }
+
+                if (uri.StartsWith(allowedHostPrefix))
+                {
+                    return;
+                }
+
+                args.Cancel = true;
+            };
+
+            // Block all new window requests
+            WebView.CoreWebView2.NewWindowRequested += (s, args) =>
+            {
+                args.Handled = true;
+            };
+
             InitializeHost();
 
             if (Host is null)
@@ -158,6 +194,13 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             }
 
             Host.AddLocalRpcTarget<IHostDocument>(this);
+
+            // Register optional capabilities based on manifest
+            var capabilities = Manifest.Capabilities;
+            if (capabilities.Contains("dialog"))
+            {
+                Host.AddLocalRpcTarget<IHostDialog>(this);
+            }
 
             StartHostListener();
 
@@ -181,9 +224,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = CreateDocumentMetadata();
 
-        var localization = WebViewLocalizationHelper.GetLocalizedStrings(
-            _stringLocalizer,
-            $"Ext_{Manifest?.Name?.Replace(" ", "")}_");
+        var localization = LoadLocalizationStrings();
 
         return new InitializeResult(content, metadata, localization);
     }
@@ -237,6 +278,130 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
     }
 
     #endregion
+
+    #region IHostDialog
+
+    public async Task<PickImageResult> PickImageAsync(IReadOnlyList<string>? extensions = null)
+    {
+        var extensionsArray = extensions?.ToArray();
+        if (extensionsArray is null || extensionsArray.Length == 0)
+        {
+            extensionsArray =
+            [
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".webp",
+                ".svg",
+                ".bmp"
+            ];
+        }
+
+        var title = _stringLocalizer.GetString("Extension_SelectImage_Title");
+        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title, showPreview: true);
+
+        if (result.IsSuccess)
+        {
+            var resourceKey = result.Value.ToString();
+            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourceKey);
+            return new PickImageResult(relativePath);
+        }
+
+        return new PickImageResult(null);
+    }
+
+    public async Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null)
+    {
+        var title = _stringLocalizer.GetString("Extension_SelectFile_Title");
+        var extensionsArray = extensions?.ToArray() ?? [];
+        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title);
+
+        if (result.IsSuccess)
+        {
+            var resourceKey = result.Value.ToString();
+            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourceKey);
+            return new PickFileResult(relativePath);
+        }
+
+        return new PickFileResult(null);
+    }
+
+    public async Task<AlertResult> AlertAsync(string title, string message)
+    {
+        await _dialogService.ShowAlertDialogAsync(title, message);
+        return new AlertResult();
+    }
+
+    #endregion
+
+    #region IHostInput (OnLinkClicked)
+
+    public void OnLinkClicked(string href)
+    {
+        if (string.IsNullOrEmpty(href))
+        {
+            return;
+        }
+
+        // Only handle link clicks when the manifest declares the "input" capability
+        if (Manifest is null || !Manifest.Capabilities.Contains("input"))
+        {
+            return;
+        }
+
+        var resolveResult = _viewModel.ResolveLinkTarget(href);
+
+        if (resolveResult.IsFailure)
+        {
+            _logger.LogWarning($"Failed to resolve link: {href}");
+            _ = ShowLinkErrorAsync(href);
+            return;
+        }
+
+        var resourceKey = resolveResult.Value;
+
+        if (resourceKey.IsEmpty)
+        {
+            // External URL
+            OpenSystemBrowser(_commandService, href);
+        }
+        else
+        {
+            // Internal resource
+            _commandService.Execute<IOpenDocumentCommand>(command =>
+            {
+                command.FileResource = resourceKey;
+            });
+        }
+    }
+
+    #endregion
+
+    private async Task ShowLinkErrorAsync(string href)
+    {
+        var errorTitle = _stringLocalizer.GetString("Extension_LinkError_Title");
+        var errorMessage = _stringLocalizer.GetString("Extension_LinkError_Message", href);
+        await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
+    }
+
+    /// <summary>
+    /// Loads localization strings using extension-owned localization files when available,
+    /// falling back to the app's Resources.resw with the Ext_{Name}_ prefix.
+    /// </summary>
+    private Dictionary<string, string> LoadLocalizationStrings()
+    {
+        if (Manifest is not null && !string.IsNullOrEmpty(Manifest.Localization))
+        {
+            return ExtensionLocalizationHelper.LoadStrings(
+                Manifest.ExtensionDirectory,
+                Manifest.Localization);
+        }
+
+        // Fall back to app-level localization for extensions without their own localization files
+        var prefix = $"Ext_{Manifest?.Name?.Replace(" ", "")}_";
+        return WebViewLocalizationHelper.GetLocalizedStrings(_stringLocalizer, prefix);
+    }
 
     public override async Task<Result> LoadContent()
     {

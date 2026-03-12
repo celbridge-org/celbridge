@@ -185,6 +185,201 @@ public class ExtensionManifestTests
         result.Value.Name.Should().Be("Relaxed");
     }
 
+    [Test]
+    public void Parse_WithFeatureFlag_ReturnsFeatureFlag()
+    {
+        var json = """
+            {
+                "name": "Flagged",
+                "type": "custom",
+                "extensions": [".flag"],
+                "featureFlag": "my-feature"
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.FeatureFlag.Should().Be("my-feature");
+    }
+
+    [Test]
+    public void Parse_WithoutFeatureFlag_ReturnsNull()
+    {
+        var json = """
+            {
+                "name": "NoFlag",
+                "type": "custom",
+                "extensions": [".nf"]
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.FeatureFlag.Should().BeNull();
+    }
+
+    [Test]
+    public void Parse_WithCapabilities_ReturnsCapabilities()
+    {
+        var json = """
+            {
+                "name": "Capable",
+                "type": "custom",
+                "extensions": [".cap"],
+                "capabilities": ["dialog", "input"]
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Capabilities.Should().HaveCount(2);
+        result.Value.Capabilities.Should().Contain("dialog");
+        result.Value.Capabilities.Should().Contain("input");
+    }
+
+    [Test]
+    public void Parse_WithoutCapabilities_ReturnsEmptyList()
+    {
+        var json = """
+            {
+                "name": "NoCaps",
+                "type": "custom",
+                "extensions": [".nc"]
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Capabilities.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Parse_WithLocalization_ReturnsLocalizationPath()
+    {
+        var json = """
+            {
+                "name": "Localized",
+                "type": "custom",
+                "extensions": [".loc"],
+                "localization": "localization"
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Localization.Should().Be("localization");
+    }
+
+    [Test]
+    public void Parse_WithTemplates_ReturnsTemplates()
+    {
+        var json = """
+            {
+                "name": "Templated",
+                "type": "custom",
+                "extensions": [".tmpl"],
+                "templates": [
+                    {
+                        "id": "empty",
+                        "displayName": "Empty File",
+                        "file": "templates/empty.tmpl",
+                        "default": true
+                    },
+                    {
+                        "id": "example",
+                        "displayName": "Example File",
+                        "file": "templates/example.tmpl",
+                        "default": false
+                    }
+                ]
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Templates.Should().HaveCount(2);
+
+        var defaultTemplate = result.Value.Templates[0];
+        defaultTemplate.Id.Should().Be("empty");
+        defaultTemplate.DisplayName.Should().Be("Empty File");
+        defaultTemplate.File.Should().Be("templates/empty.tmpl");
+        defaultTemplate.Default.Should().BeTrue();
+
+        var exampleTemplate = result.Value.Templates[1];
+        exampleTemplate.Id.Should().Be("example");
+        exampleTemplate.Default.Should().BeFalse();
+    }
+
+    [Test]
+    public void Parse_WithoutTemplates_ReturnsEmptyList()
+    {
+        var json = """
+            {
+                "name": "NoTemplates",
+                "type": "custom",
+                "extensions": [".nt"]
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Templates.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Parse_FullManifest_AllFieldsPopulated()
+    {
+        var json = """
+            {
+                "name": "Full Editor",
+                "type": "custom",
+                "extensions": [".full"],
+                "entryPoint": "index.html",
+                "priority": 5,
+                "featureFlag": "full-editor",
+                "capabilities": ["dialog", "input"],
+                "localization": "localization",
+                "templates": [
+                    {
+                        "id": "empty",
+                        "displayName": "Empty",
+                        "file": "templates/empty.full",
+                        "default": true
+                    }
+                ]
+            }
+            """;
+        var path = WriteManifest(json);
+
+        var result = ExtensionManifest.Parse(path);
+
+        result.IsSuccess.Should().BeTrue();
+        var manifest = result.Value;
+        manifest.Name.Should().Be("Full Editor");
+        manifest.Type.Should().Be(ExtensionEditorType.Custom);
+        manifest.Extensions.Should().ContainSingle().Which.Should().Be(".full");
+        manifest.EntryPoint.Should().Be("index.html");
+        manifest.Priority.Should().Be(5);
+        manifest.FeatureFlag.Should().Be("full-editor");
+        manifest.Capabilities.Should().HaveCount(2);
+        manifest.Localization.Should().Be("localization");
+        manifest.Templates.Should().HaveCount(1);
+    }
+
     private string WriteManifest(string json)
     {
         var path = Path.Combine(_tempFolder, "editor.json");
