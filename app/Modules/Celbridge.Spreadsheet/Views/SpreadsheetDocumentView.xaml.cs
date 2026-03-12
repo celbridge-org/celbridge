@@ -5,8 +5,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Spreadsheet.ViewModels;
+using Celbridge.UserInterface;
 using Celbridge.WebView;
-using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 using StreamJsonRpc;
 
@@ -19,6 +19,7 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
 
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
+    private readonly IMessengerService _messengerService;
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
@@ -36,7 +37,7 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
         ILogger<SpreadsheetDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
+        IUserInterfaceService userInterfaceService,
         IWebViewFactory webViewFactory)
         : base(messengerService, webViewFactory)
     {
@@ -44,11 +45,14 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
 
         _logger = logger;
         _commandService = commandService;
+        _messengerService = messengerService;
 
         this.InitializeComponent();
 
         // Set the container where the WebView will be placed
         WebViewContainer = SpreadsheetWebViewContainer;
+
+        EnableThemeSyncing(userInterfaceService);
 
         Loaded += SpreadsheetDocumentView_Loaded;
 
@@ -123,6 +127,9 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
         {
             // Acquire WebView from factory and add to container
             await AcquireWebViewAsync();
+
+            // Sync WebView2 color scheme with the app theme
+            ApplyThemeToWebView();
 
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "spreadjs.celbridge",
@@ -340,6 +347,8 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
 
     public override async Task PrepareToClose()
     {
+        _messengerService.UnregisterAll(this);
+
         Loaded -= SpreadsheetDocumentView_Loaded;
 
         // Unsubscribe from ViewModel events

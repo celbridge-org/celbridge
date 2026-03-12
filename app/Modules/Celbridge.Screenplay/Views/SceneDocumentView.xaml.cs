@@ -161,7 +161,11 @@ public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocume
 
     public override async Task PrepareToClose()
     {
-        _messengerService.Unregister<SceneContentUpdatedMessage>(this);
+        _messengerService.UnregisterAll(this);
+
+        Loaded -= SceneDocumentView_Loaded;
+
+        ViewModel.Cleanup();
 
         await base.PrepareToClose();
     }
