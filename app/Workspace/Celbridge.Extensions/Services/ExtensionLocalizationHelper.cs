@@ -5,10 +5,16 @@ namespace Celbridge.Extensions;
 
 /// <summary>
 /// Helper for loading localized strings from an extension's localization directory.
-/// Extension localization files are flat key-value JSON dictionaries (e.g., en.json).
+/// Uses convention: extensions store localization files in a "localization" subdirectory
+/// as flat key-value JSON dictionaries (e.g., en.json, fr.json).
 /// </summary>
 public static class ExtensionLocalizationHelper
 {
+    /// <summary>
+    /// Convention: all extensions use "localization" as the folder name.
+    /// </summary>
+    public const string LocalizationFolder = "localization";
+
     private const string FallbackLocale = "en";
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -19,26 +25,23 @@ public static class ExtensionLocalizationHelper
 
     /// <summary>
     /// Loads localization strings from an extension's localization directory.
+    /// Uses convention: {extensionDirectory}/localization/{locale}.json
     /// Tries the current UI culture first, falls back to "en", then returns an empty dictionary.
     /// </summary>
-    public static Dictionary<string, string> LoadStrings(
-        string extensionDirectory,
-        string localizationFolder)
+    public static Dictionary<string, string> LoadStrings(string extensionDirectory)
     {
         var locale = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        return LoadStrings(extensionDirectory, localizationFolder, locale);
+        return LoadStrings(extensionDirectory, locale);
     }
 
     /// <summary>
     /// Loads localization strings for a specific locale from an extension's localization directory.
+    /// Uses convention: {extensionDirectory}/localization/{locale}.json
     /// Falls back to "en.json" if the requested locale is not found, then to an empty dictionary.
     /// </summary>
-    public static Dictionary<string, string> LoadStrings(
-        string extensionDirectory,
-        string localizationFolder,
-        string locale)
+    public static Dictionary<string, string> LoadStrings(string extensionDirectory, string locale)
     {
-        var localizationDir = Path.Combine(extensionDirectory, localizationFolder);
+        var localizationDir = Path.Combine(extensionDirectory, LocalizationFolder);
 
         // Try the requested locale
         var localePath = Path.Combine(localizationDir, $"{locale}.json");

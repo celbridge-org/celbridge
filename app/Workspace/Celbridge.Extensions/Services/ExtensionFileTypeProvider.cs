@@ -98,15 +98,13 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
         return null;
     }
 
+    /// <summary>
+    /// Loads localization strings from the extension's localization directory.
+    /// Uses convention: {extensionDirectory}/localization/{locale}.json
+    /// </summary>
     private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(ExtensionManifest manifest)
     {
-        if (!string.IsNullOrEmpty(manifest.Localization))
-        {
-            return ExtensionLocalizationHelper.LoadStrings(
-                manifest.ExtensionDirectory,
-                manifest.Localization);
-        }
-        return new Dictionary<string, string>();
+        return ExtensionLocalizationHelper.LoadStrings(manifest.ExtensionDirectory);
     }
 
     /// <summary>

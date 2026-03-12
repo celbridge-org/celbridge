@@ -191,33 +191,33 @@ describe('Celbridge', () => {
             expect(handler).toHaveBeenCalledOnce();
         });
 
-        it('should handle localization update notifications', async () => {
+        it('should handle language change notifications', async () => {
             const { client, simulateResponse, simulateNotification } = createTestClient();
 
             const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            simulateResponse(1, { content: '', metadata: { locale: 'en' } });
             await initPromise;
 
-            const handler = vi.fn();
-            client.localization.onUpdated(handler);
+                        const handler = vi.fn();
+                        client.localization.onLanguageChanged(handler);
 
-            simulateNotification('localization/updated', { key1: 'value1' });
+                        simulateNotification('localization/languageChanged', 'fr');
 
-            expect(handler).toHaveBeenCalledWith({ key1: 'value1' });
-        });
-    });
+                        expect(handler).toHaveBeenCalledWith('fr');
+                    });
+                });
 
-    describe('document operations', () => {
-        it('should send load request', async () => {
-            const { client, sentMessages, simulateResponse } = createTestClient();
+                describe('document operations', () => {
+                    it('should send load request', async () => {
+                        const { client, sentMessages, simulateResponse } = createTestClient();
 
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
+                        const initPromise = client.initialize();
+                        simulateResponse(1, { content: '', metadata: { locale: 'en' } });
+                        await initPromise;
 
-            const loadPromise = client.document.load();
-            const sent = JSON.parse(sentMessages[1]);
-            expect(sent.method).toBe('document/load');
+                        const loadPromise = client.document.load();
+                        const sent = JSON.parse(sentMessages[1]);
+                        expect(sent.method).toBe('document/load');
 
             simulateResponse(2, {
                 content: '# Test',

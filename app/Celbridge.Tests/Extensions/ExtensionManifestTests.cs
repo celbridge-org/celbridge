@@ -262,25 +262,6 @@ public class ExtensionManifestTests
     }
 
     [Test]
-    public void Parse_WithLocalization_ReturnsLocalizationPath()
-    {
-        var json = """
-            {
-                "name": "Localized",
-                "type": "custom",
-                "file_types": [{ "extension": ".loc" }],
-                "localization": "localization"
-            }
-            """;
-        var path = WriteManifest(json);
-
-        var result = ExtensionManifest.Parse(path);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Localization.Should().Be("localization");
-    }
-
-    [Test]
     public void Parse_WithTemplates_ReturnsTemplates()
     {
         var json = """
@@ -352,7 +333,6 @@ public class ExtensionManifestTests
                 "priority": 5,
                 "featureFlag": "full-editor",
                 "capabilities": ["dialog", "input"],
-                "localization": "localization",
                 "templates": [
                     {
                         "id": "empty",
@@ -376,7 +356,6 @@ public class ExtensionManifestTests
         manifest.Priority.Should().Be(5);
         manifest.FeatureFlag.Should().Be("full-editor");
         manifest.Capabilities.Should().HaveCount(2);
-        manifest.Localization.Should().Be("localization");
         manifest.Templates.Should().HaveCount(1);
     }
 

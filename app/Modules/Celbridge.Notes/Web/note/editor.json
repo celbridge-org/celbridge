@@ -8,7 +8,6 @@
     "priority": 0,
     "featureFlag": "note-editor",
     "capabilities": ["dialog", "input"],
-    "localization": "localization",
     "templates": [
         {
             "id": "empty",

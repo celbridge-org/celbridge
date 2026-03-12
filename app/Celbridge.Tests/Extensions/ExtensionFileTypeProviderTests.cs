@@ -87,7 +87,6 @@ public class ExtensionFileTypeProviderTests
             [
                 new { id = "empty", displayName = "Note_Template_Empty", file = "templates/empty.note", @default = true }
             ],
-            localization: "localization",
             localizationStrings: new Dictionary<string, string>
             {
                 ["Note_FileType_Note"] = "My Localized Note"
@@ -209,13 +208,13 @@ public class ExtensionFileTypeProviderTests
 
     /// <summary>
     /// Helper to create a bundled extension directory with manifest and optional files.
+    /// Localization uses convention: localization/{locale}.json
     /// </summary>
     private void CreateBundledExtension(
         string name,
         (string Extension, string DisplayName)[] fileTypes,
         object[]? templates = null,
         string? featureFlag = null,
-        string? localization = null,
         Dictionary<string, string>? localizationStrings = null,
         Dictionary<string, string>? templateFiles = null)
     {
@@ -241,7 +240,6 @@ public class ExtensionFileTypeProviderTests
         }
 
         var featureFlagPart = featureFlag is not null ? $", \"featureFlag\": \"{featureFlag}\"" : "";
-        var localizationPart = localization is not null ? $", \"localization\": \"{localization}\"" : "";
 
         var manifestJson = $@"{{
             ""name"": ""{name}"",
@@ -250,15 +248,14 @@ public class ExtensionFileTypeProviderTests
             ""entryPoint"": ""index.html""
             {featureFlagPart}
             {templatesPart}
-            {localizationPart}
         }}";
 
         File.WriteAllText(Path.Combine(extDir, "editor.json"), manifestJson);
 
-        // Create localization files
-        if (localization is not null && localizationStrings is not null)
+        // Create localization files using convention (localization/en.json)
+        if (localizationStrings is not null)
         {
-            var locDir = Path.Combine(extDir, localization);
+            var locDir = Path.Combine(extDir, ExtensionLocalizationHelper.LocalizationFolder);
             Directory.CreateDirectory(locDir);
 
             var entries = localizationStrings.Select(kv => $"\"{kv.Key}\": \"{kv.Value}\"");

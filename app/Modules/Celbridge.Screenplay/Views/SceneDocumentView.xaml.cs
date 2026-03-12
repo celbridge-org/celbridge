@@ -125,18 +125,15 @@ public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocume
 
     #region IHostDocument
 
-    public Task<InitializeResult> InitializeAsync(string protocolVersion)
-    {
-        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
+        public Task<InitializeResult> InitializeAsync(string protocolVersion)
+        {
+            DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-        var metadata = CreateDocumentMetadata();
+            var metadata = CreateDocumentMetadata();
 
-        // No localization strings needed for screenplay viewer
-        var localization = new Dictionary<string, string>();
-
-        // Content is the generated HTML body content
-        return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata, localization));
-    }
+            // Content is the generated HTML body content
+            return Task.FromResult(new InitializeResult(ViewModel.HtmlContent, metadata));
+        }
 
     public Task<LoadResult> LoadAsync()
     {

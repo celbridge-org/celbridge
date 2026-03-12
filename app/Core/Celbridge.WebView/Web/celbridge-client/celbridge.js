@@ -88,6 +88,7 @@ export class Celbridge {
 
     /**
      * Initializes the client and loads document content.
+     * Automatically loads localization strings from the extension's localization folder.
      * Must be called before any other operations.
      * @returns {Promise<InitializeResult>} - The initialization result with content and config.
      */
@@ -101,7 +102,52 @@ export class Celbridge {
         });
 
         this.#transport.markInitialized();
+
+        // Auto-load localization if locale is provided in metadata
+        if (result.metadata?.locale) {
+            await this.#loadLocalization(result.metadata.locale);
+        }
+
         return result;
+    }
+
+    /**
+     * Loads localization strings from the extension's localization folder.
+     * Uses convention: localization/{locale}.json, falls back to en.json.
+     * Silently skips if not running in a browser environment (e.g., tests).
+     * @param {string} locale - The locale to load (e.g., "en", "fr").
+     */
+    async #loadLocalization(locale) {
+        // Skip localization loading in non-browser environments (e.g., Node.js tests)
+        if (typeof location === 'undefined' || typeof fetch === 'undefined') {
+            return;
+        }
+
+        const { setStrings } = await import('./localization.js');
+        const hostName = location.hostname;
+
+        const tryFetch = async (loc) => {
+            const url = `https://${hostName}/localization/${loc}.json`;
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch {
+                // Ignore fetch errors
+            }
+            return null;
+        };
+
+        // Try requested locale, then fall back to English
+        let strings = await tryFetch(locale);
+        if (!strings && locale !== 'en') {
+            strings = await tryFetch('en');
+        }
+
+        if (strings) {
+            setStrings(strings);
+        }
     }
 
     /**

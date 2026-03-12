@@ -187,24 +187,21 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
 
     #region IHostDocument
 
-    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
-    {
-        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
+        public async Task<InitializeResult> InitializeAsync(string protocolVersion)
+        {
+            DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-        // Load spreadsheet as base64 - content is stored in the result
-        var base64Content = await LoadSpreadsheetAsBase64Async();
+            // Load spreadsheet as base64 - content is stored in the result
+            var base64Content = await LoadSpreadsheetAsBase64Async();
 
-        var metadata = CreateDocumentMetadata();
+            var metadata = CreateDocumentMetadata();
 
-        // Gather localization strings (none needed for spreadsheet currently)
-        var localization = new Dictionary<string, string>();
+            // Mark import as in progress - JS will notify us when complete
+            _isImportInProgress = true;
 
-        // Mark import as in progress - JS will notify us when complete
-        _isImportInProgress = true;
-
-        // Use content field to pass base64 data for spreadsheet
-        return new InitializeResult(base64Content, metadata, localization);
-    }
+            // Use content field to pass base64 data for spreadsheet
+            return new InitializeResult(base64Content, metadata);
+        }
 
     public async Task<LoadResult> LoadAsync()
     {

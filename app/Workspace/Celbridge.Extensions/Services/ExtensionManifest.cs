@@ -166,13 +166,6 @@ public record ExtensionManifest
     public IReadOnlyList<string> Capabilities { get; init; } = [];
 
     /// <summary>
-    /// Optional path to a localization directory (relative to the extension directory)
-    /// containing locale JSON files (e.g., "en.json").
-    /// </summary>
-    [JsonPropertyName("localization")]
-    public string? Localization { get; init; }
-
-    /// <summary>
     /// Optional list of file templates provided by this extension.
     /// </summary>
     [JsonPropertyName("templates")]

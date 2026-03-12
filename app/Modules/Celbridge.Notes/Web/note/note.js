@@ -2,7 +2,7 @@
 // TipTap-based rich text editor using native JSON storage format
 
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
-import { setStrings, t } from 'https://shared.celbridge/celbridge-client/localization.js';
+import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
@@ -458,14 +458,26 @@ client.theme.onChanged((theme) => {
     // but we could add custom handling here if needed
 });
 
-// Handle localization updates
-client.localization.onUpdated((strings) => {
-    setStrings(strings);
-    // Update the TipTap placeholder text dynamically
-    const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
-    if (placeholderExt) {
-        placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
-        editor.view.dispatch(editor.state.tr);
+// Handle language changes (for future runtime language switching)
+client.localization.onLanguageChanged(async (locale) => {
+    // Reload localization from the extension's localization folder
+    const hostName = location.hostname;
+    try {
+        const response = await fetch(`https://${hostName}/localization/${locale}.json`);
+        if (response.ok) {
+            const { setStrings } = await import('https://shared.celbridge/celbridge-client/localization.js');
+            const strings = await response.json();
+            setStrings(strings);
+
+            // Update the TipTap placeholder text dynamically
+            const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
+            if (placeholderExt) {
+                placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
+                editor.view.dispatch(editor.state.tr);
+            }
+        }
+    } catch (e) {
+        console.warn('[Note] Failed to reload localization:', e);
     }
 });
 
@@ -485,14 +497,12 @@ async function initializeEditor() {
             ? `${projectBaseUrl}${resourceKey.substring(0, lastSlash + 1)}`
             : projectBaseUrl;
 
-        // Set localization strings
-        if (result.localization) {
-            setStrings(result.localization);
-            const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
-            if (placeholderExt) {
-                placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
-                editor.view.dispatch(editor.state.tr);
-            }
+        // Localization is auto-loaded by celbridge.js during initialize()
+        // Update the TipTap placeholder with the localized text
+        const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
+        if (placeholderExt) {
+            placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
+            editor.view.dispatch(editor.state.tr);
         }
 
         // Parse JSON content and load into editor

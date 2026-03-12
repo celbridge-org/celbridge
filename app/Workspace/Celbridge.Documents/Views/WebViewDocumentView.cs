@@ -212,19 +212,22 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
     #region Document Metadata
 
-    /// <summary>
-    /// Creates a DocumentMetadata instance from the current document state.
-    /// Used by WebView-based editors for JSON-RPC communication.
-    /// </summary>
-    protected DocumentMetadata CreateDocumentMetadata()
-    {
-        return new DocumentMetadata(
-            DocumentViewModel.FilePath,
-            DocumentViewModel.FileResource.ToString(),
-            Path.GetFileName(DocumentViewModel.FilePath));
-    }
+        /// <summary>
+        /// Creates a DocumentMetadata instance from the current document state.
+        /// Used by WebView-based editors for JSON-RPC communication.
+        /// Includes the current UI locale for JS-side localization loading.
+        /// </summary>
+        protected DocumentMetadata CreateDocumentMetadata()
+        {
+            var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            return new DocumentMetadata(
+                DocumentViewModel.FilePath,
+                DocumentViewModel.FileResource.ToString(),
+                Path.GetFileName(DocumentViewModel.FilePath),
+                locale);
+        }
 
-    #endregion
+        #endregion
 
     #region Browser Helper
 

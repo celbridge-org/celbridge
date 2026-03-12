@@ -429,10 +429,12 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
 
     private DocumentMetadata CreateMetadata()
     {
+        var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
         return new DocumentMetadata(
             _filePath,
             _resourceKey,
-            Path.GetFileName(_filePath));
+            Path.GetFileName(_filePath),
+            locale);
     }
 
     #region IHostDocument
@@ -448,10 +450,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         // Build metadata
         var metadata = CreateMetadata();
 
-        // No localization strings needed for Monaco
-        var localization = new Dictionary<string, string>();
-
-        var result = new InitializeResult(_content, metadata, localization);
+        var result = new InitializeResult(_content, metadata);
 
         await Task.CompletedTask;
 

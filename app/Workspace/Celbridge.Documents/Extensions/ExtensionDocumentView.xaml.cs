@@ -4,7 +4,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Extensions;
 using Celbridge.Host;
-using Celbridge.Host.Helpers;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -218,19 +217,17 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
     #region IHostDocument
 
-    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
-    {
-        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
+        public async Task<InitializeResult> InitializeAsync(string protocolVersion)
+        {
+            DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-        var content = await _viewModel.LoadTextContentAsync();
-        var metadata = CreateDocumentMetadata();
+            var content = await _viewModel.LoadTextContentAsync();
+            var metadata = CreateDocumentMetadata();
 
-        var localization = LoadLocalizationStrings();
+            return new InitializeResult(content, metadata);
+        }
 
-        return new InitializeResult(content, metadata, localization);
-    }
-
-    public async Task<LoadResult> LoadAsync()
+        public async Task<LoadResult> LoadAsync()
     {
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = CreateDocumentMetadata();
@@ -384,24 +381,6 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
         var errorTitle = _stringLocalizer.GetString("Extension_LinkError_Title");
         var errorMessage = _stringLocalizer.GetString("Extension_LinkError_Message", href);
         await _dialogService.ShowAlertDialogAsync(errorTitle, errorMessage);
-    }
-
-    /// <summary>
-    /// Loads localization strings using extension-owned localization files when available,
-    /// falling back to the app's Resources.resw with the Ext_{Name}_ prefix.
-    /// </summary>
-    private Dictionary<string, string> LoadLocalizationStrings()
-    {
-        if (Manifest is not null && !string.IsNullOrEmpty(Manifest.Localization))
-        {
-            return ExtensionLocalizationHelper.LoadStrings(
-                Manifest.ExtensionDirectory,
-                Manifest.Localization);
-        }
-
-        // Fall back to app-level localization for extensions without their own localization files
-        var prefix = $"Ext_{Manifest?.Name?.Replace(" ", "")}_";
-        return WebViewLocalizationHelper.GetLocalizedStrings(_stringLocalizer, prefix);
     }
 
     public override async Task<Result> LoadContent()
