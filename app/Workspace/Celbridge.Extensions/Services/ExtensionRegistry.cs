@@ -9,7 +9,7 @@ namespace Celbridge.Extensions;
 public class ExtensionRegistry
 {
     private const string ExtensionsFolderName = "extensions";
-    private const string ManifestFileName = "editor.json";
+    private const string ManifestFileName = "celbridge.json";
 
     private readonly ILogger<ExtensionRegistry> _logger;
     private readonly List<string> _bundledExtensionPaths = [];
@@ -21,7 +21,7 @@ public class ExtensionRegistry
 
     /// <summary>
     /// Registers a bundled extension directory path.
-    /// The path should point to a directory containing an editor.json manifest.
+    /// The path should point to a directory containing a celbridge.json manifest.
     /// </summary>
     public void RegisterBundledExtensionPath(string path)
     {
@@ -70,7 +70,7 @@ public class ExtensionRegistry
 
         var manifests = new List<ExtensionManifest>();
 
-        // Scan each subdirectory for an editor.json manifest
+        // Scan each subdirectory for a celbridge.json manifest
         var extensionDirs = Directory.GetDirectories(extensionsFolder);
         foreach (var extensionDir in extensionDirs)
         {
