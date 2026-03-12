@@ -1,20 +1,31 @@
 using ClosedXML.Excel;
 using Celbridge.Explorer;
-using System.Text;
 
 namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Provides initial content for new files based on their file type.
+/// Queries extension manifests for template content first, then falls back to built-in templates.
 /// </summary>
 public class FileTemplateService : IFileTemplateService
 {
-    // Empty TipTap JSON document structure
-    private const string EmptyNoteJson = "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\"}]}";
+    private readonly IExtensionFileTypeProvider _extensionFileTypeProvider;
+
+    public FileTemplateService(IExtensionFileTypeProvider extensionFileTypeProvider)
+    {
+        _extensionFileTypeProvider = extensionFileTypeProvider;
+    }
 
     public byte[] GetNewFileContent(string filePath)
     {
         string extension = Path.GetExtension(filePath).ToLowerInvariant();
+
+        // Check extension-provided templates first
+        var extensionContent = _extensionFileTypeProvider.GetDefaultTemplateContent(extension);
+        if (extensionContent is not null)
+        {
+            return extensionContent;
+        }
 
         if (extension == ExplorerConstants.ExcelExtension)
         {
@@ -29,12 +40,6 @@ public class FileTemplateService : IFileTemplateService
 
             wb.SaveAs(ms);
             return ms.ToArray();
-        }
-
-        if (extension == ExplorerConstants.NoteExtension)
-        {
-            // Create an empty TipTap JSON document
-            return Encoding.UTF8.GetBytes(EmptyNoteJson);
         }
 
         // Default: empty file

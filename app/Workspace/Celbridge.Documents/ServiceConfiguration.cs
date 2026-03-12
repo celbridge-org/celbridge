@@ -25,6 +25,7 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<ExtensionDiscoveryService>();
+        services.AddSingleton<IExtensionFileTypeProvider, ExtensionFileTypeProvider>();
 
         //
         // Register views

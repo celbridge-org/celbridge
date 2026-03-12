@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Explorer;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -51,7 +52,8 @@ public partial class AddFileDialogViewModel : ObservableObject
     public AddFileDialogViewModel(
         IEditorSettings editorSettings,
         IStringLocalizer stringLocalizer,
-        IWorkspaceFeatures workspaceFeatures)
+        IWorkspaceFeatures workspaceFeatures,
+        IExtensionFileTypeProvider extensionFileTypeProvider)
     {
         _editorSettings = editorSettings;
         _stringLocalizer = stringLocalizer;
@@ -66,22 +68,8 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
         ];
 
-        // Add Note file type if feature flag is enabled
-        if (workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor))
-        {
-            // Insert Note after Markdown to keep document file types together
-            var markdownIndex = FileTypes.FindIndex(ft => ft.Format == ResourceFormat.Markdown);
-            var noteItem = new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Note"), ResourceFormat.Note, ExplorerConstants.NoteExtension);
-            if (markdownIndex >= 0)
-            {
-                FileTypes.Insert(markdownIndex + 1, noteItem);
-            }
-            else
-            {
-                // Insert before "Other" if Markdown not found
-                FileTypes.Insert(FileTypes.Count - 1, noteItem);
-            }
-        }
+        // Add extension-provided file types (inserted before "Other")
+        AddExtensionFileTypes(extensionFileTypeProvider, workspaceFeatures);
 
         // Select the dropdown based on the previously saved extension
         var previousExtension = _editorSettings.PreviousNewFileExtension;
@@ -238,6 +226,46 @@ public partial class AddFileDialogViewModel : ObservableObject
         if (!string.IsNullOrEmpty(extension))
         {
             _editorSettings.PreviousNewFileExtension = extension;
+        }
+    }
+
+    /// <summary>
+    /// Adds file types from discovered extension manifests.
+    /// Extension-provided file types are inserted before "Other".
+    /// Feature-flagged extensions are excluded when the flag is disabled.
+    /// </summary>
+    private void AddExtensionFileTypes(
+        IExtensionFileTypeProvider extensionFileTypeProvider,
+        IWorkspaceFeatures workspaceFeatures)
+    {
+        var extensionFileTypes = extensionFileTypeProvider.GetExtensionFileTypes();
+
+        foreach (var extFileType in extensionFileTypes)
+        {
+            // Skip if a feature flag is set and the feature is disabled
+            if (!string.IsNullOrEmpty(extFileType.FeatureFlag) &&
+                !workspaceFeatures.IsEnabled(extFileType.FeatureFlag))
+            {
+                continue;
+            }
+
+            // Skip if a built-in entry already handles this extension
+            var alreadyExists = FileTypes.Any(ft =>
+                !string.IsNullOrEmpty(ft.Extension) &&
+                ft.Extension.Equals(extFileType.Extension, StringComparison.OrdinalIgnoreCase));
+
+            if (alreadyExists)
+            {
+                continue;
+            }
+
+            var item = new FileTypeItem(
+                extFileType.DisplayName,
+                ResourceFormat.Text,
+                extFileType.Extension);
+
+            // Insert before "Other" (the last item)
+            FileTypes.Insert(FileTypes.Count - 1, item);
         }
     }
 }
