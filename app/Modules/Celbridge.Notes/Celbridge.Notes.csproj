@@ -10,22 +10,10 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
 
     <UnoFeatures>
-      CSharpMarkup;
-      Lottie;
       Hosting;
-      Toolkit;
-      Logging;
-      Mvvm;
-      Configuration;
-      Localization;
-      ThemeService;
     </UnoFeatures>
 
   </PropertyGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Web\**" />
@@ -35,11 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
-    <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
-    <ProjectReference Include="..\..\Workspace\Celbridge.Entities\Celbridge.Entities.csproj" />
   </ItemGroup>
 
   </Project>

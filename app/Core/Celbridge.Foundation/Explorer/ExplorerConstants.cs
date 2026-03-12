@@ -16,11 +16,6 @@ public static class ExplorerConstants
     public const string MarkdownExtension = ".md";
 
     /// <summary>
-    /// File extension for text note file resources.
-    /// </summary>
-    public const string NoteExtension = ".note";
-
-    /// <summary>
     /// File extension for Python script file resources.
     /// </summary>
     public const string PythonExtension = ".py";

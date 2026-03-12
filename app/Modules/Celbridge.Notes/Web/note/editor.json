@@ -1,0 +1,18 @@
+{
+    "name": "Note",
+    "type": "custom",
+    "extensions": [".note"],
+    "entryPoint": "index.html",
+    "priority": 0,
+    "featureFlag": "note-editor",
+    "capabilities": ["dialog", "input"],
+    "localization": "localization",
+    "templates": [
+        {
+            "id": "empty",
+            "displayName": "Note_Template_Empty",
+            "file": "templates/empty.note",
+            "default": true
+        }
+    ]
+}

@@ -4,7 +4,6 @@
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
 import { setStrings, t } from 'https://shared.celbridge/celbridge-client/localization.js';
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { noteClient } from './note-client.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
@@ -469,41 +468,6 @@ client.localization.onUpdated((strings) => {
         editor.view.dispatch(editor.state.tr);
     }
 });
-
-// ---------------------------------------------------------------------------
-// Note-specific host commands
-// ---------------------------------------------------------------------------
-
-// Handle navigation to heading requests from host
-noteClient.onNavigateToHeading((heading) => {
-    const headings = collectHeadings();
-    const target = headings.find(h =>
-        h.text.toLowerCase() === heading.toLowerCase()
-    );
-
-    if (target) {
-        editor.chain().focus().setTextSelection(target.pos + 1).run();
-        const domPos = editor.view.domAtPos(target.pos + 1);
-        const el = domPos.node.nodeType === 1 ? domPos.node : domPos.node.parentElement;
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }
-});
-
-// Handle TOC visibility toggle from host
-noteClient.onSetTocVisibility((visible) => {
-    const isVisible = tocPanel.classList.contains('visible');
-    if (visible !== isVisible) {
-        toggleToc();
-    }
-});
-
-// Handle focus requests from host
-noteClient.onFocus(() => {
-    editor.commands.focus();
-});
-
 
 // Initialize the client and load content
 async function initializeEditor() {

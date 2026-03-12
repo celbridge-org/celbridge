@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -67,6 +68,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         // This must happen before FileTypeHelper initialization so factories can provide language mappings.
         RegisterDocumentEditorFactoriesFromContainer(serviceProvider);
 
+        // Discover extension manifests from bundled modules and register factories for them.
+        RegisterExtensionEditorFactories(serviceProvider);
+
         _fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
         _fileTypeHelper.SetDocumentEditorRegistry(_documentEditorRegistry);
 
@@ -86,6 +90,48 @@ public class DocumentsService : IDocumentsService, IDisposable
             if (result.IsFailure)
             {
                 _logger.LogWarning(result, $"Failed to register document editor factory");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Discovers extension manifests from bundled modules and creates editor factory
+    /// instances for custom extensions. Bundled extension paths are registered by
+    /// modules that implement IBundledExtensionProvider.
+    /// </summary>
+    private void RegisterExtensionEditorFactories(IServiceProvider serviceProvider)
+    {
+        var discoveryService = serviceProvider.GetRequiredService<ExtensionDiscoveryService>();
+
+        // Register bundled extension paths from all modules that provide them
+        var bundledProviders = serviceProvider.GetServices<IBundledExtensionProvider>();
+        foreach (var provider in bundledProviders)
+        {
+            var extensionDir = provider.GetExtensionDirectory();
+            discoveryService.RegisterBundledExtensionPath(extensionDir);
+        }
+
+        // Discover manifests from bundled paths
+        // (project extensions are discovered later when a project loads)
+        var projectFolderPath = string.Empty;
+        var manifests = discoveryService.DiscoverExtensions(projectFolderPath);
+
+        // Resolve optional workspace features for feature flag gating
+        var workspaceFeatures = serviceProvider.GetService<IWorkspaceFeatures>();
+
+        foreach (var manifest in manifests)
+        {
+            if (manifest.Type != ExtensionEditorType.Custom)
+            {
+                // Code-type extensions are handled by ExtensionEditorFactory in Celbridge.Code
+                continue;
+            }
+
+            var factory = new CustomExtensionEditorFactory(serviceProvider, manifest, workspaceFeatures);
+            var result = _documentEditorRegistry.RegisterFactory(factory);
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(result, $"Failed to register extension editor factory for: {manifest.Name}");
             }
         }
     }

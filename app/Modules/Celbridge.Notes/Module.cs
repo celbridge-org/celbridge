@@ -1,8 +1,5 @@
 using Celbridge.Activities;
 using Celbridge.Modules;
-using Celbridge.Notes.Services;
-using Celbridge.Notes.ViewModels;
-using Celbridge.Notes.Views;
 
 namespace Celbridge.Notes;
 
@@ -13,22 +10,10 @@ public class Module : IModule
     public void ConfigureServices(IModuleServiceCollection services)
     {
         //
-        // Register document editor factories
+        // Register bundled extension provider
         //
 
-        services.AddTransient<IDocumentEditorFactory, NoteEditorFactory>();
-
-        //
-        // Register views
-        //
-
-        services.AddTransient<NoteDocumentView>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<NoteDocumentViewModel>();
+        services.AddSingleton<IBundledExtensionProvider, NoteBundledExtensionProvider>();
     }
 
     public Result Initialize()
