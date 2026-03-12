@@ -53,6 +53,13 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     public CodeEditorOptions Options { get; set; } = CodeEditorOptions.Default;
 
     /// <summary>
+    /// Optional URL to a customization script for the Monaco editor.
+    /// The script is loaded after Monaco initializes and should export an activate(monaco, editor, container) function.
+    /// Set this before calling InitializeAsync().
+    /// </summary>
+    public string? CustomizationScriptUrl { get; set; }
+
+    /// <summary>
     /// Raised when the content changes in the Monaco editor (user editing).
     /// </summary>
     public event Action? ContentChanged;
@@ -205,6 +212,12 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         }
 
         _contentLoadedTcs = null;
+
+        // Load customization script if configured
+        if (!string.IsNullOrEmpty(CustomizationScriptUrl) && _host is not null)
+        {
+            await _host.LoadCustomizationAsync(CustomizationScriptUrl);
+        }
 
         return Result.Ok();
     }

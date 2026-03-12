@@ -1,15 +1,20 @@
-using Celbridge.Markdown.ViewModels;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 
 namespace Celbridge.Tests.Markdown;
 
+/// <summary>
+/// Tests for the DocumentViewModel base class text file operations,
+/// previously tested through MarkdownDocumentViewModel (now merged into CodeEditorViewModel).
+/// Uses a minimal test subclass to exercise the base class behavior.
+/// </summary>
 [TestFixture]
 public class MarkdownDocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
-    private MarkdownDocumentViewModel _vm = null!;
+    private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
 
@@ -24,7 +29,7 @@ public class MarkdownDocumentViewModelTests
         _tempFilePath = Path.Combine(_tempFolder, "test.md");
         File.WriteAllText(_tempFilePath, string.Empty);
 
-        _vm = new MarkdownDocumentViewModel(_messengerService);
+        _vm = new TestDocumentViewModel(_messengerService);
         _vm.FileResource = new ResourceKey("test.md");
         _vm.FilePath = _tempFilePath;
     }
@@ -108,17 +113,6 @@ public class MarkdownDocumentViewModelTests
     }
 
     [Test]
-    public void ViewMode_RaisesViewModeChangedEvent()
-    {
-        MarkdownViewMode? receivedMode = null;
-        _vm.ViewModeChanged += (_, mode) => receivedMode = mode;
-
-        _vm.ViewMode = MarkdownViewMode.Source;
-
-        receivedMode.Should().Be(MarkdownViewMode.Source);
-    }
-
-    [Test]
     public void MonitoredResourceChanged_TriggersReload_WhenFileChangedExternally()
     {
         // With no prior load/save the hash is null, so any change is treated as external
@@ -134,7 +128,7 @@ public class MarkdownDocumentViewModelTests
     [Test]
     public void MonitoredResourceChanged_SkipsReload_WhenIsSavingFile()
     {
-        var savingVm = new TestableMarkdownDocumentViewModel(_messengerService);
+        var savingVm = new TestDocumentViewModel(_messengerService);
         savingVm.FileResource = new ResourceKey("saving.md");
         savingVm.FilePath = _tempFilePath;
         savingVm.SetIsSavingFile(true);
@@ -150,11 +144,33 @@ public class MarkdownDocumentViewModelTests
         savingVm.Cleanup();
     }
 
-    private sealed class TestableMarkdownDocumentViewModel : MarkdownDocumentViewModel
+    /// <summary>
+    /// Minimal test subclass that exposes DocumentViewModel base class functionality
+    /// for testing text file operations and file-change monitoring.
+    /// </summary>
+    private sealed class TestDocumentViewModel : DocumentViewModel
     {
-        public TestableMarkdownDocumentViewModel(IMessengerService messengerService)
-            : base(messengerService)
+        public TestDocumentViewModel(IMessengerService messengerService)
         {
+            EnableFileChangeMonitoring(messengerService);
+        }
+
+        public async Task<Result<string>> LoadDocument()
+        {
+            return await LoadTextFromFileAsync();
+        }
+
+        public async Task<Result> SaveDocumentContent(string text)
+        {
+            HasUnsavedChanges = false;
+            SaveTimer = 0;
+            return await SaveTextToFileAsync(text);
+        }
+
+        public void OnTextChanged()
+        {
+            HasUnsavedChanges = true;
+            SaveTimer = SaveDelay;
         }
 
         public void SetIsSavingFile(bool value) => IsSavingFile = value;

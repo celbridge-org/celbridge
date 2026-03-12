@@ -1,7 +1,5 @@
 using Celbridge.Activities;
 using Celbridge.Markdown.Services;
-using Celbridge.Markdown.ViewModels;
-using Celbridge.Markdown.Views;
 using Celbridge.Modules;
 
 namespace Celbridge.Markdown;
@@ -17,18 +15,6 @@ public class Module : IModule
         //
 
         services.AddTransient<IDocumentEditorFactory, MarkdownEditorFactory>();
-
-        //
-        // Register views
-        //
-
-        services.AddTransient<MarkdownDocumentView>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<MarkdownDocumentViewModel>();
     }
 
     public Result Initialize()

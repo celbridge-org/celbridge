@@ -1,4 +1,5 @@
 using Celbridge.Documents.Commands;
+using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
@@ -20,11 +21,18 @@ public static class ServiceConfiguration
         services.AddSingleton<FileTypeHelper>();
 
         //
+        // Register extension infrastructure
+        //
+
+        services.AddSingleton<ExtensionDiscoveryService>();
+
+        //
         // Register views
         //
 
         services.AddTransient<IDocumentsPanel, DocumentsPanel>();
         services.AddTransient<TextBoxDocumentView>();
+        services.AddTransient<ExtensionDocumentView>();
 
         //
         // Register view models
@@ -33,6 +41,7 @@ public static class ServiceConfiguration
         services.AddTransient<DocumentsPanelViewModel>();
         services.AddTransient<DocumentTabViewModel>();
         services.AddTransient<DefaultDocumentViewModel>();
+        services.AddTransient<ExtensionDocumentViewModel>();
 
         //
         // Register commands
