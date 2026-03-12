@@ -1,7 +1,7 @@
 // Note editor entry point
 // TipTap-based rich text editor using native JSON storage format
 
-import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from './lib/tiptap.js';
+import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from '../lib/tiptap.js';
 import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 

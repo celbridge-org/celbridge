@@ -2,7 +2,7 @@
 // All controls shown in a single view with immediate changes.
 // Escape reverts to original state; clicking away keeps changes.
 
-import { Image } from './lib/tiptap.js';
+import { Image } from '../lib/tiptap.js';
 import { setupDismiss, positionAtTop, registerPopover, hideAllPopovers } from './popover-utils.js';
 
 let ctx = null;

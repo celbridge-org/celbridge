@@ -1,7 +1,7 @@
 // Table popover module for Markdown editor
 // Unified popover: immediate table creation with live editing of dimensions
 
-import { Table, TableRow, TableCell, TableHeader } from './lib/tiptap.js';
+import { Table, TableRow, TableCell, TableHeader } from '../lib/tiptap.js';
 import { setupDismiss, positionAtTop, registerPopover, hideAllPopovers } from './popover-utils.js';
 
 let ctx = null;
