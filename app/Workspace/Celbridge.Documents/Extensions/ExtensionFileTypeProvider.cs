@@ -38,14 +38,16 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
                 continue;
             }
 
-            var displayName = ResolveDisplayName(manifest);
-            var extension = manifest.Extensions.First();
-
-            var info = new ExtensionFileTypeInfo(
-                displayName,
-                extension,
-                manifest.FeatureFlag);
-            fileTypes.Add(info);
+            var locStrings = LoadLocalizationStrings(manifest);
+            foreach (var fileType in manifest.FileTypes)
+            {
+                var displayName = ResolveFileTypeDisplayName(fileType, locStrings, manifest.Name);
+                var info = new ExtensionFileTypeInfo(
+                    displayName,
+                    fileType.Extension,
+                    manifest.FeatureFlag);
+                fileTypes.Add(info);
+            }
         }
 
         return fileTypes.AsReadOnly();
@@ -58,8 +60,8 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
 
         foreach (var manifest in manifests)
         {
-            var handlesExtension = manifest.Extensions
-                .Any(e => e.Equals(normalizedExtension, StringComparison.OrdinalIgnoreCase));
+            var handlesExtension = manifest.FileTypes
+                .Any(ft => ft.Extension.Equals(normalizedExtension, StringComparison.OrdinalIgnoreCase));
 
             if (!handlesExtension)
             {
@@ -96,28 +98,37 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
         return null;
     }
 
-    /// <summary>
-    /// Resolves a human-readable display name for the extension.
-    /// If the manifest declares a localization folder, tries to look up "AddFileDialog_FileType_{Name}"
-    /// from the extension's localization file. Falls back to the manifest name.
-    /// </summary>
-    private static string ResolveDisplayName(ExtensionManifest manifest)
+    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(ExtensionManifest manifest)
     {
         if (!string.IsNullOrEmpty(manifest.Localization))
         {
-            var strings = ExtensionLocalizationHelper.LoadStrings(
+            return ExtensionLocalizationHelper.LoadStrings(
                 manifest.ExtensionDirectory,
                 manifest.Localization);
+        }
+        return new Dictionary<string, string>();
+    }
 
-            var localizationKey = $"AddFileDialog_FileType_{manifest.Name}";
-            if (strings.TryGetValue(localizationKey, out var localizedName))
+    /// <summary>
+    /// Resolves the display name for a single file type entry.
+    /// If the file type declares a displayName, it is looked up in the localization dictionary.
+    /// If not found in localization, the raw displayName value is used as a literal string.
+    /// If displayName is empty, falls back to the manifest name.
+    /// </summary>
+    private static string ResolveFileTypeDisplayName(
+        ExtensionFileType fileType,
+        IReadOnlyDictionary<string, string> locStrings,
+        string fallbackName)
+    {
+        if (!string.IsNullOrEmpty(fileType.DisplayName))
+        {
+            if (locStrings.TryGetValue(fileType.DisplayName, out var localizedName))
             {
                 return localizedName;
             }
+            return fileType.DisplayName;
         }
-
-        // Fall back to manifest name
-        return manifest.Name;
+        return fallbackName;
     }
 
     private IReadOnlyList<ExtensionManifest> DiscoverManifests()

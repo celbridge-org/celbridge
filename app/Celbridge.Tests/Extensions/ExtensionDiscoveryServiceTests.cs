@@ -1,4 +1,4 @@
-using Celbridge.Documents.Extensions;
+﻿using Celbridge.Documents.Extensions;
 using Celbridge.Logging;
 
 namespace Celbridge.Tests.Extensions;
@@ -56,7 +56,7 @@ public class ExtensionDiscoveryServiceTests
             {
                 "name": "My Editor",
                 "type": "custom",
-                "extensions": [".myext"],
+                "file_types": [{ "extension": ".myext" }],
                 "entryPoint": "index.html"
             }
             """;
@@ -78,10 +78,10 @@ public class ExtensionDiscoveryServiceTests
         Directory.CreateDirectory(ext2Dir);
 
         File.WriteAllText(Path.Combine(ext1Dir, "editor.json"), """
-            { "name": "Editor A", "type": "custom", "extensions": [".a"] }
+            { "name": "Editor A", "type": "custom", "file_types": [{ "extension": ".a" }] }
             """);
         File.WriteAllText(Path.Combine(ext2Dir, "editor.json"), """
-            { "name": "Editor B", "type": "code", "extensions": [".b"] }
+            { "name": "Editor B", "type": "code", "file_types": [{ "extension": ".b" }] }
             """);
 
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
@@ -101,7 +101,7 @@ public class ExtensionDiscoveryServiceTests
         Directory.CreateDirectory(badDir);
 
         File.WriteAllText(Path.Combine(goodDir, "editor.json"), """
-            { "name": "Good", "type": "custom", "extensions": [".good"] }
+            { "name": "Good", "type": "custom", "file_types": [{ "extension": ".good" }] }
             """);
         File.WriteAllText(Path.Combine(badDir, "editor.json"), "{ invalid json }");
 
@@ -120,7 +120,7 @@ public class ExtensionDiscoveryServiceTests
         Directory.CreateDirectory(dirWithoutManifest);
 
         File.WriteAllText(Path.Combine(dirWithManifest, "editor.json"), """
-            { "name": "Found", "type": "code", "extensions": [".found"] }
+            { "name": "Found", "type": "code", "file_types": [{ "extension": ".found" }] }
             """);
         // dirWithoutManifest has no editor.json
 
@@ -136,7 +136,7 @@ public class ExtensionDiscoveryServiceTests
         var bundledDir = Path.Combine(_tempProjectFolder, "bundled-editor");
         Directory.CreateDirectory(bundledDir);
         File.WriteAllText(Path.Combine(bundledDir, "editor.json"), """
-            { "name": "Bundled", "type": "custom", "extensions": [".bnd"] }
+            { "name": "Bundled", "type": "custom", "file_types": [{ "extension": ".bnd" }] }
             """);
 
         _service.RegisterBundledExtensionPath(bundledDir);
@@ -154,14 +154,14 @@ public class ExtensionDiscoveryServiceTests
         var projExtDir = Path.Combine(_tempProjectFolder, "extensions", "proj-editor");
         Directory.CreateDirectory(projExtDir);
         File.WriteAllText(Path.Combine(projExtDir, "editor.json"), """
-            { "name": "Project", "type": "custom", "extensions": [".proj"] }
+            { "name": "Project", "type": "custom", "file_types": [{ "extension": ".proj" }] }
             """);
 
         // Set up a bundled extension
         var bundledDir = Path.Combine(_tempProjectFolder, "bundled-editor");
         Directory.CreateDirectory(bundledDir);
         File.WriteAllText(Path.Combine(bundledDir, "editor.json"), """
-            { "name": "Bundled", "type": "custom", "extensions": [".bnd"] }
+            { "name": "Bundled", "type": "custom", "file_types": [{ "extension": ".bnd" }] }
             """);
 
         _service.RegisterBundledExtensionPath(bundledDir);
@@ -180,7 +180,7 @@ public class ExtensionDiscoveryServiceTests
         var bundledDir = Path.Combine(_tempProjectFolder, "bundled-editor");
         Directory.CreateDirectory(bundledDir);
         File.WriteAllText(Path.Combine(bundledDir, "editor.json"), """
-            { "name": "Bundled", "type": "custom", "extensions": [".bnd"] }
+            { "name": "Bundled", "type": "custom", "file_types": [{ "extension": ".bnd" }] }
             """);
 
         _service.RegisterBundledExtensionPath(bundledDir);

@@ -1,7 +1,9 @@
 {
     "name": "Note",
     "type": "custom",
-    "extensions": [".note"],
+    "file_types": [
+        { "extension": ".note", "displayName": "Note_FileType_Note" }
+    ],
     "entryPoint": "index.html",
     "priority": 0,
     "featureFlag": "note-editor",

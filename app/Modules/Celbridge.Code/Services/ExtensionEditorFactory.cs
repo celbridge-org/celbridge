@@ -16,7 +16,8 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
     private readonly ExtensionManifest _manifest;
     private readonly IWorkspaceFeatures? _workspaceFeatures;
 
-    public override IReadOnlyList<string> SupportedExtensions => _manifest.Extensions;
+    public override IReadOnlyList<string> SupportedExtensions =>
+        _manifest.FileTypes.Select(ft => ft.Extension).ToList();
 
     public override int Priority => _manifest.Priority;
 

@@ -124,7 +124,7 @@ public class ExtensionDiscoveryService
         }
 
         var manifest = parseResult.Value;
-        _logger.LogDebug($"Discovered extension: {manifest.Name} ({manifest.Type}) for {string.Join(", ", manifest.Extensions)}");
+        _logger.LogDebug($"Discovered extension: {manifest.Name} ({manifest.Type}) for {string.Join(", ", manifest.FileTypes.Select(ft => ft.Extension))}");
 
         return manifest;
     }

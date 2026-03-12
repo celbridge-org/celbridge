@@ -30,7 +30,7 @@ public class ExtensionManifestTests
             {
                 "name": "My Editor",
                 "type": "custom",
-                "extensions": [".myext"],
+                "file_types": [{ "extension": ".myext" }],
                 "entryPoint": "index.html"
             }
             """;
@@ -41,7 +41,7 @@ public class ExtensionManifestTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Name.Should().Be("My Editor");
         result.Value.Type.Should().Be(ExtensionEditorType.Custom);
-        result.Value.Extensions.Should().ContainSingle().Which.Should().Be(".myext");
+        result.Value.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".myext");
         result.Value.EntryPoint.Should().Be("index.html");
         result.Value.ExtensionDirectory.Should().Be(_tempFolder);
         result.Value.HostName.Should().Be("ext-my-editor.celbridge");
@@ -54,7 +54,7 @@ public class ExtensionManifestTests
             {
                 "name": "Code Preview",
                 "type": "code",
-                "extensions": [".cpv"],
+                "file_types": [{ "extension": ".cpv" }],
                 "preview": {
                     "hostName": "cpv-preview.celbridge",
                     "assetFolder": "preview",
@@ -81,7 +81,7 @@ public class ExtensionManifestTests
         var json = """
             {
                 "type": "custom",
-                "extensions": [".myext"]
+                "file_types": [{ "extension": ".myext" }]
             }
             """;
         var path = WriteManifest(json);
@@ -92,13 +92,13 @@ public class ExtensionManifestTests
     }
 
     [Test]
-    public void Parse_EmptyExtensions_ReturnsFailure()
+    public void Parse_EmptyFileTypes_ReturnsFailure()
     {
         var json = """
             {
                 "name": "Empty",
                 "type": "custom",
-                "extensions": []
+                "file_types": []
             }
             """;
         var path = WriteManifest(json);
@@ -136,7 +136,7 @@ public class ExtensionManifestTests
             {
                 "name": "Basic",
                 "type": "code",
-                "extensions": [".bas"]
+                "file_types": [{ "extension": ".bas" }]
             }
             """;
         var path = WriteManifest(json);
@@ -154,7 +154,7 @@ public class ExtensionManifestTests
             {
                 "name": "Priority",
                 "type": "code",
-                "extensions": [".pri"],
+                "file_types": [{ "extension": ".pri" }],
                 "priority": 10
             }
             """;
@@ -174,7 +174,7 @@ public class ExtensionManifestTests
                 // This is a comment
                 "name": "Relaxed",
                 "type": "code",
-                "extensions": [".rlx",],
+                "file_types": [{ "extension": ".rlx" }],
             }
             """;
         var path = WriteManifest(json);
@@ -192,7 +192,7 @@ public class ExtensionManifestTests
             {
                 "name": "Flagged",
                 "type": "custom",
-                "extensions": [".flag"],
+                "file_types": [{ "extension": ".flag" }],
                 "featureFlag": "my-feature"
             }
             """;
@@ -211,7 +211,7 @@ public class ExtensionManifestTests
             {
                 "name": "NoFlag",
                 "type": "custom",
-                "extensions": [".nf"]
+                "file_types": [{ "extension": ".nf" }]
             }
             """;
         var path = WriteManifest(json);
@@ -229,7 +229,7 @@ public class ExtensionManifestTests
             {
                 "name": "Capable",
                 "type": "custom",
-                "extensions": [".cap"],
+                "file_types": [{ "extension": ".cap" }],
                 "capabilities": ["dialog", "input"]
             }
             """;
@@ -250,7 +250,7 @@ public class ExtensionManifestTests
             {
                 "name": "NoCaps",
                 "type": "custom",
-                "extensions": [".nc"]
+                "file_types": [{ "extension": ".nc" }]
             }
             """;
         var path = WriteManifest(json);
@@ -268,7 +268,7 @@ public class ExtensionManifestTests
             {
                 "name": "Localized",
                 "type": "custom",
-                "extensions": [".loc"],
+                "file_types": [{ "extension": ".loc" }],
                 "localization": "localization"
             }
             """;
@@ -287,7 +287,7 @@ public class ExtensionManifestTests
             {
                 "name": "Templated",
                 "type": "custom",
-                "extensions": [".tmpl"],
+                "file_types": [{ "extension": ".tmpl" }],
                 "templates": [
                     {
                         "id": "empty",
@@ -329,7 +329,7 @@ public class ExtensionManifestTests
             {
                 "name": "NoTemplates",
                 "type": "custom",
-                "extensions": [".nt"]
+                "file_types": [{ "extension": ".nt" }]
             }
             """;
         var path = WriteManifest(json);
@@ -347,7 +347,7 @@ public class ExtensionManifestTests
             {
                 "name": "Full Editor",
                 "type": "custom",
-                "extensions": [".full"],
+                "file_types": [{ "extension": ".full", "displayName": "Full_FileType" }],
                 "entryPoint": "index.html",
                 "priority": 5,
                 "featureFlag": "full-editor",
@@ -371,7 +371,7 @@ public class ExtensionManifestTests
         var manifest = result.Value;
         manifest.Name.Should().Be("Full Editor");
         manifest.Type.Should().Be(ExtensionEditorType.Custom);
-        manifest.Extensions.Should().ContainSingle().Which.Should().Be(".full");
+        manifest.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".full");
         manifest.EntryPoint.Should().Be("index.html");
         manifest.Priority.Should().Be(5);
         manifest.FeatureFlag.Should().Be("full-editor");

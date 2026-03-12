@@ -54,7 +54,7 @@ public class ExtensionFileTypeProviderTests
     {
         CreateBundledExtension(
             "TestEditor",
-            [".test"],
+            [(".test", "")],
             templates:
             [
                 new { id = "empty", displayName = "Empty", file = "templates/empty.test", @default = true }
@@ -70,7 +70,7 @@ public class ExtensionFileTypeProviderTests
     [Test]
     public void GetExtensionFileTypes_ExtensionWithoutTemplates_Excluded()
     {
-        CreateBundledExtension("NoTemplates", [".notemplate"], templates: null);
+        CreateBundledExtension("NoTemplates", [(".notemplate", "")], templates: null);
 
         var fileTypes = _provider.GetExtensionFileTypes();
 
@@ -82,7 +82,7 @@ public class ExtensionFileTypeProviderTests
     {
         CreateBundledExtension(
             "Note",
-            [".note"],
+            [(".note", "Note_FileType_Note")],
             templates:
             [
                 new { id = "empty", displayName = "Note_Template_Empty", file = "templates/empty.note", @default = true }
@@ -90,7 +90,7 @@ public class ExtensionFileTypeProviderTests
             localization: "localization",
             localizationStrings: new Dictionary<string, string>
             {
-                ["AddFileDialog_FileType_Note"] = "My Localized Note"
+                ["Note_FileType_Note"] = "My Localized Note"
             });
 
         var fileTypes = _provider.GetExtensionFileTypes();
@@ -104,7 +104,7 @@ public class ExtensionFileTypeProviderTests
     {
         CreateBundledExtension(
             "FlaggedEditor",
-            [".flagged"],
+            [(".flagged", "")],
             featureFlag: "my-flag",
             templates:
             [
@@ -123,7 +123,7 @@ public class ExtensionFileTypeProviderTests
         var templateContent = "{\"type\":\"doc\"}";
         CreateBundledExtension(
             "Note",
-            [".note"],
+            [(".note", "")],
             templates:
             [
                 new { id = "empty", displayName = "Empty", file = "templates/empty.note", @default = true }
@@ -153,7 +153,7 @@ public class ExtensionFileTypeProviderTests
     {
         CreateBundledExtension(
             "NonDefault",
-            [".nd"],
+            [(".nd", "")],
             templates:
             [
                 new { id = "example", displayName = "Example", file = "templates/example.nd", @default = false }
@@ -170,7 +170,7 @@ public class ExtensionFileTypeProviderTests
         var templateContent = "template content";
         CreateBundledExtension(
             "CaseTest",
-            [".TEST"],
+            [(".TEST", "")],
             templates:
             [
                 new { id = "empty", displayName = "Empty", file = "templates/empty.test", @default = true }
@@ -192,7 +192,7 @@ public class ExtensionFileTypeProviderTests
 
         CreateBundledExtension(
             "Orphan",
-            [".orphan"],
+            [(".orphan", "")],
             templates:
             [
                 new { id = "empty", displayName = "Empty", file = "templates/empty.orphan", @default = true }
@@ -212,7 +212,7 @@ public class ExtensionFileTypeProviderTests
     /// </summary>
     private void CreateBundledExtension(
         string name,
-        string[] extensions,
+        (string Extension, string DisplayName)[] fileTypes,
         object[]? templates = null,
         string? featureFlag = null,
         string? localization = null,
@@ -223,7 +223,8 @@ public class ExtensionFileTypeProviderTests
         Directory.CreateDirectory(extDir);
 
         // Build manifest JSON
-        var extensionsJson = string.Join(", ", extensions.Select(e => $"\"{e}\""));
+        var fileTypesJson = string.Join(", ", fileTypes.Select(ft =>
+            $"{{ \"extension\": \"{ft.Extension}\", \"displayName\": \"{ft.DisplayName}\" }}"));
         var templatesPart = "";
         if (templates is not null)
         {
@@ -245,7 +246,7 @@ public class ExtensionFileTypeProviderTests
         var manifestJson = $@"{{
             ""name"": ""{name}"",
             ""type"": ""custom"",
-            ""extensions"": [{extensionsJson}],
+            ""file_types"": [{fileTypesJson}],
             ""entryPoint"": ""index.html""
             {featureFlagPart}
             {templatesPart}

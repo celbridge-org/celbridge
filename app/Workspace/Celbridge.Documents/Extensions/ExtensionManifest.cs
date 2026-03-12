@@ -63,6 +63,27 @@ public record ExtensionMonacoOptions
 }
 
 /// <summary>
+/// A file type declared by an extension.
+/// Declares the file extension the editor handles and an optional display name or localization key
+/// shown in the Add File dialog.
+/// </summary>
+public record ExtensionFileType
+{
+    /// <summary>
+    /// The file extension this editor handles (e.g., ".note").
+    /// </summary>
+    [JsonPropertyName("extension")]
+    public string Extension { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Display name or localization key shown in the Add File dialog.
+    /// When omitted, falls back to the manifest name.
+    /// </summary>
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; init; } = string.Empty;
+}
+
+/// <summary>
 /// A file template declared by an extension.
 /// Templates provide starter content for new files of the extension's type.
 /// </summary>
@@ -112,10 +133,11 @@ public record ExtensionManifest
     public ExtensionEditorType Type { get; init; }
 
     /// <summary>
-    /// File extensions this editor handles (e.g., [".myext", ".other"]).
+    /// The file types this editor handles. Each entry declares the file extension and
+    /// an optional display name or localization key for the Add File dialog.
     /// </summary>
-    [JsonPropertyName("extensions")]
-    public IReadOnlyList<string> Extensions { get; init; } = [];
+    [JsonPropertyName("file_types")]
+    public IReadOnlyList<ExtensionFileType> FileTypes { get; init; } = [];
 
     /// <summary>
     /// Entry point for custom editors (e.g., "index.html").
@@ -215,9 +237,9 @@ public record ExtensionManifest
                 return Result<ExtensionManifest>.Fail($"Extension manifest is missing required 'name' field: {jsonPath}");
             }
 
-            if (manifest.Extensions.Count == 0)
+            if (manifest.FileTypes.Count == 0)
             {
-                return Result<ExtensionManifest>.Fail($"Extension manifest must specify at least one file extension: {jsonPath}");
+                return Result<ExtensionManifest>.Fail($"Extension manifest must declare at least one file type: {jsonPath}");
             }
 
             var extensionDir = Path.GetDirectoryName(jsonPath) ?? string.Empty;
