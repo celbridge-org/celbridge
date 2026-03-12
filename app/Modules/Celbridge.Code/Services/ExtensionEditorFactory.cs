@@ -1,6 +1,7 @@
 using Celbridge.Code.Views;
 using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Views;
+using Celbridge.Extensions;
 using Celbridge.Workspace;
 
 namespace Celbridge.Code.Services;

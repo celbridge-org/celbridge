@@ -2,26 +2,26 @@ using System.Text;
 using Celbridge.Logging;
 using Celbridge.Projects;
 
-namespace Celbridge.Documents.Extensions;
+namespace Celbridge.Extensions;
 
 /// <summary>
 /// Provides file type information and template content from discovered extension manifests.
-/// Bridges the ExtensionDiscoveryService (Documents project) to consumers in
+/// Bridges the ExtensionDiscoveryService to consumers in
 /// other projects via the IExtensionFileTypeProvider abstraction (Foundation).
 /// </summary>
 public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
 {
     private readonly ILogger<ExtensionFileTypeProvider> _logger;
-    private readonly ExtensionDiscoveryService _discoveryService;
+    private readonly ExtensionRegistry _extensionRegistry;
     private readonly IProjectService _projectService;
 
     public ExtensionFileTypeProvider(
         ILogger<ExtensionFileTypeProvider> logger,
-        ExtensionDiscoveryService discoveryService,
+        ExtensionRegistry extensionRegistry,
         IProjectService projectService)
     {
         _logger = logger;
-        _discoveryService = discoveryService;
+        _extensionRegistry = extensionRegistry;
         _projectService = projectService;
     }
 
@@ -134,6 +134,6 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
     private IReadOnlyList<ExtensionManifest> DiscoverManifests()
     {
         var projectFolderPath = _projectService.CurrentProject?.ProjectFolderPath ?? string.Empty;
-        return _discoveryService.DiscoverExtensions(projectFolderPath);
+        return _extensionRegistry.DiscoverExtensions(projectFolderPath);
     }
 }

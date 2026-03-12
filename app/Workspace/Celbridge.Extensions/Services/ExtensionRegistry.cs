@@ -1,20 +1,20 @@
 using Celbridge.Logging;
 
-namespace Celbridge.Documents.Extensions;
+namespace Celbridge.Extensions;
 
 /// <summary>
 /// Service that discovers extension editor manifests from a project's extensions directory
 /// and from registered bundled extension paths.
 /// </summary>
-public class ExtensionDiscoveryService
+public class ExtensionRegistry
 {
     private const string ExtensionsFolderName = "extensions";
     private const string ManifestFileName = "editor.json";
 
-    private readonly ILogger<ExtensionDiscoveryService> _logger;
+    private readonly ILogger<ExtensionRegistry> _logger;
     private readonly List<string> _bundledExtensionPaths = [];
 
-    public ExtensionDiscoveryService(ILogger<ExtensionDiscoveryService> logger)
+    public ExtensionRegistry(ILogger<ExtensionRegistry> logger)
     {
         _logger = logger;
     }

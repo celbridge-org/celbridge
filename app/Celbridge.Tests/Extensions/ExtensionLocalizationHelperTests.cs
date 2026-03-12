@@ -1,4 +1,4 @@
-using Celbridge.Documents.Extensions;
+using Celbridge.Extensions;
 
 namespace Celbridge.Tests.Extensions;
 

@@ -3,6 +3,7 @@ using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.Extensions;
 
 namespace Celbridge.Documents;
 
@@ -19,13 +20,6 @@ public static class ServiceConfiguration
         // FileTypeHelper must be singleton because it's initialized by DocumentsService
         // and shared across all document editor factories
         services.AddSingleton<FileTypeHelper>();
-
-        //
-        // Register extension infrastructure
-        //
-
-        services.AddSingleton<ExtensionDiscoveryService>();
-        services.AddSingleton<IExtensionFileTypeProvider, ExtensionFileTypeProvider>();
 
         //
         // Register views

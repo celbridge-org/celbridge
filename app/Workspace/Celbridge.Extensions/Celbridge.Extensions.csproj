@@ -9,29 +9,14 @@
     <Nullable>enable</Nullable>
 
     <UnoFeatures>
-      CSharpMarkup;
-      Lottie;
       Hosting;
-      Toolkit;
       Logging;
-      Mvvm;
-      Configuration;
-      Localization;
-      ThemeService;
     </UnoFeatures>
 
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\DocumentTypes\FileViewerTypes.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\Celbridge.Extensions\Celbridge.Extensions.csproj" />
   </ItemGroup>
 
 </Project>

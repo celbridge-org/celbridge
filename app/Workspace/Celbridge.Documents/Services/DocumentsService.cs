@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Views;
+using Celbridge.Extensions;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
@@ -101,20 +102,20 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// </summary>
     private void RegisterExtensionEditorFactories(IServiceProvider serviceProvider)
     {
-        var discoveryService = serviceProvider.GetRequiredService<ExtensionDiscoveryService>();
+        var extensionRegistry = serviceProvider.GetRequiredService<ExtensionRegistry>();
 
         // Register bundled extension paths from all modules that provide them
         var bundledProviders = serviceProvider.GetServices<IBundledExtensionProvider>();
         foreach (var provider in bundledProviders)
         {
             var extensionDir = provider.GetExtensionDirectory();
-            discoveryService.RegisterBundledExtensionPath(extensionDir);
+            extensionRegistry.RegisterBundledExtensionPath(extensionDir);
         }
 
         // Discover manifests from bundled paths
         // (project extensions are discovered later when a project loads)
         var projectFolderPath = string.Empty;
-        var manifests = discoveryService.DiscoverExtensions(projectFolderPath);
+        var manifests = extensionRegistry.DiscoverExtensions(projectFolderPath);
 
         // Resolve optional workspace features for feature flag gating
         var workspaceFeatures = serviceProvider.GetService<IWorkspaceFeatures>();

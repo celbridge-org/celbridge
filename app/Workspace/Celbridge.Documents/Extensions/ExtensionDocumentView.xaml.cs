@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.Extensions;
 using Celbridge.Host;
 using Celbridge.Host.Helpers;
 using Celbridge.Logging;

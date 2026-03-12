@@ -1,4 +1,4 @@
-using Celbridge.Documents.Extensions;
+using Celbridge.Extensions;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Resources;
@@ -9,7 +9,7 @@ namespace Celbridge.Tests.Extensions;
 public class ExtensionFileTypeProviderTests
 {
     private string _tempProjectFolder = null!;
-    private ExtensionDiscoveryService _discoveryService = null!;
+    private ExtensionRegistry _extensionRegistry = null!;
     private IProjectService _projectService = null!;
     private ExtensionFileTypeProvider _provider = null!;
 
@@ -19,8 +19,8 @@ public class ExtensionFileTypeProviderTests
         _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ExtensionFileTypeProviderTests));
         Directory.CreateDirectory(_tempProjectFolder);
 
-        var discoveryLogger = Substitute.For<ILogger<ExtensionDiscoveryService>>();
-        _discoveryService = new ExtensionDiscoveryService(discoveryLogger);
+        var registryLogger = Substitute.For<ILogger<ExtensionRegistry>>();
+        _extensionRegistry = new ExtensionRegistry(registryLogger);
 
         // Mock IProjectService to return a project with the temp folder
         _projectService = Substitute.For<IProjectService>();
@@ -29,7 +29,7 @@ public class ExtensionFileTypeProviderTests
         _projectService.CurrentProject.Returns(project);
 
         var providerLogger = Substitute.For<ILogger<ExtensionFileTypeProvider>>();
-        _provider = new ExtensionFileTypeProvider(providerLogger, _discoveryService, _projectService);
+        _provider = new ExtensionFileTypeProvider(providerLogger, _extensionRegistry, _projectService);
     }
 
     [TearDown]
@@ -278,6 +278,6 @@ public class ExtensionFileTypeProviderTests
             }
         }
 
-        _discoveryService.RegisterBundledExtensionPath(extDir);
+        _extensionRegistry.RegisterBundledExtensionPath(extDir);
     }
 }

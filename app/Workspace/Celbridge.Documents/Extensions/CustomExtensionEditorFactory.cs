@@ -1,3 +1,4 @@
+using Celbridge.Extensions;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Extensions;

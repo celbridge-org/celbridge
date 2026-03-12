@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Celbridge.Documents.Extensions;
+namespace Celbridge.Extensions;
 
 /// <summary>
 /// The type of extension editor.

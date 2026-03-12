@@ -1,5 +1,6 @@
 using System.Text;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Extensions;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 

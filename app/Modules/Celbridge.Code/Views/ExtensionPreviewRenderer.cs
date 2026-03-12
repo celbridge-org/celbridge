@@ -1,4 +1,4 @@
-using Celbridge.Documents.Extensions;
+using Celbridge.Extensions;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Code.Views;

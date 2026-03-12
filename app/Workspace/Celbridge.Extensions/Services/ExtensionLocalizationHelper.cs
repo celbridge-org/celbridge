@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace Celbridge.Documents.Extensions;
+namespace Celbridge.Extensions;
 
 /// <summary>
 /// Helper for loading localized strings from an extension's localization directory.
