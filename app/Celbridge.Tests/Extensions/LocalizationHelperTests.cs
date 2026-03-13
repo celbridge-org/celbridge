@@ -3,14 +3,14 @@ using Celbridge.Extensions;
 namespace Celbridge.Tests.Extensions;
 
 [TestFixture]
-public class ExtensionLocalizationHelperTests
+public class LocalizationHelperTests
 {
     private string _tempFolder = null!;
 
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ExtensionLocalizationHelperTests));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(LocalizationHelperTests));
         Directory.CreateDirectory(_tempFolder);
     }
 
@@ -26,7 +26,7 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_ExactLocale_ReturnsStrings()
     {
-        var locDir = Path.Combine(_tempFolder, ExtensionLocalizationHelper.LocalizationFolder);
+        var locDir = Path.Combine(_tempFolder, LocalizationHelper.LocalizationFolder);
         Directory.CreateDirectory(locDir);
         File.WriteAllText(Path.Combine(locDir, "fr.json"), """
             {
@@ -35,7 +35,7 @@ public class ExtensionLocalizationHelperTests
             }
             """);
 
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "fr");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "fr");
 
         result.Should().HaveCount(2);
         result["Greeting"].Should().Be("Bonjour");
@@ -45,7 +45,7 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_MissingLocale_FallsBackToEnglish()
     {
-        var locDir = Path.Combine(_tempFolder, ExtensionLocalizationHelper.LocalizationFolder);
+        var locDir = Path.Combine(_tempFolder, LocalizationHelper.LocalizationFolder);
         Directory.CreateDirectory(locDir);
         File.WriteAllText(Path.Combine(locDir, "en.json"), """
             {
@@ -54,7 +54,7 @@ public class ExtensionLocalizationHelperTests
             }
             """);
 
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "ja");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "ja");
 
         result.Should().HaveCount(2);
         result["Hello"].Should().Be("Hello");
@@ -64,10 +64,10 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_NoLocaleFiles_ReturnsEmptyDictionary()
     {
-        var locDir = Path.Combine(_tempFolder, ExtensionLocalizationHelper.LocalizationFolder);
+        var locDir = Path.Combine(_tempFolder, LocalizationHelper.LocalizationFolder);
         Directory.CreateDirectory(locDir);
 
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "de");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "de");
 
         result.Should().BeEmpty();
     }
@@ -75,7 +75,7 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_NoLocalizationDirectory_ReturnsEmptyDictionary()
     {
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "en");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "en");
 
         result.Should().BeEmpty();
     }
@@ -83,11 +83,11 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_InvalidJson_ReturnsEmptyDictionary()
     {
-        var locDir = Path.Combine(_tempFolder, ExtensionLocalizationHelper.LocalizationFolder);
+        var locDir = Path.Combine(_tempFolder, LocalizationHelper.LocalizationFolder);
         Directory.CreateDirectory(locDir);
         File.WriteAllText(Path.Combine(locDir, "en.json"), "{ not valid json }");
 
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "en");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "en");
 
         result.Should().BeEmpty();
     }
@@ -95,7 +95,7 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_EnglishRequested_DoesNotDoubleLoad()
     {
-        var locDir = Path.Combine(_tempFolder, ExtensionLocalizationHelper.LocalizationFolder);
+        var locDir = Path.Combine(_tempFolder, LocalizationHelper.LocalizationFolder);
         Directory.CreateDirectory(locDir);
         File.WriteAllText(Path.Combine(locDir, "en.json"), """
             {
@@ -103,7 +103,7 @@ public class ExtensionLocalizationHelperTests
             }
             """);
 
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "en");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "en");
 
         result.Should().HaveCount(1);
         result["Key"].Should().Be("Value");
@@ -112,7 +112,7 @@ public class ExtensionLocalizationHelperTests
     [Test]
     public void LoadStrings_CommentsAndTrailingCommas_AreAllowed()
     {
-        var locDir = Path.Combine(_tempFolder, ExtensionLocalizationHelper.LocalizationFolder);
+        var locDir = Path.Combine(_tempFolder, LocalizationHelper.LocalizationFolder);
         Directory.CreateDirectory(locDir);
         File.WriteAllText(Path.Combine(locDir, "en.json"), """
             {
@@ -122,7 +122,7 @@ public class ExtensionLocalizationHelperTests
             }
             """);
 
-        var result = ExtensionLocalizationHelper.LoadStrings(_tempFolder, "en");
+        var result = LocalizationHelper.LoadStrings(_tempFolder, "en");
 
         result.Should().HaveCount(2);
         result["Key1"].Should().Be("Value1");

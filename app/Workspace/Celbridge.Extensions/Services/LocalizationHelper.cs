@@ -8,7 +8,7 @@ namespace Celbridge.Extensions;
 /// Uses convention: extensions store localization files in a "localization" subdirectory
 /// as flat key-value JSON dictionaries (e.g., en.json, fr.json).
 /// </summary>
-public static class ExtensionLocalizationHelper
+public static class LocalizationHelper
 {
     /// <summary>
     /// Convention: all extensions use "localization" as the folder name.

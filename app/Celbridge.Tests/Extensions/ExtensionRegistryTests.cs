@@ -55,7 +55,7 @@ public class ExtensionRegistryTests
 
         manifests.Should().HaveCount(1);
         manifests[0].Name.Should().Be("My Editor");
-        manifests[0].Type.Should().Be(ExtensionEditorType.Custom);
+        manifests[0].Type.Should().Be(EditorType.Custom);
     }
 
     [Test]

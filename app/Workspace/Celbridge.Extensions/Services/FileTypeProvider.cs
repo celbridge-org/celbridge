@@ -9,14 +9,14 @@ namespace Celbridge.Extensions;
 /// Bridges the ExtensionDiscoveryService to consumers in
 /// other projects via the IExtensionFileTypeProvider abstraction (Foundation).
 /// </summary>
-public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
+public class FileTypeProvider : IExtensionFileTypeProvider
 {
-    private readonly ILogger<ExtensionFileTypeProvider> _logger;
+    private readonly ILogger<FileTypeProvider> _logger;
     private readonly ExtensionRegistry _extensionRegistry;
     private readonly IProjectService _projectService;
 
-    public ExtensionFileTypeProvider(
-        ILogger<ExtensionFileTypeProvider> logger,
+    public FileTypeProvider(
+        ILogger<FileTypeProvider> logger,
         ExtensionRegistry extensionRegistry,
         IProjectService projectService)
     {
@@ -102,9 +102,9 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
     /// Loads localization strings from the extension's localization directory.
     /// Uses convention: {extensionDirectory}/localization/{locale}.json
     /// </summary>
-    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(ExtensionManifest manifest)
+    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(Manifest manifest)
     {
-        return ExtensionLocalizationHelper.LoadStrings(manifest.ExtensionDirectory);
+        return LocalizationHelper.LoadStrings(manifest.ExtensionDirectory);
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
     /// If displayName is empty, falls back to the manifest name.
     /// </summary>
     private static string ResolveFileTypeDisplayName(
-        ExtensionFileType fileType,
+        FileType fileType,
         IReadOnlyDictionary<string, string> locStrings,
         string fallbackName)
     {
@@ -129,7 +129,7 @@ public class ExtensionFileTypeProvider : IExtensionFileTypeProvider
         return fallbackName;
     }
 
-    private IReadOnlyList<ExtensionManifest> DiscoverManifests()
+    private IReadOnlyList<Manifest> DiscoverManifests()
     {
         var projectFolderPath = _projectService.CurrentProject?.ProjectFolderPath ?? string.Empty;
         return _extensionRegistry.DiscoverExtensions(projectFolderPath);

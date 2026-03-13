@@ -14,7 +14,7 @@ namespace Celbridge.Code.Services;
 public class ExtensionEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ExtensionManifest _manifest;
+    private readonly Manifest _manifest;
     private readonly IWorkspaceFeatures? _workspaceFeatures;
 
     public override IReadOnlyList<string> SupportedExtensions =>
@@ -24,7 +24,7 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
 
     public ExtensionEditorFactory(
         IServiceProvider serviceProvider,
-        ExtensionManifest manifest,
+        Manifest manifest,
         IWorkspaceFeatures? workspaceFeatures = null)
     {
         _serviceProvider = serviceProvider;
@@ -49,8 +49,8 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
 #if WINDOWS
         return _manifest.Type switch
         {
-            ExtensionEditorType.Custom => CreateCustomView(),
-            ExtensionEditorType.Code => CreateCodeView(),
+            EditorType.Custom => CreateCustomView(),
+            EditorType.Code => CreateCodeView(),
             _ => Result<IDocumentView>.Fail($"Unknown extension type: {_manifest.Type}")
         };
 #else

@@ -4,15 +4,15 @@ using Tomlyn.Model;
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// Parses extension.toml and referenced document TOML files to produce ExtensionManifest objects.
+/// Parses extension.toml and referenced document TOML files to produce Manifest objects.
 /// Handles the two-level manifest structure: extension identity + document contributions.
 /// </summary>
-public static class ExtensionLoader
+public static class ManifestLoader
 {
     /// <summary>
     /// Loads all document manifests from an extension.toml file and its referenced document files.
     /// </summary>
-    public static Result<IReadOnlyList<ExtensionManifest>> LoadExtension(string extensionTomlPath)
+    public static Result<IReadOnlyList<Manifest>> LoadExtension(string extensionTomlPath)
     {
         try
         {
@@ -23,7 +23,7 @@ public static class ExtensionLoader
             if (parsed.HasErrors)
             {
                 var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result<IReadOnlyList<ExtensionManifest>>.Fail($"TOML parse error in {extensionTomlPath}: {errors}");
+                return Result<IReadOnlyList<Manifest>>.Fail($"TOML parse error in {extensionTomlPath}: {errors}");
             }
 
             var root = (TomlTable)parsed.ToModel();
@@ -31,7 +31,7 @@ public static class ExtensionLoader
             // Parse [extension] section
             if (!root.TryGetValue("extension", out var extObj) || extObj is not TomlTable extTable)
             {
-                return Result<IReadOnlyList<ExtensionManifest>>.Fail(
+                return Result<IReadOnlyList<Manifest>>.Fail(
                     $"Missing [extension] section: {extensionTomlPath}");
             }
 
@@ -41,7 +41,7 @@ public static class ExtensionLoader
 
             if (string.IsNullOrEmpty(extId))
             {
-                return Result<IReadOnlyList<ExtensionManifest>>.Fail(
+                return Result<IReadOnlyList<Manifest>>.Fail(
                     $"Extension missing required 'id' field: {extensionTomlPath}");
             }
 
@@ -66,7 +66,7 @@ public static class ExtensionLoader
             }
 
             // Parse each referenced document TOML file
-            var manifests = new List<ExtensionManifest>();
+            var manifests = new List<Manifest>();
             foreach (var docRelativePath in documentPaths)
             {
                 var docFullPath = Path.Combine(extensionDir, docRelativePath);
@@ -77,19 +77,19 @@ public static class ExtensionLoader
                 }
             }
 
-            return Result<IReadOnlyList<ExtensionManifest>>.Ok(manifests.AsReadOnly());
+            return Result<IReadOnlyList<Manifest>>.Ok(manifests.AsReadOnly());
         }
         catch (Exception ex)
         {
-            return Result<IReadOnlyList<ExtensionManifest>>.Fail(
+            return Result<IReadOnlyList<Manifest>>.Fail(
                 $"Failed to load extension: {extensionTomlPath}").WithException(ex);
         }
     }
 
     /// <summary>
-    /// Parses a single document TOML file into an ExtensionManifest.
+    /// Parses a single document TOML file into an Manifest.
     /// </summary>
-    private static Result<ExtensionManifest> LoadDocument(
+    private static Result<Manifest> LoadDocument(
         string documentTomlPath,
         string extensionName,
         string? extensionFeatureFlag,
@@ -100,7 +100,7 @@ public static class ExtensionLoader
         {
             if (!File.Exists(documentTomlPath))
             {
-                return Result<ExtensionManifest>.Fail(
+                return Result<Manifest>.Fail(
                     $"Document manifest not found: {documentTomlPath}");
             }
 
@@ -110,7 +110,7 @@ public static class ExtensionLoader
             if (parsed.HasErrors)
             {
                 var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result<ExtensionManifest>.Fail(
+                return Result<Manifest>.Fail(
                     $"TOML parse error in {documentTomlPath}: {errors}");
             }
 
@@ -119,7 +119,7 @@ public static class ExtensionLoader
             // Parse [document] section
             if (!root.TryGetValue("document", out var docObj) || docObj is not TomlTable docTable)
             {
-                return Result<ExtensionManifest>.Fail(
+                return Result<Manifest>.Fail(
                     $"Missing [document] section: {documentTomlPath}");
             }
 
@@ -131,17 +131,17 @@ public static class ExtensionLoader
 
             if (string.IsNullOrEmpty(docId))
             {
-                return Result<ExtensionManifest>.Fail(
+                return Result<Manifest>.Fail(
                     $"Document missing required 'id' field: {documentTomlPath}");
             }
 
             // Parse [[file_types]]
-            var fileTypes = new List<ExtensionFileType>();
+            var fileTypes = new List<FileType>();
             if (root.TryGetValue("file_types", out var ftObj) && ftObj is TomlTableArray ftArray)
             {
                 foreach (var ft in ftArray)
                 {
-                    fileTypes.Add(new ExtensionFileType
+                    fileTypes.Add(new FileType
                     {
                         Extension = GetString(ft, "extension"),
                         DisplayName = GetString(ft, "display_name")
@@ -151,17 +151,17 @@ public static class ExtensionLoader
 
             if (fileTypes.Count == 0)
             {
-                return Result<ExtensionManifest>.Fail(
+                return Result<Manifest>.Fail(
                     $"Document must declare at least one file type: {documentTomlPath}");
             }
 
             // Parse [[templates]]
-            var templates = new List<ExtensionTemplate>();
+            var templates = new List<Template>();
             if (root.TryGetValue("templates", out var tmplObj) && tmplObj is TomlTableArray tmplArray)
             {
                 foreach (var tmpl in tmplArray)
                 {
-                    templates.Add(new ExtensionTemplate
+                    templates.Add(new Template
                     {
                         Id = GetString(tmpl, "id"),
                         DisplayName = GetString(tmpl, "display_name"),
@@ -172,10 +172,10 @@ public static class ExtensionLoader
             }
 
             // Parse [monaco]
-            ExtensionMonacoConfig? monaco = null;
+            MonacoConfig? monaco = null;
             if (root.TryGetValue("monaco", out var monacoObj) && monacoObj is TomlTable monacoTable)
             {
-                monaco = new ExtensionMonacoConfig
+                monaco = new MonacoConfig
                 {
                     WordWrap = GetBoolOrNull(monacoTable, "word_wrap"),
                     ScrollBeyondLastLine = GetBoolOrNull(monacoTable, "scroll_beyond_last_line"),
@@ -185,7 +185,7 @@ public static class ExtensionLoader
             }
 
             // Parse [preview]
-            ExtensionPreviewConfig? preview = null;
+            PreviewConfig? preview = null;
             if (root.TryGetValue("preview", out var prevObj) && prevObj is TomlTable prevTable)
             {
                 var assetFolder = GetString(prevTable, "asset_folder");
@@ -194,7 +194,7 @@ public static class ExtensionLoader
                 // Auto-generate preview host name from extension host name
                 var previewHostName = hostName.Replace(".celbridge", "-preview.celbridge");
 
-                preview = new ExtensionPreviewConfig
+                preview = new PreviewConfig
                 {
                     AssetFolder = assetFolder,
                     PageUrl = $"https://{previewHostName}/{pageUrl}",
@@ -202,7 +202,7 @@ public static class ExtensionLoader
                 };
             }
 
-            var manifest = new ExtensionManifest
+            var manifest = new Manifest
             {
                 Id = docId,
                 Name = extensionName,
@@ -219,21 +219,21 @@ public static class ExtensionLoader
                 HostName = hostName
             };
 
-            return Result<ExtensionManifest>.Ok(manifest);
+            return Result<Manifest>.Ok(manifest);
         }
         catch (Exception ex)
         {
-            return Result<ExtensionManifest>.Fail(
+            return Result<Manifest>.Fail(
                 $"Failed to load document manifest: {documentTomlPath}").WithException(ex);
         }
     }
 
-    private static ExtensionEditorType ParseEditorType(string value)
+    private static EditorType ParseEditorType(string value)
     {
         return value.ToLowerInvariant() switch
         {
-            "code" => ExtensionEditorType.Code,
-            _ => ExtensionEditorType.Custom
+            "code" => EditorType.Code,
+            _ => EditorType.Custom
         };
     }
 

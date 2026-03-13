@@ -9,6 +9,6 @@ public static class ServiceConfiguration
         //
 
         services.AddSingleton<ExtensionRegistry>();
-        services.AddSingleton<IExtensionFileTypeProvider, ExtensionFileTypeProvider>();
+        services.AddSingleton<IExtensionFileTypeProvider, FileTypeProvider>();
     }
 }

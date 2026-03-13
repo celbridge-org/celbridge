@@ -3,7 +3,7 @@ namespace Celbridge.Extensions;
 /// <summary>
 /// The type of extension editor.
 /// </summary>
-public enum ExtensionEditorType
+public enum EditorType
 {
     /// <summary>
     /// Full WebView2 editor. Extension provides the entire UI.
@@ -22,7 +22,7 @@ public enum ExtensionEditorType
 /// Preview configuration for a code extension.
 /// When present, enables the split editor with a preview panel.
 /// </summary>
-public record ExtensionPreviewConfig
+public record PreviewConfig
 {
     /// <summary>
     /// The folder containing preview assets, relative to the extension directory.
@@ -44,7 +44,7 @@ public record ExtensionPreviewConfig
 /// Monaco editor configuration for code extensions.
 /// Combines editor options and customization script path.
 /// </summary>
-public record ExtensionMonacoConfig
+public record MonacoConfig
 {
     public bool? ScrollBeyondLastLine { get; init; }
     public bool? WordWrap { get; init; }
@@ -62,7 +62,7 @@ public record ExtensionMonacoConfig
 /// Declares the file extension the editor handles and an optional display name or localization key
 /// shown in the Add File dialog.
 /// </summary>
-public record ExtensionFileType
+public record FileType
 {
     /// <summary>
     /// The file extension this editor handles (e.g., ".note").
@@ -80,7 +80,7 @@ public record ExtensionFileType
 /// A file template declared by an extension.
 /// Templates provide starter content for new files of the extension's type.
 /// </summary>
-public partial record ExtensionTemplate
+public partial record Template
 {
     /// <summary>
     /// Unique identifier for this template within the extension.
@@ -107,7 +107,7 @@ public partial record ExtensionTemplate
 /// Represents a document editor contribution parsed from a TOML document manifest.
 /// Each extension can contribute one or more document editors via its extension.toml.
 /// </summary>
-public partial record ExtensionManifest
+public partial record Manifest
 {
     /// <summary>
     /// Unique identifier for this document contribution (e.g., "note-document").
@@ -122,13 +122,13 @@ public partial record ExtensionManifest
     /// <summary>
     /// The type of editor: "custom" (full WebView2) or "code" (Monaco-based).
     /// </summary>
-    public ExtensionEditorType Type { get; init; }
+    public EditorType Type { get; init; }
 
     /// <summary>
     /// The file types this editor handles. Each entry declares the file extension and
     /// an optional display name or localization key for the Add File dialog.
     /// </summary>
-    public IReadOnlyList<ExtensionFileType> FileTypes { get; init; } = [];
+    public IReadOnlyList<FileType> FileTypes { get; init; } = [];
 
     /// <summary>
     /// Entry point for custom editors (e.g., "index.html").
@@ -157,17 +157,17 @@ public partial record ExtensionManifest
     /// <summary>
     /// Optional list of file templates provided by this extension.
     /// </summary>
-    public IReadOnlyList<ExtensionTemplate> Templates { get; init; } = [];
+    public IReadOnlyList<Template> Templates { get; init; } = [];
 
     /// <summary>
     /// Preview configuration for code editors. When present, enables the split editor.
     /// </summary>
-    public ExtensionPreviewConfig? Preview { get; init; }
+    public PreviewConfig? Preview { get; init; }
 
     /// <summary>
     /// Monaco editor configuration for code extensions.
     /// </summary>
-    public ExtensionMonacoConfig? Monaco { get; init; }
+    public MonacoConfig? Monaco { get; init; }
 
     /// <summary>
     /// The directory containing the extension (set during loading, not from TOML).

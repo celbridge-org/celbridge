@@ -6,17 +6,17 @@ using Celbridge.Resources;
 namespace Celbridge.Tests.Extensions;
 
 [TestFixture]
-public class ExtensionFileTypeProviderTests
+public class FileTypeProviderTests
 {
     private string _tempProjectFolder = null!;
     private ExtensionRegistry _extensionRegistry = null!;
     private IProjectService _projectService = null!;
-    private ExtensionFileTypeProvider _provider = null!;
+    private FileTypeProvider _provider = null!;
 
     [SetUp]
     public void Setup()
     {
-        _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ExtensionFileTypeProviderTests));
+        _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FileTypeProviderTests));
         Directory.CreateDirectory(_tempProjectFolder);
 
         var registryLogger = Substitute.For<ILogger<ExtensionRegistry>>();
@@ -28,8 +28,8 @@ public class ExtensionFileTypeProviderTests
         project.ProjectFolderPath.Returns(_tempProjectFolder);
         _projectService.CurrentProject.Returns(project);
 
-        var providerLogger = Substitute.For<ILogger<ExtensionFileTypeProvider>>();
-        _provider = new ExtensionFileTypeProvider(providerLogger, _extensionRegistry, _projectService);
+        var providerLogger = Substitute.For<ILogger<FileTypeProvider>>();
+        _provider = new FileTypeProvider(providerLogger, _extensionRegistry, _projectService);
     }
 
     [TearDown]
@@ -280,7 +280,7 @@ public class ExtensionFileTypeProviderTests
         // Create localization files
         if (localizationStrings is not null)
         {
-            var locDir = Path.Combine(extDir, ExtensionLocalizationHelper.LocalizationFolder);
+            var locDir = Path.Combine(extDir, LocalizationHelper.LocalizationFolder);
             Directory.CreateDirectory(locDir);
 
             var entries = localizationStrings.Select(kv => $"\"{kv.Key}\": \"{kv.Value}\"");

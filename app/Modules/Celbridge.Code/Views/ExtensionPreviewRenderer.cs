@@ -9,8 +9,8 @@ namespace Celbridge.Code.Views;
 /// </summary>
 public class ExtensionPreviewRenderer : IPreviewRenderer
 {
-    private readonly ExtensionManifest _manifest;
-    private readonly ExtensionPreviewConfig _previewConfig;
+    private readonly Manifest _manifest;
+    private readonly PreviewConfig _previewConfig;
 
     public string PreviewHostName => _previewConfig.HostName;
 
@@ -18,7 +18,7 @@ public class ExtensionPreviewRenderer : IPreviewRenderer
 
     public string PreviewPageUrl => _previewConfig.PageUrl;
 
-    public ExtensionPreviewRenderer(ExtensionManifest manifest)
+    public ExtensionPreviewRenderer(Manifest manifest)
     {
         _manifest = manifest;
 
