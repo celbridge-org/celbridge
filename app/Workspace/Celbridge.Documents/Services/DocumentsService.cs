@@ -3,6 +3,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Extensions;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -141,6 +142,60 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         // Once set, this will remain true for the lifetime of the service
         _isWorkspaceLoaded = true;
+
+        // Discover project-level extensions and register their editor factories.
+        // This must happen after workspace load because the project folder path is needed.
+        RegisterProjectExtensionEditorFactories();
+    }
+
+    /// <summary>
+    /// Discovers extensions from the current project's extensions directory and registers
+    /// editor factories for custom-type contributions.
+    /// </summary>
+    private void RegisterProjectExtensionEditorFactories()
+    {
+        var projectService = _serviceProvider.GetRequiredService<IProjectService>();
+        var projectFolderPath = projectService.CurrentProject?.ProjectFolderPath ?? string.Empty;
+
+        if (string.IsNullOrEmpty(projectFolderPath))
+        {
+            return;
+        }
+
+        var extensionsFolderPath = Path.Combine(projectFolderPath, "extensions");
+        if (!Directory.Exists(extensionsFolderPath))
+        {
+            return;
+        }
+
+        var extensionRegistry = _serviceProvider.GetRequiredService<ExtensionRegistry>();
+
+        // Discover all extensions (bundled + project) so the registry can resolve project paths.
+        // Filter to only register project-level contributions (those rooted in the project folder).
+        var contributions = extensionRegistry.DiscoverExtensions(projectFolderPath);
+
+        var workspaceFeatures = _serviceProvider.GetService<IWorkspaceFeatures>();
+
+        foreach (var contribution in contributions)
+        {
+            if (contribution.Type != DocumentEditorType.Custom)
+            {
+                continue;
+            }
+
+            // Only register contributions from the project's extensions directory
+            if (!contribution.Extension.ExtensionDirectory.StartsWith(extensionsFolderPath, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var factory = new CustomDocumentViewFactory(_serviceProvider, contribution, workspaceFeatures);
+            var result = _documentEditorRegistry.RegisterFactory(factory);
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(result, $"Failed to register project extension editor factory for: {contribution.Extension.Name}");
+            }
+        }
     }
 
     private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
