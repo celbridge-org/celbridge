@@ -417,3 +417,6 @@ solution-config.props
 
 # Design documentation (keep local only)
 app/Celbridge/DesignDocs/
+
+# Claude Code local settings
+**/.claude/settings.local.json
