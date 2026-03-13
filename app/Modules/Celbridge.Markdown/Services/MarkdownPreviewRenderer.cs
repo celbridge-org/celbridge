@@ -8,7 +8,7 @@ namespace Celbridge.Markdown.Services;
 /// Uses marked.js to render Markdown to HTML in a WebView.
 /// Communication with the WebView is handled via JSON-RPC through CelbridgeHost.
 /// </summary>
-public class MarkdownPreviewRenderer : IPreviewRenderer
+public class MarkdownPreviewRenderer : ICodePreviewRenderer
 {
     public string PreviewHostName => "markdown-preview.celbridge";
 

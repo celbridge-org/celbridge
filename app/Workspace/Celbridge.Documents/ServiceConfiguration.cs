@@ -1,9 +1,7 @@
 using Celbridge.Documents.Commands;
-using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
-using Celbridge.Extensions;
 
 namespace Celbridge.Documents;
 

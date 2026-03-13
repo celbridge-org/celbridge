@@ -24,7 +24,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadExtension_ValidCustomDocument_ReturnsManifest()
+    public void LoadExtension_ValidCustomDocument_ReturnsContribution()
     {
         WriteExtensionToml("""
             [extension]
@@ -51,18 +51,18 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().ContainSingle();
 
-        var manifest = result.Value[0];
-        manifest.Id.Should().Be("my-editor-doc");
-        manifest.Name.Should().Be("My Editor");
-        manifest.Type.Should().Be(DocumentEditorType.Custom);
-        manifest.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".myext");
-        manifest.EntryPoint.Should().Be("index.html");
-        manifest.ExtensionDirectory.Should().Be(_tempFolder);
-        manifest.HostName.Should().Be("ext-test-my-editor.celbridge");
+        var contribution = result.Value[0];
+        contribution.Id.Should().Be("my-editor-doc");
+        contribution.Extension.Name.Should().Be("My Editor");
+        contribution.Type.Should().Be(DocumentEditorType.Custom);
+        contribution.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".myext");
+        contribution.EntryPoint.Should().Be("index.html");
+        contribution.Extension.ExtensionDirectory.Should().Be(_tempFolder);
+        contribution.Extension.HostName.Should().Be("ext-test-my-editor.celbridge");
     }
 
     [Test]
-    public void LoadExtension_ValidCodeDocument_WithPreview_ReturnsManifest()
+    public void LoadExtension_ValidCodeDocument_WithPreview_ReturnsContribution()
     {
         WriteExtensionToml("""
             [extension]
@@ -93,14 +93,14 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var manifest = result.Value[0];
-        manifest.Type.Should().Be(DocumentEditorType.Code);
-        manifest.CodePreview.Should().NotBeNull();
-        manifest.CodePreview!.HostName.Should().Be("ext-test-code-preview-preview.celbridge");
-        manifest.CodePreview.AssetFolder.Should().Be("preview");
-        manifest.CodePreview.PageUrl.Should().Be("https://ext-test-code-preview-preview.celbridge/index.html");
-        manifest.CodeEditor.Should().NotBeNull();
-        manifest.CodeEditor!.Customizations.Should().Be("customize.js");
+        var contribution = result.Value[0];
+        contribution.Type.Should().Be(DocumentEditorType.Code);
+        contribution.CodePreview.Should().NotBeNull();
+        contribution.CodePreview!.HostName.Should().Be("ext-test-code-preview-preview.celbridge");
+        contribution.CodePreview.AssetFolder.Should().Be("preview");
+        contribution.CodePreview.PageUrl.Should().Be("https://ext-test-code-preview-preview.celbridge/index.html");
+        contribution.CodeEditor.Should().NotBeNull();
+        contribution.CodeEditor!.Customizations.Should().Be("customize.js");
     }
 
     [Test]
@@ -134,7 +134,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadExtension_EmptyFileTypes_ReturnsNoManifests()
+    public void LoadExtension_EmptyFileTypes_ReturnsNoContributions()
     {
         WriteExtensionToml("""
             [extension]
@@ -181,7 +181,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadExtension_DefaultPriority_IsZero()
+    public void LoadExtension_DefaultPriority_IsDefault()
     {
         WriteExtensionToml("""
             [extension]
@@ -205,11 +205,11 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Priority.Should().Be(0);
+        result.Value[0].Priority.Should().Be(EditorPriority.Default);
     }
 
     [Test]
-    public void LoadExtension_WithPriority_UsesPriority()
+    public void LoadExtension_WithOptionPriority_UsesOption()
     {
         WriteExtensionToml("""
             [extension]
@@ -225,7 +225,7 @@ public class ManifestTests
             [document]
             id = "priority-doc"
             type = "code"
-            priority = 10
+            priority = "option"
 
             [[document_file_types]]
             extension = ".pri"
@@ -234,7 +234,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Priority.Should().Be(10);
+        result.Value[0].Priority.Should().Be(EditorPriority.Option);
     }
 
     [Test]
@@ -263,7 +263,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].FeatureFlag.Should().Be("my-feature");
+        result.Value[0].Extension.FeatureFlag.Should().Be("my-feature");
     }
 
     [Test]
@@ -291,7 +291,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].FeatureFlag.Should().BeNull();
+        result.Value[0].Extension.FeatureFlag.Should().BeNull();
     }
 
     [Test]
@@ -302,6 +302,7 @@ public class ManifestTests
             id = "test.capable"
             name = "Capable"
             version = "1.0.0"
+            capabilities = ["dialog", "input"]
 
             [contributes]
             documents = ["doc.document.toml"]
@@ -311,7 +312,6 @@ public class ManifestTests
             [document]
             id = "capable-doc"
             type = "custom"
-            capabilities = ["dialog", "input"]
 
             [[document_file_types]]
             extension = ".cap"
@@ -320,9 +320,9 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Capabilities.Should().HaveCount(2);
-        result.Value[0].Capabilities.Should().Contain("dialog");
-        result.Value[0].Capabilities.Should().Contain("input");
+        result.Value[0].Extension.Capabilities.Should().HaveCount(2);
+        result.Value[0].Extension.Capabilities.Should().Contain("dialog");
+        result.Value[0].Extension.Capabilities.Should().Contain("input");
     }
 
     [Test]
@@ -350,7 +350,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Capabilities.Should().BeEmpty();
+        result.Value[0].Extension.Capabilities.Should().BeEmpty();
     }
 
     [Test]
@@ -440,6 +440,7 @@ public class ManifestTests
             name = "Full Editor"
             version = "2.0.0"
             feature_flag = "full-ext"
+            capabilities = ["dialog", "input"]
 
             [contributes]
             documents = ["full.document.toml"]
@@ -450,8 +451,7 @@ public class ManifestTests
             id = "full-doc"
             type = "custom"
             entry_point = "index.html"
-            priority = 5
-            capabilities = ["dialog", "input"]
+            priority = "default"
 
             [[document_file_types]]
             extension = ".full"
@@ -467,16 +467,16 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var manifest = result.Value[0];
-        manifest.Id.Should().Be("full-doc");
-        manifest.Name.Should().Be("Full Editor");
-        manifest.Type.Should().Be(DocumentEditorType.Custom);
-        manifest.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".full");
-        manifest.EntryPoint.Should().Be("index.html");
-        manifest.Priority.Should().Be(5);
-        manifest.FeatureFlag.Should().Be("full-ext");
-        manifest.Capabilities.Should().HaveCount(2);
-        manifest.Templates.Should().HaveCount(1);
+        var contribution = result.Value[0];
+        contribution.Id.Should().Be("full-doc");
+        contribution.Extension.Name.Should().Be("Full Editor");
+        contribution.Type.Should().Be(DocumentEditorType.Custom);
+        contribution.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".full");
+        contribution.EntryPoint.Should().Be("index.html");
+        contribution.Priority.Should().Be(EditorPriority.Default);
+        contribution.Extension.FeatureFlag.Should().Be("full-ext");
+        contribution.Extension.Capabilities.Should().HaveCount(2);
+        contribution.Templates.Should().HaveCount(1);
     }
 
     [Test]
@@ -574,6 +574,53 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadExtension_MultipleDocuments_ShareExtensionInfo()
+    {
+        WriteExtensionToml("""
+            [extension]
+            id = "test.shared"
+            name = "Shared"
+            version = "1.0.0"
+            feature_flag = "shared-flag"
+            capabilities = ["dialog"]
+
+            [contributes]
+            documents = ["a.document.toml", "b.document.toml"]
+            """);
+
+        WriteDocumentToml("a.document.toml", """
+            [document]
+            id = "doc-a"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".aaa"
+            """);
+
+        WriteDocumentToml("b.document.toml", """
+            [document]
+            id = "doc-b"
+            type = "code"
+
+            [[document_file_types]]
+            extension = ".bbb"
+            """);
+
+        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2);
+
+        // Both contributions share the same ExtensionInfo
+        result.Value[0].Extension.Name.Should().Be("Shared");
+        result.Value[1].Extension.Name.Should().Be("Shared");
+        result.Value[0].Extension.FeatureFlag.Should().Be("shared-flag");
+        result.Value[1].Extension.FeatureFlag.Should().Be("shared-flag");
+        result.Value[0].Extension.Capabilities.Should().Contain("dialog");
+        result.Value[1].Extension.Capabilities.Should().Contain("dialog");
     }
 
     private void WriteExtensionToml(string content)

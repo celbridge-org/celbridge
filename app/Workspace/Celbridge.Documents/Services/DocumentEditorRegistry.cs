@@ -37,7 +37,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
             factoryList.Add(factory);
 
-            // Sort by priority (highest first) so GetFactory can return the first match
+            // Sort by priority (Default before Option) so GetFactory returns the default editor first
             factoryList.Sort((a, b) => b.Priority.CompareTo(a.Priority));
         }
 

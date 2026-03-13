@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Documents.Extensions;
 using Celbridge.Documents.Views;
 using Celbridge.Extensions;
 using Celbridge.Logging;
@@ -112,27 +111,28 @@ public class DocumentsService : IDocumentsService, IDisposable
             extensionRegistry.RegisterBundledExtensionPath(extensionDir);
         }
 
-        // Discover manifests from bundled paths
+        // Discover contributions from bundled paths
         // (project extensions are discovered later when a project loads)
         var projectFolderPath = string.Empty;
-        var manifests = extensionRegistry.DiscoverExtensions(projectFolderPath);
+        var contributions = extensionRegistry.DiscoverExtensions(projectFolderPath);
 
         // Resolve optional workspace features for feature flag gating
         var workspaceFeatures = serviceProvider.GetService<IWorkspaceFeatures>();
 
-        foreach (var manifest in manifests)
+        foreach (var contribution in contributions)
         {
-            if (manifest.Type != DocumentEditorType.Custom)
+            if (contribution.Type != DocumentEditorType.Custom)
             {
-                // Code-type extensions are handled by ExtensionEditorFactory in Celbridge.Code
+                // Only custom-type extensions are registered here.
+                // Code-type extensions will be handled via DI when needed.
                 continue;
             }
 
-            var factory = new CustomExtensionEditorFactory(serviceProvider, manifest, workspaceFeatures);
+            var factory = new CustomDocumentViewFactory(serviceProvider, contribution, workspaceFeatures);
             var result = _documentEditorRegistry.RegisterFactory(factory);
             if (result.IsFailure)
             {
-                _logger.LogWarning(result, $"Failed to register extension editor factory for: {manifest.Name}");
+                _logger.LogWarning(result, $"Failed to register extension editor factory for: {contribution.Extension.Name}");
             }
         }
     }
@@ -594,7 +594,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (viewType == DocumentViewType.TextDocument)
         {
             // Check all factories to see if any can handle this text file
-            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderByDescending(f => f.Priority))
+            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderByDescending(f => (int)f.Priority))
             {
                 if (factory.CanHandle(fileResource, filePath))
                 {

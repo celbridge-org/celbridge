@@ -13,9 +13,9 @@ public interface IDocumentEditorFactory
 
     /// <summary>
     /// Priority for conflict resolution when multiple factories support the same extension.
-    /// Higher values take precedence. Default factories should use 0.
+    /// Default editors open automatically; Option editors are available via "Open With".
     /// </summary>
-    int Priority { get; }
+    EditorPriority Priority { get; }
 
     /// <summary>
     /// Determines if this factory can handle the given file resource.

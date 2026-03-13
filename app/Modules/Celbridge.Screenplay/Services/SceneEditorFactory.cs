@@ -13,11 +13,7 @@ public class SceneEditorFactory : DocumentEditorFactoryBase
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = [".scene"];
 
-    /// <summary>
-    /// Higher priority than the default CodeEditorFactory to ensure .scene files
-    /// use SceneDocumentView instead of the text editor.
-    /// </summary>
-    public override int Priority => 10;
+    public override EditorPriority Priority => EditorPriority.Default;
 
     public SceneEditorFactory(IServiceProvider serviceProvider)
     {

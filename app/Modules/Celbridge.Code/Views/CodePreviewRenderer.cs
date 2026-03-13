@@ -1,40 +1,42 @@
-using Celbridge.Extensions;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Code.Views;
 
 /// <summary>
-/// A generic IPreviewRenderer implementation configured from an extension manifest.
-/// Used when a code extension declares a preview field in its editor.json.
+/// A generic ICodePreviewRenderer implementation for code editors with a preview panel.
 /// </summary>
-public class ExtensionPreviewRenderer : IPreviewRenderer
+public class CodePreviewRenderer : ICodePreviewRenderer
 {
-    private readonly ExtensionManifest _manifest;
-    private readonly CodePreviewConfig _previewConfig;
+    private readonly string _hostName;
+    private readonly string _extensionDirectory;
 
-    public string PreviewHostName => _previewConfig.HostName;
+    public string PreviewHostName { get; }
 
     public string PreviewAssetFolder { get; }
 
-    public string PreviewPageUrl => _previewConfig.PageUrl;
+    public string PreviewPageUrl { get; }
 
-    public ExtensionPreviewRenderer(ExtensionManifest manifest)
+    public CodePreviewRenderer(
+        string hostName,
+        string extensionDirectory,
+        string previewHostName,
+        string previewAssetFolder,
+        string previewPageUrl)
     {
-        _manifest = manifest;
+        _hostName = hostName;
+        _extensionDirectory = extensionDirectory;
 
-        _previewConfig = manifest.CodePreview
-            ?? throw new ArgumentException("Extension manifest does not have preview configuration", nameof(manifest));
-
-        // Resolve the asset folder relative to the extension directory
-        PreviewAssetFolder = Path.Combine(manifest.ExtensionDirectory, _previewConfig.AssetFolder);
+        PreviewHostName = previewHostName;
+        PreviewAssetFolder = Path.Combine(extensionDirectory, previewAssetFolder);
+        PreviewPageUrl = previewPageUrl;
     }
 
     public Task ConfigureWebViewAsync(CoreWebView2 webView, string projectFolderPath)
     {
         // Map the extension's own assets
         webView.SetVirtualHostNameToFolderMapping(
-            _manifest.HostName,
-            _manifest.ExtensionDirectory,
+            _hostName,
+            _extensionDirectory,
             CoreWebView2HostResourceAccessKind.Allow);
 
         // Map the project folder for local resource resolution

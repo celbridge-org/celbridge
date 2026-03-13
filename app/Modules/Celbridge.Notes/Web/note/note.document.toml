@@ -2,8 +2,7 @@
 id = "note-document"
 type = "custom"
 entry_point = "index.html"
-priority = 0
-capabilities = ["dialog", "input"]
+priority = "default"
 
 [[document_file_types]]
 extension = ".note"

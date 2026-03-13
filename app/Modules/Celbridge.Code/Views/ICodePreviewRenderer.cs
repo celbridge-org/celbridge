@@ -7,7 +7,7 @@ namespace Celbridge.Code.Views;
 /// Implementations provide preview functionality for specific file types (e.g., Markdown, AsciiDoc).
 /// Preview renderers use JSON-RPC via CelbridgeHost for communication with the WebView.
 /// </summary>
-public interface IPreviewRenderer
+public interface ICodePreviewRenderer
 {
     /// <summary>
     /// The virtual host name for preview assets (e.g., "markdown-preview.celbridge").

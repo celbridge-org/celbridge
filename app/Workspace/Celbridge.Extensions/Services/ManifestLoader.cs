@@ -1,107 +1,115 @@
+using Celbridge.Documents;
 using Tomlyn;
 using Tomlyn.Model;
 
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// Parses extension.toml and referenced document TOML files to produce ExtensionManifest objects.
+/// Parses extension.toml and referenced document TOML files to produce DocumentContribution objects.
 /// Handles the two-level manifest structure: extension identity + document contributions.
 /// </summary>
 public static class ManifestLoader
 {
     /// <summary>
-    /// Loads all document manifests from an extension.toml file and its referenced document files.
+    /// Loads all document contributions from an extension.toml file and its referenced document files.
     /// </summary>
-    public static Result<IReadOnlyList<ExtensionManifest>> LoadExtension(string extensionTomlPath)
+    public static Result<IReadOnlyList<DocumentContribution>> LoadExtension(string extensionTomlPath)
     {
         try
         {
-            var extensionDir = Path.GetDirectoryName(extensionTomlPath) ?? string.Empty;
+            var extensionDirectory = Path.GetDirectoryName(extensionTomlPath) ?? string.Empty;
             var toml = File.ReadAllText(extensionTomlPath);
             var parsed = Toml.Parse(toml);
 
             if (parsed.HasErrors)
             {
                 var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result<IReadOnlyList<ExtensionManifest>>.Fail($"TOML parse error in {extensionTomlPath}: {errors}");
+                return Result.Fail($"TOML parse error in {extensionTomlPath}: {errors}");
             }
 
             var root = (TomlTable)parsed.ToModel();
 
-            // Parse [extension] section
-            if (!root.TryGetValue("extension", out var extObj) || extObj is not TomlTable extTable)
+            // [extension]
+            if (!root.TryGetValue("extension", out var extensionObject) ||
+                extensionObject is not TomlTable extensionTable)
             {
-                return Result<IReadOnlyList<ExtensionManifest>>.Fail(
-                    $"Missing [extension] section: {extensionTomlPath}");
+                return Result.Fail($"Missing [extension] section: {extensionTomlPath}");
             }
 
-            var extId = GetString(extTable, "id");
-            var extName = GetString(extTable, "name");
-            var extFeatureFlag = GetStringOrNull(extTable, "feature_flag");
-
-            if (string.IsNullOrEmpty(extId))
+            var extensionId = GetString(extensionTable, "id");
+            if (string.IsNullOrEmpty(extensionId))
             {
-                return Result<IReadOnlyList<ExtensionManifest>>.Fail(
-                    $"Extension missing required 'id' field: {extensionTomlPath}");
+                return Result.Fail($"Extension missing required 'id' field: {extensionTomlPath}");
             }
 
-            // Generate host name from extension id
-            var safeName = extId.Replace('.', '-').ToLowerInvariant();
+            var extensionName = GetString(extensionTable, "name");
+            var featureFlag = GetStringOrNull(extensionTable, "feature_flag");
+            var capabilities = GetStringArray(extensionTable, "capabilities");
+
+            var safeName = extensionId.Replace('.', '-').ToLowerInvariant();
             var hostName = $"ext-{safeName}.celbridge";
 
-            // Parse [contributes] section
-            var documentPaths = new List<string>();
-            if (root.TryGetValue("contributes", out var contribObj) && contribObj is TomlTable contribTable)
+            var extensionInfo = new ExtensionInfo
             {
-                if (contribTable.TryGetValue("documents", out var docsObj) && docsObj is TomlArray docsArray)
+                Id = extensionId,
+                Name = extensionName,
+                FeatureFlag = featureFlag,
+                Capabilities = capabilities,
+                ExtensionDirectory = extensionDirectory,
+                HostName = hostName
+            };
+
+            // [contributes]
+            var documentPaths = new List<string>();
+            if (root.TryGetValue("contributes", out var contributesObject) &&
+                contributesObject is TomlTable contributesTable)
+            {
+                if (contributesTable.TryGetValue("documents", out var documentsObject) &&
+                    documentsObject is TomlArray documentsArray)
                 {
-                    foreach (var doc in docsArray)
+                    foreach (var document in documentsArray)
                     {
-                        if (doc is string docPath)
+                        if (document is string documentPath)
                         {
-                            documentPaths.Add(docPath);
+                            documentPaths.Add(documentPath);
                         }
                     }
                 }
             }
 
-            // Parse each referenced document TOML file
-            var manifests = new List<ExtensionManifest>();
-            foreach (var docRelativePath in documentPaths)
+            // Load each referenced document TOML file
+            var contributions = new List<DocumentContribution>();
+            foreach (var relativePath in documentPaths)
             {
-                var docFullPath = Path.Combine(extensionDir, docRelativePath);
-                var docResult = LoadDocument(docFullPath, extName, extFeatureFlag, extensionDir, hostName);
-                if (docResult.IsSuccess)
+                var fullPath = Path.Combine(extensionDirectory, relativePath);
+                var loadResult = LoadDocument(fullPath, extensionInfo, hostName);
+                if (loadResult.IsSuccess)
                 {
-                    manifests.Add(docResult.Value);
+                    contributions.Add(loadResult.Value);
                 }
             }
 
-            return Result<IReadOnlyList<ExtensionManifest>>.Ok(manifests.AsReadOnly());
+            return Result<IReadOnlyList<DocumentContribution>>.Ok(contributions.AsReadOnly());
         }
         catch (Exception ex)
         {
-            return Result<IReadOnlyList<ExtensionManifest>>.Fail(
-                $"Failed to load extension: {extensionTomlPath}").WithException(ex);
+            return Result.Fail($"Failed to load extension: {extensionTomlPath}").WithException(ex);
         }
     }
 
     /// <summary>
-    /// Parses a single document TOML file into an ExtensionManifest.
+    /// Parses a single document TOML file into a DocumentContribution.
     /// </summary>
-    private static Result<ExtensionManifest> LoadDocument(
+    private static Result<DocumentContribution> LoadDocument(
         string documentTomlPath,
-        string extensionName,
-        string? extensionFeatureFlag,
-        string extensionDir,
+        ExtensionInfo extensionInfo,
         string hostName)
     {
         try
         {
             if (!File.Exists(documentTomlPath))
             {
-                return Result<ExtensionManifest>.Fail(
-                    $"Document manifest not found: {documentTomlPath}");
+                return Result.Fail($"Document manifest not found: {documentTomlPath}");
             }
 
             var toml = File.ReadAllText(documentTomlPath);
@@ -110,88 +118,86 @@ public static class ManifestLoader
             if (parsed.HasErrors)
             {
                 var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result<ExtensionManifest>.Fail(
-                    $"TOML parse error in {documentTomlPath}: {errors}");
+                return Result.Fail($"TOML parse error in {documentTomlPath}: {errors}");
             }
 
             var root = (TomlTable)parsed.ToModel();
 
-            // Parse [document] section
-            if (!root.TryGetValue("document", out var docObj) || docObj is not TomlTable docTable)
+            // [document]
+            if (!root.TryGetValue("document", out var documentObject) ||
+                documentObject is not TomlTable documentTable)
             {
-                return Result<ExtensionManifest>.Fail(
-                    $"Missing [document] section: {documentTomlPath}");
+                return Result.Fail($"Missing [document] section: {documentTomlPath}");
             }
 
-            var docId = GetString(docTable, "id");
-            var docType = ParseEditorType(GetString(docTable, "type"));
-            var entryPoint = GetStringOrNull(docTable, "entry_point");
-            var priority = GetInt(docTable, "priority");
-            var capabilities = GetStringArray(docTable, "capabilities");
-
-            if (string.IsNullOrEmpty(docId))
+            var documentId = GetString(documentTable, "id");
+            if (string.IsNullOrEmpty(documentId))
             {
-                return Result<ExtensionManifest>.Fail(
-                    $"Document missing required 'id' field: {documentTomlPath}");
+                return Result.Fail($"Document missing required 'id' field: {documentTomlPath}");
             }
 
-            // Parse [[document_file_types]]
+            var documentType = ParseEditorType(GetString(documentTable, "type"));
+            var entryPoint = GetStringOrNull(documentTable, "entry_point");
+            var priority = ParseEditorPriority(GetStringOrNull(documentTable, "priority"));
+
+            // [[document_file_types]]
             var fileTypes = new List<DocumentFileType>();
-            if (root.TryGetValue("document_file_types", out var ftObj) && ftObj is TomlTableArray ftArray)
+            if (root.TryGetValue("document_file_types", out var fileTypesObject) &&
+                fileTypesObject is TomlTableArray fileTypesArray)
             {
-                foreach (var ft in ftArray)
+                foreach (var fileTypeTable in fileTypesArray)
                 {
                     fileTypes.Add(new DocumentFileType
                     {
-                        Extension = GetString(ft, "extension"),
-                        DisplayName = GetString(ft, "display_name")
+                        Extension = GetString(fileTypeTable, "extension"),
+                        DisplayName = GetString(fileTypeTable, "display_name")
                     });
                 }
             }
 
             if (fileTypes.Count == 0)
             {
-                return Result<ExtensionManifest>.Fail(
-                    $"Document must declare at least one file type: {documentTomlPath}");
+                return Result.Fail($"Document must declare at least one file type: {documentTomlPath}");
             }
 
-            // Parse [[document_templates]]
+            // [[document_templates]]
             var templates = new List<DocumentTemplate>();
-            if (root.TryGetValue("document_templates", out var tmplObj) && tmplObj is TomlTableArray tmplArray)
+            if (root.TryGetValue("document_templates", out var templatesObject) &&
+                templatesObject is TomlTableArray templatesArray)
             {
-                foreach (var tmpl in tmplArray)
+                foreach (var templateTable in templatesArray)
                 {
                     templates.Add(new DocumentTemplate
                     {
-                        Id = GetString(tmpl, "id"),
-                        DisplayName = GetString(tmpl, "display_name"),
-                        File = GetString(tmpl, "file"),
-                        Default = GetBool(tmpl, "default")
+                        Id = GetString(templateTable, "id"),
+                        DisplayName = GetString(templateTable, "display_name"),
+                        File = GetString(templateTable, "file"),
+                        Default = GetBool(templateTable, "default")
                     });
                 }
             }
 
-            // Parse [code_editor]
+            // [code_editor]
             CodeEditorConfig? codeEditor = null;
-            if (root.TryGetValue("code_editor", out var ceObj) && ceObj is TomlTable ceTable)
+            if (root.TryGetValue("code_editor", out var codeEditorObject) &&
+                codeEditorObject is TomlTable codeEditorTable)
             {
                 codeEditor = new CodeEditorConfig
                 {
-                    WordWrap = GetBoolOrNull(ceTable, "word_wrap"),
-                    ScrollBeyondLastLine = GetBoolOrNull(ceTable, "scroll_beyond_last_line"),
-                    MinimapEnabled = GetBoolOrNull(ceTable, "minimap_enabled"),
-                    Customizations = GetStringOrNull(ceTable, "customizations")
+                    WordWrap = GetBoolOrNull(codeEditorTable, "word_wrap"),
+                    ScrollBeyondLastLine = GetBoolOrNull(codeEditorTable, "scroll_beyond_last_line"),
+                    MinimapEnabled = GetBoolOrNull(codeEditorTable, "minimap_enabled"),
+                    Customizations = GetStringOrNull(codeEditorTable, "customizations")
                 };
             }
 
-            // Parse [code_preview]
+            // [code_preview]
             CodePreviewConfig? codePreview = null;
-            if (root.TryGetValue("code_preview", out var cpObj) && cpObj is TomlTable cpTable)
+            if (root.TryGetValue("code_preview", out var codePreviewObject) &&
+                codePreviewObject is TomlTable codePreviewTable)
             {
-                var assetFolder = GetString(cpTable, "asset_folder");
-                var pageUrl = GetString(cpTable, "page_url");
-
-                // Auto-generate preview host name from extension host name
+                var assetFolder = GetString(codePreviewTable, "asset_folder");
+                var pageUrl = GetString(codePreviewTable, "page_url");
                 var previewHostName = hostName.Replace(".celbridge", "-preview.celbridge");
 
                 codePreview = new CodePreviewConfig
@@ -202,29 +208,22 @@ public static class ManifestLoader
                 };
             }
 
-            var manifest = new ExtensionManifest
+            return new DocumentContribution
             {
-                Id = docId,
-                Name = extensionName,
-                Type = docType,
+                Extension = extensionInfo,
+                Id = documentId,
+                Type = documentType,
                 FileTypes = fileTypes.AsReadOnly(),
                 EntryPoint = entryPoint,
                 Priority = priority,
-                FeatureFlag = extensionFeatureFlag,
-                Capabilities = capabilities,
                 Templates = templates.AsReadOnly(),
                 CodePreview = codePreview,
-                CodeEditor = codeEditor,
-                ExtensionDirectory = extensionDir,
-                HostName = hostName
+                CodeEditor = codeEditor
             };
-
-            return Result<ExtensionManifest>.Ok(manifest);
         }
         catch (Exception ex)
         {
-            return Result<ExtensionManifest>.Fail(
-                $"Failed to load document manifest: {documentTomlPath}").WithException(ex);
+            return Result.Fail($"Failed to load document manifest: {documentTomlPath}").WithException(ex);
         }
     }
 
@@ -237,12 +236,27 @@ public static class ManifestLoader
         };
     }
 
+    private static EditorPriority ParseEditorPriority(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return EditorPriority.Default;
+        }
+
+        return value.ToLowerInvariant() switch
+        {
+            "option" => EditorPriority.Option,
+            _ => EditorPriority.Default
+        };
+    }
+
     private static string GetString(TomlTable table, string key)
     {
         if (table.TryGetValue(key, out var value) && value is string str)
         {
             return str;
         }
+
         return string.Empty;
     }
 
@@ -252,21 +266,8 @@ public static class ManifestLoader
         {
             return str;
         }
-        return null;
-    }
 
-    private static int GetInt(TomlTable table, string key)
-    {
-        if (table.TryGetValue(key, out var value))
-        {
-            return value switch
-            {
-                long l => (int)l,
-                int i => i,
-                _ => 0
-            };
-        }
-        return 0;
+        return null;
     }
 
     private static bool GetBool(TomlTable table, string key)
@@ -275,6 +276,7 @@ public static class ManifestLoader
         {
             return b;
         }
+
         return false;
     }
 
@@ -284,6 +286,7 @@ public static class ManifestLoader
         {
             return b;
         }
+
         return null;
     }
 
@@ -296,6 +299,7 @@ public static class ManifestLoader
                 .ToList()
                 .AsReadOnly();
         }
+
         return [];
     }
 }

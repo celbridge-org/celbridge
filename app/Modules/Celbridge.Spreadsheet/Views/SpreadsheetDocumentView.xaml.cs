@@ -8,7 +8,6 @@ using Celbridge.Spreadsheet.ViewModels;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Microsoft.Web.WebView2.Core;
-using StreamJsonRpc;
 
 namespace Celbridge.Spreadsheet.Views;
 

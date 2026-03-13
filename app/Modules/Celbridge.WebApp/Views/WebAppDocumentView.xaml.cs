@@ -6,7 +6,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.WebView;
-using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebApp.Views;

@@ -1,10 +1,9 @@
 using System.Text;
-using Celbridge.Documents.ViewModels;
 using Celbridge.Extensions;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 
-namespace Celbridge.Documents.Extensions;
+namespace Celbridge.Documents.ViewModels;
 
 /// <summary>
 /// View model for extension document editors.
@@ -16,10 +15,10 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
     private readonly IResourceRegistry _resourceRegistry;
 
     /// <summary>
-    /// The manifest for the extension this view model serves.
+    /// The document contribution for the extension this view model serves.
     /// Set by the view after construction.
     /// </summary>
-    public ExtensionManifest? Manifest { get; set; }
+    public DocumentContribution? Contribution { get; set; }
 
     public ExtensionDocumentViewModel(
         IMessengerService messengerService,
@@ -214,12 +213,12 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
     /// </summary>
     private string GetDefaultTemplateContent()
     {
-        if (Manifest is null)
+        if (Contribution is null)
         {
             return string.Empty;
         }
 
-        var defaultTemplate = Manifest.Templates
+        var defaultTemplate = Contribution.Templates
             .FirstOrDefault(t => t.Default);
 
         if (defaultTemplate is null)
@@ -227,7 +226,7 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        var templatePath = Path.Combine(Manifest.ExtensionDirectory, defaultTemplate.File);
+        var templatePath = Path.Combine(Contribution.Extension.ExtensionDirectory, defaultTemplate.File);
         if (!File.Exists(templatePath))
         {
             return string.Empty;

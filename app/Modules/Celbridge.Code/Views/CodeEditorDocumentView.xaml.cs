@@ -28,7 +28,7 @@ public enum SplitEditorViewMode
 
 /// <summary>
 /// Unified document view for editing code/text files using a Monaco code editor.
-/// Optionally supports a preview panel (configured via IPreviewRenderer) with split/preview/source view modes.
+/// Optionally supports a preview panel (configured via ICodePreviewRenderer) with split/preview/source view modes.
 /// Accepts custom toolbar content via the CustomToolbar property (e.g., Markdown snippet buttons).
 /// </summary>
 public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePreview
@@ -49,7 +49,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
     private bool _isPreviewInitialized;
     private bool _isPreviewUpdateInProgress;
     private string _lastPreviewContent = string.Empty;
-    private IPreviewRenderer? _previewRenderer;
+    private ICodePreviewRenderer? _previewRenderer;
     private string _projectFolderPath = string.Empty;
     private string _documentPath = string.Empty;
 
@@ -220,7 +220,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
     /// Call this before LoadContent() to enable the split editor with preview.
     /// The project folder path and document path are filled in automatically by SetFileResource().
     /// </summary>
-    public void ConfigurePreview(IPreviewRenderer previewRenderer)
+    public void ConfigurePreview(ICodePreviewRenderer previewRenderer)
     {
         _previewRenderer = previewRenderer;
 

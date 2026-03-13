@@ -54,7 +54,7 @@ public class ExtensionRegistryTests
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
 
         manifests.Should().HaveCount(1);
-        manifests[0].Name.Should().Be("My Editor");
+        manifests[0].Extension.Name.Should().Be("My Editor");
         manifests[0].Type.Should().Be(DocumentEditorType.Custom);
     }
 
@@ -67,7 +67,7 @@ public class ExtensionRegistryTests
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
 
         manifests.Should().HaveCount(2);
-        var names = manifests.Select(m => m.Name).ToList();
+        var names = manifests.Select(m => m.Extension.Name).ToList();
         names.Should().Contain("Editor A");
         names.Should().Contain("Editor B");
     }
@@ -85,7 +85,7 @@ public class ExtensionRegistryTests
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
 
         manifests.Should().HaveCount(1);
-        manifests[0].Name.Should().Be("Good");
+        manifests[0].Extension.Name.Should().Be("Good");
     }
 
     [Test]
@@ -100,7 +100,7 @@ public class ExtensionRegistryTests
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
 
         manifests.Should().HaveCount(1);
-        manifests[0].Name.Should().Be("Found");
+        manifests[0].Extension.Name.Should().Be("Found");
     }
 
     [Test]
@@ -113,7 +113,7 @@ public class ExtensionRegistryTests
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
 
         manifests.Should().HaveCount(1);
-        manifests[0].Name.Should().Be("Bundled");
+        manifests[0].Extension.Name.Should().Be("Bundled");
     }
 
     [Test]
@@ -127,7 +127,7 @@ public class ExtensionRegistryTests
         var manifests = _service.DiscoverExtensions(_tempProjectFolder);
 
         manifests.Should().HaveCount(2);
-        var names = manifests.Select(m => m.Name).ToList();
+        var names = manifests.Select(m => m.Extension.Name).ToList();
         names.Should().Contain("Project");
         names.Should().Contain("Bundled");
     }

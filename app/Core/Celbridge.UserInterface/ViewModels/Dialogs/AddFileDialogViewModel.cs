@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using Celbridge.Explorer;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Validators;
 using Celbridge.Workspace;

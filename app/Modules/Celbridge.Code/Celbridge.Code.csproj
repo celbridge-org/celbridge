@@ -46,7 +46,6 @@
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
-    <ProjectReference Include="..\..\Workspace\Celbridge.Extensions\Celbridge.Extensions.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,6 @@
 using Celbridge.Extensions;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources;
 
 namespace Celbridge.Tests.Extensions;
 

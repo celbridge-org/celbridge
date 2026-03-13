@@ -5,7 +5,7 @@ using Celbridge.Projects;
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// Provides file type information and template content from discovered extension manifests.
+/// Provides file type information and template content from discovered document contributions.
 /// Bridges the ExtensionDiscoveryService to consumers in
 /// other projects via the IExtensionFileTypeProvider abstraction (Foundation).
 /// </summary>
@@ -27,25 +27,25 @@ public class FileTypeProvider : IExtensionFileTypeProvider
 
     public IReadOnlyList<ExtensionFileTypeInfo> GetExtensionFileTypes()
     {
-        var manifests = DiscoverExtensionManifests();
+        var contributions = DiscoverDocumentContributions();
         var fileTypes = new List<ExtensionFileTypeInfo>();
 
-        foreach (var manifest in manifests)
+        foreach (var contribution in contributions)
         {
-            // Only include extensions that declare templates (these are "file types" users can create)
-            if (manifest.Templates.Count == 0)
+            // Only include contributions that declare templates (these are "file types" users can create)
+            if (contribution.Templates.Count == 0)
             {
                 continue;
             }
 
-            var locStrings = LoadLocalizationStrings(manifest);
-            foreach (var fileType in manifest.FileTypes)
+            var locStrings = LoadLocalizationStrings(contribution);
+            foreach (var fileType in contribution.FileTypes)
             {
-                var displayName = ResolveFileTypeDisplayName(fileType, locStrings, manifest.Name);
+                var displayName = ResolveFileTypeDisplayName(fileType, locStrings, contribution.Extension.Name);
                 var info = new ExtensionFileTypeInfo(
                     displayName,
                     fileType.Extension,
-                    manifest.FeatureFlag);
+                    contribution.Extension.FeatureFlag);
                 fileTypes.Add(info);
             }
         }
@@ -56,11 +56,11 @@ public class FileTypeProvider : IExtensionFileTypeProvider
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
-        var manifests = DiscoverExtensionManifests();
+        var contributions = DiscoverDocumentContributions();
 
-        foreach (var manifest in manifests)
+        foreach (var contribution in contributions)
         {
-            var handlesExtension = manifest.FileTypes
+            var handlesExtension = contribution.FileTypes
                 .Any(ft => ft.Extension.Equals(normalizedExtension, StringComparison.OrdinalIgnoreCase));
 
             if (!handlesExtension)
@@ -68,7 +68,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
                 continue;
             }
 
-            var defaultTemplate = manifest.Templates
+            var defaultTemplate = contribution.Templates
                 .FirstOrDefault(t => t.Default);
 
             if (defaultTemplate is null)
@@ -76,7 +76,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
                 continue;
             }
 
-            var templatePath = Path.Combine(manifest.ExtensionDirectory, defaultTemplate.File);
+            var templatePath = Path.Combine(contribution.Extension.ExtensionDirectory, defaultTemplate.File);
             if (!File.Exists(templatePath))
             {
                 _logger.LogWarning($"Template file not found: {templatePath}");
@@ -102,16 +102,16 @@ public class FileTypeProvider : IExtensionFileTypeProvider
     /// Loads localization strings from the extension's localization directory.
     /// Uses convention: {extensionDirectory}/localization/{locale}.json
     /// </summary>
-    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(ExtensionManifest manifest)
+    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(DocumentContribution contribution)
     {
-        return LocalizationHelper.LoadStrings(manifest.ExtensionDirectory);
+        return LocalizationHelper.LoadStrings(contribution.Extension.ExtensionDirectory);
     }
 
     /// <summary>
     /// Resolves the display name for a single file type entry.
     /// If the file type declares a displayName, it is looked up in the localization dictionary.
     /// If not found in localization, the raw displayName value is used as a literal string.
-    /// If displayName is empty, falls back to the manifest name.
+    /// If displayName is empty, falls back to the extension name.
     /// </summary>
     private static string ResolveFileTypeDisplayName(
         DocumentFileType fileType,
@@ -129,7 +129,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
         return fallbackName;
     }
 
-    private IReadOnlyList<ExtensionManifest> DiscoverExtensionManifests()
+    private IReadOnlyList<DocumentContribution> DiscoverDocumentContributions()
     {
         var projectFolderPath = _projectService.CurrentProject?.ProjectFolderPath ?? string.Empty;
         return _extensionRegistry.DiscoverExtensions(projectFolderPath);

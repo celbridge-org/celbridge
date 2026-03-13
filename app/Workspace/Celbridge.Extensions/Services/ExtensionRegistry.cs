@@ -3,7 +3,7 @@ using Celbridge.Logging;
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// Service that discovers extension manifests from a project's extensions directory
+/// Service that discovers document contributions from a project's extensions directory
 /// and from registered bundled extension paths.
 /// Parses extension.toml manifests and their referenced document contribution files.
 /// </summary>
@@ -38,29 +38,29 @@ public class ExtensionRegistry
     public IReadOnlyList<string> BundledExtensionPaths => _bundledExtensionPaths.AsReadOnly();
 
     /// <summary>
-    /// Discovers all extension manifests from both the project's extensions directory
+    /// Discovers all document contributions from both the project's extensions directory
     /// and registered bundled extension paths.
-    /// Returns an empty list if no valid manifests are found.
+    /// Returns an empty list if no valid contributions are found.
     /// </summary>
-    public IReadOnlyList<ExtensionManifest> DiscoverExtensions(string projectFolderPath)
+    public IReadOnlyList<DocumentContribution> DiscoverExtensions(string projectFolderPath)
     {
-        var manifests = new List<ExtensionManifest>();
+        var contributions = new List<DocumentContribution>();
 
         // Scan the project's extensions directory
-        var projectManifests = DiscoverProjectExtensions(projectFolderPath);
-        manifests.AddRange(projectManifests);
+        var projectContributions = DiscoverProjectExtensions(projectFolderPath);
+        contributions.AddRange(projectContributions);
 
         // Scan registered bundled extension paths
-        var bundledManifests = DiscoverBundledExtensions();
-        manifests.AddRange(bundledManifests);
+        var bundledContributions = DiscoverBundledExtensions();
+        contributions.AddRange(bundledContributions);
 
-        return manifests.AsReadOnly();
+        return contributions.AsReadOnly();
     }
 
     /// <summary>
-    /// Discovers extension manifests from the project's extensions directory.
+    /// Discovers document contributions from the project's extensions directory.
     /// </summary>
-    private List<ExtensionManifest> DiscoverProjectExtensions(string projectFolderPath)
+    private List<DocumentContribution> DiscoverProjectExtensions(string projectFolderPath)
     {
         var extensionsFolder = Path.Combine(projectFolderPath, ExtensionsFolderName);
 
@@ -69,40 +69,40 @@ public class ExtensionRegistry
             return [];
         }
 
-        var manifests = new List<ExtensionManifest>();
+        var contributions = new List<DocumentContribution>();
 
         // Scan each subdirectory for an extension.toml manifest
         var extensionDirs = Directory.GetDirectories(extensionsFolder);
         foreach (var extensionDir in extensionDirs)
         {
             var loaded = TryLoadExtension(extensionDir);
-            manifests.AddRange(loaded);
+            contributions.AddRange(loaded);
         }
 
-        return manifests;
+        return contributions;
     }
 
     /// <summary>
-    /// Discovers extension manifests from registered bundled extension paths.
+    /// Discovers document contributions from registered bundled extension paths.
     /// </summary>
-    private List<ExtensionManifest> DiscoverBundledExtensions()
+    private List<DocumentContribution> DiscoverBundledExtensions()
     {
-        var manifests = new List<ExtensionManifest>();
+        var contributions = new List<DocumentContribution>();
 
         foreach (var extensionDir in _bundledExtensionPaths)
         {
             var loaded = TryLoadExtension(extensionDir);
-            manifests.AddRange(loaded);
+            contributions.AddRange(loaded);
         }
 
-        return manifests;
+        return contributions;
     }
 
     /// <summary>
-    /// Attempts to load all document manifests from an extension directory.
+    /// Attempts to load all document contributions from an extension directory.
     /// Returns an empty list on failure.
     /// </summary>
-    private List<ExtensionManifest> TryLoadExtension(string extensionDir)
+    private List<DocumentContribution> TryLoadExtension(string extensionDir)
     {
         var manifestPath = Path.Combine(extensionDir, ManifestFileName);
 
@@ -119,12 +119,12 @@ public class ExtensionRegistry
             return [];
         }
 
-        var manifests = loadResult.Value;
-        foreach (var manifest in manifests)
+        var contributions = loadResult.Value;
+        foreach (var contribution in contributions)
         {
-            _logger.LogDebug($"Discovered extension document: {manifest.Id} ({manifest.Type}) for {string.Join(", ", manifest.FileTypes.Select(ft => ft.Extension))}");
+            _logger.LogDebug($"Discovered extension document: {contribution.Id} ({contribution.Type}) for {string.Join(", ", contribution.FileTypes.Select(ft => ft.Extension))}");
         }
 
-        return manifests.ToList();
+        return contributions.ToList();
     }
 }

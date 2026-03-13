@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Documents.Views;
 using Celbridge.Extensions;
 using Celbridge.Host;
 using Celbridge.Logging;
@@ -10,15 +9,14 @@ using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
-using StreamJsonRpc;
 
-namespace Celbridge.Documents.Extensions;
+namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document view for custom (WebView2-based) extension editors.
-/// Configured from an ExtensionManifest, handles the IHostDocument protocol,
+/// Configured from a DocumentContribution, handles the IHostDocument protocol,
 /// and inherits SetFileResource, theme syncing, CreateMetadata, and save tracking from the base.
-/// Optionally implements IHostDialog and IHostInput based on manifest capabilities.
+/// Optionally implements IHostDialog and IHostInput based on extension capabilities.
 /// </summary>
 public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDocument, IHostDialog
 {
@@ -38,10 +36,10 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     /// <summary>
-    /// The extension manifest that configures this view.
+    /// The document contribution that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public ExtensionManifest? Manifest { get; set; }
+    public DocumentContribution? Contribution { get; set; }
 
     public ExtensionDocumentView(
         IServiceProvider serviceProvider,
@@ -130,14 +128,14 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
     private async Task InitExtensionViewAsync()
     {
-        if (Manifest is null)
+        if (Contribution is null)
         {
-            _logger.LogError("Cannot initialize extension view: Manifest is not set");
+            _logger.LogError("Cannot initialize extension view: Contribution is not set");
             return;
         }
 
-        // Pass the manifest to the ViewModel for template content loading
-        _viewModel.Manifest = Manifest;
+        // Pass the contribution to the ViewModel for template content loading
+        _viewModel.Contribution = Contribution;
 
         try
         {
@@ -145,8 +143,8 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
             // Map the extension's asset directory to a virtual host
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                Manifest.HostName,
-                Manifest.ExtensionDirectory,
+                Contribution.Extension.HostName,
+                Contribution.Extension.ExtensionDirectory,
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // Map the project folder for resource key path resolution
@@ -162,7 +160,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             ApplyThemeToWebView();
 
             // Block all navigations except the extension's own host name
-            var allowedHostPrefix = $"https://{Manifest.HostName}/";
+            var allowedHostPrefix = $"https://{Contribution.Extension.HostName}/";
             WebView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
@@ -195,8 +193,8 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
             Host.AddLocalRpcTarget<IHostDocument>(this);
 
-            // Register optional capabilities based on manifest
-            var capabilities = Manifest.Capabilities;
+            // Register optional capabilities based on extension
+            var capabilities = Contribution.Extension.Capabilities;
             if (capabilities.Contains("dialog"))
             {
                 Host.AddLocalRpcTarget<IHostDialog>(this);
@@ -205,29 +203,29 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             StartHostListener();
 
             // Navigate to the extension's entry point
-            var entryPoint = Manifest.EntryPoint ?? "index.html";
-            var entryUrl = $"https://{Manifest.HostName}/{entryPoint}";
+            var entryPoint = Contribution.EntryPoint ?? "index.html";
+            var entryUrl = $"https://{Contribution.Extension.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to initialize extension view: {Manifest.Name}");
+            _logger.LogError(ex, $"Failed to initialize extension view: {Contribution.Extension.Name}");
         }
     }
 
     #region IHostDocument
 
-        public async Task<InitializeResult> InitializeAsync(string protocolVersion)
-        {
-            DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
+    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
+    {
+        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
 
-            var content = await _viewModel.LoadTextContentAsync();
-            var metadata = CreateDocumentMetadata();
+        var content = await _viewModel.LoadTextContentAsync();
+        var metadata = CreateDocumentMetadata();
 
-            return new InitializeResult(content, metadata);
-        }
+        return new InitializeResult(content, metadata);
+    }
 
-        public async Task<LoadResult> LoadAsync()
+    public async Task<LoadResult> LoadAsync()
     {
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = CreateDocumentMetadata();
@@ -342,8 +340,8 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             return;
         }
 
-        // Only handle link clicks when the manifest declares the "input" capability
-        if (Manifest is null || !Manifest.Capabilities.Contains("input"))
+        // Only handle link clicks when the extension declares the "input" capability
+        if (Contribution is null || !Contribution.Extension.Capabilities.Contains("input"))
         {
             return;
         }
