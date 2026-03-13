@@ -16,7 +16,7 @@ namespace Celbridge.Documents.Views;
 /// Document view for custom (WebView2-based) extension editors.
 /// Configured from a DocumentContribution, handles the IHostDocument protocol,
 /// and inherits SetFileResource, theme syncing, CreateMetadata, and save tracking from the base.
-/// Optionally implements IHostDialog and IHostInput based on extension capabilities.
+/// Implements IHostDialog and IHostInput for extension interop.
 /// </summary>
 public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDocument, IHostDialog
 {
@@ -192,13 +192,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             }
 
             Host.AddLocalRpcTarget<IHostDocument>(this);
-
-            // Register optional capabilities based on extension
-            var capabilities = Contribution.Extension.Capabilities;
-            if (capabilities.Contains("dialog"))
-            {
-                Host.AddLocalRpcTarget<IHostDialog>(this);
-            }
+            Host.AddLocalRpcTarget<IHostDialog>(this);
 
             StartHostListener();
 
@@ -340,8 +334,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             return;
         }
 
-        // Only handle link clicks when the extension declares the "input" capability
-        if (Contribution is null || !Contribution.Extension.Capabilities.Contains("input"))
+        if (Contribution is null)
         {
             return;
         }

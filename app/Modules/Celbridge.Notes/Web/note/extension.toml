@@ -3,7 +3,6 @@ id = "celbridge.notes"
 name = "Extension_Notes_Name"
 version = "1.0.0"
 feature_flag = "note-editor"
-capabilities = ["dialog", "input"]
 
 [contributes]
 documents = ["note.document.toml"]

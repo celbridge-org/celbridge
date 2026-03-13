@@ -127,12 +127,6 @@ public partial record ExtensionInfo
     public string? FeatureFlag { get; init; }
 
     /// <summary>
-    /// Host capabilities this extension requires (e.g., "dialog", "input").
-    /// Shared security context for all contributions.
-    /// </summary>
-    public IReadOnlyList<string> Capabilities { get; init; } = [];
-
-    /// <summary>
     /// The directory containing the extension (set during loading, not from TOML).
     /// </summary>
     public string ExtensionDirectory { get; init; } = string.Empty;

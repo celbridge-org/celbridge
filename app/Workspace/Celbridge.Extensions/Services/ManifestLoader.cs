@@ -44,7 +44,6 @@ public static class ManifestLoader
 
             var extensionName = GetString(extensionTable, "name");
             var featureFlag = GetStringOrNull(extensionTable, "feature_flag");
-            var capabilities = GetStringArray(extensionTable, "capabilities");
 
             var safeName = extensionId.Replace('.', '-').ToLowerInvariant();
             var hostName = $"ext-{safeName}.celbridge";
@@ -54,7 +53,6 @@ public static class ManifestLoader
                 Id = extensionId,
                 Name = extensionName,
                 FeatureFlag = featureFlag,
-                Capabilities = capabilities,
                 ExtensionDirectory = extensionDirectory,
                 HostName = hostName
             };
@@ -288,18 +286,5 @@ public static class ManifestLoader
         }
 
         return null;
-    }
-
-    private static IReadOnlyList<string> GetStringArray(TomlTable table, string key)
-    {
-        if (table.TryGetValue(key, out var value) && value is TomlArray array)
-        {
-            return array
-                .OfType<string>()
-                .ToList()
-                .AsReadOnly();
-        }
-
-        return [];
     }
 }

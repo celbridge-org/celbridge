@@ -294,64 +294,6 @@ public class ManifestTests
         result.Value[0].Extension.FeatureFlag.Should().BeNull();
     }
 
-    [Test]
-    public void LoadExtension_WithCapabilities_ReturnsCapabilities()
-    {
-        WriteExtensionToml("""
-            [extension]
-            id = "test.capable"
-            name = "Capable"
-            version = "1.0.0"
-            capabilities = ["dialog", "input"]
-
-            [contributes]
-            documents = ["doc.document.toml"]
-            """);
-
-        WriteDocumentToml("doc.document.toml", """
-            [document]
-            id = "capable-doc"
-            type = "custom"
-
-            [[document_file_types]]
-            extension = ".cap"
-            """);
-
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value[0].Extension.Capabilities.Should().HaveCount(2);
-        result.Value[0].Extension.Capabilities.Should().Contain("dialog");
-        result.Value[0].Extension.Capabilities.Should().Contain("input");
-    }
-
-    [Test]
-    public void LoadExtension_WithoutCapabilities_ReturnsEmptyList()
-    {
-        WriteExtensionToml("""
-            [extension]
-            id = "test.nocaps"
-            name = "NoCaps"
-            version = "1.0.0"
-
-            [contributes]
-            documents = ["doc.document.toml"]
-            """);
-
-        WriteDocumentToml("doc.document.toml", """
-            [document]
-            id = "nocaps-doc"
-            type = "custom"
-
-            [[document_file_types]]
-            extension = ".nc"
-            """);
-
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value[0].Extension.Capabilities.Should().BeEmpty();
-    }
 
     [Test]
     public void LoadExtension_WithTemplates_ReturnsTemplates()
@@ -440,7 +382,6 @@ public class ManifestTests
             name = "Full Editor"
             version = "2.0.0"
             feature_flag = "full-ext"
-            capabilities = ["dialog", "input"]
 
             [contributes]
             documents = ["full.document.toml"]
@@ -475,7 +416,6 @@ public class ManifestTests
         contribution.EntryPoint.Should().Be("index.html");
         contribution.Priority.Should().Be(EditorPriority.Default);
         contribution.Extension.FeatureFlag.Should().Be("full-ext");
-        contribution.Extension.Capabilities.Should().HaveCount(2);
         contribution.Templates.Should().HaveCount(1);
     }
 
@@ -585,7 +525,6 @@ public class ManifestTests
             name = "Shared"
             version = "1.0.0"
             feature_flag = "shared-flag"
-            capabilities = ["dialog"]
 
             [contributes]
             documents = ["a.document.toml", "b.document.toml"]
@@ -619,8 +558,6 @@ public class ManifestTests
         result.Value[1].Extension.Name.Should().Be("Shared");
         result.Value[0].Extension.FeatureFlag.Should().Be("shared-flag");
         result.Value[1].Extension.FeatureFlag.Should().Be("shared-flag");
-        result.Value[0].Extension.Capabilities.Should().Contain("dialog");
-        result.Value[1].Extension.Capabilities.Should().Contain("dialog");
     }
 
     private void WriteExtensionToml(string content)
