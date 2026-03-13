@@ -27,7 +27,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
 
     public IReadOnlyList<ExtensionFileTypeInfo> GetExtensionFileTypes()
     {
-        var manifests = DiscoverManifests();
+        var manifests = DiscoverExtensionManifests();
         var fileTypes = new List<ExtensionFileTypeInfo>();
 
         foreach (var manifest in manifests)
@@ -56,7 +56,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
-        var manifests = DiscoverManifests();
+        var manifests = DiscoverExtensionManifests();
 
         foreach (var manifest in manifests)
         {
@@ -102,7 +102,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
     /// Loads localization strings from the extension's localization directory.
     /// Uses convention: {extensionDirectory}/localization/{locale}.json
     /// </summary>
-    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(Manifest manifest)
+    private static IReadOnlyDictionary<string, string> LoadLocalizationStrings(ExtensionManifest manifest)
     {
         return LocalizationHelper.LoadStrings(manifest.ExtensionDirectory);
     }
@@ -114,7 +114,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
     /// If displayName is empty, falls back to the manifest name.
     /// </summary>
     private static string ResolveFileTypeDisplayName(
-        FileType fileType,
+        DocumentFileType fileType,
         IReadOnlyDictionary<string, string> locStrings,
         string fallbackName)
     {
@@ -129,7 +129,7 @@ public class FileTypeProvider : IExtensionFileTypeProvider
         return fallbackName;
     }
 
-    private IReadOnlyList<Manifest> DiscoverManifests()
+    private IReadOnlyList<ExtensionManifest> DiscoverExtensionManifests()
     {
         var projectFolderPath = _projectService.CurrentProject?.ProjectFolderPath ?? string.Empty;
         return _extensionRegistry.DiscoverExtensions(projectFolderPath);

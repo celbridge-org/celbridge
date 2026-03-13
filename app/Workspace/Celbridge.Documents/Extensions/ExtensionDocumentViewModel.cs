@@ -19,7 +19,7 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
     /// The manifest for the extension this view model serves.
     /// Set by the view after construction.
     /// </summary>
-    public Manifest? Manifest { get; set; }
+    public ExtensionManifest? Manifest { get; set; }
 
     public ExtensionDocumentViewModel(
         IMessengerService messengerService,

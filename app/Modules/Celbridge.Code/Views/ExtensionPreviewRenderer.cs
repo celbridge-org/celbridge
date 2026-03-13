@@ -9,8 +9,8 @@ namespace Celbridge.Code.Views;
 /// </summary>
 public class ExtensionPreviewRenderer : IPreviewRenderer
 {
-    private readonly Manifest _manifest;
-    private readonly PreviewConfig _previewConfig;
+    private readonly ExtensionManifest _manifest;
+    private readonly CodePreviewConfig _previewConfig;
 
     public string PreviewHostName => _previewConfig.HostName;
 
@@ -18,11 +18,11 @@ public class ExtensionPreviewRenderer : IPreviewRenderer
 
     public string PreviewPageUrl => _previewConfig.PageUrl;
 
-    public ExtensionPreviewRenderer(Manifest manifest)
+    public ExtensionPreviewRenderer(ExtensionManifest manifest)
     {
         _manifest = manifest;
 
-        _previewConfig = manifest.Preview
+        _previewConfig = manifest.CodePreview
             ?? throw new ArgumentException("Extension manifest does not have preview configuration", nameof(manifest));
 
         // Resolve the asset folder relative to the extension directory

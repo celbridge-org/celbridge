@@ -10,7 +10,7 @@ namespace Celbridge.Documents.Extensions;
 public class CustomExtensionEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly Manifest _manifest;
+    private readonly ExtensionManifest _manifest;
     private readonly IWorkspaceFeatures? _workspaceFeatures;
 
     public override IReadOnlyList<string> SupportedExtensions =>
@@ -20,7 +20,7 @@ public class CustomExtensionEditorFactory : DocumentEditorFactoryBase
 
     public CustomExtensionEditorFactory(
         IServiceProvider serviceProvider,
-        Manifest manifest,
+        ExtensionManifest manifest,
         IWorkspaceFeatures? workspaceFeatures = null)
     {
         _serviceProvider = serviceProvider;

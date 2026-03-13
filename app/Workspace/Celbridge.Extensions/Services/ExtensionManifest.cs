@@ -1,9 +1,9 @@
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// The type of extension editor.
+/// The type of document editor provided by an extension.
 /// </summary>
-public enum EditorType
+public enum DocumentEditorType
 {
     /// <summary>
     /// Full WebView2 editor. Extension provides the entire UI.
@@ -22,7 +22,7 @@ public enum EditorType
 /// Preview configuration for a code extension.
 /// When present, enables the split editor with a preview panel.
 /// </summary>
-public record PreviewConfig
+public record CodePreviewConfig
 {
     /// <summary>
     /// The folder containing preview assets, relative to the extension directory.
@@ -41,10 +41,10 @@ public record PreviewConfig
 }
 
 /// <summary>
-/// Monaco editor configuration for code extensions.
+/// Code editor configuration for code extensions.
 /// Combines editor options and customization script path.
 /// </summary>
-public record MonacoConfig
+public record CodeEditorConfig
 {
     public bool? ScrollBeyondLastLine { get; init; }
     public bool? WordWrap { get; init; }
@@ -58,11 +58,11 @@ public record MonacoConfig
 }
 
 /// <summary>
-/// A file type declared by an extension.
+/// A document file type declared by an extension.
 /// Declares the file extension the editor handles and an optional display name or localization key
 /// shown in the Add File dialog.
 /// </summary>
-public record FileType
+public record DocumentFileType
 {
     /// <summary>
     /// The file extension this editor handles (e.g., ".note").
@@ -77,10 +77,10 @@ public record FileType
 }
 
 /// <summary>
-/// A file template declared by an extension.
+/// A document template declared by an extension.
 /// Templates provide starter content for new files of the extension's type.
 /// </summary>
-public partial record Template
+public partial record DocumentTemplate
 {
     /// <summary>
     /// Unique identifier for this template within the extension.
@@ -107,7 +107,7 @@ public partial record Template
 /// Represents a document editor contribution parsed from a TOML document manifest.
 /// Each extension can contribute one or more document editors via its extension.toml.
 /// </summary>
-public partial record Manifest
+public partial record ExtensionManifest
 {
     /// <summary>
     /// Unique identifier for this document contribution (e.g., "note-document").
@@ -122,13 +122,13 @@ public partial record Manifest
     /// <summary>
     /// The type of editor: "custom" (full WebView2) or "code" (Monaco-based).
     /// </summary>
-    public EditorType Type { get; init; }
+    public DocumentEditorType Type { get; init; }
 
     /// <summary>
-    /// The file types this editor handles. Each entry declares the file extension and
+    /// The document file types this editor handles. Each entry declares the file extension and
     /// an optional display name or localization key for the Add File dialog.
     /// </summary>
-    public IReadOnlyList<FileType> FileTypes { get; init; } = [];
+    public IReadOnlyList<DocumentFileType> FileTypes { get; init; } = [];
 
     /// <summary>
     /// Entry point for custom editors (e.g., "index.html").
@@ -155,19 +155,19 @@ public partial record Manifest
     public IReadOnlyList<string> Capabilities { get; init; } = [];
 
     /// <summary>
-    /// Optional list of file templates provided by this extension.
+    /// Optional list of document templates provided by this extension.
     /// </summary>
-    public IReadOnlyList<Template> Templates { get; init; } = [];
+    public IReadOnlyList<DocumentTemplate> Templates { get; init; } = [];
 
     /// <summary>
     /// Preview configuration for code editors. When present, enables the split editor.
     /// </summary>
-    public PreviewConfig? Preview { get; init; }
+    public CodePreviewConfig? CodePreview { get; init; }
 
     /// <summary>
-    /// Monaco editor configuration for code extensions.
+    /// Code editor configuration for code extensions.
     /// </summary>
-    public MonacoConfig? Monaco { get; init; }
+    public CodeEditorConfig? CodeEditor { get; init; }
 
     /// <summary>
     /// The directory containing the extension (set during loading, not from TOML).

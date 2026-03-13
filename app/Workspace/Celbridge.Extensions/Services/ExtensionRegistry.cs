@@ -42,9 +42,9 @@ public class ExtensionRegistry
     /// and registered bundled extension paths.
     /// Returns an empty list if no valid manifests are found.
     /// </summary>
-    public IReadOnlyList<Manifest> DiscoverExtensions(string projectFolderPath)
+    public IReadOnlyList<ExtensionManifest> DiscoverExtensions(string projectFolderPath)
     {
-        var manifests = new List<Manifest>();
+        var manifests = new List<ExtensionManifest>();
 
         // Scan the project's extensions directory
         var projectManifests = DiscoverProjectExtensions(projectFolderPath);
@@ -60,7 +60,7 @@ public class ExtensionRegistry
     /// <summary>
     /// Discovers extension manifests from the project's extensions directory.
     /// </summary>
-    private List<Manifest> DiscoverProjectExtensions(string projectFolderPath)
+    private List<ExtensionManifest> DiscoverProjectExtensions(string projectFolderPath)
     {
         var extensionsFolder = Path.Combine(projectFolderPath, ExtensionsFolderName);
 
@@ -69,7 +69,7 @@ public class ExtensionRegistry
             return [];
         }
 
-        var manifests = new List<Manifest>();
+        var manifests = new List<ExtensionManifest>();
 
         // Scan each subdirectory for an extension.toml manifest
         var extensionDirs = Directory.GetDirectories(extensionsFolder);
@@ -85,9 +85,9 @@ public class ExtensionRegistry
     /// <summary>
     /// Discovers extension manifests from registered bundled extension paths.
     /// </summary>
-    private List<Manifest> DiscoverBundledExtensions()
+    private List<ExtensionManifest> DiscoverBundledExtensions()
     {
-        var manifests = new List<Manifest>();
+        var manifests = new List<ExtensionManifest>();
 
         foreach (var extensionDir in _bundledExtensionPaths)
         {
@@ -102,7 +102,7 @@ public class ExtensionRegistry
     /// Attempts to load all document manifests from an extension directory.
     /// Returns an empty list on failure.
     /// </summary>
-    private List<Manifest> TryLoadExtension(string extensionDir)
+    private List<ExtensionManifest> TryLoadExtension(string extensionDir)
     {
         var manifestPath = Path.Combine(extensionDir, ManifestFileName);
 

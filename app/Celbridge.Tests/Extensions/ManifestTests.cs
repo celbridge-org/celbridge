@@ -42,7 +42,7 @@ public class ManifestTests
             type = "custom"
             entry_point = "index.html"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".myext"
             """);
 
@@ -54,7 +54,7 @@ public class ManifestTests
         var manifest = result.Value[0];
         manifest.Id.Should().Be("my-editor-doc");
         manifest.Name.Should().Be("My Editor");
-        manifest.Type.Should().Be(EditorType.Custom);
+        manifest.Type.Should().Be(DocumentEditorType.Custom);
         manifest.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".myext");
         manifest.EntryPoint.Should().Be("index.html");
         manifest.ExtensionDirectory.Should().Be(_tempFolder);
@@ -79,13 +79,13 @@ public class ManifestTests
             id = "cpv-doc"
             type = "code"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".cpv"
 
-            [monaco]
+            [code_editor]
             customizations = "customize.js"
 
-            [preview]
+            [code_preview]
             asset_folder = "preview"
             page_url = "index.html"
             """);
@@ -94,13 +94,13 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         var manifest = result.Value[0];
-        manifest.Type.Should().Be(EditorType.Code);
-        manifest.Preview.Should().NotBeNull();
-        manifest.Preview!.HostName.Should().Be("ext-test-code-preview-preview.celbridge");
-        manifest.Preview.AssetFolder.Should().Be("preview");
-        manifest.Preview.PageUrl.Should().Be("https://ext-test-code-preview-preview.celbridge/index.html");
-        manifest.Monaco.Should().NotBeNull();
-        manifest.Monaco!.Customizations.Should().Be("customize.js");
+        manifest.Type.Should().Be(DocumentEditorType.Code);
+        manifest.CodePreview.Should().NotBeNull();
+        manifest.CodePreview!.HostName.Should().Be("ext-test-code-preview-preview.celbridge");
+        manifest.CodePreview.AssetFolder.Should().Be("preview");
+        manifest.CodePreview.PageUrl.Should().Be("https://ext-test-code-preview-preview.celbridge/index.html");
+        manifest.CodeEditor.Should().NotBeNull();
+        manifest.CodeEditor!.Customizations.Should().Be("customize.js");
     }
 
     [Test]
@@ -154,7 +154,7 @@ public class ManifestTests
 
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
-        // Document with no file_types is skipped (invalid)
+        // Document with no document_file_types is skipped (invalid)
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeEmpty();
     }
@@ -198,7 +198,7 @@ public class ManifestTests
             id = "basic-doc"
             type = "code"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".bas"
             """);
 
@@ -227,7 +227,7 @@ public class ManifestTests
             type = "code"
             priority = 10
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".pri"
             """);
 
@@ -256,7 +256,7 @@ public class ManifestTests
             id = "flagged-doc"
             type = "custom"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".flag"
             """);
 
@@ -284,7 +284,7 @@ public class ManifestTests
             id = "noflag-doc"
             type = "custom"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".nf"
             """);
 
@@ -313,7 +313,7 @@ public class ManifestTests
             type = "custom"
             capabilities = ["dialog", "input"]
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".cap"
             """);
 
@@ -343,7 +343,7 @@ public class ManifestTests
             id = "nocaps-doc"
             type = "custom"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".nc"
             """);
 
@@ -371,16 +371,16 @@ public class ManifestTests
             id = "templated-doc"
             type = "custom"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".tmpl"
 
-            [[templates]]
+            [[document_templates]]
             id = "empty"
             display_name = "Empty File"
             file = "templates/empty.tmpl"
             default = true
 
-            [[templates]]
+            [[document_templates]]
             id = "example"
             display_name = "Example File"
             file = "templates/example.tmpl"
@@ -421,7 +421,7 @@ public class ManifestTests
             id = "notemplates-doc"
             type = "custom"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".nt"
             """);
 
@@ -453,11 +453,11 @@ public class ManifestTests
             priority = 5
             capabilities = ["dialog", "input"]
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".full"
             display_name = "Full_FileType"
 
-            [[templates]]
+            [[document_templates]]
             id = "empty"
             display_name = "Empty"
             file = "templates/empty.full"
@@ -470,7 +470,7 @@ public class ManifestTests
         var manifest = result.Value[0];
         manifest.Id.Should().Be("full-doc");
         manifest.Name.Should().Be("Full Editor");
-        manifest.Type.Should().Be(EditorType.Custom);
+        manifest.Type.Should().Be(DocumentEditorType.Custom);
         manifest.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".full");
         manifest.EntryPoint.Should().Be("index.html");
         manifest.Priority.Should().Be(5);
@@ -497,7 +497,7 @@ public class ManifestTests
             id = "doc-a"
             type = "custom"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".aaa"
             """);
 
@@ -506,7 +506,7 @@ public class ManifestTests
             id = "doc-b"
             type = "code"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".bbb"
             """);
 
@@ -519,12 +519,12 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadExtension_MonacoOptions_Parsed()
+    public void LoadExtension_CodeEditorOptions_Parsed()
     {
         WriteExtensionToml("""
             [extension]
-            id = "test.monaco"
-            name = "Monaco"
+            id = "test.code-editor"
+            name = "CodeEditor"
             version = "1.0.0"
 
             [contributes]
@@ -533,13 +533,13 @@ public class ManifestTests
 
         WriteDocumentToml("doc.document.toml", """
             [document]
-            id = "monaco-doc"
+            id = "code-editor-doc"
             type = "code"
 
-            [[file_types]]
+            [[document_file_types]]
             extension = ".mon"
 
-            [monaco]
+            [code_editor]
             word_wrap = true
             scroll_beyond_last_line = false
             minimap_enabled = true
@@ -549,12 +549,12 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var monaco = result.Value[0].Monaco;
-        monaco.Should().NotBeNull();
-        monaco!.WordWrap.Should().BeTrue();
-        monaco.ScrollBeyondLastLine.Should().BeFalse();
-        monaco.MinimapEnabled.Should().BeTrue();
-        monaco.Customizations.Should().Be("custom.js");
+        var codeEditor = result.Value[0].CodeEditor;
+        codeEditor.Should().NotBeNull();
+        codeEditor!.WordWrap.Should().BeTrue();
+        codeEditor.ScrollBeyondLastLine.Should().BeFalse();
+        codeEditor.MinimapEnabled.Should().BeTrue();
+        codeEditor.Customizations.Should().Be("custom.js");
     }
 
     [Test]

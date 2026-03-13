@@ -122,7 +122,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         foreach (var manifest in manifests)
         {
-            if (manifest.Type != EditorType.Custom)
+            if (manifest.Type != DocumentEditorType.Custom)
             {
                 // Code-type extensions are handled by ExtensionEditorFactory in Celbridge.Code
                 continue;

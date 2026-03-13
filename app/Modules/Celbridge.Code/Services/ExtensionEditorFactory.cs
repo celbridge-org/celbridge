@@ -14,7 +14,7 @@ namespace Celbridge.Code.Services;
 public class ExtensionEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly Manifest _manifest;
+    private readonly ExtensionManifest _manifest;
     private readonly IWorkspaceFeatures? _workspaceFeatures;
 
     public override IReadOnlyList<string> SupportedExtensions =>
@@ -24,7 +24,7 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
 
     public ExtensionEditorFactory(
         IServiceProvider serviceProvider,
-        Manifest manifest,
+        ExtensionManifest manifest,
         IWorkspaceFeatures? workspaceFeatures = null)
     {
         _serviceProvider = serviceProvider;
@@ -49,8 +49,8 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
 #if WINDOWS
         return _manifest.Type switch
         {
-            EditorType.Custom => CreateCustomView(),
-            EditorType.Code => CreateCodeView(),
+            DocumentEditorType.Custom => CreateCustomView(),
+            DocumentEditorType.Code => CreateCodeView(),
             _ => Result<IDocumentView>.Fail($"Unknown extension type: {_manifest.Type}")
         };
 #else
@@ -71,7 +71,7 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
         var view = _serviceProvider.GetRequiredService<CodeEditorDocumentView>();
 
         // Configure preview if the manifest declares it
-        if (_manifest.Preview is not null)
+        if (_manifest.CodePreview is not null)
         {
             var previewRenderer = new ExtensionPreviewRenderer(_manifest);
             view.ConfigurePreview(previewRenderer);
@@ -79,9 +79,9 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
         }
 
         // Configure customization script if the manifest declares it
-        if (!string.IsNullOrEmpty(_manifest.Monaco?.Customizations))
+        if (!string.IsNullOrEmpty(_manifest.CodeEditor?.Customizations))
         {
-            var scriptUrl = $"https://{_manifest.HostName}/{_manifest.Monaco.Customizations}";
+            var scriptUrl = $"https://{_manifest.HostName}/{_manifest.CodeEditor.Customizations}";
             view.CustomizationScriptUrl = scriptUrl;
         }
 

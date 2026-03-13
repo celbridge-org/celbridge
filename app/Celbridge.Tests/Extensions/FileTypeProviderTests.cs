@@ -249,7 +249,7 @@ public class FileTypeProviderTests
                 ? $"\ndisplay_name = \"{ft.DisplayName}\""
                 : "";
             return $"""
-                [[file_types]]
+                [[document_file_types]]
                 extension = "{ft.Extension}"{displayNameLine}
                 """;
         }));
@@ -258,7 +258,7 @@ public class FileTypeProviderTests
         if (templates is not null)
         {
             templatesToml = string.Join("\n", templates.Select(t => $"""
-                [[templates]]
+                [[document_templates]]
                 id = "{t.Id}"
                 display_name = "{t.DisplayName}"
                 file = "{t.File}"

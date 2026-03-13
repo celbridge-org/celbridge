@@ -16,7 +16,7 @@ namespace Celbridge.Documents.Extensions;
 
 /// <summary>
 /// Document view for custom (WebView2-based) extension editors.
-/// Configured from an Manifest, handles the IHostDocument protocol,
+/// Configured from an ExtensionManifest, handles the IHostDocument protocol,
 /// and inherits SetFileResource, theme syncing, CreateMetadata, and save tracking from the base.
 /// Optionally implements IHostDialog and IHostInput based on manifest capabilities.
 /// </summary>
@@ -41,7 +41,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
     /// The extension manifest that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public Manifest? Manifest { get; set; }
+    public ExtensionManifest? Manifest { get; set; }
 
     public ExtensionDocumentView(
         IServiceProvider serviceProvider,

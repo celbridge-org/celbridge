@@ -5,11 +5,11 @@ entry_point = "index.html"
 priority = 0
 capabilities = ["dialog", "input"]
 
-[[file_types]]
+[[document_file_types]]
 extension = ".note"
 display_name = "Note_FileType_Note"
 
-[[templates]]
+[[document_templates]]
 id = "empty"
 display_name = "Note_Template_Empty"
 file = "templates/empty.note"
