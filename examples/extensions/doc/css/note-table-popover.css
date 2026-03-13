@@ -1,0 +1,139 @@
+/* Table styles and table popover */
+
+/* Table styles in the editor */
+.tiptap table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+    overflow: hidden;
+}
+
+.tiptap table td,
+.tiptap table th {
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    vertical-align: top;
+    min-width: 50px;
+    position: relative;
+}
+
+.tiptap table th {
+    background: var(--code-bg);
+    font-weight: 600;
+    text-align: left;
+}
+
+.tiptap table td > *,
+.tiptap table th > * {
+    margin-bottom: 0;
+}
+
+.tiptap table td p,
+.tiptap table th p {
+    margin-bottom: 0;
+}
+
+/* Selected cell highlight (drag selection) */
+.tiptap table .selectedCell {
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.tiptap table .selectedCell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 2px solid var(--accent-color);
+}
+
+/* Table wrapper for selection */
+.tiptap .tableWrapper {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+    overflow-x: auto;
+}
+
+.tiptap .tableWrapper table {
+    margin: 0;
+}
+
+/* Table popover — position and size overrides */
+#table-popover {
+    position: fixed;
+    min-width: 280px;
+    max-width: 350px;
+    overflow-y: auto;
+}
+
+/* Row/Column control rows - stacked vertically */
+.table-popover-control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.table-popover-control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-popover-control-group label {
+    font-size: 13px;
+    color: var(--text-primary);
+    min-width: 60px;
+}
+
+/* Spin buttons for row/column adjustment */
+.table-popover-spin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.1s, border-color 0.1s;
+}
+
+.table-popover-spin-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--accent-color);
+}
+
+.table-popover-spin-btn:active {
+    background: var(--active-bg);
+}
+
+.table-popover-spin-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.table-popover-spin-btn .bi {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.table-popover-spin-value {
+    display: inline-block;
+    min-width: 28px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Footer row: delete button */
+.table-popover-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
