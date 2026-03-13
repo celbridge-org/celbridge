@@ -3,13 +3,14 @@ using Celbridge.Logging;
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// Service that discovers extension editor manifests from a project's extensions directory
+/// Service that discovers extension manifests from a project's extensions directory
 /// and from registered bundled extension paths.
+/// Parses extension.toml manifests and their referenced document contribution files.
 /// </summary>
 public class ExtensionRegistry
 {
     private const string ExtensionsFolderName = "extensions";
-    private const string ManifestFileName = "celbridge.json";
+    private const string ManifestFileName = "extension.toml";
 
     private readonly ILogger<ExtensionRegistry> _logger;
     private readonly List<string> _bundledExtensionPaths = [];
@@ -21,7 +22,7 @@ public class ExtensionRegistry
 
     /// <summary>
     /// Registers a bundled extension directory path.
-    /// The path should point to a directory containing a celbridge.json manifest.
+    /// The path should point to a directory containing an extension.toml manifest.
     /// </summary>
     public void RegisterBundledExtensionPath(string path)
     {
@@ -70,15 +71,12 @@ public class ExtensionRegistry
 
         var manifests = new List<ExtensionManifest>();
 
-        // Scan each subdirectory for a celbridge.json manifest
+        // Scan each subdirectory for an extension.toml manifest
         var extensionDirs = Directory.GetDirectories(extensionsFolder);
         foreach (var extensionDir in extensionDirs)
         {
-            var manifest = TryLoadManifest(extensionDir);
-            if (manifest is not null)
-            {
-                manifests.Add(manifest);
-            }
+            var loaded = TryLoadExtension(extensionDir);
+            manifests.AddRange(loaded);
         }
 
         return manifests;
@@ -93,39 +91,40 @@ public class ExtensionRegistry
 
         foreach (var extensionDir in _bundledExtensionPaths)
         {
-            var manifest = TryLoadManifest(extensionDir);
-            if (manifest is not null)
-            {
-                manifests.Add(manifest);
-            }
+            var loaded = TryLoadExtension(extensionDir);
+            manifests.AddRange(loaded);
         }
 
         return manifests;
     }
 
     /// <summary>
-    /// Attempts to load a manifest from a directory. Returns null on failure.
+    /// Attempts to load all document manifests from an extension directory.
+    /// Returns an empty list on failure.
     /// </summary>
-    private ExtensionManifest? TryLoadManifest(string extensionDir)
+    private List<ExtensionManifest> TryLoadExtension(string extensionDir)
     {
         var manifestPath = Path.Combine(extensionDir, ManifestFileName);
 
         if (!File.Exists(manifestPath))
         {
-            return null;
+            return [];
         }
 
-        var parseResult = ExtensionManifest.Parse(manifestPath);
+        var loadResult = ExtensionLoader.LoadExtension(manifestPath);
 
-        if (parseResult.IsFailure)
+        if (loadResult.IsFailure)
         {
-            _logger.LogWarning(parseResult, $"Skipping invalid extension manifest: {manifestPath}");
-            return null;
+            _logger.LogWarning(loadResult, $"Skipping invalid extension: {manifestPath}");
+            return [];
         }
 
-        var manifest = parseResult.Value;
-        _logger.LogDebug($"Discovered extension: {manifest.Name} ({manifest.Type}) for {string.Join(", ", manifest.FileTypes.Select(ft => ft.Extension))}");
+        var manifests = loadResult.Value;
+        foreach (var manifest in manifests)
+        {
+            _logger.LogDebug($"Discovered extension document: {manifest.Id} ({manifest.Type}) for {string.Join(", ", manifest.FileTypes.Select(ft => ft.Extension))}");
+        }
 
-        return manifest;
+        return manifests.ToList();
     }
 }

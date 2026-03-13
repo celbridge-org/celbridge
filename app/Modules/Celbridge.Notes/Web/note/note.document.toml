@@ -1,0 +1,16 @@
+[document]
+id = "note-document"
+type = "custom"
+entry_point = "index.html"
+priority = 0
+capabilities = ["dialog", "input"]
+
+[[file_types]]
+extension = ".note"
+display_name = "Note_FileType_Note"
+
+[[templates]]
+id = "empty"
+display_name = "Note_Template_Empty"
+file = "templates/empty.note"
+default = true

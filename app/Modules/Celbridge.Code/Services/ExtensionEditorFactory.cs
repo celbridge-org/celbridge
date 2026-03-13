@@ -79,9 +79,9 @@ public class ExtensionEditorFactory : DocumentEditorFactoryBase
         }
 
         // Configure customization script if the manifest declares it
-        if (!string.IsNullOrEmpty(_manifest.Customizations))
+        if (!string.IsNullOrEmpty(_manifest.Monaco?.Customizations))
         {
-            var scriptUrl = $"https://{_manifest.HostName}/{_manifest.Customizations}";
+            var scriptUrl = $"https://{_manifest.HostName}/{_manifest.Monaco.Customizations}";
             view.CustomizationScriptUrl = scriptUrl;
         }
 

@@ -23,9 +23,11 @@ public class FeatureFlagService : IFeatureFlagService
 
         if (string.IsNullOrEmpty(value))
         {
-            return false;
+            // Features default to enabled when not configured.
+            // Only an explicit "false" disables a feature.
+            return true;
         }
 
-        return bool.TryParse(value, out var result) && result;
+        return !bool.TryParse(value, out var result) || result;
     }
 }

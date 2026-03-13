@@ -1,7 +1,7 @@
 {
   "name": "celbridge-client",
   "version": "0.1.0",
-  "description": "JavaScript client SDK for communicating with the Celbridge .NET host",
+  "description": "JavaScript client for communicating with the Celbridge .NET host",
   "type": "module",
   "main": "celbridge.js",
   "exports": {
@@ -21,7 +21,7 @@
   "keywords": [
     "celbridge",
     "extension",
-    "sdk",
+    "client",
     "webview",
     "json-rpc"
   ],

@@ -135,9 +135,9 @@ public class WorkspaceFeaturesTests
     }
 
     [Test]
-    public void IsEnabled_NoProjectLoaded_ReturnsFalseWhenAppLevelDisabled()
+    public void IsEnabled_NoProjectLoaded_ReturnsFalseWhenAppLevelExplicitlyDisabled()
     {
-        // Arrange - No project loaded, app-level disabled
+        // Arrange - No project loaded, app-level explicitly disabled
         _mockProjectService.CurrentProject.Returns((IProject?)null);
         _mockFeatureFlagService.IsEnabled(FeatureFlags.NoteEditor).Returns(false);
 
@@ -145,7 +145,7 @@ public class WorkspaceFeaturesTests
         var result = _workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor);
 
         // Assert
-        result.Should().BeFalse("should return false when app-level is disabled and no project");
+        result.Should().BeFalse("should return false when app-level explicitly disables the feature");
         _mockFeatureFlagService.Received(1).IsEnabled(FeatureFlags.NoteEditor);
     }
 

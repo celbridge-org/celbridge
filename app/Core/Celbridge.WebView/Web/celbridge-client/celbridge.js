@@ -1,4 +1,4 @@
-// Celbridge: JavaScript SDK for communicating with the Celbridge .NET host.
+// Celbridge: JavaScript client for communicating with the Celbridge .NET host.
 // Provides promise-based async API with automatic request/response correlation.
 
 import { RpcTransport } from './core/rpc-transport.js';
@@ -15,7 +15,7 @@ import { CodePreviewAPI } from './api/code-preview-api.js';
  */
 
 /**
- * Celbridge SDK.
+ * Celbridge Client.
  * Main entry point for communicating with the Celbridge .NET host.
  */
 export class Celbridge {
@@ -105,49 +105,10 @@ export class Celbridge {
 
         // Auto-load localization if locale is provided in metadata
         if (result.metadata?.locale) {
-            await this.#loadLocalization(result.metadata.locale);
+            await this.localization.loadStrings(result.metadata.locale);
         }
 
         return result;
-    }
-
-    /**
-     * Loads localization strings from the extension's localization folder.
-     * Uses convention: localization/{locale}.json, falls back to en.json.
-     * Silently skips if not running in a browser environment (e.g., tests).
-     * @param {string} locale - The locale to load (e.g., "en", "fr").
-     */
-    async #loadLocalization(locale) {
-        // Skip localization loading in non-browser environments (e.g., Node.js tests)
-        if (typeof location === 'undefined' || typeof fetch === 'undefined') {
-            return;
-        }
-
-        const { setStrings } = await import('./localization.js');
-        const hostName = location.hostname;
-
-        const tryFetch = async (loc) => {
-            const url = `https://${hostName}/localization/${loc}.json`;
-            try {
-                const response = await fetch(url);
-                if (response.ok) {
-                    return await response.json();
-                }
-            } catch {
-                // Ignore fetch errors
-            }
-            return null;
-        };
-
-        // Try requested locale, then fall back to English
-        let strings = await tryFetch(locale);
-        if (!strings && locale !== 'en') {
-            strings = await tryFetch('en');
-        }
-
-        if (strings) {
-            setStrings(strings);
-        }
     }
 
     /**

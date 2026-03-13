@@ -53,11 +53,12 @@ public class ExtensionFileTypeProviderTests
     public void GetExtensionFileTypes_ExtensionWithTemplates_ReturnsFileType()
     {
         CreateBundledExtension(
+            "test-editor",
             "TestEditor",
             [(".test", "")],
             templates:
             [
-                new { id = "empty", displayName = "Empty", file = "templates/empty.test", @default = true }
+                ("empty", "Empty", "templates/empty.test", true)
             ]);
 
         var fileTypes = _provider.GetExtensionFileTypes();
@@ -70,7 +71,7 @@ public class ExtensionFileTypeProviderTests
     [Test]
     public void GetExtensionFileTypes_ExtensionWithoutTemplates_Excluded()
     {
-        CreateBundledExtension("NoTemplates", [(".notemplate", "")], templates: null);
+        CreateBundledExtension("no-templates", "NoTemplates", [(".notemplate", "")], templates: null);
 
         var fileTypes = _provider.GetExtensionFileTypes();
 
@@ -81,11 +82,12 @@ public class ExtensionFileTypeProviderTests
     public void GetExtensionFileTypes_WithLocalization_ResolvesDisplayName()
     {
         CreateBundledExtension(
+            "note",
             "Note",
             [(".note", "Note_FileType_Note")],
             templates:
             [
-                new { id = "empty", displayName = "Note_Template_Empty", file = "templates/empty.note", @default = true }
+                ("empty", "Note_Template_Empty", "templates/empty.note", true)
             ],
             localizationStrings: new Dictionary<string, string>
             {
@@ -102,12 +104,13 @@ public class ExtensionFileTypeProviderTests
     public void GetExtensionFileTypes_FeatureFlagPopulated()
     {
         CreateBundledExtension(
+            "flagged-editor",
             "FlaggedEditor",
             [(".flagged", "")],
             featureFlag: "my-flag",
             templates:
             [
-                new { id = "empty", displayName = "Empty", file = "templates/empty.flagged", @default = true }
+                ("empty", "Empty", "templates/empty.flagged", true)
             ]);
 
         var fileTypes = _provider.GetExtensionFileTypes();
@@ -121,11 +124,12 @@ public class ExtensionFileTypeProviderTests
     {
         var templateContent = "{\"type\":\"doc\"}";
         CreateBundledExtension(
+            "note",
             "Note",
             [(".note", "")],
             templates:
             [
-                new { id = "empty", displayName = "Empty", file = "templates/empty.note", @default = true }
+                ("empty", "Empty", "templates/empty.note", true)
             ],
             templateFiles: new Dictionary<string, string>
             {
@@ -151,11 +155,12 @@ public class ExtensionFileTypeProviderTests
     public void GetDefaultTemplateContent_ExtensionWithoutDefaultTemplate_ReturnsNull()
     {
         CreateBundledExtension(
+            "non-default",
             "NonDefault",
             [(".nd", "")],
             templates:
             [
-                new { id = "example", displayName = "Example", file = "templates/example.nd", @default = false }
+                ("example", "Example", "templates/example.nd", false)
             ]);
 
         var content = _provider.GetDefaultTemplateContent(".nd");
@@ -168,11 +173,12 @@ public class ExtensionFileTypeProviderTests
     {
         var templateContent = "template content";
         CreateBundledExtension(
+            "case-test",
             "CaseTest",
             [(".TEST", "")],
             templates:
             [
-                new { id = "empty", displayName = "Empty", file = "templates/empty.test", @default = true }
+                ("empty", "Empty", "templates/empty.test", true)
             ],
             templateFiles: new Dictionary<string, string>
             {
@@ -190,11 +196,12 @@ public class ExtensionFileTypeProviderTests
         _projectService.CurrentProject.Returns((IProject?)null);
 
         CreateBundledExtension(
+            "orphan",
             "Orphan",
             [(".orphan", "")],
             templates:
             [
-                new { id = "empty", displayName = "Empty", file = "templates/empty.orphan", @default = true }
+                ("empty", "Empty", "templates/empty.orphan", true)
             ],
             templateFiles: new Dictionary<string, string>
             {
@@ -207,52 +214,70 @@ public class ExtensionFileTypeProviderTests
     }
 
     /// <summary>
-    /// Helper to create a bundled extension directory with manifest and optional files.
-    /// Localization uses convention: localization/{locale}.json
+    /// Helper to create a bundled extension directory with TOML manifests and optional files.
     /// </summary>
     private void CreateBundledExtension(
-        string name,
+        string dirName,
+        string extensionName,
         (string Extension, string DisplayName)[] fileTypes,
-        object[]? templates = null,
+        (string Id, string DisplayName, string File, bool Default)[]? templates = null,
         string? featureFlag = null,
         Dictionary<string, string>? localizationStrings = null,
         Dictionary<string, string>? templateFiles = null)
     {
-        var extDir = Path.Combine(_tempProjectFolder, "bundled", name.ToLower());
+        var extDir = Path.Combine(_tempProjectFolder, "bundled", dirName);
         Directory.CreateDirectory(extDir);
 
-        // Build manifest JSON
-        var fileTypesJson = string.Join(", ", fileTypes.Select(ft =>
-            $"{{ \"extension\": \"{ft.Extension}\", \"displayName\": \"{ft.DisplayName}\" }}"));
-        var templatesPart = "";
+        var extId = $"test.{dirName}";
+        var featureFlagLine = featureFlag is not null ? $"\nfeature_flag = \"{featureFlag}\"" : "";
+
+        // Write extension.toml
+        File.WriteAllText(Path.Combine(extDir, "extension.toml"), $"""
+            [extension]
+            id = "{extId}"
+            name = "{extensionName}"
+            version = "1.0.0"{featureFlagLine}
+
+            [contributes]
+            documents = ["editor.document.toml"]
+            """);
+
+        // Build document TOML
+        var fileTypesToml = string.Join("\n", fileTypes.Select(ft =>
+        {
+            var displayNameLine = !string.IsNullOrEmpty(ft.DisplayName)
+                ? $"\ndisplay_name = \"{ft.DisplayName}\""
+                : "";
+            return $"""
+                [[file_types]]
+                extension = "{ft.Extension}"{displayNameLine}
+                """;
+        }));
+
+        var templatesToml = "";
         if (templates is not null)
         {
-            var templateEntries = templates.Select(t =>
-            {
-                var props = t.GetType().GetProperties();
-                var id = props.First(p => p.Name == "id").GetValue(t);
-                var displayName = props.First(p => p.Name == "displayName").GetValue(t);
-                var file = props.First(p => p.Name == "file").GetValue(t);
-                var isDefault = (bool)props.First(p => p.Name == "default").GetValue(t)!;
-                return $"{{ \"id\": \"{id}\", \"displayName\": \"{displayName}\", \"file\": \"{file}\", \"default\": {isDefault.ToString().ToLower()} }}";
-            });
-            templatesPart = $", \"templates\": [{string.Join(", ", templateEntries)}]";
+            templatesToml = string.Join("\n", templates.Select(t => $"""
+                [[templates]]
+                id = "{t.Id}"
+                display_name = "{t.DisplayName}"
+                file = "{t.File}"
+                default = {t.Default.ToString().ToLower()}
+                """));
         }
 
-        var featureFlagPart = featureFlag is not null ? $", \"featureFlag\": \"{featureFlag}\"" : "";
+        File.WriteAllText(Path.Combine(extDir, "editor.document.toml"), $"""
+            [document]
+            id = "{extId}-doc"
+            type = "custom"
+            entry_point = "index.html"
 
-        var manifestJson = $@"{{
-            ""name"": ""{name}"",
-            ""type"": ""custom"",
-            ""file_types"": [{fileTypesJson}],
-            ""entryPoint"": ""index.html""
-            {featureFlagPart}
-            {templatesPart}
-        }}";
+            {fileTypesToml}
 
-        File.WriteAllText(Path.Combine(extDir, "editor.json"), manifestJson);
+            {templatesToml}
+            """);
 
-        // Create localization files using convention (localization/en.json)
+        // Create localization files
         if (localizationStrings is not null)
         {
             var locDir = Path.Combine(extDir, ExtensionLocalizationHelper.LocalizationFolder);
