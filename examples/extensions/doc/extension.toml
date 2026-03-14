@@ -1,8 +1,0 @@
-[extension]
-id = "celbridge.docs"
-name = "Extension_Notes_Name"
-version = "1.0.0"
-feature_flag = "doc-editor"
-
-[contributes]
-documents = ["doc.document.toml"]
