@@ -11,8 +11,4 @@ public static class FeatureFlags
     /// </summary>
     public const string ConsolePanel = "console-panel";
 
-    /// <summary>
-    /// Note editor for structured note-taking.
-    /// </summary>
-    public const string NoteEditor = "note-editor";
 }

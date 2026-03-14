@@ -32,15 +32,15 @@ public class WorkspaceFeaturesTests
         {
             Features = new Dictionary<string, bool>
             {
-                [FeatureFlags.NoteEditor] = true
+                ["note-editor"] = true
             }
         };
         var mockProject = CreateMockProject(config);
         _mockProjectService.CurrentProject.Returns(mockProject);
-        _mockFeatureFlagService.IsEnabled(FeatureFlags.NoteEditor).Returns(false);
+        _mockFeatureFlagService.IsEnabled("note-editor").Returns(false);
 
         // Act
-        var result = _workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor);
+        var result = _workspaceFeatures.IsEnabled("note-editor");
 
         // Assert
         result.Should().BeTrue("workspace feature should override app-level feature");
@@ -105,14 +105,14 @@ public class WorkspaceFeaturesTests
         };
         var mockProject = CreateMockProject(config);
         _mockProjectService.CurrentProject.Returns(mockProject);
-        _mockFeatureFlagService.IsEnabled(FeatureFlags.NoteEditor).Returns(false);
+        _mockFeatureFlagService.IsEnabled("note-editor").Returns(false);
 
         // Act
-        var result = _workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor);
+        var result = _workspaceFeatures.IsEnabled("note-editor");
 
         // Assert
         result.Should().BeFalse("should use app-level when workspace has no features");
-        _mockFeatureFlagService.Received(1).IsEnabled(FeatureFlags.NoteEditor);
+        _mockFeatureFlagService.Received(1).IsEnabled("note-editor");
     }
 
     #endregion
@@ -124,14 +124,14 @@ public class WorkspaceFeaturesTests
     {
         // Arrange - No project loaded
         _mockProjectService.CurrentProject.Returns((IProject?)null);
-        _mockFeatureFlagService.IsEnabled(FeatureFlags.NoteEditor).Returns(true);
+        _mockFeatureFlagService.IsEnabled("note-editor").Returns(true);
 
         // Act
-        var result = _workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor);
+        var result = _workspaceFeatures.IsEnabled("note-editor");
 
         // Assert
         result.Should().BeTrue("should use app-level when no project loaded");
-        _mockFeatureFlagService.Received(1).IsEnabled(FeatureFlags.NoteEditor);
+        _mockFeatureFlagService.Received(1).IsEnabled("note-editor");
     }
 
     [Test]
@@ -139,14 +139,14 @@ public class WorkspaceFeaturesTests
     {
         // Arrange - No project loaded, app-level explicitly disabled
         _mockProjectService.CurrentProject.Returns((IProject?)null);
-        _mockFeatureFlagService.IsEnabled(FeatureFlags.NoteEditor).Returns(false);
+        _mockFeatureFlagService.IsEnabled("note-editor").Returns(false);
 
         // Act
-        var result = _workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor);
+        var result = _workspaceFeatures.IsEnabled("note-editor");
 
         // Assert
         result.Should().BeFalse("should return false when app-level explicitly disables the feature");
-        _mockFeatureFlagService.Received(1).IsEnabled(FeatureFlags.NoteEditor);
+        _mockFeatureFlagService.Received(1).IsEnabled("note-editor");
     }
 
     #endregion
@@ -161,7 +161,7 @@ public class WorkspaceFeaturesTests
         {
             Features = new Dictionary<string, bool>
             {
-                [FeatureFlags.NoteEditor] = true,
+                ["note-editor"] = true,
                 [FeatureFlags.ConsolePanel] = false
             }
         };
@@ -170,11 +170,11 @@ public class WorkspaceFeaturesTests
         _mockFeatureFlagService.IsEnabled(Arg.Any<string>()).Returns(true);
 
         // Act & Assert
-        _workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor).Should().BeTrue("workspace enables note-editor");
+        _workspaceFeatures.IsEnabled("note-editor").Should().BeTrue("workspace enables note-editor");
         _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel).Should().BeFalse("workspace disables console-panel");
         _workspaceFeatures.IsEnabled("code-editor").Should().BeTrue("falls back to app-level for code-editor");
 
-        _mockFeatureFlagService.DidNotReceive().IsEnabled(FeatureFlags.NoteEditor);
+        _mockFeatureFlagService.DidNotReceive().IsEnabled("note-editor");
         _mockFeatureFlagService.DidNotReceive().IsEnabled(FeatureFlags.ConsolePanel);
         _mockFeatureFlagService.Received(1).IsEnabled("code-editor");
     }
