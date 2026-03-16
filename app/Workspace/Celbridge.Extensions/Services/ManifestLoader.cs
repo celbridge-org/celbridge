@@ -10,14 +10,44 @@ namespace Celbridge.Extensions;
 /// </summary>
 public static class ManifestLoader
 {
+    private const string ExtensionSection = "extension";
+    private const string ContributesSection = "contributes";
+    private const string DocumentSection = "document";
+    private const string DocumentEditorsKey = "document_editors";
+    private const string DocumentFileTypesSection = "document_file_types";
+    private const string DocumentTemplatesSection = "document_templates";
+    private const string CodeEditorSection = "code_editor";
+    private const string CodePreviewSection = "code_preview";
+
+    private const string IdKey = "id";
+    private const string NameKey = "name";
+    private const string FeatureFlagKey = "feature_flag";
+    private const string TypeKey = "type";
+    private const string PriorityKey = "priority";
+    private const string ExtensionKey = "extension";
+    private const string DisplayNameKey = "display_name";
+    private const string TemplateFileKey = "template_file";
+    private const string DefaultKey = "default";
+    private const string EntryPointKey = "entry_point";
+    private const string WordWrapKey = "word_wrap";
+    private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
+    private const string MinimapEnabledKey = "minimap_enabled";
+    private const string CustomizationsKey = "customizations";
+
+    private const string CodeDocumentType = "code";
+    private const string OptionPriorityValue = "option";
+    private const string DefaultEntryPoint = "index.html";
+    private const string ExtensionHostPrefix = "ext-";
+    private const string HostSuffix = ".celbridge";
+
     /// <summary>
-    /// Loads all document contributions from an extension.toml file and its referenced document files.
+    /// Loads an extension from an extension.toml file, including all referenced document editor contributions.
     /// </summary>
-    public static Result<IReadOnlyList<DocumentContribution>> LoadExtension(string extensionTomlPath)
+    public static Result<Extension> LoadExtension(string extensionTomlPath)
     {
         try
         {
-            var extensionDirectory = Path.GetDirectoryName(extensionTomlPath) ?? string.Empty;
+            var extensionFolder = Path.GetFullPath(Path.GetDirectoryName(extensionTomlPath) ?? string.Empty);
             var toml = File.ReadAllText(extensionTomlPath);
             var parsed = Toml.Parse(toml);
 
@@ -29,45 +59,43 @@ public static class ManifestLoader
 
             var root = (TomlTable)parsed.ToModel();
 
-            // [extension]
-            if (!root.TryGetValue("extension", out var extensionObject) ||
+            if (!root.TryGetValue(ExtensionSection, out var extensionObject) ||
                 extensionObject is not TomlTable extensionTable)
             {
-                return Result.Fail($"Missing [extension] section: {extensionTomlPath}");
+                return Result.Fail($"Missing [{ExtensionSection}] section: {extensionTomlPath}");
             }
 
-            var extensionId = GetString(extensionTable, "id");
+            var extensionId = GetString(extensionTable, IdKey);
             if (string.IsNullOrEmpty(extensionId))
             {
-                return Result.Fail($"Extension missing required 'id' field: {extensionTomlPath}");
+                return Result.Fail($"Extension missing required '{IdKey}' field: {extensionTomlPath}");
             }
 
-            var extensionName = GetString(extensionTable, "name");
-            var featureFlag = GetStringOrNull(extensionTable, "feature_flag");
+            var extensionName = GetString(extensionTable, NameKey);
+            var featureFlag = GetStringOrNull(extensionTable, FeatureFlagKey);
 
             var safeName = extensionId.Replace('.', '-').ToLowerInvariant();
-            var hostName = $"ext-{safeName}.celbridge";
+            var hostName = $"{ExtensionHostPrefix}{safeName}{HostSuffix}";
 
             var extensionInfo = new ExtensionInfo
             {
                 Id = extensionId,
                 Name = extensionName,
                 FeatureFlag = featureFlag,
-                ExtensionDirectory = extensionDirectory,
+                ExtensionFolder = extensionFolder,
                 HostName = hostName
             };
 
-            // [contributes]
             var documentPaths = new List<string>();
-            if (root.TryGetValue("contributes", out var contributesObject) &&
+            if (root.TryGetValue(ContributesSection, out var contributesObject) &&
                 contributesObject is TomlTable contributesTable)
             {
-                if (contributesTable.TryGetValue("documents", out var documentsObject) &&
-                    documentsObject is TomlArray documentsArray)
+                if (contributesTable.TryGetValue(DocumentEditorsKey, out var documentEditorsObject) &&
+                    documentEditorsObject is TomlArray documentEditorsArray)
                 {
-                    foreach (var document in documentsArray)
+                    foreach (var documentEditor in documentEditorsArray)
                     {
-                        if (document is string documentPath)
+                        if (documentEditor is string documentPath)
                         {
                             documentPaths.Add(documentPath);
                         }
@@ -75,19 +103,24 @@ public static class ManifestLoader
                 }
             }
 
-            // Load each referenced document TOML file
-            var contributions = new List<DocumentContribution>();
+            var documentEditors = new List<DocumentContribution>();
             foreach (var relativePath in documentPaths)
             {
-                var fullPath = Path.Combine(extensionDirectory, relativePath);
-                var loadResult = LoadDocument(fullPath, extensionInfo, hostName);
+                var fullPath = Path.Combine(extensionFolder, relativePath);
+                var loadResult = LoadDocument(fullPath, extensionInfo);
                 if (loadResult.IsSuccess)
                 {
-                    contributions.Add(loadResult.Value);
+                    documentEditors.Add(loadResult.Value);
                 }
             }
 
-            return Result<IReadOnlyList<DocumentContribution>>.Ok(contributions.AsReadOnly());
+            var extension = new Extension
+            {
+                Info = extensionInfo,
+                DocumentEditors = documentEditors.AsReadOnly()
+            };
+
+            return Result<Extension>.Ok(extension);
         }
         catch (Exception ex)
         {
@@ -100,8 +133,7 @@ public static class ManifestLoader
     /// </summary>
     private static Result<DocumentContribution> LoadDocument(
         string documentTomlPath,
-        ExtensionInfo extensionInfo,
-        string hostName)
+        ExtensionInfo extensionInfo)
     {
         try
         {
@@ -121,34 +153,31 @@ public static class ManifestLoader
 
             var root = (TomlTable)parsed.ToModel();
 
-            // [document]
-            if (!root.TryGetValue("document", out var documentObject) ||
+            if (!root.TryGetValue(DocumentSection, out var documentObject) ||
                 documentObject is not TomlTable documentTable)
             {
-                return Result.Fail($"Missing [document] section: {documentTomlPath}");
+                return Result.Fail($"Missing [{DocumentSection}] section: {documentTomlPath}");
             }
 
-            var documentId = GetString(documentTable, "id");
+            var documentId = GetString(documentTable, IdKey);
             if (string.IsNullOrEmpty(documentId))
             {
-                return Result.Fail($"Document missing required 'id' field: {documentTomlPath}");
+                return Result.Fail($"Document missing required '{IdKey}' field: {documentTomlPath}");
             }
 
-            var documentType = ParseEditorType(GetString(documentTable, "type"));
-            var entryPoint = GetStringOrNull(documentTable, "entry_point");
-            var priority = ParseEditorPriority(GetStringOrNull(documentTable, "priority"));
+            var documentType = GetString(documentTable, TypeKey).ToLowerInvariant();
+            var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
-            // [[document_file_types]]
             var fileTypes = new List<DocumentFileType>();
-            if (root.TryGetValue("document_file_types", out var fileTypesObject) &&
+            if (root.TryGetValue(DocumentFileTypesSection, out var fileTypesObject) &&
                 fileTypesObject is TomlTableArray fileTypesArray)
             {
                 foreach (var fileTypeTable in fileTypesArray)
                 {
                     fileTypes.Add(new DocumentFileType
                     {
-                        Extension = GetString(fileTypeTable, "extension"),
-                        DisplayName = GetString(fileTypeTable, "display_name")
+                        FileExtension = GetString(fileTypeTable, ExtensionKey),
+                        DisplayName = GetString(fileTypeTable, DisplayNameKey)
                     });
                 }
             }
@@ -158,66 +187,29 @@ public static class ManifestLoader
                 return Result.Fail($"Document must declare at least one file type: {documentTomlPath}");
             }
 
-            // [[document_templates]]
             var templates = new List<DocumentTemplate>();
-            if (root.TryGetValue("document_templates", out var templatesObject) &&
+            if (root.TryGetValue(DocumentTemplatesSection, out var templatesObject) &&
                 templatesObject is TomlTableArray templatesArray)
             {
                 foreach (var templateTable in templatesArray)
                 {
                     templates.Add(new DocumentTemplate
                     {
-                        Id = GetString(templateTable, "id"),
-                        DisplayName = GetString(templateTable, "display_name"),
-                        File = GetString(templateTable, "file"),
-                        Default = GetBool(templateTable, "default")
+                        Id = GetString(templateTable, IdKey),
+                        DisplayName = GetString(templateTable, DisplayNameKey),
+                        TemplateFile = GetString(templateTable, TemplateFileKey),
+                        Default = GetBool(templateTable, DefaultKey)
                     });
                 }
             }
 
-            // [code_editor]
-            CodeEditorConfig? codeEditor = null;
-            if (root.TryGetValue("code_editor", out var codeEditorObject) &&
-                codeEditorObject is TomlTable codeEditorTable)
+            DocumentContribution contribution = documentType switch
             {
-                codeEditor = new CodeEditorConfig
-                {
-                    WordWrap = GetBoolOrNull(codeEditorTable, "word_wrap"),
-                    ScrollBeyondLastLine = GetBoolOrNull(codeEditorTable, "scroll_beyond_last_line"),
-                    MinimapEnabled = GetBoolOrNull(codeEditorTable, "minimap_enabled"),
-                    Customizations = GetStringOrNull(codeEditorTable, "customizations")
-                };
-            }
-
-            // [code_preview]
-            CodePreviewConfig? codePreview = null;
-            if (root.TryGetValue("code_preview", out var codePreviewObject) &&
-                codePreviewObject is TomlTable codePreviewTable)
-            {
-                var assetFolder = GetString(codePreviewTable, "asset_folder");
-                var pageUrl = GetString(codePreviewTable, "page_url");
-                var previewHostName = hostName.Replace(".celbridge", "-preview.celbridge");
-
-                codePreview = new CodePreviewConfig
-                {
-                    AssetFolder = assetFolder,
-                    PageUrl = $"https://{previewHostName}/{pageUrl}",
-                    HostName = previewHostName
-                };
-            }
-
-            return new DocumentContribution
-            {
-                Extension = extensionInfo,
-                Id = documentId,
-                Type = documentType,
-                FileTypes = fileTypes.AsReadOnly(),
-                EntryPoint = entryPoint,
-                Priority = priority,
-                Templates = templates.AsReadOnly(),
-                CodePreview = codePreview,
-                CodeEditor = codeEditor
+                CodeDocumentType => BuildCodeContribution(root, extensionInfo, documentId, fileTypes, priority, templates),
+                _ => BuildCustomContribution(root, extensionInfo, documentId, fileTypes, priority, templates, documentTable)
             };
+
+            return Result<DocumentContribution>.Ok(contribution);
         }
         catch (Exception ex)
         {
@@ -225,12 +217,70 @@ public static class ManifestLoader
         }
     }
 
-    private static DocumentEditorType ParseEditorType(string value)
+    private static CustomDocumentContribution BuildCustomContribution(
+        TomlTable root,
+        ExtensionInfo extensionInfo,
+        string documentId,
+        List<DocumentFileType> fileTypes,
+        EditorPriority priority,
+        List<DocumentTemplate> templates,
+        TomlTable documentTable)
     {
-        return value.ToLowerInvariant() switch
+        var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
+
+        return new CustomDocumentContribution
         {
-            "code" => DocumentEditorType.Code,
-            _ => DocumentEditorType.Custom
+            Extension = extensionInfo,
+            Id = documentId,
+            FileTypes = fileTypes.AsReadOnly(),
+            Priority = priority,
+            Templates = templates.AsReadOnly(),
+            EntryPoint = entryPoint
+        };
+    }
+
+    private static CodeDocumentContribution BuildCodeContribution(
+        TomlTable root,
+        ExtensionInfo extensionInfo,
+        string documentId,
+        List<DocumentFileType> fileTypes,
+        EditorPriority priority,
+        List<DocumentTemplate> templates)
+    {
+        CodeEditorConfig? codeEditor = null;
+        if (root.TryGetValue(CodeEditorSection, out var codeEditorObject) &&
+            codeEditorObject is TomlTable codeEditorTable)
+        {
+            codeEditor = new CodeEditorConfig
+            {
+                WordWrap = GetBoolOrNull(codeEditorTable, WordWrapKey),
+                ScrollBeyondLastLine = GetBoolOrNull(codeEditorTable, ScrollBeyondLastLineKey),
+                MinimapEnabled = GetBoolOrNull(codeEditorTable, MinimapEnabledKey),
+                CustomizationScript = GetStringOrNull(codeEditorTable, CustomizationsKey)
+            };
+        }
+
+        CodePreviewConfig? codePreview = null;
+        if (root.TryGetValue(CodePreviewSection, out var codePreviewObject) &&
+            codePreviewObject is TomlTable codePreviewTable)
+        {
+            var entryPoint = GetString(codePreviewTable, EntryPointKey);
+
+            codePreview = new CodePreviewConfig
+            {
+                EntryPoint = entryPoint
+            };
+        }
+
+        return new CodeDocumentContribution
+        {
+            Extension = extensionInfo,
+            Id = documentId,
+            FileTypes = fileTypes.AsReadOnly(),
+            Priority = priority,
+            Templates = templates.AsReadOnly(),
+            CodePreview = codePreview,
+            CodeEditor = codeEditor
         };
     }
 
@@ -243,7 +293,7 @@ public static class ManifestLoader
 
         return value.ToLowerInvariant() switch
         {
-            "option" => EditorPriority.Option,
+            OptionPriorityValue => EditorPriority.Option,
             _ => EditorPriority.Default
         };
     }

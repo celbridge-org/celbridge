@@ -14,12 +14,6 @@ public class Module : IModule
     public void ConfigureServices(IModuleServiceCollection services)
     {
         //
-        // Register document editor factories
-        //
-
-        services.AddTransient<IDocumentEditorFactory, WebAppEditorFactory>();
-
-        //
         // Register views
         //
 
@@ -37,8 +31,18 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        return [new WebAppEditorFactory(serviceProvider)];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetExtensionFolder()
+    {
+        return null;
     }
 }

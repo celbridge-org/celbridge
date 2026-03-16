@@ -1,3 +1,4 @@
+using Celbridge.Code.Views;
 using Celbridge.Host;
 
 namespace Celbridge.Code.Services;
@@ -65,12 +66,14 @@ public class CodeEditorHost : IDisposable
     /// <summary>
     /// Initializes the code editor with the specified language and options.
     /// </summary>
-    public Task InitializeEditorAsync(string language, bool scrollBeyondLastLine = true)
+    public Task InitializeEditorAsync(string language, CodeEditorOptions options)
     {
         return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.Initialize, new
-        { 
+        {
             language,
-            scrollBeyondLastLine
+            scrollBeyondLastLine = options.ScrollBeyondLastLine,
+            wordWrap = options.WordWrap,
+            minimapEnabled = options.MinimapEnabled
         });
     }
 
@@ -126,7 +129,7 @@ public class CodeEditorHost : IDisposable
 
     /// <summary>
     /// Loads and executes a customization script in the Monaco editor.
-    /// The script should export an activate(monaco, editor, container) function.
+    /// The script should export an activate(monaco, editor, container, celbridge) function.
     /// </summary>
     public Task LoadCustomizationAsync(string scriptUrl)
     {

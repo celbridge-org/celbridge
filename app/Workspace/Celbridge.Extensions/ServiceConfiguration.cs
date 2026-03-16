@@ -8,7 +8,7 @@ public static class ServiceConfiguration
         // Register extension infrastructure
         //
 
-        services.AddSingleton<ExtensionRegistry>();
-        services.AddSingleton<IExtensionFileTypeProvider, FileTypeProvider>();
+        services.AddTransient<ExtensionLocalizationService>();
+        services.AddTransient<IExtensionService, ExtensionService>();
     }
 }

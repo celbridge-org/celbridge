@@ -10,31 +10,15 @@ namespace Celbridge.Code.Views;
 public interface ICodePreviewRenderer
 {
     /// <summary>
-    /// The virtual host name for preview assets (e.g., "markdown-preview.celbridge").
-    /// </summary>
-    string PreviewHostName { get; }
-
-    /// <summary>
-    /// The folder path containing preview assets, relative to the application root
-    /// (e.g., "Celbridge.Markdown/Web/markdown-preview").
-    /// </summary>
-    string PreviewAssetFolder { get; }
-
-    /// <summary>
-    /// The full URL to the preview page (e.g., "https://markdown-preview.celbridge/index.html").
+    /// The full URL to the preview page (e.g., "https://ext-celbridge-notes.celbridge/preview/index.html").
     /// </summary>
     string PreviewPageUrl { get; }
 
     /// <summary>
     /// Configures the WebView for preview rendering.
     /// Called once during preview initialization, before navigation.
-    /// Use this to set up additional virtual host mappings or other WebView configuration.
+    /// Implementations should set up virtual host mappings for both the preview assets
+    /// and the project folder.
     /// </summary>
     Task ConfigureWebViewAsync(CoreWebView2 webView, string projectFolderPath);
-
-    /// <summary>
-    /// Computes the base path for resolving relative resources in the preview.
-    /// This path is sent to the preview JavaScript via JSON-RPC.
-    /// </summary>
-    string ComputeBasePath(string documentPath, string projectFolderPath);
 }

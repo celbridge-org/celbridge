@@ -75,6 +75,16 @@ public class ModuleService : IModuleService
         }
     }
 
+    public IReadOnlyList<IModule> LoadedModules => _moduleLoader.LoadedModules.Values.ToList();
+
+    public IReadOnlyList<string> GetExtensionFolders()
+    {
+        return _moduleLoader.LoadedModules.Values
+            .Select(m => m.GetExtensionFolder())
+            .Where(d => !string.IsNullOrEmpty(d))
+            .ToList()!;
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         foreach (var module in _moduleLoader.LoadedModules.Values)

@@ -39,7 +39,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
     /// The document contribution that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public DocumentContribution? Contribution { get; set; }
+    public CustomDocumentContribution? Contribution { get; set; }
 
     public ExtensionDocumentView(
         IServiceProvider serviceProvider,
@@ -144,7 +144,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             // Map the extension's asset directory to a virtual host
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 Contribution.Extension.HostName,
-                Contribution.Extension.ExtensionDirectory,
+                Contribution.Extension.ExtensionFolder,
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // Map the project folder for resource key path resolution
@@ -197,7 +197,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             StartHostListener();
 
             // Navigate to the extension's entry point
-            var entryPoint = Contribution.EntryPoint ?? "index.html";
+            var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Extension.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
         }

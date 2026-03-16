@@ -1,39 +1,38 @@
 using Celbridge.Documents.Views;
 using Celbridge.Extensions;
-using Celbridge.Workspace;
+using Celbridge.Settings;
 
 namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// Factory for creating ExtensionDocumentView instances for custom (WebView2-based)
-/// extension editors. One instance per discovered contribution of type "custom".
+/// extension editors. One instance per discovered CustomDocumentContribution.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly DocumentContribution _contribution;
-    private readonly IWorkspaceFeatures? _workspaceFeatures;
+    private readonly CustomDocumentContribution _contribution;
+    private readonly IFeatureFlags _featureFlags;
 
     public override IReadOnlyList<string> SupportedExtensions =>
-        _contribution.FileTypes.Select(ft => ft.Extension).ToList();
+        _contribution.FileTypes.Select(ft => ft.FileExtension).ToList();
 
     public override EditorPriority Priority => _contribution.Priority;
 
     public CustomDocumentViewFactory(
         IServiceProvider serviceProvider,
-        DocumentContribution contribution,
-        IWorkspaceFeatures? workspaceFeatures = null)
+        CustomDocumentContribution contribution,
+        IFeatureFlags featureFlags)
     {
         _serviceProvider = serviceProvider;
         _contribution = contribution;
-        _workspaceFeatures = workspaceFeatures;
+        _featureFlags = featureFlags;
     }
 
     public override bool CanHandle(ResourceKey fileResource, string filePath)
     {
         if (!string.IsNullOrEmpty(_contribution.Extension.FeatureFlag) &&
-            _workspaceFeatures is not null &&
-            !_workspaceFeatures.IsEnabled(_contribution.Extension.FeatureFlag))
+            !_featureFlags.IsEnabled(_contribution.Extension.FeatureFlag))
         {
             return false;
         }

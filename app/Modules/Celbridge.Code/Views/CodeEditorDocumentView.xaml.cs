@@ -239,10 +239,10 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
     {
         _documentPath = documentPath;
 
-        if (_isPreviewInitialized && _previewRenderer is not null && _previewHost is not null)
+        if (_isPreviewInitialized && _previewHost is not null)
         {
-            var basePath = _previewRenderer.ComputeBasePath(_documentPath, _projectFolderPath);
-            _ = _previewHost.NotifyCodePreviewSetContextAsync(basePath);
+            var basePath = ComputeBasePath(_documentPath, _projectFolderPath);
+            _ = _previewHost.NotifyCodePreviewSetBasePathAsync(basePath);
         }
     }
 
@@ -654,19 +654,13 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
             _previewWebView = await _webViewFactory.AcquireAsync();
             _previewContainer.Children.Add(_previewWebView);
 
-            // Set up virtual host mapping for preview assets
-            _previewWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                _previewRenderer.PreviewHostName,
-                _previewRenderer.PreviewAssetFolder,
-                CoreWebView2HostResourceAccessKind.Allow);
-
             // Set up shared celbridge-client mapping for the preview to use celbridge.js
             _previewWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "celbridge-client.celbridge",
                 "Celbridge.WebView/Web/celbridge-client",
                 CoreWebView2HostResourceAccessKind.Allow);
 
-            // Allow the renderer to configure additional mappings
+            // Allow the renderer to configure virtual host mappings for preview and project assets
             await _previewRenderer.ConfigureWebViewAsync(_previewWebView.CoreWebView2, _projectFolderPath);
 
             // Set up JSON-RPC host for preview communication
@@ -703,8 +697,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
             _isPreviewInitialized = true;
 
             // Set document context via JSON-RPC
-            var basePath = _previewRenderer.ComputeBasePath(_documentPath, _projectFolderPath);
-            await _previewHost.NotifyCodePreviewSetContextAsync(basePath);
+            var basePath = ComputeBasePath(_documentPath, _projectFolderPath);
+            await _previewHost.NotifyCodePreviewSetBasePathAsync(basePath);
 
             // Initial preview update
             await UpdatePreviewAsync();
@@ -770,6 +764,30 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
         _isPreviewInitialized = false;
 
         await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Computes the document's directory path relative to the project root, using forward slashes.
+    /// Returns empty string if the document is not under the project folder.
+    /// </summary>
+    private static string ComputeBasePath(string documentPath, string projectFolderPath)
+    {
+        var documentFolder = Path.GetDirectoryName(documentPath);
+
+        if (string.IsNullOrEmpty(documentFolder) || string.IsNullOrEmpty(projectFolderPath))
+        {
+            return string.Empty;
+        }
+
+        if (!documentFolder.StartsWith(projectFolderPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return documentFolder
+            .Substring(projectFolderPath.Length)
+            .TrimStart(Path.DirectorySeparatorChar)
+            .Replace(Path.DirectorySeparatorChar, '/');
     }
 
     #endregion

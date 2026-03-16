@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Markdown.Services;
 using Celbridge.Modules;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Markdown;
 
@@ -10,11 +11,6 @@ public class Module : IModule
 
     public void ConfigureServices(IModuleServiceCollection services)
     {
-        //
-        // Register document editor factories
-        //
-
-        services.AddTransient<IDocumentEditorFactory, MarkdownEditorFactory>();
     }
 
     public Result Initialize()
@@ -22,8 +18,19 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return [new MarkdownEditorFactory(serviceProvider, stringLocalizer)];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetExtensionFolder()
+    {
+        return null;
     }
 }

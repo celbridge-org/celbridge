@@ -3,7 +3,8 @@ using Celbridge.Documents.Views;
 using Celbridge.Extensions;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Projects;
+using Celbridge.Modules;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -19,6 +20,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFeatureFlags _featureFlags;
 
     /// <summary>
     /// Gets the documents panel from the workspace service.
@@ -30,7 +32,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// <summary>
     /// Gets all open documents with their addresses (UI positions).
     /// </summary>
-    public Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; } = new();
+    public Dictionary<ResourceKey, DocumentAddress> OpenDocumentAddresses { get; } = new();
 
     private bool _isWorkspaceLoaded;
 
@@ -38,9 +40,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private readonly DocumentEditorRegistry _documentEditorRegistry = new();
 
-    /// <summary>
-    /// Gets the document editor registry.
-    /// </summary>
     public IDocumentEditorRegistry DocumentEditorRegistry => _documentEditorRegistry;
 
     public DocumentsService(
@@ -48,7 +47,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         ILogger<DocumentsService> logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IModuleService moduleService,
+        IWorkspaceWrapper workspaceWrapper,
+        IFeatureFlags featureFlags)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -58,19 +59,18 @@ public class DocumentsService : IDocumentsService, IDisposable
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _featureFlags = featureFlags;
 
+        _messengerService.Register<ExtensionsInitializedMessage>(this, OnExtensionsInitializedMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
-        // Auto-register all document editor factories from the DI container.
+        // Register document editor factories from all loaded modules.
         // This must happen before FileTypeHelper initialization so factories can provide language mappings.
-        RegisterDocumentEditorFactoriesFromContainer(serviceProvider);
-
-        // Discover extension manifests from bundled modules and register factories for them.
-        RegisterExtensionEditorFactories(serviceProvider);
+        RegisterModuleDocumentEditorFactories(moduleService);
 
         _fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
         _fileTypeHelper.SetDocumentEditorRegistry(_documentEditorRegistry);
@@ -82,58 +82,40 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    private void RegisterDocumentEditorFactoriesFromContainer(IServiceProvider serviceProvider)
+    private void RegisterModuleDocumentEditorFactories(IModuleService moduleService)
     {
-        var factories = serviceProvider.GetServices<IDocumentEditorFactory>();
-        foreach (var factory in factories)
+        foreach (var module in moduleService.LoadedModules)
         {
-            var result = _documentEditorRegistry.RegisterFactory(factory);
-            if (result.IsFailure)
+            var factories = module.CreateDocumentEditorFactories(_serviceProvider);
+            foreach (var factory in factories)
             {
-                _logger.LogWarning(result, $"Failed to register document editor factory");
+                var result = _documentEditorRegistry.RegisterFactory(factory);
+                if (result.IsFailure)
+                {
+                    _logger.LogWarning(result, $"Failed to register document editor factory");
+                }
             }
         }
     }
 
-    /// <summary>
-    /// Discovers extension manifests from bundled modules and creates editor factory
-    /// instances for custom extensions. Bundled extension paths are registered by
-    /// modules that implement IBundledExtensionProvider.
-    /// </summary>
-    private void RegisterExtensionEditorFactories(IServiceProvider serviceProvider)
+    private void OnExtensionsInitializedMessage(object recipient, ExtensionsInitializedMessage message)
     {
-        var extensionRegistry = serviceProvider.GetRequiredService<ExtensionRegistry>();
-
-        // Register bundled extension paths from all modules that provide them
-        var bundledProviders = serviceProvider.GetServices<IBundledExtensionProvider>();
-        foreach (var provider in bundledProviders)
-        {
-            var extensionDir = provider.GetExtensionDirectory();
-            extensionRegistry.RegisterBundledExtensionPath(extensionDir);
-        }
-
-        // Discover contributions from bundled paths
-        // (project extensions are discovered later when a project loads)
-        var projectFolderPath = string.Empty;
-        var contributions = extensionRegistry.DiscoverExtensions(projectFolderPath);
-
-        // Resolve optional workspace features for feature flag gating
-        var workspaceFeatures = serviceProvider.GetService<IWorkspaceFeatures>();
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var contributions = workspaceService.ExtensionService.GetAllDocumentEditors();
 
         foreach (var contribution in contributions)
         {
-            if (contribution.Type != DocumentEditorType.Custom)
+            if (contribution is not CustomDocumentContribution customContribution)
             {
-                // Only custom-type extensions are registered here.
-                // Code-type extensions will be handled via DI when needed.
                 continue;
             }
 
-            var factory = new CustomDocumentViewFactory(serviceProvider, contribution, workspaceFeatures);
+            var factory = new CustomDocumentViewFactory(_serviceProvider, customContribution, _featureFlags);
             var result = _documentEditorRegistry.RegisterFactory(factory);
             if (result.IsFailure)
             {
-                _logger.LogWarning(result, $"Failed to register extension editor factory for: {contribution.Extension.Name}");
+                _logger.LogWarning(result,
+                    $"Failed to register extension editor factory for: {contribution.Extension.Name}");
             }
         }
     }
@@ -142,60 +124,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         // Once set, this will remain true for the lifetime of the service
         _isWorkspaceLoaded = true;
-
-        // Discover project-level extensions and register their editor factories.
-        // This must happen after workspace load because the project folder path is needed.
-        RegisterProjectExtensionEditorFactories();
-    }
-
-    /// <summary>
-    /// Discovers extensions from the current project's extensions directory and registers
-    /// editor factories for custom-type contributions.
-    /// </summary>
-    private void RegisterProjectExtensionEditorFactories()
-    {
-        var projectService = _serviceProvider.GetRequiredService<IProjectService>();
-        var projectFolderPath = projectService.CurrentProject?.ProjectFolderPath ?? string.Empty;
-
-        if (string.IsNullOrEmpty(projectFolderPath))
-        {
-            return;
-        }
-
-        var extensionsFolderPath = Path.Combine(projectFolderPath, "extensions");
-        if (!Directory.Exists(extensionsFolderPath))
-        {
-            return;
-        }
-
-        var extensionRegistry = _serviceProvider.GetRequiredService<ExtensionRegistry>();
-
-        // Discover all extensions (bundled + project) so the registry can resolve project paths.
-        // Filter to only register project-level contributions (those rooted in the project folder).
-        var contributions = extensionRegistry.DiscoverExtensions(projectFolderPath);
-
-        var workspaceFeatures = _serviceProvider.GetService<IWorkspaceFeatures>();
-
-        foreach (var contribution in contributions)
-        {
-            if (contribution.Type != DocumentEditorType.Custom)
-            {
-                continue;
-            }
-
-            // Only register contributions from the project's extensions directory
-            if (!contribution.Extension.ExtensionDirectory.StartsWith(extensionsFolderPath, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var factory = new CustomDocumentViewFactory(_serviceProvider, contribution, workspaceFeatures);
-            var result = _documentEditorRegistry.RegisterFactory(factory);
-            if (result.IsFailure)
-            {
-                _logger.LogWarning(result, $"Failed to register project extension editor factory for: {contribution.Extension.Name}");
-            }
-        }
     }
 
     private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
@@ -214,10 +142,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         // Query the panel for current document addresses
         var addresses = DocumentsPanel.GetDocumentAddresses();
 
-        DocumentAddresses.Clear();
+        OpenDocumentAddresses.Clear();
         foreach (var kvp in addresses)
         {
-            DocumentAddresses[kvp.Key] = kvp.Value;
+            OpenDocumentAddresses[kvp.Key] = kvp.Value;
         }
 
         if (_isWorkspaceLoaded)
@@ -460,7 +388,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         Guard.IsNotNull(workspaceSettings);
 
         // Store documents with their addresses
-        var storedAddresses = DocumentAddresses
+        var storedAddresses = OpenDocumentAddresses
             .Select(kvp => new StoredDocumentAddress(
                 kvp.Key.ToString(),
                 kvp.Value.WindowIndex,
@@ -597,23 +525,6 @@ public class DocumentsService : IDocumentsService, IDisposable
                 });
             }
         }
-    }
-
-    /// <summary>
-    /// Registers a document editor factory.
-    /// </summary>
-    public Result RegisterDocumentEditorFactory(IDocumentEditorFactory factory)
-    {
-        var registerResult = _documentEditorRegistry.RegisterFactory(factory);
-        if (registerResult.IsFailure)
-        {
-            return Result.Fail($"Failed to register document editor factory")
-                .WithErrors(registerResult);
-        }
-
-        _logger.LogDebug($"Registered document editor factory for extensions: {string.Join(", ", factory.SupportedExtensions)}");
-
-        return Result.Ok();
     }
 
     private Result<IDocumentView> CreateDocumentViewInternal(ResourceKey fileResource)

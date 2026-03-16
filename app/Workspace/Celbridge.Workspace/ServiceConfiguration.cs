@@ -9,12 +9,6 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         //
-        // Register workspace-level services
-        //
-
-        services.AddTransient<IWorkspaceFeatures, Services.WorkspaceFeatures>();
-
-        //
         // Configure workspace-scoped services
         //
 

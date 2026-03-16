@@ -1,34 +1,44 @@
 using Celbridge.Extensions;
 using Celbridge.Logging;
-using Celbridge.Projects;
+using Celbridge.Messaging;
+using Celbridge.Modules;
+using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Extensions;
 
 [TestFixture]
-public class FileTypeProviderTests
+public class ExtensionServiceDocumentTypeTests
 {
     private string _tempProjectFolder = null!;
-    private ExtensionRegistry _extensionRegistry = null!;
-    private IProjectService _projectService = null!;
-    private FileTypeProvider _provider = null!;
+    private ExtensionService _service = null!;
+    private IModuleService _moduleService = null!;
+    private IFeatureFlags _featureFlags = null!;
+    private List<string> _bundledExtensionPaths = null!;
 
     [SetUp]
     public void Setup()
     {
-        _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FileTypeProviderTests));
+        _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ExtensionServiceDocumentTypeTests));
         Directory.CreateDirectory(_tempProjectFolder);
 
-        var registryLogger = Substitute.For<ILogger<ExtensionRegistry>>();
-        _extensionRegistry = new ExtensionRegistry(registryLogger);
+        _bundledExtensionPaths = [];
+        _moduleService = Substitute.For<IModuleService>();
+        _moduleService.GetExtensionFolders().Returns(_ => _bundledExtensionPaths);
 
-        // Mock IProjectService to return a project with the temp folder
-        _projectService = Substitute.For<IProjectService>();
-        var project = Substitute.For<IProject>();
-        project.ProjectFolderPath.Returns(_tempProjectFolder);
-        _projectService.CurrentProject.Returns(project);
+        _featureFlags = Substitute.For<IFeatureFlags>();
+        _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
 
-        var providerLogger = Substitute.For<ILogger<FileTypeProvider>>();
-        _provider = new FileTypeProvider(providerLogger, _extensionRegistry, _projectService);
+        var workspaceService = Substitute.For<IWorkspaceService>();
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var logger = Substitute.For<ILogger<ExtensionService>>();
+        var messengerService = Substitute.For<IMessengerService>();
+        var localizationLogger = Substitute.For<ILogger<ExtensionLocalizationService>>();
+        var localizationService = new ExtensionLocalizationService(localizationLogger);
+        _service = new ExtensionService(logger, _moduleService, messengerService, workspaceWrapper, _featureFlags, localizationService);
     }
 
     [TearDown]
@@ -41,15 +51,15 @@ public class FileTypeProviderTests
     }
 
     [Test]
-    public void GetExtensionFileTypes_NoExtensions_ReturnsEmpty()
+    public void GetDocumentTypes_NoExtensions_ReturnsEmpty()
     {
-        var fileTypes = _provider.GetExtensionFileTypes();
+        var documentTypes = _service.GetDocumentTypes();
 
-        fileTypes.Should().BeEmpty();
+        documentTypes.Should().BeEmpty();
     }
 
     [Test]
-    public void GetExtensionFileTypes_ExtensionWithTemplates_ReturnsFileType()
+    public void GetDocumentTypes_ExtensionWithTemplates_ReturnsDocumentType()
     {
         CreateBundledExtension(
             "test-editor",
@@ -60,25 +70,25 @@ public class FileTypeProviderTests
                 ("empty", "Empty", "templates/empty.test", true)
             ]);
 
-        var fileTypes = _provider.GetExtensionFileTypes();
+        var documentTypes = _service.GetDocumentTypes();
 
-        fileTypes.Should().HaveCount(1);
-        fileTypes[0].Extension.Should().Be(".test");
-        fileTypes[0].DisplayName.Should().Be("TestEditor");
+        documentTypes.Should().HaveCount(1);
+        documentTypes[0].FileExtensions.Should().Contain(".test");
+        documentTypes[0].DisplayName.Should().Be("TestEditor");
     }
 
     [Test]
-    public void GetExtensionFileTypes_ExtensionWithoutTemplates_Excluded()
+    public void GetDocumentTypes_ExtensionWithoutTemplates_Excluded()
     {
         CreateBundledExtension("no-templates", "NoTemplates", [(".notemplate", "")], templates: null);
 
-        var fileTypes = _provider.GetExtensionFileTypes();
+        var documentTypes = _service.GetDocumentTypes();
 
-        fileTypes.Should().BeEmpty();
+        documentTypes.Should().BeEmpty();
     }
 
     [Test]
-    public void GetExtensionFileTypes_WithLocalization_ResolvesDisplayName()
+    public void GetDocumentTypes_WithLocalization_ResolvesDisplayName()
     {
         CreateBundledExtension(
             "note",
@@ -93,14 +103,14 @@ public class FileTypeProviderTests
                 ["Note_FileType_Note"] = "My Localized Note"
             });
 
-        var fileTypes = _provider.GetExtensionFileTypes();
+        var documentTypes = _service.GetDocumentTypes();
 
-        fileTypes.Should().HaveCount(1);
-        fileTypes[0].DisplayName.Should().Be("My Localized Note");
+        documentTypes.Should().HaveCount(1);
+        documentTypes[0].DisplayName.Should().Be("My Localized Note");
     }
 
     [Test]
-    public void GetExtensionFileTypes_FeatureFlagPopulated()
+    public void GetDocumentTypes_DisabledFeatureFlag_Excluded()
     {
         CreateBundledExtension(
             "flagged-editor",
@@ -112,10 +122,51 @@ public class FileTypeProviderTests
                 ("empty", "Empty", "templates/empty.flagged", true)
             ]);
 
-        var fileTypes = _provider.GetExtensionFileTypes();
+        _featureFlags.IsEnabled("my-flag").Returns(false);
 
-        fileTypes.Should().HaveCount(1);
-        fileTypes[0].FeatureFlag.Should().Be("my-flag");
+        var documentTypes = _service.GetDocumentTypes();
+
+        documentTypes.Should().BeEmpty();
+    }
+
+    [Test]
+    public void GetDocumentTypes_EnabledFeatureFlag_Included()
+    {
+        CreateBundledExtension(
+            "flagged-editor",
+            "FlaggedEditor",
+            [(".flagged", "")],
+            featureFlag: "my-flag",
+            templates:
+            [
+                ("empty", "Empty", "templates/empty.flagged", true)
+            ]);
+
+        _featureFlags.IsEnabled("my-flag").Returns(true);
+
+        var documentTypes = _service.GetDocumentTypes();
+
+        documentTypes.Should().HaveCount(1);
+    }
+
+    [Test]
+    public void GetDocumentTypes_MultipleFileExtensions_AllIncluded()
+    {
+        CreateBundledExtension(
+            "multi-ext",
+            "MultiExt",
+            [(".md", ""), (".markdown", "")],
+            templates:
+            [
+                ("empty", "Empty", "templates/empty.md", true)
+            ]);
+
+        var documentTypes = _service.GetDocumentTypes();
+
+        documentTypes.Should().HaveCount(1);
+        documentTypes[0].FileExtensions.Should().HaveCount(2);
+        documentTypes[0].FileExtensions.Should().Contain(".md");
+        documentTypes[0].FileExtensions.Should().Contain(".markdown");
     }
 
     [Test]
@@ -135,7 +186,7 @@ public class FileTypeProviderTests
                 ["templates/empty.note"] = templateContent
             });
 
-        var content = _provider.GetDefaultTemplateContent(".note");
+        var content = _service.GetDefaultTemplateContent(".note");
 
         content.Should().NotBeNull();
         var text = System.Text.Encoding.UTF8.GetString(content!);
@@ -145,7 +196,7 @@ public class FileTypeProviderTests
     [Test]
     public void GetDefaultTemplateContent_NoMatchingExtension_ReturnsNull()
     {
-        var content = _provider.GetDefaultTemplateContent(".unknown");
+        var content = _service.GetDefaultTemplateContent(".unknown");
 
         content.Should().BeNull();
     }
@@ -162,7 +213,7 @@ public class FileTypeProviderTests
                 ("example", "Example", "templates/example.nd", false)
             ]);
 
-        var content = _provider.GetDefaultTemplateContent(".nd");
+        var content = _service.GetDefaultTemplateContent(".nd");
 
         content.Should().BeNull();
     }
@@ -184,16 +235,14 @@ public class FileTypeProviderTests
                 ["templates/empty.test"] = templateContent
             });
 
-        var content = _provider.GetDefaultTemplateContent(".test");
+        var content = _service.GetDefaultTemplateContent(".test");
 
         content.Should().NotBeNull();
     }
 
     [Test]
-    public void GetDefaultTemplateContent_NoProject_ReturnsNull()
+    public void GetDefaultTemplateContent_NoProject_StillFindsBundled()
     {
-        _projectService.CurrentProject.Returns((IProject?)null);
-
         CreateBundledExtension(
             "orphan",
             "Orphan",
@@ -208,12 +257,13 @@ public class FileTypeProviderTests
             });
 
         // Should still find bundled extensions even without a project
-        var content = _provider.GetDefaultTemplateContent(".orphan");
+        var content = _service.GetDefaultTemplateContent(".orphan");
         content.Should().NotBeNull();
     }
 
     /// <summary>
     /// Helper to create a bundled extension directory with TOML manifests and optional files.
+    /// Registers the path with the module service mock and re-discovers extensions.
     /// </summary>
     private void CreateBundledExtension(
         string dirName,
@@ -238,7 +288,7 @@ public class FileTypeProviderTests
             version = "1.0.0"{featureFlagLine}
 
             [contributes]
-            documents = ["editor.document.toml"]
+            document_editors = ["editor.document.toml"]
             """);
 
         // Build document TOML
@@ -279,12 +329,12 @@ public class FileTypeProviderTests
         // Create localization files
         if (localizationStrings is not null)
         {
-            var locDir = Path.Combine(extDir, LocalizationHelper.LocalizationFolder);
-            Directory.CreateDirectory(locDir);
+            var localizationFolder = Path.Combine(extDir, ExtensionLocalizationService.LocalizationFolder);
+            Directory.CreateDirectory(localizationFolder);
 
             var entries = localizationStrings.Select(kv => $"\"{kv.Key}\": \"{kv.Value}\"");
-            var locJson = $"{{ {string.Join(", ", entries)} }}";
-            File.WriteAllText(Path.Combine(locDir, "en.json"), locJson);
+            var localizationJson = $"{{ {string.Join(", ", entries)} }}";
+            File.WriteAllText(Path.Combine(localizationFolder, "en.json"), localizationJson);
         }
 
         // Create template files
@@ -293,12 +343,13 @@ public class FileTypeProviderTests
             foreach (var kvp in templateFiles)
             {
                 var filePath = Path.Combine(extDir, kvp.Key);
-                var dir = Path.GetDirectoryName(filePath)!;
-                Directory.CreateDirectory(dir);
+                var directory = Path.GetDirectoryName(filePath)!;
+                Directory.CreateDirectory(directory);
                 File.WriteAllText(filePath, kvp.Value);
             }
         }
 
-        _extensionRegistry.RegisterBundledExtensionPath(extDir);
+        _bundledExtensionPaths.Add(extDir);
+        _service.Initialize(_tempProjectFolder);
     }
 }

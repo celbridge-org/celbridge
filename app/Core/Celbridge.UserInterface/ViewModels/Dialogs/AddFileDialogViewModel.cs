@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Explorer;
+using Celbridge.Extensions;
 using Celbridge.Settings;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -51,8 +52,7 @@ public partial class AddFileDialogViewModel : ObservableObject
     public AddFileDialogViewModel(
         IEditorSettings editorSettings,
         IStringLocalizer stringLocalizer,
-        IWorkspaceFeatures workspaceFeatures,
-        IExtensionFileTypeProvider extensionFileTypeProvider)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _editorSettings = editorSettings;
         _stringLocalizer = stringLocalizer;
@@ -67,8 +67,9 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
         ];
 
-        // Add extension-provided file types (inserted before "Other")
-        AddExtensionFileTypes(extensionFileTypeProvider, workspaceFeatures);
+        // Add extension-provided document types (inserted before "Other")
+        var extensionService = workspaceWrapper.WorkspaceService.ExtensionService;
+        AddExtensionDocumentTypes(extensionService);
 
         // Select the dropdown based on the previously saved extension
         var previousExtension = _editorSettings.PreviousNewFileExtension;
@@ -229,29 +230,27 @@ public partial class AddFileDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Adds file types from discovered extension manifests.
-    /// Extension-provided file types are inserted before "Other".
-    /// Feature-flagged extensions are excluded when the flag is disabled.
+    /// Adds document types from discovered extension manifests.
+    /// FileExtension-provided document types are inserted before "Other".
+    /// Uses the first file extension from each document type for the dropdown.
     /// </summary>
-    private void AddExtensionFileTypes(
-        IExtensionFileTypeProvider extensionFileTypeProvider,
-        IWorkspaceFeatures workspaceFeatures)
+    private void AddExtensionDocumentTypes(IExtensionService extensionService)
     {
-        var extensionFileTypes = extensionFileTypeProvider.GetExtensionFileTypes();
+        var documentTypes = extensionService.GetDocumentTypes();
 
-        foreach (var extFileType in extensionFileTypes)
+        foreach (var documentType in documentTypes)
         {
-            // Skip if a feature flag is set and the feature is disabled
-            if (!string.IsNullOrEmpty(extFileType.FeatureFlag) &&
-                !workspaceFeatures.IsEnabled(extFileType.FeatureFlag))
+            if (documentType.FileExtensions.Count == 0)
             {
                 continue;
             }
 
-            // Skip if a built-in entry already handles this extension
+            var primaryFileExtension = documentType.FileExtensions[0];
+
+            // Skip if a built-in entry already handles this file extension
             var alreadyExists = FileTypes.Any(ft =>
                 !string.IsNullOrEmpty(ft.Extension) &&
-                ft.Extension.Equals(extFileType.Extension, StringComparison.OrdinalIgnoreCase));
+                ft.Extension.Equals(primaryFileExtension, StringComparison.OrdinalIgnoreCase));
 
             if (alreadyExists)
             {
@@ -259,9 +258,9 @@ public partial class AddFileDialogViewModel : ObservableObject
             }
 
             var item = new FileTypeItem(
-                extFileType.DisplayName,
+                documentType.DisplayName,
                 ResourceFormat.Text,
-                extFileType.Extension);
+                primaryFileExtension);
 
             // Insert before "Other" (the last item)
             FileTypes.Insert(FileTypes.Count - 1, item);

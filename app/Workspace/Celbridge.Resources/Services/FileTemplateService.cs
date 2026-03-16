@@ -1,3 +1,4 @@
+using Celbridge.Workspace;
 using ClosedXML.Excel;
 using Celbridge.Explorer;
 
@@ -9,11 +10,11 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public class FileTemplateService : IFileTemplateService
 {
-    private readonly IExtensionFileTypeProvider _extensionFileTypeProvider;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public FileTemplateService(IExtensionFileTypeProvider extensionFileTypeProvider)
+    public FileTemplateService(IWorkspaceWrapper workspaceWrapper)
     {
-        _extensionFileTypeProvider = extensionFileTypeProvider;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public byte[] GetNewFileContent(string filePath)
@@ -21,7 +22,8 @@ public class FileTemplateService : IFileTemplateService
         string extension = Path.GetExtension(filePath).ToLowerInvariant();
 
         // Check extension-provided templates first
-        var extensionContent = _extensionFileTypeProvider.GetDefaultTemplateContent(extension);
+        var extensionService = _workspaceWrapper.WorkspaceService.ExtensionService;
+        var extensionContent = extensionService.GetDefaultTemplateContent(extension);
         if (extensionContent is not null)
         {
             return extensionContent;

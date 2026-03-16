@@ -1,23 +1,36 @@
+using Celbridge.Messaging;
 using Microsoft.Extensions.Configuration;
 
 namespace Celbridge.Settings.Services;
 
 /// <summary>
-/// Implementation of IFeatureFlagService that reads feature flags from configuration.
+/// Implementation of IFeatureFlags that reads feature flags from configuration
+/// and supports project-level overrides.
 /// </summary>
-public class FeatureFlagService : IFeatureFlagService
+public class FeatureFlagService : IFeatureFlags
 {
     private const string FeatureFlagKey = "FeatureFlags";
 
     private readonly IConfiguration _configuration;
+    private readonly IMessengerService _messengerService;
 
-    public FeatureFlagService(IConfiguration configuration)
+    private IReadOnlyDictionary<string, bool> _projectOverrides = new Dictionary<string, bool>();
+
+    public FeatureFlagService(
+        IConfiguration configuration,
+        IMessengerService messengerService)
     {
         _configuration = configuration;
+        _messengerService = messengerService;
     }
 
     public bool IsEnabled(string featureName)
     {
+        if (_projectOverrides.TryGetValue(featureName, out var overrideValue))
+        {
+            return overrideValue;
+        }
+
         var section = _configuration.GetSection(FeatureFlagKey);
         var value = section[featureName];
 
@@ -29,5 +42,17 @@ public class FeatureFlagService : IFeatureFlagService
         }
 
         return !bool.TryParse(value, out var result) || result;
+    }
+
+    public void ApplyProjectOverrides(IReadOnlyDictionary<string, bool> overrides)
+    {
+        _projectOverrides = overrides;
+        _messengerService.Send(new FeatureFlagsChangedMessage());
+    }
+
+    public void ClearProjectOverrides()
+    {
+        _projectOverrides = new Dictionary<string, bool>();
+        _messengerService.Send(new FeatureFlagsChangedMessage());
     }
 }

@@ -23,7 +23,7 @@ public static class ServiceLocator
     }
 
     /// <summary>
-    /// Extension method to acquire a service from the service provider.
+    /// FileExtension method to acquire a service from the service provider.
     /// This can be used in contexts where Microsoft.Extensions.DependencyInjection should be avoided, e.g. Modules.
     /// </summary>
     public static T AcquireService<T>(this IServiceProvider provider) where T : class

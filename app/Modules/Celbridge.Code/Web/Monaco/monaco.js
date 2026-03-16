@@ -164,7 +164,7 @@ function handleApplyEdits(edits) {
     editor.focus();
 }
 
-async function handleEditorInitialize(language, scrollBeyondLastLine) {
+async function handleEditorInitialize(params) {
     if (!window.isWebView) {
         return;
     }
@@ -172,10 +172,26 @@ async function handleEditorInitialize(language, scrollBeyondLastLine) {
     try {
         client = celbridge;
 
-        // Apply editor options
-        if (scrollBeyondLastLine !== undefined) {
-            editor.updateOptions({ scrollBeyondLastLine: scrollBeyondLastLine });
+        // Apply editor options from host
+        var editorOptions = {};
+
+        if (params.scrollBeyondLastLine !== undefined) {
+            editorOptions.scrollBeyondLastLine = params.scrollBeyondLastLine;
         }
+
+        if (params.wordWrap !== undefined) {
+            editorOptions.wordWrap = params.wordWrap ? 'on' : 'off';
+        }
+
+        if (params.minimapEnabled !== undefined) {
+            editorOptions.minimap = { enabled: params.minimapEnabled };
+        }
+
+        if (Object.keys(editorOptions).length > 0) {
+            editor.updateOptions(editorOptions);
+        }
+
+        var language = params.language;
 
         // Set language before loading content
         if (language) {
@@ -274,6 +290,23 @@ function handleEditorNavigateToLocation(lineNumber, column, endLineNumber, endCo
     applyNavigation(lineNumber, column, endLineNumber, endColumn);
 }
 
+async function handleLoadCustomization(scriptUrl) {
+    if (!editor || !scriptUrl) {
+        return;
+    }
+
+    try {
+        var module = await import(scriptUrl);
+        if (typeof module.activate === 'function') {
+            module.activate(monaco, editor, document.getElementById('container'), celbridge);
+        } else {
+            console.warn('Customization script does not export an activate function:', scriptUrl);
+        }
+    } catch (ex) {
+        console.error('Failed to load customization script:', scriptUrl, ex);
+    }
+}
+
 // Register RPC handlers via monaco-client
 if (window.isWebView) {
     monacoClient.onInitialize(handleEditorInitialize);
@@ -282,4 +315,5 @@ if (window.isWebView) {
     monacoClient.onScrollToPercentage(handleScrollToPercentage);
     monacoClient.onInsertText(handleInsertText);
     monacoClient.onApplyEdits(handleApplyEdits);
+    monacoClient.onLoadCustomization(handleLoadCustomization);
 }

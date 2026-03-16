@@ -54,7 +54,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
 
     /// <summary>
     /// Optional URL to a customization script for the Monaco editor.
-    /// The script is loaded after Monaco initializes and should export an activate(monaco, editor, container) function.
+    /// The script is loaded after Monaco initializes and should export an activate(monaco, editor, container, celbridge) function.
     /// Set this before calling InitializeAsync().
     /// </summary>
     public string? CustomizationScriptUrl { get; set; }
@@ -192,7 +192,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         _contentLoadedTcs = new TaskCompletionSource();
 
         // Initialize the Monaco editor via JSON-RPC with the content, language, and options
-        await _host.InitializeEditorAsync(_language, Options.ScrollBeyondLastLine);
+        await _host.InitializeEditorAsync(_language, Options);
 
         // Wait for Monaco to signal content is loaded, with timeout
         var timeout = TimeSpan.FromSeconds(ContentLoadedTimeoutSeconds);

@@ -6,15 +6,25 @@ namespace Celbridge.Documents;
 public interface IDocumentsService
 {
     /// <summary>
+    /// The registry for document editor factories.
+    /// </summary>
+    IDocumentEditorRegistry DocumentEditorRegistry { get; }
+
+    /// <summary>
+    /// Restores the state of the documents panel from the previous session.
+    /// </summary>
+    Task RestorePanelState();
+
+    /// <summary>
     /// The resource key for the currently selected document.
     /// This is the empty resource if no document is currently selected.
     /// </summary>
     ResourceKey SelectedDocument { get; }
 
     /// <summary>
-    /// Gets all open documents with their addresses (UI positions).
+    /// Gets all open documents with their addresses.
     /// </summary>
-    Dictionary<ResourceKey, DocumentAddress> DocumentAddresses { get; }
+    Dictionary<ResourceKey, DocumentAddress> OpenDocumentAddresses { get; }
 
     /// <summary>
     /// Create a document view for the specified file resource.
@@ -82,19 +92,4 @@ public interface IDocumentsService
     /// This document will be selected at the start of the next editing session.
     /// </summary>
     Task StoreSelectedDocument();
-
-    /// <summary>
-    /// Restores the state of the documents panel from the previous session.
-    /// </summary>
-    Task RestorePanelState();
-
-    /// <summary>
-    /// Registers a document editor factory.
-    /// </summary>
-    Result RegisterDocumentEditorFactory(IDocumentEditorFactory factory);
-
-    /// <summary>
-    /// Gets the document editor registry.
-    /// </summary>
-    IDocumentEditorRegistry DocumentEditorRegistry { get; }
 }

@@ -5,4 +5,4 @@ version = "1.0.0"
 feature_flag = "note-editor"
 
 [contributes]
-documents = ["note.document.toml"]
+document_editors = ["note.document.toml"]

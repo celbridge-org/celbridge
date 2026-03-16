@@ -355,7 +355,7 @@ describe('Celbridge', () => {
             expect(client.codePreview.basePath).toBe('');
         });
 
-        it('should update basePath and call handler on setContext notification', async () => {
+        it('should update basePath and call handler on setBasePath notification', async () => {
             const { client, simulateResponse, simulateNotification } = createTestClient();
 
             const initPromise = client.initialize();
@@ -363,9 +363,9 @@ describe('Celbridge', () => {
             await initPromise;
 
             const handler = vi.fn();
-            client.codePreview.onSetContext(handler);
+            client.codePreview.onSetBasePath(handler);
 
-            simulateNotification('codePreview/setContext', { basePath: '/projects/myproject' });
+            simulateNotification('codePreview/setBasePath', { basePath: '/projects/myproject' });
 
             expect(client.codePreview.basePath).toBe('/projects/myproject');
             expect(handler).toHaveBeenCalledWith('/projects/myproject');

@@ -33,7 +33,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["editor.document.toml"]
+            document_editors = ["editor.document.toml"]
             """);
 
         WriteDocumentToml("editor.document.toml", """
@@ -49,15 +49,19 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().ContainSingle();
 
-        var contribution = result.Value[0];
+        var extension = result.Value;
+        extension.Info.Name.Should().Be("My Editor");
+        extension.Info.ExtensionFolder.Should().Be(_tempFolder);
+        extension.Info.HostName.Should().Be("ext-test-my-editor.celbridge");
+        extension.DocumentEditors.Should().ContainSingle();
+
+        var contribution = extension.DocumentEditors[0];
+        contribution.Should().BeOfType<CustomDocumentContribution>();
         contribution.Id.Should().Be("my-editor-doc");
-        contribution.Extension.Name.Should().Be("My Editor");
-        contribution.Type.Should().Be(DocumentEditorType.Custom);
-        contribution.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".myext");
-        contribution.EntryPoint.Should().Be("index.html");
-        contribution.Extension.ExtensionDirectory.Should().Be(_tempFolder);
+        contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".myext");
+        ((CustomDocumentContribution)contribution).EntryPoint.Should().Be("index.html");
+        contribution.Extension.ExtensionFolder.Should().Be(_tempFolder);
         contribution.Extension.HostName.Should().Be("ext-test-my-editor.celbridge");
     }
 
@@ -71,7 +75,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["cpv.document.toml"]
+            document_editors = ["cpv.document.toml"]
             """);
 
         WriteDocumentToml("cpv.document.toml", """
@@ -86,21 +90,20 @@ public class ManifestTests
             customizations = "customize.js"
 
             [code_preview]
-            asset_folder = "preview"
-            page_url = "index.html"
+            entry_point = "preview/index.html"
             """);
 
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var contribution = result.Value[0];
-        contribution.Type.Should().Be(DocumentEditorType.Code);
-        contribution.CodePreview.Should().NotBeNull();
-        contribution.CodePreview!.HostName.Should().Be("ext-test-code-preview-preview.celbridge");
-        contribution.CodePreview.AssetFolder.Should().Be("preview");
-        contribution.CodePreview.PageUrl.Should().Be("https://ext-test-code-preview-preview.celbridge/index.html");
-        contribution.CodeEditor.Should().NotBeNull();
-        contribution.CodeEditor!.Customizations.Should().Be("customize.js");
+        var contribution = result.Value.DocumentEditors[0];
+        contribution.Should().BeOfType<CodeDocumentContribution>();
+
+        var codeContribution = (CodeDocumentContribution)contribution;
+        codeContribution.CodePreview.Should().NotBeNull();
+        codeContribution.CodePreview!.EntryPoint.Should().Be("preview/index.html");
+        codeContribution.CodeEditor.Should().NotBeNull();
+        codeContribution.CodeEditor!.CustomizationScript.Should().Be("customize.js");
     }
 
     [Test]
@@ -112,7 +115,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
@@ -125,7 +128,7 @@ public class ManifestTests
     {
         WriteExtensionToml("""
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
@@ -143,7 +146,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -156,7 +159,7 @@ public class ManifestTests
 
         // Document with no document_file_types is skipped (invalid)
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeEmpty();
+        result.Value.DocumentEditors.Should().BeEmpty();
     }
 
     [Test]
@@ -190,7 +193,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -205,7 +208,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Priority.Should().Be(EditorPriority.Default);
+        result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.Default);
     }
 
     [Test]
@@ -218,7 +221,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -234,11 +237,11 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Priority.Should().Be(EditorPriority.Option);
+        result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.Option);
     }
 
     [Test]
-    public void LoadExtension_WithExtensionFeatureFlag_PropagatedToDocuments()
+    public void LoadExtension_WithExtensionFeatureFlag_PropagatedToInfo()
     {
         WriteExtensionToml("""
             [extension]
@@ -248,7 +251,7 @@ public class ManifestTests
             feature_flag = "my-feature"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -263,7 +266,8 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Extension.FeatureFlag.Should().Be("my-feature");
+        result.Value.Info.FeatureFlag.Should().Be("my-feature");
+        result.Value.DocumentEditors[0].Extension.FeatureFlag.Should().Be("my-feature");
     }
 
     [Test]
@@ -276,7 +280,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -291,7 +295,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Extension.FeatureFlag.Should().BeNull();
+        result.Value.Info.FeatureFlag.Should().BeNull();
     }
 
 
@@ -305,7 +309,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -332,15 +336,15 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Templates.Should().HaveCount(2);
+        result.Value.DocumentEditors[0].Templates.Should().HaveCount(2);
 
-        var defaultTemplate = result.Value[0].Templates[0];
+        var defaultTemplate = result.Value.DocumentEditors[0].Templates[0];
         defaultTemplate.Id.Should().Be("empty");
         defaultTemplate.DisplayName.Should().Be("Empty File");
         defaultTemplate.File.Should().Be("templates/empty.tmpl");
         defaultTemplate.Default.Should().BeTrue();
 
-        var exampleTemplate = result.Value[0].Templates[1];
+        var exampleTemplate = result.Value.DocumentEditors[0].Templates[1];
         exampleTemplate.Id.Should().Be("example");
         exampleTemplate.Default.Should().BeFalse();
     }
@@ -355,7 +359,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -370,7 +374,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value[0].Templates.Should().BeEmpty();
+        result.Value.DocumentEditors[0].Templates.Should().BeEmpty();
     }
 
     [Test]
@@ -384,7 +388,7 @@ public class ManifestTests
             feature_flag = "full-ext"
 
             [contributes]
-            documents = ["full.document.toml"]
+            document_editors = ["full.document.toml"]
             """);
 
         WriteDocumentToml("full.document.toml", """
@@ -408,14 +412,17 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var contribution = result.Value[0];
+
+        var extension = result.Value;
+        extension.Info.Name.Should().Be("Full Editor");
+        extension.Info.FeatureFlag.Should().Be("full-ext");
+
+        var contribution = extension.DocumentEditors[0];
+        contribution.Should().BeOfType<CustomDocumentContribution>();
         contribution.Id.Should().Be("full-doc");
-        contribution.Extension.Name.Should().Be("Full Editor");
-        contribution.Type.Should().Be(DocumentEditorType.Custom);
-        contribution.FileTypes.Should().ContainSingle().Which.Extension.Should().Be(".full");
-        contribution.EntryPoint.Should().Be("index.html");
+        contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".full");
+        ((CustomDocumentContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Priority.Should().Be(EditorPriority.Default);
-        contribution.Extension.FeatureFlag.Should().Be("full-ext");
         contribution.Templates.Should().HaveCount(1);
     }
 
@@ -429,7 +436,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["a.document.toml", "b.document.toml"]
+            document_editors = ["a.document.toml", "b.document.toml"]
             """);
 
         WriteDocumentToml("a.document.toml", """
@@ -453,9 +460,11 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(2);
-        result.Value[0].Id.Should().Be("doc-a");
-        result.Value[1].Id.Should().Be("doc-b");
+        result.Value.DocumentEditors.Should().HaveCount(2);
+        result.Value.DocumentEditors[0].Should().BeOfType<CustomDocumentContribution>();
+        result.Value.DocumentEditors[0].Id.Should().Be("doc-a");
+        result.Value.DocumentEditors[1].Should().BeOfType<CodeDocumentContribution>();
+        result.Value.DocumentEditors[1].Id.Should().Be("doc-b");
     }
 
     [Test]
@@ -468,7 +477,7 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["doc.document.toml"]
+            document_editors = ["doc.document.toml"]
             """);
 
         WriteDocumentToml("doc.document.toml", """
@@ -489,12 +498,13 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var codeEditor = result.Value[0].CodeEditor;
-        codeEditor.Should().NotBeNull();
-        codeEditor!.WordWrap.Should().BeTrue();
-        codeEditor.ScrollBeyondLastLine.Should().BeFalse();
-        codeEditor.MinimapEnabled.Should().BeTrue();
-        codeEditor.Customizations.Should().Be("custom.js");
+        var codeContribution = result.Value.DocumentEditors[0] as CodeDocumentContribution;
+        codeContribution.Should().NotBeNull();
+        codeContribution!.CodeEditor.Should().NotBeNull();
+        codeContribution.CodeEditor!.WordWrap.Should().BeTrue();
+        codeContribution.CodeEditor.ScrollBeyondLastLine.Should().BeFalse();
+        codeContribution.CodeEditor.MinimapEnabled.Should().BeTrue();
+        codeContribution.CodeEditor.CustomizationScript.Should().Be("custom.js");
     }
 
     [Test]
@@ -507,13 +517,13 @@ public class ManifestTests
             version = "1.0.0"
 
             [contributes]
-            documents = ["nonexistent.document.toml"]
+            document_editors = ["nonexistent.document.toml"]
             """);
 
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeEmpty();
+        result.Value.DocumentEditors.Should().BeEmpty();
     }
 
     [Test]
@@ -527,7 +537,7 @@ public class ManifestTests
             feature_flag = "shared-flag"
 
             [contributes]
-            documents = ["a.document.toml", "b.document.toml"]
+            document_editors = ["a.document.toml", "b.document.toml"]
             """);
 
         WriteDocumentToml("a.document.toml", """
@@ -551,13 +561,43 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(2);
+        result.Value.DocumentEditors.Should().HaveCount(2);
 
-        // Both contributions share the same ExtensionInfo
-        result.Value[0].Extension.Name.Should().Be("Shared");
-        result.Value[1].Extension.Name.Should().Be("Shared");
-        result.Value[0].Extension.FeatureFlag.Should().Be("shared-flag");
-        result.Value[1].Extension.FeatureFlag.Should().Be("shared-flag");
+        // Both contributions share the same ExtensionInfo via the parent FileExtension
+        result.Value.Info.Name.Should().Be("Shared");
+        result.Value.Info.FeatureFlag.Should().Be("shared-flag");
+        result.Value.DocumentEditors[0].Extension.Name.Should().Be("Shared");
+        result.Value.DocumentEditors[1].Extension.Name.Should().Be("Shared");
+    }
+
+    [Test]
+    public void LoadExtension_CustomDocumentWithoutEntryPoint_DefaultsToIndexHtml()
+    {
+        WriteExtensionToml("""
+            [extension]
+            id = "test.no-entry"
+            name = "NoEntry"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "no-entry-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".ne"
+            """);
+
+        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        var customContribution = result.Value.DocumentEditors[0] as CustomDocumentContribution;
+        customContribution.Should().NotBeNull();
+        customContribution!.EntryPoint.Should().Be("index.html");
     }
 
     private void WriteExtensionToml(string content)

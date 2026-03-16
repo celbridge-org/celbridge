@@ -1,4 +1,5 @@
 using Celbridge.Activities;
+using Celbridge.Documents;
 using Celbridge.Modules;
 
 namespace Celbridge.Notes;
@@ -9,11 +10,6 @@ public class Module : IModule
 
     public void ConfigureServices(IModuleServiceCollection services)
     {
-        //
-        // Register bundled extension provider
-        //
-
-        services.AddSingleton<IBundledExtensionProvider, NoteBundledExtensionProvider>();
     }
 
     public Result Initialize()
@@ -21,8 +17,18 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        return [];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetExtensionFolder()
+    {
+        return Path.Combine(AppContext.BaseDirectory, "Celbridge.Notes", "Web", "note");
     }
 }

@@ -34,12 +34,12 @@ public class LayoutManagerTests
         _editorSettings.PreferredRegionVisibility.Returns(LayoutRegion.All);
 
         var logger = _serviceProvider.GetRequiredService<ILogger<LayoutManager>>();
-        var workspaceFeatures = Substitute.For<IWorkspaceFeatures>();
+        var featureFlags = Substitute.For<IFeatureFlags>();
 
         // Default to console panel feature enabled for tests
-        workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel).Returns(true);
+        featureFlags.IsEnabled(FeatureFlags.ConsolePanel).Returns(true);
 
-        _layoutManager = new LayoutManager(logger, _messengerService, _editorSettings, workspaceFeatures);
+        _layoutManager = new LayoutManager(logger, _messengerService, _editorSettings, featureFlags);
     }
 
     [TearDown]

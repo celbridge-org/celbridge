@@ -10,14 +10,20 @@ namespace Celbridge.Markdown.Services;
 /// </summary>
 public class MarkdownPreviewRenderer : ICodePreviewRenderer
 {
-    public string PreviewHostName => "markdown-preview.celbridge";
+    private const string HostName = "markdown-preview.celbridge";
 
-    public string PreviewAssetFolder => "Celbridge.Markdown/Web/markdown-preview";
+    private const string AssetFolder = "Celbridge.Markdown/Web/markdown-preview";
 
-    public string PreviewPageUrl => "https://markdown-preview.celbridge/index.html";
+    public string PreviewPageUrl => $"https://{HostName}/index.html";
 
     public Task ConfigureWebViewAsync(CoreWebView2 webView, string projectFolderPath)
     {
+        // Map the Markdown preview assets
+        webView.SetVirtualHostNameToFolderMapping(
+            HostName,
+            AssetFolder,
+            CoreWebView2HostResourceAccessKind.Allow);
+
         // Map the project folder so local image paths resolve correctly
         if (!string.IsNullOrEmpty(projectFolderPath))
         {
@@ -28,24 +34,5 @@ public class MarkdownPreviewRenderer : ICodePreviewRenderer
         }
 
         return Task.CompletedTask;
-    }
-
-    public string ComputeBasePath(string documentPath, string projectFolderPath)
-    {
-        // Get the document's directory path relative to the project root
-        var documentDir = Path.GetDirectoryName(documentPath);
-
-        var basePath = string.Empty;
-        if (!string.IsNullOrEmpty(documentDir) && !string.IsNullOrEmpty(projectFolderPath))
-        {
-            if (documentDir.StartsWith(projectFolderPath, StringComparison.OrdinalIgnoreCase))
-            {
-                basePath = documentDir.Substring(projectFolderPath.Length)
-                    .TrimStart(Path.DirectorySeparatorChar)
-                    .Replace(Path.DirectorySeparatorChar, '/');
-            }
-        }
-
-        return basePath;
     }
 }

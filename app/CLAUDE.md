@@ -44,7 +44,7 @@ Celbridge is a visual programming IDE built on Uno Platform (.NET 9.0, C# 12+). 
 
 ### Workspace-scoped services must NOT be injected via constructor DI
 Access them through `_workspaceWrapper.WorkspaceService` instead. These services are transient with workspace scope:
-`IWorkspaceSettingsService`, `IWorkspaceSettings`, `IResourceRegistry`, `IResourceTransferService`, `IResourceOperationService`, `IPythonService`, `IConsoleService`, `IDocumentsService`, `IExplorerService`, `IInspectorService`, `IDataTransferService`, `IEntityService`, `IGenerativeAIService`, `IActivityService`, `IWorkspaceFeatures`
+`IWorkspaceSettingsService`, `IWorkspaceSettings`, `IResourceRegistry`, `IResourceTransferService`, `IResourceOperationService`, `IPythonService`, `IConsoleService`, `IDocumentsService`, `IExplorerService`, `IInspectorService`, `IDataTransferService`, `IEntityService`, `IGenerativeAIService`, `IActivityService`
 
 ### Project configuration access
 - Current project: `IProjectService.CurrentProject` (singleton)
@@ -52,8 +52,9 @@ Access them through `_workspaceWrapper.WorkspaceService` instead. These services
 - Parse `.celbridge` files outside project loading: `ProjectConfigParser.ParseFromFile()`
 
 ### Feature flags
-- Application-level: `IFeatureFlagService` (singleton, reads from appsettings.json)
-- Workspace-level: `IWorkspaceFeatures` (workspace-scoped, checks `.celbridge` first, falls back to appsettings.json)
+- `IFeatureFlags` (singleton) - reads from appsettings.json, supports project-level overrides via `ApplyProjectOverrides()`/`ClearProjectOverrides()`
+- Project overrides are applied by `WorkspaceLoader` on load and cleared by `WorkspacePageViewModel` on unload
+- Sends `FeatureFlagsChangedMessage` when overrides change, so UI components can react
 - Use kebab-case names (e.g., "console-panel")
 - Use nullable types for optional features controlled by flags (e.g., `IConsolePanel?`), not the Null Object pattern
 

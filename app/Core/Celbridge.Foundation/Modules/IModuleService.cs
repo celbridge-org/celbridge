@@ -8,6 +8,11 @@ namespace Celbridge.Modules;
 public interface IModuleService
 {
     /// <summary>
+    /// Returns all loaded modules.
+    /// </summary>
+    IReadOnlyList<IModule> LoadedModules { get; }
+
+    /// <summary>
     /// Initializes all loaded modules
     /// </summary>
     Result InitializeModules();
@@ -21,4 +26,9 @@ public interface IModuleService
     /// Creates an instance of a supported activity.
     /// </summary>
     Result<IActivity> CreateActivity(string activityName);
+
+    /// <summary>
+    /// Returns extension folders from all loaded modules that bundle extensions.
+    /// </summary>
+    IReadOnlyList<string> GetExtensionFolders();
 }

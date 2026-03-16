@@ -18,7 +18,7 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
     /// The document contribution for the extension this view model serves.
     /// Set by the view after construction.
     /// </summary>
-    public DocumentContribution? Contribution { get; set; }
+    public CustomDocumentContribution? Contribution { get; set; }
 
     public ExtensionDocumentViewModel(
         IMessengerService messengerService,
@@ -226,7 +226,7 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        var templatePath = Path.Combine(Contribution.Extension.ExtensionDirectory, defaultTemplate.File);
+        var templatePath = Path.Combine(Contribution.Extension.ExtensionFolder, defaultTemplate.TemplateFile);
         if (!File.Exists(templatePath))
         {
             return string.Empty;

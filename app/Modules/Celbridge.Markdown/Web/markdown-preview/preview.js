@@ -8,7 +8,7 @@ import { Celbridge } from 'https://celbridge-client.celbridge/celbridge.js';
 const celbridge = new Celbridge();
 
 // Document base path (relative to project root, e.g., "01_markdown/")
-// Set by the host via codePreview/setContext notification
+// Set by the host via codePreview/setBasePath notification
 let documentBasePath = '';
 
 // Configure marked with GitHub-flavored markdown options and error handling
@@ -313,7 +313,7 @@ function init() {
     console.log('Markdown preview initializing with celbridge.js SDK');
 
     // Register handler for document context updates
-    celbridge.codePreview.onSetContext((basePath) => {
+    celbridge.codePreview.onSetBasePath((basePath) => {
         // Ensure the base path ends with a slash if not empty
         if (basePath && !basePath.endsWith('/')) {
             basePath += '/';
