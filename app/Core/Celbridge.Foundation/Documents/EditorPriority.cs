@@ -7,12 +7,12 @@ namespace Celbridge.Documents;
 public enum EditorPriority
 {
     /// <summary>
-    /// Alternative editor available via "Open With".
-    /// </summary>
-    Option = -1,
-
-    /// <summary>
     /// Standard editor for this file type. Opens automatically.
     /// </summary>
-    Default = 0
+    Default,
+
+    /// <summary>
+    /// Alternative editor available via "Open With".
+    /// </summary>
+    Option
 }

@@ -560,7 +560,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (viewType == DocumentViewType.TextDocument)
         {
             // Check all factories to see if any can handle this text file
-            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderByDescending(f => (int)f.Priority))
+            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(f => f.Priority))
             {
                 if (factory.CanHandle(fileResource, filePath))
                 {
