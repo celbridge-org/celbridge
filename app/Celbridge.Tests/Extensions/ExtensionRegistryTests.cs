@@ -3,7 +3,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Extensions;
 
@@ -22,14 +21,13 @@ public class ExtensionServiceTests
 
         var logger = Substitute.For<ILogger<ExtensionService>>();
         var messengerService = Substitute.For<IMessengerService>();
-        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         var localizationLogger = Substitute.For<ILogger<ExtensionLocalizationService>>();
         var localizationService = new ExtensionLocalizationService(localizationLogger);
         _moduleService = Substitute.For<IModuleService>();
         _moduleService.GetExtensionFolders().Returns(new List<string>());
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
-        _service = new ExtensionService(logger, _moduleService, messengerService, workspaceWrapper, featureFlags, localizationService);
+        _service = new ExtensionService(logger, _moduleService, messengerService, featureFlags, localizationService);
     }
 
     [TearDown]

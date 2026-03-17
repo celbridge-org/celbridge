@@ -323,13 +323,13 @@ public class ManifestTests
             [[document_templates]]
             id = "empty"
             display_name = "Empty File"
-            file = "templates/empty.tmpl"
+            template_file = "templates/empty.tmpl"
             default = true
 
             [[document_templates]]
             id = "example"
             display_name = "Example File"
-            file = "templates/example.tmpl"
+            template_file = "templates/example.tmpl"
             default = false
             """);
 
@@ -341,7 +341,7 @@ public class ManifestTests
         var defaultTemplate = result.Value.DocumentEditors[0].Templates[0];
         defaultTemplate.Id.Should().Be("empty");
         defaultTemplate.DisplayName.Should().Be("Empty File");
-        defaultTemplate.File.Should().Be("templates/empty.tmpl");
+        defaultTemplate.TemplateFile.Should().Be("templates/empty.tmpl");
         defaultTemplate.Default.Should().BeTrue();
 
         var exampleTemplate = result.Value.DocumentEditors[0].Templates[1];

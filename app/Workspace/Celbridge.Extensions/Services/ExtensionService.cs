@@ -3,13 +3,12 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// Discovers and caches extension contributions, provides document type information,
-/// and serves template content.
+/// Discovers extensions and populates the extension registry.
+/// Provides document type information and serves template content.
 /// </summary>
 public class ExtensionService : IExtensionService
 {
@@ -19,33 +18,28 @@ public class ExtensionService : IExtensionService
     private readonly ILogger<ExtensionService> _logger;
     private readonly IModuleService _moduleService;
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFeatureFlags _featureFlags;
     private readonly ExtensionLocalizationService _localizationService;
 
-    private List<Extension> _bundledExtensions = [];
-    private List<Extension> _projectExtensions = [];
+    private readonly ExtensionRegistry _registry = new();
 
     public ExtensionService(
         ILogger<ExtensionService> logger,
         IModuleService moduleService,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
         IFeatureFlags featureFlags,
         ExtensionLocalizationService localizationService)
     {
         _logger = logger;
         _moduleService = moduleService;
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
         _featureFlags = featureFlags;
         _localizationService = localizationService;
     }
 
     public void Initialize(string projectFolderPath)
     {
-        _bundledExtensions.Clear();
-        _projectExtensions.Clear();
+        _registry.Clear();
 
         DiscoverBundledExtensions();
         DiscoverProjectExtensions(projectFolderPath);
@@ -55,23 +49,17 @@ public class ExtensionService : IExtensionService
 
     public IReadOnlyList<Extension> GetAllExtensions()
     {
-        var combined = new List<Extension>(_bundledExtensions.Count + _projectExtensions.Count);
-        combined.AddRange(_bundledExtensions);
-        combined.AddRange(_projectExtensions);
-        return combined.AsReadOnly();
+        return _registry.GetAllExtensions();
     }
 
     public IReadOnlyList<DocumentContribution> GetAllDocumentEditors()
     {
-        return GetAllExtensions()
-            .SelectMany(extension => extension.DocumentEditors)
-            .ToList()
-            .AsReadOnly();
+        return _registry.GetAllDocumentEditors();
     }
 
     public IReadOnlyList<DocumentTypeInfo> GetDocumentTypes()
     {
-        var contributions = GetAllDocumentEditors();
+        var contributions = _registry.GetAllDocumentEditors();
         var documentTypes = new List<DocumentTypeInfo>();
 
         foreach (var contribution in contributions)
@@ -101,7 +89,7 @@ public class ExtensionService : IExtensionService
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
-        var contributions = GetAllDocumentEditors();
+        var contributions = _registry.GetAllDocumentEditors();
 
         foreach (var contribution in contributions)
         {
@@ -151,7 +139,7 @@ public class ExtensionService : IExtensionService
             var extension = TryLoadExtension(extensionFolder);
             if (extension is not null)
             {
-                _bundledExtensions.Add(extension);
+                _registry.AddBundledExtension(extension);
             }
         }
     }
@@ -176,7 +164,7 @@ public class ExtensionService : IExtensionService
             var extension = TryLoadExtension(extensionFolder);
             if (extension is not null)
             {
-                _projectExtensions.Add(extension);
+                _registry.AddProjectExtension(extension);
             }
         }
     }

@@ -3,7 +3,6 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Extensions;
 
@@ -29,16 +28,11 @@ public class ExtensionServiceDocumentTypeTests
         _featureFlags = Substitute.For<IFeatureFlags>();
         _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
 
-        var workspaceService = Substitute.For<IWorkspaceService>();
-
-        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.WorkspaceService.Returns(workspaceService);
-
         var logger = Substitute.For<ILogger<ExtensionService>>();
         var messengerService = Substitute.For<IMessengerService>();
         var localizationLogger = Substitute.For<ILogger<ExtensionLocalizationService>>();
         var localizationService = new ExtensionLocalizationService(localizationLogger);
-        _service = new ExtensionService(logger, _moduleService, messengerService, workspaceWrapper, _featureFlags, localizationService);
+        _service = new ExtensionService(logger, _moduleService, messengerService, _featureFlags, localizationService);
     }
 
     [TearDown]
@@ -310,7 +304,7 @@ public class ExtensionServiceDocumentTypeTests
                 [[document_templates]]
                 id = "{t.Id}"
                 display_name = "{t.DisplayName}"
-                file = "{t.File}"
+                template_file = "{t.File}"
                 default = {t.Default.ToString().ToLower()}
                 """));
         }
