@@ -129,10 +129,10 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Initialize all extensions (bundled + project) before restoring documents so that
+        // Register all extensions (bundled + project) before restoring documents so that
         // restored documents can use editors defined in extensions.
         var extensionService = workspaceService.ExtensionService;
-        extensionService.Initialize(projectFolderPath);
+        extensionService.RegisterExtensions(projectFolderPath);
 
         // Open previous opened documents in the Documents Panel
         var documentsService = workspaceService.DocumentsService;

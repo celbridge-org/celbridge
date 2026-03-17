@@ -344,6 +344,6 @@ public class ExtensionServiceDocumentTypeTests
         }
 
         _bundledExtensionPaths.Add(extDir);
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
     }
 }

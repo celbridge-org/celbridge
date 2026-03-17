@@ -40,29 +40,29 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_NoExtensionsFolder_ReturnsEmpty()
+    public void RegisterExtensions_NoExtensionsFolder_ReturnsEmpty()
     {
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         _service.GetAllDocumentEditors().Should().BeEmpty();
     }
 
     [Test]
-    public void Initialize_EmptyExtensionsFolder_ReturnsEmpty()
+    public void RegisterExtensions_EmptyExtensionsFolder_ReturnsEmpty()
     {
         Directory.CreateDirectory(Path.Combine(_tempProjectFolder, "extensions"));
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         _service.GetAllDocumentEditors().Should().BeEmpty();
     }
 
     [Test]
-    public void Initialize_ValidManifest_ReturnsManifest()
+    public void RegisterExtensions_ValidManifest_ReturnsManifest()
     {
         CreateProjectExtension("my-editor", "test.my-editor", "My Editor", "custom", ".myext");
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
@@ -71,12 +71,12 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_MultipleExtensions_ReturnsAll()
+    public void RegisterExtensions_MultipleExtensions_ReturnsAll()
     {
         CreateProjectExtension("editor-a", "test.editor-a", "Editor A", "custom", ".a");
         CreateProjectExtension("editor-b", "test.editor-b", "Editor B", "code", ".b");
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(2);
@@ -86,7 +86,7 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_InvalidManifest_SkipsAndContinues()
+    public void RegisterExtensions_InvalidManifest_SkipsAndContinues()
     {
         CreateProjectExtension("good", "test.good", "Good", "custom", ".good");
 
@@ -95,7 +95,7 @@ public class ExtensionServiceTests
         Directory.CreateDirectory(badDir);
         File.WriteAllText(Path.Combine(badDir, "extension.toml"), "{ invalid toml }");
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
@@ -103,7 +103,7 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_DirectoryWithoutManifest_IsSkipped()
+    public void RegisterExtensions_DirectoryWithoutManifest_IsSkipped()
     {
         CreateProjectExtension("with-manifest", "test.with-manifest", "Found", "code", ".found");
 
@@ -111,7 +111,7 @@ public class ExtensionServiceTests
         var dirWithoutManifest = Path.Combine(_tempProjectFolder, "extensions", "no-manifest");
         Directory.CreateDirectory(dirWithoutManifest);
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
@@ -119,13 +119,13 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_IncludesModuleExtensions()
+    public void RegisterExtensions_IncludesModuleExtensions()
     {
         var bundledDir = CreateBundledExtension("bundled-editor", "test.bundled", "Bundled", "custom", ".bnd");
 
         _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
@@ -133,14 +133,14 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_CombinesProjectAndBundled()
+    public void RegisterExtensions_CombinesProjectAndBundled()
     {
         CreateProjectExtension("proj-editor", "test.proj", "Project", "custom", ".proj");
         var bundledDir = CreateBundledExtension("bundled-editor", "test.bundled", "Bundled", "custom", ".bnd");
 
         _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(2);
@@ -150,7 +150,7 @@ public class ExtensionServiceTests
     }
 
     [Test]
-    public void Initialize_InvalidBundledManifestSkipped()
+    public void RegisterExtensions_InvalidBundledManifestSkipped()
     {
         var bundledDir = Path.Combine(_tempProjectFolder, "bad-bundled");
         Directory.CreateDirectory(bundledDir);
@@ -158,30 +158,30 @@ public class ExtensionServiceTests
 
         _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         _service.GetAllDocumentEditors().Should().BeEmpty();
     }
 
     [Test]
-    public void Initialize_MissingBundledManifestSkipped()
+    public void RegisterExtensions_MissingBundledManifestSkipped()
     {
         var bundledDir = Path.Combine(_tempProjectFolder, "no-manifest-bundled");
         Directory.CreateDirectory(bundledDir);
 
         _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
 
         _service.GetAllDocumentEditors().Should().BeEmpty();
     }
 
     [Test]
-    public void Initialize_ClearsPreviousContributions()
+    public void RegisterExtensions_ClearsPreviousContributions()
     {
         CreateProjectExtension("editor-a", "test.editor-a", "Editor A", "custom", ".a");
 
-        _service.Initialize(_tempProjectFolder);
+        _service.RegisterExtensions(_tempProjectFolder);
         _service.GetAllDocumentEditors().Should().HaveCount(1);
 
         // Create a second temp folder with different extensions
@@ -191,7 +191,7 @@ public class ExtensionServiceTests
             Directory.CreateDirectory(secondFolder);
 
             // Discover from empty folder - should clear previous contributions
-            _service.Initialize(secondFolder);
+            _service.RegisterExtensions(secondFolder);
             _service.GetAllDocumentEditors().Should().BeEmpty();
         }
         finally

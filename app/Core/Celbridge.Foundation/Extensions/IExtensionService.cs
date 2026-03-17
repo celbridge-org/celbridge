@@ -16,7 +16,7 @@ public interface IExtensionService
     /// Discovers all extensions (bundled module extensions and project extensions)
     /// and registers all extension behaviors (e.g. custom document editor factories).
     /// </summary>
-    void Initialize(string projectFolderPath);
+    void RegisterExtensions(string projectFolderPath);
 
     /// <summary>
     /// Gets document type entries from discovered extensions that declare templates.

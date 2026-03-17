@@ -37,7 +37,7 @@ public class ExtensionService : IExtensionService
         _localizationService = localizationService;
     }
 
-    public void Initialize(string projectFolderPath)
+    public void RegisterExtensions(string projectFolderPath)
     {
         _registry.Clear();
 
