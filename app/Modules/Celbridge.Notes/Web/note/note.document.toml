@@ -2,7 +2,7 @@
 id = "note-document"
 type = "custom"
 entry_point = "index.html"
-priority = "default"
+priority = "specialized"
 
 [[document_file_types]]
 extension = ".note"

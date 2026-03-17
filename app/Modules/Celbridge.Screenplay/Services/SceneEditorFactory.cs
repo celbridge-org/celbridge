@@ -13,7 +13,7 @@ public class SceneEditorFactory : DocumentEditorFactoryBase
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = [".scene"];
 
-    public override EditorPriority Priority => EditorPriority.Default;
+    public override EditorPriority Priority => EditorPriority.Specialized;
 
     public SceneEditorFactory(IServiceProvider serviceProvider)
     {

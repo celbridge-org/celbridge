@@ -208,11 +208,11 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.Default);
+        result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.Specialized);
     }
 
     [Test]
-    public void LoadExtension_WithOptionPriority_UsesOption()
+    public void LoadExtension_WithGeneralPriority_UsesGeneral()
     {
         WriteExtensionToml("""
             [extension]
@@ -228,7 +228,7 @@ public class ManifestTests
             [document]
             id = "priority-doc"
             type = "code"
-            priority = "option"
+            priority = "general"
 
             [[document_file_types]]
             extension = ".pri"
@@ -237,7 +237,7 @@ public class ManifestTests
         var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.Option);
+        result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.General);
     }
 
     [Test]
@@ -422,7 +422,7 @@ public class ManifestTests
         contribution.Id.Should().Be("full-doc");
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".full");
         ((CustomDocumentContribution)contribution).EntryPoint.Should().Be("index.html");
-        contribution.Priority.Should().Be(EditorPriority.Default);
+        contribution.Priority.Should().Be(EditorPriority.Specialized);
         contribution.Templates.Should().HaveCount(1);
     }
 

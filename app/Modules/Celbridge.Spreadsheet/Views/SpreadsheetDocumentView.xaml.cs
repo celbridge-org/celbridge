@@ -11,7 +11,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Spreadsheet.Views;
 
-public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHostDocument
+public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
 {
     // Spreadsheets can be large and take significant time to serialize/save.
     private const int SaveRequestTimeoutSeconds = 60;
@@ -20,16 +20,11 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
 
+    private SpreadsheetDocumentHandler? _documentHandler;
+
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
     protected override DocumentViewModel DocumentViewModel => ViewModel;
-
-    // Track import state to prevent race conditions during initial load and reloads
-    private bool _isImportInProgress;
-    private bool _hasPendingImport;
-
-    // Track save result from async RPC callback
-    private TaskCompletionSource<Result>? _saveResultTcs;
 
     public SpreadsheetDocumentView(
         IServiceProvider serviceProvider,
@@ -68,7 +63,7 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
 
     protected override async Task<Result> SaveDocumentContentAsync()
     {
-        if (Host is null)
+        if (Host is null || _documentHandler is null)
         {
             _logger.LogDebug("Save skipped - Host not initialized");
             return Result.Ok();
@@ -80,21 +75,18 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
             return Result.Ok();
         }
 
-        // Set up completion source to receive the save result from SaveAsync
-        _saveResultTcs = new TaskCompletionSource<Result>();
+        var saveResultTcs = new TaskCompletionSource<Result>();
+        _documentHandler.SaveResultTcs = saveResultTcs;
 
-        // Request the JS side to save - it will call document/save
-        // which triggers our SaveAsync handler
         await Host.NotifyRequestSaveAsync();
 
-        // Wait for SaveAsync to complete, with timeout to prevent hanging
         var timeout = TimeSpan.FromSeconds(SaveRequestTimeoutSeconds);
         var timeoutTask = Task.Delay(timeout);
-        var completedTask = await Task.WhenAny(_saveResultTcs.Task, timeoutTask);
+        var completedTask = await Task.WhenAny(saveResultTcs.Task, timeoutTask);
 
         if (completedTask == timeoutTask)
         {
-            _saveResultTcs = null;
+            _documentHandler.SaveResultTcs = null;
             CompleteSave();
 
             var errorMessage = $"Spreadsheet editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
@@ -105,8 +97,8 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
             return Result.Fail(errorMessage);
         }
 
-        var result = await _saveResultTcs.Task;
-        _saveResultTcs = null;
+        var result = await saveResultTcs.Task;
+        _documentHandler.SaveResultTcs = null;
 
         return result;
     }
@@ -170,8 +162,15 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
                 return;
             }
 
-            // Register this view as the handler for additional RPC interfaces
-            Host.AddLocalRpcTarget<IHostDocument>(this);
+            _documentHandler = new SpreadsheetDocumentHandler(
+                ViewModel,
+                _logger,
+                CreateDocumentMetadata,
+                LoadSpreadsheetAsBase64Async,
+                CompleteSave,
+                () => Host?.NotifyExternalChangeAsync());
+
+            Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
 
             StartHostListener();
 
@@ -183,125 +182,6 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
             _logger.LogError(ex, "Failed to initialize Spreadsheet Web View.");
         }
     }
-
-    #region IHostDocument
-
-        public async Task<InitializeResult> InitializeAsync(string protocolVersion)
-        {
-            DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
-
-            // Load spreadsheet as base64 - content is stored in the result
-            var base64Content = await LoadSpreadsheetAsBase64Async();
-
-            var metadata = CreateDocumentMetadata();
-
-            // Mark import as in progress - JS will notify us when complete
-            _isImportInProgress = true;
-
-            // Use content field to pass base64 data for spreadsheet
-            return new InitializeResult(base64Content, metadata);
-        }
-
-    public async Task<LoadResult> LoadAsync()
-    {
-        // Mark import as in progress
-        _isImportInProgress = true;
-
-        var base64Content = await LoadSpreadsheetAsBase64Async();
-        var metadata = CreateDocumentMetadata();
-
-        return new LoadResult(base64Content, metadata);
-    }
-
-    /// <summary>
-    /// Called by JS via RPC when the spreadsheet data needs to be saved.
-    /// Saves the data to disk and signals the waiting SaveDocument() method with the result.
-    /// </summary>
-    public async Task<SaveResult> SaveAsync(string content)
-    {
-        try
-        {
-            // Write the spreadsheet data to disk
-            var saveResult = await ViewModel.SaveSpreadsheetDataToFile(content);
-
-            if (saveResult.IsFailure)
-            {
-                _logger.LogError(saveResult, "Failed to save spreadsheet data");
-                return CompleteSaveWithResult(saveResult);
-            }
-
-            // Reset the ViewModel's save state flags
-            await ViewModel.SaveDocument();
-
-            // Check if another save was requested while this one was in progress
-            if (CompleteSave())
-            {
-                _logger.LogDebug("Processing pending save request");
-                ViewModel.OnDataChanged();
-            }
-
-            return SignalSaveResult(Result.Ok(), success: true);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception during save");
-            var failResult = Result.Fail("Exception during save").WithException(ex);
-            return CompleteSaveWithResult(failResult, ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Completes a failed save operation: signals the waiting SaveDocument() and returns failure to JS.
-    /// </summary>
-    private SaveResult CompleteSaveWithResult(Result failResult, string? errorMessage = null)
-    {
-        CompleteSave();
-        _saveResultTcs?.TrySetResult(failResult);
-        return new SaveResult(false, errorMessage ?? failResult.Error);
-    }
-
-    /// <summary>
-    /// Signals the waiting SaveDocument() method and returns the result to JS.
-    /// </summary>
-    private SaveResult SignalSaveResult(Result result, bool success, string? errorMessage = null)
-    {
-        _saveResultTcs?.TrySetResult(result);
-        return new SaveResult(success, errorMessage);
-    }
-
-    #endregion
-
-    #region IHostDocument
-
-    public void OnDocumentChanged()
-    {
-        // Flag the document as modified so it will attempt to save after a short delay.
-        ViewModel.OnDataChanged();
-    }
-
-    public void OnImportComplete(bool success, string? error = null)
-    {
-        _isImportInProgress = false;
-
-        if (!success)
-        {
-            _logger.LogWarning($"Spreadsheet import failed: {error}");
-        }
-        else
-        {
-            _logger.LogDebug("Spreadsheet import completed successfully");
-        }
-
-        // If another file change occurred while we were importing, we need to import again
-        if (_hasPendingImport)
-        {
-            _logger.LogDebug("Processing pending import request");
-            _hasPendingImport = false;
-            Host?.NotifyExternalChangeAsync();
-        }
-    }
-
-    #endregion
 
     private async Task<string> LoadSpreadsheetAsBase64Async()
     {
@@ -358,15 +238,13 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView, IHost
 
     private void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
-        // If an import is already in progress, mark that we need another import after this one completes
-        if (_isImportInProgress)
+        if (_documentHandler is not null && _documentHandler.IsImportInProgress)
         {
-            _hasPendingImport = true;
+            _documentHandler.HasPendingImport = true;
             _logger.LogDebug("Import already in progress, queuing pending import");
             return;
         }
 
-        // Notify JS to reload the spreadsheet from disk
         Host?.NotifyExternalChangeAsync();
     }
 }

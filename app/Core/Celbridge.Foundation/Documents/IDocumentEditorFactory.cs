@@ -2,19 +2,19 @@ namespace Celbridge.Documents;
 
 /// <summary>
 /// Editor priority for conflict resolution when multiple editors support the same file type.
-/// Default editors open automatically; Option editors are available via "Open With".
+/// When multiple factories support the same extension, lower priority values win.
 /// </summary>
 public enum EditorPriority
 {
     /// <summary>
-    /// Standard editor for this file type. Opens automatically.
+    /// Purpose-built editor for a specific file type (e.g., Markdown editor, Spreadsheet editor).
     /// </summary>
-    Default,
+    Specialized,
 
     /// <summary>
-    /// Alternative editor available via "Open With".
+    /// General-purpose editor that handles many file types (e.g., code/text editor).
     /// </summary>
-    Option
+    General
 }
 
 /// <summary>
@@ -30,7 +30,7 @@ public interface IDocumentEditorFactory
 
     /// <summary>
     /// Priority for conflict resolution when multiple factories support the same extension.
-    /// Default editors open automatically; Option editors are available via "Open With".
+    /// Specialized editors take precedence over general-purpose editors.
     /// </summary>
     EditorPriority Priority { get; }
 

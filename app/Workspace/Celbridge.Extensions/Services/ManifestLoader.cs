@@ -35,7 +35,7 @@ public static class ManifestLoader
     private const string CustomizationsKey = "customizations";
 
     private const string CodeDocumentType = "code";
-    private const string OptionPriorityValue = "option";
+    private const string GeneralPriorityValue = "general";
     private const string DefaultEntryPoint = "index.html";
     private const string ExtensionHostPrefix = "ext-";
     private const string HostSuffix = ".celbridge";
@@ -288,13 +288,13 @@ public static class ManifestLoader
     {
         if (string.IsNullOrEmpty(value))
         {
-            return EditorPriority.Default;
+            return EditorPriority.Specialized;
         }
 
         return value.ToLowerInvariant() switch
         {
-            OptionPriorityValue => EditorPriority.Option,
-            _ => EditorPriority.Default
+            GeneralPriorityValue => EditorPriority.General,
+            _ => EditorPriority.Specialized
         };
     }
 

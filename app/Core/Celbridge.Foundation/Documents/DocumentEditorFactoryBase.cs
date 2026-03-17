@@ -9,7 +9,7 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 {
     public abstract IReadOnlyList<string> SupportedExtensions { get; }
 
-    public virtual EditorPriority Priority => EditorPriority.Default;
+    public virtual EditorPriority Priority => EditorPriority.Specialized;
 
     public virtual bool CanHandle(ResourceKey fileResource, string filePath)
     {
