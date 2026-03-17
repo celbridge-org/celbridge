@@ -5,7 +5,7 @@ using Celbridge.Settings;
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Factory for creating ExtensionDocumentView instances for custom (WebView2-based)
+/// Factory for creating ExtensionDocumentView instances for custom (WebView-based)
 /// extension editors. One instance per discovered CustomDocumentContribution.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase

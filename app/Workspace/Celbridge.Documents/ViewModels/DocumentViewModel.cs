@@ -1,6 +1,6 @@
+using System.Security.Cryptography;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Security.Cryptography;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -10,7 +10,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     protected const double SaveDelay = 1.0; // Seconds
 
     // Messenger service used for file-change monitoring (set by EnableFileChangeMonitoring)
-    private IMessengerService? _fileChangeMessengerService;
+    private IMessengerService? _messengerService;
 
     [ObservableProperty]
     private ResourceKey _fileResource = string.Empty;
@@ -85,9 +85,9 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     protected void EnableFileChangeMonitoring(IMessengerService messengerService)
     {
-        _fileChangeMessengerService = messengerService;
-        _fileChangeMessengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
-        _fileChangeMessengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
+        _messengerService = messengerService;
+        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
+        _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
     }
 
     private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
@@ -175,7 +175,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     public virtual void Cleanup()
     {
-        _fileChangeMessengerService?.UnregisterAll(this);
+        _messengerService?.UnregisterAll(this);
     }
 
     protected bool IsFileChangedExternally()

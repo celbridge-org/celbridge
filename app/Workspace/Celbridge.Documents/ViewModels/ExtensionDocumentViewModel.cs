@@ -69,15 +69,6 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
         SaveTimer = 0;
     }
 
-    /// <summary>
-    /// Updates the file tracking information so that file-change monitoring
-    /// can detect external changes. Call this after the initial content load.
-    /// </summary>
-    public void InitializeFileTracking()
-    {
-        UpdateFileTrackingInfo();
-    }
-
     #region Path Resolution
 
     /// <summary>

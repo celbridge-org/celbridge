@@ -376,7 +376,6 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
     public override async Task<Result> LoadContent()
     {
-        _viewModel.InitializeFileTracking();
         await Task.CompletedTask;
         return Result.Ok();
     }
