@@ -290,12 +290,13 @@ function handleEditorNavigateToLocation(lineNumber, column, endLineNumber, endCo
     applyNavigation(lineNumber, column, endLineNumber, endColumn);
 }
 
-async function handleLoadCustomization(scriptUrl) {
+async function handleApplyCustomization(scriptUrl) {
     if (!editor || !scriptUrl) {
         return;
     }
 
     try {
+        /// The customize script should export an activate(monaco, editor, container, celbridge) function.
         var module = await import(scriptUrl);
         if (typeof module.activate === 'function') {
             module.activate(monaco, editor, document.getElementById('container'), celbridge);
@@ -315,5 +316,5 @@ if (window.isWebView) {
     monacoClient.onScrollToPercentage(handleScrollToPercentage);
     monacoClient.onInsertText(handleInsertText);
     monacoClient.onApplyEdits(handleApplyEdits);
-    monacoClient.onLoadCustomization(handleLoadCustomization);
+    monacoClient.onApplyCustomization(handleApplyCustomization);
 }

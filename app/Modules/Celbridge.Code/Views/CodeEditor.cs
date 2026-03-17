@@ -213,10 +213,10 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
 
         _contentLoadedTcs = null;
 
-        // Load customization script if configured
+        // Apply customization script if configured
         if (!string.IsNullOrEmpty(CustomizationScriptUrl) && _host is not null)
         {
-            await _host.LoadCustomizationAsync(CustomizationScriptUrl);
+            await _host.ApplyCustomizationAsync(CustomizationScriptUrl);
         }
 
         return Result.Ok();

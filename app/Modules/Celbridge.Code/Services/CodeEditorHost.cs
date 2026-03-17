@@ -14,7 +14,7 @@ internal static class CodeEditorRpcMethods
     public const string ScrollToPercentage = "codeEditor/scrollToPercentage";
     public const string InsertText = "codeEditor/insertText";
     public const string ApplyEdits = "codeEditor/applyEdits";
-    public const string LoadCustomization = "codeEditor/loadCustomization";
+    public const string ApplyCustomization = "codeEditor/applyCustomization";
 }
 
 /// <summary>
@@ -128,12 +128,11 @@ public class CodeEditorHost : IDisposable
     }
 
     /// <summary>
-    /// Loads and executes a customization script in the Monaco editor.
-    /// The script should export an activate(monaco, editor, container, celbridge) function.
+    /// Applies a customization script to the Monaco editor.
     /// </summary>
-    public Task LoadCustomizationAsync(string scriptUrl)
+    public Task ApplyCustomizationAsync(string scriptUrl)
     {
-        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.LoadCustomization, new { scriptUrl });
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.ApplyCustomization, new { scriptUrl });
     }
 
     public void Dispose()

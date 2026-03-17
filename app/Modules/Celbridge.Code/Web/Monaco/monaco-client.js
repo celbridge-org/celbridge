@@ -75,11 +75,11 @@ class MonacoClient {
     }
 
     /**
-     * Registers a handler for loading a customization script from the host.
+     * Registers a handler for applying a customization script from the host.
      * @param {function(string): void} handler - The handler function receiving the script URL.
      */
-    onLoadCustomization(handler) {
-        this.#transport.addEventListener('codeEditor/loadCustomization', (params) => {
+    onApplyCustomization(handler) {
+        this.#transport.addEventListener('codeEditor/applyCustomization', (params) => {
             handler(params.scriptUrl);
         });
     }
