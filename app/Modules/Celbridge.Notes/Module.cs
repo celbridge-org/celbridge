@@ -27,7 +27,7 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public string? GetExtensionFolder()
+    public string? GetBundledExtensionFolder()
     {
         return Path.Combine(AppContext.BaseDirectory, "Celbridge.Notes", "Web", "note");
     }

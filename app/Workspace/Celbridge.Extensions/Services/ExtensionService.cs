@@ -133,7 +133,7 @@ public class ExtensionService : IExtensionService
 
     private void DiscoverBundledExtensions()
     {
-        var extensionFolders = _moduleService.GetExtensionFolders();
+        var extensionFolders = _moduleService.GetBundledExtensionFolders();
         foreach (var extensionFolder in extensionFolders)
         {
             var extension = TryLoadExtension(extensionFolder);

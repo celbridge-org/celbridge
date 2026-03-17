@@ -30,5 +30,5 @@ public interface IModuleService
     /// <summary>
     /// Returns extension folders from all loaded modules that bundle extensions.
     /// </summary>
-    IReadOnlyList<string> GetExtensionFolders();
+    IReadOnlyList<string> GetBundledExtensionFolders();
 }

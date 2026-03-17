@@ -24,7 +24,7 @@ public class ExtensionServiceTests
         var localizationLogger = Substitute.For<ILogger<ExtensionLocalizationService>>();
         var localizationService = new ExtensionLocalizationService(localizationLogger);
         _moduleService = Substitute.For<IModuleService>();
-        _moduleService.GetExtensionFolders().Returns(new List<string>());
+        _moduleService.GetBundledExtensionFolders().Returns(new List<string>());
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
         _service = new ExtensionService(logger, _moduleService, messengerService, featureFlags, localizationService);
@@ -123,7 +123,7 @@ public class ExtensionServiceTests
     {
         var bundledDir = CreateBundledExtension("bundled-editor", "test.bundled", "Bundled", "custom", ".bnd");
 
-        _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
+        _moduleService.GetBundledExtensionFolders().Returns(new List<string> { bundledDir });
 
         _service.RegisterExtensions(_tempProjectFolder);
 
@@ -138,7 +138,7 @@ public class ExtensionServiceTests
         CreateProjectExtension("proj-editor", "test.proj", "Project", "custom", ".proj");
         var bundledDir = CreateBundledExtension("bundled-editor", "test.bundled", "Bundled", "custom", ".bnd");
 
-        _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
+        _moduleService.GetBundledExtensionFolders().Returns(new List<string> { bundledDir });
 
         _service.RegisterExtensions(_tempProjectFolder);
 
@@ -156,7 +156,7 @@ public class ExtensionServiceTests
         Directory.CreateDirectory(bundledDir);
         File.WriteAllText(Path.Combine(bundledDir, "extension.toml"), "{ invalid toml }");
 
-        _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
+        _moduleService.GetBundledExtensionFolders().Returns(new List<string> { bundledDir });
 
         _service.RegisterExtensions(_tempProjectFolder);
 
@@ -169,7 +169,7 @@ public class ExtensionServiceTests
         var bundledDir = Path.Combine(_tempProjectFolder, "no-manifest-bundled");
         Directory.CreateDirectory(bundledDir);
 
-        _moduleService.GetExtensionFolders().Returns(new List<string> { bundledDir });
+        _moduleService.GetBundledExtensionFolders().Returns(new List<string> { bundledDir });
 
         _service.RegisterExtensions(_tempProjectFolder);
 

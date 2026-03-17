@@ -38,5 +38,5 @@ public interface IModule
     /// Returns the absolute path to the module's bundled extension folder,
     /// or null if this module does not bundle an extension.
     /// </summary>
-    string? GetExtensionFolder();
+    string? GetBundledExtensionFolder();
 }

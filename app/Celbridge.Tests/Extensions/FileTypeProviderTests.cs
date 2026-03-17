@@ -23,7 +23,7 @@ public class ExtensionServiceDocumentTypeTests
 
         _bundledExtensionPaths = [];
         _moduleService = Substitute.For<IModuleService>();
-        _moduleService.GetExtensionFolders().Returns(_ => _bundledExtensionPaths);
+        _moduleService.GetBundledExtensionFolders().Returns(_ => _bundledExtensionPaths);
 
         _featureFlags = Substitute.For<IFeatureFlags>();
         _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
