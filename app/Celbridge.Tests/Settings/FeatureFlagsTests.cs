@@ -8,13 +8,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Celbridge.Tests.Settings;
 
 /// <summary>
-/// Unit tests for FeatureFlagService focusing on override/clear behavior and message broadcasting.
+/// Unit tests for FeatureFlags focusing on override/clear behavior and message broadcasting.
 /// </summary>
 [TestFixture]
 public class FeatureFlagsTests
 {
     private IMessengerService _messengerService = null!;
-    private FeatureFlagService _featureFlags = null!;
+    private FeatureFlags _featureFlags = null!;
 
     [SetUp]
     public void Setup()
@@ -34,7 +34,7 @@ public class FeatureFlagsTests
         var serviceProvider = services.BuildServiceProvider();
 
         _messengerService = serviceProvider.GetRequiredService<IMessengerService>();
-        _featureFlags = new FeatureFlagService(configuration, _messengerService);
+        _featureFlags = new FeatureFlags(configuration, _messengerService);
     }
 
     #region App-Level Tests

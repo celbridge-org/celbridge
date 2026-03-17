@@ -200,7 +200,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
     {
         // Re-evaluate console visibility based on updated feature flags
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (!isConsolePanelEnabled &&
             RegionVisibility.HasFlag(LayoutRegion.Console))
         {
@@ -337,7 +337,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _editorSettings.IsWindowMaximized = false;
 
         // Reset preferred visibility to all regions, but exclude Console if feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         var targetVisibility = isConsolePanelEnabled 
             ? LayoutRegion.All 
             : (LayoutRegion.Primary | LayoutRegion.Secondary);

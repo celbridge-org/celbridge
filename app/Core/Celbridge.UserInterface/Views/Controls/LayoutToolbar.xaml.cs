@@ -65,7 +65,7 @@ public sealed partial class LayoutToolbar : UserControl
         ResetLayoutButton.Visibility = visibility;
 
         // Hide console panel toggle button if console-panel feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         ToggleConsolePanelButton.Visibility = (visibility == Visibility.Visible && isConsolePanelEnabled) 
             ? Visibility.Visible 
             : Visibility.Collapsed;

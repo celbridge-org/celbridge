@@ -37,7 +37,7 @@ public class LayoutManagerTests
         var featureFlags = Substitute.For<IFeatureFlags>();
 
         // Default to console panel feature enabled for tests
-        featureFlags.IsEnabled(FeatureFlags.ConsolePanel).Returns(true);
+        featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel).Returns(true);
 
         _layoutManager = new LayoutManager(logger, _messengerService, _editorSettings, featureFlags);
     }

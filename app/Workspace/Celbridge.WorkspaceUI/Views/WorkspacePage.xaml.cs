@@ -134,7 +134,7 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
 
         // Create panels via DI
         var activityPanel = ServiceLocator.AcquireService<IActivityPanel>();
@@ -294,7 +294,7 @@ public sealed partial class WorkspacePage : Page
             SecondaryPanelColumn.Width = new GridLength(0);
         }
 
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
 
         if (isConsolePanelEnabled && ViewModel.IsConsolePanelVisible)
         {
@@ -318,7 +318,7 @@ public sealed partial class WorkspacePage : Page
     private void UpdateConsoleMaximized()
     {
         // Skip if console panel feature is disabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (!isConsolePanelEnabled)
         {
             return;

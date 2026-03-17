@@ -7,7 +7,7 @@ namespace Celbridge.Settings.Services;
 /// Implementation of IFeatureFlags that reads feature flags from configuration
 /// and supports project-level overrides.
 /// </summary>
-public class FeatureFlagService : IFeatureFlags
+public class FeatureFlags : IFeatureFlags
 {
     private const string FeatureFlagKey = "FeatureFlags";
 
@@ -16,7 +16,7 @@ public class FeatureFlagService : IFeatureFlags
 
     private IReadOnlyDictionary<string, bool> _projectOverrides = new Dictionary<string, bool>();
 
-    public FeatureFlagService(
+    public FeatureFlags(
         IConfiguration configuration,
         IMessengerService messengerService)
     {

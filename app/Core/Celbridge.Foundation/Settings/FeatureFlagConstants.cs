@@ -4,7 +4,7 @@ namespace Celbridge.Settings;
 /// Feature flag names used throughout the application.
 /// These names must match the keys in appsettings.json and .celbridge files.
 /// </summary>
-public static class FeatureFlags
+public static class FeatureFlagConstants
 {
     /// <summary>
     /// Console panel with IPython REPL terminal.

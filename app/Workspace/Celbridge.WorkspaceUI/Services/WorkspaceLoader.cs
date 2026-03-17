@@ -164,7 +164,7 @@ public class WorkspaceLoader
         //
 
         // Only initialize console and Python if the console-panel feature is enabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (isConsolePanelEnabled)
         {
             var consoleService = workspaceService.ConsoleService;
@@ -227,7 +227,7 @@ public class WorkspaceLoader
     private void PopulateTitleBarShortcuts()
     {
         // Only populate shortcuts if console panel is enabled
-        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (!isConsolePanelEnabled)
         {
             return;
