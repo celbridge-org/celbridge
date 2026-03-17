@@ -86,9 +86,7 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
     /// </summary>
     public string GetDocumentBasePath()
     {
-        var fileResourcePath = FileResource.ToString();
-        var directoryName = Path.GetDirectoryName(fileResourcePath);
-        return directoryName?.Replace('\\', '/') ?? "";
+        return FileResource.GetParent().ToString();
     }
 
     /// <summary>

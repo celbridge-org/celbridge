@@ -3,16 +3,13 @@ using Celbridge.Code.ViewModels;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
-using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
 using Celbridge.UserInterface.Views.Controls;
 using Celbridge.WebView;
-using Celbridge.WebView.Services;
 using Celbridge.Workspace;
-using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Code.Views;
 
@@ -31,29 +28,16 @@ public enum SplitEditorViewMode
 /// Optionally supports a preview panel (configured via ICodePreviewRenderer) with split/preview/source view modes.
 /// Accepts custom toolbar content via the CustomToolbar property (e.g., Markdown snippet buttons).
 /// </summary>
-public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePreview
+public sealed partial class CodeEditorDocumentView : DocumentView
 {
     private readonly ILogger<CodeEditorDocumentView> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly ICommandService _commandService;
-    private readonly IWebViewFactory _webViewFactory;
-    private readonly IUserInterfaceService _userInterfaceService;
     private readonly IDocumentsService _documentsService;
 
     private readonly CodeEditorViewModel _viewModel;
 
-    // Preview state
-    private WebView2? _previewWebView;
-    private WebViewHostChannel? _previewHostChannel;
-    private CelbridgeHost? _previewHost;
-    private bool _isPreviewInitialized;
-    private bool _isPreviewUpdateInProgress;
-    private string _lastPreviewContent = string.Empty;
-    private ICodePreviewRenderer? _previewRenderer;
-    private string _projectFolderPath = string.Empty;
-    private string _documentPath = string.Empty;
+    private CodeEditorPreviewHelper? _previewHelper;
 
-    // Splitter state
     private readonly ColumnDefinition _editorColumn;
     private readonly ColumnDefinition _splitterColumn;
     private readonly ColumnDefinition _previewColumn;
@@ -156,9 +140,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
 
         _logger = ServiceLocator.AcquireService<ILogger<CodeEditorDocumentView>>();
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
-        _commandService = ServiceLocator.AcquireService<ICommandService>();
-        _webViewFactory = ServiceLocator.AcquireService<IWebViewFactory>();
-        _userInterfaceService = ServiceLocator.AcquireService<IUserInterfaceService>();
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
         _viewModel = ServiceLocator.AcquireService<CodeEditorViewModel>();
@@ -222,7 +203,16 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
     /// </summary>
     public void ConfigurePreview(ICodePreviewRenderer previewRenderer)
     {
-        _previewRenderer = previewRenderer;
+        _previewHelper = new CodeEditorPreviewHelper(
+            ServiceLocator.AcquireService<ILogger<CodeEditorPreviewHelper>>(),
+            ServiceLocator.AcquireService<ICommandService>(),
+            ServiceLocator.AcquireService<IWebViewFactory>(),
+            ServiceLocator.AcquireService<IUserInterfaceService>(),
+            _previewContainer,
+            MonacoEditor.GetContentAsync,
+            MonacoEditor.ScrollToPercentageAsync);
+
+        _previewHelper.Configure(previewRenderer);
 
         // Disable scroll-beyond-last-line for proper scroll sync with preview
         MonacoEditor.Options = new CodeEditorOptions { ScrollBeyondLastLine = false };
@@ -235,15 +225,9 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
     /// <summary>
     /// Updates the document path for resolving relative resources in the preview.
     /// </summary>
-    public void UpdateDocumentPath(string documentPath)
+    public void UpdateDocumentPath(ResourceKey fileResource, string documentPath)
     {
-        _documentPath = documentPath;
-
-        if (_isPreviewInitialized && _previewHost is not null)
-        {
-            var basePath = ComputeBasePath(_documentPath, _projectFolderPath);
-            _ = _previewHost.NotifyCodePreviewSetBasePathAsync(basePath);
-        }
+        _previewHelper?.UpdateDocumentPath(fileResource, documentPath);
     }
 
     #endregion
@@ -302,10 +286,9 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
         }
 
         // If preview is configured, fill in the paths from the registry
-        if (_previewRenderer is not null)
+        if (_previewHelper is not null)
         {
-            _projectFolderPath = ResourceRegistry.ProjectFolderPath;
-            _documentPath = DocumentViewModel.FilePath;
+            _previewHelper.SetPaths(fileResource, ResourceRegistry.ProjectFolderPath, DocumentViewModel.FilePath);
         }
 
         return Result.Ok();
@@ -337,7 +320,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
         }
 
         // Apply the initial view mode after the editor is ready
-        if (_previewRenderer is not null && InitialViewMode.HasValue)
+        if (_previewHelper is not null && InitialViewMode.HasValue)
         {
             SetViewMode(InitialViewMode.Value);
         }
@@ -401,7 +384,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
             var endColumn = root.TryGetProperty("endColumn", out var endColProp) ? endColProp.GetInt32() : 0;
 
             // Switch to Split mode when navigating in Preview mode so the user can see the text selection
-            if (ViewMode == SplitEditorViewMode.Preview && _previewRenderer is not null)
+            if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
             {
                 SetViewMode(SplitEditorViewMode.Split);
             }
@@ -420,7 +403,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
         try
         {
             // Switch to Split mode when applying edits in Preview mode
-            if (ViewMode == SplitEditorViewMode.Preview && _previewRenderer is not null)
+            if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
             {
                 SetViewMode(SplitEditorViewMode.Split);
             }
@@ -463,7 +446,11 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
             await MonacoEditor.CleanupAsync();
 
             // Cleanup preview
-            await CleanupPreviewAsync();
+            if (_previewHelper is not null)
+            {
+                await _previewHelper.CleanupAsync();
+                _previewHelper.Dispose();
+            }
         }
         catch (Exception ex)
         {
@@ -486,9 +473,9 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
         _viewModel.OnTextChanged();
 
         // Update preview if visible
-        if (IsPreviewVisible && !_isPreviewUpdateInProgress)
+        if (IsPreviewVisible && _previewHelper is not null)
         {
-            _ = UpdatePreviewAsync();
+            _ = _previewHelper.UpdateAsync();
         }
     }
 
@@ -501,9 +488,9 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
 
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
-        if (IsPreviewVisible && _isPreviewInitialized && _previewHost is not null)
+        if (IsPreviewVisible)
         {
-            _ = _previewHost.NotifyCodePreviewScrollAsync(scrollPercentage);
+            _previewHelper?.NotifyScrollPositionChanged(scrollPercentage);
         }
     }
 
@@ -555,7 +542,10 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
                 _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
                 _splitter.Visibility = Visibility.Visible;
                 _previewContainer.Visibility = Visibility.Visible;
-                _ = InitializePreviewAsync();
+                if (_previewHelper is not null)
+                {
+                    _ = _previewHelper.InitializeAsync();
+                }
                 break;
 
             case SplitEditorViewMode.Preview:
@@ -565,7 +555,10 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
                 _previewColumn.Width = new GridLength(1, GridUnitType.Star);
                 _splitter.Visibility = Visibility.Collapsed;
                 _previewContainer.Visibility = Visibility.Visible;
-                _ = InitializePreviewAsync();
+                if (_previewHelper is not null)
+                {
+                    _ = _previewHelper.InitializeAsync();
+                }
                 break;
         }
     }
@@ -633,230 +626,11 @@ public sealed partial class CodeEditorDocumentView : DocumentView, IHostCodePrev
 
     #endregion
 
-    #region Preview Initialization
-
-    private async Task InitializePreviewAsync()
-    {
-        if (_previewRenderer is null)
-        {
-            _logger.LogWarning("Cannot initialize preview: no preview renderer configured");
-            return;
-        }
-
-        if (_isPreviewInitialized)
-        {
-            await UpdatePreviewAsync();
-            return;
-        }
-
-        try
-        {
-            _previewWebView = await _webViewFactory.AcquireAsync();
-            _previewContainer.Children.Add(_previewWebView);
-
-            // Set up shared celbridge-client mapping for the preview to use celbridge.js
-            _previewWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                "celbridge-client.celbridge",
-                "Celbridge.WebView/Web/celbridge-client",
-                CoreWebView2HostResourceAccessKind.Allow);
-
-            // Allow the renderer to configure virtual host mappings for preview and project assets
-            await _previewRenderer.ConfigureWebViewAsync(_previewWebView.CoreWebView2, _projectFolderPath);
-
-            // Set up JSON-RPC host for preview communication
-            _previewHostChannel = new WebViewHostChannel(_previewWebView.CoreWebView2);
-            _previewHost = new CelbridgeHost(_previewHostChannel);
-
-            // Register this control as the handler for code preview notifications
-            _previewHost.AddLocalRpcTarget<IHostCodePreview>(this);
-            _previewHost.StartListening();
-
-            // Apply theme
-            ApplyThemeToPreview();
-
-            // Navigate to preview page
-            _previewWebView.CoreWebView2.Navigate(_previewRenderer.PreviewPageUrl);
-
-            // Wait for navigation to complete
-            var tcs = new TaskCompletionSource();
-            void NavigationCompleted(object? s, CoreWebView2NavigationCompletedEventArgs args)
-            {
-                _previewWebView.CoreWebView2.NavigationCompleted -= NavigationCompleted;
-                tcs.TrySetResult();
-            }
-            _previewWebView.CoreWebView2.NavigationCompleted += NavigationCompleted;
-
-            var timeout = Task.Delay(TimeSpan.FromSeconds(5));
-            var completed = await Task.WhenAny(tcs.Task, timeout);
-
-            if (completed == timeout)
-            {
-                _logger.LogWarning("Preview navigation timed out");
-            }
-
-            _isPreviewInitialized = true;
-
-            // Set document context via JSON-RPC
-            var basePath = ComputeBasePath(_documentPath, _projectFolderPath);
-            await _previewHost.NotifyCodePreviewSetBasePathAsync(basePath);
-
-            // Initial preview update
-            await UpdatePreviewAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize preview");
-        }
-    }
-
-    private async Task UpdatePreviewAsync()
-    {
-        if (_previewHost is null || !_isPreviewInitialized)
-        {
-            return;
-        }
-
-        if (_isPreviewUpdateInProgress)
-        {
-            return;
-        }
-
-        _isPreviewUpdateInProgress = true;
-
-        try
-        {
-            var content = await MonacoEditor.GetContentAsync();
-
-            if (content == _lastPreviewContent || !IsPreviewVisible)
-            {
-                return;
-            }
-
-            _lastPreviewContent = content;
-
-            await _previewHost.NotifyCodePreviewUpdateAsync(content);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to update preview");
-        }
-        finally
-        {
-            _isPreviewUpdateInProgress = false;
-        }
-    }
-
-    private async Task CleanupPreviewAsync()
-    {
-        // Dispose RPC infrastructure
-        _previewHost?.Dispose();
-        _previewHostChannel?.Detach();
-
-        _previewHost = null;
-        _previewHostChannel = null;
-
-        if (_previewWebView is not null)
-        {
-            _previewWebView.Close();
-            _previewWebView = null;
-        }
-
-        _isPreviewInitialized = false;
-
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Computes the document's directory path relative to the project root, using forward slashes.
-    /// Returns empty string if the document is not under the project folder.
-    /// </summary>
-    private static string ComputeBasePath(string documentPath, string projectFolderPath)
-    {
-        var documentFolder = Path.GetDirectoryName(documentPath);
-
-        if (string.IsNullOrEmpty(documentFolder) || string.IsNullOrEmpty(projectFolderPath))
-        {
-            return string.Empty;
-        }
-
-        if (!documentFolder.StartsWith(projectFolderPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Empty;
-        }
-
-        return documentFolder
-            .Substring(projectFolderPath.Length)
-            .TrimStart(Path.DirectorySeparatorChar)
-            .Replace(Path.DirectorySeparatorChar, '/');
-    }
-
-    #endregion
-
-    #region IHostCodePreview
-
-    public void OnOpenResource(string href)
-    {
-        if (string.IsNullOrEmpty(_documentPath))
-        {
-            return;
-        }
-
-        var documentDir = Path.GetDirectoryName(_documentPath);
-        if (string.IsNullOrEmpty(documentDir))
-        {
-            return;
-        }
-
-        var fullPath = Path.GetFullPath(Path.Combine(documentDir, href));
-
-        if (!fullPath.StartsWith(_projectFolderPath, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning($"Link path is outside project folder: {href}");
-            return;
-        }
-
-        var resourcePath = fullPath.Substring(_projectFolderPath.Length).TrimStart(Path.DirectorySeparatorChar);
-        var resourceKey = new ResourceKey(resourcePath.Replace(Path.DirectorySeparatorChar, '/'));
-
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = resourceKey;
-        });
-    }
-
-    public void OnOpenExternal(string href)
-    {
-        _commandService.Execute<IOpenBrowserCommand>(command =>
-        {
-            command.URL = href;
-        });
-    }
-
-    public void OnSyncToEditor(double scrollPercentage)
-    {
-        _ = MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
-    }
-
-    #endregion
-
     #region Theme
 
     private void OnThemeChanged(object recipient, ThemeChangedMessage message)
     {
-        ApplyThemeToPreview();
-    }
-
-    private void ApplyThemeToPreview()
-    {
-        if (_previewWebView?.CoreWebView2 is null)
-        {
-            return;
-        }
-
-        var theme = _userInterfaceService.UserInterfaceTheme;
-        _previewWebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
-            ? CoreWebView2PreferredColorScheme.Dark
-            : CoreWebView2PreferredColorScheme.Light;
+        _previewHelper?.ApplyTheme();
     }
 
     #endregion
