@@ -64,12 +64,16 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_WebApp"), ResourceFormat.WebApp, ExplorerConstants.WebAppExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
         ];
 
-        // Add extension-provided document types (inserted before "Other")
+        // Add extension-provided document types before the "Other" option
         var extensionService = workspaceWrapper.WorkspaceService.ExtensionService;
         AddExtensionDocumentTypes(extensionService);
+
+        // Add "Other" as the last option
+        var otherDisplayName = _stringLocalizer.GetString("AddFileDialog_FileType_Other");
+        var otherFileType = new FileTypeItem(otherDisplayName, ResourceFormat.Text, string.Empty);
+        FileTypes.Add(otherFileType);
 
         // Select the dropdown based on the previously saved extension
         var previousExtension = _editorSettings.PreviousNewFileExtension;
@@ -231,7 +235,6 @@ public partial class AddFileDialogViewModel : ObservableObject
 
     /// <summary>
     /// Adds document types from discovered extension manifests.
-    /// Extension-provided document types are inserted before "Other".
     /// Uses the first file extension from each document type for the dropdown.
     /// </summary>
     private void AddExtensionDocumentTypes(IExtensionService extensionService)
@@ -262,8 +265,7 @@ public partial class AddFileDialogViewModel : ObservableObject
                 ResourceFormat.Text,
                 primaryFileExtension);
 
-            // Insert before "Other" (the last item)
-            FileTypes.Insert(FileTypes.Count - 1, item);
+            FileTypes.Add(item);
         }
     }
 }
