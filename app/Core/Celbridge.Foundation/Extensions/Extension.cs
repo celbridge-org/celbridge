@@ -7,7 +7,7 @@ namespace Celbridge.Extensions;
 public record Extension
 {
     /// <summary>
-    /// FileExtension identity, permissions, and hosting information.
+    /// Extension identity, permissions, and hosting information.
     /// </summary>
     public ExtensionInfo Info { get; init; } = new();
 

@@ -5,7 +5,7 @@ namespace Celbridge.Core;
 public static class ResultExtensions
 {
     /// <summary>
-    /// FileExtension helper method that wraps a value in a success Result<T>.
+    /// Extension helper method that wraps a value in a success Result<T>.
     /// Allows you to use `return myValue.OkResult<T>()` instead of `return Result<T>.Ok(myValue)`
     /// Usually T can be inferred, so in general you can simply use `return myValue.OkResult()`
     /// </summary>

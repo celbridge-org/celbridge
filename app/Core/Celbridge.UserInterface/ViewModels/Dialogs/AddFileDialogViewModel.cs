@@ -231,7 +231,7 @@ public partial class AddFileDialogViewModel : ObservableObject
 
     /// <summary>
     /// Adds document types from discovered extension manifests.
-    /// FileExtension-provided document types are inserted before "Other".
+    /// Extension-provided document types are inserted before "Other".
     /// Uses the first file extension from each document type for the dropdown.
     /// </summary>
     private void AddExtensionDocumentTypes(IExtensionService extensionService)

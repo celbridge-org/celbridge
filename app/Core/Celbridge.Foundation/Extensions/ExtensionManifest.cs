@@ -1,7 +1,7 @@
 namespace Celbridge.Extensions;
 
 /// <summary>
-/// FileExtension identity, permissions, and hosting information.
+/// Extension identity, permissions, and hosting information.
 /// Shared across all contributions from the same extension.
 /// </summary>
 public partial record ExtensionInfo
