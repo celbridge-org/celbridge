@@ -13,12 +13,10 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Document view for custom (WebView2-based) extension editors.
-/// Configured from a DocumentContribution, handles the IHostDocument protocol,
-/// and inherits SetFileResource, theme syncing, CreateMetadata, and save tracking from the base.
-/// Implements IHostDialog and IHostInput for extension interop.
+/// Document view for custom WebView-basedextension editors.
+/// Configured from a DocumentContribution, delegates RPC handling to handler classes.
 /// </summary>
-public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDocument, IHostDialog
+public sealed partial class ExtensionDocumentView : WebViewDocumentView
 {
     private const int SaveRequestTimeoutSeconds = 30;
 
@@ -30,8 +28,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
     private readonly ExtensionDocumentViewModel _viewModel;
 
-    // Track save result from async RPC callback
-    private TaskCompletionSource<Result>? _saveResultTcs;
+    private ExtensionDocumentHandler? _documentHandler;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -80,7 +77,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
 
     protected override async Task<Result> SaveDocumentContentAsync()
     {
-        if (Host is null)
+        if (Host is null || _documentHandler is null)
         {
             _logger.LogDebug("Save skipped - Host not initialized");
             return Result.Ok();
@@ -92,17 +89,18 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             return Result.Ok();
         }
 
-        _saveResultTcs = new TaskCompletionSource<Result>();
+        var saveResultTcs = new TaskCompletionSource<Result>();
+        _documentHandler.SaveResultTcs = saveResultTcs;
 
         await Host.NotifyRequestSaveAsync();
 
         var timeout = TimeSpan.FromSeconds(SaveRequestTimeoutSeconds);
         var timeoutTask = Task.Delay(timeout);
-        var completedTask = await Task.WhenAny(_saveResultTcs.Task, timeoutTask);
+        var completedTask = await Task.WhenAny(saveResultTcs.Task, timeoutTask);
 
         if (completedTask == timeoutTask)
         {
-            _saveResultTcs = null;
+            _documentHandler.SaveResultTcs = null;
             CompleteSave();
 
             var errorMessage = $"Extension editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
@@ -113,8 +111,8 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             return Result.Fail(errorMessage);
         }
 
-        var result = await _saveResultTcs.Task;
-        _saveResultTcs = null;
+        var result = await saveResultTcs.Task;
+        _documentHandler.SaveResultTcs = null;
 
         return result;
     }
@@ -191,8 +189,19 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
                 return;
             }
 
-            Host.AddLocalRpcTarget<IHostDocument>(this);
-            Host.AddLocalRpcTarget<IHostDialog>(this);
+            _documentHandler = new ExtensionDocumentHandler(
+                _viewModel,
+                _logger,
+                CreateDocumentMetadata,
+                CompleteSave);
+
+            var dialogHandler = new ExtensionDialogHandler(
+                _dialogService,
+                _stringLocalizer,
+                _viewModel);
+
+            Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
+            Host.AddLocalRpcTarget<IHostDialog>(dialogHandler);
 
             StartHostListener();
 
@@ -206,126 +215,6 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             _logger.LogError(ex, $"Failed to initialize extension view: {Contribution.Extension.Name}");
         }
     }
-
-    #region IHostDocument
-
-    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
-    {
-        DocumentRpcMethods.ValidateProtocolVersion(protocolVersion);
-
-        var content = await _viewModel.LoadTextContentAsync();
-        var metadata = CreateDocumentMetadata();
-
-        return new InitializeResult(content, metadata);
-    }
-
-    public async Task<LoadResult> LoadAsync()
-    {
-        var content = await _viewModel.LoadTextContentAsync();
-        var metadata = CreateDocumentMetadata();
-
-        return new LoadResult(content, metadata);
-    }
-
-    public async Task<SaveResult> SaveAsync(string content)
-    {
-        try
-        {
-            var saveResult = await _viewModel.SaveTextContentAsync(content);
-
-            if (saveResult.IsFailure)
-            {
-                _logger.LogError(saveResult, "Failed to save extension document");
-                CompleteSave();
-                _saveResultTcs?.TrySetResult(saveResult);
-                return new SaveResult(false, saveResult.Error);
-            }
-
-            _viewModel.OnSaveCompleted();
-
-            if (CompleteSave())
-            {
-                _logger.LogDebug("Processing pending save request");
-                _viewModel.OnDataChanged();
-            }
-
-            _saveResultTcs?.TrySetResult(Result.Ok());
-            return new SaveResult(true, null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception during extension save");
-            CompleteSave();
-            var failResult = Result.Fail("Exception during save").WithException(ex);
-            _saveResultTcs?.TrySetResult(failResult);
-            return new SaveResult(false, ex.Message);
-        }
-    }
-
-    public void OnDocumentChanged()
-    {
-        _viewModel.OnDataChanged();
-    }
-
-    #endregion
-
-    #region IHostDialog
-
-    public async Task<PickImageResult> PickImageAsync(IReadOnlyList<string>? extensions = null)
-    {
-        var extensionsArray = extensions?.ToArray();
-        if (extensionsArray is null || extensionsArray.Length == 0)
-        {
-            extensionsArray =
-            [
-                ".png",
-                ".jpg",
-                ".jpeg",
-                ".gif",
-                ".webp",
-                ".svg",
-                ".bmp"
-            ];
-        }
-
-        var title = _stringLocalizer.GetString("Extension_SelectImage_Title");
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title, showPreview: true);
-
-        if (result.IsSuccess)
-        {
-            var resourceKey = result.Value.ToString();
-            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourceKey);
-            return new PickImageResult(relativePath);
-        }
-
-        return new PickImageResult(null);
-    }
-
-    public async Task<PickFileResult> PickFileAsync(IReadOnlyList<string>? extensions = null)
-    {
-        var title = _stringLocalizer.GetString("Extension_SelectFile_Title");
-        var extensionsArray = extensions?.ToArray() ?? [];
-        var result = await _dialogService.ShowResourcePickerDialogAsync(extensionsArray, title);
-
-        if (result.IsSuccess)
-        {
-            var resourceKey = result.Value.ToString();
-            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourceKey);
-            return new PickFileResult(relativePath);
-        }
-
-        return new PickFileResult(null);
-    }
-
-    public async Task<AlertResult> AlertAsync(string title, string message)
-    {
-        await _dialogService.ShowAlertDialogAsync(title, message);
-        return new AlertResult();
-    }
-
-    #endregion
-
-    #region IHostInput (OnLinkClicked)
 
     public void OnLinkClicked(string href)
     {
@@ -364,8 +253,6 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView, IHostDo
             });
         }
     }
-
-    #endregion
 
     private async Task ShowLinkErrorAsync(string href)
     {
