@@ -9,7 +9,7 @@ namespace Celbridge.Extensions;
 /// Uses convention: extensions store localization files in a "localization" subdirectory
 /// as flat key-value JSON dictionaries (e.g., en.json, fr.json).
 /// </summary>
-public class ExtensionLocalizationService
+public class ExtensionLocalizationService : IExtensionLocalizationService
 {
     /// <summary>
     /// Convention: all extensions use "localization" as the folder name.
@@ -33,23 +33,15 @@ public class ExtensionLocalizationService
 
     /// <summary>
     /// Loads localization strings from an extension's localization directory.
-    /// Uses convention: {extensionDirectory}/localization/{locale}.json
-    /// Tries the current UI culture first, falls back to "en", then returns an empty dictionary.
-    /// </summary>
-    public Dictionary<string, string> LoadStrings(string extensionDirectory)
-    {
-        var locale = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        return LoadStrings(extensionDirectory, locale);
-    }
-
-    /// <summary>
-    /// Loads localization strings for a specific locale from an extension's localization directory.
-    /// Uses convention: {extensionDirectory}/localization/{locale}.json
+    /// Uses convention: {extensionFolder}/localization/{locale}.json
+    /// If locale is null, uses the current UI culture.
     /// Falls back to "en.json" if the requested locale is not found, then to an empty dictionary.
     /// </summary>
-    public Dictionary<string, string> LoadStrings(string extensionDirectory, string locale)
+    public Dictionary<string, string> LoadStrings(string extensionFolder, string? locale = null)
     {
-        var localizationFolder = Path.Combine(extensionDirectory, LocalizationFolder);
+        locale ??= CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+
+        var localizationFolder = Path.Combine(extensionFolder, LocalizationFolder);
 
         var localePath = Path.Combine(localizationFolder, $"{locale}.json");
         var result = TryLoadJsonFile(localePath);

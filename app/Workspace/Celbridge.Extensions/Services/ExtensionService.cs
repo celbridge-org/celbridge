@@ -19,7 +19,7 @@ public class ExtensionService : IExtensionService
     private readonly IModuleService _moduleService;
     private readonly IMessengerService _messengerService;
     private readonly IFeatureFlags _featureFlags;
-    private readonly ExtensionLocalizationService _localizationService;
+    private readonly IExtensionLocalizationService _localizationService;
 
     private readonly ExtensionRegistry _registry = new();
 
@@ -28,7 +28,7 @@ public class ExtensionService : IExtensionService
         IModuleService moduleService,
         IMessengerService messengerService,
         IFeatureFlags featureFlags,
-        ExtensionLocalizationService localizationService)
+        IExtensionLocalizationService localizationService)
     {
         _logger = logger;
         _moduleService = moduleService;

@@ -8,7 +8,7 @@ public static class ServiceConfiguration
         // Register extension infrastructure
         //
 
-        services.AddTransient<ExtensionLocalizationService>();
+        services.AddTransient<IExtensionLocalizationService, ExtensionLocalizationService>();
         services.AddTransient<IExtensionService, ExtensionService>();
     }
 }

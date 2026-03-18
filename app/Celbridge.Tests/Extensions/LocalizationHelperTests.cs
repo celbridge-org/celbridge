@@ -7,7 +7,7 @@ namespace Celbridge.Tests.Extensions;
 public class ExtensionLocalizationServiceTests
 {
     private string _tempFolder = null!;
-    private ExtensionLocalizationService _service = null!;
+    private IExtensionLocalizationService _service = null!;
 
     [SetUp]
     public void Setup()
