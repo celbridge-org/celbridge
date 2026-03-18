@@ -94,27 +94,12 @@
     </Folder>
   </Folder>
 
-  <Folder Name="/Examples/">
-    <File Path="examples/project.celbridge" />
-    <File Path="examples/readme.md" />
-    <File Path="examples/01_markdown/readme.md" />
-    <File Path="examples/02_webapps/readme.md" />
-    <File Path="examples/03_hello_world/hello_world.py" />
-    <File Path="examples/03_hello_world/readme.md" />
-    <File Path="examples/04_data_import/data_import.py" />
-    <File Path="examples/04_data_import/readme.md" />
-    <File Path="examples/05_fake_data/fake_data.py" />
-    <File Path="examples/05_fake_data/readme.md" />
-    <File Path="examples/06_data_cleaning/clean_data.py" />
-    <File Path="examples/06_data_cleaning/readme.md" />
-  </Folder>
+  <Project Path="templates/Celbridge.Templates.csproj" />
 
   <Folder Name="/Docs/">
     <File Path="README.md" />
     <File Path="docs/getting_started.md" />
   </Folder>
-
-  <Folder Name="/Templates/" />
 
   <Folder Name="/Extensions/" />
 

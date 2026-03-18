@@ -415,6 +415,9 @@ solution-config.props
 .cache/
 .trash/
 
+# Generated template zip files (built from templates/ source)
+app/Core/Celbridge.Projects/Assets/Templates/*.zip
+
 # Design documentation (keep local only)
 app/Celbridge/DesignDocs/
 

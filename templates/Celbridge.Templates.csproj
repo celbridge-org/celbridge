@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.56">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <TemplateOutputFolder>$(MSBuildThisFileDirectory)..\app\Core\Celbridge.Projects\Assets\Templates</TemplateOutputFolder>
+    <StagingRoot>$(MSBuildThisFileDirectory)..\app\obj\template-staging\</StagingRoot>
+  </PropertyGroup>
+
+  <!--
+    Auto-discover all template folders.
+    Each subfolder of templates/ becomes a zip file copied to
+    Celbridge.Projects/Assets/Templates/{FolderName}.zip.
+    To add a new template, just create a new folder here.
+  -->
+  <ItemGroup>
+    <TemplateFolders Include="$([System.IO.Directory]::GetDirectories('$(MSBuildThisFileDirectory)'))" />
+    <TemplateFolders Remove="$(MSBuildThisFileDirectory)bin" />
+    <TemplateFolders Remove="$(MSBuildThisFileDirectory)obj" />
+  </ItemGroup>
+
+  <Target Name="BuildTemplateZips" AfterTargets="Build">
+    <MSBuild Projects="$(MSBuildProjectFile)"
+             Targets="ZipOneTemplate"
+             Properties="TemplateFolder=%(TemplateFolders.Identity)" />
+  </Target>
+
+  <Target Name="ZipOneTemplate">
+    <PropertyGroup>
+      <TemplateName>$([System.IO.Path]::GetFileName('$(TemplateFolder)'))</TemplateName>
+      <StagingFolder>$(StagingRoot)$(TemplateName)\</StagingFolder>
+      <ZipOutputPath>$(TemplateOutputFolder)\$(TemplateName).zip</ZipOutputPath>
+    </PropertyGroup>
+
+    <!-- Collect template files, excluding ephemeral runtime data -->
+    <ItemGroup>
+      <TemplateFiles Include="$(TemplateFolder)\**\*"
+                     Exclude="$(TemplateFolder)\**\.cache\**;$(TemplateFolder)\**\.logs\**;$(TemplateFolder)\**\.trash\**" />
+    </ItemGroup>
+
+    <!-- Stage files to a clean directory for zipping -->
+    <RemoveDir Directories="$(StagingFolder)" />
+    <Copy SourceFiles="@(TemplateFiles)"
+          DestinationFiles="@(TemplateFiles->'$(StagingFolder)%(RecursiveDir)%(Filename)%(Extension)')" />
+
+    <!-- Create the zip from the staged directory -->
+    <Delete Files="$(ZipOutputPath)" Condition="Exists('$(ZipOutputPath)')" />
+    <ZipDirectory SourceDirectory="$(StagingFolder)"
+                  DestinationFile="$(ZipOutputPath)"
+                  Overwrite="true" />
+
+    <Message Text="Created $(TemplateName).zip" Importance="high" />
+  </Target>
+
+  <Target Name="CleanTemplateZips" AfterTargets="Clean">
+    <ItemGroup>
+      <ZipFiles Include="$(TemplateOutputFolder)\*.zip" />
+    </ItemGroup>
+    <Delete Files="@(ZipFiles)" />
+    <RemoveDir Directories="$(StagingRoot)" />
+  </Target>
+
+</Project>

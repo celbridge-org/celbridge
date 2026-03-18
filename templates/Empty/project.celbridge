@@ -1,0 +1,8 @@
+[celbridge]
+celbridge-version = "<application-version>"
+
+[project]
+name = "empty"
+version = "0.1.0"
+requires-python = "<python-version>"
+dependencies = []
