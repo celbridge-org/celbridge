@@ -113,8 +113,6 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         Host?.StartListening();
     }
 
-    #region IHostInput
-
     /// <summary>
     /// Called when a keyboard shortcut is pressed in the WebView.
     /// Default implementation forwards to the keyboard shortcut service.
@@ -124,10 +122,6 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
-
-    #endregion
-
-    #region Save Tracking
 
     /// <summary>
     /// Returns true if a save operation is currently in progress.
@@ -168,10 +162,6 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         return false;
     }
 
-    #endregion
-
-    #region Theme Syncing
-
     /// <summary>
     /// Enables automatic theme syncing between the app and the WebView.
     /// Registers for ThemeChangedMessage and applies theme changes to the WebView.
@@ -208,28 +198,20 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
             : CoreWebView2PreferredColorScheme.Light;
     }
 
-    #endregion
-
-    #region Document Metadata
-
-        /// <summary>
-        /// Creates a DocumentMetadata instance from the current document state.
-        /// Used by WebView-based editors for JSON-RPC communication.
-        /// Includes the current UI locale for JS-side localization loading.
-        /// </summary>
-        protected DocumentMetadata CreateDocumentMetadata()
-        {
-            var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-            return new DocumentMetadata(
-                DocumentViewModel.FilePath,
-                DocumentViewModel.FileResource.ToString(),
-                Path.GetFileName(DocumentViewModel.FilePath),
-                locale);
-        }
-
-        #endregion
-
-    #region Browser Helper
+    /// <summary>
+    /// Creates a DocumentMetadata instance from the current document state.
+    /// Used by WebView-based editors for JSON-RPC communication.
+    /// Includes the current UI locale for JS-side localization loading.
+    /// </summary>
+    protected DocumentMetadata CreateDocumentMetadata()
+    {
+        var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        return new DocumentMetadata(
+            DocumentViewModel.FilePath,
+            DocumentViewModel.FileResource.ToString(),
+            Path.GetFileName(DocumentViewModel.FilePath),
+            locale);
+    }
 
     /// <summary>
     /// Opens a URL in the system's default browser using the command service.
@@ -246,8 +228,6 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
             command.URL = uri;
         });
     }
-
-    #endregion
 
     /// <summary>
     /// Called when the WebView gains focus.
