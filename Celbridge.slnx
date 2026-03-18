@@ -49,7 +49,9 @@
     <Project Path="app/Workspace/Celbridge.WorkspaceUI/Celbridge.WorkspaceUI.csproj" />
   </Folder>
 
-  <Project Path="app/Celbridge/Celbridge.csproj" />
+  <Project Path="app/Celbridge/Celbridge.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 
   <Folder Name="/Tests/">
     <Project Path="app/Celbridge.Tests/Celbridge.Tests.csproj" />
