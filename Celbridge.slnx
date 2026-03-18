@@ -52,7 +52,7 @@
   </Folder>
 
   <Project Path="app/Celbridge/Celbridge.csproj">
-    <Deploy Solution="Debug|*" />
+    <Deploy />
   </Project>
 
   <Folder Name="/Tests/">
