@@ -4,6 +4,8 @@ namespace Celbridge.Host;
 
 public static class DocumentRpcMethods
 {
+    public const string CurrentProtocolVersion = "1.0";
+
     public const string Initialize = "document/initialize";
     public const string Load = "document/load";
     public const string Save = "document/save";
@@ -13,6 +15,19 @@ public static class DocumentRpcMethods
     public const string ImportComplete = "document/importComplete";
     public const string ClientReady = "document/clientReady";
     public const string ContentLoaded = "document/contentLoaded";
+
+    /// <summary>
+    /// Validates the protocol version from the WebView client.
+    /// Throws LocalRpcException if the version is not supported.
+    /// </summary>
+    public static void ValidateProtocolVersion(string protocolVersion)
+    {
+        if (protocolVersion != CurrentProtocolVersion)
+        {
+            throw new LocalRpcException(
+                $"Unsupported protocol version: {protocolVersion}. Expected: {CurrentProtocolVersion}");
+        }
+    }
 }
 
 /// <summary>

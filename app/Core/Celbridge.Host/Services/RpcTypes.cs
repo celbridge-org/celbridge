@@ -6,16 +6,15 @@ namespace Celbridge.Host;
 
 /// <summary>
 /// Metadata about the document being edited.
+/// Includes the locale for JS-side localization loading.
 /// </summary>
-public record DocumentMetadata(string FilePath, string ResourceKey, string FileName);
+public record DocumentMetadata(string FilePath, string ResourceKey, string FileName, string Locale);
 
 /// <summary>
-/// Result of the bridge/initialize request.
+/// Result of the document/initialize request.
+/// Localization is handled by JS fetching from the extension's localization folder.
 /// </summary>
-public record InitializeResult(
-    string Content,
-    DocumentMetadata Metadata,
-    Dictionary<string, string> Localization);
+public record InitializeResult(string Content, DocumentMetadata Metadata);
 
 // =============================================================================
 // Document Operation Results

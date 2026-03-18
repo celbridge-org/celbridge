@@ -26,11 +26,6 @@ public enum ResourceFormat
     Markdown,
 
     /// <summary>
-    /// A text note with the .note extension
-    /// </summary>
-    Note,
-
-    /// <summary>
     /// A Python script file with the .py extension
     /// </summary>
     Python,

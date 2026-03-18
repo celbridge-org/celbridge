@@ -19,12 +19,6 @@ public class Module : IModule
     public void ConfigureServices(IModuleServiceCollection services)
     {
         //
-        // Register document editor factories
-        //
-
-        services.AddTransient<IDocumentEditorFactory, SceneEditorFactory>();
-
-        //
         // Register services
         //
 
@@ -66,6 +60,11 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        return [new SceneEditorFactory(serviceProvider)];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         if (activityName == nameof(ScreenplayActivity))
@@ -75,5 +74,10 @@ public class Module : IModule
         }
 
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetBundledExtensionFolder()
+    {
+        return null;
     }
 }

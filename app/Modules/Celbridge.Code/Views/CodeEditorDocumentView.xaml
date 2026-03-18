@@ -6,8 +6,78 @@
   xmlns:views="using:Celbridge.Documents.Views"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-  <Grid HorizontalAlignment="Stretch">
-    <local:CodeEditor x:Name="MonacoEditor"
-                      HorizontalAlignment="Stretch"/>
+  <Grid HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Toolbar - shown when preview is configured or custom toolbar content is provided -->
+    <Border x:Name="ToolbarBorder"
+            Grid.Row="0"
+            Background="{ThemeResource LayerFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="8,4,16,4"
+            Visibility="Collapsed">
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Left"
+                  Spacing="4">
+        <!-- View mode buttons - shown when preview is configured -->
+        <StackPanel x:Name="ViewModePanel"
+                    Orientation="Horizontal"
+                    Visibility="Collapsed"
+                    Spacing="4">
+          <ToggleButton x:Name="PreviewModeButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Click="PreviewModeButton_Click">
+            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                      Glyph="&#xE736;"
+                      FontSize="14" />
+          </ToggleButton>
+          <ToggleButton x:Name="SplitModeButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Click="SplitModeButton_Click">
+            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                      Glyph="&#xE8B2;"
+                      FontSize="14" />
+          </ToggleButton>
+          <ToggleButton x:Name="SourceModeButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Click="SourceModeButton_Click">
+            <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                      Glyph="&#xE943;"
+                      FontSize="14" />
+          </ToggleButton>
+        </StackPanel>
+
+        <!-- Separator between view mode buttons and custom toolbar -->
+        <Border x:Name="ToolbarSeparator"
+                Width="1"
+                Height="16"
+                Margin="4,0"
+                Background="{ThemeResource CardStrokeColorDefaultBrush}"
+                Visibility="Collapsed" />
+
+        <!-- Custom toolbar content slot -->
+        <ContentPresenter x:Name="CustomToolbarPresenter" />
+      </StackPanel>
+    </Border>
+
+    <!-- Editor content area -->
+    <Grid x:Name="EditorContainer"
+          Grid.Row="1"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+      <local:CodeEditor x:Name="MonacoEditor"
+                        HorizontalAlignment="Stretch" />
+    </Grid>
   </Grid>
 </views:DocumentView>

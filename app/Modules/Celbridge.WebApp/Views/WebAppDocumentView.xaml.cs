@@ -1,34 +1,30 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.WebView;
-using Celbridge.Workspace;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebApp.Views;
 
-public sealed partial class WebAppDocumentView : WebView2DocumentView
+public sealed partial class WebAppDocumentView : WebViewDocumentView
 {
     private readonly ILogger<WebAppDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
-
-    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     public WebAppDocumentViewModel ViewModel { get; }
 
-    public override ResourceKey FileResource => ViewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
 
     public WebAppDocumentView(
         IServiceProvider serviceProvider,
         ILogger<WebAppDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper,
         IWebViewFactory webViewFactory)
         : base(messengerService, webViewFactory)
     {
@@ -37,7 +33,6 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
-        _workspaceWrapper = workspaceWrapper;
 
         ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
 
@@ -288,28 +283,6 @@ public sealed partial class WebAppDocumentView : WebView2DocumentView
                 File.Delete(tempPath);
             }
         };
-    }
-
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = ResourceRegistry.GetResourcePath(fileResource);
-
-        if (ResourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
     }
 
     public override async Task<Result> LoadContent()

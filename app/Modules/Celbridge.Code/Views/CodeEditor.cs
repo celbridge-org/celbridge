@@ -7,7 +7,6 @@ using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Celbridge.WebView.Services;
 using Microsoft.Web.WebView2.Core;
-using StreamJsonRpc;
 
 namespace Celbridge.Code.Views;
 
@@ -16,7 +15,7 @@ namespace Celbridge.Code.Views;
 /// This is a pure text editing control that can be embedded in any document view.
 /// The parent view is responsible for file I/O and document management.
 /// </summary>
-public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
+public sealed partial class CodeEditor : UserControl
 {
     private const int ContentRequestTimeoutSeconds = 5;
     private const int ClientInitializationTimeoutSeconds = 10;
@@ -28,29 +27,37 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly ICommandService _commandService;
 
+    private readonly CodeEditorState _state = new();
+
     private WebView2? _webView;
     private CodeEditorHost? _host;
     private WebViewHostChannel? _messageChannel;
-    private TaskCompletionSource? _clientReadyTcs;
-    private TaskCompletionSource? _contentLoadedTcs;
-    private TaskCompletionSource<string>? _getContentTcs;
+    private CodeEditorDocumentHandler? _documentHandler;
 
     private bool _isPreInitialized;
-    private string _content = string.Empty;
     private string _language = "plaintext";
-    private string _filePath = string.Empty;
-    private string _resourceKey = string.Empty;
 
     /// <summary>
     /// Callback to load content from the parent. Set this before calling InitializeAsync().
     /// The parent is responsible for reading from disk or other source.
     /// </summary>
-    public Func<Task<string>>? ContentLoader { get; set; }
+    public Func<Task<string>>? ContentLoader
+    {
+        get => _state.ContentLoader;
+        set => _state.ContentLoader = value;
+    }
 
     /// <summary>
     /// Editor options. Set this before calling InitializeAsync() or PreInitializeAsync().
     /// </summary>
     public CodeEditorOptions Options { get; set; } = CodeEditorOptions.Default;
+
+    /// <summary>
+    /// Optional URL to a customization script for the Monaco editor.
+    /// The script is loaded after Monaco initializes and should export an activate(monaco, editor, container, celbridge) function.
+    /// Set this before calling InitializeAsync().
+    /// </summary>
+    public string? CustomizationScriptUrl { get; set; }
 
     /// <summary>
     /// Raised when the content changes in the Monaco editor (user editing).
@@ -115,17 +122,24 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         var celbridgeHost = new CelbridgeHost(_messageChannel);
         _host = new CodeEditorHost(celbridgeHost);
 
-        // Register this control as the handler for RPC interfaces
-        _host.AddLocalRpcTarget<IHostDocument>(this);
-        _host.AddLocalRpcTarget<IHostInput>(this);
+        _documentHandler = new CodeEditorDocumentHandler(
+            _logger,
+            _state,
+            () => ContentChanged?.Invoke());
+
+        var inputHandler = new CodeEditorInputHandler(
+            scrollPercentage => ScrollPositionChanged?.Invoke(scrollPercentage));
+
+        _host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
+        _host.AddLocalRpcTarget<IHostInput>(inputHandler);
 
         _host.StartListening();
 
         // Sync WebView2 color scheme with the app theme
         ApplyThemeToWebView();
 
-        // Prepare to wait for client ready notification
-        _clientReadyTcs = new TaskCompletionSource();
+        var clientReadyTcs = new TaskCompletionSource();
+        _documentHandler.ClientReadyTcs = clientReadyTcs;
 
         // Navigate to Monaco editor
         _webView.CoreWebView2.Navigate("http://monaco.celbridge/index.html");
@@ -133,11 +147,11 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         // Wait for the JS client to signal it's ready, with timeout to prevent infinite hang
         var timeout = TimeSpan.FromSeconds(ClientInitializationTimeoutSeconds);
         var timeoutTask = Task.Delay(timeout);
-        var completedTask = await Task.WhenAny(_clientReadyTcs.Task, timeoutTask);
+        var completedTask = await Task.WhenAny(clientReadyTcs.Task, timeoutTask);
 
         if (completedTask == timeoutTask)
         {
-            _clientReadyTcs = null;
+            _documentHandler.ClientReadyTcs = null;
 
             var errorMessage = $"Monaco editor client failed to initialize within {ClientInitializationTimeoutSeconds} seconds. " +
                                "The JavaScript module may have failed to load during pre-initialization.";
@@ -147,7 +161,7 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
             return Result.Fail(errorMessage);
         }
 
-        _clientReadyTcs = null;
+        _documentHandler.ClientReadyTcs = null;
         _isPreInitialized = true;
 
         return Result.Ok();
@@ -161,10 +175,10 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     /// </summary>
     public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey)
     {
-        _content = content;
+        _state.Content = content;
         _language = language;
-        _filePath = filePath;
-        _resourceKey = resourceKey;
+        _state.FilePath = filePath;
+        _state.ResourceKey = resourceKey;
 
         // If not pre-initialized, do the full initialization now
         if (!_isPreInitialized)
@@ -181,30 +195,36 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
             return Result.Fail("Failed to initialize JSON-RPC host");
         }
 
-        // Prepare to wait for content loaded notification from Monaco
-        _contentLoadedTcs = new TaskCompletionSource();
+        var contentLoadedTcs = new TaskCompletionSource();
+        _documentHandler!.ContentLoadedTcs = contentLoadedTcs;
 
         // Initialize the Monaco editor via JSON-RPC with the content, language, and options
-        await _host.InitializeEditorAsync(_language, Options.ScrollBeyondLastLine);
+        await _host.InitializeEditorAsync(_language, Options);
 
         // Wait for Monaco to signal content is loaded, with timeout
         var timeout = TimeSpan.FromSeconds(ContentLoadedTimeoutSeconds);
         var timeoutTask = Task.Delay(timeout);
-        var completedTask = await Task.WhenAny(_contentLoadedTcs.Task, timeoutTask);
+        var completedTask = await Task.WhenAny(contentLoadedTcs.Task, timeoutTask);
 
         if (completedTask == timeoutTask)
         {
-            _contentLoadedTcs = null;
+            _documentHandler.ContentLoadedTcs = null;
 
             var errorMessage = $"Monaco editor content failed to load within {ContentLoadedTimeoutSeconds} seconds. " +
-                               $"File: {_filePath}";
+                               $"File: {_state.FilePath}";
 
             _logger.LogError(errorMessage);
 
             return Result.Fail(errorMessage);
         }
 
-        _contentLoadedTcs = null;
+        _documentHandler.ContentLoadedTcs = null;
+
+        // Apply customization script if configured
+        if (!string.IsNullOrEmpty(CustomizationScriptUrl) && _host is not null)
+        {
+            await _host.ApplyCustomizationAsync(CustomizationScriptUrl);
+        }
 
         return Result.Ok();
     }
@@ -218,11 +238,11 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     {
         if (_host is null)
         {
-            return _content;
+            return _state.Content;
         }
 
-        // Set up completion source to receive the content
-        _getContentTcs = new TaskCompletionSource<string>();
+        var getContentTcs = new TaskCompletionSource<string>();
+        _documentHandler!.GetContentTcs = getContentTcs;
 
         // Request content from Monaco - it will call SaveAsync with the content
         await _host.NotifyRequestSaveAsync();
@@ -230,22 +250,22 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
         // Wait for SaveAsync to be called, with timeout to prevent hanging forever
         var timeout = TimeSpan.FromSeconds(ContentRequestTimeoutSeconds);
         var timeoutTask = Task.Delay(timeout);
-        var completedTask = await Task.WhenAny(_getContentTcs.Task, timeoutTask);
+        var completedTask = await Task.WhenAny(getContentTcs.Task, timeoutTask);
 
         if (completedTask == timeoutTask)
         {
-            _getContentTcs = null;
+            _documentHandler.GetContentTcs = null;
 
             var errorMessage = $"Monaco editor failed to respond within {ContentRequestTimeoutSeconds} seconds. " +
-                               $"The editor may be in an unstable state. File: {_filePath}";
+                               $"The editor may be in an unstable state. File: {_state.FilePath}";
 
             _logger.LogError(errorMessage);
 
             throw new TimeoutException(errorMessage);
         }
 
-        var content = await _getContentTcs.Task;
-        _getContentTcs = null;
+        var content = await getContentTcs.Task;
+        _documentHandler.GetContentTcs = null;
 
         return content;
     }
@@ -268,8 +288,8 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
     /// </summary>
     public async Task UpdateFileInfoAsync(string filePath, string resourceKey, string? newLanguage = null)
     {
-        _filePath = filePath;
-        _resourceKey = resourceKey;
+        _state.FilePath = filePath;
+        _state.ResourceKey = resourceKey;
 
         if (newLanguage is not null)
         {
@@ -414,101 +434,4 @@ public sealed partial class CodeEditor : UserControl, IHostDocument, IHostInput
             : CoreWebView2PreferredColorScheme.Light;
     }
 
-    private DocumentMetadata CreateMetadata()
-    {
-        return new DocumentMetadata(
-            _filePath,
-            _resourceKey,
-            Path.GetFileName(_filePath));
-    }
-
-    #region IHostDocument
-
-    public async Task<InitializeResult> InitializeAsync(string protocolVersion)
-    {
-        // Validate protocol version
-        if (protocolVersion != "1.0")
-        {
-            throw new LocalRpcException($"Unsupported protocol version: {protocolVersion}. Expected: 1.0");
-        }
-
-        // Build metadata
-        var metadata = CreateMetadata();
-
-        // No localization strings needed for Monaco
-        var localization = new Dictionary<string, string>();
-
-        var result = new InitializeResult(_content, metadata, localization);
-
-        await Task.CompletedTask;
-
-        return result;
-    }
-
-    public async Task<LoadResult> LoadAsync()
-    {
-        // Use the content loader callback to get fresh content from the parent
-        if (ContentLoader is not null)
-        {
-            _content = await ContentLoader();
-        }
-        else
-        {
-            _logger.LogWarning($"LoadAsync has no ContentLoader for file: {_resourceKey}");
-        }
-
-        var metadata = CreateMetadata();
-        var result = new LoadResult(_content, metadata);
-
-        return result;
-    }
-
-    public async Task<SaveResult> SaveAsync(string content)
-    {
-        // Update cached content
-        _content = content;
-
-        // If we're waiting for content (GetContentAsync was called), complete the task
-        _getContentTcs?.TrySetResult(content);
-
-        await Task.CompletedTask;
-
-        // Return success - the actual file save is handled by the parent
-        return new SaveResult(true);
-    }
-
-    public void OnDocumentChanged()
-    {
-        // Notify parent that content has changed
-        ContentChanged?.Invoke();
-    }
-
-    public void OnClientReady()
-    {
-        // Signal that the JS client is ready
-        _clientReadyTcs?.TrySetResult();
-    }
-
-    public void OnContentLoaded()
-    {
-        // Signal that content has been loaded and editor is ready for edits
-        _contentLoadedTcs?.TrySetResult();
-    }
-
-    #endregion
-
-    #region IHostInput
-
-    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
-    {
-        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
-        keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
-    }
-
-    public void OnScrollPositionChanged(double scrollPercentage)
-    {
-        ScrollPositionChanged?.Invoke(scrollPercentage);
-    }
-
-    #endregion
 }

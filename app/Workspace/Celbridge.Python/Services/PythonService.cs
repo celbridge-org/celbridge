@@ -211,10 +211,13 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Determine if we can use offline mode (no network required).
-            // If the python version, dependencies, and wheel files have not changed since the last
-            // successful startup, we can use --offline to avoid network access.
+            // The fingerprint includes the config AND the directory structure of the Python install
+            // folder on disk. If the app is uninstalled and reinstalled, the directory structure
+            // changes (missing Python versions, cached packages, etc.), causing a fingerprint
+            // mismatch that forces online mode to re-download everything.
             var cacheDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
-            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, hostWheelPath, celbridgeWheelPath, pythonPackages);
+            var installDirFingerprint = ComputeDirectoryFingerprint(pythonFolder);
+            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, hostWheelPath, celbridgeWheelPath, pythonPackages, installDirFingerprint);
             var savedFingerprint = LoadSavedFingerprint(cacheDir);
             var useOfflineMode = currentFingerprint == savedFingerprint;
             if (useOfflineMode)
@@ -301,15 +304,18 @@ public class PythonService : IPythonService, IDisposable
     }
 
     /// <summary>
-    /// Computes a fingerprint of the current Python configuration.
-    /// If this fingerprint matches the saved one, we can use offline mode.
+    /// Computes a fingerprint of the current Python configuration and installed state.
+    /// Includes the directory structure of the Python install folder so that any change
+    /// to installed Python versions, cached packages, or tools causes a fingerprint mismatch
+    /// that forces online mode.
     /// </summary>
     private static string ComputeConfigFingerprint(
         string appVersion,
         string pythonVersion,
         string hostWheelPath,
         string celbridgeWheelPath,
-        IReadOnlyList<string>? dependencies)
+        IReadOnlyList<string>? dependencies,
+        string installDirFingerprint)
     {
         var sb = new StringBuilder();
         sb.AppendLine(appVersion);
@@ -325,7 +331,30 @@ public class PythonService : IPythonService, IDisposable
             }
         }
 
+        sb.AppendLine(installDirFingerprint);
+
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
+        return Convert.ToHexString(bytes);
+    }
+
+    /// <summary>
+    /// Computes a fingerprint of the directory structure under the given folder.
+    /// Uses sorted subdirectory names (recursively) so that any change to the installed
+    /// Python versions, cached packages, or tools produces a different fingerprint.
+    /// </summary>
+    private static string ComputeDirectoryFingerprint(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+        {
+            return string.Empty;
+        }
+
+        var directoryNames = Directory.GetDirectories(folderPath, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(folderPath, path))
+            .OrderBy(name => name, StringComparer.Ordinal);
+
+        var combined = string.Join("\n", directoryNames);
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
         return Convert.ToHexString(bytes);
     }
 

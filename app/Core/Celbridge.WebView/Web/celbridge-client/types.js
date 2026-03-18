@@ -6,6 +6,7 @@
  * @property {string} filePath - Full path to the file on disk.
  * @property {string} resourceKey - The resource key in the project.
  * @property {string} fileName - The file name only.
+ * @property {string} locale - The UI locale (e.g., "en", "fr") for localization loading.
  */
 
 /**
@@ -15,8 +16,7 @@
 /**
  * @typedef {Object} InitializeResult
  * @property {string} content - The document content.
- * @property {DocumentMetadata} metadata - Document metadata.
- * @property {Object<string, string>} localization - Localized strings dictionary.
+ * @property {DocumentMetadata} metadata - Document metadata including locale.
  */
 
 /**

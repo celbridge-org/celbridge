@@ -1,10 +1,10 @@
-# Celbridge Client SDK
+# Celbridge Client
 
-JavaScript client SDK for communicating with the Celbridge .NET host via JSON-RPC.
+JavaScript client for communicating with the Celbridge .NET host via JSON-RPC.
 
 ## Running Tests
 
-To run the unit tests for the celbridge-client SDK:
+To run the unit tests for the celbridge-client:
 
 ```bash
 cd Core/Celbridge.WebView/Web/celbridge-client
@@ -22,7 +22,7 @@ npm run test:watch
 
 ```
 celbridge-client/
-├── celbridge.js          # Main SDK entry point
+├── celbridge.js          # Main client entry point
 ├── localization.js       # Localization utilities for WebView editors
 ├── types.js              # JSDoc type definitions
 ├── api/                  # API modules

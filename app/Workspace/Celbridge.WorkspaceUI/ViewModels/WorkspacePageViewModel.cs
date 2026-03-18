@@ -20,6 +20,7 @@ public partial class WorkspacePageViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IWindowModeService _windowModeService;
     private readonly ILayoutService _layoutService;
+    private readonly IFeatureFlags _featureFlags;
     private readonly IWorkspaceService _workspaceService;
     private readonly IDialogService _dialogService;
     private readonly IProjectService _projectService;
@@ -65,6 +66,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         IEditorSettings editorSettings,
         IWindowModeService windowModeService,
         ILayoutService layoutService,
+        IFeatureFlags featureFlags,
         IDialogService dialogService,
         IProjectService projectService,
         WorkspaceLoader workspaceLoader)
@@ -75,6 +77,7 @@ public partial class WorkspacePageViewModel : ObservableObject
         _editorSettings = editorSettings;
         _windowModeService = windowModeService;
         _layoutService = layoutService;
+        _featureFlags = featureFlags;
         _dialogService = dialogService;
         _projectService = projectService;
         _workspaceLoader = workspaceLoader;
@@ -127,6 +130,9 @@ public partial class WorkspacePageViewModel : ObservableObject
         _messengerService.Unregister<WindowModeChangedMessage>(this);
         _messengerService.Unregister<RegionVisibilityChangedMessage>(this);
         _messengerService.Unregister<ConsoleMaximizedChangedMessage>(this);
+
+        // Clear project-level feature flag overrides before disposing the workspace
+        _featureFlags.ClearProjectOverrides();
 
         // Clear shortcut buttons from the title bar before disposing the workspace
         _workspaceLoader.ClearTitleBarShortcuts();

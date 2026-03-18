@@ -1,3 +1,4 @@
+using Celbridge.Code.Views;
 using Celbridge.Host;
 
 namespace Celbridge.Code.Services;
@@ -13,6 +14,7 @@ internal static class CodeEditorRpcMethods
     public const string ScrollToPercentage = "codeEditor/scrollToPercentage";
     public const string InsertText = "codeEditor/insertText";
     public const string ApplyEdits = "codeEditor/applyEdits";
+    public const string ApplyCustomization = "codeEditor/applyCustomization";
 }
 
 /// <summary>
@@ -64,12 +66,14 @@ public class CodeEditorHost : IDisposable
     /// <summary>
     /// Initializes the code editor with the specified language and options.
     /// </summary>
-    public Task InitializeEditorAsync(string language, bool scrollBeyondLastLine = true)
+    public Task InitializeEditorAsync(string language, CodeEditorOptions options)
     {
         return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.Initialize, new
-        { 
+        {
             language,
-            scrollBeyondLastLine
+            scrollBeyondLastLine = options.ScrollBeyondLastLine,
+            wordWrap = options.WordWrap,
+            minimapEnabled = options.MinimapEnabled
         });
     }
 
@@ -121,6 +125,14 @@ public class CodeEditorHost : IDisposable
         });
 
         return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.ApplyEdits, new { edits = monacoEdits });
+    }
+
+    /// <summary>
+    /// Applies a customization script to the Monaco editor.
+    /// </summary>
+    public Task ApplyCustomizationAsync(string scriptUrl)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.ApplyCustomization, new { scriptUrl });
     }
 
     public void Dispose()

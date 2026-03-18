@@ -9,14 +9,13 @@ namespace Celbridge.FileViewer.Services;
 /// Factory for creating file viewer document views.
 /// Handles binary files like images, audio, video, and PDFs.
 /// </summary>
-public class FileViewerFactory : IDocumentEditorFactory
+public class FileViewerFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly FileTypeHelper _fileTypeHelper;
+    private readonly IReadOnlyList<string> _supportedExtensions;
 
-    public IReadOnlyList<string> SupportedExtensions { get; }
-
-    public int Priority => 0;
+    public override IReadOnlyList<string> SupportedExtensions => _supportedExtensions;
 
     public FileViewerFactory(IServiceProvider serviceProvider, FileTypeHelper fileTypeHelper)
     {
@@ -54,16 +53,16 @@ public class FileViewerFactory : IDocumentEditorFactory
             ".pdf"
         };
 
-        SupportedExtensions = extensions.AsReadOnly();
+        _supportedExtensions = extensions.AsReadOnly();
     }
 
-    public bool CanHandle(ResourceKey fileResource, string filePath)
+    public override bool CanHandle(ResourceKey fileResource, string filePath)
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
         return _fileTypeHelper.IsWebViewerFile(extension);
     }
 
-    public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
+    public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<FileViewerDocumentView>();

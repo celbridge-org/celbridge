@@ -1,6 +1,6 @@
-using Celbridge.Workspace;
 using Celbridge.Logging;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.UserInterface.Services;
 
@@ -13,7 +13,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
     private readonly ILogger<LayoutManager> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IEditorSettings _editorSettings;
-    private readonly IWorkspaceFeatures _workspaceFeatures;
+    private readonly IFeatureFlags _featureFlags;
 
     private WindowMode _windowMode = WindowMode.Windowed;
     private LayoutRegion _regionVisibility = LayoutRegion.All;
@@ -22,18 +22,19 @@ public class LayoutManager : IWindowModeService, ILayoutService
         ILogger<LayoutManager> logger,
         IMessengerService messengerService,
         IEditorSettings editorSettings,
-        IWorkspaceFeatures workspaceFeatures)
+        IFeatureFlags featureFlags)
     {
         _logger = logger;
         _messengerService = messengerService;
         _editorSettings = editorSettings;
-        _workspaceFeatures = workspaceFeatures;
+        _featureFlags = featureFlags;
 
         // Initialize from persisted preferences
         _regionVisibility = _editorSettings.PreferredRegionVisibility;
 
         // Listen for when the user exits fullscreen by dragging the window (Windows built-in behavior)
         _messengerService.Register<ExitedFullscreenViaDragMessage>(this, OnExitedFullscreenViaDrag);
+        _messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
     }
 
     public WindowMode WindowMode
@@ -196,6 +197,17 @@ public class LayoutManager : IWindowModeService, ILayoutService
         return isZenModeState ? WindowMode.ZenMode : WindowMode.FullScreen;
     }
 
+    private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
+    {
+        // Re-evaluate console visibility based on updated feature flags
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
+        if (!isConsolePanelEnabled &&
+            RegionVisibility.HasFlag(LayoutRegion.Console))
+        {
+            UpdateRegionVisibility(RegionVisibility & ~LayoutRegion.Console, shouldPersist: true);
+        }
+    }
+
     private void OnExitedFullscreenViaDrag(object recipient, ExitedFullscreenViaDragMessage message)
     {
         // The window has exited fullscreen via drag, so sync our internal state to Windowed mode
@@ -325,7 +337,7 @@ public class LayoutManager : IWindowModeService, ILayoutService
         _editorSettings.IsWindowMaximized = false;
 
         // Reset preferred visibility to all regions, but exclude Console if feature is disabled
-        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         var targetVisibility = isConsolePanelEnabled 
             ? LayoutRegion.All 
             : (LayoutRegion.Primary | LayoutRegion.Secondary);

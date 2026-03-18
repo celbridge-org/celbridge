@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Explorer;
+using Celbridge.Extensions;
 using Celbridge.Settings;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -51,7 +52,7 @@ public partial class AddFileDialogViewModel : ObservableObject
     public AddFileDialogViewModel(
         IEditorSettings editorSettings,
         IStringLocalizer stringLocalizer,
-        IWorkspaceFeatures workspaceFeatures)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _editorSettings = editorSettings;
         _stringLocalizer = stringLocalizer;
@@ -63,25 +64,16 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_WebApp"), ResourceFormat.WebApp, ExplorerConstants.WebAppExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Other"), ResourceFormat.Text, string.Empty),
         ];
 
-        // Add Note file type if feature flag is enabled
-        if (workspaceFeatures.IsEnabled(FeatureFlags.NoteEditor))
-        {
-            // Insert Note after Markdown to keep document file types together
-            var markdownIndex = FileTypes.FindIndex(ft => ft.Format == ResourceFormat.Markdown);
-            var noteItem = new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Note"), ResourceFormat.Note, ExplorerConstants.NoteExtension);
-            if (markdownIndex >= 0)
-            {
-                FileTypes.Insert(markdownIndex + 1, noteItem);
-            }
-            else
-            {
-                // Insert before "Other" if Markdown not found
-                FileTypes.Insert(FileTypes.Count - 1, noteItem);
-            }
-        }
+        // Add extension-provided document types before the "Other" option
+        var extensionService = workspaceWrapper.WorkspaceService.ExtensionService;
+        AddExtensionDocumentTypes(extensionService);
+
+        // Add "Other" as the last option
+        var otherDisplayName = _stringLocalizer.GetString("AddFileDialog_FileType_Other");
+        var otherFileType = new FileTypeItem(otherDisplayName, ResourceFormat.Text, string.Empty);
+        FileTypes.Add(otherFileType);
 
         // Select the dropdown based on the previously saved extension
         var previousExtension = _editorSettings.PreviousNewFileExtension;
@@ -238,6 +230,42 @@ public partial class AddFileDialogViewModel : ObservableObject
         if (!string.IsNullOrEmpty(extension))
         {
             _editorSettings.PreviousNewFileExtension = extension;
+        }
+    }
+
+    /// <summary>
+    /// Adds document types from discovered extension manifests.
+    /// Uses the first file extension from each document type for the dropdown.
+    /// </summary>
+    private void AddExtensionDocumentTypes(IExtensionService extensionService)
+    {
+        var documentTypes = extensionService.GetDocumentTypes();
+
+        foreach (var documentType in documentTypes)
+        {
+            if (documentType.FileExtensions.Count == 0)
+            {
+                continue;
+            }
+
+            var primaryFileExtension = documentType.FileExtensions[0];
+
+            // Skip if a built-in entry already handles this file extension
+            var alreadyExists = FileTypes.Any(ft =>
+                !string.IsNullOrEmpty(ft.Extension) &&
+                ft.Extension.Equals(primaryFileExtension, StringComparison.OrdinalIgnoreCase));
+
+            if (alreadyExists)
+            {
+                continue;
+            }
+
+            var item = new FileTypeItem(
+                documentType.DisplayName,
+                ResourceFormat.Text,
+                primaryFileExtension);
+
+            FileTypes.Add(item);
         }
     }
 }

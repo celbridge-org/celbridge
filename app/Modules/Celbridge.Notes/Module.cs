@@ -1,8 +1,6 @@
 using Celbridge.Activities;
+using Celbridge.Documents;
 using Celbridge.Modules;
-using Celbridge.Notes.Services;
-using Celbridge.Notes.ViewModels;
-using Celbridge.Notes.Views;
 
 namespace Celbridge.Notes;
 
@@ -12,23 +10,6 @@ public class Module : IModule
 
     public void ConfigureServices(IModuleServiceCollection services)
     {
-        //
-        // Register document editor factories
-        //
-
-        services.AddTransient<IDocumentEditorFactory, NoteEditorFactory>();
-
-        //
-        // Register views
-        //
-
-        services.AddTransient<NoteDocumentView>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<NoteDocumentViewModel>();
     }
 
     public Result Initialize()
@@ -36,8 +17,18 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        return [];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetBundledExtensionFolder()
+    {
+        return Path.Combine(AppContext.BaseDirectory, "Celbridge.Notes", "Web", "note");
     }
 }

@@ -16,11 +16,11 @@ class MonacoClient {
 
     /**
      * Registers a handler for editor initialization requests from the host.
-     * @param {function(string, boolean): void} handler - The handler function receiving the language and scrollBeyondLastLine option.
+     * @param {function(Object): void} handler - The handler function receiving the editor options.
      */
     onInitialize(handler) {
         this.#transport.addEventListener('codeEditor/initialize', (params) => {
-            handler(params.language, params.scrollBeyondLastLine);
+            handler(params);
         });
     }
 
@@ -71,6 +71,16 @@ class MonacoClient {
     onApplyEdits(handler) {
         this.#transport.addEventListener('codeEditor/applyEdits', (params) => {
             handler(params.edits);
+        });
+    }
+
+    /**
+     * Registers a handler for applying a customization script from the host.
+     * @param {function(string): void} handler - The handler function receiving the script URL.
+     */
+    onApplyCustomization(handler) {
+        this.#transport.addEventListener('codeEditor/applyCustomization', (params) => {
+            handler(params.scriptUrl);
         });
     }
 }

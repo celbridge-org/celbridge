@@ -7,14 +7,12 @@ namespace Celbridge.Spreadsheet.Services;
 /// Factory for creating spreadsheet document views.
 /// Handles Excel files using SpreadJS when available.
 /// </summary>
-public class SpreadsheetEditorFactory : IDocumentEditorFactory
+public class SpreadsheetEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly FileTypeHelper _fileTypeHelper;
 
-    public IReadOnlyList<string> SupportedExtensions { get; } = [".xlsx"];
-
-    public int Priority => 0;
+    public override IReadOnlyList<string> SupportedExtensions { get; } = [".xlsx"];
 
     public SpreadsheetEditorFactory(IServiceProvider serviceProvider, FileTypeHelper fileTypeHelper)
     {
@@ -22,14 +20,18 @@ public class SpreadsheetEditorFactory : IDocumentEditorFactory
         _fileTypeHelper = fileTypeHelper;
     }
 
-    public bool CanHandle(ResourceKey fileResource, string filePath)
+    public override bool CanHandle(ResourceKey fileResource, string filePath)
     {
         // Only handle if SpreadJS is available AND extension matches
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        return _fileTypeHelper.IsSpreadJSAvailable && SupportedExtensions.Contains(extension);
+        if (!_fileTypeHelper.IsSpreadJSAvailable)
+        {
+            return false;
+        }
+
+        return base.CanHandle(fileResource, filePath);
     }
 
-    public Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
+    public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
         if (!_fileTypeHelper.IsSpreadJSAvailable)

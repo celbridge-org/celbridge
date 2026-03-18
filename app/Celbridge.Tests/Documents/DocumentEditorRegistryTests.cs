@@ -37,11 +37,11 @@ public class DocumentEditorRegistryTests
 
         var factory1 = Substitute.For<IDocumentEditorFactory>();
         factory1.SupportedExtensions.Returns(new List<string> { ".md" });
-        factory1.Priority.Returns(0);
+        factory1.Priority.Returns(EditorPriority.Specialized);
 
         var factory2 = Substitute.For<IDocumentEditorFactory>();
         factory2.SupportedExtensions.Returns(new List<string> { ".md" });
-        factory2.Priority.Returns(10);
+        factory2.Priority.Returns(EditorPriority.Specialized);
 
         registry.RegisterFactory(factory1);
         registry.RegisterFactory(factory2);
@@ -51,55 +51,55 @@ public class DocumentEditorRegistryTests
     }
 
     [Test]
-    public void GetFactory_ReturnsHighestPriorityFactory()
+    public void GetFactory_ReturnsSpecializedPriorityFactoryOverGeneral()
     {
         var registry = new DocumentEditorRegistry();
         var fileResource = new ResourceKey("test.md");
         var filePath = "/path/test.md";
 
-        var lowPriority = Substitute.For<IDocumentEditorFactory>();
-        lowPriority.SupportedExtensions.Returns(new List<string> { ".md" });
-        lowPriority.Priority.Returns(0);
-        lowPriority.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
+        var generalPriority = Substitute.For<IDocumentEditorFactory>();
+        generalPriority.SupportedExtensions.Returns(new List<string> { ".md" });
+        generalPriority.Priority.Returns(EditorPriority.General);
+        generalPriority.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
 
-        var highPriority = Substitute.For<IDocumentEditorFactory>();
-        highPriority.SupportedExtensions.Returns(new List<string> { ".md" });
-        highPriority.Priority.Returns(10);
-        highPriority.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
+        var specializedPriority = Substitute.For<IDocumentEditorFactory>();
+        specializedPriority.SupportedExtensions.Returns(new List<string> { ".md" });
+        specializedPriority.Priority.Returns(EditorPriority.Specialized);
+        specializedPriority.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
 
-        registry.RegisterFactory(lowPriority);
-        registry.RegisterFactory(highPriority);
+        registry.RegisterFactory(generalPriority);
+        registry.RegisterFactory(specializedPriority);
 
         var result = registry.GetFactory(fileResource, filePath);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(highPriority);
+        result.Value.Should().Be(specializedPriority);
     }
 
     [Test]
-    public void GetFactory_SkipsFactoryThatCannotHandleResource()
+    public void GetFactory_FallsBackToGeneralWhenSpecializedCannotHandle()
     {
         var registry = new DocumentEditorRegistry();
         var fileResource = new ResourceKey("test.md");
         var filePath = "/path/test.md";
 
-        var highPriorityButCantHandle = Substitute.For<IDocumentEditorFactory>();
-        highPriorityButCantHandle.SupportedExtensions.Returns(new List<string> { ".md" });
-        highPriorityButCantHandle.Priority.Returns(10);
-        highPriorityButCantHandle.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(false);
+        var specializedButCantHandle = Substitute.For<IDocumentEditorFactory>();
+        specializedButCantHandle.SupportedExtensions.Returns(new List<string> { ".md" });
+        specializedButCantHandle.Priority.Returns(EditorPriority.Specialized);
+        specializedButCantHandle.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(false);
 
-        var lowPriorityCanHandle = Substitute.For<IDocumentEditorFactory>();
-        lowPriorityCanHandle.SupportedExtensions.Returns(new List<string> { ".md" });
-        lowPriorityCanHandle.Priority.Returns(0);
-        lowPriorityCanHandle.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
+        var generalCanHandle = Substitute.For<IDocumentEditorFactory>();
+        generalCanHandle.SupportedExtensions.Returns(new List<string> { ".md" });
+        generalCanHandle.Priority.Returns(EditorPriority.General);
+        generalCanHandle.CanHandle(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
 
-        registry.RegisterFactory(highPriorityButCantHandle);
-        registry.RegisterFactory(lowPriorityCanHandle);
+        registry.RegisterFactory(specializedButCantHandle);
+        registry.RegisterFactory(generalCanHandle);
 
         var result = registry.GetFactory(fileResource, filePath);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(lowPriorityCanHandle);
+        result.Value.Should().Be(generalCanHandle);
     }
 
     [Test]
