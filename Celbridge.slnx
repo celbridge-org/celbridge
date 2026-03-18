@@ -1,0 +1,117 @@
+<Solution>
+
+  <Folder Name="/Solution Items/">
+    <File Path="app/.editorconfig" />
+    <File Path="app/Directory.Build.props" />
+    <File Path="app/Directory.Build.targets" />
+    <File Path="app/Directory.Packages.props" />
+    <File Path="app/global.json" />
+  </Folder>
+
+  <Folder Name="/Core/">
+    <Project Path="app/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
+    <Project Path="app/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
+    <Project Path="app/Core/Celbridge.Host/Celbridge.Host.csproj" />
+    <Project Path="app/Core/Celbridge.Logging/Celbridge.Logging.csproj" />
+    <Project Path="app/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
+    <Project Path="app/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
+    <Project Path="app/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
+    <Project Path="app/Core/Celbridge.Settings/Celbridge.Settings.csproj" />
+    <Project Path="app/Core/Celbridge.UserInterface/Celbridge.UserInterface.csproj" />
+    <Project Path="app/Core/Celbridge.Utilities/Celbridge.Utilities.csproj" />
+    <Project Path="app/Core/Celbridge.WebView/Celbridge.WebView.csproj" />
+  </Folder>
+
+  <Folder Name="/Modules/">
+    <Project Path="app/Modules/Celbridge.Code/Celbridge.Code.csproj" />
+    <Project Path="app/Modules/Celbridge.Core/Celbridge.Core.csproj" />
+    <Project Path="app/Modules/Celbridge.FileViewer/Celbridge.FileViewer.csproj" />
+    <Project Path="app/Modules/Celbridge.Markdown/Celbridge.Markdown.csproj" />
+    <Project Path="app/Modules/Celbridge.Notes/Celbridge.Notes.csproj" />
+    <Project Path="app/Modules/Celbridge.Screenplay/Celbridge.Screenplay.csproj" />
+    <Project Path="app/Modules/Celbridge.Spreadsheet/Celbridge.Spreadsheet.csproj" />
+    <Project Path="app/Modules/Celbridge.WebApp/Celbridge.WebApp.csproj" />
+  </Folder>
+
+  <Folder Name="/Workspace/">
+    <Project Path="app/Workspace/Celbridge.Activities/Celbridge.Activities.csproj" />
+    <Project Path="app/Workspace/Celbridge.Console/Celbridge.Console.csproj" />
+    <Project Path="app/Workspace/Celbridge.Documents/Celbridge.Documents.csproj" />
+    <Project Path="app/Workspace/Celbridge.Entities/Celbridge.Entities.csproj" />
+    <Project Path="app/Workspace/Celbridge.Explorer/Celbridge.Explorer.csproj" />
+    <Project Path="app/Workspace/Celbridge.Extensions/Celbridge.Extensions.csproj" />
+    <Project Path="app/Workspace/Celbridge.GenerativeAI/Celbridge.GenerativeAI.csproj" />
+    <Project Path="app/Workspace/Celbridge.Inspector/Celbridge.Inspector.csproj" />
+    <Project Path="app/Workspace/Celbridge.Python/Celbridge.Python.csproj" />
+    <Project Path="app/Workspace/Celbridge.Resources/Celbridge.Resources.csproj" />
+    <Project Path="app/Workspace/Celbridge.Search/Celbridge.Search.csproj" />
+    <Project Path="app/Workspace/Celbridge.Workspace/Celbridge.Workspace.csproj" />
+    <Project Path="app/Workspace/Celbridge.WorkspaceUI/Celbridge.WorkspaceUI.csproj" />
+  </Folder>
+
+  <Project Path="app/Celbridge/Celbridge.csproj" />
+
+  <Folder Name="/Tests/">
+    <Project Path="app/Celbridge.Tests/Celbridge.Tests.csproj" />
+  </Folder>
+
+  <Folder Name="/Python/">
+    <File Path="python/README.md" />
+    <File Path="python/build.py" />
+    <Folder Name="/Python/celbridge/">
+      <File Path="python/packages/celbridge/pyproject.toml" />
+      <File Path="python/packages/celbridge/README.md" />
+      <File Path="python/packages/celbridge/src/celbridge/__init__.py" />
+      <File Path="python/packages/celbridge/src/celbridge/__main__.py" />
+      <File Path="python/packages/celbridge/src/celbridge/cli.py" />
+      <File Path="python/packages/celbridge/src/celbridge/commands/__init__.py" />
+      <File Path="python/packages/celbridge/src/celbridge/commands/greet.py" />
+      <File Path="python/packages/celbridge/src/celbridge/commands/help.py" />
+      <File Path="python/packages/celbridge/src/celbridge/commands/version.py" />
+      <File Path="python/packages/celbridge/tests/test_version.py" />
+    </Folder>
+    <Folder Name="/Python/celbridge_host/">
+      <File Path="python/packages/celbridge_host/pyproject.toml" />
+      <File Path="python/packages/celbridge_host/README.md" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/__init__.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/__main__.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/celbridge_host.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/customize_ipython.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/exit_lock.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/exit_message.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/logging_config.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/named_pipe.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/repl_environment.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/rpc_client.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/rpc_handler.py" />
+      <File Path="python/packages/celbridge_host/src/celbridge_host/rpc_service.py" />
+      <File Path="python/packages/celbridge_host/tests/test_help.py" />
+      <File Path="python/packages/celbridge_host/tests/test_host_wraps_cli.py" />
+    </Folder>
+  </Folder>
+
+  <Folder Name="/Examples/">
+    <File Path="examples/project.celbridge" />
+    <File Path="examples/readme.md" />
+    <File Path="examples/01_markdown/readme.md" />
+    <File Path="examples/02_webapps/readme.md" />
+    <File Path="examples/03_hello_world/hello_world.py" />
+    <File Path="examples/03_hello_world/readme.md" />
+    <File Path="examples/04_data_import/data_import.py" />
+    <File Path="examples/04_data_import/readme.md" />
+    <File Path="examples/05_fake_data/fake_data.py" />
+    <File Path="examples/05_fake_data/readme.md" />
+    <File Path="examples/06_data_cleaning/clean_data.py" />
+    <File Path="examples/06_data_cleaning/readme.md" />
+  </Folder>
+
+  <Folder Name="/Docs/">
+    <File Path="README.md" />
+    <File Path="docs/getting_started.md" />
+  </Folder>
+
+  <Folder Name="/Templates/" />
+
+  <Folder Name="/Extensions/" />
+
+</Solution>
