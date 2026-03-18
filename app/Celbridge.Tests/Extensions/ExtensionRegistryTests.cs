@@ -19,7 +19,7 @@ public class ExtensionServiceTests
         _tempProjectFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ExtensionServiceTests));
         Directory.CreateDirectory(_tempProjectFolder);
 
-        var logger = Substitute.For<ILogger<ExtensionService>>();
+        var logger = Substitute.For<ILogger<ExtensionRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
         var localizationLogger = Substitute.For<ILogger<ExtensionLocalizationService>>();
         var localizationService = new ExtensionLocalizationService(localizationLogger);

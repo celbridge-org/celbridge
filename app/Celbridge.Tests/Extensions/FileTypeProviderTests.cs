@@ -28,7 +28,7 @@ public class ExtensionServiceDocumentTypeTests
         _featureFlags = Substitute.For<IFeatureFlags>();
         _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);
 
-        var logger = Substitute.For<ILogger<ExtensionService>>();
+        var logger = Substitute.For<ILogger<ExtensionRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
         var localizationLogger = Substitute.For<ILogger<ExtensionLocalizationService>>();
         var localizationService = new ExtensionLocalizationService(localizationLogger);
