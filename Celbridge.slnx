@@ -5,7 +5,7 @@
     <File Path="app/Directory.Build.props" />
     <File Path="app/Directory.Build.targets" />
     <File Path="app/Directory.Packages.props" />
-    <File Path="app/global.json" />
+    <File Path="global.json" />
   </Folder>
 
   <Folder Name="/Core/">

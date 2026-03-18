@@ -9,6 +9,7 @@ Celbridge is a cross-platform desktop application built with Uno Platform and Wi
 ```
 celbridge/
 ├── Celbridge.slnx                    # Solution file (repo root)
+├── global.json                        # Uno SDK version (must be at root for MSBuild)
 ├── app/                              # C# source projects + build config
 │   ├── Celbridge/                    # Main app entry point
 │   ├── Celbridge.Tests/              # C# tests
@@ -18,7 +19,6 @@ celbridge/
 │   ├── Directory.Build.props
 │   ├── Directory.Build.targets
 │   ├── Directory.Packages.props
-│   ├── global.json                   # Uno SDK version
 │   └── package.json                  # npm workspaces for JS projects
 ├── python/                           # Python packages (celbridge, celbridge_host)
 ├── examples/                         # Example Celbridge project
