@@ -6,6 +6,8 @@
     <File Path="app/Directory.Build.targets" />
     <File Path="app/Directory.Packages.props" />
     <File Path="global.json" />
+    <File Path="app/package.json" />
+    <File Path="app/package-lock.json" />
   </Folder>
 
   <Folder Name="/Core/">
