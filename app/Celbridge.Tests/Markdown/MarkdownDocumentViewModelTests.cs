@@ -1,7 +1,10 @@
+using Celbridge.Core;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
+using Celbridge.Workspace;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests.Markdown;
 
@@ -23,13 +26,18 @@ public class MarkdownDocumentViewModelTests
     {
         _messengerService = new MessengerService();
 
+        var services = new ServiceCollection();
+        services.AddSingleton(_messengerService);
+        services.AddSingleton(Substitute.For<IWorkspaceWrapper>());
+        ServiceLocator.Initialize(services.BuildServiceProvider());
+
         _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(MarkdownDocumentViewModelTests));
         Directory.CreateDirectory(_tempFolder);
 
         _tempFilePath = Path.Combine(_tempFolder, "test.md");
         File.WriteAllText(_tempFilePath, string.Empty);
 
-        _vm = new TestDocumentViewModel(_messengerService);
+        _vm = new TestDocumentViewModel();
         _vm.FileResource = new ResourceKey("test.md");
         _vm.FilePath = _tempFilePath;
     }
@@ -128,7 +136,7 @@ public class MarkdownDocumentViewModelTests
     [Test]
     public void MonitoredResourceChanged_SkipsReload_WhenIsSavingFile()
     {
-        var savingVm = new TestDocumentViewModel(_messengerService);
+        var savingVm = new TestDocumentViewModel();
         savingVm.FileResource = new ResourceKey("saving.md");
         savingVm.FilePath = _tempFilePath;
         savingVm.SetIsSavingFile(true);
@@ -150,9 +158,9 @@ public class MarkdownDocumentViewModelTests
     /// </summary>
     private sealed class TestDocumentViewModel : DocumentViewModel
     {
-        public TestDocumentViewModel(IMessengerService messengerService)
+        public TestDocumentViewModel()
         {
-            EnableFileChangeMonitoring(messengerService);
+            EnableFileChangeMonitoring();
         }
 
         public async Task<Result<string>> LoadDocument()

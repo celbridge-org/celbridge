@@ -1,6 +1,5 @@
 using System.Text;
 using Celbridge.Extensions;
-using Celbridge.Messaging;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.ViewModels;
@@ -20,13 +19,11 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
     /// </summary>
     public CustomDocumentContribution? Contribution { get; set; }
 
-    public ExtensionDocumentViewModel(
-        IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+    public ExtensionDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
     {
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        EnableFileChangeMonitoring(messengerService);
+        EnableFileChangeMonitoring();
     }
 
     /// <summary>

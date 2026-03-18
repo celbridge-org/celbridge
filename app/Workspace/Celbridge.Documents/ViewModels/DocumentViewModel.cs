@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Celbridge.Core;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -9,7 +10,6 @@ public abstract partial class DocumentViewModel : ObservableObject
     // Delay before saving the document after the most recent change
     protected const double SaveDelay = 1.0; // Seconds
 
-    // Messenger service used for file-change monitoring (set by EnableFileChangeMonitoring)
     private IMessengerService? _messengerService;
 
     [ObservableProperty]
@@ -76,16 +76,14 @@ public abstract partial class DocumentViewModel : ObservableObject
         ReloadRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    #region File-Change Monitoring
-
     /// <summary>
     /// Enables file-change monitoring for this document.
     /// Registers for MonitoredResourceChangedMessage and DocumentSaveCompletedMessage.
     /// Call this in the ViewModel constructor for editors that need external file change detection.
     /// </summary>
-    protected void EnableFileChangeMonitoring(IMessengerService messengerService)
+    protected void EnableFileChangeMonitoring()
     {
-        _messengerService = messengerService;
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
     }
@@ -117,10 +115,6 @@ public abstract partial class DocumentViewModel : ObservableObject
             UpdateFileTrackingInfo();
         }
     }
-
-    #endregion
-
-    #region Text File Save/Load Helpers
 
     /// <summary>
     /// Loads text content from the file at FilePath.
@@ -166,8 +160,6 @@ public abstract partial class DocumentViewModel : ObservableObject
 
         return Result.Ok();
     }
-
-    #endregion
 
     /// <summary>
     /// Override this method to perform cleanup when the document is closed.

@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,13 +18,12 @@ public partial class CodeEditorViewModel : DocumentViewModel
 
     public CodeEditorViewModel(
         ICommandService commandService,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _commandService = commandService;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
 
-        EnableFileChangeMonitoring(messengerService);
+        EnableFileChangeMonitoring();
     }
 
     public async Task<Result<string>> LoadDocument()

@@ -15,7 +15,7 @@ public partial class SpreadsheetDocumentViewModel : DocumentViewModel
     {
         _messengerService = messengerService;
 
-        EnableFileChangeMonitoring(messengerService);
+        EnableFileChangeMonitoring();
     }
 
     public async Task<Result> LoadContent()
