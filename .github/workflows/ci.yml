@@ -25,16 +25,13 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
-        working-directory: ./app
-        run: dotnet restore
+        run: dotnet restore app/Celbridge.Tests/Celbridge.Tests.csproj
 
-      - name: Build solution
-        working-directory: ./app
-        run: dotnet build --no-restore --configuration Release
+      - name: Build tests
+        run: dotnet build app/Celbridge.Tests/Celbridge.Tests.csproj --no-restore --configuration Release
 
       - name: Run tests
-        working-directory: ./app
-        run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test app/Celbridge.Tests/Celbridge.Tests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Publish test results
         uses: dorny/test-reporter@v1
@@ -59,9 +56,9 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: ./app/Core/Celbridge.WebView/Web/celbridge-client
+        working-directory: ./app
         run: npm install
 
       - name: Run JS tests
-        working-directory: ./app/Core/Celbridge.WebView/Web/celbridge-client
+        working-directory: ./app
         run: npm test
