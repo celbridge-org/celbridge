@@ -4,6 +4,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
+using Celbridge.Extensions;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Logging;
@@ -20,17 +21,18 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
+    public IExtensionService ExtensionService { get; }
     public IResourceService ResourceService { get; }
-    public IPythonService PythonService { get; }
-    public IConsoleService ConsoleService { get; }
+    public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
-    public IExplorerService ExplorerService { get; }
+    public IConsoleService ConsoleService { get; }
     public ISearchService SearchService { get; }
-    public IDataTransferService DataTransferService { get; }
+    public IPythonService PythonService { get; }
     public IEntityService EntityService { get; }
-    public IGenerativeAIService GenerativeAIService { get; }
     public IActivityService ActivityService { get; }
+    public IGenerativeAIService GenerativeAIService { get; }
+    public IDataTransferService DataTransferService { get; }
 
     public WorkspacePanel ActivePanel { get; set; }
 
@@ -53,17 +55,18 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
+        ExtensionService = serviceProvider.GetRequiredService<IExtensionService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
-        PythonService = serviceProvider.GetRequiredService<IPythonService>();
-        ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
+        ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
-        ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
+        ConsoleService = serviceProvider.GetRequiredService<IConsoleService>();
         SearchService = serviceProvider.GetRequiredService<ISearchService>();
-        DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
+        PythonService = serviceProvider.GetRequiredService<IPythonService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
-        GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
+        GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
+        DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         //
         // Let the workspace settings service know where to find the workspace settings database

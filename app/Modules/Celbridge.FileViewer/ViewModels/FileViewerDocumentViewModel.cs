@@ -12,10 +12,12 @@ public partial class FileViewerDocumentViewModel : DocumentViewModel
     {
         try
         {
+            UpdateFileTrackingInfo();
+
             var fileUri = new Uri(FilePath);
             Source = fileUri.ToString();
             await Task.CompletedTask;
- 
+
             return Result.Ok();
         }
         catch (Exception ex)

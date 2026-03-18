@@ -1,4 +1,4 @@
-// Celbridge: JavaScript SDK for communicating with the Celbridge .NET host.
+// Celbridge: JavaScript client for communicating with the Celbridge .NET host.
 // Provides promise-based async API with automatic request/response correlation.
 
 import { RpcTransport } from './core/rpc-transport.js';
@@ -15,7 +15,7 @@ import { CodePreviewAPI } from './api/code-preview-api.js';
  */
 
 /**
- * Celbridge SDK.
+ * Celbridge Client.
  * Main entry point for communicating with the Celbridge .NET host.
  */
 export class Celbridge {
@@ -88,6 +88,7 @@ export class Celbridge {
 
     /**
      * Initializes the client and loads document content.
+     * Automatically loads localization strings from the extension's localization folder.
      * Must be called before any other operations.
      * @returns {Promise<InitializeResult>} - The initialization result with content and config.
      */
@@ -101,6 +102,12 @@ export class Celbridge {
         });
 
         this.#transport.markInitialized();
+
+        // Auto-load localization if locale is provided in metadata
+        if (result.metadata?.locale) {
+            await this.localization.loadStrings(result.metadata.locale);
+        }
+
         return result;
     }
 

@@ -13,12 +13,6 @@ public class Module : IModule
     public void ConfigureServices(IModuleServiceCollection services)
     {
         //
-        // Register document editor factories
-        //
-
-        services.AddTransient<IDocumentEditorFactory, CodeEditorFactory>();
-
-        //
         // Register views
         //
 
@@ -36,8 +30,18 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        return [new CodeEditorFactory(serviceProvider)];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetBundledExtensionFolder()
+    {
+        return null;
     }
 }

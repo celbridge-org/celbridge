@@ -1,5 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Core.Components;
+using Celbridge.Documents;
 using Celbridge.Modules;
 
 namespace Celbridge.Core;
@@ -22,8 +23,18 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        return [];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetBundledExtensionFolder()
+    {
+        return null;
     }
 }

@@ -1,5 +1,7 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using System.Security.Cryptography;
+using Celbridge.Core;
+using Celbridge.Messaging;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
@@ -7,6 +9,8 @@ public abstract partial class DocumentViewModel : ObservableObject
 {
     // Delay before saving the document after the most recent change
     protected const double SaveDelay = 1.0; // Seconds
+
+    private IMessengerService? _messengerService;
 
     [ObservableProperty]
     private ResourceKey _fileResource = string.Empty;
@@ -73,10 +77,97 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Enables file-change monitoring for this document.
+    /// Registers for MonitoredResourceChangedMessage and DocumentSaveCompletedMessage.
+    /// Call this in the ViewModel constructor for editors that need external file change detection.
+    /// </summary>
+    protected void EnableFileChangeMonitoring()
+    {
+        _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
+        _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
+    }
+
+    private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    {
+        if (message.Resource != FileResource)
+        {
+            return;
+        }
+
+        // Ignore file watcher events triggered by our own save operation
+        if (IsSavingFile)
+        {
+            return;
+        }
+
+        // Check if this change is genuinely different from our last save
+        if (IsFileChangedExternally())
+        {
+            RaiseReloadRequested();
+        }
+    }
+
+    private void OnDocumentSaveCompleted(object recipient, DocumentSaveCompletedMessage message)
+    {
+        if (message.DocumentResource == FileResource)
+        {
+            UpdateFileTrackingInfo();
+        }
+    }
+
+    /// <summary>
+    /// Loads text content from the file at FilePath.
+    /// Updates file tracking info after a successful load.
+    /// </summary>
+    protected async Task<Result<string>> LoadTextFromFileAsync()
+    {
+        try
+        {
+            var text = await File.ReadAllTextAsync(FilePath);
+            UpdateFileTrackingInfo();
+            return Result<string>.Ok(text);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"Failed to load file: '{FilePath}'")
+                .WithException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Saves text content to the file at FilePath.
+    /// Handles the IsSavingFile flag and updates file tracking info.
+    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// </summary>
+    protected async Task<Result> SaveTextToFileAsync(string text)
+    {
+        try
+        {
+            IsSavingFile = true;
+            await File.WriteAllTextAsync(FilePath, text);
+            UpdateFileTrackingInfo();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to save file: '{FilePath}'")
+                .WithException(ex);
+        }
+        finally
+        {
+            IsSavingFile = false;
+        }
+
+        return Result.Ok();
+    }
+
+    /// <summary>
     /// Override this method to perform cleanup when the document is closed.
+    /// Always call base.Cleanup() to ensure file-change monitoring is properly unregistered.
     /// </summary>
     public virtual void Cleanup()
     {
+        _messengerService?.UnregisterAll(this);
     }
 
     protected bool IsFileChangedExternally()

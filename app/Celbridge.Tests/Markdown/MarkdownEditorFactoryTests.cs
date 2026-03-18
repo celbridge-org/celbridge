@@ -1,4 +1,5 @@
 using Celbridge.Markdown.Services;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Tests.Markdown;
 
@@ -11,7 +12,8 @@ public class MarkdownEditorFactoryTests
     public void Setup()
     {
         var serviceProvider = Substitute.For<IServiceProvider>();
-        _factory = new MarkdownEditorFactory(serviceProvider);
+        var stringLocalizer = Substitute.For<IStringLocalizer>();
+        _factory = new MarkdownEditorFactory(serviceProvider, stringLocalizer);
     }
 
     [Test]

@@ -37,8 +37,8 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
             factoryList.Add(factory);
 
-            // Sort by priority (highest first) so GetFactory can return the first match
-            factoryList.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+            // Sort by priority so GetFactory returns the specialized editor first
+            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         }
 
         return Result.Ok();

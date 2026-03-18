@@ -12,18 +12,21 @@ public class WorkspaceLoader
     private readonly ILogger<WorkspaceLoader> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IUserInterfaceService _userInterfaceService;
-    private readonly IWorkspaceFeatures _workspaceFeatures;
+    private readonly IFeatureFlags _featureFlags;
+    private readonly IProjectService _projectService;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
         IWorkspaceWrapper workspaceWrapper,
         IUserInterfaceService userInterfaceService,
-        IWorkspaceFeatures workspaceFeatures)
+        IFeatureFlags featureFlags,
+        IProjectService projectService)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _userInterfaceService = userInterfaceService;
-        _workspaceFeatures = workspaceFeatures;
+        _featureFlags = featureFlags;
+        _projectService = projectService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -32,6 +35,16 @@ public class WorkspaceLoader
         if (workspaceService is null)
         {
             return Result.Fail("Workspace service is not initialized");
+        }
+
+        //
+        // Apply project-level feature flag overrides
+        //
+        var currentProject = _projectService.CurrentProject;
+        if (currentProject is not null)
+        {
+            var projectFeatures = currentProject.Config.Features;
+            _featureFlags.ApplyProjectOverrides(projectFeatures);
         }
 
         //
@@ -116,6 +129,11 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
+        // Register all extensions before restoring documents so that restored documents can use editors
+        // defined in extensions.
+        var extensionService = workspaceService.ExtensionService;
+        extensionService.RegisterExtensions(projectFolderPath);
+
         // Open previous opened documents in the Documents Panel
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
@@ -146,7 +164,7 @@ public class WorkspaceLoader
         //
 
         // Only initialize console and Python if the console-panel feature is enabled
-        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (isConsolePanelEnabled)
         {
             var consoleService = workspaceService.ConsoleService;
@@ -209,7 +227,7 @@ public class WorkspaceLoader
     private void PopulateTitleBarShortcuts()
     {
         // Only populate shortcuts if console panel is enabled
-        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (!isConsolePanelEnabled)
         {
             return;

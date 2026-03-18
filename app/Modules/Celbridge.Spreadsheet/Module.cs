@@ -1,4 +1,5 @@
 using Celbridge.Activities;
+using Celbridge.Documents.Services;
 using Celbridge.Modules;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Services;
@@ -21,12 +22,6 @@ public class Module : IModule
         //
 
         services.AddTransient<SpreadsheetActivity>();
-
-        //
-        // Register document editor factories
-        //
-
-        services.AddTransient<IDocumentEditorFactory, SpreadsheetEditorFactory>();
 
         //
         // Register views
@@ -52,6 +47,12 @@ public class Module : IModule
         return Result.Ok();
     }
 
+    public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
+    {
+        var fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
+        return [new SpreadsheetEditorFactory(serviceProvider, fileTypeHelper)];
+    }
+
     public Result<IActivity> CreateActivity(string activityName)
     {
         if (activityName == nameof(SpreadsheetActivity))
@@ -61,5 +62,10 @@ public class Module : IModule
         }
 
         return Result<IActivity>.Fail();
+    }
+
+    public string? GetBundledExtensionFolder()
+    {
+        return null;
     }
 }

@@ -2,7 +2,6 @@ namespace Celbridge.Code.Views;
 
 /// <summary>
 /// Configuration options for the code editor.
-/// These options are passed to the editor during initialization.
 /// </summary>
 public record CodeEditorOptions
 {

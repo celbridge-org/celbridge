@@ -1,74 +1,80 @@
+using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.UserInterface;
 using Celbridge.WebView;
-using Celbridge.Workspace;
 
 namespace Celbridge.FileViewer.Views;
 
-public sealed partial class FileViewerDocumentView : WebView2DocumentView
+public sealed partial class FileViewerDocumentView : WebViewDocumentView
 {
-    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IMessengerService _messengerService;
 
     public FileViewerDocumentViewModel ViewModel { get; }
 
-    public override ResourceKey FileResource => ViewModel.FileResource;
+    protected override DocumentViewModel DocumentViewModel => ViewModel;
 
     public FileViewerDocumentView(
         IServiceProvider serviceProvider,
-        IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
+        IUserInterfaceService userInterfaceService,
         IWebViewFactory webViewFactory)
         : base(messengerService, webViewFactory)
     {
-        ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
+        _messengerService = messengerService;
 
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        ViewModel = serviceProvider.GetRequiredService<FileViewerDocumentViewModel>();
 
         this.InitializeComponent();
 
         // Set the container where the WebView will be placed
         WebViewContainer = FileWebViewContainer;
-    }
 
-    public override async Task<Result> SetFileResource(ResourceKey fileResource)
-    {
-        var filePath = _resourceRegistry.GetResourcePath(fileResource);
+        EnableThemeSyncing(userInterfaceService);
 
-        if (_resourceRegistry.GetResource(fileResource).IsFailure)
-        {
-            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
-        }
-
-        if (!File.Exists(filePath))
-        {
-            return Result.Fail($"File resource does not exist on disk: {fileResource}");
-        }
-
-        ViewModel.FileResource = fileResource;
-        ViewModel.FilePath = filePath;
-
-        await Task.CompletedTask;
-
-        return Result.Ok();
+        Loaded += FileViewerDocumentView_Loaded;
     }
 
     public override async Task<Result> LoadContent()
     {
+        return await ViewModel.LoadContent();
+    }
+
+    private async void FileViewerDocumentView_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= FileViewerDocumentView_Loaded;
+
+        await InitFileViewerAsync();
+    }
+
+    private async Task InitFileViewerAsync()
+    {
         // Acquire WebView from factory and add to container
         await AcquireWebViewAsync();
+
+        // Sync WebView2 color scheme with the app theme
+        ApplyThemeToWebView();
 
         // Initialize the host
         InitializeHost();
         StartHostListener();
 
-        // Load content and navigate to the file
-        var loadResult = await ViewModel.LoadContent();
-        if (loadResult.IsSuccess && !string.IsNullOrEmpty(ViewModel.Source))
+        // Navigate to the file
+        if (!string.IsNullOrEmpty(ViewModel.Source))
         {
             WebView.CoreWebView2.Navigate(ViewModel.Source);
         }
+    }
 
-        return loadResult;
+    public override async Task PrepareToClose()
+    {
+        _messengerService.UnregisterAll(this);
+
+        Loaded -= FileViewerDocumentView_Loaded;
+
+        ViewModel.Cleanup();
+
+        await base.PrepareToClose();
     }
 }

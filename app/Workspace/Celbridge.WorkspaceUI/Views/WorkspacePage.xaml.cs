@@ -30,7 +30,7 @@ public sealed partial class WorkspacePage : Page
     public WorkspacePageViewModel ViewModel { get; }
 
     private bool _initialized = false;
-    private IWorkspaceFeatures? _workspaceFeatures;
+    private readonly IFeatureFlags _featureFlags;
 
     private SplitterHelper? _primaryPanelSplitterHelper;
     private SplitterHelper? _secondaryPanelSplitterHelper;
@@ -43,6 +43,7 @@ public sealed partial class WorkspacePage : Page
         ViewModel = ServiceLocator.AcquireService<WorkspacePageViewModel>();
 
         _commandService = ServiceLocator.AcquireService<ICommandService>();
+        _featureFlags = ServiceLocator.AcquireService<IFeatureFlags>();
 
         DataContext = ViewModel;
 
@@ -133,8 +134,7 @@ public sealed partial class WorkspacePage : Page
         var workspaceService = workspaceWrapper.WorkspaceService;
         Guard.IsNotNull(workspaceService);
 
-        _workspaceFeatures = ServiceLocator.AcquireService<IWorkspaceFeatures>();
-        var isConsolePanelEnabled = _workspaceFeatures.IsEnabled(FeatureFlags.ConsolePanel);
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
 
         // Create panels via DI
         var activityPanel = ServiceLocator.AcquireService<IActivityPanel>();
@@ -166,9 +166,10 @@ public sealed partial class WorkspacePage : Page
         DocumentsPanel.Children.Add(documentsPanel as UIElement);
         SecondaryPanel.Children.Add(inspectorPanel as UIElement);
 
-        // Listen for workspace loaded message to update console visibility
+        // Listen for workspace loaded message and feature flag changes to update console visibility
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
+        messengerService.Register<FeatureFlagsChangedMessage>(this, OnFeatureFlagsChanged);
 
         _ = ViewModel.LoadWorkspaceAsync();
     }
@@ -207,6 +208,11 @@ public sealed partial class WorkspacePage : Page
     private void OnWorkspaceLoaded(object recipient, WorkspaceLoadedMessage message)
     {
         // Update console panel visibility now that workspace has loaded with potentially different feature flag settings
+        UpdatePanels();
+    }
+
+    private void OnFeatureFlagsChanged(object recipient, FeatureFlagsChangedMessage message)
+    {
         UpdatePanels();
     }
 
@@ -288,7 +294,7 @@ public sealed partial class WorkspacePage : Page
             SecondaryPanelColumn.Width = new GridLength(0);
         }
 
-        var isConsolePanelEnabled = _workspaceFeatures?.IsEnabled(FeatureFlags.ConsolePanel) ?? false;
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
 
         if (isConsolePanelEnabled && ViewModel.IsConsolePanelVisible)
         {
@@ -312,7 +318,7 @@ public sealed partial class WorkspacePage : Page
     private void UpdateConsoleMaximized()
     {
         // Skip if console panel feature is disabled
-        var isConsolePanelEnabled = _workspaceFeatures?.IsEnabled(FeatureFlags.ConsolePanel) ?? false;
+        var isConsolePanelEnabled = _featureFlags.IsEnabled(FeatureFlagConstants.ConsolePanel);
         if (!isConsolePanelEnabled)
         {
             return;

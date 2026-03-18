@@ -27,7 +27,7 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
 
     public IReadOnlyList<string> SupportedExtensions { get; }
 
-    public int Priority => 0;
+    public EditorPriority Priority => EditorPriority.General;
 
     public CodeEditorFactory(IServiceProvider serviceProvider)
     {

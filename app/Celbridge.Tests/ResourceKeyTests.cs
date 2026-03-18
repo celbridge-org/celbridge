@@ -85,4 +85,26 @@ public class ResourceKeyTests
         childKey.IsDescendantOf(new ResourceKey("other")).Should().BeFalse();
         childKey.IsDescendantOf(new ResourceKey("fold")).Should().BeFalse(); // Partial match
     }
+
+    [Test]
+    public void GetParentReturnsParentFolder()
+    {
+        // Nested path returns parent folder
+        new ResourceKey("a/b/file.txt").GetParent().ToString().Should().Be("a/b");
+
+        // Deeply nested path
+        new ResourceKey("a/b/c/d/file.txt").GetParent().ToString().Should().Be("a/b/c/d");
+
+        // Root-level file returns empty
+        new ResourceKey("file.txt").GetParent().ToString().Should().Be("");
+
+        // Empty key returns empty
+        ResourceKey.Empty.GetParent().ToString().Should().Be("");
+
+        // Path with spaces in segments
+        new ResourceKey("My Docs/My File.txt").GetParent().ToString().Should().Be("My Docs");
+
+        // Single subfolder
+        new ResourceKey("docs/readme.md").GetParent().ToString().Should().Be("docs");
+    }
 }

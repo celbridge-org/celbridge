@@ -1,4 +1,5 @@
 using Celbridge.Activities;
+using Celbridge.Documents;
 
 namespace Celbridge.Modules;
 
@@ -27,4 +28,15 @@ public interface IModule
     /// Creates an instance of a supported activity.
     /// </summary>
     Result<IActivity> CreateActivity(string activityName);
+
+    /// <summary>
+    /// Creates document editor factories provided by this module.
+    /// </summary>
+    IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider);
+
+    /// <summary>
+    /// Returns the absolute path to the module's bundled extension folder,
+    /// or null if this module does not bundle an extension.
+    /// </summary>
+    string? GetBundledExtensionFolder();
 }

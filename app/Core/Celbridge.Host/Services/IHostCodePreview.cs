@@ -5,7 +5,7 @@ namespace Celbridge.Host;
 public static class CodePreviewRpcMethods
 {
     // Host-to-client notifications
-    public const string SetContext = "codePreview/setContext";
+    public const string SetBasePath = "codePreview/setBasePath";
     public const string Update = "codePreview/update";
     public const string Scroll = "codePreview/scroll";
 
@@ -43,10 +43,10 @@ public interface IHostCodePreview
 public static class HostCodePreviewExtensions
 {
     /// <summary>
-    /// Sets the document context for the code preview pane (base path for resolving relative resources).
+    /// Sets the base path for the code preview pane (used for resolving relative resources).
     /// </summary>
-    public static Task NotifyCodePreviewSetContextAsync(this CelbridgeHost host, string basePath)
-        => host.Rpc.NotifyWithParameterObjectAsync(CodePreviewRpcMethods.SetContext, new { basePath });
+    public static Task NotifyCodePreviewSetBasePathAsync(this CelbridgeHost host, string basePath)
+        => host.Rpc.NotifyWithParameterObjectAsync(CodePreviewRpcMethods.SetBasePath, new { basePath });
 
     /// <summary>
     /// Updates the code preview content.

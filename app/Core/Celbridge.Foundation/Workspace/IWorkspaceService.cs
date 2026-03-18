@@ -17,6 +17,16 @@ namespace Celbridge.Workspace;
 public interface IWorkspaceService
 {
     /// <summary>
+    /// Sets all workspace panel references.
+    /// Called by WorkspacePage during initialization.
+    /// </summary>
+    void SetPanels(
+        IActivityPanel activityPanel,
+        IDocumentsPanel documentsPanel,
+        IInspectorPanel inspectorPanel,
+        IConsolePanel? consolePanel);
+
+    /// <summary>
     /// Returns the Workspace Settings Service associated with the workspace.
     /// </summary>
     IWorkspaceSettingsService WorkspaceSettingsService { get; }
@@ -27,24 +37,14 @@ public interface IWorkspaceService
     IWorkspaceSettings WorkspaceSettings { get; }
 
     /// <summary>
+    /// Returns the Extension Service associated with the workspace.
+    /// </summary>
+    IExtensionService ExtensionService { get; }
+
+    /// <summary>
     /// Returns the Resource Service associated with the workspace.
     /// </summary>
     IResourceService ResourceService { get; }
-
-    /// <summary>
-    /// Returns the Python Service associated with the workspace.
-    /// </summary>
-    IPythonService PythonService { get; }
-
-    /// <summary>
-    /// Returns the Console Service associated with the workspace.
-    /// </summary>
-    IConsoleService ConsoleService { get; }
-
-    /// <summary>
-    /// Returns the Documents Service associated with the workspace.
-    /// </summary>
-    IDocumentsService DocumentsService { get; }
 
     /// <summary>
     /// Returns the Explorer Service associated with the workspace.
@@ -52,9 +52,9 @@ public interface IWorkspaceService
     IExplorerService ExplorerService { get; }
 
     /// <summary>
-    /// Gets the search service used to perform text search operations within the workspace.
+    /// Returns the Documents Service associated with the workspace.
     /// </summary>
-    ISearchService SearchService { get; }
+    IDocumentsService DocumentsService { get; }
 
     /// <summary>
     /// Returns the Inspector Service associated with the workspace.
@@ -62,9 +62,19 @@ public interface IWorkspaceService
     IInspectorService InspectorService { get; }
 
     /// <summary>
-    /// Returns the Data Transfer Service associated with the workspace.
+    /// Returns the Console Service associated with the workspace.
     /// </summary>
-    IDataTransferService DataTransferService { get; }
+    IConsoleService ConsoleService { get; }
+
+    /// <summary>
+    /// Gets the search service used to perform text search operations within the workspace.
+    /// </summary>
+    ISearchService SearchService { get; }
+
+    /// <summary>
+    /// Returns the Python Service associated with the workspace.
+    /// </summary>
+    IPythonService PythonService { get; }
 
     /// <summary>
     /// Returns the Entity Service associated with the workspace.
@@ -72,14 +82,19 @@ public interface IWorkspaceService
     IEntityService EntityService { get; }
 
     /// <summary>
+    /// Returns the Activity Service associated with the workspace.
+    /// </summary>
+    IActivityService ActivityService { get; }
+
+    /// <summary>
     /// Returns the Generative AI Service associated with the workspace.
     /// </summary>
     IGenerativeAIService GenerativeAIService { get; }
 
     /// <summary>
-    /// Returns the Activity Service associated with the workspace.
+    /// Returns the Data Transfer Service associated with the workspace.
     /// </summary>
-    IActivityService ActivityService { get; }
+    IDataTransferService DataTransferService { get; }
 
     /// <summary>
     /// The most recently focussed workspace panel.
@@ -106,16 +121,6 @@ public interface IWorkspaceService
     /// Null if the console-panel feature is disabled.
     /// </summary>
     IConsolePanel? ConsolePanel { get; }
-
-    /// <summary>
-    /// Sets all workspace panel references.
-    /// Called by WorkspacePage during initialization.
-    /// </summary>
-    void SetPanels(
-        IActivityPanel activityPanel,
-        IDocumentsPanel documentsPanel,
-        IInspectorPanel inspectorPanel,
-        IConsolePanel? consolePanel);
 
     /// <summary>
     /// Update the workspace state, for example by saving any pending workspace or document changes to disk.

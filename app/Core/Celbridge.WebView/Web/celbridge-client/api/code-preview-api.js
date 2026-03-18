@@ -13,7 +13,7 @@ export class CodePreviewAPI {
     #basePath = '';
 
     /** @type {Function|null} */
-    #onSetContextHandler = null;
+    #onSetBasePathHandler = null;
 
     /** @type {Function|null} */
     #onUpdateHandler = null;
@@ -28,10 +28,10 @@ export class CodePreviewAPI {
         this.#transport = transport;
 
         // Register handlers for host notifications
-        this.#transport.addEventListener('codePreview/setContext', (params) => {
+        this.#transport.addEventListener('codePreview/setBasePath', (params) => {
             this.#basePath = params.basePath || '';
-            if (this.#onSetContextHandler) {
-                this.#onSetContextHandler(this.#basePath);
+            if (this.#onSetBasePathHandler) {
+                this.#onSetBasePathHandler(this.#basePath);
             }
         });
 
@@ -81,11 +81,11 @@ export class CodePreviewAPI {
     }
 
     /**
-     * Registers a handler for when the document context (base path) is set.
+     * Registers a handler for when the base path is set.
      * @param {Function} handler - Called with the base path string.
      */
-    onSetContext(handler) {
-        this.#onSetContextHandler = handler;
+    onSetBasePath(handler) {
+        this.#onSetBasePathHandler = handler;
     }
 
     /**
