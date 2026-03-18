@@ -8,7 +8,7 @@ namespace Celbridge.Extensions;
 /// Parses extension.toml and referenced document TOML files to produce DocumentContribution objects.
 /// Handles the two-level manifest structure: extension identity + document contributions.
 /// </summary>
-public static class ManifestLoader
+public static class ExtensionManifestLoader
 {
     private const string ExtensionSection = "extension";
     private const string ContributesSection = "contributes";

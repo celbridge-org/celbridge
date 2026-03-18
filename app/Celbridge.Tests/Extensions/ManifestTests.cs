@@ -46,7 +46,7 @@ public class ManifestTests
             extension = ".myext"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
 
@@ -93,7 +93,7 @@ public class ManifestTests
             entry_point = "preview/index.html"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         var contribution = result.Value.DocumentEditors[0];
@@ -118,7 +118,7 @@ public class ManifestTests
             document_editors = ["doc.document.toml"]
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -131,7 +131,7 @@ public class ManifestTests
             document_editors = ["doc.document.toml"]
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -155,7 +155,7 @@ public class ManifestTests
             type = "custom"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         // Document with no document_file_types is skipped (invalid)
         result.IsSuccess.Should().BeTrue();
@@ -168,7 +168,7 @@ public class ManifestTests
         var path = Path.Combine(_tempFolder, "extension.toml");
         File.WriteAllText(path, "{ not valid toml }");
 
-        var result = ManifestLoader.LoadExtension(path);
+        var result = ExtensionManifestLoader.LoadExtension(path);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -178,7 +178,7 @@ public class ManifestTests
     {
         var path = Path.Combine(_tempFolder, "nonexistent.toml");
 
-        var result = ManifestLoader.LoadExtension(path);
+        var result = ExtensionManifestLoader.LoadExtension(path);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -205,7 +205,7 @@ public class ManifestTests
             extension = ".bas"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.Specialized);
@@ -234,7 +234,7 @@ public class ManifestTests
             extension = ".pri"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors[0].Priority.Should().Be(EditorPriority.General);
@@ -263,7 +263,7 @@ public class ManifestTests
             extension = ".flag"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.FeatureFlag.Should().Be("my-feature");
@@ -292,7 +292,7 @@ public class ManifestTests
             extension = ".nf"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.FeatureFlag.Should().BeNull();
@@ -333,7 +333,7 @@ public class ManifestTests
             default = false
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors[0].Templates.Should().HaveCount(2);
@@ -371,7 +371,7 @@ public class ManifestTests
             extension = ".nt"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors[0].Templates.Should().BeEmpty();
@@ -409,7 +409,7 @@ public class ManifestTests
             default = true
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
 
@@ -457,7 +457,7 @@ public class ManifestTests
             extension = ".bbb"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().HaveCount(2);
@@ -495,7 +495,7 @@ public class ManifestTests
             customizations = "custom.js"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         var codeContribution = result.Value.DocumentEditors[0] as CodeDocumentContribution;
@@ -520,7 +520,7 @@ public class ManifestTests
             document_editors = ["nonexistent.document.toml"]
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().BeEmpty();
@@ -558,7 +558,7 @@ public class ManifestTests
             extension = ".bbb"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().HaveCount(2);
@@ -592,7 +592,7 @@ public class ManifestTests
             extension = ".ne"
             """);
 
-        var result = ManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
+        var result = ExtensionManifestLoader.LoadExtension(Path.Combine(_tempFolder, "extension.toml"));
 
         result.IsSuccess.Should().BeTrue();
         var customContribution = result.Value.DocumentEditors[0] as CustomDocumentContribution;

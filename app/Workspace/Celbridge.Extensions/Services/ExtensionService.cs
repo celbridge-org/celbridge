@@ -181,7 +181,7 @@ public class ExtensionService : IExtensionService
             return null;
         }
 
-        var loadResult = ManifestLoader.LoadExtension(manifestPath);
+        var loadResult = ExtensionManifestLoader.LoadExtension(manifestPath);
 
         if (loadResult.IsFailure)
         {
