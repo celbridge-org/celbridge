@@ -54,6 +54,9 @@
   <Project Path="app/Celbridge/Celbridge.csproj">
     <Deploy />
   </Project>
+  <Folder Name="/Templates/">
+    <Project Path="app/Templates/Celbridge.Templates.csproj" />
+  </Folder>
 
   <Folder Name="/Tests/">
     <Project Path="app/Celbridge.Tests/Celbridge.Tests.csproj" />
@@ -93,8 +96,6 @@
       <File Path="python/packages/celbridge_host/tests/test_host_wraps_cli.py" />
     </Folder>
   </Folder>
-
-  <Project Path="templates/Celbridge.Templates.csproj" />
 
   <Folder Name="/Docs/">
     <File Path="README.md" />

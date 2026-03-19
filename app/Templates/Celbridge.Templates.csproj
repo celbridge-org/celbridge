@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <TemplateOutputFolder>$(MSBuildThisFileDirectory)..\app\Core\Celbridge.Projects\Assets\Templates</TemplateOutputFolder>
-    <StagingRoot>$(MSBuildThisFileDirectory)..\app\obj\template-staging\</StagingRoot>
+    <TemplateOutputFolder>$(MSBuildThisFileDirectory)..\Core\Celbridge.Projects\Assets\Templates</TemplateOutputFolder>
+    <StagingRoot>$(MSBuildThisFileDirectory)..\obj\template-staging\</StagingRoot>
   </PropertyGroup>
 
   <!--
