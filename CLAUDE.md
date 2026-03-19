@@ -4,27 +4,6 @@
 
 Celbridge is a cross-platform desktop application built with Uno Platform and WinUI. The solution is at `Celbridge.slnx` in the repo root.
 
-## Repository Structure
-
-```
-celbridge/
-├── Celbridge.slnx                    # Solution file (repo root)
-├── global.json                        # Uno SDK version (must be at root for MSBuild)
-├── Source/                            # All source projects + build config
-│   ├── Celbridge/                    # Main app entry point (Celbridge.Application.csproj)
-│   ├── Tests/                        # C# tests (Celbridge.Tests.csproj)
-│   ├── Core/                         # Core libraries (11 projects)
-│   ├── Modules/                      # Feature modules (8 projects)
-│   ├── Workspace/                    # Workspace features (13 projects)
-│   ├── Templates/                    # Project templates (auto-zipped during build)
-│   ├── Python/                       # Python packages (celbridge, celbridge_host)
-│   ├── Directory.Build.props
-│   ├── Directory.Build.targets
-│   ├── Directory.Packages.props
-│   └── package.json                  # npm workspaces for JS projects
-└── docs/                             # Documentation
-```
-
 ## Building
 
 We recommend building with the latest Visual Studio 2026. This is an Uno Platform project with XAML files targeting WinUI/WinAppSDK. The WinUI projects require MSBuild (not `dotnet build`) because Uno SDK raises error UNOB0008 when XAML files are present.
