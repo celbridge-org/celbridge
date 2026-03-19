@@ -66,9 +66,4 @@
     <Project Path="Source/Python/Celbridge.Python.Packages.csproj" />
   </Folder>
 
-  <Folder Name="/Docs/">
-    <File Path="README.md" />
-    <File Path="docs/getting_started.md" />
-  </Folder>
-
 </Solution>
