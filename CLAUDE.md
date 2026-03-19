@@ -45,3 +45,20 @@ cd Source && npm test
 - Use "folder" not "directory" in naming (exception: external APIs)
 - Use CRLF line endings (Windows project)
 - Follow the patterns in `ProjectConfigParser.cs` as a reference for coding style
+- Prefer temporary variables over inline instances; break complex logic into simpler steps rather than chaining operations
+- Define collection initialization using multiple lines, never on a single line
+- Only use ternary expressions for trivial logic
+- Prefer explicit record classes with meaningful property names over anonymous types for message contracts
+- Code-behind files use `.xaml.cs` naming convention (e.g., `MyView.xaml.cs`)
+- Never use `/// <param>` XML documentation — it is verbose and hard to keep synchronized
+- Do not use special characters like arrows or emojis in code comments
+- Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
+- Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
+- Place `Dispose` implementation at the end of a class; declare all private fields at the top
+
+## Architecture
+
+- Workspace-scoped services are transient and must NOT be injected via constructor DI. Access them through `_workspaceWrapper.WorkspaceService`:
+  - IWorkspaceSettingsService, IWorkspaceSettings, IResourceRegistry, IResourceTransferService, IResourceOperationService, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
+- Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
+- The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
