@@ -75,6 +75,7 @@
           DestinationFiles="@(TemplateInputFiles->'$(StagingFolder)%(RecursiveDir)%(Filename)%(Extension)')" />
 
     <Delete Files="$(ZipOutputPath)" Condition="Exists('$(ZipOutputPath)')" />
+    <MakeDir Directories="$(TemplateOutputFolder)" />
     <ZipDirectory SourceDirectory="$(StagingFolder)"
                   DestinationFile="$(ZipOutputPath)"
                   Overwrite="true" />
