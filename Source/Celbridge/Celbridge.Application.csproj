@@ -5,6 +5,8 @@
     
     <OutputType>Exe</OutputType>
     <UnoSingleProject>true</UnoSingleProject>
+    <AssemblyName>Celbridge</AssemblyName>
+    <RootNamespace>Celbridge</RootNamespace>
     <ApplicationTitle>Celbridge</ApplicationTitle>
     <ApplicationId>com.AnTulcha.Celbridge</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
