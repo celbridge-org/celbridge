@@ -36,6 +36,11 @@ Run JS tests from the `Source/` folder:
 cd Source && npm test
 ```
 
+## Git
+
+- Never commit automatically; the user reviews all changes in GitHub Desktop before committing
+- Do not add `Co-Authored-By` lines to commit messages
+
 ## Code Conventions
 
 - Use full descriptive variable names, never abbreviate

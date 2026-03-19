@@ -129,9 +129,9 @@ Each release includes an example project that demonstrates the core features of 
 1. Clone the Celbridge git repo on your machine.
 2. Install the latest version of Visual Studio (the free [Community Edition](https://visualstudio.microsoft.com/vs/community/) works fine).
 3. Follow the Visual Studio setup instructions for [Uno Platform](https://platform.uno/docs/articles/get-started-vs-2022.html?tabs=ubuntu1804) development.
-4. Open `Celbridge.sln` in Visual Studio.
-5. In `Solution Explorer`, right click on the `Celbridge` project and select `Set as Startup Project`.
-6. Select the `Celbridge (WinAppSDK Packaged)` and `net8.0-windows10.0.22621` targets in the Visual Studio configuration toolbar.
+4. Open `Celbridge.slnx` in Visual Studio.
+5. In `Solution Explorer`, right click on the `Celbridge.Application` project and select `Set as Startup Project`.
+6. Select the `Celbridge.Application (WinAppSDK Packaged)` and `net9.0-windows10.0.22621` targets in the Visual Studio configuration toolbar.
 7. Build and run the application.
 
 If you encounter build errors, try restarting Visual Studio. If this fails, do a clean build.
