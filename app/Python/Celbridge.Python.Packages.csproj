@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.56">
+
+  <!-- Browsing-only project for Python source files in Visual Studio. No build steps. -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+  </PropertyGroup>
+
+</Project>

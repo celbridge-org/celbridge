@@ -63,38 +63,7 @@
   </Folder>
 
   <Folder Name="/Python/">
-    <File Path="python/README.md" />
-    <File Path="python/build.py" />
-    <Folder Name="/Python/celbridge/">
-      <File Path="python/packages/celbridge/pyproject.toml" />
-      <File Path="python/packages/celbridge/README.md" />
-      <File Path="python/packages/celbridge/src/celbridge/__init__.py" />
-      <File Path="python/packages/celbridge/src/celbridge/__main__.py" />
-      <File Path="python/packages/celbridge/src/celbridge/cli.py" />
-      <File Path="python/packages/celbridge/src/celbridge/commands/__init__.py" />
-      <File Path="python/packages/celbridge/src/celbridge/commands/greet.py" />
-      <File Path="python/packages/celbridge/src/celbridge/commands/help.py" />
-      <File Path="python/packages/celbridge/src/celbridge/commands/version.py" />
-      <File Path="python/packages/celbridge/tests/test_version.py" />
-    </Folder>
-    <Folder Name="/Python/celbridge_host/">
-      <File Path="python/packages/celbridge_host/pyproject.toml" />
-      <File Path="python/packages/celbridge_host/README.md" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/__init__.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/__main__.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/celbridge_host.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/customize_ipython.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/exit_lock.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/exit_message.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/logging_config.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/named_pipe.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/repl_environment.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/rpc_client.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/rpc_handler.py" />
-      <File Path="python/packages/celbridge_host/src/celbridge_host/rpc_service.py" />
-      <File Path="python/packages/celbridge_host/tests/test_help.py" />
-      <File Path="python/packages/celbridge_host/tests/test_host_wraps_cli.py" />
-    </Folder>
+    <Project Path="app/Python/Celbridge.Python.Packages.csproj" />
   </Folder>
 
   <Folder Name="/Docs/">
