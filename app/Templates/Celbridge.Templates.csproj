@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
+    <!-- Zips are copied here so Celbridge.Projects can load them as ms-appx assets -->
     <TemplateOutputFolder>$(MSBuildThisFileDirectory)..\Core\Celbridge.Projects\Assets\Templates</TemplateOutputFolder>
+    <!-- Staging area outside this folder to avoid polluting the project tree in VS -->
     <StagingRoot>$(MSBuildThisFileDirectory)..\obj\template-staging\</StagingRoot>
   </PropertyGroup>
 
   <!--
-    Auto-discover all template folders.
-    Each subfolder of templates/ becomes a zip file copied to
-    Celbridge.Projects/Assets/Templates/{FolderName}.zip.
+    Each subfolder becomes a {FolderName}.zip in Celbridge.Projects/Assets/Templates/.
     To add a new template, just create a new folder here.
   -->
   <ItemGroup>
@@ -18,31 +18,62 @@
     <TemplateFolders Remove="$(MSBuildThisFileDirectory)obj" />
   </ItemGroup>
 
+  <!--
+    Entry point: runs after the standard Build target completes.
+    Iterates over each discovered template folder via MSBuild batching
+    (%(TemplateFolders.Identity) calls CollectAndZipTemplate once per folder).
+  -->
   <Target Name="BuildTemplateZips" AfterTargets="Build">
     <MSBuild Projects="$(MSBuildProjectFile)"
-             Targets="ZipOneTemplate"
+             Targets="CollectAndZipTemplate"
              Properties="TemplateFolder=%(TemplateFolders.Identity)" />
   </Target>
 
-  <Target Name="ZipOneTemplate">
+  <!--
+    Coordinator target that runs two targets in sequence via DependsOnTargets:
+    1. CollectTemplateFiles - populates the TemplateInputFiles item group
+    2. ZipOneTemplate - uses that item group for incremental build checks and zipping
+    This two-step pattern is needed because MSBuild evaluates Inputs/Outputs before
+    a target's body runs, so the file list must be populated by a prior target.
+  -->
+  <Target Name="CollectAndZipTemplate" DependsOnTargets="CollectTemplateFiles;ZipOneTemplate" />
+
+  <!-- Gather all files in the template folder, excluding ephemeral runtime data -->
+  <Target Name="CollectTemplateFiles">
+    <ItemGroup>
+      <TemplateInputFiles Include="$(TemplateFolder)\**\*"
+                          Exclude="$(TemplateFolder)\**\.cache\**;$(TemplateFolder)\**\.logs\**;$(TemplateFolder)\**\.trash\**" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Zips one template folder into a .zip file.
+
+    Inputs/Outputs enables MSBuild's built-in incremental build behavior:
+    before running this target, MSBuild compares the timestamps of all Inputs
+    (the template source files) against the Outputs (the zip file). If every
+    input is older than the output, the entire target is skipped.
+
+    Each step in the target body executes sequentially:
+    1. Clear the staging folder
+    2. Copy filtered files to staging (needed because ZipDirectory zips an
+       entire folder and has no exclude option)
+    3. Delete old zip and create new one
+    4. Log a message
+  -->
+  <Target Name="ZipOneTemplate"
+          Inputs="@(TemplateInputFiles)"
+          Outputs="$(TemplateOutputFolder)\$([System.IO.Path]::GetFileName('$(TemplateFolder)')).zip">
     <PropertyGroup>
       <TemplateName>$([System.IO.Path]::GetFileName('$(TemplateFolder)'))</TemplateName>
       <StagingFolder>$(StagingRoot)$(TemplateName)\</StagingFolder>
       <ZipOutputPath>$(TemplateOutputFolder)\$(TemplateName).zip</ZipOutputPath>
     </PropertyGroup>
 
-    <!-- Collect template files, excluding ephemeral runtime data -->
-    <ItemGroup>
-      <TemplateFiles Include="$(TemplateFolder)\**\*"
-                     Exclude="$(TemplateFolder)\**\.cache\**;$(TemplateFolder)\**\.logs\**;$(TemplateFolder)\**\.trash\**" />
-    </ItemGroup>
-
-    <!-- Stage files to a clean directory for zipping -->
     <RemoveDir Directories="$(StagingFolder)" />
-    <Copy SourceFiles="@(TemplateFiles)"
-          DestinationFiles="@(TemplateFiles->'$(StagingFolder)%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(TemplateInputFiles)"
+          DestinationFiles="@(TemplateInputFiles->'$(StagingFolder)%(RecursiveDir)%(Filename)%(Extension)')" />
 
-    <!-- Create the zip from the staged directory -->
     <Delete Files="$(ZipOutputPath)" Condition="Exists('$(ZipOutputPath)')" />
     <ZipDirectory SourceDirectory="$(StagingFolder)"
                   DestinationFile="$(ZipOutputPath)"
@@ -51,6 +82,7 @@
     <Message Text="Created $(TemplateName).zip" Importance="high" />
   </Target>
 
+  <!-- Cleanup: delete all generated zips and staging files -->
   <Target Name="CleanTemplateZips" AfterTargets="Clean">
     <ItemGroup>
       <ZipFiles Include="$(TemplateOutputFolder)\*.zip" />
