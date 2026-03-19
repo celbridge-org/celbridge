@@ -416,10 +416,10 @@ solution-config.props
 .trash/
 
 # Generated template zip files (built from templates/ source)
-app/Core/Celbridge.Projects/Assets/Templates/*.zip
+Source/Core/Celbridge.Projects/Assets/Templates/*.zip
 
 # Design documentation (keep local only)
-app/Celbridge/DesignDocs/
+Source/Celbridge/DesignDocs/
 
 # Claude Code local settings
 **/.claude/settings.local.json

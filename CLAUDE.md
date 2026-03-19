@@ -10,18 +10,18 @@ Celbridge is a cross-platform desktop application built with Uno Platform and Wi
 celbridge/
 ├── Celbridge.slnx                    # Solution file (repo root)
 ├── global.json                        # Uno SDK version (must be at root for MSBuild)
-├── app/                              # C# source projects + build config
-│   ├── Celbridge/                    # Main app entry point
-│   ├── Celbridge.Tests/              # C# tests
+├── Source/                            # All source projects + build config
+│   ├── Celbridge/                    # Main app entry point (Celbridge.Application.csproj)
+│   ├── Tests/                        # C# tests (Celbridge.Tests.csproj)
 │   ├── Core/                         # Core libraries (11 projects)
 │   ├── Modules/                      # Feature modules (8 projects)
 │   ├── Workspace/                    # Workspace features (13 projects)
+│   ├── Templates/                    # Project templates (auto-zipped during build)
+│   ├── Python/                       # Python packages (celbridge, celbridge_host)
 │   ├── Directory.Build.props
 │   ├── Directory.Build.targets
 │   ├── Directory.Packages.props
 │   └── package.json                  # npm workspaces for JS projects
-├── python/                           # Python packages (celbridge, celbridge_host)
-├── examples/                         # Example Celbridge project
 └── docs/                             # Documentation
 ```
 
@@ -48,13 +48,13 @@ For example, with VS 2026 Community: `C:/Program Files/Microsoft Visual Studio/1
 The test project does not contain XAML and can be built and run with `dotnet`:
 
 ```
-dotnet test app/Celbridge.Tests/Celbridge.Tests.csproj
+dotnet test Source/Tests/Celbridge.Tests.csproj
 ```
 
-Run JS tests from the `app/` folder:
+Run JS tests from the `Source/` folder:
 
 ```
-cd app && npm test
+cd Source && npm test
 ```
 
 ## Code Conventions

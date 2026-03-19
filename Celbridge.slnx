@@ -1,69 +1,69 @@
 <Solution>
 
   <Folder Name="/Solution Items/">
-    <File Path="app/.editorconfig" />
-    <File Path="app/Directory.Build.props" />
-    <File Path="app/Directory.Build.targets" />
-    <File Path="app/Directory.Packages.props" />
+    <File Path="Source/.editorconfig" />
+    <File Path="Source/Directory.Build.props" />
+    <File Path="Source/Directory.Build.targets" />
+    <File Path="Source/Directory.Packages.props" />
     <File Path="global.json" />
-    <File Path="app/package.json" />
-    <File Path="app/package-lock.json" />
+    <File Path="Source/package.json" />
+    <File Path="Source/package-lock.json" />
   </Folder>
 
   <Folder Name="/Core/">
-    <Project Path="app/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
-    <Project Path="app/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
-    <Project Path="app/Core/Celbridge.Host/Celbridge.Host.csproj" />
-    <Project Path="app/Core/Celbridge.Logging/Celbridge.Logging.csproj" />
-    <Project Path="app/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
-    <Project Path="app/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
-    <Project Path="app/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
-    <Project Path="app/Core/Celbridge.Settings/Celbridge.Settings.csproj" />
-    <Project Path="app/Core/Celbridge.UserInterface/Celbridge.UserInterface.csproj" />
-    <Project Path="app/Core/Celbridge.Utilities/Celbridge.Utilities.csproj" />
-    <Project Path="app/Core/Celbridge.WebView/Celbridge.WebView.csproj" />
+    <Project Path="Source/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
+    <Project Path="Source/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
+    <Project Path="Source/Core/Celbridge.Host/Celbridge.Host.csproj" />
+    <Project Path="Source/Core/Celbridge.Logging/Celbridge.Logging.csproj" />
+    <Project Path="Source/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
+    <Project Path="Source/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
+    <Project Path="Source/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
+    <Project Path="Source/Core/Celbridge.Settings/Celbridge.Settings.csproj" />
+    <Project Path="Source/Core/Celbridge.UserInterface/Celbridge.UserInterface.csproj" />
+    <Project Path="Source/Core/Celbridge.Utilities/Celbridge.Utilities.csproj" />
+    <Project Path="Source/Core/Celbridge.WebView/Celbridge.WebView.csproj" />
   </Folder>
 
   <Folder Name="/Modules/">
-    <Project Path="app/Modules/Celbridge.Code/Celbridge.Code.csproj" />
-    <Project Path="app/Modules/Celbridge.Core/Celbridge.Core.csproj" />
-    <Project Path="app/Modules/Celbridge.FileViewer/Celbridge.FileViewer.csproj" />
-    <Project Path="app/Modules/Celbridge.Markdown/Celbridge.Markdown.csproj" />
-    <Project Path="app/Modules/Celbridge.Notes/Celbridge.Notes.csproj" />
-    <Project Path="app/Modules/Celbridge.Screenplay/Celbridge.Screenplay.csproj" />
-    <Project Path="app/Modules/Celbridge.Spreadsheet/Celbridge.Spreadsheet.csproj" />
-    <Project Path="app/Modules/Celbridge.WebApp/Celbridge.WebApp.csproj" />
+    <Project Path="Source/Modules/Celbridge.Code/Celbridge.Code.csproj" />
+    <Project Path="Source/Modules/Celbridge.Core/Celbridge.Core.csproj" />
+    <Project Path="Source/Modules/Celbridge.FileViewer/Celbridge.FileViewer.csproj" />
+    <Project Path="Source/Modules/Celbridge.Markdown/Celbridge.Markdown.csproj" />
+    <Project Path="Source/Modules/Celbridge.Notes/Celbridge.Notes.csproj" />
+    <Project Path="Source/Modules/Celbridge.Screenplay/Celbridge.Screenplay.csproj" />
+    <Project Path="Source/Modules/Celbridge.Spreadsheet/Celbridge.Spreadsheet.csproj" />
+    <Project Path="Source/Modules/Celbridge.WebApp/Celbridge.WebApp.csproj" />
   </Folder>
 
   <Folder Name="/Workspace/">
-    <Project Path="app/Workspace/Celbridge.Activities/Celbridge.Activities.csproj" />
-    <Project Path="app/Workspace/Celbridge.Console/Celbridge.Console.csproj" />
-    <Project Path="app/Workspace/Celbridge.Documents/Celbridge.Documents.csproj" />
-    <Project Path="app/Workspace/Celbridge.Entities/Celbridge.Entities.csproj" />
-    <Project Path="app/Workspace/Celbridge.Explorer/Celbridge.Explorer.csproj" />
-    <Project Path="app/Workspace/Celbridge.Extensions/Celbridge.Extensions.csproj" />
-    <Project Path="app/Workspace/Celbridge.GenerativeAI/Celbridge.GenerativeAI.csproj" />
-    <Project Path="app/Workspace/Celbridge.Inspector/Celbridge.Inspector.csproj" />
-    <Project Path="app/Workspace/Celbridge.Python/Celbridge.Python.csproj" />
-    <Project Path="app/Workspace/Celbridge.Resources/Celbridge.Resources.csproj" />
-    <Project Path="app/Workspace/Celbridge.Search/Celbridge.Search.csproj" />
-    <Project Path="app/Workspace/Celbridge.Workspace/Celbridge.Workspace.csproj" />
-    <Project Path="app/Workspace/Celbridge.WorkspaceUI/Celbridge.WorkspaceUI.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Activities/Celbridge.Activities.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Console/Celbridge.Console.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Documents/Celbridge.Documents.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Entities/Celbridge.Entities.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Explorer/Celbridge.Explorer.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Extensions/Celbridge.Extensions.csproj" />
+    <Project Path="Source/Workspace/Celbridge.GenerativeAI/Celbridge.GenerativeAI.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Inspector/Celbridge.Inspector.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Python/Celbridge.Python.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Resources/Celbridge.Resources.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Search/Celbridge.Search.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Workspace/Celbridge.Workspace.csproj" />
+    <Project Path="Source/Workspace/Celbridge.WorkspaceUI/Celbridge.WorkspaceUI.csproj" />
   </Folder>
 
-  <Project Path="app/Celbridge/Celbridge.Application.csproj">
+  <Project Path="Source/Celbridge/Celbridge.Application.csproj">
     <Deploy />
   </Project>
   <Folder Name="/Templates/">
-    <Project Path="app/Templates/Celbridge.Templates.csproj" />
+    <Project Path="Source/Templates/Celbridge.Templates.csproj" />
   </Folder>
 
   <Folder Name="/Tests/">
-    <Project Path="app/Tests/Celbridge.Tests.csproj" />
+    <Project Path="Source/Tests/Celbridge.Tests.csproj" />
   </Folder>
 
   <Folder Name="/Python/">
-    <Project Path="app/Python/Celbridge.Python.Packages.csproj" />
+    <Project Path="Source/Python/Celbridge.Python.Packages.csproj" />
   </Folder>
 
   <Folder Name="/Docs/">
