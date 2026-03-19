@@ -26,6 +26,22 @@
 
   </PropertyGroup>
 
+  <!-- Download uv binary from GitHub releases if not already present -->
+  <PropertyGroup>
+    <UvVersion>0.10.11</UvVersion>
+    <UvPlatform Condition="$([MSBuild]::IsOSPlatform('Windows'))">x86_64-pc-windows-msvc</UvPlatform>
+    <UvZipFileName>uv-$(UvPlatform).zip</UvZipFileName>
+    <UvAssetFolder>$(MSBuildThisFileDirectory)Assets\UV</UvAssetFolder>
+    <UvZipPath>$(UvAssetFolder)\$(UvZipFileName)</UvZipPath>
+    <UvDownloadUrl>https://github.com/astral-sh/uv/releases/download/$(UvVersion)/$(UvZipFileName)</UvDownloadUrl>
+  </PropertyGroup>
+
+  <Target Name="DownloadUv" BeforeTargets="Build" Condition="!Exists('$(UvZipPath)') AND '$(UvPlatform)' != ''">
+    <Message Text="Downloading uv $(UvVersion) for $(UvPlatform)..." Importance="high" />
+    <MakeDir Directories="$(UvAssetFolder)" />
+    <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)" DestinationFileName="$(UvZipFileName)" />
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
@@ -33,6 +49,10 @@
 
   <ItemGroup>
     <PackageReference Include="StreamJsonRpc" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Assets\UV\" />
   </ItemGroup>
 
 </Project>

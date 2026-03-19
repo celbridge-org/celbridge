@@ -418,6 +418,9 @@ solution-config.props
 # Generated template zip files (built from templates/ source)
 Source/Core/Celbridge.Projects/Assets/Templates/*.zip
 
+# UV binary (downloaded during build from GitHub releases)
+Source/Workspace/Celbridge.Python/Assets/UV/*.zip
+
 # Design documentation (keep local only)
 Source/Celbridge/DesignDocs/
 
