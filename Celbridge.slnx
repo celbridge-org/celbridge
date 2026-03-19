@@ -71,6 +71,4 @@
     <File Path="docs/getting_started.md" />
   </Folder>
 
-  <Folder Name="/Extensions/" />
-
 </Solution>
