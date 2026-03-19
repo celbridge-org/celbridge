@@ -51,7 +51,7 @@
     <Project Path="app/Workspace/Celbridge.WorkspaceUI/Celbridge.WorkspaceUI.csproj" />
   </Folder>
 
-  <Project Path="app/Celbridge/Celbridge.csproj">
+  <Project Path="app/Celbridge/Celbridge.Application.csproj">
     <Deploy />
   </Project>
   <Folder Name="/Templates/">
