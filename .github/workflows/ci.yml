@@ -25,13 +25,13 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore app/Celbridge.Tests/Celbridge.Tests.csproj
+        run: dotnet restore app/Tests/Celbridge.Tests.csproj
 
       - name: Build tests
-        run: dotnet build app/Celbridge.Tests/Celbridge.Tests.csproj --no-restore --configuration Release
+        run: dotnet build app/Tests/Celbridge.Tests.csproj --no-restore --configuration Release
 
       - name: Run tests
-        run: dotnet test app/Celbridge.Tests/Celbridge.Tests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test app/Tests/Celbridge.Tests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Publish test results
         uses: dorny/test-reporter@v1

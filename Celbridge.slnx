@@ -59,7 +59,7 @@
   </Folder>
 
   <Folder Name="/Tests/">
-    <Project Path="app/Celbridge.Tests/Celbridge.Tests.csproj" />
+    <Project Path="app/Tests/Celbridge.Tests.csproj" />
   </Folder>
 
   <Folder Name="/Python/">
