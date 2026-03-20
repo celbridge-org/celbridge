@@ -8,5 +8,7 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<ToolRegistry>();
+        services.AddSingleton<ToolExecutor>();
+        services.AddSingleton<IBrokerService, BrokerService>();
     }
 }
