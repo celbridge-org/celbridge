@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Core\Celbridge.Broker\Celbridge.Broker.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Host\Celbridge.Host.csproj" />

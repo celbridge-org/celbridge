@@ -11,6 +11,7 @@
   </Folder>
 
   <Folder Name="/Core/">
+    <Project Path="Source/Core/Celbridge.Broker/Celbridge.Broker.csproj" />
     <Project Path="Source/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
     <Project Path="Source/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
     <Project Path="Source/Core/Celbridge.Host/Celbridge.Host.csproj" />
