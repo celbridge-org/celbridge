@@ -36,6 +36,16 @@ Run JS tests from the `Source/` folder:
 cd Source && npm test
 ```
 
+Run Python tests using a virtual environment:
+
+```
+cd Source/Python
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e "packages/celbridge[dev]"
+python run_tests.py
+```
+
 ## Git
 
 - Never commit automatically; the user reviews all changes in GitHub Desktop before committing

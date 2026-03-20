@@ -42,6 +42,49 @@
     <DownloadFile SourceUrl="$(UvDownloadUrl)" DestinationFolder="$(UvAssetFolder)" DestinationFileName="$(UvZipFileName)" />
   </Target>
 
+  <!-- Build the celbridge Python wheel from source when Python files change.
+       Uses the uv binary (extracted from the downloaded zip) to build the wheel
+       without needing a pre-installed Python or virtual environment. -->
+  <PropertyGroup>
+    <PythonPackageFolder>$(MSBuildThisFileDirectory)..\..\Python\packages\celbridge</PythonPackageFolder>
+    <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
+    <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
+    <!-- Use a TFM-independent temp folder so parallel builds don't conflict -->
+    <UvTempFolder>$(MSBuildThisFileDirectory)obj\uv_temp</UvTempFolder>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PythonSourceFiles Include="$(PythonPackageFolder)\src\celbridge\*.py" />
+    <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
+  </ItemGroup>
+
+  <!-- Build the wheel for one TFM only. Other TFMs pick it up via IncludePythonAssets. -->
+  <Target Name="BuildPythonWheel" BeforeTargets="Build" DependsOnTargets="DownloadUv"
+          Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
+          Condition="'$(UvPlatform)' != '' AND '$(TargetFramework)' == 'net9.0-windows10.0.22621'">
+    <Message Text="Building celbridge Python wheel..." Importance="high" />
+
+    <!-- Extract uv from the zip to a temp folder -->
+    <RemoveDir Directories="$(UvTempFolder)" />
+    <Unzip SourceFiles="$(UvZipPath)" DestinationFolder="$(UvTempFolder)" />
+
+    <!-- Build the wheel using uv -->
+    <Exec Command="&quot;$(UvTempFolder)\uv.exe&quot; build --wheel --out-dir &quot;$(PythonAssetsFolder)&quot; &quot;$(PythonPackageFolder)&quot;" />
+
+    <!-- Generate a new build version GUID so the installer detects the change -->
+    <WriteLinesToFile File="$(PythonAssetsFolder)\build_version.txt"
+                      Lines="$([System.Guid]::NewGuid())"
+                      Overwrite="true" />
+
+    <!-- Clean up temp folder -->
+    <RemoveDir Directories="$(UvTempFolder)" />
+  </Target>
+
+  <!-- Note: the wheel and build_version.txt are NOT cleaned during 'Clean' because
+       MSBuild evaluates Content items at project load time. If these files are missing,
+       they won't be included in the AppX package even after BuildPythonWheel recreates them.
+       The BuildPythonWheel target uses Inputs/Outputs to regenerate them when needed. -->
+
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />

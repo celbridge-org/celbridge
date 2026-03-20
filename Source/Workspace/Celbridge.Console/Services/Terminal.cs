@@ -28,10 +28,10 @@ public class Terminal : ITerminal, IDisposable
 #endif
     }
 
-    public void Start(string commandLine, string workingDir)
+    public void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null)
     {
 #if WINDOWS
-        _terminal.Start(commandLine, workingDir);
+        _terminal.Start(commandLine, workingDir, environmentVariables);
 #else
         throw new NotImplementedException();
 #endif

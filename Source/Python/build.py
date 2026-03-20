@@ -22,7 +22,7 @@ def build_wheel(pkg_dir):
 
 def main():
     root = Path(__file__).parent
-    packages = [root / "packages/celbridge", root / "packages/celbridge_host"]
+    packages = [root / "packages/celbridge"]
     assets = root.parent / "Workspace/Celbridge.Python/Assets/Python"
     
     print("Building wheels...")

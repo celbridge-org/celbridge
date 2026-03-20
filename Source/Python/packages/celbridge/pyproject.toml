@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "celbridge"
 version = "0.1.0"
-description = "A command-line interface for managing Celbridge projects"
+description = "Python connector for the Celbridge application"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -23,10 +23,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Environment :: Console",
 ]
-keywords = ["celbridge", "cli"]
+keywords = ["celbridge", "repl"]
 dependencies = [
-    "typer>=0.12,<1",
-    "rich>=13,<15",
+    "ipython>=8.0",
 ]
 
 [project.urls]
@@ -34,13 +33,13 @@ Homepage = "https://celbridge.org"
 Repository = "https://github.com/celbridge-org/celbridge"
 Issues = "https://github.com/celbridge-org/celbridge/issues"
 
+[project.scripts]
+celbridge-py = "celbridge.__main__:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
 ]
-
-[project.scripts]
-celbridge = "celbridge.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

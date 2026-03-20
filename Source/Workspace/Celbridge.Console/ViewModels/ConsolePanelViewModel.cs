@@ -127,14 +127,9 @@ public partial class ConsolePanelViewModel : ObservableObject
 
     public void OnTerminalProcessExited()
     {
-        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
-        Guard.IsNotNull(projectFilePath);
-        var projectFile = Path.GetFileName(projectFilePath);
-
-        // Broadcast a console error message.
-        // This message will be handled by OnConsoleError() in this class.
-        var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.PythonHostProcessError, projectFile);
-        _messengerService.Send(errorMessage);
+        // Process exit is expected when the user types exit() in the REPL.
+        // Startup failures are detected separately by PythonService when no
+        // RPC connection is ever established.
     }
 
     private void OnConsoleError(object recipient, ConsoleErrorMessage message)

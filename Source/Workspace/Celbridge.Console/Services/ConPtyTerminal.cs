@@ -28,7 +28,7 @@ public sealed class ConPtyTerminal : IDisposable
     public event EventHandler<string>? OutputReceived;
     public event EventHandler? ProcessExited;
 
-    public void Start(string commandLine, string workingDir)
+    public void Start(string commandLine, string workingDir, Dictionary<string, string>? environmentVariables = null)
     {
         // Use the stored values that were reported earlier when xterm.js initialized, via SetSize().
         // Use reasonable defaults if these haven't been set for some reason.
@@ -69,18 +69,41 @@ public sealed class ConPtyTerminal : IDisposable
             IntPtr.Zero,
             IntPtr.Zero);
 
+        // Build the environment block for the child process.
+        // When custom environment variables are provided, merge them with the
+        // current process environment to create a per-process environment block.
+        var environmentBlockPointer = IntPtr.Zero;
+        int creationFlags = EXTENDED_STARTUPINFO_PRESENT;
+
+        if (environmentVariables != null && environmentVariables.Count > 0)
+        {
+            environmentBlockPointer = BuildEnvironmentBlock(environmentVariables);
+            creationFlags |= CREATE_UNICODE_ENVIRONMENT;
+        }
+
         var pi = new PROCESS_INFORMATION();
-        bool success = CreateProcess(
-            null,
-            new StringBuilder(commandLine),
-            IntPtr.Zero,
-            IntPtr.Zero,
-            true,
-            EXTENDED_STARTUPINFO_PRESENT,
-            IntPtr.Zero,
-            workingDir,
-            ref siEx,
-            out pi);
+        bool success;
+        try
+        {
+            success = CreateProcess(
+                null,
+                new StringBuilder(commandLine),
+                IntPtr.Zero,
+                IntPtr.Zero,
+                true,
+                creationFlags,
+                environmentBlockPointer,
+                workingDir,
+                ref siEx,
+                out pi);
+        }
+        finally
+        {
+            if (environmentBlockPointer != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(environmentBlockPointer);
+            }
+        }
 
         if (!success)
         {
@@ -292,10 +315,54 @@ public sealed class ConPtyTerminal : IDisposable
         _cancellationTokenSource = null;
     }
 
+    /// <summary>
+    /// Builds a Unicode environment block for CreateProcess by cloning the current
+    /// process environment and merging in the provided custom variables.
+    /// The block format is: VAR1=VALUE1\0VAR2=VALUE2\0...\0\0 (double-null terminated).
+    /// Environment variables are sorted by name as required by CreateProcess.
+    /// </summary>
+    private static IntPtr BuildEnvironmentBlock(Dictionary<string, string> environmentVariables)
+    {
+        // Start with the current process environment
+        var mergedEnvironment = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            var key = entry.Key?.ToString();
+            var value = entry.Value?.ToString();
+            if (key != null && value != null)
+            {
+                mergedEnvironment[key] = value;
+            }
+        }
+
+        // Merge in the custom variables (overwriting any existing values)
+        foreach (var entry in environmentVariables)
+        {
+            mergedEnvironment[entry.Key] = entry.Value;
+        }
+
+        // Build the null-delimited, double-null-terminated Unicode string
+        var blockBuilder = new StringBuilder();
+        foreach (var entry in mergedEnvironment)
+        {
+            blockBuilder.Append(entry.Key);
+            blockBuilder.Append('=');
+            blockBuilder.Append(entry.Value);
+            blockBuilder.Append('\0');
+        }
+        blockBuilder.Append('\0');
+
+        // Copy to unmanaged memory for CreateProcess
+        var blockString = blockBuilder.ToString();
+        var blockPointer = Marshal.StringToHGlobalUni(blockString);
+        return blockPointer;
+    }
+
     #region Win32 Interop
 
     private const int PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016;
     private const int EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
+    private const int CREATE_UNICODE_ENVIRONMENT = 0x00000400;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern int CreatePseudoConsole(COORD size, IntPtr hInput, IntPtr hOutput, uint dwFlags, out IntPtr hPC);

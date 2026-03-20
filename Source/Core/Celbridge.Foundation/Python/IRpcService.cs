@@ -1,46 +1,30 @@
 namespace Celbridge.Python;
 
 /// <summary>
-/// A service for managing JSON-RPC communication with a Python process over named pipes.
+/// A service for managing JSON-RPC communication with the Python connector over TCP.
+/// Supports multiple sequential connections, allowing clients to disconnect and reconnect.
 /// </summary>
 public interface IRpcService : IDisposable
 {
     /// <summary>
-    /// Returns whether the RPC service is connected to the Python host.
+    /// Returns whether the RPC service has an active connection to a Python connector.
     /// </summary>
     bool IsConnected { get; }
 
     /// <summary>
-    /// Connects to the Python host JSON-RPC server.
+    /// Fired when a new Python connector connects. The parameter is the connection ID.
     /// </summary>
-    Task<Result> ConnectAsync();
+    event Action<int>? ConnectionAccepted;
 
     /// <summary>
-    /// Disconnects from the Python host JSON-RPC server.
+    /// Fired when a Python connector disconnects. The parameter is the connection ID.
     /// </summary>
-    Task<Result> DisconnectAsync();
+    event Action<int>? ConnectionLost;
 
     /// <summary>
-    /// Invokes a remote method with arguments and return type T on the Python host JSON-RPC server.
+    /// Starts listening for Python connector connections on the specified TCP port.
+    /// Accepts connections in a loop, allowing reconnection after disconnection.
+    /// Runs until the cancellation token is triggered or the service is disposed.
     /// </summary>
-    /// <returns>A result containing the return value of the invoked Python method or an error if the method failed to execute.</returns>
-    Task<Result<T>> InvokeAsync<T>(string method, object? arguments, CancellationToken cancellationToken = default) where T : notnull;
-
-    /// <summary>
-    /// Invokes a remote method with no arguments and return type T on the Python host JSON-RPC server.
-    /// </summary>
-    /// <returns>A result containing the return value of the invoked Python method or an error if the method failed to execute.</returns>
-    Task<Result<T>> InvokeAsync<T>(string method, CancellationToken cancellationToken = default) where T : notnull;
-
-    /// <summary>
-    /// Invokes a remote method with arguments and no return type on the Python host JSON-RPC server.
-    /// </summary>
-    /// <returns>A result containing the return value of the invoked Python method or an error if the method failed to execute.</returns>
-    Task<Result> InvokeAsync(string method, object? arguments, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Invokes a remote method with no arguments and no return type on the Python host JSON-RPC server.
-    /// </summary>
-    /// <returns>A result containing the return value of the invoked Python method or an error if the method failed to execute.</returns>
-    Task<Result> InvokeAsync(string method, CancellationToken cancellationToken = default);
+    Task StartListeningAsync(int port, CancellationToken cancellationToken);
 }
