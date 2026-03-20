@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
@@ -7,8 +9,8 @@ namespace Celbridge.Python.Services;
 
 /// <summary>
 /// Manages JSON-RPC communication with the Python connector over TCP.
-/// Acts as a TCP server that accepts connections in a loop, supporting
-/// reconnection when a client disconnects and a new one connects.
+/// Acts as a TCP server that accepts multiple concurrent connections, each
+/// independently dispatching JSON-RPC calls to the registered handler.
 /// Each connection is assigned a unique incrementing ID for logging and routing.
 /// </summary>
 public class RpcService : IRpcService
@@ -17,20 +19,15 @@ public class RpcService : IRpcService
     private readonly PythonRpcHandler _handler;
 
     private TcpListener? _listener;
-    private TcpClient? _tcpClient;
-    private JsonRpc? _rpc;
     private int _nextConnectionId;
+    private readonly ConcurrentDictionary<int, ClientConnection> _activeConnections = new();
+    private readonly ConcurrentBag<Task> _monitorTasks = new();
 
     private volatile bool _disposed;
 
-    public bool IsConnected
-    {
-        get
-        {
-            var rpc = _rpc;
-            return rpc != null && !rpc.IsDisposed;
-        }
-    }
+    private record class ClientConnection(TcpClient TcpClient, JsonRpc JsonRpc);
+
+    public int ActiveConnectionCount => _activeConnections.Count;
 
     public event Action<int>? ConnectionAccepted;
     public event Action<int>? ConnectionLost;
@@ -53,47 +50,12 @@ public class RpcService : IRpcService
             {
                 try
                 {
-                    // Wait for a Python connector to connect
-                    _tcpClient = await _listener.AcceptTcpClientAsync(cancellationToken);
-
-                    var connectionId = ++_nextConnectionId;
+                    var tcpClient = await _listener.AcceptTcpClientAsync(cancellationToken);
+                    var connectionId = Interlocked.Increment(ref _nextConnectionId);
                     _logger.LogInformation("Connection {ConnectionId} established", connectionId);
 
-                    // Create JsonRpc instance over the TCP stream.
-                    // Preserve exact method names so Python can call C# methods by their
-                    // PascalCase names (e.g., "GetAppVersion", "Log").
-                    var networkStream = _tcpClient.GetStream();
-                    _rpc = new JsonRpc(networkStream, networkStream);
-                    _rpc.AddLocalRpcTarget(_handler, new JsonRpcTargetOptions
-                    {
-                        MethodNameTransform = name => name
-                    });
-
-                    // Use a TaskCompletionSource to wait for disconnection before accepting
-                    // the next connection. This keeps the accept loop sequential.
-                    var disconnectionSource = new TaskCompletionSource();
-
-                    _rpc.Disconnected += (sender, eventArgs) =>
-                    {
-                        if (eventArgs.Exception != null)
-                        {
-                            _logger.LogWarning(eventArgs.Exception, "Connection {ConnectionId} disconnected unexpectedly", connectionId);
-                        }
-                        else
-                        {
-                            _logger.LogInformation("Connection {ConnectionId} disconnected", connectionId);
-                        }
-
-                        CleanupConnection();
-                        ConnectionLost?.Invoke(connectionId);
-                        disconnectionSource.TrySetResult();
-                    };
-
-                    _rpc.StartListening();
-                    ConnectionAccepted?.Invoke(connectionId);
-
-                    // Wait for this connection to disconnect before accepting the next one
-                    await disconnectionSource.Task.WaitAsync(cancellationToken);
+                    var monitorTask = MonitorConnectionAsync(connectionId, tcpClient);
+                    _monitorTasks.Add(monitorTask);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -108,7 +70,6 @@ public class RpcService : IRpcService
                     if (!_disposed && !cancellationToken.IsCancellationRequested)
                     {
                         _logger.LogWarning(ex, "Error in connection accept loop, retrying");
-                        CleanupConnection();
                         await Task.Delay(500, cancellationToken);
                     }
                 }
@@ -121,16 +82,58 @@ public class RpcService : IRpcService
         }
     }
 
-    private void CleanupConnection()
+    private async Task MonitorConnectionAsync(int connectionId, TcpClient tcpClient)
     {
-        if (_rpc != null)
+        var networkStream = tcpClient.GetStream();
+        var jsonRpc = new JsonRpc(networkStream, networkStream);
+
+        // Suppress StreamJsonRpc's built-in TraceSource logging for expected
+        // disconnections (e.g. IOException when a terminal window is closed).
+        // We handle disconnect logging ourselves via the Disconnected event.
+        jsonRpc.TraceSource = new TraceSource("JsonRpc", SourceLevels.Off);
+
+        jsonRpc.AddLocalRpcTarget(_handler, new JsonRpcTargetOptions
         {
-            _rpc.Dispose();
-            _rpc = null;
+            MethodNameTransform = name => name
+        });
+
+        var disconnectionSource = new TaskCompletionSource();
+
+        jsonRpc.Disconnected += (sender, eventArgs) =>
+        {
+            _logger.LogInformation("Connection {ConnectionId} disconnected", connectionId);
+            disconnectionSource.TrySetResult();
+        };
+
+        var clientConnection = new ClientConnection(tcpClient, jsonRpc);
+        _activeConnections[connectionId] = clientConnection;
+
+        jsonRpc.StartListening();
+        ConnectionAccepted?.Invoke(connectionId);
+
+        await disconnectionSource.Task;
+
+        _activeConnections.TryRemove(connectionId, out _);
+
+        // Observe the Completion task to prevent UnobservedTaskException.
+        // StreamJsonRpc's internal read loop may fault with IOException when
+        // a client closes the connection, and that exception must be observed.
+        try
+        {
+            await jsonRpc.Completion;
+        }
+        catch (IOException)
+        {
+            // Expected when a terminal window is closed
+        }
+        catch (ConnectionLostException)
+        {
+            // Expected when the remote end disconnects
         }
 
-        _tcpClient?.Dispose();
-        _tcpClient = null;
+        jsonRpc.Dispose();
+        tcpClient.Dispose();
+        ConnectionLost?.Invoke(connectionId);
     }
 
     private void StopListener()
@@ -163,8 +166,23 @@ public class RpcService : IRpcService
 
             if (disposing)
             {
-                CleanupConnection();
                 StopListener();
+
+                foreach (var pair in _activeConnections)
+                {
+                    pair.Value.JsonRpc.Dispose();
+                    pair.Value.TcpClient.Dispose();
+                }
+                _activeConnections.Clear();
+
+                try
+                {
+                    Task.WaitAll(_monitorTasks.ToArray());
+                }
+                catch (AggregateException)
+                {
+                    // Monitor tasks may throw on cancellation during shutdown
+                }
             }
         }
     }

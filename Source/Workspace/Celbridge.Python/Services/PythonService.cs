@@ -337,7 +337,7 @@ public class PythonService : IPythonService, IDisposable
     private void OnConnectionLost(int connectionId)
     {
         _logger.LogInformation("Python RPC connection {ConnectionId} lost", connectionId);
-        IsPythonHostAvailable = false;
+        IsPythonHostAvailable = _rpcService.ActiveConnectionCount > 0;
     }
 
     /// <summary>

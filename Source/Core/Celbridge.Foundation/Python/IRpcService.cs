@@ -2,14 +2,15 @@ namespace Celbridge.Python;
 
 /// <summary>
 /// A service for managing JSON-RPC communication with the Python connector over TCP.
-/// Supports multiple sequential connections, allowing clients to disconnect and reconnect.
+/// Supports multiple simultaneous connections, allowing several Python clients to
+/// interact with the host application concurrently.
 /// </summary>
 public interface IRpcService : IDisposable
 {
     /// <summary>
-    /// Returns whether the RPC service has an active connection to a Python connector.
+    /// Returns the number of currently active Python connector connections.
     /// </summary>
-    bool IsConnected { get; }
+    int ActiveConnectionCount { get; }
 
     /// <summary>
     /// Fired when a new Python connector connects. The parameter is the connection ID.
@@ -23,7 +24,7 @@ public interface IRpcService : IDisposable
 
     /// <summary>
     /// Starts listening for Python connector connections on the specified TCP port.
-    /// Accepts connections in a loop, allowing reconnection after disconnection.
+    /// Accepts connections concurrently, allowing multiple clients at the same time.
     /// Runs until the cancellation token is triggered or the service is disposed.
     /// </summary>
     Task StartListeningAsync(int port, CancellationToken cancellationToken);
