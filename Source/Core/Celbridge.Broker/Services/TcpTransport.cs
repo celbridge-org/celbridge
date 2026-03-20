@@ -5,18 +5,18 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
-namespace Celbridge.Python.Services;
+namespace Celbridge.Broker.Services;
 
 /// <summary>
-/// Manages JSON-RPC communication with the Python connector over TCP.
-/// Acts as a TCP server that accepts multiple concurrent connections, each
-/// independently dispatching JSON-RPC calls to the registered handler.
-/// Each connection is assigned a unique incrementing ID for logging and routing.
+/// TCP transport for the broker. Listens on localhost for JSON-RPC connections
+/// and exposes broker tools (tools/list, tools/call) plus any additional RPC
+/// targets to all connected clients.
 /// </summary>
-public class RpcService : IRpcService
+public class TcpTransport : ITcpTransport
 {
-    private readonly ILogger<RpcService> _logger;
-    private readonly PythonRpcHandler _handler;
+    private readonly ILogger<TcpTransport> _logger;
+    private readonly BrokerRpcHandler _brokerRpcHandler;
+    private readonly List<object> _additionalTargets = new();
 
     private TcpListener? _listener;
     private int _nextConnectionId;
@@ -32,17 +32,28 @@ public class RpcService : IRpcService
     public event Action<int>? ConnectionAccepted;
     public event Action<int>? ConnectionLost;
 
-    public RpcService(ILogger<RpcService> logger, PythonRpcHandler handler)
+    public TcpTransport(
+        ILogger<TcpTransport> logger,
+        BrokerRpcHandler brokerRpcHandler)
     {
         _logger = logger;
-        _handler = handler;
+        _brokerRpcHandler = brokerRpcHandler;
+    }
+
+    /// <summary>
+    /// Registers an additional RPC target whose public methods will be exposed
+    /// to all connections. Must be called before StartListeningAsync.
+    /// </summary>
+    public void AddRpcTarget(object target)
+    {
+        _additionalTargets.Add(target);
     }
 
     public async Task StartListeningAsync(int port, CancellationToken cancellationToken)
     {
         _listener = new TcpListener(IPAddress.Loopback, port);
         _listener.Start();
-        _logger.LogInformation("RPC server listening on port {Port}", port);
+        _logger.LogInformation("Broker TCP transport listening on port {Port}", port);
 
         try
         {
@@ -78,7 +89,7 @@ public class RpcService : IRpcService
         finally
         {
             StopListener();
-            _logger.LogInformation("RPC server stopped listening on port {Port}", port);
+            _logger.LogInformation("Broker TCP transport stopped listening on port {Port}", port);
         }
     }
 
@@ -89,13 +100,23 @@ public class RpcService : IRpcService
 
         // Suppress StreamJsonRpc's built-in TraceSource logging for expected
         // disconnections (e.g. IOException when a terminal window is closed).
-        // We handle disconnect logging ourselves via the Disconnected event.
         jsonRpc.TraceSource = new TraceSource("JsonRpc", SourceLevels.Off);
 
-        jsonRpc.AddLocalRpcTarget(_handler, new JsonRpcTargetOptions
+        var targetOptions = new JsonRpcTargetOptions
         {
             MethodNameTransform = name => name
-        });
+        };
+
+        // Register the broker RPC handler (tools/list, tools/call).
+        // The [JsonRpcMethod] attributes on BrokerRpcHandler override the
+        // method name transform, so slashed names work correctly.
+        jsonRpc.AddLocalRpcTarget(_brokerRpcHandler, targetOptions);
+
+        // Register any additional targets (e.g. PythonRpcHandler)
+        foreach (var target in _additionalTargets)
+        {
+            jsonRpc.AddLocalRpcTarget(target, targetOptions);
+        }
 
         var disconnectionSource = new TaskCompletionSource();
 
@@ -116,8 +137,6 @@ public class RpcService : IRpcService
         _activeConnections.TryRemove(connectionId, out _);
 
         // Observe the Completion task to prevent UnobservedTaskException.
-        // StreamJsonRpc's internal read loop may fault with IOException when
-        // a client closes the connection, and that exception must be observed.
         try
         {
             await jsonRpc.Completion;
@@ -187,7 +206,7 @@ public class RpcService : IRpcService
         }
     }
 
-    ~RpcService()
+    ~TcpTransport()
     {
         Dispose(false);
     }

@@ -5,6 +5,7 @@ using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
+using Celbridge.Broker;
 using Celbridge.Console;
 using Celbridge.Messaging;
 using Celbridge.Projects;
@@ -34,7 +35,8 @@ public class PythonService : IPythonService, IDisposable
     private readonly IEnvironmentService _environmentService;
     private readonly IMessengerService _messengerService;
     private readonly ILogger<PythonService> _logger;
-    private readonly IRpcService _rpcService;
+    private readonly ITcpTransport _tcpTransport;
+    private readonly PythonRpcHandler _pythonRpcHandler;
     private CancellationTokenSource? _rpcCancellationTokenSource;
     private string _pendingFingerprint = string.Empty;
     private string _pendingCacheDir = string.Empty;
@@ -47,14 +49,16 @@ public class PythonService : IPythonService, IDisposable
         IEnvironmentService environmentService,
         IMessengerService messengerService,
         ILogger<PythonService> logger,
-        IRpcService rpcService)
+        ITcpTransport tcpTransport,
+        PythonRpcHandler pythonRpcHandler)
     {
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _environmentService = environmentService;
         _messengerService = messengerService;
         _logger = logger;
-        _rpcService = rpcService;
+        _tcpTransport = tcpTransport;
+        _pythonRpcHandler = pythonRpcHandler;
     }
 
     public bool IsPythonHostAvailable { get; private set; } = false;
@@ -274,8 +278,8 @@ public class PythonService : IPythonService, IDisposable
             _rpcCancellationTokenSource?.Dispose();
 
             // Unsubscribe previous handlers to prevent accumulation on reload
-            _rpcService.ConnectionAccepted -= OnConnectionAccepted;
-            _rpcService.ConnectionLost -= OnConnectionLost;
+            _tcpTransport.ConnectionAccepted -= OnConnectionAccepted;
+            _tcpTransport.ConnectionLost -= OnConnectionLost;
 
             // Reset connection tracking state for this initialization
             _pendingFingerprint = currentFingerprint;
@@ -283,13 +287,18 @@ public class PythonService : IPythonService, IDisposable
             _fingerprintSaved = false;
             _hadConnection = false;
 
+            // Register the Python-specific RPC handler so that existing
+            // Python methods (Log, GetAppVersion) are available alongside
+            // the broker's tools/list and tools/call.
+            _tcpTransport.AddRpcTarget(_pythonRpcHandler);
+
             // Subscribe to connection events to track Python host availability
-            _rpcService.ConnectionAccepted += OnConnectionAccepted;
-            _rpcService.ConnectionLost += OnConnectionLost;
+            _tcpTransport.ConnectionAccepted += OnConnectionAccepted;
+            _tcpTransport.ConnectionLost += OnConnectionLost;
 
             // Start the RPC accept loop in the background
             _rpcCancellationTokenSource = new CancellationTokenSource();
-            _ = Task.Run(() => _rpcService.StartListeningAsync(rpcPort, _rpcCancellationTokenSource.Token));
+            _ = Task.Run(() => _tcpTransport.StartListeningAsync(rpcPort, _rpcCancellationTokenSource.Token));
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
 
@@ -337,7 +346,7 @@ public class PythonService : IPythonService, IDisposable
     private void OnConnectionLost(int connectionId)
     {
         _logger.LogInformation("Python RPC connection {ConnectionId} lost", connectionId);
-        IsPythonHostAvailable = _rpcService.ActiveConnectionCount > 0;
+        IsPythonHostAvailable = _tcpTransport.ActiveConnectionCount > 0;
     }
 
     /// <summary>
@@ -638,7 +647,7 @@ public class PythonService : IPythonService, IDisposable
                 _rpcCancellationTokenSource?.Dispose();
                 _rpcCancellationTokenSource = null;
 
-                _rpcService.Dispose();
+                _tcpTransport.Dispose();
             }
 
             _disposed = true;

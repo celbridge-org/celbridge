@@ -10,5 +10,7 @@ public static class ServiceConfiguration
         services.AddSingleton<ToolRegistry>();
         services.AddSingleton<ToolExecutor>();
         services.AddSingleton<IBrokerService, BrokerService>();
+        services.AddSingleton<BrokerRpcHandler>();
+        services.AddTransient<ITcpTransport, TcpTransport>();
     }
 }

@@ -8,7 +8,6 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IPythonConfigService, PythonConfigService>();
         services.AddTransient<IPythonService, PythonService>();
-        services.AddTransient<IRpcService, RpcService>();
         services.AddTransient<PythonRpcHandler>();
     }
 }

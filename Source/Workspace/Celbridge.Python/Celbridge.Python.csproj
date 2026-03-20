@@ -90,11 +90,7 @@
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="StreamJsonRpc" />
-  </ItemGroup>
-
-  <ItemGroup>
+<ItemGroup>
     <Folder Include="Assets\UV\" />
   </ItemGroup>
 

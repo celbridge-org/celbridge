@@ -286,6 +286,7 @@ public partial class App : Application
 
     public static void ConfigureServices(IServiceCollection services)
     {
+        Broker.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);
