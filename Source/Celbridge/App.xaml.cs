@@ -301,6 +301,7 @@ public partial class App : Application
 
     private void InitializeCoreServices()
     {
+        Broker.ServiceConfiguration.Initialize();
         UserInterface.ServiceConfiguration.Initialize();
         WebView.ServiceConfiguration.Initialize();
         Workspace.ServiceConfiguration.Initialize();

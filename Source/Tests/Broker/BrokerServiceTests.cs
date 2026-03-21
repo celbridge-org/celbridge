@@ -11,13 +11,13 @@ public static class ExecutorTestTools
 {
     public static bool VoidToolWasCalled { get; set; }
 
-    [McpTool("exec/void", Description = "A void tool")]
+    [McpTool(Name = "exec/void", Alias = "void_tool", Description = "A void tool")]
     public static void VoidTool()
     {
         VoidToolWasCalled = true;
     }
 
-    [McpTool("exec/greet", Description = "Returns a greeting")]
+    [McpTool(Name = "exec/greet", Alias = "greet", Description = "Returns a greeting")]
     public static string Greet(
         [McpParam(Description = "Name to greet")]
         string name)
@@ -25,7 +25,7 @@ public static class ExecutorTestTools
         return $"Hello, {name}!";
     }
 
-    [McpTool("exec/add", Description = "Adds two numbers")]
+    [McpTool(Name = "exec/add", Alias = "add", Description = "Adds two numbers")]
     public static int Add(
         [McpParam(Description = "First number")]
         int left,
@@ -35,7 +35,7 @@ public static class ExecutorTestTools
         return left + right;
     }
 
-    [McpTool("exec/optional", Description = "Tool with optional parameter")]
+    [McpTool(Name = "exec/optional", Alias = "optional", Description = "Tool with optional parameter")]
     public static string OptionalParams(
         [McpParam(Description = "Required value")]
         string value,
@@ -45,21 +45,21 @@ public static class ExecutorTestTools
         return value + suffix;
     }
 
-    [McpTool("exec/async_ok", Description = "Async tool that succeeds")]
+    [McpTool(Name = "exec/async_ok", Alias = "async_ok", Description = "Async tool that succeeds")]
     public static async Task<Result> AsyncOk()
     {
         await Task.CompletedTask;
         return Result.Ok();
     }
 
-    [McpTool("exec/async_fail", Description = "Async tool that fails")]
+    [McpTool(Name = "exec/async_fail", Alias = "async_fail", Description = "Async tool that fails")]
     public static async Task<Result> AsyncFail()
     {
         await Task.CompletedTask;
         return Result.Fail("Something went wrong");
     }
 
-    [McpTool("exec/async_value", Description = "Async tool returning a value")]
+    [McpTool(Name = "exec/async_value", Alias = "async_value", Description = "Async tool returning a value")]
     public static async Task<Result<string>> AsyncValue(
         [McpParam(Description = "Input text")]
         string text)
@@ -69,13 +69,13 @@ public static class ExecutorTestTools
         return Result<string>.Ok(upperText);
     }
 
-    [McpTool("exec/throws", Description = "Tool that throws")]
+    [McpTool(Name = "exec/throws", Alias = "throws", Description = "Tool that throws")]
     public static string Throws()
     {
         throw new InvalidOperationException("Deliberate test exception");
     }
 
-    [McpTool("exec/resource_key", Description = "Tool with ResourceKey parameter")]
+    [McpTool(Name = "exec/resource_key", Alias = "resource_key", Description = "Tool with ResourceKey parameter")]
     public static string ResourceKeyTool(
         [McpParam(Description = "A resource key")]
         ResourceKey key)
@@ -83,7 +83,7 @@ public static class ExecutorTestTools
         return key.ToString();
     }
 
-    [McpTool("exec/bool_param", Description = "Tool with bool parameter")]
+    [McpTool(Name = "exec/bool_param", Alias = "bool_param", Description = "Tool with bool parameter")]
     public static string BoolTool(
         [McpParam(Description = "A flag")]
         bool enabled)

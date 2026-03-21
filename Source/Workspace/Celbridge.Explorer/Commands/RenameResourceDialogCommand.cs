@@ -1,3 +1,4 @@
+using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
@@ -119,5 +120,17 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
         {
             command.Resource = resource;
         });
+    }
+
+    //
+    // Broker tool methods.
+    //
+
+    [McpTool(Name = "resource/rename", Alias = "rename", Description = "Renames a resource with a dialog")]
+    public static void BrokerRenameResource(
+        [McpParam(Description = "Resource key of the item to rename")]
+        ResourceKey resource)
+    {
+        RenameResourceDialog(resource);
     }
 }

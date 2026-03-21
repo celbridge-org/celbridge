@@ -39,4 +39,5 @@ public class ClearCommand : CommandBase, IClearCommand
 
         commandService.Execute<IClearCommand>();
     }
+
 }

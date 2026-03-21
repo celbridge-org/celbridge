@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Celbridge.Broker;
 
 /// <summary>
@@ -7,6 +9,11 @@ namespace Celbridge.Broker;
 /// </summary>
 public interface IBrokerService
 {
+    /// <summary>
+    /// Discovers tools from the given assemblies. Call this during application startup.
+    /// </summary>
+    void Initialize(IEnumerable<Assembly> assemblies);
+
     /// <summary>
     /// Returns all discovered tool descriptors.
     /// </summary>

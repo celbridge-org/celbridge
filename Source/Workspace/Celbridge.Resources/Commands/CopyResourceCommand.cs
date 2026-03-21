@@ -1,3 +1,4 @@
+using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
@@ -287,5 +288,19 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             command.DestResource = destResource;
             command.TransferMode = DataTransferMode.Move;
         });
+    }
+
+    //
+    // Broker tool methods.
+    //
+
+    [McpTool(Name = "resource/move", Alias = "move", Description = "Moves or renames a resource")]
+    public static void BrokerMoveResource(
+        [McpParam(Description = "Resource key of the source item")]
+        ResourceKey sourceResource,
+        [McpParam(Description = "Resource key of the destination")]
+        ResourceKey destResource)
+    {
+        MoveResource(sourceResource, destResource);
     }
 }

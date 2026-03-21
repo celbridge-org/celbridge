@@ -101,12 +101,27 @@ public class ToolRegistry
             return null;
         }
 
+        var alias = toolAttribute.Alias;
+
+        if (string.IsNullOrWhiteSpace(alias))
+        {
+            _logger.LogWarning(
+                "Skipping tool '{ToolName}' on {Type}.{Method}: alias is empty",
+                toolName,
+                method.DeclaringType?.Name,
+                method.Name);
+            return null;
+        }
+
         var parameters = BuildParameterDescriptors(method);
+        var returnType = GetSimpleReturnType(method.ReturnType);
 
         return new ToolDescriptor
         {
             Name = toolName,
+            Alias = alias,
             Description = toolAttribute.Description,
+            ReturnType = returnType,
             Parameters = parameters,
             Method = method
         };
@@ -125,7 +140,7 @@ public class ToolRegistry
             var descriptor = new ToolParameterDescriptor
             {
                 Name = parameterInfo.Name ?? string.Empty,
-                TypeName = parameterInfo.ParameterType.FullName ?? parameterInfo.ParameterType.Name,
+                TypeName = MapToSimpleTypeName(parameterInfo.ParameterType),
                 ParameterType = parameterInfo.ParameterType,
                 Description = description,
                 HasDefaultValue = parameterInfo.HasDefaultValue,
@@ -136,6 +151,69 @@ public class ToolRegistry
         }
 
         return descriptors;
+    }
+
+    /// <summary>
+    /// Maps a CLR return type to a simple client-friendly type name.
+    /// Returns empty string for void, Task, and Task&lt;Result&gt; (no payload).
+    /// </summary>
+    private string GetSimpleReturnType(Type returnType)
+    {
+        if (returnType == typeof(void))
+        {
+            return string.Empty;
+        }
+
+        if (returnType == typeof(Task))
+        {
+            return string.Empty;
+        }
+
+        if (returnType == typeof(Task<Result>))
+        {
+            return string.Empty;
+        }
+
+        // Task<Result<T>> -> extract T
+        if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            var innerType = returnType.GetGenericArguments()[0];
+            if (innerType.IsGenericType && innerType.GetGenericTypeDefinition() == typeof(Result<>))
+            {
+                var payloadType = innerType.GetGenericArguments()[0];
+                return MapToSimpleTypeName(payloadType);
+            }
+        }
+
+        return MapToSimpleTypeName(returnType);
+    }
+
+    /// <summary>
+    /// Maps a CLR type to a simple Python-style type name for display.
+    /// </summary>
+    private string MapToSimpleTypeName(Type type)
+    {
+        if (type == typeof(string) || type == typeof(ResourceKey))
+        {
+            return "str";
+        }
+
+        if (type == typeof(int) || type == typeof(long))
+        {
+            return "int";
+        }
+
+        if (type == typeof(bool))
+        {
+            return "bool";
+        }
+
+        if (type == typeof(double) || type == typeof(float))
+        {
+            return "float";
+        }
+
+        return type.Name;
     }
 
     private void RegisterTool(ToolDescriptor descriptor)

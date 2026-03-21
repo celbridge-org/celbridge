@@ -1,3 +1,4 @@
+using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
@@ -70,5 +71,33 @@ public class PrintCommand : CommandBase, IPrintCommand
             command.Message = messageText;
             command.MessageType = messageType;
         });
+    }
+
+    //
+    // Broker tool methods.
+    //
+
+    [McpTool(Name = "console/log", Alias = "log", Description = "Logs a message to the console")]
+    public static void BrokerLog(
+        [McpParam(Description = "The message to log")]
+        string message)
+    {
+        Print(MessageType.Information, message);
+    }
+
+    [McpTool(Name = "console/log_warning", Alias = "log_warning", Description = "Logs a warning message to the console")]
+    public static void BrokerLogWarning(
+        [McpParam(Description = "The warning message to log")]
+        string message)
+    {
+        Print(MessageType.Warning, message);
+    }
+
+    [McpTool(Name = "console/log_error", Alias = "log_error", Description = "Logs an error message to the console")]
+    public static void BrokerLogError(
+        [McpParam(Description = "The error message to log")]
+        string message)
+    {
+        Print(MessageType.Error, message);
     }
 }

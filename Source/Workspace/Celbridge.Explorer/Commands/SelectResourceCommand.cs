@@ -1,3 +1,4 @@
+using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.Workspace;
 
@@ -59,5 +60,19 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     public static void SelectResource(ResourceKey resource)
     {
         SelectResource(resource, true);
+    }
+
+    //
+    // Broker tool methods.
+    //
+
+    [McpTool(Name = "explorer/select", Alias = "select", Description = "Selects a resource in the explorer panel")]
+    public static void BrokerSelectResource(
+        [McpParam(Description = "Resource key of the item to select")]
+        ResourceKey resource,
+        [McpParam(Description = "Show the explorer panel if hidden")]
+        bool showExplorerPanel = true)
+    {
+        SelectResource(resource, showExplorerPanel);
     }
 }

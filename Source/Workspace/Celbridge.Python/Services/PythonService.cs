@@ -36,7 +36,6 @@ public class PythonService : IPythonService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly ILogger<PythonService> _logger;
     private readonly ITcpTransport _tcpTransport;
-    private readonly PythonRpcHandler _pythonRpcHandler;
     private CancellationTokenSource? _rpcCancellationTokenSource;
     private string _pendingFingerprint = string.Empty;
     private string _pendingCacheDir = string.Empty;
@@ -49,8 +48,7 @@ public class PythonService : IPythonService, IDisposable
         IEnvironmentService environmentService,
         IMessengerService messengerService,
         ILogger<PythonService> logger,
-        ITcpTransport tcpTransport,
-        PythonRpcHandler pythonRpcHandler)
+        ITcpTransport tcpTransport)
     {
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
@@ -58,7 +56,6 @@ public class PythonService : IPythonService, IDisposable
         _messengerService = messengerService;
         _logger = logger;
         _tcpTransport = tcpTransport;
-        _pythonRpcHandler = pythonRpcHandler;
     }
 
     public bool IsPythonHostAvailable { get; private set; } = false;
@@ -286,11 +283,6 @@ public class PythonService : IPythonService, IDisposable
             _pendingCacheDir = cacheDir;
             _fingerprintSaved = false;
             _hadConnection = false;
-
-            // Register the Python-specific RPC handler so that existing
-            // Python methods (Log, GetAppVersion) are available alongside
-            // the broker's tools/list and tools/call.
-            _tcpTransport.AddRpcTarget(_pythonRpcHandler);
 
             // Subscribe to connection events to track Python host availability
             _tcpTransport.ConnectionAccepted += OnConnectionAccepted;

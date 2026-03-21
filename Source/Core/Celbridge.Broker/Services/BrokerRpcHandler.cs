@@ -51,7 +51,9 @@ public class BrokerRpcHandler
             var toolInfo = new Dictionary<string, object?>
             {
                 ["name"] = tool.Name,
+                ["alias"] = tool.Alias,
                 ["description"] = tool.Description,
+                ["returnType"] = tool.ReturnType,
                 ["parameters"] = parameters
             };
             toolInfoList.Add(toolInfo);

@@ -8,7 +8,7 @@ namespace Celbridge.Tests;
 
 public static class TestTools
 {
-    [McpTool("test/greet", Description = "Returns a greeting")]
+    [McpTool(Name = "test/greet", Alias = "greet", Description = "Returns a greeting")]
     public static string Greet(
         [McpParam(Description = "Name to greet")]
         string name)
@@ -16,7 +16,7 @@ public static class TestTools
         return $"Hello, {name}!";
     }
 
-    [McpTool("test/add", Description = "Adds two numbers")]
+    [McpTool(Name = "test/add", Alias = "add", Description = "Adds two numbers")]
     public static int Add(
         [McpParam(Description = "First number")]
         int left,
@@ -26,7 +26,7 @@ public static class TestTools
         return left + right;
     }
 
-    [McpTool("test/optional", Description = "Tool with optional parameter")]
+    [McpTool(Name = "test/optional", Alias = "optional", Description = "Tool with optional parameter")]
     public static string Optional(
         [McpParam(Description = "Required value")]
         string value,
@@ -39,7 +39,7 @@ public static class TestTools
 
 public static class MoreTestTools
 {
-    [McpTool("other/ping", Description = "Returns pong")]
+    [McpTool(Name = "other/ping", Alias = "ping", Description = "Returns pong")]
     public static string Ping()
     {
         return "pong";
@@ -139,7 +139,7 @@ public class ToolRegistryTests
         var nameParameter = greet.Parameters[0];
         nameParameter.Name.Should().Be("name");
         nameParameter.Description.Should().Be("Name to greet");
-        nameParameter.TypeName.Should().Be("System.String");
+        nameParameter.TypeName.Should().Be("str");
     }
 
     [Test]

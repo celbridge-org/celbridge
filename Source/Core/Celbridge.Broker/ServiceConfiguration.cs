@@ -1,4 +1,5 @@
 using Celbridge.Broker.Services;
+using Celbridge.Core;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Broker;
@@ -12,5 +13,11 @@ public static class ServiceConfiguration
         services.AddSingleton<IBrokerService, BrokerService>();
         services.AddSingleton<BrokerRpcHandler>();
         services.AddTransient<ITcpTransport, TcpTransport>();
+    }
+
+    public static void Initialize()
+    {
+        var brokerService = ServiceLocator.AcquireService<IBrokerService>();
+        brokerService.Initialize(AppDomain.CurrentDomain.GetAssemblies());
     }
 }

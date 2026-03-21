@@ -45,6 +45,23 @@ def apply_post_startup_customizations() -> None:
             pass
 
         try:
+            from celbridge.cel_proxy import CelError
+
+            def cel_exception_handler(self, exception_type, exception, traceback_obj, tb_offset=None):
+                """Display cel proxy exceptions without traceback for a clean REPL experience."""
+                if exception_type is AttributeError:
+                    message = str(exception)
+                    if "is not a known command" not in message:
+                        # Not from CelProxy, fall back to default handling
+                        self.showtraceback()
+                        return
+                print(f"{exception_type.__name__}: {exception}", file=sys.stderr)
+
+            ip.set_custom_exc((CelError, AttributeError), cel_exception_handler)
+        except Exception:
+            pass
+
+        try:
             from IPython.terminal.prompts import Prompts, Token  # type: ignore[import-not-found]
 
             class PythonStylePrompts(Prompts):
@@ -84,7 +101,7 @@ def setup_repl() -> None:
         celbridge_version = os.environ.get('CELBRIDGE_VERSION', 'Unknown')
         python_version = platform.python_version()
         print(f"Celbridge v{celbridge_version} - Python v{python_version}")
-        print("Type cel.help() for a list of available commands.")
+        print("Type help(cel) for a list of available commands.")
 
     except Exception:
         print("Error during Celbridge startup:\n", file=sys.stderr)

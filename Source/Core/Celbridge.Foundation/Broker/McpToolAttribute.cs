@@ -12,15 +12,16 @@ public class McpToolAttribute : Attribute
     /// <summary>
     /// The slash-separated tool name (e.g. "document/open").
     /// </summary>
-    public string Name { get; }
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A short client-friendly name used for scripting APIs. Supports dot
+    /// notation for namespacing (e.g. "open", "sheet.delete").
+    /// </summary>
+    public string Alias { get; set; } = string.Empty;
 
     /// <summary>
     /// A human-readable description of what the tool does.
     /// </summary>
     public string Description { get; set; } = string.Empty;
-
-    public McpToolAttribute(string name)
-    {
-        Name = name;
-    }
 }

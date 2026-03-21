@@ -1,5 +1,7 @@
+using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Resources.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -130,5 +132,26 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         {
             command.Resources = resources;
         });
+    }
+
+    //
+    // Broker tool methods.
+    //
+
+    [McpTool(Name = "resource/delete", Alias = "delete", Description = "Deletes a resource")]
+    public static void BrokerDeleteResource(
+        [McpParam(Description = "Resource key of the item to delete")]
+        ResourceKey resource,
+        [McpParam(Description = "Show a confirmation dialog before deleting")]
+        bool confirm = true)
+    {
+        if (confirm)
+        {
+            DeleteResourceDialog(resource);
+        }
+        else
+        {
+            DeleteResourceCommand.DeleteResource(resource);
+        }
     }
 }

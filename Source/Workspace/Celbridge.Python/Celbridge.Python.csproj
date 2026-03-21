@@ -90,7 +90,7 @@
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
   </ItemGroup>
 
-<ItemGroup>
+  <ItemGroup>
     <Folder Include="Assets\UV\" />
   </ItemGroup>
 
