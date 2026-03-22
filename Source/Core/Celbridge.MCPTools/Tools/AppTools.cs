@@ -1,8 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Celbridge.ApplicationEnvironment;
-using Celbridge.Commands;
-using Celbridge.Console;
+using Celbridge.Projects;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.MCPTools.Tools;
@@ -11,18 +10,13 @@ namespace Celbridge.MCPTools.Tools;
 /// General application tools for version info, logging, and client configuration.
 /// </summary>
 [McpServerToolType]
-public class AppTools
+public class AppTools : ToolBase
 {
-    private readonly IEnvironmentService _environmentService;
-    private readonly ICommandService _commandService;
+    private ILogger<AppTools>? _logger;
 
-    public AppTools(
-        IEnvironmentService environmentService,
-        ICommandService commandService)
-    {
-        _environmentService = environmentService;
-        _commandService = commandService;
-    }
+    public AppTools(IApplicationServiceProvider services) : base(services) {}
+
+    private ILogger<AppTools> Logger => _logger ??= GetRequiredService<ILogger<AppTools>>();
 
     /// <summary>
     /// Returns the application version string.
@@ -31,8 +25,36 @@ public class AppTools
     [ToolAlias("app_version")]
     public string AppVersion()
     {
-        var environmentInfo = _environmentService.GetEnvironmentInfo();
+        var environmentService = GetRequiredService<IEnvironmentService>();
+        var environmentInfo = environmentService.GetEnvironmentInfo();
         return environmentInfo.AppVersion;
+    }
+
+    /// <summary>
+    /// Returns the current project status including whether a project is loaded
+    /// and the project name. Call this before using workspace tools to verify
+    /// a project is available.
+    /// </summary>
+    [McpServerTool(Name = "get_project_status", ReadOnly = true, Idempotent = true)]
+    [ToolAlias("get_project_status")]
+    public string GetProjectStatus()
+    {
+        var projectService = GetRequiredService<IProjectService>();
+        var currentProject = projectService.CurrentProject;
+        if (currentProject is null)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                isLoaded = false,
+                projectName = ""
+            });
+        }
+
+        return JsonSerializer.Serialize(new
+        {
+            isLoaded = true,
+            projectName = currentProject.ProjectName
+        });
     }
 
     /// <summary>
@@ -43,7 +65,7 @@ public class AppTools
     [ToolAlias("log")]
     public void LogInfo(string message)
     {
-        ExecuteLog(message, MessageType.Information);
+        Logger.LogInformation(message);
     }
 
     /// <summary>
@@ -54,7 +76,7 @@ public class AppTools
     [ToolAlias("log_warning")]
     public void LogWarning(string message)
     {
-        ExecuteLog(message, MessageType.Warning);
+        Logger.LogWarning(message);
     }
 
     /// <summary>
@@ -65,7 +87,7 @@ public class AppTools
     [ToolAlias("log_error")]
     public void LogError(string message)
     {
-        ExecuteLog(message, MessageType.Error);
+        Logger.LogError(message);
     }
 
     /// <summary>
@@ -89,15 +111,6 @@ public class AppTools
     {
         var aliasMapping = BuildAliasMapping();
         return JsonSerializer.Serialize(aliasMapping);
-    }
-
-    private void ExecuteLog(string message, MessageType messageType)
-    {
-        _commandService.Execute<IPrintCommand>(command =>
-        {
-            command.Message = message;
-            command.MessageType = messageType;
-        });
     }
 
     private static string LoadEmbeddedResource(string resourceName)

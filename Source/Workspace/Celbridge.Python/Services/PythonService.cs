@@ -9,8 +9,8 @@ using Celbridge.Broker;
 using Celbridge.Console;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Logging;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Python.Services;
 

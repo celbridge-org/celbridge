@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.Explorer;
 using ModelContextProtocol.Server;
 
@@ -8,14 +7,9 @@ namespace Celbridge.MCPTools.Tools;
 /// MCP tools for interacting with the explorer panel.
 /// </summary>
 [McpServerToolType]
-public class ExplorerTools
+public class ExplorerTools : ToolBase
 {
-    private readonly ICommandService _commandService;
-
-    public ExplorerTools(ICommandService commandService)
-    {
-        _commandService = commandService;
-    }
+    public ExplorerTools(IApplicationServiceProvider services) : base(services) {}
 
     /// <summary>
     /// Selects a resource in the explorer panel.
@@ -26,7 +20,7 @@ public class ExplorerTools
     [ToolAlias("select")]
     public void Select(string resource, bool showExplorerPanel = true)
     {
-        _commandService.Execute<ISelectResourceCommand>(command =>
+        CommandService.Execute<ISelectResourceCommand>(command =>
         {
             command.Resource = resource;
             command.ShowExplorerPanel = showExplorerPanel;

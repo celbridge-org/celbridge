@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using StreamJsonRpc;
 

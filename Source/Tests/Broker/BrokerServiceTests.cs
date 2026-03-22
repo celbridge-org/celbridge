@@ -1,6 +1,5 @@
 using Celbridge.Broker;
 using Celbridge.Broker.Services;
-using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Tests;
 

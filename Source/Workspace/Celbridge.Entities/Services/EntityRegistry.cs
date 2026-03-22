@@ -4,8 +4,8 @@ using Celbridge.Entities.Models;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
+using Celbridge.Logging;
 using Json.Schema;
-using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Entities.Services;
 

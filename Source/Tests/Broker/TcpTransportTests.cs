@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
 using Celbridge.Broker.Services;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using StreamJsonRpc;
 

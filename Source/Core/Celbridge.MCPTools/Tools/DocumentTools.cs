@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.Documents;
 using ModelContextProtocol.Server;
 
@@ -8,14 +7,9 @@ namespace Celbridge.MCPTools.Tools;
 /// MCP tools for opening and closing documents in the editor.
 /// </summary>
 [McpServerToolType]
-public class DocumentTools
+public class DocumentTools : ToolBase
 {
-    private readonly ICommandService _commandService;
-
-    public DocumentTools(ICommandService commandService)
-    {
-        _commandService = commandService;
-    }
+    public DocumentTools(IApplicationServiceProvider services) : base(services) {}
 
     /// <summary>
     /// Opens a document in the editor.
@@ -26,7 +20,7 @@ public class DocumentTools
     [ToolAlias("open")]
     public void Open(string fileResource, bool forceReload = false)
     {
-        _commandService.Execute<IOpenDocumentCommand>(command =>
+        CommandService.Execute<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.ForceReload = forceReload;
@@ -42,7 +36,7 @@ public class DocumentTools
     [ToolAlias("close")]
     public void Close(string fileResource, bool forceClose = false)
     {
-        _commandService.Execute<ICloseDocumentCommand>(command =>
+        CommandService.Execute<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.ForceClose = forceClose;

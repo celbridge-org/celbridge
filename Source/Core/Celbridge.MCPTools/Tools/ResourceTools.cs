@@ -1,4 +1,3 @@
-using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using ModelContextProtocol.Server;
@@ -9,14 +8,9 @@ namespace Celbridge.MCPTools.Tools;
 /// MCP tools for managing project resources (files and folders).
 /// </summary>
 [McpServerToolType]
-public class ResourceTools
+public class ResourceTools : ToolBase
 {
-    private readonly ICommandService _commandService;
-
-    public ResourceTools(ICommandService commandService)
-    {
-        _commandService = commandService;
-    }
+    public ResourceTools(IApplicationServiceProvider services) : base(services) {}
 
     /// <summary>
     /// Deletes a resource.
@@ -29,14 +23,14 @@ public class ResourceTools
     {
         if (confirm)
         {
-            _commandService.Execute<IDeleteResourceDialogCommand>(command =>
+            CommandService.Execute<IDeleteResourceDialogCommand>(command =>
             {
                 command.Resources = new List<ResourceKey> { resource };
             });
         }
         else
         {
-            _commandService.Execute<IDeleteResourceCommand>(command =>
+            CommandService.Execute<IDeleteResourceCommand>(command =>
             {
                 command.Resources = new List<ResourceKey> { resource };
             });
@@ -52,7 +46,7 @@ public class ResourceTools
     [ToolAlias("move")]
     public void Move(string sourceResource, string destinationResource)
     {
-        _commandService.Execute<ICopyResourceCommand>(command =>
+        CommandService.Execute<ICopyResourceCommand>(command =>
         {
             command.SourceResources = new List<ResourceKey> { sourceResource };
             command.DestResource = destinationResource;

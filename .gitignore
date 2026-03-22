@@ -426,3 +426,6 @@ Source/Celbridge/DesignDocs/
 
 # Claude Code local settings
 **/.claude/settings.local.json
+
+# MCP server config (generated at runtime by the broker)
+.mcp.json

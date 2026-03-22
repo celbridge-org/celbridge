@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
 namespace Celbridge.Broker.Services;

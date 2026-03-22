@@ -3,6 +3,13 @@
 This document provides essential context for AI agents working with
 Celbridge projects through the MCP tool interface.
 
+## Getting Started
+
+Before calling any workspace tools, call `get_project_status` to check
+whether a project is loaded. Most tools require a loaded project and will
+fail if no project is open. The response includes the project name and
+the project folder path on disk.
+
 ## Resource Keys
 
 All file and folder references in Celbridge use **resource keys** — relative

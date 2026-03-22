@@ -36,7 +36,7 @@ public static class ServiceConfiguration
         services.AddTransient<IUndoCommand, UndoCommand>();
         services.AddTransient<IRedoCommand, RedoCommand>();
         services.AddTransient<IHelpCommand, HelpCommand>();
-        services.AddTransient<IPrintCommand, PrintCommand>();
+
         services.AddTransient<IRunCommand, RunCommand>();
     }
 }
