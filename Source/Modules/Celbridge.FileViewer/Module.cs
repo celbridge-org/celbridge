@@ -5,7 +5,6 @@ using Celbridge.FileViewer.Services;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.FileViewer.Views;
 using Celbridge.Modules;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.FileViewer;
 

@@ -16,6 +16,7 @@
     <Project Path="Source/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
     <Project Path="Source/Core/Celbridge.Host/Celbridge.Host.csproj" />
     <Project Path="Source/Core/Celbridge.Logging/Celbridge.Logging.csproj" />
+    <Project Path="Source/Core/Celbridge.MCPTools/Celbridge.MCPTools.csproj" />
     <Project Path="Source/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
     <Project Path="Source/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
     <Project Path="Source/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
