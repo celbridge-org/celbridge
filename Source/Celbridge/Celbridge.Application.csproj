@@ -53,7 +53,7 @@
 
   <!-- Direct project dependencies -->
   <ItemGroup>
-    <ProjectReference Include="..\Core\Celbridge.Broker\Celbridge.Broker.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Server\Celbridge.Server.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Logging\Celbridge.Logging.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Messaging\Celbridge.Messaging.csproj" />

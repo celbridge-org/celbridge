@@ -286,7 +286,7 @@ public partial class App : Application
 
     public static void ConfigureServices(IServiceCollection services)
     {
-        Broker.ServiceConfiguration.ConfigureServices(services);
+        Server.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);
@@ -301,7 +301,7 @@ public partial class App : Application
 
     private void InitializeCoreServices()
     {
-        Broker.ServiceConfiguration.Initialize();
+        Server.ServiceConfiguration.Initialize();
         UserInterface.ServiceConfiguration.Initialize();
         WebView.ServiceConfiguration.Initialize();
         Workspace.ServiceConfiguration.Initialize();

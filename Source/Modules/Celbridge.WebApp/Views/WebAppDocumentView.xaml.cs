@@ -1,4 +1,4 @@
-using Celbridge.Broker;
+using Celbridge.Server;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
@@ -28,7 +28,7 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         ICommandService commandService,
         IMessengerService messengerService,
         IWebViewFactory webViewFactory,
-        IProjectFileServer projectFileServer)
+        IFileServer projectFileServer)
         : base(messengerService, webViewFactory)
     {
         this.InitializeComponent();

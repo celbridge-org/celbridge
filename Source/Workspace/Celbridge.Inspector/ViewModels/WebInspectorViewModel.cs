@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Celbridge.Broker;
+using Celbridge.Server;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -17,7 +17,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IProjectFileServer _projectFileServer;
+    private readonly IFileServer _fileServer;
     private readonly IWebViewService _webViewService;
 
     [ObservableProperty]
@@ -68,14 +68,14 @@ public partial class WebInspectorViewModel : InspectorViewModel
         IStringLocalizer stringLocalizer,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IProjectFileServer projectFileServer,
+        IFileServer projectFileServer,
         IWebViewService webViewService)
     {
         _logger = logger;
         _stringLocalizer = stringLocalizer;
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _projectFileServer = projectFileServer;
+        _fileServer = projectFileServer;
         _webViewService = webViewService;
 
         _messengerService.Register<WebAppNavigationStateChangedMessage>(this, OnWebAppNavigationStateChanged);
@@ -152,7 +152,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
             case UrlType.LocalAbsolute:
                 var resourcePath = _webViewService.StripLocalScheme(trimmedUrl);
-                var absoluteUrl = _projectFileServer.ResolveProjectFileUrl(resourcePath, contextResource);
+                var absoluteUrl = _fileServer.ResolveLocalFileUrl(resourcePath, contextResource);
                 if (!string.IsNullOrEmpty(absoluteUrl))
                 {
                     navigateUrl = absoluteUrl;
@@ -163,7 +163,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
                 return ResolveResourceKey(resourcePath, contextResource);
 
             case UrlType.LocalPath:
-                var relativeUrl = _projectFileServer.ResolveProjectFileUrl(trimmedUrl, contextResource);
+                var relativeUrl = _fileServer.ResolveLocalFileUrl(trimmedUrl, contextResource);
                 if (!string.IsNullOrEmpty(relativeUrl))
                 {
                     navigateUrl = relativeUrl;

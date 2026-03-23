@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Server;
 
 namespace Celbridge.Projects.Commands;
 
@@ -7,21 +8,29 @@ public class LoadProjectCommand : CommandBase, ILoadProjectCommand
     private readonly IProjectService _projectService;
     private readonly ICommandService _commandService;
     private readonly IProjectLoader _projectLoader;
+    private readonly IServerService _serverService;
 
     public LoadProjectCommand(
         ICommandService commandService,
         IProjectService projectService,
-        IProjectLoader projectLoader)
+        IProjectLoader projectLoader,
+        IServerService serverService)
     {
         _commandService = commandService;
         _projectService = projectService;
         _projectLoader = projectLoader;
+        _serverService = serverService;
     }
 
     public string ProjectFilePath { get; set; } = string.Empty;
 
     public override async Task<Result> ExecuteAsync()
     {
+        if (_serverService.Status != ServerStatus.Ready)
+        {
+            return Result.Fail("Failed to load project because the server is not yet initialized.");
+        }
+
         if (string.IsNullOrEmpty(ProjectFilePath))
         {
             return Result.Fail("Failed to load project because path is empty.");

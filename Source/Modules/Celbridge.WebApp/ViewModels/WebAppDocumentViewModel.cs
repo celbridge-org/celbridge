@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Celbridge.Broker;
+using Celbridge.Server;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
@@ -12,7 +12,7 @@ namespace Celbridge.WebApp.ViewModels;
 public partial class WebAppDocumentViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
-    private readonly IProjectFileServer _projectFileServer;
+    private readonly IFileServer _fileServer;
     private readonly IWebViewService _webViewService;
     private readonly ILogger<WebAppDocumentViewModel> _logger;
 
@@ -39,12 +39,12 @@ public partial class WebAppDocumentViewModel : DocumentViewModel
 
     public WebAppDocumentViewModel(
         ICommandService commandService,
-        IProjectFileServer projectFileServer,
+        IFileServer projectFileServer,
         IWebViewService webViewService,
         ILogger<WebAppDocumentViewModel> logger)
     {
         _commandService = commandService;
-        _projectFileServer = projectFileServer;
+        _fileServer = projectFileServer;
         _webViewService = webViewService;
         _logger = logger;
     }
@@ -94,10 +94,10 @@ public partial class WebAppDocumentViewModel : DocumentViewModel
 
             case UrlType.LocalAbsolute:
                 var resourcePath = _webViewService.StripLocalScheme(trimmedUrl);
-                return _projectFileServer.ResolveProjectFileUrl(resourcePath, FileResource);
+                return _fileServer.ResolveLocalFileUrl(resourcePath, FileResource);
 
             case UrlType.LocalPath:
-                return _projectFileServer.ResolveProjectFileUrl(trimmedUrl, FileResource);
+                return _fileServer.ResolveLocalFileUrl(trimmedUrl, FileResource);
 
             default:
                 return string.Empty;
