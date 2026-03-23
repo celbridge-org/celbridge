@@ -1,4 +1,3 @@
-using Celbridge.Logging;
 using Celbridge.Projects.Services;
 using Celbridge.Tests.Migration.TestHelpers;
 

@@ -1,5 +1,4 @@
 using Celbridge.Extensions;
-using Celbridge.Logging;
 
 namespace Celbridge.Tests.Extensions;
 

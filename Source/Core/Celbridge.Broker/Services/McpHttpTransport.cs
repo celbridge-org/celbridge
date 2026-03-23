@@ -13,6 +13,7 @@ namespace Celbridge.Broker.Services;
 public class McpHttpTransport : IMcpHttpTransport
 {
     private readonly IServiceProvider _applicationServices;
+    private readonly ProjectFileServer _projectFileServer;
     private readonly ILogger<McpHttpTransport> _logger;
 
     private WebApplication? _webApplication;
@@ -22,9 +23,11 @@ public class McpHttpTransport : IMcpHttpTransport
 
     public McpHttpTransport(
         IServiceProvider applicationServices,
+        ProjectFileServer projectFileServer,
         ILogger<McpHttpTransport> logger)
     {
         _applicationServices = applicationServices;
+        _projectFileServer = projectFileServer;
         _logger = logger;
     }
 
@@ -46,7 +49,8 @@ public class McpHttpTransport : IMcpHttpTransport
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
 
         _webApplication = builder.Build();
-        _webApplication.MapMcp();
+        _webApplication.MapMcp("/mcp");
+        _projectFileServer.ConfigureEndpoint(_webApplication);
 
         await _webApplication.StartAsync(cancellationToken);
 

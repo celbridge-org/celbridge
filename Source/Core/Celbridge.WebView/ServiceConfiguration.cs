@@ -7,6 +7,7 @@ public static class ServiceConfiguration
 {
     public static void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<IWebViewService, WebViewService>();
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
     }
 

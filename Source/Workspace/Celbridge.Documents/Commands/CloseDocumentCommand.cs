@@ -1,4 +1,3 @@
-using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.Workspace;
 
@@ -53,17 +52,4 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
         });
     }
 
-    //
-    // Broker tool methods.
-    //
-
-    [McpTool(Name = "document/close", Alias = "close", Description = "Closes a document in the editor")]
-    public static void BrokerCloseDocument(
-        [McpParam(Description = "Resource key of the file to close")]
-        ResourceKey fileResource,
-        [McpParam(Description = "Force close without save confirmation")]
-        bool forceClose = false)
-    {
-        CloseDocument(fileResource, forceClose);
-    }
 }

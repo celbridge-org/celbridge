@@ -379,7 +379,7 @@
     <value>Current URL</value>
   </data>
   <data name="WebInspector_AddressPlaceholder" xml:space="preserve">
-    <value>Enter web address</value>
+    <value>e.g. https://example.com or ../index.html</value>
   </data>
   <data name="WebInspector_GoBackTooltip" xml:space="preserve">
     <value>Go Back</value>
@@ -389,6 +389,9 @@
   </data>
   <data name="WebInspector_RefreshTooltip" xml:space="preserve">
     <value>Refresh (clears cache)</value>
+  </data>
+  <data name="WebInspector_InvalidUrl" xml:space="preserve">
+    <value>Enter a valid URL (https://...) or local path to an .html file.</value>
   </data>
   <data name="EntityInspector_AddComponentTooltip" xml:space="preserve">
     <value>Add a New Component</value>

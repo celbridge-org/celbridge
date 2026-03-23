@@ -1,3 +1,4 @@
+using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
@@ -15,6 +16,7 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
     private readonly ILogger<WebAppDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
+    private bool _isFileServerReady;
 
     public WebAppDocumentViewModel ViewModel { get; }
 
@@ -25,7 +27,8 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         ILogger<WebAppDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
-        IWebViewFactory webViewFactory)
+        IWebViewFactory webViewFactory,
+        IProjectFileServer projectFileServer)
         : base(messengerService, webViewFactory)
     {
         this.InitializeComponent();
@@ -33,6 +36,7 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
+        _isFileServerReady = projectFileServer.IsReady;
 
         ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
 
@@ -45,6 +49,37 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         _messengerService.Register<WebAppRefreshMessage>(this, OnWebAppRefresh);
         _messengerService.Register<WebAppGoBackMessage>(this, OnWebAppGoBack);
         _messengerService.Register<WebAppGoForwardMessage>(this, OnWebAppGoForward);
+        _messengerService.Register<ProjectFileServerReadyMessage>(this, OnProjectFileServerReady);
+    }
+
+    private void OnProjectFileServerReady(object recipient, ProjectFileServerReadyMessage message)
+    {
+        _isFileServerReady = true;
+        TryNavigate();
+    }
+
+    /// <summary>
+    /// Navigates the WebView to the resolved URL if it is ready.
+    /// For resource keys (no scheme), navigation is deferred until
+    /// the project file server is available.
+    /// </summary>
+    private void TryNavigate()
+    {
+        if (WebView?.CoreWebView2 is null || string.IsNullOrEmpty(ViewModel.SourceUrl))
+        {
+            return;
+        }
+
+        if (ViewModel.NeedsFileServer && !_isFileServerReady)
+        {
+            return;
+        }
+
+        var navigateUrl = ViewModel.NavigateUrl;
+        if (!string.IsNullOrEmpty(navigateUrl))
+        {
+            WebView.CoreWebView2.Navigate(navigateUrl);
+        }
     }
 
     private async void OnWebAppNavigate(object recipient, WebAppNavigateMessage message)
@@ -179,11 +214,10 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
         WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
 
-        // Navigate to the URL if already loaded
-        if (!string.IsNullOrEmpty(ViewModel.SourceUrl))
-        {
-            WebView.CoreWebView2.Navigate(ViewModel.SourceUrl);
-        }
+        // Navigate if the URL is ready. For resource keys served via the
+        // project file server, navigation is deferred until
+        // ProjectFileServerReadyMessage is received.
+        TryNavigate();
     }
 
     private void CoreWebView2_HistoryChanged(object? sender, object e)
@@ -297,10 +331,11 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
             return loadResult;
         }
 
-        // If the WebView is already initialized (reload case), navigate now
-        if (WebView?.CoreWebView2 is not null && !string.IsNullOrEmpty(ViewModel.SourceUrl))
+        // If the WebView is already initialized (reload case), try to navigate.
+        // For resource keys, navigation may be deferred until the file server is ready.
+        if (WebView?.CoreWebView2 is not null)
         {
-            WebView.CoreWebView2.Navigate(ViewModel.SourceUrl);
+            TryNavigate();
         }
 
         return loadResult;

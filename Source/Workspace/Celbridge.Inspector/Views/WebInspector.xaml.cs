@@ -37,6 +37,11 @@ public partial class WebInspector : UserControl, IInspector
         if (e.Key == VirtualKey.Enter)
         {
             ViewModel.HomeCommand.Execute(null);
+
+            // Move focus away from the text box so the user gets
+            // immediate visual feedback that the Enter press registered.
+            Focus(FocusState.Programmatic);
+
             e.Handled = true;
         }
     }

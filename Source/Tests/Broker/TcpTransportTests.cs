@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Celbridge.Broker;
 using Celbridge.Broker.Services;
 using Newtonsoft.Json.Linq;
 using StreamJsonRpc;
@@ -9,29 +10,22 @@ namespace Celbridge.Tests;
 [TestFixture]
 public class TcpTransportTests
 {
-    private BrokerService? _brokerService;
     private TcpTransport? _transport;
+    private BrokerRpcHandler? _brokerRpcHandler;
     private CancellationTokenSource? _cancellationTokenSource;
     private int _port;
 
     [SetUp]
     public void Setup()
     {
-        // Build the broker service with tool discovery
-        var registryLogger = Substitute.For<ILogger<ToolRegistry>>();
-        var executorLogger = Substitute.For<ILogger<ToolExecutor>>();
-        var brokerLogger = Substitute.For<ILogger<BrokerService>>();
+        // Create a mock IApplicationServiceProvider for tool classes
+        var mockServiceProvider = Substitute.For<IApplicationServiceProvider>();
 
-        var toolRegistry = new ToolRegistry(registryLogger);
-        var toolExecutor = new ToolExecutor(executorLogger);
-        _brokerService = new BrokerService(brokerLogger, toolRegistry, toolExecutor);
-        _brokerService.Initialize(new[] { typeof(ExecutorTestTools).Assembly });
-
-        // Build the transport
+        // Build the RPC handler and transport
         var rpcHandlerLogger = Substitute.For<ILogger<BrokerRpcHandler>>();
         var transportLogger = Substitute.For<ILogger<TcpTransport>>();
-        var brokerRpcHandler = new BrokerRpcHandler(_brokerService, rpcHandlerLogger);
-        _transport = new TcpTransport(transportLogger, brokerRpcHandler);
+        _brokerRpcHandler = new BrokerRpcHandler(mockServiceProvider, rpcHandlerLogger);
+        _transport = new TcpTransport(transportLogger, _brokerRpcHandler);
 
         // Find a free port and start listening
         _port = GetAvailableTcpPort();
@@ -61,52 +55,31 @@ public class TcpTransportTests
         result!.Count.Should().BeGreaterThan(0);
 
         // Verify a known tool is present
-        var greetTool = result.FirstOrDefault(
-            t => t["name"]?.Value<string>() == "exec/greet");
-        greetTool.Should().NotBeNull();
-        greetTool!["description"]!.Value<string>().Should().Be("Returns a greeting");
+        var versionTool = result.FirstOrDefault(
+            t => t["name"]?.Value<string>() == "app_version");
+        versionTool.Should().NotBeNull();
 
-        // Verify parameters are included
-        var parameters = greetTool["parameters"] as JArray;
+        // Verify alias is included
+        versionTool!["alias"]!.Value<string>().Should().Be("app_version");
+    }
+
+    [Test]
+    public async Task ToolsList_IncludesParameterMetadata()
+    {
+        using var client = await ConnectClientAsync();
+
+        var result = await client.InvokeWithParameterObjectAsync<JArray>("tools/list");
+
+        // Find a tool with parameters
+        var openTool = result!.FirstOrDefault(
+            t => t["name"]?.Value<string>() == "document_open");
+        openTool.Should().NotBeNull();
+
+        var parameters = openTool!["parameters"] as JArray;
         parameters.Should().NotBeNull();
-        parameters!.Count.Should().Be(1);
-        parameters[0]["name"]!.Value<string>().Should().Be("name");
-    }
-
-    [Test]
-    public async Task ToolsCall_InvokesTool_ReturnsResult()
-    {
-        using var client = await ConnectClientAsync();
-
-        var result = await client.InvokeWithParameterObjectAsync<JObject>(
-            "tools/call",
-            new
-            {
-                name = "exec/greet",
-                arguments = new { name = "World" }
-            });
-
-        result.Should().NotBeNull();
-        result!["isSuccess"]!.Value<bool>().Should().BeTrue();
-        result["value"]!.Value<string>().Should().Be("Hello, World!");
-    }
-
-    [Test]
-    public async Task ToolsCall_WithIntParameters_CoercedCorrectly()
-    {
-        using var client = await ConnectClientAsync();
-
-        var result = await client.InvokeWithParameterObjectAsync<JObject>(
-            "tools/call",
-            new
-            {
-                name = "exec/add",
-                arguments = new { left = 10, right = 20 }
-            });
-
-        result.Should().NotBeNull();
-        result!["isSuccess"]!.Value<bool>().Should().BeTrue();
-        result["value"]!.Value<int>().Should().Be(30);
+        parameters!.Count.Should().Be(2);
+        parameters[0]["name"]!.Value<string>().Should().Be("fileResource");
+        parameters[0]["type"]!.Value<string>().Should().Be("str");
     }
 
     [Test]
@@ -125,24 +98,6 @@ public class TcpTransportTests
         result.Should().NotBeNull();
         result!["isSuccess"]!.Value<bool>().Should().BeFalse();
         result["errorMessage"]!.Value<string>().Should().Contain("Unknown tool");
-    }
-
-    [Test]
-    public async Task ToolsCall_AsyncTool_ReturnsResult()
-    {
-        using var client = await ConnectClientAsync();
-
-        var result = await client.InvokeWithParameterObjectAsync<JObject>(
-            "tools/call",
-            new
-            {
-                name = "exec/async_value",
-                arguments = new { text = "hello" }
-            });
-
-        result.Should().NotBeNull();
-        result!["isSuccess"]!.Value<bool>().Should().BeTrue();
-        result["value"]!.Value<string>().Should().Be("HELLO");
     }
 
     [Test]
@@ -186,6 +141,7 @@ public class TcpTransportTests
     public async Task AdditionalRpcTarget_MethodsAreAccessible()
     {
         Guard.IsNotNull(_transport);
+        Guard.IsNotNull(_brokerRpcHandler);
 
         // Register an additional RPC target before any connections
         var additionalHandler = new TestAdditionalHandler();
@@ -195,10 +151,8 @@ public class TcpTransportTests
         _cancellationTokenSource?.Cancel();
         _transport.Dispose();
 
-        var rpcHandlerLogger = Substitute.For<ILogger<BrokerRpcHandler>>();
         var transportLogger = Substitute.For<ILogger<TcpTransport>>();
-        var brokerRpcHandler = new BrokerRpcHandler(_brokerService!, rpcHandlerLogger);
-        _transport = new TcpTransport(transportLogger, brokerRpcHandler);
+        _transport = new TcpTransport(transportLogger, _brokerRpcHandler);
         _transport.AddRpcTarget(additionalHandler);
 
         _port = GetAvailableTcpPort();

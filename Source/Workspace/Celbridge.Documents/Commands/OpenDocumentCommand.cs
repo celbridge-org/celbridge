@@ -1,4 +1,3 @@
-using Celbridge.Broker;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Explorer;
@@ -136,17 +135,4 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         });
     }
 
-    //
-    // Broker tool methods.
-    //
-
-    [McpTool(Name = "document/open", Alias = "open", Description = "Opens a document in the editor")]
-    public static void BrokerOpenDocument(
-        [McpParam(Description = "Resource key of the file to open")]
-        ResourceKey fileResource,
-        [McpParam(Description = "Force reload even if already open")]
-        bool forceReload = false)
-    {
-        OpenDocument(fileResource, forceReload);
-    }
 }

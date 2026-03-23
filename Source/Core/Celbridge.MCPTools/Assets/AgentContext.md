@@ -67,3 +67,18 @@ All tools that modify application state enqueue commands on a sequential
 command queue. Commands execute in order on the UI thread. Tools return
 immediately after enqueuing — they do not wait for the command to complete
 unless the tool method is explicitly async.
+
+## Python Scripting
+
+The Celbridge console hosts an interactive Python REPL with a pre-configured
+`cel` proxy object available as a global variable. Do not import any library
+or construct a client — just use `cel` directly.
+
+```python
+cel.open("Project/readme.md")
+cel.log("Processing complete")
+```
+
+Tool aliases provide short method names for the Python proxy. Call the
+`get_client_aliases` tool to get the mapping from MCP tool names to
+Python `cel` proxy method names.

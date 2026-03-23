@@ -1,5 +1,4 @@
 using Celbridge.Extensions;
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Settings;
