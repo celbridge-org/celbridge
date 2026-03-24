@@ -55,7 +55,9 @@ def apply_post_startup_customizations() -> None:
                         # Not from CelProxy, fall back to default handling
                         self.showtraceback()
                         return
-                print(f"{exception_type.__name__}: {exception}", file=sys.stderr)
+                red = "\033[31m"
+                reset = "\033[0m"
+                print(f"{red}{exception_type.__name__}{reset}: {exception}", file=sys.stderr)
 
             ip.set_custom_exc((CelError, AttributeError), cel_exception_handler)
         except Exception:

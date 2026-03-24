@@ -7,7 +7,7 @@ namespace Celbridge.Resources.Commands;
 
 public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey DestFolderResource { get; set; }
     public DataTransferMode TransferMode { get; set; }

@@ -1,23 +1,23 @@
-# Celbridge Python Connector
+# Celbridge.Python
 
-Minimal Python connector for the Celbridge application. Connects to the Celbridge .NET application via JSON-RPC over TCP and provides an interactive IPython REPL with a `cel` proxy object for calling application methods.
+Celbridge workspace project that manages the Python connector. Builds the `celbridge` Python wheel and bundles it as an asset for installation at runtime.
 
 ## Architecture
 
 The Celbridge .NET application starts a TCP JSON-RPC server and launches a terminal process with the `CELBRIDGE_RPC_PORT` environment variable set. The Python connector reads this variable, connects to the server, and launches an IPython REPL with the `cel` proxy injected.
 
-The `celbridge-py` command is also installed as a uv tool, so users can type `celbridge-py` in the terminal to start a new REPL session after exiting.
+The `celbridge-py` command is installed as a uv tool, so users can type `celbridge-py` in the terminal to start a new REPL session after exiting.
 
 ## Package
 
-- **`celbridge`** - Python connector with a single dependency (`ipython`). Uses only the Python standard library for JSON-RPC communication. The `cel` proxy converts Python method calls to JSON-RPC requests sent to the Celbridge application.
+The Python source lives in `packages/celbridge/`. It has a single runtime dependency (`ipython`) and uses only the Python standard library for JSON-RPC communication. The `cel` proxy discovers available tools from the MCP server via the McpToolBridge and generates proxy methods dynamically.
 
 ## Running Tests
 
 Create a virtual environment and install the package with test dependencies:
 
 ```bash
-cd Source/Python
+cd Source/Workspace/Celbridge.Python
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # Linux/macOS
@@ -34,7 +34,7 @@ python run_tests.py
 
 The celbridge Python wheel is built automatically by MSBuild when the Celbridge.Python project is built. The MSBuild target detects changes to Python source files and rebuilds the wheel as needed.
 
-To build the wheel manually, use the `build.py` script which builds the package and copies it to the Celbridge.Python Assets folder:
+To build the wheel manually:
 
 ```bash
 python build.py

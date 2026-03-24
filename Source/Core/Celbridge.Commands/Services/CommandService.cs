@@ -198,21 +198,17 @@ public class CommandService : ICommandService
                             _logger.LogError(executeResult, "Execute command failed");
                         }
 
+                        // Update the resource registry synchronously before notifying callers.
+                        // This ensures ExecuteAsync callers see an up-to-date registry.
+                        if (command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
+                        {
+                            var message = new RequestResourceRegistryUpdateMessage();
+                            _messengerService.Send(message);
+                        }
+
                         // Call the OnExecute callback if it is set.
                         // This is used by the ExecuteAsync() methods to notify the caller about the execution.
                         command.OnExecute?.Invoke(executeResult);
-
-                        // Handle resource updates based on command flags
-                        if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
-                        {
-                            var message = new RequestResourceRegistryUpdateMessage(ForceImmediate: true);
-                            _messengerService.Send(message);
-                        }
-                        else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
-                        {
-                            var message = new RequestResourceRegistryUpdateMessage(ForceImmediate: false);
-                            _messengerService.Send(message);
-                        }
 
                         // Save the workspace state if the command requires it.
                         if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))

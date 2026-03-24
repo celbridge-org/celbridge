@@ -8,6 +8,7 @@ create namespace objects so that `cel.sheet.delete()` works naturally.
 
 import difflib
 import inspect
+import json
 import logging
 import re
 
@@ -48,7 +49,7 @@ def _build_signature(tool: dict) -> str:
     parts = []
     for parameter in tool.get("parameters", []):
         parameter_name = _camel_to_snake(parameter["name"])
-        parameter_type = parameter.get("type", "")
+        parameter_type = _to_python_type(parameter.get("type", ""))
         type_annotation = f": {parameter_type}" if parameter_type else ""
         has_default = parameter.get("hasDefaultValue", False)
         if has_default:
@@ -59,7 +60,7 @@ def _build_signature(tool: dict) -> str:
 
     signature = "(" + ", ".join(parts) + ")"
 
-    return_type = tool.get("returnType", "")
+    return_type = _to_python_type(tool.get("returnType", ""))
     if return_type:
         signature += f" -> {return_type}"
 
@@ -80,20 +81,35 @@ def _build_docstring(tool: dict) -> str:
         for parameter in parameters:
             parameter_name = _camel_to_snake(parameter["name"])
             parameter_description = parameter.get("description", "")
-            parameter_type = parameter.get("type", "")
+            parameter_type = _to_python_type(parameter.get("type", ""))
             type_hint = f" ({parameter_type})" if parameter_type else ""
             lines.append(f"    {parameter_name}{type_hint}: {parameter_description}")
 
     return "\n".join(lines)
 
 
-# Map of simple type name strings to Python type objects for inspect.Parameter annotations
+# Map JSON Schema type names to Python type names for display
+_JSON_SCHEMA_TO_PYTHON = {
+    "string": "str",
+    "boolean": "bool",
+    "integer": "int",
+    "number": "float",
+    "array": "list",
+    "object": "dict",
+}
+
+# Map Python type name strings to Python type objects for inspect.Parameter annotations
 _TYPE_MAP = {
     "str": str,
     "int": int,
     "bool": bool,
     "float": float,
 }
+
+
+def _to_python_type(json_schema_type: str) -> str:
+    """Convert a JSON Schema type name to a Python type name for display."""
+    return _JSON_SCHEMA_TO_PYTHON.get(json_schema_type, json_schema_type)
 
 
 def _build_inspect_signature(tool: dict) -> inspect.Signature:
@@ -105,8 +121,8 @@ def _build_inspect_signature(tool: dict) -> inspect.Signature:
     parameters = []
     for param in tool.get("parameters", []):
         parameter_name = _camel_to_snake(param["name"])
-        type_name = param.get("type", "")
-        annotation = _TYPE_MAP.get(type_name, inspect.Parameter.empty)
+        python_type_name = _to_python_type(param.get("type", ""))
+        annotation = _TYPE_MAP.get(python_type_name, inspect.Parameter.empty)
         has_default = param.get("hasDefaultValue", False)
         default = param.get("defaultValue") if has_default else inspect.Parameter.empty
 
@@ -117,8 +133,8 @@ def _build_inspect_signature(tool: dict) -> inspect.Signature:
             annotation=annotation,
         ))
 
-    return_type_name = tool.get("returnType", "")
-    return_annotation = _TYPE_MAP.get(return_type_name, inspect.Signature.empty)
+    python_return_type = _to_python_type(tool.get("returnType", ""))
+    return_annotation = _TYPE_MAP.get(python_return_type, inspect.Parameter.empty)
 
     return inspect.Signature(parameters, return_annotation=return_annotation)
 
@@ -146,13 +162,17 @@ class ToolNamespace:
 
 
 class CelProxy:
-    """Celbridge application proxy. Type help(cel) to see available commands."""
+    """Celbridge application proxy. Type help(cel) for commands."""
 
     def __init__(self, client: RpcClient):
         self._client = client
         self._tools: list[dict] = []
         self._aliases: list[str] = []
         self._discover_tools()
+
+    def __repr__(self) -> str:
+        tool_count = len(self._tools)
+        return f"cel - Celbridge proxy ({tool_count} tools). Type help(cel) for commands."
 
     def _discover_tools(self) -> None:
         """Query the broker for available tools and create proxy methods."""
@@ -184,7 +204,12 @@ class CelProxy:
 
     def _build_help_doc(self) -> str:
         """Build a comprehensive docstring for help(cel) from discovered tools."""
-        lines = ["Celbridge application proxy.", ""]
+        lines = [
+            "Provides Python access to the Celbridge application via RPC.",
+            "Use help(cel.<namespace>) for details on a specific group.",
+            "Use help(<command>) for detailed help on a specific command.",
+            "",
+        ]
 
         top_level_tools: list[dict] = []
         namespaced_tools: dict[str, list[dict]] = {}
@@ -202,30 +227,31 @@ class CelProxy:
                 top_level_tools.append(tool)
 
         if top_level_tools:
-            lines.append("Commands:")
-            lines.append("")
             for tool in sorted(top_level_tools, key=lambda t: t.get("alias", "")):
                 alias = tool.get("alias", "")
                 signature = _build_signature(tool)
                 description = tool.get("description", "")
-                lines.append(f"  cel.{alias}{signature}")
+                lines.append(f"cel.{alias}{signature}")
                 if description:
-                    lines.append(f"      {description}")
+                    lines.append(f"    {description}")
                 lines.append("")
 
-        for tool_namespace in sorted(namespaced_tools.keys()):
-            tools_in_namespace = namespaced_tools[tool_namespace]
-            lines.append(f"  cel.{tool_namespace}:")
-            lines.append("")
-            for tool in sorted(tools_in_namespace, key=lambda t: t.get("alias", "")):
-                alias = tool.get("alias", "")
-                method_name = alias.split(".", 1)[1]
-                signature = _build_signature(tool)
-                description = tool.get("description", "")
-                lines.append(f"    .{method_name}{signature}")
-                if description:
-                    lines.append(f"        {description}")
-                lines.append("")
+        if namespaced_tools:
+            for tool_namespace in sorted(namespaced_tools.keys()):
+                tools_in_namespace = namespaced_tools[tool_namespace]
+                lines.append(f"cel.{tool_namespace}")
+                for tool in sorted(tools_in_namespace, key=lambda t: t.get("alias", "")):
+                    alias = tool.get("alias", "")
+                    method_name = alias.split(".", 1)[1]
+                    signature = _build_signature(tool)
+                    description = tool.get("description", "")
+                    lines.append(f"    .{method_name}{signature}")
+                    if description:
+                        lines.append(f"        {description}")
+                    lines.append("")
+
+        lines.append("cel.tools()")
+        lines.append("    Print tool descriptors as JSON")
 
         return "\n".join(lines)
 
@@ -247,15 +273,15 @@ class CelProxy:
             if namespace is None:
                 continue
 
-            lines = [f"cel.{namespace_name} commands:", ""]
+            lines = [f"cel.{namespace_name}"]
             for tool in sorted(tools, key=lambda t: t.get("alias", "")):
                 alias = tool.get("alias", "")
                 method_name = alias.split(".", 1)[1]
                 signature = _build_signature(tool)
                 description = tool.get("description", "")
-                lines.append(f"  cel.{namespace_name}.{method_name}{signature}")
+                lines.append(f"    .{method_name}{signature}")
                 if description:
-                    lines.append(f"      {description}")
+                    lines.append(f"        {description}")
                 lines.append("")
 
             namespace.__doc__ = "\n".join(lines)
@@ -277,6 +303,17 @@ class CelProxy:
         else:
             proxy.__name__ = alias
             object.__setattr__(self, alias, proxy)
+
+    def _get_namespace_names(self) -> list[str]:
+        """Return the names of all ToolNamespace objects attached to this proxy."""
+        return [
+            key for key in self.__dict__
+            if isinstance(self.__dict__[key], ToolNamespace)
+        ]
+
+    def tools(self):
+        """Prints the tool descriptors from the broker as formatted JSON."""
+        print(json.dumps(self._tools, indent=2))
 
     def __getattr__(self, name: str):
         """Provide a helpful error when an unknown method is accessed."""
@@ -329,7 +366,7 @@ class CelProxy:
             if not is_success:
                 error_message = result.get("errorMessage", "Unknown error")
                 raise CelError(
-                    f"cel.{alias}{signature}: {error_message}"
+                    f"cel.{alias}{signature}\n{error_message}"
                 )
 
             return result.get("value")
@@ -339,3 +376,10 @@ class CelProxy:
         proxy.__qualname__ = alias
 
         return proxy
+
+
+# Override the class name shown by help() so it displays
+# "Help on cel object" instead of "Help on CelProxy in module celbridge.cel_proxy"
+CelProxy.__name__ = "cel"
+CelProxy.__qualname__ = "cel"
+CelProxy.__module__ = "celbridge"

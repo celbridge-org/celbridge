@@ -1,4 +1,5 @@
 using Celbridge.Documents;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
@@ -7,7 +8,7 @@ namespace Celbridge.Tools;
 /// MCP tools for opening and closing documents in the editor.
 /// </summary>
 [McpServerToolType]
-public class DocumentTools : AgentToolBase
+public partial class DocumentTools : AgentToolBase
 {
     public DocumentTools(IApplicationServiceProvider services) : base(services) {}
 
@@ -17,10 +18,10 @@ public class DocumentTools : AgentToolBase
     /// <param name="fileResource">Resource key of the file to open.</param>
     /// <param name="forceReload">Force reload even if already open.</param>
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
-    [ToolAlias("open")]
-    public void Open(string fileResource, bool forceReload = false)
+    [ToolAlias("document.open")]
+    public async partial Task<CallToolResult> Open(string fileResource, bool forceReload = false)
     {
-        CommandService.Execute<IOpenDocumentCommand>(command =>
+        return await ExecuteCommandAsync<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.ForceReload = forceReload;
@@ -33,10 +34,10 @@ public class DocumentTools : AgentToolBase
     /// <param name="fileResource">Resource key of the file to close.</param>
     /// <param name="forceClose">Force close without save confirmation.</param>
     [McpServerTool(Name = "document_close", ReadOnly = false, Idempotent = true)]
-    [ToolAlias("close")]
-    public void Close(string fileResource, bool forceClose = false)
+    [ToolAlias("document.close")]
+    public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
-        CommandService.Execute<ICloseDocumentCommand>(command =>
+        return await ExecuteCommandAsync<ICloseDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.ForceClose = forceClose;

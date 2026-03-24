@@ -6,7 +6,7 @@ namespace Celbridge.GenerativeAI.Commands;
 
 public class MakeTextCommand : CommandBase, IMakeTextCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     private ILogger<MakeTextCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;

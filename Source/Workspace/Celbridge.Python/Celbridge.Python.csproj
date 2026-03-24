@@ -46,7 +46,7 @@
        Uses the uv binary (extracted from the downloaded zip) to build the wheel
        without needing a pre-installed Python or virtual environment. -->
   <PropertyGroup>
-    <PythonPackageFolder>$(MSBuildThisFileDirectory)..\..\Python\packages\celbridge</PythonPackageFolder>
+    <PythonPackageFolder>$(MSBuildThisFileDirectory)packages\celbridge</PythonPackageFolder>
     <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
     <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
     <!-- Use a TFM-independent temp folder so parallel builds don't conflict -->
@@ -71,19 +71,14 @@
     <!-- Build the wheel using uv -->
     <Exec Command="&quot;$(UvTempFolder)\uv.exe&quot; build --wheel --out-dir &quot;$(PythonAssetsFolder)&quot; &quot;$(PythonPackageFolder)&quot;" />
 
-    <!-- Generate a new build version GUID so the installer detects the change -->
-    <WriteLinesToFile File="$(PythonAssetsFolder)\build_version.txt"
-                      Lines="$([System.Guid]::NewGuid())"
-                      Overwrite="true" />
-
     <!-- Clean up temp folder -->
     <RemoveDir Directories="$(UvTempFolder)" />
   </Target>
 
-  <!-- Note: the wheel and build_version.txt are NOT cleaned during 'Clean' because
-       MSBuild evaluates Content items at project load time. If these files are missing,
-       they won't be included in the AppX package even after BuildPythonWheel recreates them.
-       The BuildPythonWheel target uses Inputs/Outputs to regenerate them when needed. -->
+  <!-- Note: the wheel is NOT cleaned during 'Clean' because MSBuild evaluates Content items
+       at project load time. If the file is missing, it won't be included in the AppX package
+       even after BuildPythonWheel recreates it. The target uses Inputs/Outputs to regenerate
+       it when needed. -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
@@ -92,6 +87,15 @@
 
   <ItemGroup>
     <Folder Include="Assets\UV\" />
+  </ItemGroup>
+
+  <!-- The Uno SDK auto-includes files as Content, which GenerateLibraryLayout bundles into the
+       build output. Move Python source files from Content to None so they stay visible in
+       Visual Studio for editing but are not bundled (the wheel handles packaging instead). -->
+  <ItemGroup>
+    <Content Remove="packages\**" />
+    <None Include="packages\**"
+          Exclude="packages\**\__pycache__\**;packages\**\.venv\**;packages\**\build\**;packages\**\dist\**;packages\**\*.egg-info\**" />
   </ItemGroup>
 
 </Project>

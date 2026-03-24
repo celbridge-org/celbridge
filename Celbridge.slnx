@@ -64,8 +64,5 @@
     <Project Path="Source/Tests/Celbridge.Tests.csproj" />
   </Folder>
 
-  <Folder Name="/Python/">
-    <Project Path="Source/Python/Celbridge.Python.Packages.csproj" />
-  </Folder>
 
 </Solution>

@@ -50,13 +50,7 @@ def test_camel_to_snake_multiple_capitals():
 
 def test_build_signature_no_params():
     """Test building a signature with no parameters."""
-    tool = {"name": "app/version", "alias": "version", "returnType": "str", "parameters": []}
-    assert _build_signature(tool) == "() -> str"
-
-
-def test_build_signature_no_return_type():
-    """Test building a signature for a void tool."""
-    tool = {"name": "console/clear", "alias": "clear", "returnType": "", "parameters": []}
+    tool = {"name": "app/version", "alias": "version", "parameters": []}
     assert _build_signature(tool) == "()"
 
 
@@ -66,7 +60,7 @@ def test_build_signature_required_param():
         "name": "app/log",
         "alias": "log",
         "parameters": [
-            {"name": "message", "type": "str", "hasDefaultValue": False}
+            {"name": "message", "type": "string", "hasDefaultValue": False}
         ],
     }
     assert _build_signature(tool) == "(message: str)"
@@ -78,10 +72,10 @@ def test_build_signature_optional_param():
         "name": "document/open",
         "alias": "open",
         "parameters": [
-            {"name": "fileResource", "type": "str", "hasDefaultValue": False},
+            {"name": "fileResource", "type": "string", "hasDefaultValue": False},
             {
                 "name": "forceReload",
-                "type": "bool",
+                "type": "boolean",
                 "hasDefaultValue": True,
                 "defaultValue": False,
             },
@@ -106,7 +100,7 @@ def test_build_docstring():
     }
     docstring = _build_docstring(tool)
     assert "Writes a message to the application log" in docstring
-    assert "message (string): The message to log" in docstring
+    assert "message (str): The message to log" in docstring
 
 
 # -- CelProxy tool discovery and dispatch --
@@ -143,7 +137,7 @@ def test_discover_tools_creates_proxy_methods_from_alias():
             "parameters": [
                 {
                     "name": "fileResource",
-                    "type": "str",
+                    "type": "string",
                     "description": "Resource key",
                     "hasDefaultValue": False,
                 }
@@ -188,10 +182,10 @@ def test_proxy_converts_snake_kwargs_to_camel():
             "alias": "open",
             "description": "Opens a document",
             "parameters": [
-                {"name": "fileResource", "type": "str", "hasDefaultValue": False},
+                {"name": "fileResource", "type": "string", "hasDefaultValue": False},
                 {
                     "name": "forceReload",
-                    "type": "bool",
+                    "type": "boolean",
                     "hasDefaultValue": True,
                     "defaultValue": False,
                 },
@@ -218,10 +212,10 @@ def test_proxy_accepts_positional_arguments():
             "alias": "open",
             "description": "Opens a document",
             "parameters": [
-                {"name": "fileResource", "type": "str", "hasDefaultValue": False},
+                {"name": "fileResource", "type": "string", "hasDefaultValue": False},
                 {
                     "name": "forceReload",
-                    "type": "bool",
+                    "type": "boolean",
                     "hasDefaultValue": True,
                     "defaultValue": False,
                 },
@@ -248,10 +242,10 @@ def test_proxy_accepts_positional_and_keyword_mixed():
             "alias": "open",
             "description": "Opens a document",
             "parameters": [
-                {"name": "fileResource", "type": "str", "hasDefaultValue": False},
+                {"name": "fileResource", "type": "string", "hasDefaultValue": False},
                 {
                     "name": "forceReload",
-                    "type": "bool",
+                    "type": "boolean",
                     "hasDefaultValue": True,
                     "defaultValue": False,
                 },
@@ -399,15 +393,14 @@ def test_multiple_tools_in_same_namespace():
 def test_help_cel_shows_typed_signatures():
     """Test that help(cel) via __doc__ includes typed signatures."""
     tools = [
-        {"name": "app/version", "alias": "version", "returnType": "str", "description": "Returns the app version", "parameters": []},
-        {"name": "app/log", "alias": "log", "returnType": "", "description": "Writes a log message", "parameters": []},
+        {"name": "app/version", "alias": "version", "description": "Returns the app version", "parameters": []},
+        {"name": "app/log", "alias": "log", "description": "Writes a log message", "parameters": []},
         {
             "name": "document/open",
             "alias": "open",
-            "returnType": "",
             "description": "Opens a document",
             "parameters": [
-                {"name": "fileResource", "type": "str", "hasDefaultValue": False}
+                {"name": "fileResource", "type": "string", "hasDefaultValue": False}
             ],
         },
     ]
@@ -415,9 +408,10 @@ def test_help_cel_shows_typed_signatures():
     cel = CelProxy(mock_client)
 
     doc = cel.__doc__
-    assert "cel.version() -> str" in doc
+    assert "cel.version()" in doc
     assert "cel.log()" in doc
     assert "cel.open(file_resource: str)" in doc
+    assert "cel.tools()" in doc
 
 
 def test_help_cel_open_shows_method_doc():
@@ -426,10 +420,9 @@ def test_help_cel_open_shows_method_doc():
         {
             "name": "document/open",
             "alias": "open",
-            "returnType": "",
-            "description": "Opens a document in the editor",
+                       "description": "Opens a document in the editor",
             "parameters": [
-                {"name": "fileResource", "type": "str", "description": "Resource key of the file", "hasDefaultValue": False}
+                {"name": "fileResource", "type": "string", "description": "Resource key of the file", "hasDefaultValue": False}
             ],
         },
     ]
@@ -451,9 +444,9 @@ def test_help_namespace_shows_all_commands():
     cel = CelProxy(mock_client)
 
     doc = cel.sheet.__doc__
-    assert "cel.sheet commands:" in doc
-    assert "cel.sheet.delete()" in doc
-    assert "cel.sheet.rename()" in doc
+    assert "cel.sheet" in doc
+    assert ".delete()" in doc
+    assert ".rename()" in doc
     assert "Deletes a sheet" in doc
     assert "Renames a sheet" in doc
 
@@ -470,7 +463,7 @@ def test_help_cel_shows_namespaced_tools():
 
     doc = cel.__doc__
     assert "cel.version()" in doc
-    assert "cel.sheet:" in doc
+    assert "cel.sheet" in doc
     assert ".delete()" in doc
     assert ".rename()" in doc
 
@@ -528,7 +521,7 @@ def test_too_many_positional_args_shows_signature():
             "alias": "rename",
             "description": "Renames",
             "parameters": [
-                {"name": "resource", "type": "str", "hasDefaultValue": False}
+                {"name": "resource", "type": "string", "hasDefaultValue": False}
             ],
         }
     ]
@@ -552,7 +545,7 @@ def test_tool_failure_shows_clean_message():
             "alias": "rename",
             "description": "Renames a resource",
             "parameters": [
-                {"name": "resource", "type": "str", "hasDefaultValue": False}
+                {"name": "resource", "type": "string", "hasDefaultValue": False}
             ],
         }
     ]

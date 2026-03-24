@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Versioning;
-using System.Security.Cryptography;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Server;
@@ -27,7 +26,6 @@ public class PythonService : IPythonService, IDisposable
     private const string UVBinFolderName = "uv_bin";
     private const string IPythonCacheFolderName = "ipython";
     private const string PythonFingerprintFileName = "python_config.fingerprint";
-    private const string BuildVersionFileName = "build_version.txt";
     private const string InstalledVersionFileName = "installed_version.txt";
 
     private readonly IProjectService _projectService;
@@ -205,13 +203,10 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Determine if we can use offline mode (no network required).
-            // The fingerprint includes the config, the build version GUID (changes when wheels
-            // are rebuilt), AND the directory structure of the Python install folder on disk.
+            // The fingerprint includes the config and a hash of the wheel file contents.
             // A change to any of these forces online mode to re-download everything.
-            // The build version GUID changes whenever the Python wheel is rebuilt,
-            // which is sufficient to detect when a reinstall is needed.
-            var buildVersion = ReadBuildVersion(pythonFolder);
-            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, buildVersion, pythonPackages);
+            var wheelHash = FileHashHelper.HashFileContents(celbridgeWheelPath);
+            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, wheelHash, pythonPackages);
             var useOfflineMode = currentFingerprint == savedFingerprint;
 
             if (useOfflineMode)
@@ -437,24 +432,23 @@ public class PythonService : IPythonService, IDisposable
     }
 
     /// <summary>
-    /// Computes a fingerprint of the current Python configuration and installed state.
-    /// Includes the build version GUID (which changes when wheels are rebuilt) and the
-    /// directory structure of the Python install folder so that any change to the app
-    /// version, wheel content, installed Python versions, cached packages, or tools
-    /// causes a fingerprint mismatch that forces online mode.
+    /// Computes a fingerprint of the current Python configuration.
+    /// Includes a hash of the wheel file contents so that any change to the app
+    /// version, wheel content, or dependencies causes a fingerprint mismatch
+    /// that forces online mode.
     /// </summary>
     private static string ComputeConfigFingerprint(
         string appVersion,
         string pythonVersion,
         string celbridgeWheelPath,
-        string buildVersion,
+        string wheelHash,
         IReadOnlyList<string>? dependencies)
     {
         var sb = new StringBuilder();
         sb.AppendLine(appVersion);
         sb.AppendLine(pythonVersion);
         sb.AppendLine(Path.GetFileName(celbridgeWheelPath));
-        sb.AppendLine(buildVersion);
+        sb.AppendLine(wheelHash);
 
         if (dependencies is not null)
         {
@@ -464,57 +458,7 @@ public class PythonService : IPythonService, IDisposable
             }
         }
 
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
-        return Convert.ToHexString(bytes);
-    }
-
-    /// <summary>
-    /// Reads the build version GUID from the Python install folder.
-    /// This GUID is regenerated each time the Python wheels are rebuilt by build.py.
-    /// </summary>
-    private static string ReadBuildVersion(string pythonFolder)
-    {
-        try
-        {
-            var buildVersionPath = Path.Combine(pythonFolder, BuildVersionFileName);
-            if (File.Exists(buildVersionPath))
-            {
-                return File.ReadAllText(buildVersionPath).Trim();
-            }
-        }
-        catch
-        {
-            // Non-critical: if we can't read the build version, the other
-            // fingerprint components will still detect most changes.
-        }
-
-        return string.Empty;
-    }
-
-    /// <summary>
-    /// Computes a fingerprint of the install folder by hashing the relative path, size,
-    /// and last-write timestamp of every file. This detects any file being added, deleted,
-    /// renamed, or modified without reading file contents.
-    /// </summary>
-    private static string ComputeDirectoryFingerprint(string folderPath)
-    {
-        if (!Directory.Exists(folderPath))
-        {
-            return string.Empty;
-        }
-
-        var entries = Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories)
-            .Select(filePath =>
-            {
-                var relativePath = Path.GetRelativePath(folderPath, filePath);
-                var fileInfo = new FileInfo(filePath);
-                return $"{relativePath}|{fileInfo.Length}|{fileInfo.LastWriteTimeUtc.Ticks}";
-            })
-            .OrderBy(entry => entry, StringComparer.Ordinal);
-
-        var combined = string.Join("\n", entries);
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
-        return Convert.ToHexString(bytes);
+        return FileHashHelper.HashString(sb.ToString());
     }
 
     /// <summary>

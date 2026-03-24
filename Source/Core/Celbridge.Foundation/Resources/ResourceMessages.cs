@@ -13,9 +13,9 @@ public enum ResourceOperationType
 }
 
 /// <summary>
-/// A message sent to request a resource registry update after command execution.
+/// A message sent to request a synchronous resource registry update after command execution.
 /// </summary>
-public record RequestResourceRegistryUpdateMessage(bool ForceImmediate);
+public record RequestResourceRegistryUpdateMessage;
 
 /// <summary>
 /// A message sent when the resource registry has been updated.

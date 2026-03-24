@@ -87,17 +87,10 @@ public class ResourceService : IResourceService, IDisposable
 
     private void OnResourceUpdateRequestedMessage(object recipient, RequestResourceRegistryUpdateMessage message)
     {
-        if (message.ForceImmediate)
+        var updateResult = UpdateResources();
+        if (updateResult.IsFailure)
         {
-            var updateResult = UpdateResources();
-            if (updateResult.IsFailure)
-            {
-                _logger.LogWarning(updateResult, "Failed to update resources after command execution");
-            }
-        }
-        else
-        {
-            ScheduleResourceUpdate();
+            _logger.LogWarning(updateResult, "Failed to update resources after command execution");
         }
     }
 

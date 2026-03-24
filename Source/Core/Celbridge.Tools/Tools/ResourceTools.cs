@@ -1,5 +1,6 @@
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
@@ -8,29 +9,29 @@ namespace Celbridge.Tools;
 /// MCP tools for managing project resources (files and folders).
 /// </summary>
 [McpServerToolType]
-public class ResourceTools : AgentToolBase
+public partial class ResourceTools : AgentToolBase
 {
     public ResourceTools(IApplicationServiceProvider services) : base(services) {}
 
     /// <summary>
-    /// Deletes a resource.
+    /// Deletes a resource from the project.
     /// </summary>
     /// <param name="resource">Resource key of the item to delete.</param>
     /// <param name="confirm">Show a confirmation dialog before deleting.</param>
     [McpServerTool(Name = "resource_delete", Destructive = true)]
-    [ToolAlias("delete")]
-    public void Delete(string resource, bool confirm = true)
+    [ToolAlias("resource.delete")]
+    public async partial Task<CallToolResult> Delete(string resource, bool confirm = true)
     {
         if (confirm)
         {
-            CommandService.Execute<IDeleteResourceDialogCommand>(command =>
+            return await ExecuteCommandAsync<IDeleteResourceDialogCommand>(command =>
             {
                 command.Resources = new List<ResourceKey> { resource };
             });
         }
         else
         {
-            CommandService.Execute<IDeleteResourceCommand>(command =>
+            return await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
             {
                 command.Resources = new List<ResourceKey> { resource };
             });
@@ -43,10 +44,10 @@ public class ResourceTools : AgentToolBase
     /// <param name="sourceResource">Resource key of the source item.</param>
     /// <param name="destinationResource">Resource key of the destination.</param>
     [McpServerTool(Name = "resource_move", ReadOnly = false)]
-    [ToolAlias("move")]
-    public void Move(string sourceResource, string destinationResource)
+    [ToolAlias("resource.move")]
+    public async partial Task<CallToolResult> Move(string sourceResource, string destinationResource)
     {
-        CommandService.Execute<ICopyResourceCommand>(command =>
+        return await ExecuteCommandAsync<ICopyResourceCommand>(command =>
         {
             command.SourceResources = new List<ResourceKey> { sourceResource };
             command.DestResource = destinationResource;

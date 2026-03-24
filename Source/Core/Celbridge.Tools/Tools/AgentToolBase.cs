@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tools;
 
@@ -22,4 +23,56 @@ public abstract class AgentToolBase
     }
 
     protected ICommandService CommandService => GetRequiredService<ICommandService>();
+
+    /// <summary>
+    /// Executes a command asynchronously, returning a CallToolResult so the MCP
+    /// framework can report errors to the client.
+    /// </summary>
+    protected async Task<CallToolResult> ExecuteCommandAsync<T>(Action<T>? configure = null) where T : IExecutableCommand
+    {
+        var result = await CommandService.ExecuteAsync(configure);
+        if (result.IsFailure)
+        {
+            return new CallToolResult
+            {
+                IsError = true,
+                Content = [new TextContentBlock { Text = result.FirstErrorMessage }]
+            };
+        }
+
+        return new CallToolResult();
+    }
+
+    /// <summary>
+    /// Creates a successful CallToolResult with a text message.
+    /// </summary>
+    protected static CallToolResult SuccessResult(string text)
+    {
+        return new CallToolResult
+        {
+            Content = [
+                new TextContentBlock
+                {
+                    Text = text
+                }
+            ]
+        };
+    }
+
+    /// <summary>
+    /// Creates an error CallToolResult with a text message.
+    /// </summary>
+    protected static CallToolResult ErrorResult(string text)
+    {
+        return new CallToolResult
+        {
+            IsError = true,
+            Content = [
+                new TextContentBlock
+                {
+                    Text = text
+                }
+            ]
+        };
+    }
 }

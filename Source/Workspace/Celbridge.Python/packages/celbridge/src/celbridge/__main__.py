@@ -43,6 +43,13 @@ def main():
     # Create the cel proxy that sends JSON-RPC calls to C#
     cel = CelProxy(client)
 
+    # Make cel and its namespaces importable for use in scripts.
+    # e.g. "from celbridge import cel" or "from celbridge import resource"
+    import celbridge
+    celbridge.cel = cel
+    for namespace_name in cel._get_namespace_names():
+        setattr(celbridge, namespace_name, getattr(cel, namespace_name))
+
     # Set up the REPL environment (banner, python path)
     setup_repl()
 
@@ -54,6 +61,12 @@ def main():
     if ipython_folder:
         ipython_args.extend(['--ipython-dir', ipython_folder])
 
+    # Build the user namespace with cel and all its namespaces (app, document, resource, etc.)
+    # so they're available directly in the REPL without imports.
+    user_namespace = {'cel': cel}
+    for namespace_name in cel._get_namespace_names():
+        user_namespace[namespace_name] = getattr(cel, namespace_name)
+
     # Launch IPython with the cel proxy injected into the user namespace.
     # exec_lines runs after IPython is fully initialized, so customizations
     # that need get_ipython() (prompts, exit hooks, caching) work correctly.
@@ -64,7 +77,7 @@ def main():
     import IPython
     IPython.start_ipython(
         argv=ipython_args,
-        user_ns={'cel': cel},
+        user_ns=user_namespace,
         config=ipython_config,
     )
 

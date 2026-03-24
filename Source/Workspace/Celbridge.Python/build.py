@@ -3,7 +3,6 @@
 
 import shutil
 import subprocess
-import uuid
 from pathlib import Path
 
 
@@ -23,7 +22,7 @@ def build_wheel(pkg_dir):
 def main():
     root = Path(__file__).parent
     packages = [root / "packages/celbridge"]
-    assets = root.parent / "Workspace/Celbridge.Python/Assets/Python"
+    assets = root / "Assets/Python"
     
     print("Building wheels...")
     wheels = [build_wheel(pkg) for pkg in packages]
@@ -36,13 +35,7 @@ def main():
     for whl in wheels:
         shutil.copy2(whl, assets)
         print(f"  {whl.name}")
-    
-    # Write build version file with GUID
-    build_id = str(uuid.uuid4())
-    version_file = assets / "build_version.txt"
-    version_file.write_text(build_id, encoding="utf-8")
-    print(f"  build_version.txt ({build_id})")
-    
+
     # Clean up build artifacts
     for pkg in packages:
         shutil.rmtree(pkg / "dist", ignore_errors=True)
