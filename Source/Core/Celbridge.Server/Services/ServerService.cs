@@ -107,7 +107,6 @@ public class ServerService : IServerService, IDisposable
         }
 
         _fileServer.Enable(currentProject.ProjectFolderPath, Port);
-        _agentServer.Enable(currentProject.ProjectFolderPath, Port);
 
         _messengerService.Send(new ProjectFileServerReadyMessage());
     }
@@ -121,7 +120,6 @@ public class ServerService : IServerService, IDisposable
         }
 
         _fileServer.Disable();
-        _agentServer.Disable(currentProject.ProjectFolderPath);
     }
 
     public void Dispose()

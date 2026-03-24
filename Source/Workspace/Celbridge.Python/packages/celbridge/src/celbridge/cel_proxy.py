@@ -10,6 +10,7 @@ import difflib
 import json
 import logging
 
+from celbridge.agent_launcher import launch_claude
 from celbridge.rpc_client import RpcClient
 from celbridge.tool_types import (
     snake_to_camel,
@@ -83,8 +84,19 @@ class CelProxy:
 
         logger.info("Discovered %d broker tools", len(self._tools))
 
+        self._register_builtin_commands()
         self._build_namespace_docs()
         self.__doc__ = self._build_help_doc()
+
+    def _register_builtin_commands(self) -> None:
+        """Register built-in commands that are implemented in Python, not via MCP."""
+        agent_namespace = ToolNamespace("agent")
+        agent_namespace.claude = launch_claude
+        agent_namespace.claude.__doc__ = (
+            "Launch Claude Code CLI with sandboxed access to Celbridge MCP tools.\n"
+            "Writes the .mcp.json config and starts Claude in the current terminal."
+        )
+        object.__setattr__(self, "agent", agent_namespace)
 
     def _build_help_doc(self) -> str:
         """Build a comprehensive docstring for help(cel) from discovered tools."""
@@ -110,6 +122,10 @@ class CelProxy:
         for namespace_name in sorted(namespaced_tools.keys()):
             lines.append(format_namespace_doc(namespace_name, namespaced_tools[namespace_name]))
 
+        lines.append("cel.agent")
+        lines.append("    .claude()")
+        lines.append("        Launch restricted Claude Code CLI with Celbridge MCP tools")
+        lines.append("")
         lines.append("cel.tools()")
         lines.append("    Print tool descriptors as JSON")
 

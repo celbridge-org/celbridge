@@ -31,6 +31,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEnvironmentService _environmentService;
+    private readonly IServerService _serverService;
     private readonly IMessengerService _messengerService;
     private readonly ILogger<PythonService> _logger;
     private readonly ITcpTransport _tcpTransport;
@@ -44,6 +45,7 @@ public class PythonService : IPythonService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IEnvironmentService environmentService,
+        IServerService serverService,
         IMessengerService messengerService,
         ILogger<PythonService> logger,
         ITcpTransport tcpTransport)
@@ -51,6 +53,7 @@ public class PythonService : IPythonService, IDisposable
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _environmentService = environmentService;
+        _serverService = serverService;
         _messengerService = messengerService;
         _logger = logger;
         _tcpTransport = tcpTransport;
@@ -170,6 +173,8 @@ public class PythonService : IPythonService, IDisposable
             var terminalEnvironment = new Dictionary<string, string>
             {
                 ["CELBRIDGE_RPC_PORT"] = rpcPort.ToString(),
+                ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
+                ["CELBRIDGE_PROJECT_FOLDER"] = project.ProjectFolderPath,
                 ["CELBRIDGE_VERSION"] = celbridgeVersion,
                 ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
                 ["PYTHON_LOG_LEVEL"] = "DEBUG",
