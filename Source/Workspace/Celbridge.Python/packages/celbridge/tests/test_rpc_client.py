@@ -172,3 +172,57 @@ def test_notify_sends_no_id(mock_server):
     assert received_requests[0]["method"] == "Log"
     assert "id" not in received_requests[0]
     assert received_requests[0]["params"] == {"message": "hello"}
+
+
+def test_close_is_idempotent(mock_server):
+    """Test that calling close() multiple times does not raise."""
+    server_socket, port = mock_server
+
+    def server_handler():
+        connection, _ = server_socket.accept()
+        connection.close()
+
+    thread = threading.Thread(target=server_handler, daemon=True)
+    thread.start()
+
+    client = RpcClient('127.0.0.1', port)
+    client.close()
+    client.close()
+
+    thread.join(timeout=5)
+
+
+def test_connection_refused_raises():
+    """Test that connecting to a closed port raises an error."""
+    with pytest.raises(ConnectionRefusedError):
+        RpcClient('127.0.0.1', 1)
+
+
+def test_call_without_params(mock_server):
+    """Test that call() works without keyword arguments (no params field)."""
+    server_socket, port = mock_server
+    received_requests = []
+
+    def server_handler():
+        connection, _ = server_socket.accept()
+        request_str = _read_framed_message(connection)
+        received_requests.append(json.loads(request_str))
+
+        response = json.dumps({
+            "jsonrpc": "2.0",
+            "result": "ok",
+            "id": received_requests[0]["id"],
+        })
+        _send_framed_message(connection, response)
+        connection.close()
+
+    thread = threading.Thread(target=server_handler, daemon=True)
+    thread.start()
+
+    client = RpcClient('127.0.0.1', port)
+    result = client.call("Ping")
+
+    thread.join(timeout=5)
+
+    assert result == "ok"
+    assert "params" not in received_requests[0]

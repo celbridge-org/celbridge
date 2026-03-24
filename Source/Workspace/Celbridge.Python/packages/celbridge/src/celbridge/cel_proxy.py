@@ -2,141 +2,25 @@
 
 On construction, queries the broker's tools/list endpoint and generates a
 proxy method for each discovered tool. Tools are registered using their alias
-which provides short, natural method names. Dotted aliases (e.g. "sheet.delete")
-create namespace objects so that `cel.sheet.delete()` works naturally.
+which provides short, natural method names. Dotted aliases (e.g. "app.version")
+create namespace objects so that `cel.app.version()` works naturally.
 """
 
 import difflib
-import inspect
 import json
 import logging
-import re
 
 from celbridge.rpc_client import RpcClient
+from celbridge.tool_types import (
+    snake_to_camel,
+    build_signature,
+    build_docstring,
+    build_inspect_signature,
+    partition_tools_by_namespace,
+    format_namespace_doc,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def _snake_to_camel(name: str) -> str:
-    """Convert a snake_case parameter name to camelCase for JSON-RPC.
-
-    Examples:
-        "file_resource" -> "fileResource"
-        "force_reload"  -> "forceReload"
-        "name"          -> "name"
-    """
-    parts = name.split("_")
-    return parts[0] + "".join(word.capitalize() for word in parts[1:])
-
-
-def _camel_to_snake(name: str) -> str:
-    """Convert a camelCase parameter name to snake_case for Python.
-
-    Examples:
-        "fileResource" -> "file_resource"
-        "forceReload"  -> "force_reload"
-        "name"         -> "name"
-    """
-    result = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
-    return result.lower()
-
-
-def _build_signature(tool: dict) -> str:
-    """Build a Python-style type-annotated signature string from a tool descriptor.
-
-    Returns something like: (file_resource: str, force_reload: bool = False) -> str
-    """
-    parts = []
-    for parameter in tool.get("parameters", []):
-        parameter_name = _camel_to_snake(parameter["name"])
-        parameter_type = _to_python_type(parameter.get("type", ""))
-        type_annotation = f": {parameter_type}" if parameter_type else ""
-        has_default = parameter.get("hasDefaultValue", False)
-        if has_default:
-            default_value = parameter.get("defaultValue")
-            parts.append(f"{parameter_name}{type_annotation} = {default_value!r}")
-        else:
-            parts.append(f"{parameter_name}{type_annotation}")
-
-    signature = "(" + ", ".join(parts) + ")"
-
-    return_type = _to_python_type(tool.get("returnType", ""))
-    if return_type:
-        signature += f" -> {return_type}"
-
-    return signature
-
-
-def _build_docstring(tool: dict) -> str:
-    """Build a docstring from a tool descriptor including parameter descriptions."""
-    lines = []
-    description = tool.get("description", "")
-    if description:
-        lines.append(description)
-
-    parameters = tool.get("parameters", [])
-    if parameters:
-        lines.append("")
-        lines.append("Args:")
-        for parameter in parameters:
-            parameter_name = _camel_to_snake(parameter["name"])
-            parameter_description = parameter.get("description", "")
-            parameter_type = _to_python_type(parameter.get("type", ""))
-            type_hint = f" ({parameter_type})" if parameter_type else ""
-            lines.append(f"    {parameter_name}{type_hint}: {parameter_description}")
-
-    return "\n".join(lines)
-
-
-# Map JSON Schema type names to Python type names for display
-_JSON_SCHEMA_TO_PYTHON = {
-    "string": "str",
-    "boolean": "bool",
-    "integer": "int",
-    "number": "float",
-    "array": "list",
-    "object": "dict",
-}
-
-# Map Python type name strings to Python type objects for inspect.Parameter annotations
-_TYPE_MAP = {
-    "str": str,
-    "int": int,
-    "bool": bool,
-    "float": float,
-}
-
-
-def _to_python_type(json_schema_type: str) -> str:
-    """Convert a JSON Schema type name to a Python type name for display."""
-    return _JSON_SCHEMA_TO_PYTHON.get(json_schema_type, json_schema_type)
-
-
-def _build_inspect_signature(tool: dict) -> inspect.Signature:
-    """Build an inspect.Signature from a tool descriptor.
-
-    This gives help() proper parameter names, types, and defaults
-    instead of showing (*args, **kwargs).
-    """
-    parameters = []
-    for param in tool.get("parameters", []):
-        parameter_name = _camel_to_snake(param["name"])
-        python_type_name = _to_python_type(param.get("type", ""))
-        annotation = _TYPE_MAP.get(python_type_name, inspect.Parameter.empty)
-        has_default = param.get("hasDefaultValue", False)
-        default = param.get("defaultValue") if has_default else inspect.Parameter.empty
-
-        parameters.append(inspect.Parameter(
-            parameter_name,
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            default=default,
-            annotation=annotation,
-        ))
-
-    python_return_type = _to_python_type(tool.get("returnType", ""))
-    return_annotation = _TYPE_MAP.get(python_return_type, inspect.Parameter.empty)
-
-    return inspect.Signature(parameters, return_annotation=return_annotation)
 
 
 class CelError(Exception):
@@ -151,7 +35,7 @@ class CelError(Exception):
 class ToolNamespace:
     """A namespace object for grouping related tool methods under a dotted path.
 
-    For example, cel.sheet is a ToolNamespace that contains cel.sheet.delete().
+    For example, cel.app is a ToolNamespace that contains cel.app.version().
     """
 
     def __init__(self, name: str):
@@ -192,7 +76,7 @@ class CelProxy:
                 continue
 
             proxy = self._make_tool_proxy(tool_name, tool)
-            proxy.__doc__ = _build_docstring(tool)
+            proxy.__doc__ = build_docstring(tool)
 
             self._register_proxy(alias, proxy)
             self._aliases.append(alias)
@@ -211,44 +95,20 @@ class CelProxy:
             "",
         ]
 
-        top_level_tools: list[dict] = []
-        namespaced_tools: dict[str, list[dict]] = {}
-
-        for tool in self._tools:
-            alias = tool.get("alias", "")
-            if not alias:
-                continue
-            if "." in alias:
-                tool_namespace = alias.split(".", 1)[0]
-                if tool_namespace not in namespaced_tools:
-                    namespaced_tools[tool_namespace] = []
-                namespaced_tools[tool_namespace].append(tool)
-            else:
-                top_level_tools.append(tool)
+        top_level_tools, namespaced_tools = partition_tools_by_namespace(self._tools)
 
         if top_level_tools:
             for tool in sorted(top_level_tools, key=lambda t: t.get("alias", "")):
                 alias = tool.get("alias", "")
-                signature = _build_signature(tool)
+                signature = build_signature(tool)
                 description = tool.get("description", "")
                 lines.append(f"cel.{alias}{signature}")
                 if description:
                     lines.append(f"    {description}")
                 lines.append("")
 
-        if namespaced_tools:
-            for tool_namespace in sorted(namespaced_tools.keys()):
-                tools_in_namespace = namespaced_tools[tool_namespace]
-                lines.append(f"cel.{tool_namespace}")
-                for tool in sorted(tools_in_namespace, key=lambda t: t.get("alias", "")):
-                    alias = tool.get("alias", "")
-                    method_name = alias.split(".", 1)[1]
-                    signature = _build_signature(tool)
-                    description = tool.get("description", "")
-                    lines.append(f"    .{method_name}{signature}")
-                    if description:
-                        lines.append(f"        {description}")
-                    lines.append("")
+        for namespace_name in sorted(namespaced_tools.keys()):
+            lines.append(format_namespace_doc(namespace_name, namespaced_tools[namespace_name]))
 
         lines.append("cel.tools()")
         lines.append("    Print tool descriptors as JSON")
@@ -257,34 +117,13 @@ class CelProxy:
 
     def _build_namespace_docs(self) -> None:
         """Build __doc__ for each ToolNamespace from its registered methods."""
-        namespaced_tools: dict[str, list[dict]] = {}
-
-        for tool in self._tools:
-            alias = tool.get("alias", "")
-            if "." not in alias:
-                continue
-            namespace_name = alias.split(".", 1)[0]
-            if namespace_name not in namespaced_tools:
-                namespaced_tools[namespace_name] = []
-            namespaced_tools[namespace_name].append(tool)
+        _, namespaced_tools = partition_tools_by_namespace(self._tools)
 
         for namespace_name, tools in namespaced_tools.items():
             namespace = getattr(self, namespace_name, None)
             if namespace is None:
                 continue
-
-            lines = [f"cel.{namespace_name}"]
-            for tool in sorted(tools, key=lambda t: t.get("alias", "")):
-                alias = tool.get("alias", "")
-                method_name = alias.split(".", 1)[1]
-                signature = _build_signature(tool)
-                description = tool.get("description", "")
-                lines.append(f"    .{method_name}{signature}")
-                if description:
-                    lines.append(f"        {description}")
-                lines.append("")
-
-            namespace.__doc__ = "\n".join(lines)
+            namespace.__doc__ = format_namespace_doc(namespace_name, tools)
 
     def _register_proxy(self, alias: str, proxy) -> None:
         """Register a proxy method on this object, creating namespaces for dotted aliases."""
@@ -317,7 +156,6 @@ class CelProxy:
 
     def __getattr__(self, name: str):
         """Provide a helpful error when an unknown method is accessed."""
-        # Find the top-level alias names (the part before any dot)
         top_level_names = sorted(set(
             alias.split(".", 1)[0] for alias in self._aliases
         ))
@@ -335,14 +173,17 @@ class CelProxy:
     def _make_tool_proxy(self, tool_name: str, tool: dict):
         """Create a callable proxy for a single broker tool.
 
-        The proxy accepts positional and keyword arguments. Positional
-        arguments are mapped to parameter names in declaration order.
+        The returned function accepts positional and keyword arguments.
+        Positional arguments are mapped to parameter names in declaration
+        order; keyword arguments are converted from snake_case to camelCase
+        before being sent as JSON-RPC arguments.
         """
         alias = tool.get("alias", tool_name)
         parameter_names = [p["name"] for p in tool.get("parameters", [])]
-        signature = _build_signature(tool)
+        signature = build_signature(tool)
 
         def proxy(*args, **kwargs):
+            """Forward a tool call to the Celbridge application via JSON-RPC."""
             if len(args) > len(parameter_names):
                 raise CelError(
                     f"cel.{alias}{signature} was called with "
@@ -355,7 +196,7 @@ class CelProxy:
                 arguments[camel_name] = value
 
             for key, value in kwargs.items():
-                arguments[_snake_to_camel(key)] = value
+                arguments[snake_to_camel(key)] = value
 
             result = self._client.call("tools/call", name=tool_name, arguments=arguments)
 
@@ -371,7 +212,7 @@ class CelProxy:
 
             return result.get("value")
 
-        proxy.__signature__ = _build_inspect_signature(tool)
+        proxy.__signature__ = build_inspect_signature(tool)
         proxy.__module__ = "cel"
         proxy.__qualname__ = alias
 

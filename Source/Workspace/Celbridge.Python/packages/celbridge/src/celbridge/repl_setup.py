@@ -10,6 +10,68 @@ import sys
 import traceback
 
 
+def _disable_output_caching(ip) -> None:
+    """Disable IPython output caching to prevent memory buildup."""
+    try:
+        ip.run_line_magic('config', 'InteractiveShell.cache_size = 0')
+        ip.run_line_magic('config', 'InteractiveShell.highlight_matching_brackets = False')
+    except (ValueError, AttributeError):
+        if hasattr(ip, 'displayhook'):
+            ip.displayhook.cache_size = 0
+
+
+def _clear_output_history(ip) -> None:
+    """Clear any output history variables left from IPython initialization."""
+    try:
+        output_history = ip.user_ns.get('_oh')
+        if isinstance(output_history, dict):
+            output_history.clear()
+        for key in ('_', '__', '___'):
+            if key in ip.user_ns:
+                ip.user_ns[key] = None
+    except (KeyError, TypeError):
+        pass
+
+
+def _setup_exception_handler(ip) -> None:
+    """Configure IPython to display CelError and AttributeError without tracebacks."""
+    try:
+        from celbridge.cel_proxy import CelError
+
+        def cel_exception_handler(self, exception_type, exception, traceback_obj, tb_offset=None):
+            """Display cel proxy exceptions without traceback for a clean REPL experience."""
+            if exception_type is AttributeError:
+                message = str(exception)
+                if "is not a known command" not in message:
+                    self.showtraceback()
+                    return
+            red = "\033[31m"
+            reset = "\033[0m"
+            print(f"{red}{exception_type.__name__}{reset}: {exception}", file=sys.stderr)
+
+        ip.set_custom_exc((CelError, AttributeError), cel_exception_handler)
+    except ImportError:
+        pass
+
+
+def _setup_prompts(ip) -> None:
+    """Replace IPython prompts with standard Python-style >>> prompts."""
+    try:
+        from IPython.terminal.prompts import Prompts, Token  # type: ignore[import-not-found]
+
+        class PythonStylePrompts(Prompts):
+            def in_prompt_tokens(self, *a, **k):
+                return [(Token.Prompt, '>>> ')]
+            def continuation_prompt_tokens(self, *a, **k):
+                return [(Token.Prompt, '... ')]
+            def out_prompt_tokens(self, *a, **k):
+                return []
+
+        ip.prompts = PythonStylePrompts(ip)
+    except ImportError:
+        pass
+
+
 def apply_post_startup_customizations() -> None:
     """Apply customizations that require a running IPython instance.
 
@@ -18,65 +80,17 @@ def apply_post_startup_customizations() -> None:
     """
     try:
         from IPython import get_ipython  # type: ignore[import-not-found]
-    except Exception:
+    except ImportError:
         return
 
-    try:
-        ip = get_ipython()
-    except NameError:
-        ip = None
+    ip = get_ipython()
+    if ip is None:
+        return
 
-    if ip is not None:
-        try:
-            ip.run_line_magic('config', 'InteractiveShell.cache_size = 0')
-            ip.run_line_magic('config', 'InteractiveShell.highlight_matching_brackets = False')
-        except Exception:
-            if hasattr(ip, 'displayhook'):
-                ip.displayhook.cache_size = 0
-
-        try:
-            oh = ip.user_ns.get('_oh')
-            if isinstance(oh, dict):
-                oh.clear()
-            for k in ('_', '__', '___'):
-                if k in ip.user_ns:
-                    ip.user_ns[k] = None
-        except Exception:
-            pass
-
-        try:
-            from celbridge.cel_proxy import CelError
-
-            def cel_exception_handler(self, exception_type, exception, traceback_obj, tb_offset=None):
-                """Display cel proxy exceptions without traceback for a clean REPL experience."""
-                if exception_type is AttributeError:
-                    message = str(exception)
-                    if "is not a known command" not in message:
-                        # Not from CelProxy, fall back to default handling
-                        self.showtraceback()
-                        return
-                red = "\033[31m"
-                reset = "\033[0m"
-                print(f"{red}{exception_type.__name__}{reset}: {exception}", file=sys.stderr)
-
-            ip.set_custom_exc((CelError, AttributeError), cel_exception_handler)
-        except Exception:
-            pass
-
-        try:
-            from IPython.terminal.prompts import Prompts, Token  # type: ignore[import-not-found]
-
-            class PythonStylePrompts(Prompts):
-                def in_prompt_tokens(self, *a, **k):
-                    return [(Token.Prompt, '>>> ')]
-                def continuation_prompt_tokens(self, *a, **k):
-                    return [(Token.Prompt, '... ')]
-                def out_prompt_tokens(self, *a, **k):
-                    return []
-
-            ip.prompts = PythonStylePrompts(ip)
-        except Exception:
-            pass
+    _disable_output_caching(ip)
+    _clear_output_history(ip)
+    _setup_exception_handler(ip)
+    _setup_prompts(ip)
 
 
 # Line executed inside IPython after startup to apply customizations that

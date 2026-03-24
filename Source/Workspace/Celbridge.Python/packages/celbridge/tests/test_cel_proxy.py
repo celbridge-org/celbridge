@@ -1,14 +1,12 @@
 """Tests for CelProxy alias-based tool discovery, namespacing, and dispatch."""
 
 from unittest.mock import MagicMock
-from celbridge.cel_proxy import (
-    CelProxy,
-    CelError,
-    ToolNamespace,
-    _snake_to_camel,
-    _camel_to_snake,
-    _build_signature,
-    _build_docstring,
+from celbridge.cel_proxy import CelProxy, CelError, ToolNamespace
+from celbridge.tool_types import (
+    snake_to_camel,
+    camel_to_snake,
+    build_signature,
+    build_docstring,
 )
 
 
@@ -17,32 +15,32 @@ from celbridge.cel_proxy import (
 
 def test_snake_to_camel_simple():
     """Test converting snake_case to camelCase."""
-    assert _snake_to_camel("file_resource") == "fileResource"
+    assert snake_to_camel("file_resource") == "fileResource"
 
 
 def test_snake_to_camel_single_word():
     """Test that a single word stays unchanged."""
-    assert _snake_to_camel("name") == "name"
+    assert snake_to_camel("name") == "name"
 
 
 def test_snake_to_camel_multiple_underscores():
     """Test multi-word snake_case."""
-    assert _snake_to_camel("force_reload_now") == "forceReloadNow"
+    assert snake_to_camel("force_reload_now") == "forceReloadNow"
 
 
 def test_camel_to_snake_simple():
     """Test converting camelCase to snake_case."""
-    assert _camel_to_snake("fileResource") == "file_resource"
+    assert camel_to_snake("fileResource") == "file_resource"
 
 
 def test_camel_to_snake_single_word():
     """Test that a single word stays unchanged."""
-    assert _camel_to_snake("name") == "name"
+    assert camel_to_snake("name") == "name"
 
 
 def test_camel_to_snake_multiple_capitals():
     """Test multi-capital camelCase."""
-    assert _camel_to_snake("forceReloadNow") == "force_reload_now"
+    assert camel_to_snake("forceReloadNow") == "force_reload_now"
 
 
 # -- Signature and docstring builders --
@@ -51,7 +49,7 @@ def test_camel_to_snake_multiple_capitals():
 def test_build_signature_no_params():
     """Test building a signature with no parameters."""
     tool = {"name": "app/version", "alias": "version", "parameters": []}
-    assert _build_signature(tool) == "()"
+    assert build_signature(tool) == "()"
 
 
 def test_build_signature_required_param():
@@ -63,7 +61,7 @@ def test_build_signature_required_param():
             {"name": "message", "type": "string", "hasDefaultValue": False}
         ],
     }
-    assert _build_signature(tool) == "(message: str)"
+    assert build_signature(tool) == "(message: str)"
 
 
 def test_build_signature_optional_param():
@@ -81,10 +79,10 @@ def test_build_signature_optional_param():
             },
         ],
     }
-    assert _build_signature(tool) == "(file_resource: str, force_reload: bool = False)"
+    assert build_signature(tool) == "(file_resource: str, force_reload: bool = False)"
 
 
-def test_build_docstring():
+def testbuild_docstring():
     """Test building a docstring from a tool descriptor."""
     tool = {
         "name": "app/log",
@@ -98,7 +96,7 @@ def test_build_docstring():
             }
         ],
     }
-    docstring = _build_docstring(tool)
+    docstring = build_docstring(tool)
     assert "Writes a message to the application log" in docstring
     assert "message (str): The message to log" in docstring
 
