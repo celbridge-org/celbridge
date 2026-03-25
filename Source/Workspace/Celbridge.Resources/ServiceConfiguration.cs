@@ -31,5 +31,8 @@ public static class ServiceConfiguration
         services.AddTransient<IDeleteResourceCommand, DeleteResourceCommand>();
         services.AddTransient<ICopyResourceCommand, CopyResourceCommand>();
         services.AddTransient<ITransferResourcesCommand, TransferResourcesCommand>();
+
+        services.AddTransient<IUndoResourceCommand, UndoResourceCommand>();
+        services.AddTransient<IRedoResourceCommand, RedoResourceCommand>();
     }
 }

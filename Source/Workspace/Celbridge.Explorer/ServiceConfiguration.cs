@@ -43,6 +43,7 @@ public static class ServiceConfiguration
         services.AddTransient<IDuplicateResourceDialogCommand, DuplicateResourceDialogCommand>();
         services.AddTransient<ISelectResourceCommand, SelectResourceCommand>();
         services.AddTransient<IExpandFolderCommand, ExpandFolderCommand>();
+        services.AddTransient<ICollapseAllCommand, CollapseAllCommand>();
         services.AddTransient<IOpenFileManagerCommand, OpenFileManagerCommand>();
         services.AddTransient<IOpenApplicationCommand, OpenApplicationCommand>();
         services.AddTransient<IOpenBrowserCommand, OpenBrowserCommand>();

@@ -78,7 +78,7 @@ def test_partition_tools_separates_flat_and_namespaced():
         {"alias": "version", "name": "app_version"},
         {"alias": "app.log", "name": "log_info"},
         {"alias": "app.status", "name": "get_project_status"},
-        {"alias": "resource.delete", "name": "resource_delete"},
+        {"alias": "explorer.delete", "name": "explorer_delete"},
     ]
     top_level, namespaced = partition_tools_by_namespace(tools)
 
@@ -86,8 +86,8 @@ def test_partition_tools_separates_flat_and_namespaced():
     assert top_level[0]["alias"] == "version"
     assert "app" in namespaced
     assert len(namespaced["app"]) == 2
-    assert "resource" in namespaced
-    assert len(namespaced["resource"]) == 1
+    assert "explorer" in namespaced
+    assert len(namespaced["explorer"]) == 1
 
 
 def test_partition_tools_skips_empty_aliases():

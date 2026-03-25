@@ -1,19 +1,20 @@
 using System.Text.Json;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Projects;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// General application tools for version info, logging, and client configuration.
+/// General application tools for version info, logging, and alerts.
 /// </summary>
 [McpServerToolType]
 public partial class AppTools : AgentToolBase
 {
     private ILogger<AppTools>? _logger;
 
-    public AppTools(IApplicationServiceProvider services) : base(services) {}
+    public AppTools(IApplicationServiceProvider services) : base(services) { }
 
     private ILogger<AppTools> Logger => _logger ??= GetRequiredService<ILogger<AppTools>>();
 
@@ -21,8 +22,8 @@ public partial class AppTools : AgentToolBase
     /// Returns the application version string.
     /// </summary>
     /// <returns>A version string in the format "major.minor.patch", e.g. "0.2.5".</returns>
-    [McpServerTool(Name = "app_version", ReadOnly = true, Idempotent = true)]
-    [ToolAlias("app.version")]
+    [McpServerTool(Name = "app_get_version", ReadOnly = true, Idempotent = true)]
+    [ToolAlias("app.get_version")]
     public partial string AppVersion()
     {
         var environmentService = GetRequiredService<IEnvironmentService>();
@@ -34,8 +35,8 @@ public partial class AppTools : AgentToolBase
     /// Returns the project status as JSON with isLoaded and projectName fields.
     /// </summary>
     /// <returns>JSON object with fields: isLoaded (bool), projectName (string).</returns>
-    [McpServerTool(Name = "get_project_status", ReadOnly = true, Idempotent = true)]
-    [ToolAlias("app.status")]
+    [McpServerTool(Name = "app_get_status", ReadOnly = true, Idempotent = true)]
+    [ToolAlias("app.get_status")]
     public partial string GetProjectStatus()
     {
         var projectService = GetRequiredService<IProjectService>();
@@ -60,7 +61,7 @@ public partial class AppTools : AgentToolBase
     /// Logs an informational message to the application log.
     /// </summary>
     /// <param name="message">The message to log.</param>
-    [McpServerTool(Name = "log_info", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "app_log", ReadOnly = false, Idempotent = true)]
     [ToolAlias("app.log")]
     public partial void LogInfo(string message)
     {
@@ -71,7 +72,7 @@ public partial class AppTools : AgentToolBase
     /// Logs a warning message to the application log.
     /// </summary>
     /// <param name="message">The warning message to log.</param>
-    [McpServerTool(Name = "log_warning", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "app_log_warning", ReadOnly = false, Idempotent = true)]
     [ToolAlias("app.log_warning")]
     public partial void LogWarning(string message)
     {
@@ -82,7 +83,7 @@ public partial class AppTools : AgentToolBase
     /// Logs an error message to the application log.
     /// </summary>
     /// <param name="message">The error message to log.</param>
-    [McpServerTool(Name = "log_error", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "app_log_error", ReadOnly = false, Idempotent = true)]
     [ToolAlias("app.log_error")]
     public partial void LogError(string message)
     {
@@ -90,25 +91,18 @@ public partial class AppTools : AgentToolBase
     }
 
     /// <summary>
-    /// Returns context information for AI agents including resource key conventions and project structure.
+    /// Shows an alert dialog to the user with a message and optional title.
     /// </summary>
-    /// <returns>A Markdown document describing resource key conventions, project structure, and available tools.</returns>
-    [McpServerTool(Name = "get_context", ReadOnly = true, Idempotent = true)]
-    [ToolAlias("app.context")]
-    public partial string GetContext()
+    /// <param name="message">The message to display in the alert dialog.</param>
+    /// <param name="title">Optional title for the alert dialog.</param>
+    [McpServerTool(Name = "app_show_alert")]
+    [ToolAlias("app.show_alert")]
+    public async partial Task<CallToolResult> ShowAlert(string message, string title = "")
     {
-        return LoadEmbeddedResource("Celbridge.Tools.Assets.AgentContext.md");
-    }
-
-    private static string LoadEmbeddedResource(string resourceName)
-    {
-        var assembly = typeof(AppTools).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
+        return await ExecuteCommandAsync<IAlertCommand>(command =>
         {
-            return $"Resource '{resourceName}' not found.";
-        }
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+            command.Message = message;
+            command.Title = title;
+        });
     }
 }

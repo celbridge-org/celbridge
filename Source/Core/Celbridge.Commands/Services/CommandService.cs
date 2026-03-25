@@ -206,6 +206,18 @@ public class CommandService : ICommandService
                             _messengerService.Send(message);
                         }
 
+                        // Refresh the resource tree view if the command requires it.
+                        // This is a lightweight alternative to UpdateResources for commands
+                        // that only modify tree view state without changing resources on disk.
+                        // Skip if UpdateResources is also set, as the registry update already
+                        // triggers a tree rebuild.
+                        if (command.CommandFlags.HasFlag(CommandFlags.RefreshResourceTree) &&
+                            !command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
+                        {
+                            var refreshMessage = new RefreshResourceTreeMessage();
+                            _messengerService.Send(refreshMessage);
+                        }
+
                         // Call the OnExecute callback if it is set.
                         // This is used by the ExecuteAsync() methods to notify the caller about the execution.
                         command.OnExecute?.Invoke(executeResult);

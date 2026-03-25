@@ -23,6 +23,11 @@ public record RequestResourceRegistryUpdateMessage;
 public record ResourceRegistryUpdatedMessage;
 
 /// <summary>
+/// A message sent to request a resource tree view refresh without updating the resource registry.
+/// </summary>
+public record RefreshResourceTreeMessage;
+
+/// <summary>
 /// A message sent when a resource has been moved or renamed.
 /// </summary>
 public record ResourceKeyChangedMessage(ResourceKey SourceResource, ResourceKey DestResource);

@@ -78,6 +78,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         _messengerService.Register<ClipboardContentChangedMessage>(this, OnClipboardContentChangedMessage);
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
+        _messengerService.Register<RefreshResourceTreeMessage>(this, OnRefreshResourceTreeMessage);
 
         // Build the initial tree in case ResourceRegistryUpdatedMessage was sent
         // before this view was part of the visual tree.
@@ -111,6 +112,11 @@ public partial class ResourceTreeViewModel : ObservableObject
         _folderStateService.Cleanup();
 
         // Rebuild the tree with the updated registry
+        RebuildResourceTree();
+    }
+
+    private void OnRefreshResourceTreeMessage(object recipient, RefreshResourceTreeMessage message)
+    {
         RebuildResourceTree();
     }
 

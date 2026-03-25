@@ -5,19 +5,18 @@ Celbridge projects through the MCP tool interface.
 
 ## Getting Started
 
-Before calling any workspace tools, call `get_project_status` to check
+Before calling any workspace tools, call `app_get_status` to check
 whether a project is loaded. Most tools require a loaded project and will
-fail if no project is open. The response includes the project name and
-the project folder path on disk.
+fail if no project is open. The response includes the project name.
 
 ## Resource Keys
 
-All file and folder references in Celbridge use **resource keys** — relative
+All file and folder references in Celbridge use **resource keys** -- relative
 paths from the project root using forward slash separators on all platforms.
 
-- `Project/readme.md` — a file in the Project folder
-- `Project/Scripts/hello.py` — a nested file
-- `Project` — the project root folder
+- `Project/readme.md` -- a file in the Project folder
+- `Project/Scripts/hello.py` -- a nested file
+- `Project` -- the project root folder
 
 Resource keys never use backslashes, absolute paths, or leading slashes.
 
@@ -38,6 +37,16 @@ MyProject/
       report.xlsx
 ```
 
+## Tool Namespaces
+
+Tools are organized into namespaces that match the workspace UI panels:
+
+- `app` -- Application info, logging, and alerts
+- `file` -- Read-only file and folder queries
+- `query` -- Agent context and knowledge retrieval
+- `explorer` -- Explorer panel: structural operations and navigation
+- `document` -- Documents panel: content editing and editor management
+
 ## Extensions
 
 Celbridge supports extensions as collections of HTML, JavaScript, and CSS
@@ -50,12 +59,6 @@ Documents are files opened in the editor area. The editor type is determined
 by the file extension. Multiple documents can be open simultaneously across
 up to three editor sections.
 
-## Console
-
-The console panel displays log messages and hosts an interactive Python
-terminal. Use the `log_info`, `log_warning`, and `log_error` tools to write
-messages to the console log.
-
 ## Explorer Panel
 
 The explorer panel shows the project's file tree. Use `explorer_select` to
@@ -65,20 +68,26 @@ highlight a resource in the tree.
 
 All tools that modify application state enqueue commands on a sequential
 command queue. Commands execute in order on the UI thread. Tools return
-immediately after enqueuing — they do not wait for the command to complete
+immediately after enqueuing -- they do not wait for the command to complete
 unless the tool method is explicitly async.
 
 ## Python Scripting
 
 The Celbridge console hosts an interactive Python REPL with a pre-configured
 `cel` proxy object available as a global variable. Do not import any library
-or construct a client — just use `cel` directly.
+or construct a client -- just use `cel` directly.
 
 ```python
-cel.open("Project/readme.md")
-cel.log("Processing complete")
+cel.document.open("Project/readme.md")
+cel.app.log("Processing complete")
 ```
 
-Tool aliases provide short method names for the Python proxy. Call the
-`get_client_aliases` tool to get the mapping from MCP tool names to
-Python `cel` proxy method names.
+Tool aliases provide dot-notation method names for the Python proxy:
+
+```
+cel.app         - Application info and logging
+cel.file        - Read-only file and folder queries
+cel.query       - Agent context and knowledge retrieval
+cel.explorer    - Explorer panel: structural operations and navigation
+cel.document    - Documents panel: content editing and editor management
+```

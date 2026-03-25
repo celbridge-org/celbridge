@@ -6,7 +6,7 @@ namespace Celbridge.Explorer.Commands;
 public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    public override CommandFlags CommandFlags => CommandFlags.SaveWorkspaceState;
+    public override CommandFlags CommandFlags => CommandFlags.RefreshResourceTree | CommandFlags.SaveWorkspaceState;
 
     public ResourceKey FolderResource { get; set; }
     public bool Expanded { get; set; } = true;
