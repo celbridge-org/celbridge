@@ -54,6 +54,11 @@ public class FileServer : IFileServer, IDisposable
             }
 
             context.Response.ContentType = contentType;
+
+            // These headers enable support for running a WebContainer in local HTML/JS
+            context.Response.Headers["Cross-Origin-Embedder-Policy"] = "credentialless";
+            context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
+
             await context.Response.SendFileAsync(fileInfo);
         });
     }

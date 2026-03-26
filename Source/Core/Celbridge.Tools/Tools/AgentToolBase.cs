@@ -44,6 +44,29 @@ public abstract class AgentToolBase
     }
 
     /// <summary>
+    /// Executes a command that produces a typed result, returning both a CallToolResult
+    /// and the result value for the MCP tool to include in its response.
+    /// </summary>
+    protected async Task<(CallToolResult, TResult?)> ExecuteCommandAsync<TCommand, TResult>(
+        Action<TCommand>? configure = null)
+        where TCommand : IExecutableCommand<TResult>
+        where TResult : notnull
+    {
+        var result = await CommandService.ExecuteAsync<TCommand, TResult>(configure);
+        if (result.IsFailure)
+        {
+            var errorResult = new CallToolResult
+            {
+                IsError = true,
+                Content = [new TextContentBlock { Text = result.FirstErrorMessage }]
+            };
+            return (errorResult, default);
+        }
+
+        return (new CallToolResult(), result.Value);
+    }
+
+    /// <summary>
     /// Creates a successful CallToolResult with a text message.
     /// </summary>
     protected static CallToolResult SuccessResult(string text)

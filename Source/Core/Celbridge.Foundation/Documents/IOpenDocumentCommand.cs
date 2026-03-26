@@ -27,4 +27,10 @@ public interface IOpenDocumentCommand : IExecutableCommand
     /// If null, the document opens in the active section.
     /// </summary>
     int? TargetSectionIndex { get; set; }
+
+    /// <summary>
+    /// When true, the opened document becomes the active tab.
+    /// When false, the document is opened but the currently active tab is preserved.
+    /// </summary>
+    bool Activate { get; set; }
 }

@@ -12,7 +12,7 @@ namespace Celbridge.Documents.Services;
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private const string DocumentLayoutKey = "DocumentLayout";
-    private const string SelectedDocumentKey = "SelectedDocument";
+    private const string ActiveDocumentKey = "ActiveDocument";
     private const string SectionRatiosKey = "SectionRatios";
 
     private readonly IServiceProvider _serviceProvider;
@@ -27,7 +27,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// </summary>
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
-    public ResourceKey SelectedDocument { get; private set; }
+    public ResourceKey ActiveDocument { get; private set; }
 
     /// <summary>
     /// Gets all open documents with their addresses (UI positions).
@@ -64,7 +64,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _messengerService.Register<ExtensionsInitializedMessage>(this, OnExtensionsInitializedMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
-        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
@@ -126,14 +126,14 @@ public class DocumentsService : IDocumentsService, IDisposable
         _isWorkspaceLoaded = true;
     }
 
-    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
+    private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)
     {
-        SelectedDocument = message.DocumentResource;
+        ActiveDocument = message.DocumentResource;
 
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
-            _ = StoreSelectedDocument();
+            _ = StoreActiveDocument();
         }
     }
 
@@ -274,7 +274,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "")
+    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "", bool activate = true)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -290,7 +290,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
-        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload, location);
+        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload, location, activate);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
@@ -302,7 +302,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "")
+    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "", bool activate = true)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -319,7 +319,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         var address = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: 0);
-        var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
+        var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address, activate);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}' at section {sectionIndex}")
@@ -351,16 +351,16 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Result SelectDocument(ResourceKey fileResource)
+    public Result ActivateDocument(ResourceKey fileResource)
     {
-        var selectResult = DocumentsPanel.SelectDocument(fileResource);
-        if (selectResult.IsFailure)
+        var activateResult = DocumentsPanel.ActivateDocument(fileResource);
+        if (activateResult.IsFailure)
         {
-            return Result.Fail($"Failed to select opened document for file resource '{fileResource}'")
-                .WithErrors(selectResult);
+            return Result.Fail($"Failed to activate opened document for file resource '{fileResource}'")
+                .WithErrors(activateResult);
         }
 
-        _logger.LogTrace($"Selected document for file resource '{fileResource}'");
+        _logger.LogTrace($"Activated document for file resource '{fileResource}'");
 
         return Result.Ok();
     }
@@ -403,14 +403,14 @@ public class DocumentsService : IDocumentsService, IDisposable
     }
 
 
-    public async Task StoreSelectedDocument()
+    public async Task StoreActiveDocument()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var fileResource = SelectedDocument.ToString();
+        var fileResource = ActiveDocument.ToString();
 
-        await workspaceSettings.SetPropertyAsync(SelectedDocumentKey, fileResource);
+        await workspaceSettings.SetPropertyAsync(ActiveDocumentKey, fileResource);
     }
 
     public async Task StoreSectionRatios(List<double> ratios)
@@ -491,7 +491,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         // Restore selected document
-        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(SelectedDocumentKey);
+        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(ActiveDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
             return;

@@ -142,7 +142,7 @@ public class WorkspaceLoader
         // Update the current stored state of the workspace in preparation for the next session.
         //
         await explorerService.StoreSelectedResources();
-        await documentsService.StoreSelectedDocument();
+        await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
 
         //

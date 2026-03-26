@@ -12,9 +12,9 @@ public record PendingDocumentSaveMessage(int PendingSaveCount);
 public record DocumentLayoutChangedMessage();
 
 /// <summary>
-/// A message sent when the selected document changes.
+/// A message sent when the active document changes.
 /// </summary>
-public record SelectedDocumentChangedMessage(ResourceKey DocumentResource);
+public record ActiveDocumentChangedMessage(ResourceKey DocumentResource);
 
 /// <summary>
 /// A message sent when the document section proportions change.

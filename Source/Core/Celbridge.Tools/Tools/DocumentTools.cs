@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Documents;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -5,42 +6,274 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for opening and closing documents in the editor.
+/// MCP tools for document content editing and editor management.
 /// </summary>
 [McpServerToolType]
 public partial class DocumentTools : AgentToolBase
 {
-    public DocumentTools(IApplicationServiceProvider services) : base(services) {}
+    public DocumentTools(IApplicationServiceProvider services) : base(services) { }
 
     /// <summary>
-    /// Opens a document in the editor.
+    /// Opens a document in the editor. By default the document is opened without
+    /// activating it, so the user's current active tab is preserved. Use
+    /// document_activate to bring a document to the foreground.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to open.</param>
     /// <param name="forceReload">Force reload even if already open.</param>
+    /// <param name="activate">When true, the opened document becomes the active tab.</param>
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
-    public async partial Task<CallToolResult> Open(string fileResource, bool forceReload = false)
+    public async partial Task<CallToolResult> Open(string fileResource, bool forceReload = false, bool activate = false)
     {
         return await ExecuteCommandAsync<IOpenDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
             command.ForceReload = forceReload;
+            command.Activate = activate;
         });
     }
 
     /// <summary>
-    /// Closes a document in the editor.
+    /// Closes one or more documents in the editor.
+    /// Pass a single resource key or a JSON array of resource keys (e.g. ["Project/foo.txt","Project/bar.txt"]).
+    /// Documents are closed sequentially; if any close fails (e.g. user cancels a save prompt), the remaining documents are still attempted.
     /// </summary>
-    /// <param name="fileResource">Resource key of the file to close.</param>
+    /// <param name="fileResource">Resource key of the file to close, or a JSON array of resource keys.</param>
     /// <param name="forceClose">Force close without save confirmation.</param>
+    /// <returns>JSON object with fields: closed (int), failed (int), errors (array of strings). Omitted when closing a single document.</returns>
     [McpServerTool(Name = "document_close", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.close")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
-        return await ExecuteCommandAsync<ICloseDocumentCommand>(command =>
+        var resourceKeys = ParseResourceKeys(fileResource);
+
+        if (resourceKeys.Count == 1)
+        {
+            return await ExecuteCommandAsync<ICloseDocumentCommand>(command =>
+            {
+                command.FileResource = resourceKeys[0];
+                command.ForceClose = forceClose;
+            });
+        }
+
+        int closedCount = 0;
+        var errors = new List<string>();
+
+        foreach (var resourceKey in resourceKeys)
+        {
+            var result = await CommandService.ExecuteAsync<ICloseDocumentCommand>(command =>
+            {
+                command.FileResource = resourceKey;
+                command.ForceClose = forceClose;
+            });
+
+            if (result.IsSuccess)
+            {
+                closedCount++;
+            }
+            else
+            {
+                errors.Add($"{resourceKey}: {result.FirstErrorMessage}");
+            }
+        }
+
+        var summary = new
+        {
+            closed = closedCount,
+            failed = errors.Count,
+            errors
+        };
+
+        if (errors.Count > 0)
+        {
+            return ErrorResult(JsonSerializer.Serialize(summary));
+        }
+
+        return SuccessResult(JsonSerializer.Serialize(summary));
+    }
+
+    private static List<string> ParseResourceKeys(string input)
+    {
+        var trimmed = input.Trim();
+        if (trimmed.StartsWith('['))
+        {
+            var keys = JsonSerializer.Deserialize<List<string>>(trimmed);
+            return keys ?? new List<string> { input };
+        }
+
+        return new List<string> { input };
+    }
+
+    /// <summary>
+    /// Gets all open documents with their editor position, active state, and unsaved changes flag.
+    /// </summary>
+    /// <returns>JSON array of objects with fields: resource (string), sectionIndex (int), tabOrder (int), isActive (bool).</returns>
+    [McpServerTool(Name = "document_get_open", ReadOnly = true)]
+    [ToolAlias("document.get_open")]
+    public partial CallToolResult GetOpen()
+    {
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+
+        var openDocuments = documentsService.OpenDocumentAddresses;
+        var activeDocument = documentsService.ActiveDocument;
+
+        var documents = new List<object>();
+        foreach (var (resource, address) in openDocuments)
+        {
+            documents.Add(new
+            {
+                resource = resource.ToString(),
+                sectionIndex = address.SectionIndex,
+                tabOrder = address.TabOrder,
+                isActive = resource == activeDocument
+            });
+        }
+
+        return SuccessResult(JsonSerializer.Serialize(documents));
+    }
+
+    /// <summary>
+    /// Activates an open document, making it the active tab in the editor.
+    /// The document must already be open.
+    /// </summary>
+    /// <param name="fileResource">Resource key of the document to activate.</param>
+    [McpServerTool(Name = "document_activate", ReadOnly = false, Idempotent = true)]
+    [ToolAlias("document.activate")]
+    public async partial Task<CallToolResult> Activate(string fileResource)
+    {
+        return await ExecuteCommandAsync<IActivateDocumentCommand>(command =>
         {
             command.FileResource = fileResource;
-            command.ForceClose = forceClose;
         });
+    }
+
+    /// <summary>
+    /// Applies targeted text edits to a document at specific line and column positions.
+    /// Each edit specifies a range and replacement text, using 1-based line and column numbers.
+    /// Edits are applied as a single undo unit when routed through the editor.
+    /// </summary>
+    /// <param name="fileResource">Resource key of the file to edit.</param>
+    /// <param name="editsJson">JSON array of edit objects, each with fields: line (int), column (int), endLine (int), endColumn (int), newText (string). Line and column numbers are 1-based.</param>
+    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, applies edits directly to the file on disk.</param>
+    [McpServerTool(Name = "document_apply_edits")]
+    [ToolAlias("document.apply_edits")]
+    public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson, bool openDocument = true)
+    {
+        List<TextEdit> textEdits;
+        try
+        {
+            textEdits = ParseEditsJson(editsJson);
+        }
+        catch (JsonException ex)
+        {
+            return ErrorResult($"Invalid edits JSON: {ex.Message}");
+        }
+
+        if (textEdits.Count == 0)
+        {
+            return new CallToolResult();
+        }
+
+        var documentEdit = new DocumentEdit(fileResource, textEdits);
+
+        return await ExecuteCommandAsync<IApplyEditsCommand>(command =>
+        {
+            command.Edits = new List<DocumentEdit> { documentEdit };
+            command.OpenDocument = openDocument;
+        });
+    }
+
+    /// <summary>
+    /// Replaces the entire content of a text document.
+    /// </summary>
+    /// <param name="fileResource">Resource key of the file to write.</param>
+    /// <param name="content">The new text content for the document.</param>
+    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, writes directly to disk.</param>
+    [McpServerTool(Name = "document_write")]
+    [ToolAlias("document.write")]
+    public async partial Task<CallToolResult> Write(string fileResource, string content, bool openDocument = true)
+    {
+        return await ExecuteCommandAsync<IWriteDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.Content = content;
+            command.OpenDocument = openDocument;
+        });
+    }
+
+    /// <summary>
+    /// Replaces the content of a binary document from base64-encoded data.
+    /// </summary>
+    /// <param name="fileResource">Resource key of the file to write.</param>
+    /// <param name="base64Content">The new content as a base64-encoded string.</param>
+    /// <param name="openDocument">When true (default), opens the document in the editor. When false and document is not already open, writes decoded bytes directly to disk.</param>
+    [McpServerTool(Name = "document_write_binary")]
+    [ToolAlias("document.write_binary")]
+    public async partial Task<CallToolResult> WriteBinary(string fileResource, string base64Content, bool openDocument = true)
+    {
+        return await ExecuteCommandAsync<IWriteBinaryDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.Base64Content = base64Content;
+            command.OpenDocument = openDocument;
+        });
+    }
+
+    /// <summary>
+    /// Finds and replaces text within a document. Supports plain text and regex patterns.
+    /// </summary>
+    /// <param name="fileResource">Resource key of the file to perform find and replace on.</param>
+    /// <param name="searchText">The text to search for.</param>
+    /// <param name="replaceText">The replacement text.</param>
+    /// <param name="matchCase">If true, the search is case-sensitive.</param>
+    /// <param name="useRegex">If true, the search text is treated as a regular expression.</param>
+    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, applies replacements directly to the file on disk.</param>
+    /// <returns>JSON object with field: replacementCount (int).</returns>
+    [McpServerTool(Name = "document_find_replace")]
+    [ToolAlias("document.find_replace")]
+    public async partial Task<CallToolResult> FindReplace(
+        string fileResource,
+        string searchText,
+        string replaceText,
+        bool matchCase = false,
+        bool useRegex = false,
+        bool openDocument = true)
+    {
+        var (callResult, replacementCount) = await ExecuteCommandAsync<IFindReplaceDocumentCommand, int>(command =>
+        {
+            command.FileResource = fileResource;
+            command.SearchText = searchText;
+            command.ReplaceText = replaceText;
+            command.MatchCase = matchCase;
+            command.UseRegex = useRegex;
+            command.OpenDocument = openDocument;
+        });
+
+        if (callResult.IsError == true)
+        {
+            return callResult;
+        }
+
+        return SuccessResult(JsonSerializer.Serialize(new { replacementCount }));
+    }
+
+    private static List<TextEdit> ParseEditsJson(string editsJson)
+    {
+        var edits = new List<TextEdit>();
+        var jsonDocument = JsonDocument.Parse(editsJson);
+
+        foreach (var element in jsonDocument.RootElement.EnumerateArray())
+        {
+            var line = element.GetProperty("line").GetInt32();
+            var column = element.GetProperty("column").GetInt32();
+            var endLine = element.GetProperty("endLine").GetInt32();
+            var endColumn = element.GetProperty("endColumn").GetInt32();
+            var newText = element.GetProperty("newText").GetString() ?? string.Empty;
+
+            edits.Add(new TextEdit(line, column, endLine, endColumn, newText));
+        }
+
+        return edits;
     }
 }

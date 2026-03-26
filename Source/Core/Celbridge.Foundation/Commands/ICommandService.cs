@@ -39,6 +39,17 @@ public interface ICommandService
         [CallerLineNumber] int lineNumber = 0) where T : IExecutableCommand;
 
     /// <summary>
+    /// Enqueue a command for execution, and then wait for it to execute.
+    /// Returns a typed result containing the command's ResultValue on success.
+    /// </summary>
+    Task<Result<TResult>> ExecuteAsync<TCommand, TResult>(
+        Action<TCommand>? configure = null,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+        where TCommand : IExecutableCommand<TResult>
+        where TResult : notnull;
+
+    /// <summary>
     /// Returns true if a command of the given type is in the queue.
     /// </summary>
     bool ContainsCommandsOfType<T>() where T : notnull;

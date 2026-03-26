@@ -15,6 +15,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
     private readonly ICommandService _commandService;
 
     public List<DocumentEdit> Edits { get; set; } = new();
+    public bool OpenDocument { get; set; } = true;
 
     public ApplyEditsCommand(
         ILogger<ApplyEditsCommand> logger,
@@ -50,10 +51,20 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             // Check if document is already open
             var documentView = documentsPanel.GetDocumentView(resource);
 
-            // If not open, open it first
-            if (documentView is null)
+            if (documentView is not null)
             {
-                var openResult = await documentsService.OpenDocument(resource, forceReload: false, location: string.Empty);
+                // Document is already open, always route through the editor
+                var applyResult = await documentView.ApplyEditsAsync(documentEdit.Edits);
+                if (applyResult.IsFailure)
+                {
+                    _logger.LogWarning($"Failed to apply edits to document: {resource}");
+                    failedResources.Add(resource);
+                }
+            }
+            else if (OpenDocument)
+            {
+                // Open the document and apply edits through the editor
+                var openResult = await documentsService.OpenDocument(resource, forceReload: false, location: string.Empty, activate: false);
                 if (openResult.IsFailure)
                 {
                     _logger.LogWarning($"Failed to open document for applying edits: {resource}");
@@ -61,7 +72,6 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                     continue;
                 }
 
-                // Get the document view after opening
                 documentView = documentsPanel.GetDocumentView(resource);
                 if (documentView is null)
                 {
@@ -69,24 +79,31 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                     failedResources.Add(resource);
                     continue;
                 }
-            }
 
-            // Apply the edits to the document
-            var applyResult = await documentView.ApplyEditsAsync(documentEdit.Edits);
-            if (applyResult.IsFailure)
+                var applyResult = await documentView.ApplyEditsAsync(documentEdit.Edits);
+                if (applyResult.IsFailure)
+                {
+                    _logger.LogWarning($"Failed to apply edits to document: {resource}");
+                    failedResources.Add(resource);
+                }
+            }
+            else
             {
-                _logger.LogWarning($"Failed to apply edits to document: {resource}");
-                failedResources.Add(resource);
+                // Apply edits directly to the file on disk
+                var applyResult = await ApplyEditsToDisk(resourceRegistry, resource, documentEdit.Edits);
+                if (applyResult.IsFailure)
+                {
+                    _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
+                    failedResources.Add(resource);
+                }
             }
         }
 
         if (failedResources.Count > 0)
         {
-            // Log the error with all failed files
             var errorMessage = $"Failed to apply edits to the following documents: {string.Join(", ", failedResources)}";
             _logger.LogError(errorMessage);
 
-            // Show localized alert to the user
             var alertTitle = _stringLocalizer.GetString("Documents_ApplyEditsFailedTitle");
             string alertMessage;
             if (failedResources.Count == 1)
@@ -104,6 +121,64 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
             return Result.Fail(errorMessage);
         }
+
+        return Result.Ok();
+    }
+
+    private static async Task<Result> ApplyEditsToDisk(IResourceRegistry resourceRegistry, ResourceKey resource, List<TextEdit> edits)
+    {
+        var resourcePath = resourceRegistry.GetResourcePath(resource);
+        if (!File.Exists(resourcePath))
+        {
+            return Result.Fail($"File not found: '{resource}'");
+        }
+
+        var lines = new List<string>(await File.ReadAllLinesAsync(resourcePath));
+
+        // Sort edits in reverse order (bottom-to-top, right-to-left) so earlier edits
+        // don't shift the positions of later edits
+        var sortedEdits = edits
+            .OrderByDescending(e => e.Line)
+            .ThenByDescending(e => e.Column)
+            .ToList();
+
+        foreach (var edit in sortedEdits)
+        {
+            // Convert from 1-based to 0-based indices
+            var startLine = edit.Line - 1;
+            var startColumn = edit.Column - 1;
+            var endLine = edit.EndLine - 1;
+            var endColumn = edit.EndColumn - 1;
+
+            if (startLine < 0 || startLine >= lines.Count)
+            {
+                return Result.Fail($"Edit start line {edit.Line} is out of range (file has {lines.Count} lines)");
+            }
+
+            if (endLine < 0 || endLine >= lines.Count)
+            {
+                return Result.Fail($"Edit end line {edit.EndLine} is out of range (file has {lines.Count} lines)");
+            }
+
+            // Build the text before the edit range
+            var beforeEdit = lines[startLine].Substring(0, Math.Min(startColumn, lines[startLine].Length));
+
+            // Build the text after the edit range
+            var afterEdit = endColumn <= lines[endLine].Length
+                ? lines[endLine].Substring(endColumn)
+                : string.Empty;
+
+            // Combine: before + new text + after
+            var newContent = beforeEdit + edit.NewText + afterEdit;
+            var newLines = newContent.Split('\n');
+
+            // Remove the original lines in the edit range and insert the new lines
+            var lineCount = endLine - startLine + 1;
+            lines.RemoveRange(startLine, lineCount);
+            lines.InsertRange(startLine, newLines);
+        }
+
+        await File.WriteAllLinesAsync(resourcePath, lines);
 
         return Result.Ok();
     }

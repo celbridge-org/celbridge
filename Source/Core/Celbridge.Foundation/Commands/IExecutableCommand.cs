@@ -31,3 +31,15 @@ public interface IExecutableCommand
     /// </summary>
     Task<Result> ExecuteAsync();
 }
+
+/// <summary>
+/// A command that produces a typed result value after execution.
+/// The result is available via ResultValue after ExecuteAsync() completes successfully.
+/// </summary>
+public interface IExecutableCommand<TResult> : IExecutableCommand where TResult : notnull
+{
+    /// <summary>
+    /// The result value produced by the command after successful execution.
+    /// </summary>
+    TResult ResultValue { get; }
+}

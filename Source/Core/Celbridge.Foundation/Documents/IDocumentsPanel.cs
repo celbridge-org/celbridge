@@ -38,20 +38,16 @@ public interface IDocumentsPanel
     IDocumentView? GetDocumentView(ResourceKey fileResource);
 
     /// <summary>
-    /// Open a file resource as a document in the documents panel.
-    /// Opens in the default section (section 0).
+    /// Open a file resource as a document in the documents panel and optionally navigate to a specific location.
+    /// When activate is true, the document becomes the active tab.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload);
-
-    /// <summary>
-    /// Open a file resource as a document in the documents panel and navigate to a specific location.
-    /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location);
+    Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location = "", bool activate = true);
 
     /// <summary>
     /// Open a file resource as a document at a specific address (UI position).
+    /// When activate is true, the document becomes the active tab.
     /// </summary>
-    Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address);
+    Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address, bool activate = true);
 
     /// <summary>
     /// Close an opened document in the documents panel.
@@ -65,10 +61,10 @@ public interface IDocumentsPanel
     Task<Result> SaveModifiedDocuments(double deltaTime);
 
     /// <summary>
-    /// Selects an opened document in the documents panel.
+    /// Activates an opened document in the documents panel, making it the active tab.
     /// Fails if the specified document is not opened.
     /// </summary>
-    Result SelectDocument(ResourceKey fileResource);
+    Result ActivateDocument(ResourceKey fileResource);
 
     /// <summary>
     /// Navigate to a specific location within an already-opened document.

@@ -113,6 +113,35 @@ public class CommandService : ICommandService
         return Result.Ok();
     }
 
+    public async Task<Result<TResult>> ExecuteAsync<TCommand, TResult>(
+        Action<TCommand>? configure = null,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+        where TCommand : IExecutableCommand<TResult>
+        where TResult : notnull
+    {
+        // ExecuteAsync<TCommand> resolves the command from DI internally, so we
+        // don't have direct access to the command instance. We capture a reference
+        // to it via the configure callback so we can read ResultValue after
+        // execution completes.
+        TCommand? capturedCommand = default;
+
+        var result = await ExecuteAsync<TCommand>(command =>
+        {
+            configure?.Invoke(command);
+            capturedCommand = command;
+        }, filePath, lineNumber);
+
+        if (result.IsFailure)
+        {
+            return Result<TResult>.Fail(result.FirstErrorMessage)
+                .WithErrors(result);
+        }
+
+        // The command populated ResultValue during its ExecuteAsync().
+        return Result<TResult>.Ok(capturedCommand!.ResultValue);
+    }
+
     public bool ContainsCommandsOfType<T>() where T : notnull
     {
         lock (_lock)

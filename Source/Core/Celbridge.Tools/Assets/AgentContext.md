@@ -11,30 +11,34 @@ fail if no project is open. The response includes the project name.
 
 ## Resource Keys
 
-All file and folder references in Celbridge use **resource keys** -- relative
-paths from the project root using forward slash separators on all platforms.
+All file and folder references in Celbridge use **resource keys** -- paths
+relative to the `Project` folder, using forward slash separators on all
+platforms. The `Project/` prefix itself is **not** part of the resource key.
 
-- `Project/readme.md` -- a file in the Project folder
-- `Project/Scripts/hello.py` -- a nested file
-- `Project` -- the project root folder
+- `readme.md` -- a file in the project root
+- `Scripts/hello.py` -- a nested file
+- `Data` -- a subfolder
+- (empty string) -- the project root folder itself
 
 Resource keys never use backslashes, absolute paths, or leading slashes.
+When in doubt, call `file_get_tree` with an empty resource key to see the
+actual resource keys in the project.
 
 ## Project Structure
 
 A Celbridge project is a folder containing a `.celbridge` configuration file
-and a `Project` folder that holds all user content. The `Project` folder is
-the root for all resource keys.
+and a `Project` folder that holds all user content. Resource keys are relative
+to the `Project` folder.
 
 ```
 MyProject/
   MyProject.celbridge    # Project configuration
-  Project/               # All user content lives here
-    readme.md
+  Project/               # Resource key root -- all keys are relative to here
+    readme.md            # Resource key: readme.md
     Scripts/
-      hello.py
+      hello.py           # Resource key: Scripts/hello.py
     Data/
-      report.xlsx
+      report.xlsx        # Resource key: Data/report.xlsx
 ```
 
 ## Tool Namespaces
@@ -73,21 +77,22 @@ unless the tool method is explicitly async.
 
 ## Python Scripting
 
-The Celbridge console hosts an interactive Python REPL with a pre-configured
-`cel` proxy object available as a global variable. Do not import any library
-or construct a client -- just use `cel` directly.
+When writing Python scripts for Celbridge, import the modules you need from
+the `celbridge` package. Each module corresponds to a tool namespace.
 
 ```python
-cel.document.open("Project/readme.md")
-cel.app.log("Processing complete")
+from celbridge import app, document
+
+document.open("readme.md")
+app.log("Processing complete")
 ```
 
-Tool aliases provide dot-notation method names for the Python proxy:
+Available modules:
 
 ```
-cel.app         - Application info and logging
-cel.file        - Read-only file and folder queries
-cel.query       - Agent context and knowledge retrieval
-cel.explorer    - Explorer panel: structural operations and navigation
-cel.document    - Documents panel: content editing and editor management
+celbridge.app         - Application info and logging
+celbridge.file        - Read-only file and folder queries
+celbridge.query       - Agent context and knowledge retrieval
+celbridge.explorer    - Explorer panel: structural operations and navigation
+celbridge.document    - Documents panel: content editing and editor management
 ```

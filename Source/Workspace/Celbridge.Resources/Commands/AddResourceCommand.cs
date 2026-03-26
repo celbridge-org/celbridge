@@ -56,7 +56,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                 command.ForceReload = false;
             });
 
-            _commandService.Execute<ISelectDocumentCommand>(command =>
+            _commandService.Execute<IActivateDocumentCommand>(command =>
             {
                 command.FileResource = DestResource;
             });

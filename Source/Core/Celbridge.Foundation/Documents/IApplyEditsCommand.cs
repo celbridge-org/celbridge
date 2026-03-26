@@ -57,4 +57,11 @@ public interface IApplyEditsCommand : IExecutableCommand
     /// Each DocumentEdit contains a resource key and a list of text edits.
     /// </summary>
     List<DocumentEdit> Edits { get; set; }
+
+    /// <summary>
+    /// When true (default), opens the document in the editor and applies edits with undo support.
+    /// When false and the document is not already open, applies edits directly to the file on disk.
+    /// When false but the document is already open, routes through the editor to avoid auto-save race conditions.
+    /// </summary>
+    bool OpenDocument { get; set; }
 }
