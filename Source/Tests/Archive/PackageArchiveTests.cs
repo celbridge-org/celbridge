@@ -620,6 +620,40 @@ public class PackageArchiveTests
     }
 
     [Test]
+    public void ValidPackageNamesAreAccepted()
+    {
+        ArchiveHelper.IsValidPackageName("my-widget").Should().BeTrue();
+        ArchiveHelper.IsValidPackageName("widget").Should().BeTrue();
+        ArchiveHelper.IsValidPackageName("a").Should().BeTrue();
+        ArchiveHelper.IsValidPackageName("my-cool-package").Should().BeTrue();
+        ArchiveHelper.IsValidPackageName("package123").Should().BeTrue();
+        ArchiveHelper.IsValidPackageName("123package").Should().BeTrue();
+        ArchiveHelper.IsValidPackageName("a1b2c3").Should().BeTrue();
+    }
+
+    [Test]
+    public void InvalidPackageNamesAreRejected()
+    {
+        ArchiveHelper.IsValidPackageName("").Should().BeFalse("empty name");
+        ArchiveHelper.IsValidPackageName("My-Widget").Should().BeFalse("uppercase letters");
+        ArchiveHelper.IsValidPackageName("-widget").Should().BeFalse("leading hyphen");
+        ArchiveHelper.IsValidPackageName("widget-").Should().BeFalse("trailing hyphen");
+        ArchiveHelper.IsValidPackageName("my--widget").Should().BeFalse("consecutive hyphens");
+        ArchiveHelper.IsValidPackageName("my widget").Should().BeFalse("spaces");
+        ArchiveHelper.IsValidPackageName("my_widget").Should().BeFalse("underscores");
+        ArchiveHelper.IsValidPackageName("my.widget").Should().BeFalse("dots");
+        ArchiveHelper.IsValidPackageName("my/widget").Should().BeFalse("slashes");
+        ArchiveHelper.IsValidPackageName(new string('a', 215)).Should().BeFalse("exceeds max length");
+    }
+
+    [Test]
+    public void PackageNameAtMaxLengthIsAccepted()
+    {
+        var maxName = new string('a', 214);
+        ArchiveHelper.IsValidPackageName(maxName).Should().BeTrue();
+    }
+
+    [Test]
     public void CollectFolderHierarchyStopsAtDestination()
     {
         var destinationPath = Path.Combine(_testFolderPath, "dest");

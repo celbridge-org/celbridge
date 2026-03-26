@@ -118,6 +118,38 @@ public static class ArchiveHelper
     }
 
     /// <summary>
+    /// Returns true if the name follows npm package naming conventions: lowercase alphanumeric
+    /// and hyphens, 1-214 characters, must start and end with a letter or digit, no consecutive hyphens.
+    /// </summary>
+    public static bool IsValidPackageName(string name)
+    {
+        if (string.IsNullOrEmpty(name) || name.Length > 214)
+        {
+            return false;
+        }
+
+        return Regex.IsMatch(name, @"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$") &&
+               !name.Contains("--");
+    }
+
+    /// <summary>
+    /// Returns the path to the local package registry folder in AppData.
+    /// </summary>
+    public static string GetPackageRegistryPath()
+    {
+        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(appDataPath, "Celbridge", "Packages");
+    }
+
+    /// <summary>
+    /// Returns the full path to a package zip file in the local registry.
+    /// </summary>
+    public static string GetPackageFilePath(string packageName)
+    {
+        return Path.Combine(GetPackageRegistryPath(), $"{packageName}.zip");
+    }
+
+    /// <summary>
     /// Collects all folders in the hierarchy between a folder path and the destination root,
     /// so they can be created as tracked operations for proper undo support.
     /// </summary>

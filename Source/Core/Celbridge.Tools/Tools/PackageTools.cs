@@ -1,11 +1,23 @@
+using System.IO.Compression;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using Directory = System.IO.Directory;
+using File = System.IO.File;
+using FileAccess = System.IO.FileAccess;
+using FileAttributes = System.IO.FileAttributes;
+using FileInfo = System.IO.FileInfo;
+using FileMode = System.IO.FileMode;
+using FileShare = System.IO.FileShare;
+using FileStream = System.IO.FileStream;
+using Path = System.IO.Path;
+using SearchOption = System.IO.SearchOption;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for package operations: archiving and unarchiving files and folders.
+/// MCP tools for package operations: archiving, unarchiving, and local package management.
 /// </summary>
 [McpServerToolType]
 public partial class PackageTools : AgentToolBase
@@ -84,5 +96,261 @@ public partial class PackageTools : AgentToolBase
             entries = unarchiveResult.Entries,
             destination = unarchiveResult.Destination
         }));
+    }
+
+    /// <summary>
+    /// Publishes a folder as a named package to the local package registry.
+    /// The folder's contents are archived and stored in the application's local data folder.
+    /// </summary>
+    /// <param name="resource">Resource key of the folder to publish.</param>
+    /// <param name="packageName">Package name (lowercase alphanumeric and hyphens, e.g. "my-widget").</param>
+    /// <returns>JSON object with fields: packageName (string), entries (int), size (long).</returns>
+    [McpServerTool(Name = "package_publish", Destructive = true)]
+    [ToolAlias("package.publish")]
+    public async partial Task<CallToolResult> Publish(string resource, string packageName)
+    {
+        if (!IsValidPackageName(packageName))
+        {
+            return ErrorResult(
+                $"Invalid package name: '{packageName}'. " +
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
+        }
+
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var sourcePath = resourceRegistry.GetResourcePath(resource);
+
+        if (!Directory.Exists(sourcePath))
+        {
+            return ErrorResult($"Folder not found: '{resource}'");
+        }
+
+        var registryPath = GetPackageRegistryPath();
+        if (!Directory.Exists(registryPath))
+        {
+            Directory.CreateDirectory(registryPath);
+        }
+
+        var packageFilePath = GetPackageFilePath(packageName);
+        int entryCount = 0;
+
+        try
+        {
+            using var fileStream = new FileStream(packageFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Create, leaveOpen: false);
+
+            var filePaths = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
+
+            foreach (var filePath in filePaths)
+            {
+                var fileAttributes = File.GetAttributes(filePath);
+                if (fileAttributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    continue;
+                }
+
+                var relativePath = Path.GetRelativePath(sourcePath, filePath);
+                var entryName = relativePath.Replace('\\', '/');
+
+                var entry = zipArchive.CreateEntry(entryName, CompressionLevel.Optimal);
+                using var entryStream = entry.Open();
+                using var sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                await sourceStream.CopyToAsync(entryStream);
+                entryCount++;
+            }
+        }
+        catch (System.IO.IOException exception)
+        {
+            return ErrorResult($"Failed to publish package: {exception.Message}");
+        }
+
+        var packageSize = new FileInfo(packageFilePath).Length;
+
+        return SuccessResult(JsonSerializer.Serialize(new
+        {
+            packageName,
+            entries = entryCount,
+            size = packageSize
+        }));
+    }
+
+    /// <summary>
+    /// Installs a named package from the local registry into the project's packages folder.
+    /// The package is extracted to packages/{packageName}/ in the project root.
+    /// </summary>
+    /// <param name="packageName">Name of the package to install.</param>
+    /// <returns>JSON object with fields: packageName (string), entries (int), destination (string).</returns>
+    [McpServerTool(Name = "package_install", Destructive = true)]
+    [ToolAlias("package.install")]
+    public async partial Task<CallToolResult> Install(string packageName)
+    {
+        if (!IsValidPackageName(packageName))
+        {
+            return ErrorResult(
+                $"Invalid package name: '{packageName}'. " +
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
+        }
+
+        var packageFilePath = GetPackageFilePath(packageName);
+        if (!File.Exists(packageFilePath))
+        {
+            return ErrorResult($"Package not found: '{packageName}'");
+        }
+
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+
+        // Copy the package zip into the project as a temporary file
+        var tempArchiveResource = new ResourceKey($".celbridge/.cache/{packageName}.zip");
+        var tempArchivePath = resourceRegistry.GetResourcePath(tempArchiveResource);
+
+        var tempFolder = Path.GetDirectoryName(tempArchivePath);
+        if (!string.IsNullOrEmpty(tempFolder) && !Directory.Exists(tempFolder))
+        {
+            Directory.CreateDirectory(tempFolder);
+        }
+
+        try
+        {
+            File.Copy(packageFilePath, tempArchivePath, overwrite: true);
+        }
+        catch (System.IO.IOException exception)
+        {
+            return ErrorResult($"Failed to copy package for installation: {exception.Message}");
+        }
+
+        var destinationResource = new ResourceKey($"packages/{packageName}");
+
+        try
+        {
+            var (callToolResult, unarchiveResult) = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
+            {
+                command.ArchiveResource = tempArchiveResource;
+                command.DestinationResource = destinationResource;
+                command.Overwrite = false;
+            });
+
+            if (callToolResult.IsError == true || unarchiveResult is null)
+            {
+                return callToolResult;
+            }
+
+            return SuccessResult(JsonSerializer.Serialize(new
+            {
+                packageName,
+                entries = unarchiveResult.Entries,
+                destination = destinationResource.ToString()
+            }));
+        }
+        finally
+        {
+            // Clean up the temporary zip
+            if (File.Exists(tempArchivePath))
+            {
+                File.Delete(tempArchivePath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Uninstalls a package by removing its folder from the project's packages folder.
+    /// </summary>
+    /// <param name="packageName">Name of the package to uninstall.</param>
+    /// <returns>JSON object with fields: packageName (string).</returns>
+    [McpServerTool(Name = "package_uninstall", Destructive = true)]
+    [ToolAlias("package.uninstall")]
+    public async partial Task<CallToolResult> Uninstall(string packageName)
+    {
+        if (!IsValidPackageName(packageName))
+        {
+            return ErrorResult(
+                $"Invalid package name: '{packageName}'. " +
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
+        }
+
+        var packageResource = new ResourceKey($"packages/{packageName}");
+
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var packagePath = resourceRegistry.GetResourcePath(packageResource);
+
+        if (!Directory.Exists(packagePath))
+        {
+            return ErrorResult($"Package is not installed: '{packageName}'");
+        }
+
+        var callToolResult = await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
+        {
+            command.Resources = new List<ResourceKey> { packageResource };
+        });
+
+        if (callToolResult.IsError == true)
+        {
+            return callToolResult;
+        }
+
+        return SuccessResult(JsonSerializer.Serialize(new
+        {
+            packageName
+        }));
+    }
+
+    /// <summary>
+    /// Lists all packages available in the local package registry.
+    /// </summary>
+    /// <returns>JSON array of objects with fields: packageName (string), size (long).</returns>
+    [McpServerTool(Name = "package_list", ReadOnly = true)]
+    [ToolAlias("package.list")]
+    public partial CallToolResult List()
+    {
+        var registryPath = GetPackageRegistryPath();
+
+        var packages = new List<object>();
+
+        if (Directory.Exists(registryPath))
+        {
+            var zipFiles = Directory.GetFiles(registryPath, "*.zip");
+
+            foreach (var zipFile in zipFiles)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(zipFile);
+
+                if (!IsValidPackageName(fileName))
+                {
+                    continue;
+                }
+
+                var fileInfo = new FileInfo(zipFile);
+                packages.Add(new
+                {
+                    packageName = fileName,
+                    size = fileInfo.Length
+                });
+            }
+        }
+
+        return SuccessResult(JsonSerializer.Serialize(packages));
+    }
+
+    private static bool IsValidPackageName(string name)
+    {
+        if (string.IsNullOrEmpty(name) || name.Length > 214)
+        {
+            return false;
+        }
+
+        return Regex.IsMatch(name, @"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$") &&
+               !name.Contains("--");
+    }
+
+    private static string GetPackageRegistryPath()
+    {
+        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(appDataPath, "Celbridge", "Packages");
+    }
+
+    private static string GetPackageFilePath(string packageName)
+    {
+        return Path.Combine(GetPackageRegistryPath(), $"{packageName}.zip");
     }
 }
