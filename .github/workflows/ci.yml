@@ -77,9 +77,9 @@ jobs:
           python-version: '3.13'
 
       - name: Install packages with dev dependencies
-        working-directory: ./Source/Python
+        working-directory: ./Source/Workspace/Celbridge.Python
         run: pip install -e "packages/celbridge[dev]"
 
       - name: Run Python tests
-        working-directory: ./Source/Python
+        working-directory: ./Source/Workspace/Celbridge.Python
         run: python run_tests.py
