@@ -54,7 +54,13 @@ public class AddResourceHelper
         // Create the resource on disk
         //
 
-        var destPath = resourceRegistry.GetResourcePath(destResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(destResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{destResource}'")
+                .WithErrors(resolveResult);
+        }
+        var destPath = resolveResult.Value;
 
         // Fail if the parent folder for the new resource does not exist.
         var parentFolderPath = Path.GetDirectoryName(destPath);

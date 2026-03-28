@@ -8,6 +8,7 @@ public class ResourceRegistry : IResourceRegistry
 {
     private readonly IMessengerService _messengerService;
     private readonly IFileIconService _fileIconService;
+    private readonly PathValidator _pathValidator = new();
 
     public string ProjectFolderPath { get; set; } = string.Empty;
 
@@ -48,7 +49,7 @@ public class ResourceRegistry : IResourceRegistry
             }
             AddResourceKeySegment(resource);
 
-            var resourceKey = new ResourceKey(sb.ToString());
+            var resourceKey = ResourceKey.Create(sb.ToString());
 
             return resourceKey;
         }
@@ -75,9 +76,14 @@ public class ResourceRegistry : IResourceRegistry
                 return Result<ResourceKey>.Fail($"The path '{resourcePath}' is not in the project folder '{ProjectFolderPath}'.");
             }
 
-            var resourceKey = normalizedPath.Substring(ProjectFolderPath.Length)
+            var relativeKey = normalizedPath.Substring(ProjectFolderPath.Length)
                 .Replace('\\', '/')
                 .Trim('/');
+
+            if (!ResourceKey.TryCreate(relativeKey, out var resourceKey))
+            {
+                return Result<ResourceKey>.Fail($"The path '{resourcePath}' produces an invalid resource key: '{relativeKey}'.");
+            }
 
             return Result<ResourceKey>.Ok(resourceKey);
         }
@@ -88,33 +94,15 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public string GetResourcePath(IResource resource)
+    public Result<string> ResolveResourcePath(IResource resource)
     {
-        try
-        {
-            var resourceKey = GetResourceKey(resource);
-            var path = GetResourcePath(resourceKey);
-            return path;
-        }
-        catch (Exception ex)
-        {
-            throw new ArgumentException($"Failed to get path for resource '{resource}'", ex);
-        }
+        var resourceKey = GetResourceKey(resource);
+        return _pathValidator.ValidateAndResolve(ProjectFolderPath, resourceKey);
     }
 
-    public string GetResourcePath(ResourceKey resource)
+    public Result<string> ResolveResourcePath(ResourceKey resource)
     {
-        try
-        {
-            var resourcePath = Path.Combine(ProjectFolderPath, resource);
-            var normalized = Path.GetFullPath(resourcePath);
-
-            return normalized;
-        }
-        catch (Exception ex)
-        {
-            throw new ArgumentException($"Failed to get path for resource '{resource}'.", ex);
-        }
+        return _pathValidator.ValidateAndResolve(ProjectFolderPath, resource);
     }
 
     public Result<IResource> GetResource(ResourceKey resource)
@@ -262,6 +250,8 @@ public class ResourceRegistry : IResourceRegistry
         {
             SynchronizeFolder(_rootFolder, ProjectFolderPath);
 
+            _pathValidator.InvalidateCache();
+
             _messengerService.Send(new ResourceRegistryUpdatedMessage());
 
             return Result.Ok();
@@ -344,8 +334,11 @@ public class ResourceRegistry : IResourceRegistry
             if (child is IFileResource fileResource)
             {
                 var resourceKey = GetResourceKey(fileResource);
-                var filePath = GetResourcePath(resourceKey);
-                fileResources.Add((resourceKey, filePath));
+                var resolveResult = ResolveResourcePath(resourceKey);
+                if (resolveResult.IsSuccess)
+                {
+                    fileResources.Add((resourceKey, resolveResult.Value));
+                }
             }
             else if (child is IFolderResource childFolder)
             {
@@ -358,7 +351,13 @@ public class ResourceRegistry : IResourceRegistry
     {
         try
         {
-            var resourcePath = GetResourcePath(resourceKey);
+            var resolveResult = ResolveResourcePath(resourceKey);
+            if (resolveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to resolve path for resource key: '{resourceKey}'")
+                    .WithErrors(resolveResult);
+            }
+            var resourcePath = resolveResult.Value;
 
             if (!File.Exists(resourcePath) && !Directory.Exists(resourcePath))
             {

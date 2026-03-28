@@ -40,12 +40,18 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     /// </summary>
     public virtual Task<Result> SetFileResource(ResourceKey fileResource)
     {
-        var filePath = ResourceRegistry.GetResourcePath(fileResource);
-
         if (ResourceRegistry.GetResource(fileResource).IsFailure)
         {
             return Task.FromResult<Result>(Result.Fail($"File resource does not exist in resource registry: {fileResource}"));
         }
+
+        var resolveResult = ResourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Task.FromResult<Result>(Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult));
+        }
+        var filePath = resolveResult.Value;
 
         if (!File.Exists(filePath))
         {

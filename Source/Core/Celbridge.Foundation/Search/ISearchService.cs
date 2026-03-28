@@ -9,13 +9,17 @@ public interface ISearchService
     /// Searches for text across all project files.
     /// When maxResults is specified, search stops after finding that many matches (for display purposes).
     /// When maxResults is null, all matches are returned (for Replace All operations).
+    /// When useRegex is true, searchTerm is interpreted as a .NET regular expression.
+    /// When include is specified, only files whose names match one of the comma-separated glob patterns are searched (e.g. "*.cs,*.xaml").
     /// </summary>
     Task<SearchResults> SearchAsync(
         string searchTerm,
         bool matchCase,
         bool wholeWord,
         int? maxResults,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool useRegex = false,
+        string include = "");
 
     /// <summary>
     /// Replaces all occurrences of search text with replacement text in a single file.

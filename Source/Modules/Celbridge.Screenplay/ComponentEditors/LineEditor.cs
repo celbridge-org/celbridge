@@ -408,8 +408,8 @@ public class LineEditor : ComponentEditorBase
         var sceneComponent = getSceneResult.Value;
 
         // Get the dialogue file resource from the scene component
-        ResourceKey excelFileResource = sceneComponent.GetString("/dialogueFile");
-        if (string.IsNullOrEmpty(excelFileResource))
+        var dialogueFileString = sceneComponent.GetString("/dialogueFile");
+        if (string.IsNullOrEmpty(dialogueFileString) || !ResourceKey.TryCreate(dialogueFileString, out var excelFileResource))
         {
             return Result<List<Character>>.Fail($"Failed to get dialogue file property");
         }

@@ -1,98 +1,51 @@
 # Celbridge Agent Context
 
-This document provides essential context for AI agents working with
-Celbridge projects through the MCP tool interface.
-
 ## Getting Started
 
-Before calling any workspace tools, call `app_get_status` to check
-whether a project is loaded. Most tools require a loaded project and will
-fail if no project is open. The response includes the project name.
+Call `app_get_status` before using workspace tools — most require a loaded project.
 
 ## Resource Keys
 
-All file and folder references in Celbridge use **resource keys** -- paths
-relative to the `Project` folder, using forward slash separators on all
-platforms. The `Project/` prefix itself is **not** part of the resource key.
+All file and folder references use **resource keys**: forward-slash paths relative to
+the project content root.
 
-- `readme.md` -- a file in the project root
-- `Scripts/hello.py` -- a nested file
-- `Data` -- a subfolder
-- (empty string) -- the project root folder itself
+- `readme.md` — file at the top level
+- `Scripts/hello.py` — nested file
+- `Data` — subfolder
+- (empty string) — the top level itself
 
-Resource keys never use backslashes, absolute paths, or leading slashes.
-When in doubt, call `file_get_tree` with an empty resource key to see the
-actual resource keys in the project.
+Never use backslashes, absolute paths, or leading slashes. When in doubt, call
+`file_get_tree` with an empty resource key to see the project's resource keys.
 
-## Project Structure
+## Workspace Panels
 
-A Celbridge project is a folder containing a `.celbridge` configuration file
-and a `Project` folder that holds all user content. Resource keys are relative
-to the `Project` folder.
-
-```
-MyProject/
-  MyProject.celbridge    # Project configuration
-  Project/               # Resource key root -- all keys are relative to here
-    readme.md            # Resource key: readme.md
-    Scripts/
-      hello.py           # Resource key: Scripts/hello.py
-    Data/
-      report.xlsx        # Resource key: Data/report.xlsx
-```
-
-## Tool Namespaces
-
-Tools are organized into namespaces that match the workspace UI panels:
-
-- `app` -- Application info, logging, and alerts
-- `file` -- Read-only file and folder queries
-- `query` -- Agent context and knowledge retrieval
-- `explorer` -- Explorer panel: structural operations and navigation
-- `document` -- Documents panel: content editing and editor management
+- **Explorer** — the project file tree. Use `explorer_*` tools to create, move, and delete resources.
+- **Documents** — the editor area. Files open as tabs across up to 3 sections (sectionIndex 0, 1, 2 from left to right). Use `document_*` tools to open, edit, and manage documents.
+- **Inspector** — shows contextual properties for the selected resource.
+- **Search** — full-text search across project files. Use `file_grep` from the agent.
+- **Console** — the built-in Python REPL for running and testing scripts interactively.
 
 ## Extensions
 
-Celbridge supports extensions as collections of HTML, JavaScript, and CSS
-files that run inside a WebView2 control. Extensions communicate with the
-host application through a JSON-RPC message channel.
-
-## Documents
-
-Documents are files opened in the editor area. The editor type is determined
-by the file extension. Multiple documents can be open simultaneously across
-up to three editor sections.
-
-## Explorer Panel
-
-The explorer panel shows the project's file tree. Use `explorer_select` to
-highlight a resource in the tree.
+Each extension lives in its own kebab-case subfolder within the `extensions` folder
+at the project root (e.g. `extensions/my-extension`). Extensions run inside a
+WebView2 control and communicate with the host via JSON-RPC. They can contain any
+type of content; web content (HTML, JavaScript, CSS) is typical. Each extension
+folder usually includes a Celbridge manifest file alongside its content.
 
 ## Commands
 
-All tools that modify application state enqueue commands on a sequential
-command queue. Commands execute in order on the UI thread. Tools return
-immediately after enqueuing -- they do not wait for the command to complete
-unless the tool method is explicitly async.
+All tools that modify application state execute sequentially and wait for completion
+before returning. State is always fully applied when a tool call returns — the agent
+never needs to poll or wait for an operation to finish.
 
 ## Python Scripting
 
-When writing Python scripts for Celbridge, import the modules you need from
-the `celbridge` package. Each module corresponds to a tool namespace.
+Import modules from the `celbridge` package. Module names match tool namespaces.
 
 ```python
 from celbridge import app, document
 
 document.open("readme.md")
 app.log("Processing complete")
-```
-
-Available modules:
-
-```
-celbridge.app         - Application info and logging
-celbridge.file        - Read-only file and folder queries
-celbridge.query       - Agent context and knowledge retrieval
-celbridge.explorer    - Explorer panel: structural operations and navigation
-celbridge.document    - Documents panel: content editing and editor management
 ```

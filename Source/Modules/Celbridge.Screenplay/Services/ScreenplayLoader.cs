@@ -31,7 +31,14 @@ public class ScreenplayLoader
 
             var entityService = _workspaceWrapper.WorkspaceService.EntityService;
             var resourceRegistry = _resourceRegistry;
-            var workbookFilePath = resourceRegistry.GetResourcePath(workbookFile);
+
+            var resolveWorkbookResult = resourceRegistry.ResolveResourcePath(workbookFile);
+            if (resolveWorkbookResult.IsFailure)
+            {
+                return Result.Fail($"Failed to resolve path for workbook resource '{workbookFile}'")
+                    .WithErrors(resolveWorkbookResult);
+            }
+            var workbookFilePath = resolveWorkbookResult.Value;
             var screenplayFolderPath = Path.GetFileNameWithoutExtension(workbookFilePath);
 
             // Acquire the ScreenplayData component from the workbook resource
@@ -566,7 +573,13 @@ public class ScreenplayLoader
         var screenplayFolderResource = Path.GetFileNameWithoutExtension(workbookResource);
 
         var resourceRegistry = _resourceRegistry;
-        var sceneFolderPath = resourceRegistry.GetResourcePath(screenplayFolderResource);
+        var resolveSceneFolderResult = resourceRegistry.ResolveResourcePath(screenplayFolderResource);
+        if (resolveSceneFolderResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for screenplay folder resource '{screenplayFolderResource}'")
+                .WithErrors(resolveSceneFolderResult);
+        }
+        var sceneFolderPath = resolveSceneFolderResult.Value;
 
         var entityService = _workspaceWrapper.WorkspaceService.EntityService;
         var entityFolderPath = entityService.GetEntityDataPath(screenplayFolderResource);

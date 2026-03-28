@@ -226,7 +226,13 @@ class CelProxy:
                     f"cel.{alias}{signature}\n{error_message}"
                 )
 
-            return result.get("value")
+            value = result.get("value")
+            if isinstance(value, str):
+                try:
+                    return json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            return value
 
         proxy.__signature__ = build_inspect_signature(tool)
         proxy.__module__ = "cel"

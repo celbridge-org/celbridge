@@ -42,19 +42,24 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.create_file")]
     public async partial Task<CallToolResult> CreateFile(string resource, bool showDialog = false)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         if (showDialog)
         {
             return await ExecuteCommandAsync<IAddResourceDialogCommand>(command =>
             {
                 command.ResourceType = ResourceType.File;
-                command.DestFolderResource = resource;
+                command.DestFolderResource = resourceKey;
             });
         }
 
         return await ExecuteCommandAsync<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
-            command.DestResource = resource;
+            command.DestResource = resourceKey;
         });
     }
 
@@ -67,19 +72,24 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.create_folder")]
     public async partial Task<CallToolResult> CreateFolder(string resource, bool showDialog = false)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         if (showDialog)
         {
             return await ExecuteCommandAsync<IAddResourceDialogCommand>(command =>
             {
                 command.ResourceType = ResourceType.Folder;
-                command.DestFolderResource = resource;
+                command.DestFolderResource = resourceKey;
             });
         }
 
         return await ExecuteCommandAsync<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.Folder;
-            command.DestResource = resource;
+            command.DestResource = resourceKey;
         });
     }
 
@@ -92,10 +102,19 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.copy")]
     public async partial Task<CallToolResult> Copy(string sourceResource, string destinationResource)
     {
+        if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{sourceResource}'");
+        }
+        if (!ResourceKey.TryCreate(destinationResource, out var destinationResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{destinationResource}'");
+        }
+
         return await ExecuteCommandAsync<ICopyResourceCommand>(command =>
         {
-            command.SourceResources = new List<ResourceKey> { sourceResource };
-            command.DestResource = destinationResource;
+            command.SourceResources = new List<ResourceKey> { sourceResourceKey };
+            command.DestResource = destinationResourceKey;
             command.TransferMode = DataTransferMode.Copy;
         });
     }
@@ -109,10 +128,19 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.move")]
     public async partial Task<CallToolResult> Move(string sourceResource, string destinationResource)
     {
+        if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{sourceResource}'");
+        }
+        if (!ResourceKey.TryCreate(destinationResource, out var destinationResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{destinationResource}'");
+        }
+
         return await ExecuteCommandAsync<ICopyResourceCommand>(command =>
         {
-            command.SourceResources = new List<ResourceKey> { sourceResource };
-            command.DestResource = destinationResource;
+            command.SourceResources = new List<ResourceKey> { sourceResourceKey };
+            command.DestResource = destinationResourceKey;
             command.TransferMode = DataTransferMode.Move;
         });
     }
@@ -126,17 +154,22 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.delete")]
     public async partial Task<CallToolResult> Delete(string resource, bool showDialog = false)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         if (showDialog)
         {
             return await ExecuteCommandAsync<IDeleteResourceDialogCommand>(command =>
             {
-                command.Resources = new List<ResourceKey> { resource };
+                command.Resources = new List<ResourceKey> { resourceKey };
             });
         }
 
         return await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
         {
-            command.Resources = new List<ResourceKey> { resource };
+            command.Resources = new List<ResourceKey> { resourceKey };
         });
     }
 
@@ -148,9 +181,14 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.rename")]
     public async partial Task<CallToolResult> Rename(string resource)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         return await ExecuteCommandAsync<IRenameResourceDialogCommand>(command =>
         {
-            command.Resource = resource;
+            command.Resource = resourceKey;
         });
     }
 
@@ -163,9 +201,14 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.duplicate")]
     public async partial Task<CallToolResult> Duplicate(string resource, bool showDialog = false)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         return await ExecuteCommandAsync<IDuplicateResourceDialogCommand>(command =>
         {
-            command.Resource = resource;
+            command.Resource = resourceKey;
         });
     }
 
@@ -198,9 +241,14 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.select")]
     public async partial Task<CallToolResult> Select(string resource, bool showExplorerPanel = true)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         return await ExecuteCommandAsync<ISelectResourceCommand>(command =>
         {
-            command.Resource = resource;
+            command.Resource = resourceKey;
             command.ShowExplorerPanel = showExplorerPanel;
         });
     }
@@ -214,9 +262,14 @@ public partial class ExplorerTools : AgentToolBase
     [ToolAlias("explorer.expand_folder")]
     public async partial Task<CallToolResult> ExpandFolder(string resource, bool expanded = true)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         return await ExecuteCommandAsync<IExpandFolderCommand>(command =>
         {
-            command.FolderResource = resource;
+            command.FolderResource = resourceKey;
             command.Expanded = expanded;
         });
     }

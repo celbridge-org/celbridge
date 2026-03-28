@@ -76,7 +76,15 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
             return;
         }
 
-        var resourcePath = _registry.GetResourcePath(SelectedItem.ResourceKey);
+        var resolveResult = _registry.ResolveResourcePath(SelectedItem.ResourceKey);
+        if (resolveResult.IsFailure)
+        {
+            PreviewImageVisibility = Visibility.Collapsed;
+            PreviewImage = null;
+            return;
+        }
+        var resourcePath = resolveResult.Value;
+
         if (File.Exists(resourcePath))
         {
             try

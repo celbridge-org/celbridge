@@ -191,15 +191,21 @@ public partial class WebInspectorViewModel : InspectorViewModel
         if (!contextResource.IsEmpty)
         {
             var contextFolder = contextResource.GetParent();
-            var candidateKey = contextFolder.Combine(path);
-            var getResult = _resourceRegistry.GetResource(candidateKey);
-            if (getResult.IsSuccess)
+            var candidateKeyString = contextFolder.IsEmpty ? path : $"{contextFolder}/{path}";
+            if (ResourceKey.TryCreate(candidateKeyString, out var candidateKey))
             {
-                return true;
+                var getResult = _resourceRegistry.GetResource(candidateKey);
+                if (getResult.IsSuccess)
+                {
+                    return true;
+                }
             }
         }
 
-        ResourceKey absoluteKey = path;
+        if (!ResourceKey.TryCreate(path, out var absoluteKey))
+        {
+            return false;
+        }
         var absoluteResult = _resourceRegistry.GetResource(absoluteKey);
         return absoluteResult.IsSuccess;
     }
@@ -208,11 +214,16 @@ public partial class WebInspectorViewModel : InspectorViewModel
     {
         if (e.PropertyName == nameof(Resource))
         {
-            var webFilePath = _resourceRegistry.GetResourcePath(Resource);
-            var loadResult = LoadWebApp(webFilePath);
+            var resolveLoadResult = _resourceRegistry.ResolveResourcePath(Resource);
+            if (resolveLoadResult.IsFailure)
+            {
+                _logger.LogError(resolveLoadResult, $"Failed to resolve path for resource: '{Resource}'");
+                return;
+            }
+            var loadResult = LoadWebApp(resolveLoadResult.Value);
             if (loadResult.IsFailure)
             {
-                _logger.LogError(loadResult, $"Failed to load .webapp file: {webFilePath}");
+                _logger.LogError(loadResult, $"Failed to load .webapp file: {resolveLoadResult.Value}");
                 return;
             }
 
@@ -222,11 +233,16 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
         else if (e.PropertyName == nameof(SourceUrl) && !_suppressSaving)
         {
-            var webFilePath = _resourceRegistry.GetResourcePath(Resource);
-            var saveResult = SaveWebApp(webFilePath, SourceUrl);
+            var resolveSaveResult = _resourceRegistry.ResolveResourcePath(Resource);
+            if (resolveSaveResult.IsFailure)
+            {
+                _logger.LogError(resolveSaveResult, $"Failed to resolve path for resource: '{Resource}'");
+                return;
+            }
+            var saveResult = SaveWebApp(resolveSaveResult.Value, SourceUrl);
             if (saveResult.IsFailure)
             {
-                _logger.LogError(saveResult, $"Failed to save .webapp file: {webFilePath}");
+                _logger.LogError(saveResult, $"Failed to save .webapp file: {resolveSaveResult.Value}");
                 return;
             }
         }

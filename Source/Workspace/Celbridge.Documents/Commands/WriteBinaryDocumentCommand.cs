@@ -36,7 +36,14 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
         var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourcePath = resourceRegistry.GetResourcePath(FileResource);
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var resourcePath = resolveResult.Value;
 
         // Check if document is already open
         var documentView = documentsPanel.GetDocumentView(FileResource);
@@ -70,10 +77,12 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
         }
         else
         {
-            // Write directly to disk without opening
-            if (!File.Exists(resourcePath))
+            // Write directly to disk without opening.
+            // Ensure the parent folder exists so new files can be created.
+            var parentFolder = Path.GetDirectoryName(resourcePath);
+            if (!string.IsNullOrEmpty(parentFolder) && !Directory.Exists(parentFolder))
             {
-                return Result.Fail($"File not found: '{FileResource}'");
+                Directory.CreateDirectory(parentFolder);
             }
 
             await File.WriteAllBytesAsync(resourcePath, bytes);

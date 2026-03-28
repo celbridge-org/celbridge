@@ -3,6 +3,8 @@ namespace Celbridge.Core;
 /// <summary>
 /// A unique identifier for project resources.
 /// This key is based on the relative path of the resource in the project folder.
+/// Construction validates the key format; invalid strings throw ArgumentException.
+/// Use TryCreate() for non-throwing validation of untrusted input.
 /// </summary>
 public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<ResourceKey>
 {
@@ -13,6 +15,10 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     public ResourceKey(string key)
     {
+        if (!IsValidKey(key))
+        {
+            throw new ArgumentException($"Invalid resource key: '{key}'", nameof(key));
+        }
         _key = key;
     }
 
@@ -24,14 +30,10 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     /// <summary>
     /// Creates a new ResourceKey from the specified key string, throwing if the key is invalid.
-    /// Use this when constructing from external/untrusted input.
+    /// Equivalent to the constructor; provided for readability at trust boundaries.
     /// </summary>
     public static ResourceKey Create(string key)
     {
-        if (!IsValidKey(key))
-        {
-            throw new ArgumentException($"Invalid resource key: '{key}'", nameof(key));
-        }
         return new ResourceKey(key);
     }
 
@@ -93,7 +95,8 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
-    /// Implicit conversion from string to ResourceKey
+    /// Implicit conversion from string to ResourceKey.
+    /// Throws ArgumentException if the string is not a valid resource key.
     /// </summary>
     public static implicit operator ResourceKey(string key) => new ResourceKey(key);
 
@@ -150,13 +153,13 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     {
         if (string.IsNullOrEmpty(_key))
         {
-            return new ResourceKey(string.Empty);
+            return Empty;
         }
 
         int lastSlashIndex = _key.LastIndexOf('/');
         if (lastSlashIndex == -1)
         {
-            return new ResourceKey(string.Empty);
+            return Empty;
         }
 
         var parentKey = _key.Substring(0, lastSlashIndex);
@@ -185,15 +188,20 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// </summary>
     public ResourceKey Combine(string segment)
     {
-        // Todo: Validate segment properly
         ArgumentException.ThrowIfNullOrEmpty(segment);
 
-        if (string.IsNullOrEmpty(_key))
+        if (!IsValidSegment(segment))
         {
-            return new ResourceKey(segment);
+            throw new ArgumentException($"Invalid resource key segment: '{segment}'", nameof(segment));
         }
 
-        return new ResourceKey(_key + "/" + segment);
+        if (segment.Contains('/'))
+        {
+            throw new ArgumentException($"Segment must not contain path separators: '{segment}'", nameof(segment));
+        }
+
+        var combinedKey = string.IsNullOrEmpty(_key) ? segment : _key + "/" + segment;
+        return new ResourceKey(combinedKey);
     }
 
     /// <summary>
@@ -225,7 +233,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// <summary>
     /// Returns true if the string represents a valid resource key.
     /// Resource keys look similar to regular file paths but with additional constraints:
-    /// - Specified relative to the project folder. 
+    /// - Specified relative to the project folder.
     /// - Absolute paths, parent and same directory references are not supported.
     /// - '/' is used as the path separator on all platforms, backslashes are not allowed.
     /// </summary>

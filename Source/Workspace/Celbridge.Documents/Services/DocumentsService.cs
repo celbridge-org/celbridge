@@ -210,9 +210,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (!_fileTypeHelper.IsRecognizedExtension(extension))
         {
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
+            var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+            if (resolveResult.IsFailure)
+            {
+                return DocumentViewType.UnsupportedFormat;
+            }
 
-            var result = TextBinarySniffer.IsTextFile(filePath);
+            var result = TextBinarySniffer.IsTextFile(resolveResult.Value);
             if (result.IsFailure)
             {
                 // Failed to determine if the file is text
@@ -278,9 +282,15 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
-        if (string.IsNullOrEmpty(filePath) ||
-            !File.Exists(filePath))
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
+
+        if (!File.Exists(filePath))
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
         }
@@ -306,9 +316,15 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
-        if (string.IsNullOrEmpty(filePath) ||
-            !File.Exists(filePath))
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
+
+        if (!File.Exists(filePath))
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
         }
@@ -472,7 +488,14 @@ public class DocumentsService : IDocumentsService, IDisposable
                 continue;
             }
 
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
+            var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+            if (resolveResult.IsFailure)
+            {
+                _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
+                continue;
+            }
+            var filePath = resolveResult.Value;
+
             if (!CanAccessFile(filePath))
             {
                 _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
@@ -515,8 +538,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (normalizeResult.IsSuccess)
         {
             var normalizedResource = normalizeResult.Value;
-            var readmePath = resourceRegistry.GetResourcePath(normalizedResource);
-            if (CanAccessFile(readmePath))
+            var resolveResult = resourceRegistry.ResolveResourcePath(normalizedResource);
+            if (resolveResult.IsSuccess && CanAccessFile(resolveResult.Value))
             {
                 _commandService.Execute<IOpenDocumentCommand>(command =>
                 {
@@ -531,7 +554,13 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         // First, try to get a document view from the registry
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
 
         var factoryResult = _documentEditorRegistry.GetFactory(fileResource, filePath);
         if (factoryResult.IsSuccess)
@@ -586,7 +615,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         var newResource = message.NewResource.ToString();
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var newResourcePath = resourceRegistry.GetResourcePath(message.NewResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(message.NewResource);
+        if (resolveResult.IsFailure)
+        {
+            _logger.LogError(resolveResult, $"Failed to resolve path for renamed resource: '{message.NewResource}'");
+            return;
+        }
+        var newResourcePath = resolveResult.Value;
 
         Guard.IsTrue(File.Exists(newResourcePath));
 

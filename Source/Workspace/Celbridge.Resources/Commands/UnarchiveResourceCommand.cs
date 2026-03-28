@@ -51,8 +51,21 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             return Result.Fail($"Invalid destination resource key: '{DestinationResource}'");
         }
 
-        var archivePath = resourceRegistry.GetResourcePath(ArchiveResource);
-        var destinationPath = resourceRegistry.GetResourcePath(DestinationResource);
+        var resolveArchiveResult = resourceRegistry.ResolveResourcePath(ArchiveResource);
+        if (resolveArchiveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{ArchiveResource}'")
+                .WithErrors(resolveArchiveResult);
+        }
+        var archivePath = resolveArchiveResult.Value;
+
+        var resolveDestinationResult = resourceRegistry.ResolveResourcePath(DestinationResource);
+        if (resolveDestinationResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{DestinationResource}'")
+                .WithErrors(resolveDestinationResult);
+        }
+        var destinationPath = resolveDestinationResult.Value;
 
         if (!File.Exists(archivePath))
         {

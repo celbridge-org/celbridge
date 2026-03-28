@@ -43,10 +43,20 @@ public partial class PackageTools : AgentToolBase
         string exclude = "",
         bool overwrite = false)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
+        if (!ResourceKey.TryCreate(archive, out var archiveKey))
+        {
+            return ErrorResult($"Invalid resource key: '{archive}'");
+        }
+
         var (callToolResult, archiveResult) = await ExecuteCommandAsync<IArchiveResourceCommand, ArchiveResult>(command =>
         {
-            command.SourceResource = resource;
-            command.ArchiveResource = archive;
+            command.SourceResource = resourceKey;
+            command.ArchiveResource = archiveKey;
             command.Include = include;
             command.Exclude = exclude;
             command.Overwrite = overwrite;
@@ -79,10 +89,20 @@ public partial class PackageTools : AgentToolBase
         string destination,
         bool overwrite = false)
     {
+        if (!ResourceKey.TryCreate(archive, out var archiveKey))
+        {
+            return ErrorResult($"Invalid resource key: '{archive}'");
+        }
+
+        if (!ResourceKey.TryCreate(destination, out var destinationKey))
+        {
+            return ErrorResult($"Invalid resource key: '{destination}'");
+        }
+
         var (callToolResult, unarchiveResult) = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
         {
-            command.ArchiveResource = archive;
-            command.DestinationResource = destination;
+            command.ArchiveResource = archiveKey;
+            command.DestinationResource = destinationKey;
             command.Overwrite = overwrite;
         });
 
@@ -109,6 +129,11 @@ public partial class PackageTools : AgentToolBase
     [ToolAlias("package.publish")]
     public async partial Task<CallToolResult> Publish(string resource, string packageName)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         if (!IsValidPackageName(packageName))
         {
             return ErrorResult(
@@ -118,7 +143,13 @@ public partial class PackageTools : AgentToolBase
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var sourcePath = resourceRegistry.GetResourcePath(resource);
+
+        var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
+        if (resolveSourceResult.IsFailure)
+        {
+            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+        }
+        var sourcePath = resolveSourceResult.Value;
 
         if (!Directory.Exists(sourcePath))
         {
@@ -201,8 +232,13 @@ public partial class PackageTools : AgentToolBase
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // Copy the package zip into the project as a temporary file
-        var tempArchiveResource = new ResourceKey($".celbridge/.cache/{packageName}.zip");
-        var tempArchivePath = resourceRegistry.GetResourcePath(tempArchiveResource);
+        var tempArchiveResource = ResourceKey.Create($".celbridge/.cache/{packageName}.zip");
+        var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
+        if (resolveTempResult.IsFailure)
+        {
+            return ErrorResult($"Failed to resolve temporary archive path: {resolveTempResult.Error}");
+        }
+        var tempArchivePath = resolveTempResult.Value;
 
         var tempFolder = Path.GetDirectoryName(tempArchivePath);
         if (!string.IsNullOrEmpty(tempFolder) && !Directory.Exists(tempFolder))
@@ -219,7 +255,7 @@ public partial class PackageTools : AgentToolBase
             return ErrorResult($"Failed to copy package for installation: {exception.Message}");
         }
 
-        var destinationResource = new ResourceKey($"packages/{packageName}");
+        var destinationResource = ResourceKey.Create($"packages/{packageName}");
 
         try
         {
@@ -268,11 +304,17 @@ public partial class PackageTools : AgentToolBase
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
 
-        var packageResource = new ResourceKey($"packages/{packageName}");
+        var packageResource = ResourceKey.Create($"packages/{packageName}");
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var packagePath = resourceRegistry.GetResourcePath(packageResource);
+
+        var resolvePackageResult = resourceRegistry.ResolveResourcePath(packageResource);
+        if (resolvePackageResult.IsFailure)
+        {
+            return ErrorResult($"Failed to resolve path for package: '{packageName}'");
+        }
+        var packagePath = resolvePackageResult.Value;
 
         if (!Directory.Exists(packagePath))
         {

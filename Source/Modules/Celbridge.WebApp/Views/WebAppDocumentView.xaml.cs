@@ -269,7 +269,13 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         //
         // Map the download path to a unique path in the project folder 
         //
-        var requestedPath = ResourceRegistry.GetResourcePath(filename);
+        var resolveResult = ResourceRegistry.ResolveResourcePath(filename);
+        if (resolveResult.IsFailure)
+        {
+            args.Cancel = true;
+            return;
+        }
+        var requestedPath = resolveResult.Value;
         var getResult = PathHelper.GetUniquePath(requestedPath);
         if (getResult.IsFailure)
         {

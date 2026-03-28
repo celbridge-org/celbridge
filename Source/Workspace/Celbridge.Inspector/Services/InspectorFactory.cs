@@ -51,7 +51,13 @@ public class InspectorFactory : IInspectorFactory
         try
         {
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            var path = resourceRegistry.GetResourcePath(resource);
+            var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+            if (resolveResult.IsFailure)
+            {
+                return Result<IInspector>.Fail($"Failed to resolve path for resource: '{resource}'")
+                    .WithErrors(resolveResult);
+            }
+            var path = resolveResult.Value;
 
             if (Directory.Exists(path))
             {

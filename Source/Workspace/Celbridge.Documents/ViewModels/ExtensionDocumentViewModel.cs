@@ -150,7 +150,10 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
         }
 
         var normalizedPath = NormalizeResourcePath(fullPath);
-        var resourceKey = new ResourceKey(normalizedPath);
+        if (!ResourceKey.TryCreate(normalizedPath, out var resourceKey))
+        {
+            return Result<ResourceKey>.Fail($"Invalid resource key derived from path: {normalizedPath}");
+        }
         var result = _resourceRegistry.NormalizeResourceKey(resourceKey);
 
         if (result.IsSuccess)

@@ -36,7 +36,14 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
         var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
         var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourcePath = resourceRegistry.GetResourcePath(FileResource);
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
@@ -77,6 +84,17 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
             if (documentView is null)
             {
                 return Result.Fail($"Document view not found after opening: '{FileResource}'");
+            }
+        }
+
+        // Ensure any unsaved editor changes are flushed to disk before reading
+        if (documentView.HasUnsavedChanges)
+        {
+            var saveResult = await documentView.SaveDocument();
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to save document before find/replace: '{FileResource}'")
+                    .WithErrors(saveResult);
             }
         }
 

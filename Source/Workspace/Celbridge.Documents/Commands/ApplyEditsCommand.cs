@@ -127,7 +127,14 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
     private static async Task<Result> ApplyEditsToDisk(IResourceRegistry resourceRegistry, ResourceKey resource, List<TextEdit> edits)
     {
-        var resourcePath = resourceRegistry.GetResourcePath(resource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
+                .WithErrors(resolveResult);
+        }
+        var resourcePath = resolveResult.Value;
+
         if (!File.Exists(resourcePath))
         {
             return Result.Fail($"File not found: '{resource}'");

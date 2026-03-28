@@ -54,8 +54,21 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return Result.Fail($"Invalid archive resource key: '{ArchiveResource}'");
         }
 
-        var sourcePath = resourceRegistry.GetResourcePath(SourceResource);
-        var archivePath = resourceRegistry.GetResourcePath(ArchiveResource);
+        var resolveSourceResult = resourceRegistry.ResolveResourcePath(SourceResource);
+        if (resolveSourceResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{SourceResource}'")
+                .WithErrors(resolveSourceResult);
+        }
+        var sourcePath = resolveSourceResult.Value;
+
+        var resolveArchiveResult = resourceRegistry.ResolveResourcePath(ArchiveResource);
+        if (resolveArchiveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{ArchiveResource}'")
+                .WithErrors(resolveArchiveResult);
+        }
+        var archivePath = resolveArchiveResult.Value;
 
         bool isFile = File.Exists(sourcePath);
         bool isFolder = Directory.Exists(sourcePath);

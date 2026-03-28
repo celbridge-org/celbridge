@@ -6,22 +6,59 @@ public class ResourceKeyTests
     [Test]
     public void ICanValidateResourceKeys()
     {
-        //
         // Check valid paths pass
-        //
-
         ResourceKey.IsValidSegment("ValidSegment").Should().BeTrue();
         ResourceKey.IsValidKey(@"Some/Path/File.txt").Should().BeTrue();
 
-        //
         // Check invalid paths fail
-        //
-
         ResourceKey.IsValidSegment("Invalid\0Segment").Should().BeFalse();
         ResourceKey.IsValidKey(@"C:\\AbsolutePath").Should().BeFalse();
         ResourceKey.IsValidKey(@"\AbsolutePath").Should().BeFalse();
         ResourceKey.IsValidKey(@"/Some/Path/File.txt").Should().BeFalse();
-        ResourceKey.IsValidKey(@"Some/Path/File.txt/").Should().BeFalse(); // Trailing slash
+        ResourceKey.IsValidKey(@"Some/Path/File.txt/").Should().BeFalse();
+    }
+
+    [Test]
+    public void ConstructorThrowsOnInvalidKey()
+    {
+        // Valid keys should not throw
+        var validKey = new ResourceKey("Some/Path/File.txt");
+        validKey.ToString().Should().Be("Some/Path/File.txt");
+
+        // Empty key is valid
+        var emptyKey = new ResourceKey("");
+        emptyKey.IsEmpty.Should().BeTrue();
+
+        // Invalid keys should throw ArgumentException
+        var act1 = () => new ResourceKey(@"C:\AbsolutePath");
+        act1.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        var act2 = () => new ResourceKey("/Some/Path/File.txt");
+        act2.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        var act3 = () => new ResourceKey("Some/Path/File.txt/");
+        act3.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        var act4 = () => new ResourceKey("../escape");
+        act4.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        var act5 = () => new ResourceKey("folder//file");
+        act5.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        var act6 = () => new ResourceKey(@"folder\file");
+        act6.Should().Throw<ArgumentException>().WithParameterName("key");
+    }
+
+    [Test]
+    public void ImplicitConversionThrowsOnInvalidKey()
+    {
+        // Valid string converts successfully
+        ResourceKey key = "Some/Path/File.txt";
+        key.ToString().Should().Be("Some/Path/File.txt");
+
+        // Invalid string throws
+        var act = () => { ResourceKey invalid = "../escape"; };
+        act.Should().Throw<ArgumentException>();
     }
 
     [Test]
@@ -57,7 +94,7 @@ public class ResourceKeyTests
         ResourceKey.TryCreate("", out var emptyKey).Should().BeTrue();
         emptyKey.IsEmpty.Should().BeTrue();
 
-        // Invalid keys should return false
+        // Invalid keys should return false without throwing
         ResourceKey.TryCreate(@"C:\AbsolutePath", out var invalidKey1).Should().BeFalse();
         invalidKey1.IsEmpty.Should().BeTrue();
 
@@ -66,24 +103,23 @@ public class ResourceKeyTests
 
         ResourceKey.TryCreate("Some/Path/File.txt/", out var invalidKey3).Should().BeFalse();
         invalidKey3.IsEmpty.Should().BeTrue();
+
+        ResourceKey.TryCreate("../escape", out var invalidKey4).Should().BeFalse();
+        invalidKey4.IsEmpty.Should().BeTrue();
     }
 
     [Test]
-    public void IsDescendantOfHandlesTrailingSlashDefensively()
+    public void IsDescendantOfWorksCorrectly()
     {
         var childKey = new ResourceKey("folder/subfolder/file.txt");
 
-        // Normal case - no trailing slash
+        // Normal case
         childKey.IsDescendantOf(new ResourceKey("folder")).Should().BeTrue();
         childKey.IsDescendantOf(new ResourceKey("folder/subfolder")).Should().BeTrue();
 
-        // Edge case - trailing slash (invalid but handled gracefully)
-        childKey.IsDescendantOf(new ResourceKey("folder/")).Should().BeTrue();
-        childKey.IsDescendantOf(new ResourceKey("folder/subfolder/")).Should().BeTrue();
-
         // Non-descendants
         childKey.IsDescendantOf(new ResourceKey("other")).Should().BeFalse();
-        childKey.IsDescendantOf(new ResourceKey("fold")).Should().BeFalse(); // Partial match
+        childKey.IsDescendantOf(new ResourceKey("fold")).Should().BeFalse();
     }
 
     [Test]
@@ -106,5 +142,40 @@ public class ResourceKeyTests
 
         // Single subfolder
         new ResourceKey("docs/readme.md").GetParent().ToString().Should().Be("docs");
+    }
+
+    [Test]
+    public void CombineValidatesSegments()
+    {
+        var baseKey = new ResourceKey("folder");
+
+        // Valid segment
+        var combined = baseKey.Combine("file.txt");
+        combined.ToString().Should().Be("folder/file.txt");
+
+        // Empty base key
+        var emptyBase = ResourceKey.Empty;
+        var fromEmpty = emptyBase.Combine("file.txt");
+        fromEmpty.ToString().Should().Be("file.txt");
+
+        // Invalid segment with path separator throws
+        var act1 = () => baseKey.Combine("sub/file.txt");
+        act1.Should().Throw<ArgumentException>();
+
+        // Null character in segment throws
+        var act2 = () => baseKey.Combine("bad\0file");
+        act2.Should().Throw<ArgumentException>();
+
+        // Empty segment throws
+        var act3 = () => baseKey.Combine("");
+        act3.Should().Throw<ArgumentException>();
+    }
+
+    [Test]
+    public void EmptyKeyIsValid()
+    {
+        var emptyKey = ResourceKey.Empty;
+        emptyKey.IsEmpty.Should().BeTrue();
+        emptyKey.ToString().Should().Be("");
     }
 }

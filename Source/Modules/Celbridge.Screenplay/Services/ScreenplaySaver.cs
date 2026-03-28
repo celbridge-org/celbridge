@@ -66,7 +66,13 @@ public class ScreenplaySaver
                 return Result.Fail($"Unsupported file type: {extension}");
             }
 
-            var workbookPath = _resourceRegistry.GetResourcePath(screenplayResource);
+            var resolveWorkbookResult = _resourceRegistry.ResolveResourcePath(screenplayResource);
+            if (resolveWorkbookResult.IsFailure)
+            {
+                return Result.Fail($"Failed to resolve path for screenplay resource '{screenplayResource}'")
+                    .WithErrors(resolveWorkbookResult);
+            }
+            var workbookPath = resolveWorkbookResult.Value;
             var screenplayFolder = Path.GetDirectoryName(workbookPath);
             if (string.IsNullOrEmpty(screenplayFolder))
             {

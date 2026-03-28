@@ -10,6 +10,7 @@ public class WebViewHostChannel : IHostChannel
 {
     private readonly CoreWebView2 _coreWebView2;
     private readonly DispatcherQueue _dispatcherQueue;
+    private bool _isDetached;
 
     public WebViewHostChannel(CoreWebView2 coreWebView2)
     {
@@ -22,13 +23,40 @@ public class WebViewHostChannel : IHostChannel
 
     public void PostMessage(string json)
     {
+        if (_isDetached)
+        {
+            return;
+        }
+
         if (_dispatcherQueue.HasThreadAccess)
         {
-            _coreWebView2.PostWebMessageAsString(json);
+            try
+            {
+                _coreWebView2.PostWebMessageAsString(json);
+            }
+            catch (Exception)
+            {
+                // WebView2 may have been disposed between the detach check and the call
+            }
         }
         else
         {
-            _dispatcherQueue.TryEnqueue(() => _coreWebView2.PostWebMessageAsString(json));
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                if (_isDetached)
+                {
+                    return;
+                }
+
+                try
+                {
+                    _coreWebView2.PostWebMessageAsString(json);
+                }
+                catch (Exception)
+                {
+                    // WebView2 may have been disposed between the detach check and the call
+                }
+            });
         }
     }
 
@@ -46,6 +74,7 @@ public class WebViewHostChannel : IHostChannel
     /// </summary>
     public void Detach()
     {
+        _isDetached = true;
         _coreWebView2.WebMessageReceived -= OnWebMessageReceived;
     }
 }

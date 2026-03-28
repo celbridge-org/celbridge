@@ -19,15 +19,29 @@ public partial class DocumentTools : AgentToolBase
     /// document_activate to bring a document to the foreground.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to open.</param>
+    /// <param name="sectionIndex">Target editor section: 0 (left), 1 (center), 2 (right). Use -1 to open in the active section (default).</param>
     /// <param name="forceReload">Force reload even if already open.</param>
     /// <param name="activate">When true, the opened document becomes the active tab.</param>
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
-    public async partial Task<CallToolResult> Open(string fileResource, bool forceReload = false, bool activate = false)
+    public async partial Task<CallToolResult> Open(string fileResource, int sectionIndex = -1, bool forceReload = false, bool activate = false)
     {
+        if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{fileResource}'");
+        }
+
+        if (sectionIndex != -1 && sectionIndex is < 0 or > 2)
+        {
+            return ErrorResult($"Invalid sectionIndex '{sectionIndex}': must be 0, 1, 2, or -1 for the active section.");
+        }
+
+        int? targetSectionIndex = sectionIndex == -1 ? null : sectionIndex;
+
         return await ExecuteCommandAsync<IOpenDocumentCommand>(command =>
         {
-            command.FileResource = fileResource;
+            command.FileResource = fileResourceKey;
+            command.TargetSectionIndex = targetSectionIndex;
             command.ForceReload = forceReload;
             command.Activate = activate;
         });
@@ -35,31 +49,32 @@ public partial class DocumentTools : AgentToolBase
 
     /// <summary>
     /// Closes one or more documents in the editor.
-    /// Pass a single resource key or a JSON array of resource keys (e.g. ["Project/foo.txt","Project/bar.txt"]).
+    /// Pass a single resource key or a JSON array of resource keys (e.g. ["foo.txt","scripts/bar.txt"]).
     /// Documents are closed sequentially; if any close fails (e.g. user cancels a save prompt), the remaining documents are still attempted.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to close, or a JSON array of resource keys.</param>
     /// <param name="forceClose">Force close without save confirmation.</param>
-    /// <returns>JSON object with fields: closed (int), failed (int), errors (array of strings). Omitted when closing a single document.</returns>
+    /// <returns>JSON object with fields: closed (int), failed (int), errors (array of strings).</returns>
     [McpServerTool(Name = "document_close", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.close")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
-        var resourceKeys = ParseResourceKeys(fileResource);
+        var resourceKeyStrings = ParseResourceKeys(fileResource);
 
-        if (resourceKeys.Count == 1)
+        var validatedKeys = new List<ResourceKey>();
+        foreach (var keyString in resourceKeyStrings)
         {
-            return await ExecuteCommandAsync<ICloseDocumentCommand>(command =>
+            if (!ResourceKey.TryCreate(keyString, out var validatedKey))
             {
-                command.FileResource = resourceKeys[0];
-                command.ForceClose = forceClose;
-            });
+                return ErrorResult($"Invalid resource key: '{keyString}'");
+            }
+            validatedKeys.Add(validatedKey);
         }
 
         int closedCount = 0;
         var errors = new List<string>();
 
-        foreach (var resourceKey in resourceKeys)
+        foreach (var resourceKey in validatedKeys)
         {
             var result = await CommandService.ExecuteAsync<ICloseDocumentCommand>(command =>
             {
@@ -142,9 +157,14 @@ public partial class DocumentTools : AgentToolBase
     [ToolAlias("document.activate")]
     public async partial Task<CallToolResult> Activate(string fileResource)
     {
+        if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{fileResource}'");
+        }
+
         return await ExecuteCommandAsync<IActivateDocumentCommand>(command =>
         {
-            command.FileResource = fileResource;
+            command.FileResource = fileResourceKey;
         });
     }
 
@@ -160,6 +180,11 @@ public partial class DocumentTools : AgentToolBase
     [ToolAlias("document.apply_edits")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson, bool openDocument = true)
     {
+        if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{fileResource}'");
+        }
+
         List<TextEdit> textEdits;
         try
         {
@@ -175,7 +200,7 @@ public partial class DocumentTools : AgentToolBase
             return new CallToolResult();
         }
 
-        var documentEdit = new DocumentEdit(fileResource, textEdits);
+        var documentEdit = new DocumentEdit(fileResourceKey, textEdits);
 
         return await ExecuteCommandAsync<IApplyEditsCommand>(command =>
         {
@@ -194,9 +219,14 @@ public partial class DocumentTools : AgentToolBase
     [ToolAlias("document.write")]
     public async partial Task<CallToolResult> Write(string fileResource, string content, bool openDocument = true)
     {
+        if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{fileResource}'");
+        }
+
         return await ExecuteCommandAsync<IWriteDocumentCommand>(command =>
         {
-            command.FileResource = fileResource;
+            command.FileResource = fileResourceKey;
             command.Content = content;
             command.OpenDocument = openDocument;
         });
@@ -212,9 +242,14 @@ public partial class DocumentTools : AgentToolBase
     [ToolAlias("document.write_binary")]
     public async partial Task<CallToolResult> WriteBinary(string fileResource, string base64Content, bool openDocument = true)
     {
+        if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{fileResource}'");
+        }
+
         return await ExecuteCommandAsync<IWriteBinaryDocumentCommand>(command =>
         {
-            command.FileResource = fileResource;
+            command.FileResource = fileResourceKey;
             command.Base64Content = base64Content;
             command.OpenDocument = openDocument;
         });
@@ -240,9 +275,14 @@ public partial class DocumentTools : AgentToolBase
         bool useRegex = false,
         bool openDocument = true)
     {
+        if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{fileResource}'");
+        }
+
         var (callResult, replacementCount) = await ExecuteCommandAsync<IFindReplaceDocumentCommand, int>(command =>
         {
-            command.FileResource = fileResource;
+            command.FileResource = fileResourceKey;
             command.SearchText = searchText;
             command.ReplaceText = replaceText;
             command.MatchCase = matchCase;

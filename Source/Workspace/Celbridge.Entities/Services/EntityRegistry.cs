@@ -104,8 +104,12 @@ public class EntityRegistry
                 }
 
                 // Get the resource path (may be a file or a folder)
-                var resourcePath = resourceRegistry.GetResourcePath(resourceKey);
-                if (Path.Exists(resourcePath))
+                var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
+                if (resolveResult.IsFailure)
+                {
+                    continue;
+                }
+                if (Path.Exists(resolveResult.Value))
                 {
                     continue;
                 }

@@ -27,9 +27,20 @@ public partial class FileTools : AgentToolBase
     [ToolAlias("file.read")]
     public async partial Task<CallToolResult> Read(string resource, int offset = 0, int limit = 0)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourcePath = resourceRegistry.GetResourcePath(resource);
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
+        if (resolveResult.IsFailure)
+        {
+            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+        }
+        var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
@@ -76,9 +87,20 @@ public partial class FileTools : AgentToolBase
     [ToolAlias("file.read_binary")]
     public async partial Task<CallToolResult> ReadBinary(string resource)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourcePath = resourceRegistry.GetResourcePath(resource);
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
+        if (resolveResult.IsFailure)
+        {
+            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+        }
+        var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
@@ -107,9 +129,20 @@ public partial class FileTools : AgentToolBase
     [ToolAlias("file.get_info")]
     public partial CallToolResult GetInfo(string resource)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourcePath = resourceRegistry.GetResourcePath(resource);
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
+        if (resolveResult.IsFailure)
+        {
+            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+        }
+        var resourcePath = resolveResult.Value;
 
         if (File.Exists(resourcePath))
         {
@@ -147,10 +180,15 @@ public partial class FileTools : AgentToolBase
     [ToolAlias("file.list_contents")]
     public partial CallToolResult ListContents(string resource, string glob = "")
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var getResult = resourceRegistry.GetResource(resource);
+        var getResult = resourceRegistry.GetResource(resourceKey);
         if (getResult.IsFailure)
         {
             return ErrorResult($"Resource not found: '{resource}'");
@@ -177,7 +215,6 @@ public partial class FileTools : AgentToolBase
             }
 
             var childKey = resourceRegistry.GetResourceKey(child);
-            var childPath = resourceRegistry.GetResourcePath(childKey);
 
             if (child is IFolderResource)
             {
@@ -185,7 +222,12 @@ public partial class FileTools : AgentToolBase
             }
             else
             {
-                var fileInfo = new FileInfo(childPath);
+                var resolveChildResult = resourceRegistry.ResolveResourcePath(childKey);
+                if (resolveChildResult.IsFailure)
+                {
+                    continue;
+                }
+                var fileInfo = new FileInfo(resolveChildResult.Value);
                 items.Add(new { name = child.Name, type = "file", size = fileInfo.Length });
             }
         }
@@ -203,10 +245,15 @@ public partial class FileTools : AgentToolBase
     [ToolAlias("file.get_tree")]
     public partial CallToolResult GetTree(string resource, int depth = 3)
     {
+        if (!ResourceKey.TryCreate(resource, out var resourceKey))
+        {
+            return ErrorResult($"Invalid resource key: '{resource}'");
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var getResult = resourceRegistry.GetResource(resource);
+        var getResult = resourceRegistry.GetResource(resourceKey);
         if (getResult.IsFailure)
         {
             return ErrorResult($"Resource not found: '{resource}'");
@@ -246,18 +293,32 @@ public partial class FileTools : AgentToolBase
     }
 
     /// <summary>
-    /// Searches file contents by text, returning matches with line numbers and optional context lines.
+    /// Searches file contents by text or regex, returning matches with line numbers and optional context lines.
     /// </summary>
-    /// <param name="searchTerm">The text to search for in file contents.</param>
-    /// <param name="matchCase">If true, the search is case-sensitive.</param>
-    /// <param name="wholeWord">If true, only match whole words.</param>
+    /// <param name="searchTerm">The text or regular expression to search for in file contents.</param>
+    /// <param name="useRegex">If true, searchTerm is interpreted as a .NET regular expression.</param>
+    /// <param name="matchCase">If true, the search is case-sensitive. Ignored when useRegex is true (embed (?-i) in the pattern instead).</param>
+    /// <param name="wholeWord">If true, only match whole words. Ignored when useRegex is true (use \b in the pattern instead).</param>
+    /// <param name="include">Comma-separated glob patterns to restrict which files are searched (e.g. "*.cs,*.xaml"). When empty, all text files are searched.</param>
     /// <param name="maxResults">Maximum number of matches to return. Default is 100.</param>
     /// <param name="contextLines">Number of lines to include before and after each match (like grep -C). Default is 0.</param>
     /// <returns>JSON object with fields: totalMatches (int), totalFiles (int), files (array of objects with resource, fileName, matches array with lineNumber, lineText, matchStart, matchLength, and contextBefore/contextAfter arrays when contextLines > 0).</returns>
     [McpServerTool(Name = "file_grep", ReadOnly = true)]
     [ToolAlias("file.grep")]
-    public async partial Task<CallToolResult> Grep(string searchTerm, bool matchCase = false, bool wholeWord = false, int maxResults = 100, int contextLines = 0)
+    public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", int maxResults = 100, int contextLines = 0)
     {
+        if (useRegex)
+        {
+            try
+            {
+                _ = new Regex(searchTerm);
+            }
+            catch (ArgumentException ex)
+            {
+                return ErrorResult($"Invalid regular expression: {ex.Message}");
+            }
+        }
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -267,7 +328,9 @@ public partial class FileTools : AgentToolBase
             matchCase,
             wholeWord,
             maxResults,
-            CancellationToken.None);
+            CancellationToken.None,
+            useRegex,
+            include);
 
         // Cache file lines for context extraction to avoid reading the same file multiple times
         var fileLineCache = new Dictionary<string, string[]>();
@@ -281,7 +344,13 @@ public partial class FileTools : AgentToolBase
             {
                 if (contextLines > 0)
                 {
-                    var resourcePath = resourceRegistry.GetResourcePath(fileResult.Resource);
+                    var resolveContextResult = resourceRegistry.ResolveResourcePath(fileResult.Resource);
+                    if (resolveContextResult.IsFailure)
+                    {
+                        matchList.Add(new { lineNumber = match.LineNumber, lineText = match.LineText, matchStart = match.MatchStart, matchLength = match.MatchLength });
+                        continue;
+                    }
+                    var resourcePath = resolveContextResult.Value;
 
                     if (!fileLineCache.TryGetValue(resourcePath, out var fileLines))
                     {

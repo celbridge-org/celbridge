@@ -135,8 +135,13 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenFileManager(ResourceKey resource)
     {
-        var path = ResourceRegistry.GetResourcePath(resource);
-        var openResult = await ResourceUtils.OpenFileManager(path);
+        var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
+                .WithErrors(resolveResult);
+        }
+        var openResult = await ResourceUtils.OpenFileManager(resolveResult.Value);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open file manager for resource: {resource}")
@@ -148,8 +153,13 @@ public class ExplorerService : IExplorerService, IDisposable
 
     public async Task<Result> OpenApplication(ResourceKey resource)
     {
-        var path = ResourceRegistry.GetResourcePath(resource);
-        var openResult = await ResourceUtils.OpenApplication(path);
+        var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
+                .WithErrors(resolveResult);
+        }
+        var openResult = await ResourceUtils.OpenApplication(resolveResult.Value);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open associated application for resource: {resource}")

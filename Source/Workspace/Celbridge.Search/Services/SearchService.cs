@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using Path = System.IO.Path;
@@ -43,7 +44,9 @@ public class SearchService : ISearchService, IDisposable
         bool matchCase,
         bool wholeWord,
         int? maxResults,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool useRegex = false,
+        string include = "")
     {
         var fileResults = new List<SearchFileResult>();
 
@@ -66,12 +69,43 @@ public class SearchService : ISearchService, IDisposable
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
 
+        Regex? searchRegex = null;
+        if (useRegex)
+        {
+            try
+            {
+                var regexOptions = matchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
+                searchRegex = new Regex(searchTerm, regexOptions);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning($"Invalid regex pattern '{searchTerm}': {ex.Message}");
+                return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
+            }
+        }
+
+        Regex? includeRegex = null;
+        if (!string.IsNullOrEmpty(include))
+        {
+            var patterns = include.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var regexPatterns = patterns.Select(GlobPatternToRegex);
+            var combined = string.Join("|", regexPatterns.Select(pattern => $"(?:{pattern})"));
+            includeRegex = new Regex(combined, RegexOptions.IgnoreCase);
+        }
+
         var searchState = new SearchState();
 
         try
         {
             // Get all file resources from the registry (already sorted by path)
             var fileResources = resourceRegistry.GetAllFileResources();
+
+            if (includeRegex != null)
+            {
+                fileResources = fileResources
+                    .Where(entry => includeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                    .ToList();
+            }
 
             await Task.Run(() =>
             {
@@ -97,7 +131,8 @@ public class SearchService : ISearchService, IDisposable
                         matchCase,
                         wholeWord,
                         remainingMatches,
-                        cancellationToken);
+                        cancellationToken,
+                        searchRegex);
 
                     if (fileResult != null && fileResult.Matches.Count > 0)
                     {
@@ -127,7 +162,8 @@ public class SearchService : ISearchService, IDisposable
         bool matchCase,
         bool wholeWord,
         int maxMatches,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Regex? searchRegex = null)
     {
         try
         {
@@ -162,7 +198,10 @@ public class SearchService : ISearchService, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var line = lines[i].TrimEnd('\r');
-                var lineMatches = _textMatcher.FindMatches(line, searchTerm, matchCase, wholeWord);
+
+                var lineMatches = searchRegex != null
+                    ? _textMatcher.FindRegexMatches(line, searchRegex)
+                    : _textMatcher.FindMatches(line, searchTerm, matchCase, wholeWord);
 
                 foreach (var match in lineMatches)
                 {
@@ -224,15 +263,12 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        string filePath;
-        try
-        {
-            filePath = resourceRegistry.GetResourcePath(resource);
-        }
-        catch (ArgumentException)
+        var resolveReplaceResult = resourceRegistry.ResolveResourcePath(resource);
+        if (resolveReplaceResult.IsFailure)
         {
             return new ReplaceResult(false, 0);
         }
+        var filePath = resolveReplaceResult.Value;
 
         try
         {
@@ -325,15 +361,12 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        string filePath;
-        try
-        {
-            filePath = resourceRegistry.GetResourcePath(resource);
-        }
-        catch (ArgumentException)
+        var resolveMatchResult = resourceRegistry.ResolveResourcePath(resource);
+        if (resolveMatchResult.IsFailure)
         {
             return new ReplaceMatchResult(false);
         }
+        var filePath = resolveMatchResult.Value;
 
         try
         {
@@ -464,6 +497,14 @@ public class SearchService : ISearchService, IDisposable
         }
 
         return new ReplaceAllResult(totalReplacements, filesModified, filesFailed, false);
+    }
+
+    private static string GlobPatternToRegex(string glob)
+    {
+        var escaped = Regex.Escape(glob)
+            .Replace("\\*", ".*")
+            .Replace("\\?", ".");
+        return $"^{escaped}$";
     }
 
     private const string SearchHistoryKey = "SearchHistory";

@@ -49,9 +49,25 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
                 }
             }
 
+            // Ensure any unsaved editor changes are flushed to disk before reading
+            if (documentView.HasUnsavedChanges)
+            {
+                var saveResult = await documentView.SaveDocument();
+                if (saveResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to save document before writing: '{FileResource}'")
+                        .WithErrors(saveResult);
+                }
+            }
+
             // Read the current content to determine the document's line count
-            var resourcePath = resourceRegistry.GetResourcePath(FileResource);
-            var existingLines = await File.ReadAllLinesAsync(resourcePath);
+            var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
+            if (resolveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
+                    .WithErrors(resolveResult);
+            }
+            var existingLines = await File.ReadAllLinesAsync(resolveResult.Value);
             var lineCount = existingLines.Length;
 
             // Build a single edit that replaces the entire content
@@ -70,7 +86,13 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
         else
         {
             // Write directly to disk
-            var resourcePath = resourceRegistry.GetResourcePath(FileResource);
+            var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
+            if (resolveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
+                    .WithErrors(resolveResult);
+            }
+            var resourcePath = resolveResult.Value;
             if (!File.Exists(resourcePath))
             {
                 return Result.Fail($"File not found: '{FileResource}'");
