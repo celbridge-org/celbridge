@@ -1,4 +1,5 @@
 using Celbridge.Search;
+using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Search;
 
@@ -11,7 +12,7 @@ public class FileFilterTests
     [SetUp]
     public void SetUp()
     {
-        _filter = new FileFilter();
+        _filter = new FileFilter(new TextBinarySniffer());
         _testDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDir);
     }

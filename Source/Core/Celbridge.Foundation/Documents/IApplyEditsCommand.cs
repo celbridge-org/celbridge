@@ -5,12 +5,14 @@ namespace Celbridge.Documents;
 /// <summary>
 /// A single text edit to apply to a document.
 /// Uses 1-based line and column numbers (Monaco editor convention).
-/// 
+///
 /// Edit operations:
 /// - Replace: Specify a range spanning existing text. The range is replaced with NewText.
 /// - Insert: Use a zero-width range (Line == EndLine and Column == EndColumn). NewText is inserted at that position.
 /// - Delete: Specify a range spanning text to delete. Set NewText to empty string.
 /// - Append to line: Set Column and EndColumn to one past the last character of the line.
+/// - Replace to end of line: Set EndColumn to -1 as a sentinel meaning "end of the line".
+///   This eliminates the need to know the exact character count of the line being edited.
 /// </summary>
 public record TextEdit(
     int Line,

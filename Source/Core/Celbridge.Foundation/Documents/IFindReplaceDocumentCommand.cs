@@ -41,4 +41,16 @@ public interface IFindReplaceDocumentCommand : IExecutableCommand<int>
     /// When false but the document is already open, routes through the editor to avoid auto-save race conditions.
     /// </summary>
     bool OpenDocument { get; set; }
+
+    /// <summary>
+    /// First line number (1-based, inclusive) to include in the replacement scope.
+    /// Zero means no lower bound — all lines from the start of the file are included.
+    /// </summary>
+    int FromLine { get; set; }
+
+    /// <summary>
+    /// Last line number (1-based, inclusive) to include in the replacement scope.
+    /// Zero means no upper bound — all lines to the end of the file are included.
+    /// </summary>
+    int ToLine { get; set; }
 }

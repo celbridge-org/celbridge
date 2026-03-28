@@ -7,6 +7,7 @@ namespace Celbridge.Tests.Utilities;
 public class TextBinarySnifferTests
 {
     private string _testFilesDir = null!;
+    private readonly TextBinarySniffer _sniffer = new();
 
     [SetUp]
     public void SetUp()
@@ -29,42 +30,42 @@ public class TextBinarySnifferTests
     [Test]
     public void IsBinaryExtension_KnownBinaryExtensions_ReturnsTrue()
     {
-        TextBinarySniffer.IsBinaryExtension(".exe").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension(".dll").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension(".png").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension(".jpg").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension(".pdf").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension(".zip").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".exe").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".dll").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".png").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".jpg").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".pdf").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".zip").Should().BeTrue();
     }
 
     [Test]
     public void IsBinaryExtension_TextExtensions_ReturnsFalse()
     {
-        TextBinarySniffer.IsBinaryExtension(".txt").Should().BeFalse();
-        TextBinarySniffer.IsBinaryExtension(".cs").Should().BeFalse();
-        TextBinarySniffer.IsBinaryExtension(".json").Should().BeFalse();
-        TextBinarySniffer.IsBinaryExtension(".xml").Should().BeFalse();
+        _sniffer.IsBinaryExtension(".txt").Should().BeFalse();
+        _sniffer.IsBinaryExtension(".cs").Should().BeFalse();
+        _sniffer.IsBinaryExtension(".json").Should().BeFalse();
+        _sniffer.IsBinaryExtension(".xml").Should().BeFalse();
     }
 
     [Test]
     public void IsBinaryExtension_WithoutLeadingDot_ReturnsCorrectResult()
     {
-        TextBinarySniffer.IsBinaryExtension("exe").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension("txt").Should().BeFalse();
+        _sniffer.IsBinaryExtension("exe").Should().BeTrue();
+        _sniffer.IsBinaryExtension("txt").Should().BeFalse();
     }
 
     [Test]
     public void IsBinaryExtension_CaseInsensitive_ReturnsCorrectResult()
     {
-        TextBinarySniffer.IsBinaryExtension(".EXE").Should().BeTrue();
-        TextBinarySniffer.IsBinaryExtension(".Png").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".EXE").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".Png").Should().BeTrue();
     }
 
     [Test]
     public void IsBinaryExtension_SVG_IsBinary()
     {
         // As per design doc: SVG treated as binary (opened in WebView2, not edited as text)
-        TextBinarySniffer.IsBinaryExtension(".svg").Should().BeTrue();
+        _sniffer.IsBinaryExtension(".svg").Should().BeTrue();
     }
 
     #endregion
@@ -79,7 +80,7 @@ public class TextBinarySnifferTests
         var bytes = new byte[] { 0xEF, 0xBB, 0xBF }.Concat(Encoding.UTF8.GetBytes(content)).ToArray();
         File.WriteAllBytes(filePath, bytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -92,7 +93,7 @@ public class TextBinarySnifferTests
         var content = "Hello, World! 你好世界 Привет мир";
         File.WriteAllText(filePath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -104,7 +105,7 @@ public class TextBinarySnifferTests
         var filePath = Path.Combine(_testFilesDir, "ascii.txt");
         File.WriteAllText(filePath, "Hello World\nThis is a test\n");
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -116,7 +117,7 @@ public class TextBinarySnifferTests
         var filePath = Path.Combine(_testFilesDir, "tabs.txt");
         File.WriteAllText(filePath, "Column1\tColumn2\tColumn3\nValue1\tValue2\tValue3\n");
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -130,7 +131,7 @@ public class TextBinarySnifferTests
         var content = "\x1b[31mRed Text\x1b[0m\n\x1b[32mGreen Text\x1b[0m";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -147,7 +148,7 @@ public class TextBinarySnifferTests
         var content = "Hello World";
         File.WriteAllText(filePath, content, Encoding.Unicode); // UTF-16 LE with BOM
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("UTF-16 with BOM should be detected as text");
@@ -160,7 +161,7 @@ public class TextBinarySnifferTests
         var content = "Hello World";
         File.WriteAllText(filePath, content, Encoding.BigEndianUnicode); // UTF-16 BE with BOM
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("UTF-16 BE with BOM should be detected as text");
@@ -178,7 +179,7 @@ public class TextBinarySnifferTests
         var noBomBytes = bytes.Skip(Encoding.BigEndianUnicode.GetPreamble().Length).ToArray();
         File.WriteAllBytes(filePath, noBomBytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("UTF-16 BE without BOM is a valid text encoding");
@@ -196,7 +197,7 @@ public class TextBinarySnifferTests
         var noBomBytes = bytes.Skip(Encoding.Unicode.GetPreamble().Length).ToArray();
         File.WriteAllBytes(filePath, noBomBytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("UTF-16 LE without BOM is a valid text encoding");
@@ -213,7 +214,7 @@ public class TextBinarySnifferTests
         var content = "Hello";
         File.WriteAllText(filePath, content, Encoding.UTF32); // UTF-32 LE with BOM
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("UTF-32 with BOM should be detected as text");
@@ -231,7 +232,7 @@ public class TextBinarySnifferTests
         var noBomBytes = bytes.Skip(Encoding.UTF32.GetPreamble().Length).ToArray();
         File.WriteAllBytes(filePath, noBomBytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("UTF-32 without BOM is a valid text encoding");
@@ -250,7 +251,7 @@ public class TextBinarySnifferTests
         var bytes = Encoding.Latin1.GetBytes(content);
         File.WriteAllBytes(filePath, bytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("Legacy 8-bit encodings like Latin-1 should be detected as text");
@@ -270,7 +271,7 @@ public class TextBinarySnifferTests
         var bytes = new byte[] { 0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0x00, 0x00 };
         File.WriteAllBytes(filePath, bytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeFalse("Binary data with NUL bytes should be detected as binary");
@@ -295,7 +296,7 @@ public class TextBinarySnifferTests
         }
         File.WriteAllBytes(filePath, bytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeFalse("Content with >2% suspicious control characters should be binary");
@@ -320,7 +321,7 @@ public class TextBinarySnifferTests
         }
         File.WriteAllBytes(filePath, bytes);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("Content with exactly 2% control characters should pass (at threshold)");
@@ -336,7 +337,7 @@ public class TextBinarySnifferTests
         var filePath = Path.Combine(_testFilesDir, "empty.txt");
         File.WriteAllText(filePath, string.Empty);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue("Empty files should be treated as text");
@@ -348,7 +349,7 @@ public class TextBinarySnifferTests
         var filePath = Path.Combine(_testFilesDir, "tiny.txt");
         File.WriteAllText(filePath, "Hi");
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -359,7 +360,7 @@ public class TextBinarySnifferTests
     {
         var filePath = Path.Combine(_testFilesDir, "does-not-exist.txt");
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeFalse();
         result.FirstErrorMessage.Should().Contain("does not exist");
@@ -368,7 +369,7 @@ public class TextBinarySnifferTests
     [Test]
     public void IsTextFile_NullPath_ReturnsFailure()
     {
-        var result = TextBinarySniffer.IsTextFile(null!);
+        var result = _sniffer.IsTextFile(null!);
 
         result.IsSuccess.Should().BeFalse();
         result.FirstErrorMessage.Should().Contain("null or empty");
@@ -381,7 +382,7 @@ public class TextBinarySnifferTests
     [Test]
     public void IsTextContent_PlainText_ReturnsTrue()
     {
-        var result = TextBinarySniffer.IsTextContent("Hello, World!");
+        var result = _sniffer.IsTextContent("Hello, World!");
 
         result.Should().BeTrue();
     }
@@ -389,7 +390,7 @@ public class TextBinarySnifferTests
     [Test]
     public void IsTextContent_EmptyString_ReturnsTrue()
     {
-        var result = TextBinarySniffer.IsTextContent(string.Empty);
+        var result = _sniffer.IsTextContent(string.Empty);
 
         result.Should().BeTrue();
     }
@@ -397,7 +398,7 @@ public class TextBinarySnifferTests
     [Test]
     public void IsTextContent_NullString_ReturnsTrue()
     {
-        var result = TextBinarySniffer.IsTextContent(null!);
+        var result = _sniffer.IsTextContent(null!);
 
         result.Should().BeTrue();
     }
@@ -405,7 +406,7 @@ public class TextBinarySnifferTests
     [Test]
     public void IsTextContent_Unicode_ReturnsTrue()
     {
-        var result = TextBinarySniffer.IsTextContent("Hello 世界 🌍");
+        var result = _sniffer.IsTextContent("Hello 世界 🌍");
 
         result.Should().BeTrue();
     }
@@ -432,7 +433,7 @@ namespace MyApp
 }";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -449,7 +450,7 @@ namespace MyApp
 }";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -465,7 +466,7 @@ namespace MyApp
 </root>";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -484,7 +485,7 @@ This is a **markdown** file with *formatting*.
 ";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -497,7 +498,7 @@ This is a **markdown** file with *formatting*.
         var content = "Line 1\r\nLine 2\r\nLine 3\r\n";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
@@ -510,7 +511,7 @@ This is a **markdown** file with *formatting*.
         var content = "Line 1\nLine 2\nLine 3\n";
         File.WriteAllText(filePath, content);
 
-        var result = TextBinarySniffer.IsTextFile(filePath);
+        var result = _sniffer.IsTextFile(filePath);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();

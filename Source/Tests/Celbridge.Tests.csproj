@@ -34,6 +34,7 @@
     <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Extensions\Celbridge.Extensions.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
   

@@ -27,6 +27,35 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
         var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
+        // Resolve the file path, creating the file on disk if it doesn't exist yet.
+        // This allows document_write to be used as a single-step file creation + write.
+        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var resourcePath = resolveResult.Value;
+
+        var isNewFile = !File.Exists(resourcePath);
+        if (isNewFile)
+        {
+            var parentFolder = Path.GetDirectoryName(resourcePath);
+            if (!string.IsNullOrEmpty(parentFolder))
+            {
+                Directory.CreateDirectory(parentFolder);
+            }
+            await File.WriteAllTextAsync(resourcePath, Content);
+
+            // Update the resource registry so the new file is immediately visible
+            resourceRegistry.UpdateResourceRegistry();
+
+            if (!OpenDocument)
+            {
+                return Result.Ok();
+            }
+        }
+
         // Check if document is already open
         var documentView = documentsPanel.GetDocumentView(FileResource);
 
@@ -49,6 +78,12 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
                 }
             }
 
+            // For new files we already wrote the content to disk, so just open without applying edits
+            if (isNewFile)
+            {
+                return Result.Ok();
+            }
+
             // Ensure any unsaved editor changes are flushed to disk before reading
             if (documentView.HasUnsavedChanges)
             {
@@ -61,13 +96,7 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
             }
 
             // Read the current content to determine the document's line count
-            var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
-            if (resolveResult.IsFailure)
-            {
-                return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                    .WithErrors(resolveResult);
-            }
-            var existingLines = await File.ReadAllLinesAsync(resolveResult.Value);
+            var existingLines = await File.ReadAllLinesAsync(resourcePath);
             var lineCount = existingLines.Length;
 
             // Build a single edit that replaces the entire content
@@ -85,19 +114,7 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
         }
         else
         {
-            // Write directly to disk
-            var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
-            if (resolveResult.IsFailure)
-            {
-                return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                    .WithErrors(resolveResult);
-            }
-            var resourcePath = resolveResult.Value;
-            if (!File.Exists(resourcePath))
-            {
-                return Result.Fail($"File not found: '{FileResource}'");
-            }
-
+            // Write directly to disk (file already exists since isNewFile was handled above)
             await File.WriteAllTextAsync(resourcePath, Content);
         }
 

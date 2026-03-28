@@ -3,7 +3,8 @@ using Celbridge.Commands;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Replace the entire content of a text document.
+/// Writes text content to a document. Creates the file if it does not exist.
+/// For existing files, replaces the entire content.
 /// When OpenDocument is true (default) or the document is already open, the content is applied
 /// through the editor with full undo support. When OpenDocument is false and the document is
 /// not open, the content is written directly to disk.

@@ -11,6 +11,8 @@ public interface ISearchService
     /// When maxResults is null, all matches are returned (for Replace All operations).
     /// When useRegex is true, searchTerm is interpreted as a .NET regular expression.
     /// When include is specified, only files whose names match one of the comma-separated glob patterns are searched (e.g. "*.cs,*.xaml").
+    /// When exclude is specified, files whose names match any of the comma-separated glob patterns are skipped, even if they match include.
+    /// When scope is specified, only files whose resource key starts with the given prefix are searched.
     /// </summary>
     Task<SearchResults> SearchAsync(
         string searchTerm,
@@ -19,7 +21,9 @@ public interface ISearchService
         int? maxResults,
         CancellationToken cancellationToken,
         bool useRegex = false,
-        string include = "");
+        string include = "",
+        string exclude = "",
+        string scope = "");
 
     /// <summary>
     /// Replaces all occurrences of search text with replacement text in a single file.

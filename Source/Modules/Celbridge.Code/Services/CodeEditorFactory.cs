@@ -3,8 +3,6 @@ using System.Text.Json;
 using Celbridge.Code.Views;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
-using Celbridge.Utilities;
-
 namespace Celbridge.Code.Services;
 
 /// <summary>
@@ -16,6 +14,7 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
 {
     private const string CodeEditorTypesResourceName = "Celbridge.Code.Assets.CodeEditorTypes.json";
     private readonly IServiceProvider _serviceProvider;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly Dictionary<string, string> _extensionToLanguage;
 
 #if WINDOWS
@@ -29,9 +28,10 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
 
     public EditorPriority Priority => EditorPriority.General;
 
-    public CodeEditorFactory(IServiceProvider serviceProvider)
+    public CodeEditorFactory(IServiceProvider serviceProvider, ITextBinarySniffer textBinarySniffer)
     {
         _serviceProvider = serviceProvider;
+        _textBinarySniffer = textBinarySniffer;
 
 #if WINDOWS
         _logger = ServiceLocator.AcquireService<ILogger<CodeEditorFactory>>();
@@ -59,7 +59,7 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
         // This provides a better editing experience than TextBoxDocumentView
         if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
         {
-            var sniffResult = TextBinarySniffer.IsTextFile(filePath);
+            var sniffResult = _textBinarySniffer.IsTextFile(filePath);
             if (sniffResult.IsSuccess && sniffResult.Value)
             {
                 return true;

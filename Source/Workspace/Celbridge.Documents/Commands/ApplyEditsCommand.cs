@@ -53,8 +53,12 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
             if (documentView is not null)
             {
-                // Document is already open, always route through the editor
-                var applyResult = await documentView.ApplyEditsAsync(documentEdit.Edits);
+                // Document is already open, always route through the editor.
+                // Resolve any EndColumn == -1 sentinel to int.MaxValue: Monaco clamps
+                // out-of-range columns to the actual line end, so this reliably means
+                // "replace to end of line" without knowing the exact character count.
+                var resolvedEdits = ResolveEndOfLineColumns(documentEdit.Edits);
+                var applyResult = await documentView.ApplyEditsAsync(resolvedEdits);
                 if (applyResult.IsFailure)
                 {
                     _logger.LogWarning($"Failed to apply edits to document: {resource}");
@@ -80,7 +84,8 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                     continue;
                 }
 
-                var applyResult = await documentView.ApplyEditsAsync(documentEdit.Edits);
+                var resolvedEditsForOpen = ResolveEndOfLineColumns(documentEdit.Edits);
+                var applyResult = await documentView.ApplyEditsAsync(resolvedEditsForOpen);
                 if (applyResult.IsFailure)
                 {
                     _logger.LogWarning($"Failed to apply edits to document: {resource}");
@@ -155,7 +160,12 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             var startLine = edit.Line - 1;
             var startColumn = edit.Column - 1;
             var endLine = edit.EndLine - 1;
-            var endColumn = edit.EndColumn - 1;
+
+            // EndColumn of -1 is a sentinel meaning "end of line": no text is preserved
+            // after the edit range on the end line.
+            var endColumn = edit.EndColumn == -1
+                ? lines[endLine].Length
+                : edit.EndColumn - 1;
 
             if (startLine < 0 || startLine >= lines.Count)
             {
@@ -188,6 +198,21 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         await File.WriteAllLinesAsync(resourcePath, lines);
 
         return Result.Ok();
+    }
+
+    private static List<TextEdit> ResolveEndOfLineColumns(List<TextEdit> edits)
+    {
+        var hasEndOfLineSentinel = edits.Any(e => e.EndColumn == -1);
+        if (!hasEndOfLineSentinel)
+        {
+            return edits;
+        }
+
+        return edits
+            .Select(edit => edit.EndColumn == -1
+                ? edit with { EndColumn = int.MaxValue }
+                : edit)
+            .ToList();
     }
 
     //

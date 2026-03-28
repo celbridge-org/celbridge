@@ -20,14 +20,15 @@ public class SearchService : ISearchService, IDisposable
 
     public SearchService(
         ILogger<SearchService> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ITextBinarySniffer textBinarySniffer)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
 
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _fileFilter = new FileFilter();
+        _fileFilter = new FileFilter(textBinarySniffer);
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
         _textReplacer = new TextReplacer();
@@ -46,7 +47,9 @@ public class SearchService : ISearchService, IDisposable
         int? maxResults,
         CancellationToken cancellationToken,
         bool useRegex = false,
-        string include = "")
+        string include = "",
+        string exclude = "",
+        string scope = "")
     {
         var fileResults = new List<SearchFileResult>();
 
@@ -104,6 +107,24 @@ public class SearchService : ISearchService, IDisposable
             {
                 fileResources = fileResources
                     .Where(entry => includeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrEmpty(exclude))
+            {
+                var excludePatterns = exclude.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var excludeRegexPatterns = excludePatterns.Select(GlobPatternToRegex);
+                var excludeCombined = string.Join("|", excludeRegexPatterns.Select(pattern => $"(?:{pattern})"));
+                var excludeRegex = new Regex(excludeCombined, RegexOptions.IgnoreCase);
+                fileResources = fileResources
+                    .Where(entry => !excludeRegex.IsMatch(Path.GetFileName(entry.Path)))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrEmpty(scope))
+            {
+                fileResources = fileResources
+                    .Where(entry => entry.Resource.ToString().StartsWith(scope, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
 

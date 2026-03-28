@@ -20,6 +20,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly IFeatureFlags _featureFlags;
 
     /// <summary>
@@ -49,6 +50,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         ICommandService commandService,
         IModuleService moduleService,
         IWorkspaceWrapper workspaceWrapper,
+        ITextBinarySniffer textBinarySniffer,
         IFeatureFlags featureFlags)
     {
         // Only the workspace service is allowed to instantiate this service
@@ -59,6 +61,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _textBinarySniffer = textBinarySniffer;
         _featureFlags = featureFlags;
 
         _messengerService.Register<ExtensionsInitializedMessage>(this, OnExtensionsInitializedMessage);
@@ -216,7 +219,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                 return DocumentViewType.UnsupportedFormat;
             }
 
-            var result = TextBinarySniffer.IsTextFile(resolveResult.Value);
+            var result = _textBinarySniffer.IsTextFile(resolveResult.Value);
             if (result.IsFailure)
             {
                 // Failed to determine if the file is text
