@@ -12,10 +12,18 @@ namespace Celbridge.Spreadsheet.Services;
 
 public class SpreadsheetActivity : IActivity
 {
+    // Debounce delay before running the script after a save event.
+    // Collapses bursts of rapid saves (e.g. while a previous script run is still writing
+    // its output file) into a single run request.
+    private const int RunScriptDebounceMilliseconds = 300;
+
     private readonly ILogger<SpreadsheetActivity> _logger;
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IEntityService _entityService;
+
+    private readonly Dictionary<ResourceKey, CancellationTokenSource> _pendingRunCts = new();
+    private readonly object _pendingRunLock = new();
 
     public SpreadsheetActivity(
         ILogger<SpreadsheetActivity> logger,
@@ -40,6 +48,16 @@ public class SpreadsheetActivity : IActivity
     public async Task<Result> DeactivateAsync()
     {
         _messengerService.Unregister<DocumentSaveCompletedMessage>(this);
+
+        lock (_pendingRunLock)
+        {
+            foreach (var cancellationTokenSource in _pendingRunCts.Values)
+            {
+                cancellationTokenSource.Cancel();
+                cancellationTokenSource.Dispose();
+            }
+            _pendingRunCts.Clear();
+        }
 
         await Task.CompletedTask;
         return Result.Ok();
@@ -184,12 +202,43 @@ public class SpreadsheetActivity : IActivity
         var scriptResource = component.GetString("/pythonScript");
         var arguments = component.GetString("/arguments");
 
-        _logger.LogInformation($"Running script: {scriptResource} with arguments: {arguments}");
-
-        _commandService.Execute<IRunCommand>(command =>
+        // Cancel any pending debounce for this resource and start a fresh one.
+        // This collapses a burst of saves into a single run request.
+        var debounceCts = new CancellationTokenSource();
+        lock (_pendingRunLock)
         {
-            command.ScriptResource = scriptResource;
-            command.Arguments = arguments;
-        });
+            if (_pendingRunCts.TryGetValue(savedResource, out var existingCts))
+            {
+                existingCts.Cancel();
+                existingCts.Dispose();
+            }
+            _pendingRunCts[savedResource] = debounceCts;
+        }
+
+        _ = Task.Delay(RunScriptDebounceMilliseconds, debounceCts.Token).ContinueWith(delayTask =>
+        {
+            if (delayTask.IsCanceled)
+            {
+                return;
+            }
+
+            lock (_pendingRunLock)
+            {
+                // Only remove if it's still our CTS (not replaced by a newer debounce).
+                if (_pendingRunCts.TryGetValue(savedResource, out var currentCts) && currentCts == debounceCts)
+                {
+                    _pendingRunCts.Remove(savedResource);
+                }
+                debounceCts.Dispose();
+            }
+
+            _logger.LogInformation($"Running script: {scriptResource} with arguments: {arguments}");
+
+            _commandService.Execute<IRunCommand>(command =>
+            {
+                command.ScriptResource = scriptResource;
+                command.Arguments = arguments;
+            });
+        }, TaskScheduler.Default);
     }
 }

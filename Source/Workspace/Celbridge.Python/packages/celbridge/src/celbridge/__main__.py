@@ -37,21 +37,30 @@ def main():
     # Configure logging first
     configure_logging()
 
-    # Connect to the Celbridge application RPC server
-    client = RpcClient('127.0.0.1', port)
+    mcp_tools_enabled = os.environ.get('CELBRIDGE_MCP_TOOLS') == '1'
 
-    # Create the cel proxy that sends JSON-RPC calls to C#
+    # Always connect to the Celbridge application RPC server. The connection
+    # signals to the host that the Python terminal is ready, which enables
+    # features like the Run context menu command for .py files.
+    client = RpcClient('127.0.0.1', port)
     cel = CelProxy(client)
 
-    # Make cel and its namespaces importable for use in scripts.
-    # e.g. "from celbridge import cel" or "from celbridge import resource"
-    import celbridge
-    celbridge.cel = cel
-    for namespace_name in cel._get_namespace_names():
-        setattr(celbridge, namespace_name, getattr(cel, namespace_name))
+    # Only expose cel in the REPL namespace when MCP tools are enabled.
+    user_namespace = {}
+    if mcp_tools_enabled:
+        # Make cel and its namespaces importable for use in scripts.
+        # e.g. "from celbridge import cel" or "from celbridge import resource"
+        import celbridge
+        celbridge.cel = cel
+        for namespace_name in cel._get_namespace_names():
+            setattr(celbridge, namespace_name, getattr(cel, namespace_name))
+
+        user_namespace['cel'] = cel
+        for namespace_name in cel._get_namespace_names():
+            user_namespace[namespace_name] = getattr(cel, namespace_name)
 
     # Set up the REPL environment (banner, python path)
-    setup_repl()
+    setup_repl(mcp_tools_enabled)
 
     # Get IPython folder from environment variable (set by the host application)
     ipython_folder = os.environ.get('CELBRIDGE_IPYTHON_DIR', '')
@@ -60,12 +69,6 @@ def main():
     ipython_args = ['--no-banner']
     if ipython_folder:
         ipython_args.extend(['--ipython-dir', ipython_folder])
-
-    # Build the user namespace with cel and all its namespaces (app, document, resource, etc.)
-    # so they're available directly in the REPL without imports.
-    user_namespace = {'cel': cel}
-    for namespace_name in cel._get_namespace_names():
-        user_namespace[namespace_name] = getattr(cel, namespace_name)
 
     # Launch IPython with the cel proxy injected into the user namespace.
     # exec_lines runs after IPython is fully initialized, so customizations

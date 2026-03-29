@@ -1,5 +1,6 @@
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -19,6 +20,7 @@ public class ServerService : IServerService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IServiceProvider _applicationServices;
+    private readonly IFeatureFlags _featureFlags;
     private readonly ILogger<ServerService> _logger;
 
     private WebApplication? _webApplication;
@@ -34,6 +36,7 @@ public class ServerService : IServerService, IDisposable
         IMessengerService messengerService,
         IProjectService projectService,
         IServiceProvider applicationServices,
+        IFeatureFlags featureFlags,
         ILogger<ServerService> logger)
     {
         _agentServer = agentServer;
@@ -41,6 +44,7 @@ public class ServerService : IServerService, IDisposable
         _messengerService = messengerService;
         _projectService = projectService;
         _applicationServices = applicationServices;
+        _featureFlags = featureFlags;
         _logger = logger;
 
         messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
@@ -49,6 +53,13 @@ public class ServerService : IServerService, IDisposable
 
     public async Task InitializeAsync()
     {
+        if (!_featureFlags.IsEnabled(FeatureFlagConstants.McpTools))
+        {
+            Status = ServerStatus.Ready;
+            _logger.LogInformation("MCP tools disabled by feature flag. Server will not start.");
+            return;
+        }
+
         Status = ServerStatus.Starting;
 
         try

@@ -99,46 +99,30 @@ public class FileServer : IFileServer, IDisposable
         {
             var contextFolder = contextResource.GetParent().ToString();
             var relativePath = CombineAndNormalize(contextFolder, path);
-            _logger.LogDebug(
-                "ResolveProjectFileUrl relative: contextFolder='{ContextFolder}', combined='{RelativePath}'",
-                contextFolder, relativePath);
 
             if (!string.IsNullOrEmpty(relativePath))
             {
                 var fileInfo = _projectFileProvider.GetFileInfo(relativePath);
-                _logger.LogDebug(
-                    "ResolveProjectFileUrl relative check: exists={Exists}, isDir={IsDir}",
-                    fileInfo.Exists, fileInfo.IsDirectory);
-
                 if (fileInfo.Exists && !fileInfo.IsDirectory)
                 {
-                    var resolvedUrl = $"http://127.0.0.1:{_port}/local/{relativePath}";
-                    _logger.LogDebug("ResolveProjectFileUrl resolved (relative): {Url}", resolvedUrl);
-                    return resolvedUrl;
+                    return $"http://127.0.0.1:{_port}/local/{relativePath}";
                 }
             }
         }
 
         // Try as an absolute resource key
         var normalizedPath = NormalizePath(path);
-        _logger.LogDebug("ResolveProjectFileUrl absolute: normalizedPath='{NormalizedPath}'", normalizedPath);
 
         if (!string.IsNullOrEmpty(normalizedPath))
         {
             var fileInfo = _projectFileProvider.GetFileInfo(normalizedPath);
-            _logger.LogDebug(
-                "ResolveProjectFileUrl absolute check: exists={Exists}, isDir={IsDir}",
-                fileInfo.Exists, fileInfo.IsDirectory);
-
             if (fileInfo.Exists && !fileInfo.IsDirectory)
             {
-                var resolvedUrl = $"http://127.0.0.1:{_port}/local/{normalizedPath}";
-                _logger.LogDebug("ResolveProjectFileUrl resolved (absolute): {Url}", resolvedUrl);
-                return resolvedUrl;
+                return $"http://127.0.0.1:{_port}/local/{normalizedPath}";
             }
         }
 
-        _logger.LogDebug("ResolveProjectFileUrl failed to resolve path='{Path}', context='{Context}'", path, contextResource);
+        _logger.LogWarning("ResolveProjectFileUrl failed to resolve path='{Path}', context='{Context}'", path, contextResource);
         return string.Empty;
     }
 

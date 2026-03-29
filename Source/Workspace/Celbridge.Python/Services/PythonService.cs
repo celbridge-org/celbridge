@@ -9,6 +9,7 @@ using Celbridge.Console;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Logging;
+using Celbridge.Settings;
 using Celbridge.Workspace;
 
 namespace Celbridge.Python.Services;
@@ -33,6 +34,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IEnvironmentService _environmentService;
     private readonly IServerService _serverService;
     private readonly IMessengerService _messengerService;
+    private readonly IFeatureFlags _featureFlags;
     private readonly ILogger<PythonService> _logger;
     private readonly ITcpTransport _tcpTransport;
     private CancellationTokenSource? _rpcCancellationTokenSource;
@@ -47,6 +49,7 @@ public class PythonService : IPythonService, IDisposable
         IEnvironmentService environmentService,
         IServerService serverService,
         IMessengerService messengerService,
+        IFeatureFlags featureFlags,
         ILogger<PythonService> logger,
         ITcpTransport tcpTransport)
     {
@@ -55,6 +58,7 @@ public class PythonService : IPythonService, IDisposable
         _environmentService = environmentService;
         _serverService = serverService;
         _messengerService = messengerService;
+        _featureFlags = featureFlags;
         _logger = logger;
         _tcpTransport = tcpTransport;
     }
@@ -174,6 +178,7 @@ public class PythonService : IPythonService, IDisposable
             {
                 ["CELBRIDGE_RPC_PORT"] = rpcPort.ToString(),
                 ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
+                ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
                 ["CELBRIDGE_PROJECT_FOLDER"] = project.ProjectFolderPath,
                 ["CELBRIDGE_VERSION"] = celbridgeVersion,
                 ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,

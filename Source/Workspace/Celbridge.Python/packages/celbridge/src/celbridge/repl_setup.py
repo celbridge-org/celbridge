@@ -98,7 +98,7 @@ def apply_post_startup_customizations() -> None:
 POST_STARTUP_LINE = "from celbridge.repl_setup import apply_post_startup_customizations; apply_post_startup_customizations()"
 
 
-def setup_repl() -> None:
+def setup_repl(mcp_tools_enabled: bool = True) -> None:
     """Initialize the REPL environment before IPython starts.
 
     Sets up the Python path, exit message, and startup banner.
@@ -117,7 +117,8 @@ def setup_repl() -> None:
         celbridge_version = os.environ.get('CELBRIDGE_VERSION', 'Unknown')
         python_version = platform.python_version()
         print(f"Celbridge v{celbridge_version} - Python v{python_version}")
-        print("Type help(cel) for a list of available commands.")
+        if mcp_tools_enabled:
+            print("Type help(cel) for a list of available commands.")
 
     except Exception:
         print("Error during Celbridge startup:\n", file=sys.stderr)

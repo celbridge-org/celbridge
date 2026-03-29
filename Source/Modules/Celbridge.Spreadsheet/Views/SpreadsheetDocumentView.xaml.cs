@@ -4,9 +4,11 @@ using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.Spreadsheet.ViewModels;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Spreadsheet.Views;
@@ -16,15 +18,35 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
     // Spreadsheets can be large and take significant time to serialize/save.
     private const int SaveRequestTimeoutSeconds = 60;
 
+    // Debounce delay to avoid importing a partially-written file when the backing file changes rapidly.
+    private const int ImportDebounceMilliseconds = 300;
+
+    // Retry settings for reading a spreadsheet file that may be mid-write.
+    private const int MaxFileReadAttempts = 3;
+    private const int FileReadRetryDelayMilliseconds = 150;
+
+    // Magic bytes that identify valid spreadsheet files.
+    private static readonly byte[] XlsxMagicBytes = { 0x50, 0x4B, 0x03, 0x04 };
+    private static readonly byte[] XlsMagicBytes = { 0xD0, 0xCF, 0x11, 0xE0 };
+
     private readonly ILogger _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
+    private readonly IConfiguration _configuration;
 
     private SpreadsheetDocumentHandler? _documentHandler;
+
+    private CancellationTokenSource? _importDebounceCts;
+    private int _importDebounceVersion;
 
     public SpreadsheetDocumentViewModel ViewModel { get; }
 
     protected override DocumentViewModel DocumentViewModel => ViewModel;
+
+    protected override bool GetDevToolsEnabled()
+    {
+        return _configuration["AppConfig:Environment"] == "Development";
+    }
 
     public SpreadsheetDocumentView(
         IServiceProvider serviceProvider,
@@ -32,10 +54,12 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
         ICommandService commandService,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
-        IWebViewFactory webViewFactory)
-        : base(messengerService, webViewFactory)
+        IWebViewFactory webViewFactory,
+        IFeatureFlags featureFlags)
+        : base(messengerService, webViewFactory, featureFlags)
     {
         ViewModel = serviceProvider.GetRequiredService<SpreadsheetDocumentViewModel>();
+        _configuration = serviceProvider.GetRequiredService<IConfiguration>();
 
         _logger = logger;
         _commandService = commandService;
@@ -119,6 +143,16 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
             // Acquire WebView from factory and add to container
             await AcquireWebViewAsync();
 
+#if HAS_SPREADJS_LICENSE
+            // Inject SpreadJS license keys before the page loads so they are available
+            // as globals when spreadsheet.js runs. The keys are compiled into the binary
+            // rather than shipped as a readable file in the app package folder.
+            var licenseScript =
+                $"window.SPREAD_JS_LICENSE_KEY='{SpreadsheetLicenseKeys.LicenseKey}';" +
+                $"window.SPREAD_JS_DESIGNER_LICENSE_KEY='{SpreadsheetLicenseKeys.DesignerLicenseKey}';";
+            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(licenseScript);
+#endif
+
             // Sync WebView2 color scheme with the app theme
             ApplyThemeToWebView();
 
@@ -193,27 +227,81 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
             return string.Empty;
         }
 
-        try
+        for (int attempt = 1; attempt <= MaxFileReadAttempts; attempt++)
         {
-            // Open with FileShare.ReadWrite to allow Excel to keep the file open
-            using var fileStream = new FileStream(
-                filePath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.ReadWrite);
+            try
+            {
+                byte[] bytes;
 
-            var bytes = new byte[fileStream.Length];
-            await fileStream.ReadExactlyAsync(bytes, CancellationToken.None);
-            var base64 = Convert.ToBase64String(bytes);
+                // Open with FileShare.ReadWrite to allow Excel to keep the file open.
+                using (var fileStream = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite))
+                {
+                    bytes = new byte[fileStream.Length];
+                    await fileStream.ReadExactlyAsync(bytes, CancellationToken.None);
+                }
 
-            _logger.LogDebug($"Successfully loaded spreadsheet as base64: {filePath}");
-            return base64;
+                // Validate magic bytes to detect a partial write (e.g. Excel still saving).
+                if (!HasValidSpreadsheetMagicBytes(bytes))
+                {
+                    if (attempt < MaxFileReadAttempts)
+                    {
+                        _logger.LogDebug($"Spreadsheet file has invalid magic bytes on attempt {attempt}, retrying: {filePath}");
+                        await Task.Delay(FileReadRetryDelayMilliseconds);
+                        continue;
+                    }
+
+                    _logger.LogWarning($"Spreadsheet file has invalid magic bytes after {MaxFileReadAttempts} attempts: {filePath}");
+                    return string.Empty;
+                }
+
+                var base64 = Convert.ToBase64String(bytes);
+                _logger.LogDebug($"Successfully loaded spreadsheet as base64: {filePath}");
+                return base64;
+            }
+            catch (IOException ex)
+            {
+                if (attempt < MaxFileReadAttempts)
+                {
+                    _logger.LogDebug($"IO error reading spreadsheet on attempt {attempt}, retrying: {filePath}");
+                    await Task.Delay(FileReadRetryDelayMilliseconds);
+                }
+                else
+                {
+                    _logger.LogError(ex, $"Failed to load spreadsheet after {MaxFileReadAttempts} attempts: {filePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
+                return string.Empty;
+            }
         }
-        catch (Exception ex)
+
+        return string.Empty;
+    }
+
+    private static bool HasValidSpreadsheetMagicBytes(byte[] bytes)
+    {
+        if (bytes.Length < 4)
         {
-            _logger.LogError(ex, $"Failed to load spreadsheet: {filePath}");
-            return string.Empty;
+            return false;
         }
+
+        var isXlsx = bytes[0] == XlsxMagicBytes[0] &&
+                     bytes[1] == XlsxMagicBytes[1] &&
+                     bytes[2] == XlsxMagicBytes[2] &&
+                     bytes[3] == XlsxMagicBytes[3];
+
+        var isXls = bytes[0] == XlsMagicBytes[0] &&
+                    bytes[1] == XlsMagicBytes[1] &&
+                    bytes[2] == XlsMagicBytes[2] &&
+                    bytes[3] == XlsMagicBytes[3];
+
+        return isXlsx || isXls;
     }
 
     public override async Task<Result> LoadContent()
@@ -230,6 +318,11 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
         // Unsubscribe from ViewModel events
         ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
 
+        // Cancel and dispose any pending debounce timer
+        _importDebounceCts?.Cancel();
+        _importDebounceCts?.Dispose();
+        _importDebounceCts = null;
+
         // Cleanup ViewModel message handlers
         ViewModel.Cleanup();
 
@@ -238,13 +331,44 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
 
     private void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
-        if (_documentHandler is not null && _documentHandler.IsImportInProgress)
-        {
-            _documentHandler.HasPendingImport = true;
-            _logger.LogDebug("Import already in progress, queuing pending import");
-            return;
-        }
+        // Cancel any in-flight debounce and start a new one.
+        _importDebounceCts?.Cancel();
+        _importDebounceCts = new CancellationTokenSource();
+        var cancellationToken = _importDebounceCts.Token;
+        var capturedVersion = ++_importDebounceVersion;
 
-        Host?.NotifyExternalChangeAsync();
+        _ = Task.Delay(ImportDebounceMilliseconds, cancellationToken).ContinueWith(delayTask =>
+        {
+            if (delayTask.IsCanceled)
+            {
+                return;
+            }
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                // Guard against the race where the delay completed just before a new change
+                // arrived on the UI thread and started a fresh debounce cycle.
+                if (capturedVersion != _importDebounceVersion)
+                {
+                    return;
+                }
+
+                if (_documentHandler is not null && _documentHandler.IsImportInProgress)
+                {
+                    _documentHandler.HasPendingImport = true;
+                    _logger.LogDebug("Import already in progress, queuing pending import");
+                    return;
+                }
+
+                // Set IsImportInProgress immediately so that any further resource change events
+                // that arrive before JS calls back into LoadAsync are queued, not fired concurrently.
+                if (_documentHandler is not null)
+                {
+                    _documentHandler.IsImportInProgress = true;
+                }
+
+                Host?.NotifyExternalChangeAsync();
+            });
+        }, TaskScheduler.Default);
     }
 }

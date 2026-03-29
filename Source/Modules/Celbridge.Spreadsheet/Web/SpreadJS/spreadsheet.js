@@ -18,12 +18,14 @@ let designer = null;
 // Spreadsheet Import/Export Functions
 // ---------------------------------------------------------------------------
 
-async function deserializeExcelData(base64Data) {
+async function deserializeExcelData(base64Data, viewState = null) {
     if (!base64Data) {
         console.log('No data to import');
         client.document.notifyImportComplete(true);
         return;
     }
+
+    const spread = designer.getWorkbook();
 
     try {
         const binary = atob(base64Data);
@@ -32,23 +34,41 @@ async function deserializeExcelData(base64Data) {
             bytes[i] = binary.charCodeAt(i);
         }
 
-        const blob = new Blob([bytes], { 
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        const blob = new Blob([bytes], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         });
         const file = new File([blob], 'imported.xlsx', { type: blob.type });
 
-        const spread = designer.getWorkbook();
+        // Suspend painting before import so SpreadJS does not flash the default
+        // (0, 0) position before view state is restored in the rAF callback.
+        if (viewState) {
+            spread.suspendPaint();
+        }
 
         await spread.import(file, () => {
             console.log("Base64 data import completed.");
-            client.document.notifyImportComplete(true);
+            if (viewState) {
+                requestAnimationFrame(() => {
+                    restoreViewState(viewState);
+                    spread.resumePaint();
+                    client.document.notifyImportComplete(true);
+                });
+            } else {
+                client.document.notifyImportComplete(true);
+            }
         }, (error) => {
+            if (viewState) {
+                spread.resumePaint();
+            }
             console.error("Import error:", error);
             client.document.notifyImportComplete(false, error?.message || 'Import failed');
         }, {
             fileType: GC.Spread.Sheets.FileType.excel
         });
     } catch (err) {
+        if (viewState) {
+            spread.resumePaint();
+        }
         console.error("Import failed:", err);
         client.document.notifyImportComplete(false, err?.message || 'Import exception');
     }
@@ -85,6 +105,59 @@ function blobToBase64(blob) {
 }
 
 // ---------------------------------------------------------------------------
+// View State Capture and Restore
+// ---------------------------------------------------------------------------
+
+function captureViewState() {
+    if (!designer) return null;
+    try {
+        const spread = designer.getWorkbook();
+        const activeSheet = spread.getActiveSheet();
+        if (!activeSheet) return null;
+        return {
+            sheetName: activeSheet.name(),
+            selections: activeSheet.getSelections(),
+            scrollRow: activeSheet.getViewportTopRow(1),
+            scrollColumn: activeSheet.getViewportLeftColumn(1)
+        };
+    } catch (error) {
+        console.warn('[Spreadsheet] Failed to capture view state:', error);
+        return null;
+    }
+}
+
+function restoreViewState(state) {
+    if (!state || !designer) return;
+    try {
+        const spread = designer.getWorkbook();
+
+        // Restore active sheet - fall back to current sheet if the name no longer exists.
+        const sheetIndex = spread.getSheetIndex(state.sheetName);
+        if (sheetIndex >= 0) {
+            spread.setActiveSheetIndex(sheetIndex);
+        }
+
+        const activeSheet = spread.getActiveSheet();
+
+        // Restore all selections. If none were saved, select the origin cell.
+        if (state.selections && state.selections.length > 0) {
+            const first = state.selections[0];
+            activeSheet.setSelection(first.row, first.col, first.rowCount, first.colCount);
+            for (let i = 1; i < state.selections.length; i++) {
+                const sel = state.selections[i];
+                activeSheet.addSelection(sel.row, sel.col, sel.rowCount, sel.colCount);
+            }
+        }
+
+        // Restore scroll position.
+        activeSheet.showRow(state.scrollRow, GC.Spread.Sheets.VerticalPosition.top);
+        activeSheet.showColumn(state.scrollColumn, GC.Spread.Sheets.HorizontalPosition.left);
+    } catch (error) {
+        console.warn('[Spreadsheet] Failed to restore view state:', error);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Change Tracking
 // ---------------------------------------------------------------------------
 
@@ -93,7 +166,7 @@ function listenForChanges() {
     const commandManager = workbook.commandManager();
 
     // SpreadJS doesn't have a unified way to detect when the spreadsheet is modified,
-    // but as all modifications are performed via the command system we can just 
+    // but as all modifications are performed via the command system we can just
     // listen for any executing commands and assume that the data has changed.
     commandManager.addListener('appListener', (args) => {
         client.document.notifyChanged();
@@ -107,8 +180,9 @@ function listenForChanges() {
 // Handle external file changes - reload from disk
 client.document.onExternalChange(async () => {
     try {
+        const viewState = captureViewState();
         const result = await client.document.load();
-        await deserializeExcelData(result.content);
+        await deserializeExcelData(result.content, viewState);
     } catch (e) {
         console.error('[Spreadsheet] Failed to reload content:', e);
     }

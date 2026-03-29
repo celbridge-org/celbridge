@@ -5,6 +5,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.WebView;
 using Microsoft.Web.WebView2.Core;
@@ -28,8 +29,9 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         ICommandService commandService,
         IMessengerService messengerService,
         IWebViewFactory webViewFactory,
-        IFileServer projectFileServer)
-        : base(messengerService, webViewFactory)
+        IFileServer projectFileServer,
+        IFeatureFlags featureFlags)
+        : base(messengerService, webViewFactory, featureFlags)
     {
         this.InitializeComponent();
 

@@ -127,7 +127,9 @@ consoleClient.onSetTheme((theme) => {
 });
 
 consoleClient.onInjectCommand((command) => {
-    // Send Ctrl+C to cancel any current input, then inject the command
-    // Use \r (carriage return) as this is what terminals send for Enter
-    consoleClient.sendInput('\x03' + command + '\r');
+    // Send Ctrl+U (erase-line) to clear any partial input at the readline prompt,
+    // then inject the command. Unlike Ctrl+C (\x03), Ctrl+U is not a signal
+    // character and will not interrupt a script that is currently running.
+    // Use \r (carriage return) as this is what terminals send for Enter.
+    consoleClient.sendInput('\x15' + command + '\r');
 });

@@ -5,6 +5,7 @@ using Celbridge.Extensions;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Microsoft.Extensions.Localization;
@@ -38,6 +39,11 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
     /// </summary>
     public CustomDocumentContribution? Contribution { get; set; }
 
+    protected override bool GetDevToolsEnabled()
+    {
+        return base.GetDevToolsEnabled() && (Contribution?.DevToolsEnabled ?? true);
+    }
+
     public ExtensionDocumentView(
         IServiceProvider serviceProvider,
         ILogger<ExtensionDocumentView> logger,
@@ -46,8 +52,9 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
         IUserInterfaceService userInterfaceService,
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
-        IWebViewFactory webViewFactory)
-        : base(messengerService, webViewFactory)
+        IWebViewFactory webViewFactory,
+        IFeatureFlags featureFlags)
+        : base(messengerService, webViewFactory, featureFlags)
     {
         _logger = logger;
         _commandService = commandService;
