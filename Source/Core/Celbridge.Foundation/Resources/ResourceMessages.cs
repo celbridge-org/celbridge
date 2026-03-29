@@ -9,7 +9,9 @@ public enum ResourceOperationType
     Copy,
     Move,
     Rename,
-    Create
+    Create,
+    Archive,
+    Extract
 }
 
 /// <summary>

@@ -239,7 +239,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// </summary>
     public static bool IsValidKey(string key)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        if (key.Length == 0)
         {
             // An empty resource key is valid, and refers to the project folder.
             return true;

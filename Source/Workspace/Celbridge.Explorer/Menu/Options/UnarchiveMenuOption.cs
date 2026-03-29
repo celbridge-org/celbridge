@@ -1,24 +1,23 @@
 using Celbridge.Commands;
 using Celbridge.ContextMenu;
-using Celbridge.DataTransfer;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.Menu.Options;
 
 /// <summary>
-/// Menu option to cut resources to clipboard.
+/// Menu option to extract a zip archive to a folder.
 /// </summary>
-public class CutMenuOption : IMenuOption<ExplorerMenuContext>
+public class UnarchiveMenuOption : IMenuOption<ExplorerMenuContext>
 {
     private readonly IStringLocalizer _stringLocalizer;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public int Priority => 1;
+    public int Priority => 7;
     public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
-    public CutMenuOption(
+    public UnarchiveMenuOption(
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper)
@@ -31,34 +30,34 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
     {
         return new MenuItemDisplayInfo(
-            _stringLocalizer.GetString("ResourceTree_Cut"),
-            IconGlyph: "\uE8C6"); // Cut icon
+            _stringLocalizer.GetString("ResourceTree_ExtractArchive"),
+            IconGlyph: "\uE8C8");
     }
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canCut = context.HasAnySelection && !context.SelectionContainsRootFolder;
-        return new MenuItemState(IsVisible: true, IsEnabled: canCut);
+        var isZipFile = context.HasSingleSelection &&
+                        context.SingleSelectedResource is IFileResource &&
+                        context.SingleSelectedResource.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+
+        return new MenuItemState(
+            IsVisible: isZipFile,
+            IsEnabled: isZipFile);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasAnySelection || context.SelectionContainsRootFolder)
+        if (context.SingleSelectedResource is not IFileResource)
         {
             return;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var commandService = _commandService;
+        var resourceKey = resourceRegistry.GetResourceKey(context.SingleSelectedResource);
 
-        var resourceKeys = context.SelectedResources
-            .Select(r => resourceRegistry.GetResourceKey(r))
-            .ToList();
-
-        commandService.Execute<ICopyResourceToClipboardCommand>(command =>
+        _commandService.Execute<IUnarchiveResourceDialogCommand>(command =>
         {
-            command.SourceResources = resourceKeys;
-            command.TransferMode = DataTransferMode.Move;
+            command.ArchiveResource = resourceKey;
         });
     }
 }

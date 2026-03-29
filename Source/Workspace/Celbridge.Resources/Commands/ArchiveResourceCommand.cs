@@ -23,17 +23,32 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
     };
 
     private readonly ILogger<ArchiveResourceCommand> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ArchiveResourceCommand(
         ILogger<ArchiveResourceCommand> logger,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
+    {
+        var result = await ExecuteArchiveAsync();
+        if (result.IsFailure)
+        {
+            var sourceName = SourceResource.ResourceName;
+            var failedItems = new List<string> { sourceName };
+            _messengerService.Send(new ResourceOperationFailedMessage(ResourceOperationType.Archive, failedItems));
+        }
+        return result;
+    }
+
+    private async Task<Result> ExecuteArchiveAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
         {

@@ -15,7 +15,7 @@ public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 2;
-    public string GroupId => ExplorerMenuGroups.AddItems;
+    public string GroupId => nameof(ExplorerMenuGroup.AddItems);
 
     public AddFolderMenuOption(
         IStringLocalizer stringLocalizer,

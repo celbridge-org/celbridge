@@ -47,6 +47,13 @@ public class ResourceKeyTests
 
         var act6 = () => new ResourceKey(@"folder\file");
         act6.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        // Whitespace-only keys should throw
+        var act7 = () => new ResourceKey(" ");
+        act7.Should().Throw<ArgumentException>().WithParameterName("key");
+
+        var act8 = () => new ResourceKey("\t");
+        act8.Should().Throw<ArgumentException>().WithParameterName("key");
     }
 
     [Test]

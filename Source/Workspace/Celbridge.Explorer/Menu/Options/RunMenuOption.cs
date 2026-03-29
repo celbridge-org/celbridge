@@ -16,7 +16,7 @@ public class RunMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 1;
-    public string GroupId => ExplorerMenuGroups.DocumentActions;
+    public string GroupId => nameof(ExplorerMenuGroup.DocumentActions);
 
     public RunMenuOption(
         IStringLocalizer stringLocalizer,

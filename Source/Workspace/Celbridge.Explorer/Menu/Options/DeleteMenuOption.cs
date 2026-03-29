@@ -15,7 +15,7 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 4;
-    public string GroupId => ExplorerMenuGroups.Clipboard;
+    public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public DeleteMenuOption(
         IStringLocalizer stringLocalizer,

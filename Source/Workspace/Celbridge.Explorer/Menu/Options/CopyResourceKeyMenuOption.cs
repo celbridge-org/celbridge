@@ -16,7 +16,7 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 2;
-    public string GroupId => ExplorerMenuGroups.Utilities;
+    public string GroupId => nameof(ExplorerMenuGroup.Utilities);
 
     public CopyResourceKeyMenuOption(
         IStringLocalizer stringLocalizer,

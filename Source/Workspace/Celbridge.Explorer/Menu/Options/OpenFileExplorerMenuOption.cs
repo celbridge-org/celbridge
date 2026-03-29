@@ -15,7 +15,7 @@ public class OpenFileExplorerMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 1;
-    public string GroupId => ExplorerMenuGroups.FileSystem;
+    public string GroupId => nameof(ExplorerMenuGroup.FileSystem);
 
     public OpenFileExplorerMenuOption(
         IStringLocalizer stringLocalizer,
