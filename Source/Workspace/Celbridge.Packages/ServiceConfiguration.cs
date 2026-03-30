@@ -6,5 +6,6 @@ public static class ServiceConfiguration
     {
         services.AddTransient<IPackageLocalizationService, PackageLocalizationService>();
         services.AddTransient<IPackageService, PackageService>();
+        services.AddSingleton<IPackageApiClient, PackageApiClient>();
     }
 }

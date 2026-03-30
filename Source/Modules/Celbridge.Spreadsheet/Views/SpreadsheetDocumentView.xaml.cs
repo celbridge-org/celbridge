@@ -143,15 +143,16 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
             // Acquire WebView from factory and add to container
             await AcquireWebViewAsync();
 
-#if HAS_SPREADJS_LICENSE
             // Inject SpreadJS license keys before the page loads so they are available
             // as globals when spreadsheet.js runs. The keys are compiled into the binary
             // rather than shipped as a readable file in the app package folder.
-            var licenseScript =
-                $"window.SPREAD_JS_LICENSE_KEY='{SpreadsheetLicenseKeys.LicenseKey}';" +
-                $"window.SPREAD_JS_DESIGNER_LICENSE_KEY='{SpreadsheetLicenseKeys.DesignerLicenseKey}';";
-            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(licenseScript);
-#endif
+            if (!string.IsNullOrEmpty(SpreadsheetLicenseKeys.LicenseKey))
+            {
+                var licenseScript =
+                    $"window.SPREAD_JS_LICENSE_KEY='{SpreadsheetLicenseKeys.LicenseKey}';" +
+                    $"window.SPREAD_JS_DESIGNER_LICENSE_KEY='{SpreadsheetLicenseKeys.DesignerLicenseKey}';";
+                await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(licenseScript);
+            }
 
             // Sync WebView2 color scheme with the app theme
             ApplyThemeToWebView();

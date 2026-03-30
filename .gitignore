@@ -417,6 +417,9 @@ solution-config.props
 # SpreadJS license keys
 **/SpreadsheetLicenseKeys.private.cs
 
+# Package API credentials
+**/PackageApiCredentials.private.cs
+
 # Celbridge ephemeral data
 .cache/
 .trash/

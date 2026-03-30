@@ -22,11 +22,6 @@
 
   </PropertyGroup>
 
-  <!-- Define HAS_SPREADJS_LICENSE when the generated private key file is present. -->
-  <PropertyGroup Condition="Exists('$(MSBuildProjectDirectory)\SpreadsheetLicenseKeys.private.cs')">
-    <DefineConstants>$(DefineConstants);HAS_SPREADJS_LICENSE</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <EmbeddedResource Include="Assets\**" />
   </ItemGroup>
