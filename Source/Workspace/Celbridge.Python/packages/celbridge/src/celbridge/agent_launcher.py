@@ -56,12 +56,21 @@ def _write_mcp_config(project_folder: str) -> str:
     return config_path
 
 
+_BOOTSTRAP_PROMPT = (
+    "Before starting any task, call the query_get_context tool to load the "
+    "Celbridge agent context. This contains resource key conventions, workspace "
+    "panel descriptions, context prioritization rules, and tool usage guidance "
+    "that you must follow."
+)
+
+
 def launch_claude() -> None:
     """Launch Claude Code CLI with sandboxed access to Celbridge MCP tools.
 
     Writes the .mcp.json config file and starts Claude in the current terminal.
     Claude will only have access to Celbridge MCP tools, with no file editing,
-    bash access, or other built-in tools.
+    bash access, or other built-in tools. A bootstrap system prompt instructs
+    the agent to call query_get_context before starting work.
     """
     if not shutil.which("claude"):
         print(
@@ -79,7 +88,8 @@ def launch_claude() -> None:
         "--mcp-config", ".mcp.json",
         "--tools", "mcp__celbridge__*",
         "--allowedTools", "mcp__celbridge__*",
+        "--append-system-prompt", _BOOTSTRAP_PROMPT,
     ]
 
-    print("Launching restricted Claude Code CLI with Celbridge tools.\n")
+    print("Launching restricted Claude Code CLI with Celbridge tools.")
     subprocess.run(launch_command, cwd=project_folder)

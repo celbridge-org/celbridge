@@ -252,7 +252,17 @@ public class ResourceRegistry : IResourceRegistry
 
             _pathValidator.InvalidateCache();
 
-            _messengerService.Send(new ResourceRegistryUpdatedMessage());
+            try
+            {
+                _messengerService.Send(new ResourceRegistryUpdatedMessage());
+            }
+            catch (Exception)
+            {
+                // Message handlers (e.g., UI tree rebuild) may throw transient
+                // exceptions such as COMException when the visual tree is in a
+                // transitional state. These are safe to ignore because the
+                // registry update itself has already completed successfully.
+            }
 
             return Result.Ok();
         }

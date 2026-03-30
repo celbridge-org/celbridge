@@ -29,6 +29,19 @@ def _resolve_rpc_port() -> int:
         raise SystemExit(f"Error: CELBRIDGE_RPC_PORT has invalid value: '{port_string}'")
 
 
+def _report_installed_packages(client: RpcClient) -> None:
+    """Send the list of installed Python packages to the C# host."""
+    try:
+        from importlib.metadata import distributions
+        packages = sorted(
+            f"{dist.metadata['Name']}=={dist.metadata['Version']}"
+            for dist in distributions()
+        )
+        client.notify("PythonReady", packages=packages)
+    except Exception:
+        pass
+
+
 def main():
     """Connect to the Celbridge application and launch an interactive REPL."""
 
@@ -43,6 +56,11 @@ def main():
     # signals to the host that the Python terminal is ready, which enables
     # features like the Run context menu command for .py files.
     client = RpcClient('127.0.0.1', port)
+
+    # Report installed packages to the C# host so MCP tools can include
+    # environment info in the Python API reference.
+    _report_installed_packages(client)
+
     cel = CelProxy(client)
 
     # Only expose cel in the REPL namespace when MCP tools are enabled.

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using ModelContextProtocol.Protocol;
 
@@ -10,6 +11,12 @@ namespace Celbridge.Tools;
 /// </summary>
 public abstract class AgentToolBase
 {
+    protected static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     private readonly IApplicationServiceProvider _services;
 
     protected AgentToolBase(IApplicationServiceProvider services)
@@ -40,7 +47,7 @@ public abstract class AgentToolBase
             };
         }
 
-        return new CallToolResult();
+        return SuccessResult("ok");
     }
 
     /// <summary>

@@ -293,6 +293,10 @@ public class PythonService : IPythonService, IDisposable
             _tcpTransport.ConnectionAccepted += OnConnectionAccepted;
             _tcpTransport.ConnectionLost += OnConnectionLost;
 
+            // Register the Python notification handler so the Python process
+            // can send its environment info (e.g., installed packages) at startup.
+            _tcpTransport.AddRpcTarget(new PythonNotificationHandler(_logger));
+
             // Start the RPC accept loop in the background
             _rpcCancellationTokenSource = new CancellationTokenSource();
             _ = Task.Run(() => _tcpTransport.StartListeningAsync(rpcPort, _rpcCancellationTokenSource.Token));
