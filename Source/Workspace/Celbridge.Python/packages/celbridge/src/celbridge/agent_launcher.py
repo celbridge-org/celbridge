@@ -92,5 +92,4 @@ def launch_claude() -> None:
     ]
 
     print("Launching restricted Claude Code CLI with Celbridge tools.")
-    print(f"Command: {' '.join(launch_command[:8])} --append-system-prompt <{len(_BOOTSTRAP_PROMPT)} chars>\n")
     subprocess.run(launch_command, cwd=project_folder)
