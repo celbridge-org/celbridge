@@ -1,8 +1,6 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Directory = System.IO.Directory;
-using FileInfo = System.IO.FileInfo;
 using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
@@ -10,37 +8,36 @@ namespace Celbridge.Tools;
 /// <summary>
 /// A package entry in the package_list result.
 /// </summary>
-public record class PackageListEntry(string PackageName, long Size);
+public record class PackageListEntry(string PackageName, long Size, DateTime UploadedAt);
 
 public partial class PackageTools
 {
     /// <summary>
-    /// Lists all packages available in the local package registry.
+    /// Lists all packages available in the remote package registry.
     /// </summary>
-    /// <returns>JSON array of objects with fields: packageName (string), size (long).</returns>
+    /// <returns>JSON array of objects with fields: packageName (string), size (long), uploadedAt (datetime).</returns>
     [McpServerTool(Name = "package_list", ReadOnly = true)]
     [ToolAlias("package.list")]
-    public partial CallToolResult List()
+    public async partial Task<CallToolResult> List()
     {
-        var registryPath = GetPackageRegistryPath();
+        var packageApiClient = GetRequiredService<IPackageApiClient>();
+        var listResult = await packageApiClient.ListPackagesAsync();
+
+        if (listResult.IsFailure)
+        {
+            return ErrorResult(listResult.Error);
+        }
 
         var packages = new List<PackageListEntry>();
-
-        if (Directory.Exists(registryPath))
+        foreach (var entry in listResult.Value)
         {
-            var zipFiles = Directory.GetFiles(registryPath, "*.zip");
-
-            foreach (var zipFile in zipFiles)
+            if (entry.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
-                var fileName = Path.GetFileNameWithoutExtension(zipFile);
-
-                if (!IsValidPackageName(fileName))
+                var packageName = Path.GetFileNameWithoutExtension(entry.FileName);
+                if (IsValidPackageName(packageName))
                 {
-                    continue;
+                    packages.Add(new PackageListEntry(packageName, entry.FileSize, entry.UploadedAt));
                 }
-
-                var fileInfo = new FileInfo(zipFile);
-                packages.Add(new PackageListEntry(fileName, fileInfo.Length));
             }
         }
 

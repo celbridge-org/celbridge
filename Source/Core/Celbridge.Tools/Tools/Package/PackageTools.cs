@@ -1,11 +1,10 @@
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Server;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for package operations: archiving, unarchiving, and local package management.
+/// MCP tools for package operations: archiving, unarchiving, and package registry management.
 /// </summary>
 [McpServerToolType]
 public partial class PackageTools : AgentToolBase
@@ -23,14 +22,19 @@ public partial class PackageTools : AgentToolBase
                !name.Contains("--");
     }
 
-    private static string GetPackageRegistryPath()
+    private async Task<bool> ConfirmActionAsync(string title, string message)
     {
-        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(appDataPath, "Celbridge", "Packages");
-    }
+        var (callToolResult, confirmResult) = await ExecuteCommandAsync<IConfirmActionCommand, ConfirmActionResult>(command =>
+        {
+            command.Title = title;
+            command.Message = message;
+        });
 
-    private static string GetPackageFilePath(string packageName)
-    {
-        return Path.Combine(GetPackageRegistryPath(), $"{packageName}.zip");
+        if (callToolResult.IsError == true || confirmResult is null)
+        {
+            return false;
+        }
+
+        return confirmResult.Confirmed;
     }
 }

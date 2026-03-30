@@ -15,14 +15,16 @@ public record class PackageInstallResult(string PackageName, int Entries, string
 public partial class PackageTools
 {
     /// <summary>
-    /// Installs a named package from the local registry into the project's packages folder.
-    /// The package is extracted to packages/{packageName}/ in the project root.
+    /// Installs a named package from the remote registry into the project's packages folder.
+    /// The package is downloaded and extracted to packages/{packageName}/ in the project root.
+    /// Always set confirmWithUser to true unless the user has explicitly asked for unattended operation.
     /// </summary>
     /// <param name="packageName">Name of the package to install.</param>
+    /// <param name="confirmWithUser">When true, shows a confirmation dialog before installing. Default is true.</param>
     /// <returns>JSON object with fields: packageName (string), entries (int), destination (string).</returns>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
-    public async partial Task<CallToolResult> Install(string packageName)
+    public async partial Task<CallToolResult> Install(string packageName, bool confirmWithUser = true)
     {
         if (!IsValidPackageName(packageName))
         {
@@ -31,16 +33,55 @@ public partial class PackageTools
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
 
-        var packageFilePath = GetPackageFilePath(packageName);
-        if (!File.Exists(packageFilePath))
+        // Find the package in the remote registry
+        var packageApiClient = GetRequiredService<IPackageApiClient>();
+        var listResult = await packageApiClient.ListPackagesAsync();
+
+        if (listResult.IsFailure)
         {
-            return ErrorResult($"Package not found: '{packageName}'");
+            return ErrorResult(listResult.Error);
+        }
+
+        var expectedFileName = $"{packageName}.zip";
+        PackageApiEntry? matchingEntry = null;
+        foreach (var entry in listResult.Value)
+        {
+            if (string.Equals(entry.FileName, expectedFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                matchingEntry = entry;
+                break;
+            }
+        }
+
+        if (matchingEntry is null)
+        {
+            return ErrorResult($"Package not found in registry: '{packageName}'");
+        }
+
+        if (confirmWithUser)
+        {
+            var localizerService = GetRequiredService<Celbridge.Localization.ILocalizerService>();
+            var title = localizerService.GetString("Package_InstallConfirm_Title");
+            var message = localizerService.GetString("Package_InstallConfirm_Message", packageName);
+
+            var confirmed = await ConfirmActionAsync(title, message);
+            if (!confirmed)
+            {
+                return ErrorResult("Install cancelled by user.");
+            }
+        }
+
+        // Download the package zip
+        var downloadResult = await packageApiClient.DownloadPackageAsync(matchingEntry.Id);
+        if (downloadResult.IsFailure)
+        {
+            return ErrorResult(downloadResult.Error);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        // Copy the package zip into the project as a temporary file
+        // Write the downloaded zip to a temporary cache file in the project
         var tempArchiveResource = ResourceKey.Create($".celbridge/.cache/{packageName}.zip");
         var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
         if (resolveTempResult.IsFailure)
@@ -57,11 +98,11 @@ public partial class PackageTools
 
         try
         {
-            File.Copy(packageFilePath, tempArchivePath, overwrite: true);
+            await File.WriteAllBytesAsync(tempArchivePath, downloadResult.Value);
         }
         catch (System.IO.IOException exception)
         {
-            return ErrorResult($"Failed to copy package for installation: {exception.Message}");
+            return ErrorResult($"Failed to write downloaded package: {exception.Message}");
         }
 
         var destinationResource = ResourceKey.Create($"packages/{packageName}");
@@ -86,7 +127,6 @@ public partial class PackageTools
         }
         finally
         {
-            // Clean up the temporary zip
             if (File.Exists(tempArchivePath))
             {
                 File.Delete(tempArchivePath);

@@ -76,7 +76,7 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public string? GetBundledExtensionFolder()
+    public string? GetBundledPackageFolder()
     {
         return null;
     }

@@ -37,9 +37,9 @@ public interface IWorkspaceService
     IWorkspaceSettings WorkspaceSettings { get; }
 
     /// <summary>
-    /// Returns the Extension Service associated with the workspace.
+    /// Returns the Package Service associated with the workspace.
     /// </summary>
-    IExtensionService ExtensionService { get; }
+    IPackageService PackageService { get; }
 
     /// <summary>
     /// Returns the Resource Service associated with the workspace.

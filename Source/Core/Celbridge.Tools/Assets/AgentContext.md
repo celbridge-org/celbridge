@@ -54,13 +54,54 @@ The `sourceUrl` value can be:
 
 Use `document_write` to create a `.webapp` file in one step.
 
-## Extensions
+## Packages
 
-Each extension lives in its own kebab-case subfolder within the `extensions` folder
-at the project root (e.g. `extensions/my-extension`). Extensions run inside a
-WebView2 control and communicate with the host via JSON-RPC. They can contain any
-type of content; web content (HTML, JavaScript, CSS) is typical. Each extension
-folder usually includes a Celbridge manifest file alongside its content.
+Packages extend Celbridge with custom document editors and other contributions.
+Each package lives in its own kebab-case subfolder within the `packages/` folder
+at the project root (e.g. `packages/my-widget`). Packages run inside a WebView2
+control and communicate with the host via JSON-RPC. They can contain any type of
+content; web content (HTML, JavaScript, CSS) is typical.
+
+### Creating a Package
+
+Use `package.create("my-widget")` to scaffold a new package. This creates
+`packages/my-widget/` with a stub `package.toml` manifest.
+
+### Package Manifest (package.toml)
+
+Every package folder must contain a `package.toml` file at its root with at
+minimum a `[package]` section containing `id` and `name`:
+
+```toml
+[package]
+id = "my-widget"
+name = "My Widget"
+version = "1.0.0"
+
+[contributes]
+document_editors = ["my-editor.document.toml"]
+```
+
+Required fields: `id`, `name`. Optional fields: `version`, `feature_flag`.
+The `[contributes]` section lists document editor manifests provided by the package.
+
+### Publishing and Installing
+
+Packages are published to and installed from a remote package registry:
+
+- `package.create("name")` — create a new package with a stub manifest
+- `package.publish("packages/name", "name")` — validate and upload to the registry
+- `package.install("name")` — download and extract from the registry
+- `package.list()` — list all packages available in the registry
+
+To publish, the package must be in the `packages/` folder, the folder name must
+match the package name, and the manifest must be valid.
+
+**Important:** `package.publish` and `package.install` are destructive actions.
+Both tools accept a `confirmWithUser` parameter (default `true`) that displays a
+confirmation dialog in the application before proceeding. Always pass `true`
+(or omit the parameter) unless the user has explicitly asked for unattended
+operation (e.g. in an install script).
 
 ## Regular Expressions
 

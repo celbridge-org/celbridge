@@ -4,7 +4,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Extensions;
+using Celbridge.Packages;
 using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Logging;
@@ -21,7 +21,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
     public IWorkspaceSettingsService WorkspaceSettingsService { get; }
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
-    public IExtensionService ExtensionService { get; }
+    public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
     public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
@@ -55,7 +55,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         // Create instances of the required sub-services
 
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
-        ExtensionService = serviceProvider.GetRequiredService<IExtensionService>();
+        PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();

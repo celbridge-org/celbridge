@@ -25,7 +25,7 @@ public static class ServiceConfiguration
 
         services.AddTransient<IDocumentsPanel, DocumentsPanel>();
         services.AddTransient<TextBoxDocumentView>();
-        services.AddTransient<ExtensionDocumentView>();
+        services.AddTransient<ContributionDocumentView>();
 
         //
         // Register view models
@@ -34,7 +34,7 @@ public static class ServiceConfiguration
         services.AddTransient<DocumentsPanelViewModel>();
         services.AddTransient<DocumentTabViewModel>();
         services.AddTransient<DefaultDocumentViewModel>();
-        services.AddTransient<ExtensionDocumentViewModel>();
+        services.AddTransient<ContributionDocumentViewModel>();
 
         //
         // Register commands
