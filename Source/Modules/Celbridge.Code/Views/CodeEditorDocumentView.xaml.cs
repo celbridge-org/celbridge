@@ -30,6 +30,8 @@ public enum SplitEditorViewMode
 /// </summary>
 public sealed partial class CodeEditorDocumentView : DocumentView
 {
+    private const int ReloadDebounceMilliseconds = 300;
+
     private readonly ILogger<CodeEditorDocumentView> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IDocumentsService _documentsService;
@@ -44,6 +46,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     private readonly Splitter _splitter;
     private readonly Grid _previewContainer;
     private SplitterHelper? _splitterHelper;
+    private CancellationTokenSource? _reloadDebounceCancellation;
+    private int _reloadDebounceVersion;
     private double _editorRatio = 1.0;
     private double _previewRatio = 1.0;
     private double _totalDragDelta;
@@ -402,12 +406,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     {
         try
         {
-            // Switch to Split mode when applying edits in Preview mode
-            if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
-            {
-                SetViewMode(SplitEditorViewMode.Split);
-            }
-
             await MonacoEditor.ApplyEditsAsync(edits);
 
             // Mark document as having unsaved changes
@@ -436,6 +434,11 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             _splitter.DragDelta -= OnSplitterDragDelta;
             _splitter.DragCompleted -= OnSplitterDragCompleted;
             _splitter.DoubleClicked -= OnSplitterDoubleClicked;
+
+            // Cancel and dispose any pending reload debounce timer
+            _reloadDebounceCancellation?.Cancel();
+            _reloadDebounceCancellation?.Dispose();
+            _reloadDebounceCancellation = null;
 
             _messengerService.UnregisterAll(this);
 
@@ -488,7 +491,10 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
-        if (IsPreviewVisible)
+        // Only sync scroll in Split mode where both editor and preview are visible.
+        // In Preview mode the editor is collapsed, so its scroll position is always
+        // zero and forwarding it would reset the preview scroll to the top.
+        if (ViewMode == SplitEditorViewMode.Split)
         {
             _previewHelper?.NotifyScrollPositionChanged(scrollPercentage);
         }
@@ -496,8 +502,29 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)
     {
-        // External file change detected - notify the editor to reload
-        MonacoEditor.NotifyExternalChange();
+        // Cancel any in-flight debounce and start a new one
+        _reloadDebounceCancellation?.Cancel();
+        _reloadDebounceCancellation = new CancellationTokenSource();
+        var cancellationToken = _reloadDebounceCancellation.Token;
+        var capturedVersion = ++_reloadDebounceVersion;
+
+        _ = Task.Delay(ReloadDebounceMilliseconds, cancellationToken).ContinueWith(delayTask =>
+        {
+            if (delayTask.IsCanceled)
+            {
+                return;
+            }
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (capturedVersion != _reloadDebounceVersion)
+                {
+                    return;
+                }
+
+                MonacoEditor.NotifyExternalChange();
+            });
+        }, TaskScheduler.Default);
     }
 
     #endregion

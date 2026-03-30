@@ -324,7 +324,16 @@ function init() {
 
     // Register handler for content updates
     celbridge.codePreview.onUpdate((content) => {
+        const container = document.getElementById('preview-container');
+        const savedScrollTop = container.scrollTop;
+
         renderMarkdown(content);
+
+        // Restore scroll position after render, using requestAnimationFrame
+        // to ensure the DOM has been updated with the new content
+        requestAnimationFrame(() => {
+            container.scrollTop = savedScrollTop;
+        });
     });
 
     // Register handler for scroll position changes

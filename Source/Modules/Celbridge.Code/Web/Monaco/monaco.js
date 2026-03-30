@@ -10,6 +10,7 @@ let client = null;
 let isInitialized = false;
 let currentLanguage = 'plaintext';
 let pendingNavigation = null;
+let isReloadingExternally = false;
 
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
@@ -74,7 +75,7 @@ function setupLineEndings() {
 
 function setupContentChangeListener() {
     editor.getModel().onDidChangeContent((event) => {
-        if (window.isWebView && isInitialized && client) {
+        if (window.isWebView && isInitialized && client && !isReloadingExternally) {
             client.document.notifyChanged();
         }
     });
@@ -85,7 +86,7 @@ function setupScrollListener() {
     let scrollThrottleTimeout = null;
 
     editor.onDidScrollChange((event) => {
-        if (!window.isWebView || !isInitialized || !client) {
+        if (!window.isWebView || !isInitialized || !client || isReloadingExternally) {
             return;
         }
 
@@ -97,8 +98,15 @@ function setupScrollListener() {
         scrollThrottleTimeout = setTimeout(() => {
             scrollThrottleTimeout = null;
 
-            const scrollTop = editor.getScrollTop();
+            // Skip scroll sync when the editor is collapsed (e.g., Preview mode).
+            // A collapsed editor always reports scrollTop=0, which would incorrectly
+            // scroll the preview to the top.
             const clientHeight = editor.getLayoutInfo().height;
+            if (clientHeight === 0) {
+                return;
+            }
+
+            const scrollTop = editor.getScrollTop();
             const contentHeight = editor.getContentHeight();
             const maxScroll = contentHeight - clientHeight;
 
@@ -215,10 +223,56 @@ async function handleEditorInitialize(params) {
 
         // Register for external change notifications
         client.document.onExternalChange(async () => {
+            // Capture editor state before reload
+            const savedScrollTop = editor.getScrollTop();
+            const savedPosition = editor.getPosition();
+            const savedSelections = editor.getSelections();
+
+            // Suppress content change and scroll notifications during the entire
+            // reload cycle, including the deferred state restoration. This prevents
+            // setValue() from sending a scroll-position-zero event to the preview.
+            isReloadingExternally = true;
+
             const result = await client.document.load();
             if (result.content !== undefined) {
                 editor.setValue(result.content);
             }
+
+            // Restore editor state after setValue, using double-requestAnimationFrame
+            // to ensure Monaco has completed its internal layout operations.
+            // Keep isReloadingExternally true until restoration is complete.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
+
+                    // Restore selections, clamping each to valid ranges
+                    if (savedSelections && savedSelections.length > 0) {
+                        const clampedSelections = savedSelections.map(selection => {
+                            const startLine = Math.min(selection.startLineNumber, lineCount);
+                            const startMaxColumn = model.getLineMaxColumn(startLine);
+                            const endLine = Math.min(selection.endLineNumber, lineCount);
+                            const endMaxColumn = model.getLineMaxColumn(endLine);
+                            return {
+                                startLineNumber: startLine,
+                                startColumn: Math.min(selection.startColumn, startMaxColumn),
+                                endLineNumber: endLine,
+                                endColumn: Math.min(selection.endColumn, endMaxColumn)
+                            };
+                        });
+                        editor.setSelections(clampedSelections);
+                    } else if (savedPosition) {
+                        const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
+                        const maxColumn = model.getLineMaxColumn(clampedLine);
+                        const clampedColumn = Math.min(savedPosition.column, maxColumn);
+                        editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
+                    }
+
+                    editor.setScrollTop(savedScrollTop);
+
+                    isReloadingExternally = false;
+                });
+            });
         });
 
         isInitialized = true;
