@@ -2,15 +2,15 @@ using Celbridge.Documents;
 using Tomlyn;
 using Tomlyn.Model;
 
-namespace Celbridge.Extensions;
+namespace Celbridge.Packages;
 
 /// <summary>
-/// Parses extension.toml and referenced document TOML files to produce DocumentContribution objects.
-/// Handles the two-level manifest structure: extension identity + document contributions.
+/// Parses package.toml and referenced document TOML files to produce DocumentContribution objects.
+/// Handles the two-level manifest structure: package identity + document contributions.
 /// </summary>
-public static class ExtensionManifestLoader
+public static class PackageManifestLoader
 {
-    private const string ExtensionSection = "extension";
+    private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
     private const string DocumentSection = "document";
     private const string DocumentEditorsKey = "document_editors";
@@ -38,52 +38,52 @@ public static class ExtensionManifestLoader
     private const string CodeDocumentType = "code";
     private const string GeneralPriorityValue = "general";
     private const string DefaultEntryPoint = "index.html";
-    private const string ExtensionHostPrefix = "ext-";
+    private const string PackageHostPrefix = "pkg-";
     private const string HostSuffix = ".celbridge";
 
     /// <summary>
-    /// Loads an extension from an extension.toml file, including all referenced document editor contributions.
+    /// Loads a package from a package.toml file, including all referenced document editor contributions.
     /// </summary>
-    public static Result<Extension> LoadExtension(string extensionTomlPath)
+    public static Result<Package> LoadPackage(string packageTomlPath)
     {
         try
         {
-            var extensionFolder = Path.GetFullPath(Path.GetDirectoryName(extensionTomlPath) ?? string.Empty);
-            var toml = File.ReadAllText(extensionTomlPath);
+            var packageFolder = Path.GetFullPath(Path.GetDirectoryName(packageTomlPath) ?? string.Empty);
+            var toml = File.ReadAllText(packageTomlPath);
             var parsed = Toml.Parse(toml);
 
             if (parsed.HasErrors)
             {
                 var errors = string.Join("; ", parsed.Diagnostics.Select(d => d.ToString()));
-                return Result.Fail($"TOML parse error in {extensionTomlPath}: {errors}");
+                return Result.Fail($"TOML parse error in {packageTomlPath}: {errors}");
             }
 
             var root = (TomlTable)parsed.ToModel();
 
-            if (!root.TryGetValue(ExtensionSection, out var extensionObject) ||
-                extensionObject is not TomlTable extensionTable)
+            if (!root.TryGetValue(PackageSection, out var packageObject) ||
+                packageObject is not TomlTable packageTable)
             {
-                return Result.Fail($"Missing [{ExtensionSection}] section: {extensionTomlPath}");
+                return Result.Fail($"Missing [{PackageSection}] section: {packageTomlPath}");
             }
 
-            var extensionId = GetString(extensionTable, IdKey);
-            if (string.IsNullOrEmpty(extensionId))
+            var packageId = GetString(packageTable, IdKey);
+            if (string.IsNullOrEmpty(packageId))
             {
-                return Result.Fail($"Extension missing required '{IdKey}' field: {extensionTomlPath}");
+                return Result.Fail($"Package missing required '{IdKey}' field: {packageTomlPath}");
             }
 
-            var extensionName = GetString(extensionTable, NameKey);
-            var featureFlag = GetStringOrNull(extensionTable, FeatureFlagKey);
+            var packageName = GetString(packageTable, NameKey);
+            var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
-            var safeName = extensionId.Replace('.', '-').ToLowerInvariant();
-            var hostName = $"{ExtensionHostPrefix}{safeName}{HostSuffix}";
+            var safeName = packageId.Replace('.', '-').ToLowerInvariant();
+            var hostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
 
-            var extensionInfo = new ExtensionInfo
+            var packageInfo = new PackageInfo
             {
-                Id = extensionId,
-                Name = extensionName,
+                Id = packageId,
+                Name = packageName,
                 FeatureFlag = featureFlag,
-                ExtensionFolder = extensionFolder,
+                PackageFolder = packageFolder,
                 HostName = hostName
             };
 
@@ -107,25 +107,25 @@ public static class ExtensionManifestLoader
             var documentEditors = new List<DocumentContribution>();
             foreach (var relativePath in documentPaths)
             {
-                var fullPath = Path.Combine(extensionFolder, relativePath);
-                var loadResult = LoadDocument(fullPath, extensionInfo);
+                var fullPath = Path.Combine(packageFolder, relativePath);
+                var loadResult = LoadDocument(fullPath, packageInfo);
                 if (loadResult.IsSuccess)
                 {
                     documentEditors.Add(loadResult.Value);
                 }
             }
 
-            var extension = new Extension
+            var package = new Package
             {
-                Info = extensionInfo,
+                Info = packageInfo,
                 DocumentEditors = documentEditors.AsReadOnly()
             };
 
-            return Result<Extension>.Ok(extension);
+            return Result<Package>.Ok(package);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to load extension: {extensionTomlPath}").WithException(ex);
+            return Result.Fail($"Failed to load package: {packageTomlPath}").WithException(ex);
         }
     }
 
@@ -134,7 +134,7 @@ public static class ExtensionManifestLoader
     /// </summary>
     private static Result<DocumentContribution> LoadDocument(
         string documentTomlPath,
-        ExtensionInfo extensionInfo)
+        PackageInfo packageInfo)
     {
         try
         {
@@ -206,8 +206,8 @@ public static class ExtensionManifestLoader
 
             DocumentContribution contribution = documentType switch
             {
-                CodeDocumentType => BuildCodeContribution(root, extensionInfo, documentId, fileTypes, priority, templates),
-                _ => BuildCustomContribution(root, extensionInfo, documentId, fileTypes, priority, templates, documentTable)
+                CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, fileTypes, priority, templates),
+                _ => BuildCustomContribution(root, packageInfo, documentId, fileTypes, priority, templates, documentTable)
             };
 
             return Result<DocumentContribution>.Ok(contribution);
@@ -220,7 +220,7 @@ public static class ExtensionManifestLoader
 
     private static CustomDocumentContribution BuildCustomContribution(
         TomlTable root,
-        ExtensionInfo extensionInfo,
+        PackageInfo packageInfo,
         string documentId,
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
@@ -232,7 +232,7 @@ public static class ExtensionManifestLoader
 
         return new CustomDocumentContribution
         {
-            Extension = extensionInfo,
+            Package = packageInfo,
             Id = documentId,
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,
@@ -244,7 +244,7 @@ public static class ExtensionManifestLoader
 
     private static CodeDocumentContribution BuildCodeContribution(
         TomlTable root,
-        ExtensionInfo extensionInfo,
+        PackageInfo packageInfo,
         string documentId,
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
@@ -277,7 +277,7 @@ public static class ExtensionManifestLoader
 
         return new CodeDocumentContribution
         {
-            Extension = extensionInfo,
+            Package = packageInfo,
             Id = documentId,
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,

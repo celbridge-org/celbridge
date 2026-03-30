@@ -21,12 +21,12 @@ public class FileTemplateService : IFileTemplateService
     {
         string extension = Path.GetExtension(filePath).ToLowerInvariant();
 
-        // Check extension-provided templates first
-        var extensionService = _workspaceWrapper.WorkspaceService.ExtensionService;
-        var extensionContent = extensionService.GetDefaultTemplateContent(extension);
-        if (extensionContent is not null)
+        // Check package-provided templates first
+        var packageService = _workspaceWrapper.WorkspaceService.PackageService;
+        var packageContent = packageService.GetDefaultTemplateContent(extension);
+        if (packageContent is not null)
         {
-            return extensionContent;
+            return packageContent;
         }
 
         if (extension == ExplorerConstants.ExcelExtension)

@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Explorer;
-using Celbridge.Extensions;
+using Celbridge.Packages;
 using Celbridge.Settings;
 using Celbridge.Validators;
 using Celbridge.Workspace;
@@ -66,9 +66,9 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
         ];
 
-        // Add extension-provided document types before the "Other" option
-        var extensionService = workspaceWrapper.WorkspaceService.ExtensionService;
-        AddExtensionDocumentTypes(extensionService);
+        // Add package-provided document types before the "Other" option
+        var packageService = workspaceWrapper.WorkspaceService.PackageService;
+        AddPackageDocumentTypes(packageService);
 
         // Add "Other" as the last option
         var otherDisplayName = _stringLocalizer.GetString("AddFileDialog_FileType_Other");
@@ -234,12 +234,12 @@ public partial class AddFileDialogViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Adds document types from discovered extension manifests.
+    /// Adds document types from discovered package manifests.
     /// Uses the first file extension from each document type for the dropdown.
     /// </summary>
-    private void AddExtensionDocumentTypes(IExtensionService extensionService)
+    private void AddPackageDocumentTypes(IPackageService packageService)
     {
-        var documentTypes = extensionService.GetDocumentTypes();
+        var documentTypes = packageService.GetDocumentTypes();
 
         foreach (var documentType in documentTypes)
         {

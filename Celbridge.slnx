@@ -43,7 +43,7 @@
     <Project Path="Source/Workspace/Celbridge.Documents/Celbridge.Documents.csproj" />
     <Project Path="Source/Workspace/Celbridge.Entities/Celbridge.Entities.csproj" />
     <Project Path="Source/Workspace/Celbridge.Explorer/Celbridge.Explorer.csproj" />
-    <Project Path="Source/Workspace/Celbridge.Extensions/Celbridge.Extensions.csproj" />
+    <Project Path="Source/Workspace/Celbridge.Packages/Celbridge.Packages.csproj" />
     <Project Path="Source/Workspace/Celbridge.GenerativeAI/Celbridge.GenerativeAI.csproj" />
     <Project Path="Source/Workspace/Celbridge.Inspector/Celbridge.Inspector.csproj" />
     <Project Path="Source/Workspace/Celbridge.Python/Celbridge.Python.csproj" />

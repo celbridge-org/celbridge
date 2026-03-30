@@ -1,25 +1,25 @@
 using System.Text;
-using Celbridge.Extensions;
+using Celbridge.Packages;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.ViewModels;
 
 /// <summary>
-/// View model for extension document editors.
+/// View model for contribution document editors.
 /// Provides text file I/O, file-change monitoring, path resolution, and template content
-/// for custom extension editors.
+/// for custom contribution editors.
 /// </summary>
-public partial class ExtensionDocumentViewModel : DocumentViewModel
+public partial class ContributionDocumentViewModel : DocumentViewModel
 {
     private readonly IResourceRegistry _resourceRegistry;
 
     /// <summary>
-    /// The document contribution for the extension this view model serves.
+    /// The document contribution this view model serves.
     /// Set by the view after construction.
     /// </summary>
     public CustomDocumentContribution? Contribution { get; set; }
 
-    public ExtensionDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    public ContributionDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
     {
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -65,8 +65,6 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
         HasUnsavedChanges = false;
         SaveTimer = 0;
     }
-
-    #region Path Resolution
 
     /// <summary>
     /// Gets the base path (folder) of the current document for resolving relative paths.
@@ -192,10 +190,6 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
         return Result<ResourceKey>.Ok(resolveResult.Value);
     }
 
-    #endregion
-
-    #region Template Content
-
     /// <summary>
     /// Reads the default template content from the manifest's template file.
     /// Returns empty string if no default template is declared or the file cannot be read.
@@ -215,7 +209,7 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        var templatePath = Path.Combine(Contribution.Extension.ExtensionFolder, defaultTemplate.TemplateFile);
+        var templatePath = Path.Combine(Contribution.Package.PackageFolder, defaultTemplate.TemplateFile);
         if (!File.Exists(templatePath))
         {
             return string.Empty;
@@ -230,8 +224,6 @@ public partial class ExtensionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
     }
-
-    #endregion
 
     /// <summary>
     /// Normalizes a path by resolving '..' and '.' segments.

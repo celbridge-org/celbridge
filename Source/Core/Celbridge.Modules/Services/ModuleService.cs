@@ -77,10 +77,10 @@ public class ModuleService : IModuleService
 
     public IReadOnlyList<IModule> LoadedModules => _moduleLoader.LoadedModules.Values.ToList();
 
-    public IReadOnlyList<string> GetBundledExtensionFolders()
+    public IReadOnlyList<string> GetBundledPackageFolders()
     {
         return _moduleLoader.LoadedModules.Values
-            .Select(m => m.GetBundledExtensionFolder())
+            .Select(m => m.GetBundledPackageFolder())
             .Where(d => !string.IsNullOrEmpty(d))
             .ToList()!;
     }

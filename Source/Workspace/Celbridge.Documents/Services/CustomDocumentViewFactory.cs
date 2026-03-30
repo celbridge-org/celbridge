@@ -1,11 +1,11 @@
 using Celbridge.Documents.Views;
-using Celbridge.Extensions;
+using Celbridge.Packages;
 using Celbridge.Settings;
 
 namespace Celbridge.Documents.Services;
 
 /// <summary>
-/// Factory for creating ExtensionDocumentView instances for custom (WebView-based)
+/// Factory for creating ContributionDocumentView instances for custom (WebView-based)
 /// extension editors. One instance per discovered CustomDocumentContribution.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase
@@ -31,8 +31,8 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     public override bool CanHandle(ResourceKey fileResource, string filePath)
     {
-        if (!string.IsNullOrEmpty(_contribution.Extension.FeatureFlag) &&
-            !_featureFlags.IsEnabled(_contribution.Extension.FeatureFlag))
+        if (!string.IsNullOrEmpty(_contribution.Package.FeatureFlag) &&
+            !_featureFlags.IsEnabled(_contribution.Package.FeatureFlag))
         {
             return false;
         }
@@ -43,12 +43,12 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
-        var view = _serviceProvider.GetRequiredService<ExtensionDocumentView>();
+        var view = _serviceProvider.GetRequiredService<ContributionDocumentView>();
         view.Contribution = _contribution;
 
         return Result<IDocumentView>.Ok(view);
 #else
-        return Result<IDocumentView>.Fail("Extension editors are only available on Windows");
+        return Result<IDocumentView>.Fail("Contribution editors are only available on Windows");
 #endif
     }
 }

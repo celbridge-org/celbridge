@@ -3,29 +3,29 @@ using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Settings;
 
-namespace Celbridge.Extensions;
+namespace Celbridge.Packages;
 
 /// <summary>
-/// Discovers, stores, and queries extensions from bundled and project sources.
+/// Discovers, stores, and queries packages from bundled and project sources.
 /// </summary>
-public class ExtensionRegistry
+public class PackageRegistry
 {
-    private const string ExtensionsFolderName = "extensions";
-    private const string ManifestFileName = "extension.toml";
+    private const string PackagesFolderName = "packages";
+    private const string ManifestFileName = "package.toml";
 
-    private readonly ILogger<ExtensionRegistry> _logger;
+    private readonly ILogger<PackageRegistry> _logger;
     private readonly IModuleService _moduleService;
     private readonly IFeatureFlags _featureFlags;
-    private readonly IExtensionLocalizationService _localizationService;
+    private readonly IPackageLocalizationService _localizationService;
 
-    private List<Extension> _bundledExtensions = [];
-    private List<Extension> _projectExtensions = [];
+    private List<Package> _bundledPackages = [];
+    private List<Package> _projectPackages = [];
 
-    public ExtensionRegistry(
-        ILogger<ExtensionRegistry> logger,
+    public PackageRegistry(
+        ILogger<PackageRegistry> logger,
         IModuleService moduleService,
         IFeatureFlags featureFlags,
-        IExtensionLocalizationService localizationService)
+        IPackageLocalizationService localizationService)
     {
         _logger = logger;
         _moduleService = moduleService;
@@ -33,27 +33,27 @@ public class ExtensionRegistry
         _localizationService = localizationService;
     }
 
-    public void DiscoverExtensions(string projectFolderPath)
+    public void DiscoverPackages(string projectFolderPath)
     {
-        _bundledExtensions.Clear();
-        _projectExtensions.Clear();
+        _bundledPackages.Clear();
+        _projectPackages.Clear();
 
-        DiscoverBundledExtensions();
-        DiscoverProjectExtensions(projectFolderPath);
+        DiscoverBundledPackages();
+        DiscoverProjectPackages(projectFolderPath);
     }
 
-    public IReadOnlyList<Extension> GetAllExtensions()
+    public IReadOnlyList<Package> GetAllPackages()
     {
-        var combined = new List<Extension>(_bundledExtensions.Count + _projectExtensions.Count);
-        combined.AddRange(_bundledExtensions);
-        combined.AddRange(_projectExtensions);
+        var combined = new List<Package>(_bundledPackages.Count + _projectPackages.Count);
+        combined.AddRange(_bundledPackages);
+        combined.AddRange(_projectPackages);
         return combined.AsReadOnly();
     }
 
     public IReadOnlyList<DocumentContribution> GetAllDocumentEditors()
     {
-        return GetAllExtensions()
-            .SelectMany(extension => extension.DocumentEditors)
+        return GetAllPackages()
+            .SelectMany(package => package.DocumentEditors)
             .ToList()
             .AsReadOnly();
     }
@@ -70,13 +70,13 @@ public class ExtensionRegistry
                 continue;
             }
 
-            var featureFlag = contribution.Extension.FeatureFlag;
+            var featureFlag = contribution.Package.FeatureFlag;
             if (!string.IsNullOrEmpty(featureFlag) && !_featureFlags.IsEnabled(featureFlag))
             {
                 continue;
             }
 
-            var localizationStrings = _localizationService.LoadStrings(contribution.Extension.ExtensionFolder);
+            var localizationStrings = _localizationService.LoadStrings(contribution.Package.PackageFolder);
             var displayName = ResolveDisplayName(contribution, localizationStrings);
             var fileExtensions = contribution.FileTypes.Select(ft => ft.FileExtension).ToList().AsReadOnly();
 
@@ -110,7 +110,7 @@ public class ExtensionRegistry
                 continue;
             }
 
-            var templatePath = Path.Combine(contribution.Extension.ExtensionFolder, defaultTemplate.TemplateFile);
+            var templatePath = Path.Combine(contribution.Package.PackageFolder, defaultTemplate.TemplateFile);
             if (!File.Exists(templatePath))
             {
                 _logger.LogWarning($"Template file not found: {templatePath}");
@@ -132,78 +132,78 @@ public class ExtensionRegistry
         return null;
     }
 
-    private void DiscoverBundledExtensions()
+    private void DiscoverBundledPackages()
     {
-        var extensionFolders = _moduleService.GetBundledExtensionFolders();
-        foreach (var extensionFolder in extensionFolders)
+        var packageFolders = _moduleService.GetBundledPackageFolders();
+        foreach (var packageFolder in packageFolders)
         {
-            var extension = TryLoadExtension(extensionFolder);
-            if (extension is not null)
+            var package = TryLoadPackage(packageFolder);
+            if (package is not null)
             {
-                _bundledExtensions.Add(extension);
+                _bundledPackages.Add(package);
             }
         }
     }
 
-    private void DiscoverProjectExtensions(string projectFolderPath)
+    private void DiscoverProjectPackages(string projectFolderPath)
     {
         if (string.IsNullOrEmpty(projectFolderPath))
         {
             return;
         }
 
-        var extensionsFolder = Path.Combine(projectFolderPath, ExtensionsFolderName);
+        var packagesFolder = Path.Combine(projectFolderPath, PackagesFolderName);
 
-        if (!Directory.Exists(extensionsFolder))
+        if (!Directory.Exists(packagesFolder))
         {
             return;
         }
 
-        var extensionFolders = Directory.GetDirectories(extensionsFolder);
-        foreach (var extensionFolder in extensionFolders)
+        var packageFolders = Directory.GetDirectories(packagesFolder);
+        foreach (var packageFolder in packageFolders)
         {
-            var extension = TryLoadExtension(extensionFolder);
-            if (extension is not null)
+            var package = TryLoadPackage(packageFolder);
+            if (package is not null)
             {
-                _projectExtensions.Add(extension);
+                _projectPackages.Add(package);
             }
         }
     }
 
     /// <summary>
-    /// Attempts to load an extension from a folder. Returns null on failure.
+    /// Attempts to load a package from a folder. Returns null on failure.
     /// </summary>
-    private Extension? TryLoadExtension(string extensionFolder)
+    private Package? TryLoadPackage(string packageFolder)
     {
-        var manifestPath = Path.Combine(extensionFolder, ManifestFileName);
+        var manifestPath = Path.Combine(packageFolder, ManifestFileName);
 
         if (!File.Exists(manifestPath))
         {
             return null;
         }
 
-        var loadResult = ExtensionManifestLoader.LoadExtension(manifestPath);
+        var loadResult = PackageManifestLoader.LoadPackage(manifestPath);
 
         if (loadResult.IsFailure)
         {
-            _logger.LogWarning(loadResult, $"Skipping invalid extension: {manifestPath}");
+            _logger.LogWarning(loadResult, $"Skipping invalid package: {manifestPath}");
             return null;
         }
 
-        var extension = loadResult.Value;
-        foreach (var documentEditor in extension.DocumentEditors)
+        var package = loadResult.Value;
+        foreach (var documentEditor in package.DocumentEditors)
         {
             var contributionType = documentEditor.GetType().Name;
-            _logger.LogDebug($"Discovered extension document: {documentEditor.Id} ({contributionType}) for {string.Join(", ", documentEditor.FileTypes.Select(ft => ft.FileExtension))}");
+            _logger.LogDebug($"Discovered package document: {documentEditor.Id} ({contributionType}) for {string.Join(", ", documentEditor.FileTypes.Select(ft => ft.FileExtension))}");
         }
 
-        return extension;
+        return package;
     }
 
     /// <summary>
     /// Resolves the display name for a contribution.
     /// Uses the first file type's display name if available, looked up in the localization dictionary.
-    /// Falls back to the extension name.
+    /// Falls back to the package name.
     /// </summary>
     private static string ResolveDisplayName(
         DocumentContribution contribution,
@@ -218,6 +218,6 @@ public class ExtensionRegistry
             }
             return firstFileType.DisplayName;
         }
-        return contribution.Extension.Name;
+        return contribution.Package.Name;
     }
 }

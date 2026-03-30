@@ -28,7 +28,7 @@ public interface IModuleService
     Result<IActivity> CreateActivity(string activityName);
 
     /// <summary>
-    /// Returns extension folders from all loaded modules that bundle extensions.
+    /// Returns package folders from all loaded modules that bundle packages.
     /// </summary>
-    IReadOnlyList<string> GetBundledExtensionFolders();
+    IReadOnlyList<string> GetBundledPackageFolders();
 }

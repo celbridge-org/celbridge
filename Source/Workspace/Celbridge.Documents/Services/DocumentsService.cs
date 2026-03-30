@@ -1,6 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Extensions;
+using Celbridge.Packages;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
@@ -64,7 +64,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         _textBinarySniffer = textBinarySniffer;
         _featureFlags = featureFlags;
 
-        _messengerService.Register<ExtensionsInitializedMessage>(this, OnExtensionsInitializedMessage);
+        _messengerService.Register<PackagesInitializedMessage>(this, OnPackagesInitializedMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
         _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
@@ -101,10 +101,10 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    private void OnExtensionsInitializedMessage(object recipient, ExtensionsInitializedMessage message)
+    private void OnPackagesInitializedMessage(object recipient, PackagesInitializedMessage message)
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var contributions = workspaceService.ExtensionService.GetAllDocumentEditors();
+        var contributions = workspaceService.PackageService.GetAllDocumentEditors();
 
         foreach (var contribution in contributions)
         {
@@ -118,7 +118,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             if (result.IsFailure)
             {
                 _logger.LogWarning(result,
-                    $"Failed to register extension editor factory for: {contribution.Extension.Name}");
+                    $"Failed to register contribution editor factory for: {contribution.Package.Name}");
             }
         }
     }

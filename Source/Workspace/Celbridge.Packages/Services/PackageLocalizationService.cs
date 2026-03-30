@@ -2,17 +2,17 @@ using System.Globalization;
 using System.Text.Json;
 using Celbridge.Logging;
 
-namespace Celbridge.Extensions;
+namespace Celbridge.Packages;
 
 /// <summary>
-/// Loads localized strings from an extension's localization directory.
-/// Uses convention: extensions store localization files in a "localization" subdirectory
+/// Loads localized strings from a package's localization folder.
+/// Uses convention: packages store localization files in a "localization" subfolder
 /// as flat key-value JSON dictionaries (e.g., en.json, fr.json).
 /// </summary>
-public class ExtensionLocalizationService : IExtensionLocalizationService
+public class PackageLocalizationService : IPackageLocalizationService
 {
     /// <summary>
-    /// Convention: all extensions use "localization" as the folder name.
+    /// Convention: all packages use "localization" as the folder name.
     /// </summary>
     public const string LocalizationFolder = "localization";
 
@@ -24,24 +24,24 @@ public class ExtensionLocalizationService : IExtensionLocalizationService
         AllowTrailingCommas = true
     };
 
-    private readonly ILogger<ExtensionLocalizationService> _logger;
+    private readonly ILogger<PackageLocalizationService> _logger;
 
-    public ExtensionLocalizationService(ILogger<ExtensionLocalizationService> logger)
+    public PackageLocalizationService(ILogger<PackageLocalizationService> logger)
     {
         _logger = logger;
     }
 
     /// <summary>
-    /// Loads localization strings from an extension's localization directory.
-    /// Uses convention: {extensionFolder}/localization/{locale}.json
+    /// Loads localization strings from a package's localization folder.
+    /// Uses convention: {packageFolder}/localization/{locale}.json
     /// If locale is null, uses the current UI culture.
     /// Falls back to "en.json" if the requested locale is not found, then to an empty dictionary.
     /// </summary>
-    public Dictionary<string, string> LoadStrings(string extensionFolder, string? locale = null)
+    public Dictionary<string, string> LoadStrings(string packageFolder, string? locale = null)
     {
         locale ??= CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
 
-        var localizationFolder = Path.Combine(extensionFolder, LocalizationFolder);
+        var localizationFolder = Path.Combine(packageFolder, LocalizationFolder);
 
         var localePath = Path.Combine(localizationFolder, $"{locale}.json");
         var result = TryLoadJsonFile(localePath);

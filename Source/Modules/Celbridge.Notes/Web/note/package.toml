@@ -1,4 +1,4 @@
-[extension]
+[package]
 id = "celbridge.notes"
 name = "Extension_Notes_Name"
 version = "1.0.0"

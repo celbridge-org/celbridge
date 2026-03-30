@@ -5,24 +5,24 @@ using Celbridge.Logging;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Handles IHostDocument RPC methods for extension document views.
+/// Handles IHostDocument RPC methods for contribution document views.
 /// Manages document initialization, loading, saving, and change tracking.
 /// </summary>
-internal sealed class ExtensionDocumentHandler : IHostDocument
+internal sealed class ContributionDocumentHandler : IHostDocument
 {
-    private readonly ExtensionDocumentViewModel _viewModel;
+    private readonly ContributionDocumentViewModel _viewModel;
     private readonly ILogger _logger;
     private readonly Func<DocumentMetadata> _createMetadata;
     private readonly Func<bool> _completeSave;
 
     /// <summary>
     /// Set by the owning view before requesting a save from JS.
-    /// The handler completes this when SaveAsync is called back by the extension.
+    /// The handler completes this when SaveAsync is called back by the contribution.
     /// </summary>
     internal TaskCompletionSource<Result>? SaveResultTcs { get; set; }
 
-    public ExtensionDocumentHandler(
-        ExtensionDocumentViewModel viewModel,
+    public ContributionDocumentHandler(
+        ContributionDocumentViewModel viewModel,
         ILogger logger,
         Func<DocumentMetadata> createMetadata,
         Func<bool> completeSave)
@@ -59,7 +59,7 @@ internal sealed class ExtensionDocumentHandler : IHostDocument
 
             if (saveResult.IsFailure)
             {
-                _logger.LogError(saveResult, "Failed to save extension document");
+                _logger.LogError(saveResult, "Failed to save contribution document");
                 _completeSave();
                 SaveResultTcs?.TrySetResult(saveResult);
                 return new SaveResult(false, saveResult.Error);
@@ -78,7 +78,7 @@ internal sealed class ExtensionDocumentHandler : IHostDocument
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Exception during extension save");
+            _logger.LogError(exception, "Exception during contribution save");
             _completeSave();
             var failResult = Result.Fail("Exception during save").WithException(exception);
             SaveResultTcs?.TrySetResult(failResult);

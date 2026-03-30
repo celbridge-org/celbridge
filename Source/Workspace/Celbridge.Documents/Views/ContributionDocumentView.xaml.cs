@@ -1,10 +1,10 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Extensions;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Packages;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
@@ -14,22 +14,22 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Document view for custom WebView-basedextension editors.
+/// Document view for custom WebView-based contribution editors.
 /// Configured from a DocumentContribution, delegates RPC handling to handler classes.
 /// </summary>
-public sealed partial class ExtensionDocumentView : WebViewDocumentView
+public sealed partial class ContributionDocumentView : WebViewDocumentView
 {
     private const int SaveRequestTimeoutSeconds = 30;
 
-    private readonly ILogger<ExtensionDocumentView> _logger;
+    private readonly ILogger<ContributionDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
 
-    private readonly ExtensionDocumentViewModel _viewModel;
+    private readonly ContributionDocumentViewModel _viewModel;
 
-    private ExtensionDocumentHandler? _documentHandler;
+    private ContributionDocumentHandler? _documentHandler;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -44,9 +44,9 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
         return base.GetDevToolsEnabled() && (Contribution?.DevToolsEnabled ?? true);
     }
 
-    public ExtensionDocumentView(
+    public ContributionDocumentView(
         IServiceProvider serviceProvider,
-        ILogger<ExtensionDocumentView> logger,
+        ILogger<ContributionDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
@@ -62,15 +62,15 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
 
-        _viewModel = serviceProvider.GetRequiredService<ExtensionDocumentViewModel>();
+        _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
         this.InitializeComponent();
 
-        WebViewContainer = ExtensionWebViewContainer;
+        WebViewContainer = ContributionWebViewContainer;
 
         EnableThemeSyncing(userInterfaceService);
 
-        Loaded += ExtensionDocumentView_Loaded;
+        Loaded += ContributionDocumentView_Loaded;
 
         _viewModel.ReloadRequested += ViewModel_ReloadRequested;
     }
@@ -110,7 +110,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
             _documentHandler.SaveResultTcs = null;
             CompleteSave();
 
-            var errorMessage = $"Extension editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
+            var errorMessage = $"Contribution editor failed to respond within {SaveRequestTimeoutSeconds} seconds. " +
                                $"File: {_viewModel.FilePath}";
 
             _logger.LogError(errorMessage);
@@ -124,18 +124,18 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
         return result;
     }
 
-    private async void ExtensionDocumentView_Loaded(object sender, RoutedEventArgs e)
+    private async void ContributionDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= ExtensionDocumentView_Loaded;
+        Loaded -= ContributionDocumentView_Loaded;
 
-        await InitExtensionViewAsync();
+        await InitContributionViewAsync();
     }
 
-    private async Task InitExtensionViewAsync()
+    private async Task InitContributionViewAsync()
     {
         if (Contribution is null)
         {
-            _logger.LogError("Cannot initialize extension view: Contribution is not set");
+            _logger.LogError("Cannot initialize contribution view: Contribution is not set");
             return;
         }
 
@@ -146,10 +146,10 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
         {
             await AcquireWebViewAsync();
 
-            // Map the extension's asset directory to a virtual host
+            // Map the package's asset folder to a virtual host
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                Contribution.Extension.HostName,
-                Contribution.Extension.ExtensionFolder,
+                Contribution.Package.HostName,
+                Contribution.Package.PackageFolder,
                 CoreWebView2HostResourceAccessKind.Allow);
 
             // Map the project folder for resource key path resolution
@@ -164,8 +164,8 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
 
             ApplyThemeToWebView();
 
-            // Block all navigations except the extension's own host name
-            var allowedHostPrefix = $"https://{Contribution.Extension.HostName}/";
+            // Block all navigations except the package's own host name
+            var allowedHostPrefix = $"https://{Contribution.Package.HostName}/";
             WebView.NavigationStarting += (s, args) =>
             {
                 var uri = args.Uri;
@@ -192,17 +192,17 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
 
             if (Host is null)
             {
-                _logger.LogError("Failed to initialize host for extension");
+                _logger.LogError("Failed to initialize host for contribution");
                 return;
             }
 
-            _documentHandler = new ExtensionDocumentHandler(
+            _documentHandler = new ContributionDocumentHandler(
                 _viewModel,
                 _logger,
                 CreateDocumentMetadata,
                 CompleteSave);
 
-            var dialogHandler = new ExtensionDialogHandler(
+            var dialogHandler = new ContributionDialogHandler(
                 _dialogService,
                 _stringLocalizer,
                 _viewModel);
@@ -212,14 +212,14 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
 
             StartHostListener();
 
-            // Navigate to the extension's entry point
+            // Navigate to the contribution's entry point
             var entryPoint = Contribution.EntryPoint;
-            var entryUrl = $"https://{Contribution.Extension.HostName}/{entryPoint}";
+            var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to initialize extension view: {Contribution.Extension.Name}");
+            _logger.LogError(ex, $"Failed to initialize contribution view: {Contribution.Package.Name}");
         }
     }
 
@@ -278,7 +278,7 @@ public sealed partial class ExtensionDocumentView : WebViewDocumentView
     {
         _messengerService.UnregisterAll(this);
 
-        Loaded -= ExtensionDocumentView_Loaded;
+        Loaded -= ContributionDocumentView_Loaded;
 
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
 

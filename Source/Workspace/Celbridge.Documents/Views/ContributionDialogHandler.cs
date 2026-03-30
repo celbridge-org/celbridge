@@ -6,19 +6,19 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Handles IHostDialog RPC methods for extension document views.
+/// Handles IHostDialog RPC methods for contribution document views.
 /// Provides image picking, file picking, and alert dialogs.
 /// </summary>
-internal sealed class ExtensionDialogHandler : IHostDialog
+internal sealed class ContributionDialogHandler : IHostDialog
 {
     private readonly IDialogService _dialogService;
     private readonly IStringLocalizer _stringLocalizer;
-    private readonly ExtensionDocumentViewModel _viewModel;
+    private readonly ContributionDocumentViewModel _viewModel;
 
-    public ExtensionDialogHandler(
+    public ContributionDialogHandler(
         IDialogService dialogService,
         IStringLocalizer stringLocalizer,
-        ExtensionDocumentViewModel viewModel)
+        ContributionDocumentViewModel viewModel)
     {
         _dialogService = dialogService;
         _stringLocalizer = stringLocalizer;

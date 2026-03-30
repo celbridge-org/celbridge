@@ -3,36 +3,36 @@ using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Settings;
 
-namespace Celbridge.Extensions;
+namespace Celbridge.Packages;
 
 /// <summary>
-/// Thin facade over ExtensionRegistry that triggers discovery and sends notifications.
+/// Thin facade over PackageRegistry that triggers discovery and sends notifications.
 /// </summary>
-public class ExtensionService : IExtensionService
+public class PackageService : IPackageService
 {
     private readonly IMessengerService _messengerService;
-    private readonly ExtensionRegistry _registry;
+    private readonly PackageRegistry _registry;
 
-    public ExtensionService(
-        ILogger<ExtensionRegistry> logger,
+    public PackageService(
+        ILogger<PackageRegistry> logger,
         IModuleService moduleService,
         IMessengerService messengerService,
         IFeatureFlags featureFlags,
-        IExtensionLocalizationService localizationService)
+        IPackageLocalizationService localizationService)
     {
         _messengerService = messengerService;
-        _registry = new ExtensionRegistry(logger, moduleService, featureFlags, localizationService);
+        _registry = new PackageRegistry(logger, moduleService, featureFlags, localizationService);
     }
 
-    public void RegisterExtensions(string projectFolderPath)
+    public void RegisterPackages(string projectFolderPath)
     {
-        _registry.DiscoverExtensions(projectFolderPath);
-        _messengerService.Send(new ExtensionsInitializedMessage());
+        _registry.DiscoverPackages(projectFolderPath);
+        _messengerService.Send(new PackagesInitializedMessage());
     }
 
-    public IReadOnlyList<Extension> GetAllExtensions()
+    public IReadOnlyList<Package> GetAllPackages()
     {
-        return _registry.GetAllExtensions();
+        return _registry.GetAllPackages();
     }
 
     public IReadOnlyList<DocumentContribution> GetAllDocumentEditors()
