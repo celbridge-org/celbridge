@@ -1,4 +1,3 @@
-using Celbridge.Core;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;

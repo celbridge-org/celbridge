@@ -54,13 +54,23 @@ public class AddResourceHelper
         // Create the resource on disk
         //
 
-        var destPath = resourceRegistry.GetResourcePath(destResource);
-
-        // Fail if the parent folder for the new resource does not exist.
-        var parentFolderPath = Path.GetDirectoryName(destPath);
-        if (!Directory.Exists(parentFolderPath))
+        var resolveResult = resourceRegistry.ResolveResourcePath(destResource);
+        if (resolveResult.IsFailure)
         {
-            return Result.Fail($"Failed to create resource. Parent folder does not exist: '{parentFolderPath}'");
+            return Result.Fail($"Failed to resolve path for resource: '{destResource}'")
+                .WithErrors(resolveResult);
+        }
+        var destPath = resolveResult.Value;
+
+        // Fail if the parent folder for a new file does not exist.
+        // Folders are allowed to create intermediate parents via Directory.CreateDirectory().
+        if (resourceType == ResourceType.File)
+        {
+            var parentFolderPath = Path.GetDirectoryName(destPath);
+            if (!Directory.Exists(parentFolderPath))
+            {
+                return Result.Fail($"Failed to create resource. Parent folder does not exist: '{parentFolderPath}'");
+            }
         }
 
         var createResult = resourceType == ResourceType.File

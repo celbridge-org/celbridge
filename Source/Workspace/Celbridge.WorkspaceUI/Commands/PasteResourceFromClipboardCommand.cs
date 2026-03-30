@@ -6,7 +6,7 @@ namespace Celbridge.WorkspaceUI.Commands;
 public class PasteResourceFromClipboardCommand : CommandBase, IPasteResourceFromClipboardCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey DestFolderResource { get; set; }
 

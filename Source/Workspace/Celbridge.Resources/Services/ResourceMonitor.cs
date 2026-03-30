@@ -358,20 +358,17 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         {
             try
             {
-                if (File.Exists(fullPath))
+                var attributes = File.GetAttributes(fullPath);
+                if ((attributes & System.IO.FileAttributes.Hidden) != 0 ||
+                    (attributes & System.IO.FileAttributes.System) != 0)
                 {
-                    var attributes = File.GetAttributes(fullPath);
-                    if ((attributes & System.IO.FileAttributes.Hidden) != 0 ||
-                        (attributes & System.IO.FileAttributes.System) != 0)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
             catch (Exception)
             {
-                // File may have been deleted between the existence check and attribute read
-                // Treat as "ignore" to avoid race condition issues
+                // File may have been deleted between the event firing and reading attributes.
+                // Treat as "ignore" to avoid race condition issues.
                 return true;
             }
         }

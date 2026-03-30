@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Core\Celbridge.Server\Celbridge.Server.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Host\Celbridge.Host.csproj" />
@@ -29,9 +30,11 @@
     <ProjectReference Include="..\Core\Celbridge.Settings\Celbridge.Settings.csproj" />
     <ProjectReference Include="..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Extensions\Celbridge.Extensions.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
   

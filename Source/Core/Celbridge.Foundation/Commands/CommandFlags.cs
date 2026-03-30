@@ -9,15 +9,17 @@ public enum CommandFlags
     None = 0,
 
     /// <summary>
-    /// Schedule a resource registry update after execution.
-    /// Multiple requests are coalesced for efficiency.
+    /// Force a synchronous resource registry update after execution.
+    /// The command will not complete until the registry is up to date.
     /// </summary>
-    RequestUpdateResources = 1 << 1,
+    UpdateResources = 1 << 1,
 
     /// <summary>
-    /// Force an immediate synchronous resource registry update after execution.
+    /// Refresh the resource tree view after execution without updating the resource registry.
+    /// Use this for commands that modify the tree view state (e.g. expand/collapse) but do not
+    /// change resources on disk.
     /// </summary>
-    ForceUpdateResources = 1 << 2,
+    RefreshResourceTree = 1 << 2,
 
     /// <summary>
     /// Save the workspace state after execution.

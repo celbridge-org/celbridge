@@ -16,7 +16,7 @@ public class CopyPathMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 1;
-    public string GroupId => ExplorerMenuGroups.Utilities;
+    public string GroupId => nameof(ExplorerMenuGroup.Utilities);
 
     public CopyPathMenuOption(
         IStringLocalizer stringLocalizer,

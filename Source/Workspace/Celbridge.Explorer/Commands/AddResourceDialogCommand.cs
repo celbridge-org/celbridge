@@ -185,11 +185,18 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
+        var resolveParentFolderResult = resourceRegistry.ResolveResourcePath(parentFolder);
+        if (resolveParentFolderResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to resolve path for parent folder")
+                .WithErrors(resolveParentFolderResult);
+        }
+        var parentFolderPath = resolveParentFolderResult.Value;
+
         string defaultFolderName = string.Empty;
         int folderNumber = 1;
         while (true)
         {
-            var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
             var candidateName = _stringLocalizer.GetString(DefaultFolderNameKey, folderNumber).ToString();
 
             var candidatePath = Path.Combine(parentFolderPath, candidateName);
@@ -222,11 +229,18 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         // Get the previously saved extension
         var extension = editorSettings.PreviousNewFileExtension;
 
+        var resolveParentFolderResult = resourceRegistry.ResolveResourcePath(parentFolder);
+        if (resolveParentFolderResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to resolve path for parent folder")
+                .WithErrors(resolveParentFolderResult);
+        }
+        var parentFolderPath = resolveParentFolderResult.Value;
+
         string defaultFileName = string.Empty;
         int fileNumber = 1;
         while (true)
         {
-            var parentFolderPath = resourceRegistry.GetResourcePath(parentFolder);
             var candidateName = _stringLocalizer.GetString(DefaultFileNameKey, fileNumber).ToString();
 
             // Replace the default extension with the preferred extension

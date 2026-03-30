@@ -120,4 +120,5 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
             command.Resource = resource;
         });
     }
+
 }

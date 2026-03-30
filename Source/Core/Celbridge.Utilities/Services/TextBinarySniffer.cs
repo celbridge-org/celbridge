@@ -7,14 +7,14 @@ namespace Celbridge.Utilities;
 /// Provides heuristic detection of whether a file or stream contains text or binary data.
 /// Handles UTF-8, UTF-16, UTF-32, and legacy 8-bit text encodings.
 /// </summary>
-public static class TextBinarySniffer
+public class TextBinarySniffer : ITextBinarySniffer
 {
     private const int SampleSize = 8192;
 
     /// <summary>
     /// Known binary file extensions for fast-path detection.
     /// </summary>
-    private static readonly HashSet<string> _binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private readonly HashSet<string> _binaryExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // Executables and libraries
         ".exe", ".dll", ".pdb", ".obj", ".o", ".a", ".lib",
@@ -43,7 +43,7 @@ public static class TextBinarySniffer
     /// Quickly checks if a file extension indicates a binary file format.
     /// This is a fast path that avoids reading file content.
     /// </summary>
-    public static bool IsBinaryExtension(string extension)
+    public bool IsBinaryExtension(string extension)
     {
         if (string.IsNullOrEmpty(extension))
         {
@@ -62,7 +62,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Determines if a file is likely a text file by examining its content.
     /// </summary>
-    public static Result<bool> IsTextFile(string path)
+    public Result<bool> IsTextFile(string path)
     {
         if (string.IsNullOrEmpty(path))
         {
@@ -89,7 +89,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Determines if the provided content appears to be text (not binary).
     /// </summary>
-    public static bool IsTextContent(string content)
+    public bool IsTextContent(string content)
     {
         if (string.IsNullOrEmpty(content))
         {
@@ -103,7 +103,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Determines if a stream contains text data by examining its content.
     /// </summary>
-    private static bool IsTextStream(Stream stream)
+    private bool IsTextStream(Stream stream)
     {
         if (!stream.CanRead)
         {
@@ -131,7 +131,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Determines if the provided bytes appear to be text data.
     /// </summary>
-    private static bool IsTextBytes(ReadOnlySpan<byte> bytes)
+    private bool IsTextBytes(ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length == 0)
         {
@@ -171,7 +171,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Checks if the buffer starts with a Unicode Byte Order Mark (BOM).
     /// </summary>
-    private static bool HasTextBom(ReadOnlySpan<byte> b) =>
+    private bool HasTextBom(ReadOnlySpan<byte> b) =>
         b.StartsWith([(byte)0xEF, (byte)0xBB, (byte)0xBF]) ||               // UTF-8
         b.StartsWith([(byte)0xFF, (byte)0xFE, (byte)0x00, (byte)0x00]) ||   // UTF-32 LE (check before UTF-16 LE)
         b.StartsWith([(byte)0x00, (byte)0x00, (byte)0xFE, (byte)0xFF]) ||   // UTF-32 BE
@@ -181,7 +181,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Validates whether the bytes represent valid UTF-8 encoded text.
     /// </summary>
-    private static bool IsValidUtf8(ReadOnlySpan<byte> bytes)
+    private bool IsValidUtf8(ReadOnlySpan<byte> bytes)
     {
         // Strict mode: throw on invalid sequences
         var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
@@ -201,7 +201,7 @@ public static class TextBinarySniffer
     /// Uses heuristics: tries to decode and checks if result is valid text.
     /// Also checks for UTF-16 structural patterns to avoid false positives.
     /// </summary>
-    private static bool IsValidUtf16(ReadOnlySpan<byte> bytes)
+    private bool IsValidUtf16(ReadOnlySpan<byte> bytes)
     {
         // Need at least 2 bytes for UTF-16
         if (bytes.Length < 2)
@@ -233,7 +233,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Checks if bytes match UTF-16 LE patterns (every other byte is often 0x00 for ASCII-range text).
     /// </summary>
-    private static bool LooksLikeUtf16LE(ReadOnlySpan<byte> bytes)
+    private bool LooksLikeUtf16LE(ReadOnlySpan<byte> bytes)
     {
         // For UTF-16 LE, ASCII characters have pattern: [char, 0x00]
         // Count how many even-positioned bytes are printable ASCII and odd-positioned are 0x00
@@ -259,7 +259,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Checks if bytes match UTF-16 BE patterns.
     /// </summary>
-    private static bool LooksLikeUtf16BE(ReadOnlySpan<byte> bytes)
+    private bool LooksLikeUtf16BE(ReadOnlySpan<byte> bytes)
     {
         // For UTF-16 BE, ASCII characters have pattern: [0x00, char]
         int asciiLikeCount = 0;
@@ -284,7 +284,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Checks if the bytes appear to be valid UTF-32 without BOM.
     /// </summary>
-    private static bool IsValidUtf32(ReadOnlySpan<byte> bytes)
+    private bool IsValidUtf32(ReadOnlySpan<byte> bytes)
     {
         // Need at least 4 bytes for UTF-32
         if (bytes.Length < 4)
@@ -319,7 +319,7 @@ public static class TextBinarySniffer
     /// <summary>
     /// Attempts to decode bytes as UTF-16 and validates the result.
     /// </summary>
-    private static bool TryDecodeUtf16(ReadOnlySpan<byte> bytes, Encoding encoding)
+    private bool TryDecodeUtf16(ReadOnlySpan<byte> bytes, Encoding encoding)
     {
         try
         {
@@ -341,7 +341,7 @@ public static class TextBinarySniffer
     /// Validates that decoded text contains reasonable characters (not binary garbage).
     /// Checks for valid character patterns and absence of excessive control characters.
     /// </summary>
-    private static bool IsDecodedTextValid(char[] chars)
+    private bool IsDecodedTextValid(char[] chars)
     {
         if (chars.Length == 0)
         {
@@ -398,7 +398,7 @@ public static class TextBinarySniffer
     /// Checks if the bytes appear to be mostly printable text characters.
     /// Allows common control characters (tab, LF, CR, FF, ESC) and high bytes (for UTF-8/legacy encodings).
     /// </summary>
-    private static bool LooksLikeMostlyText(ReadOnlySpan<byte> bytes)
+    private bool LooksLikeMostlyText(ReadOnlySpan<byte> bytes)
     {
         int suspicious = 0;
 

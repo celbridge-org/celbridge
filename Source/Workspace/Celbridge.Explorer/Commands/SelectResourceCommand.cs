@@ -60,4 +60,5 @@ public class SelectResourceCommand : CommandBase, ISelectResourceCommand
     {
         SelectResource(resource, true);
     }
+
 }

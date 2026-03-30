@@ -31,12 +31,6 @@ public static class ServiceConfiguration
         // Register commands
         // 
 
-        services.AddTransient<IClearCommand, ClearCommand>();
-        services.AddTransient<IClearHistoryCommand, ClearHistoryCommand>();
-        services.AddTransient<IUndoCommand, UndoCommand>();
-        services.AddTransient<IRedoCommand, RedoCommand>();
-        services.AddTransient<IHelpCommand, HelpCommand>();
-        services.AddTransient<IPrintCommand, PrintCommand>();
         services.AddTransient<IRunCommand, RunCommand>();
     }
 }

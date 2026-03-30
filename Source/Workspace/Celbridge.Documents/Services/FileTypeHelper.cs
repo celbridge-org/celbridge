@@ -8,7 +8,7 @@ public class FileTypeHelper
 {
     private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
     private const string PlaintextLanguage = "plaintext";
-    private const string SpreadJSLicense = "ms-appx:///Celbridge.Spreadsheet/Web/SpreadJS/lib/license.js";
+    private const string SpreadJSCoreScript = "ms-appx:///Celbridge.Spreadsheet/Web/SpreadJS/lib/spreadjs/scripts/gc.spread.sheets.all.18.1.4.min.js";
 
     private List<string> _fileViewerExtensions = new();
     private HashSet<string> _binaryFileExtensions = new();
@@ -38,7 +38,7 @@ public class FileTypeHelper
         }
 
         // The SpreadJS Excel editor is only available in Celbridge installer builds.
-        IsSpreadJSAvailable = CheckSpreadJSAvailability();
+        IsSpreadJSAvailable = CheckSpreadJSInstalled();
 
         if (IsSpreadJSAvailable)
         {
@@ -197,13 +197,13 @@ public class FileTypeHelper
     }
 
     /// <summary>
-    /// Checks if the SpreadJS license file is available in the app package.
+    /// Checks if the SpreadJS library has been installed in the app package.
     /// </summary>
-    private static bool CheckSpreadJSAvailability()
+    private static bool CheckSpreadJSInstalled()
     {
         try
         {
-            var uri = new Uri(SpreadJSLicense);
+            var uri = new Uri(SpreadJSCoreScript);
             // Use synchronous wait since this is called during initialization
             var task = StorageFile.GetFileFromApplicationUriAsync(uri).AsTask();
             task.Wait();
@@ -211,7 +211,7 @@ public class FileTypeHelper
         }
         catch
         {
-            // The SpreadJS license file is not present
+            // The SpreadJS library is not installed
             return false;
         }
     }

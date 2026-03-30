@@ -24,6 +24,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public int? TargetSectionIndex { get; set; }
 
+    public bool Activate { get; set; } = true;
+
     public OpenDocumentCommand(
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
@@ -76,12 +78,12 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         if (TargetSectionIndex.HasValue)
         {
             // Open in the specified section
-            openResult = await documentsService.OpenDocumentAtSection(FileResource, TargetSectionIndex.Value, ForceReload, Location);
+            openResult = await documentsService.OpenDocumentAtSection(FileResource, TargetSectionIndex.Value, ForceReload, Location, Activate);
         }
         else
         {
             // Open in the active section (default behavior)
-            openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location);
+            openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location, Activate);
         }
 
         if (openResult.IsFailure)
@@ -101,6 +103,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
     //
     // Static methods for scripting support.
     //
+
     public static void OpenDocument(ResourceKey fileResource)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -133,4 +136,5 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             command.Location = location;
         });
     }
+
 }

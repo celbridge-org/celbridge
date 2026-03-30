@@ -16,10 +16,10 @@ public partial class InspectorPanelViewModel : ObservableObject
 
     public InspectorPanelViewModel(IMessengerService messengerService)
     {
-        messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
     }
 
-    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
+    private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)
     {
         if (SelectedResource == message.DocumentResource)
         {

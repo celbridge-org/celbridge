@@ -264,7 +264,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
 
     private void OnTerminalProcessExited(object? sender, EventArgs e)
     {
-        _logger.LogDebug("Console terminal process exited");
+        _logger.LogInformation("Console terminal process exited");
 
         // Delegate handling to the ViewModel
         ViewModel?.OnTerminalProcessExited();

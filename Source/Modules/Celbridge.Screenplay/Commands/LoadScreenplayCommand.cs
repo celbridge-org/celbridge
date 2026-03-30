@@ -9,7 +9,7 @@ public class LoadScreenplayCommand : CommandBase
 {
     private readonly IActivityService _activityService;
 
-    public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceKey WorkbookResource { get; set; } = ResourceKey.Empty;
 

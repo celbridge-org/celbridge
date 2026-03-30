@@ -2,6 +2,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
 
@@ -19,8 +20,9 @@ public sealed partial class FileViewerDocumentView : WebViewDocumentView
         IServiceProvider serviceProvider,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
-        IWebViewFactory webViewFactory)
-        : base(messengerService, webViewFactory)
+        IWebViewFactory webViewFactory,
+        IFeatureFlags featureFlags)
+        : base(messengerService, webViewFactory, featureFlags)
     {
         _messengerService = messengerService;
 

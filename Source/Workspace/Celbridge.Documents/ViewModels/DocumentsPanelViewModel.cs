@@ -64,10 +64,10 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public void OnSelectedDocumentChanged(ResourceKey documentResource)
+    public void OnActiveDocumentChanged(ResourceKey documentResource)
     {
-        // Notify the DocumentsService about the currently selected documents.
-        var message = new SelectedDocumentChangedMessage(documentResource);
+        // Notify the DocumentsService about the currently active document.
+        var message = new ActiveDocumentChangedMessage(documentResource);
         _messengerService.Send(message);
     }
 

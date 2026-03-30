@@ -49,7 +49,13 @@ public class ResourceTransferService : IResourceTransferService
         {
             List<ResourceTransferItem> transferItems = new();
 
-            var destFolderPath = ResourceRegistry.GetResourcePath(destFolderResource);
+            var resolveResult = ResourceRegistry.ResolveResourcePath(destFolderResource);
+            if (resolveResult.IsFailure)
+            {
+                return Result<List<ResourceTransferItem>>.Fail($"Failed to resolve path for resource: '{destFolderResource}'")
+                    .WithErrors(resolveResult);
+            }
+            var destFolderPath = resolveResult.Value;
             if (!Directory.Exists(destFolderPath))
             {
                 return Result<List<ResourceTransferItem>>.Fail($"The path '{destFolderPath}' does not exist.");
@@ -92,8 +98,8 @@ public class ResourceTransferService : IResourceTransferService
                     var sourceResource = getKeyResult.Value;
 
                     // Sanity check that the generated sourceResource matches the original source path
-                    var checkSourcePath = ResourceRegistry.GetResourcePath(sourceResource);
-                    Guard.IsTrue(sourcePath == checkSourcePath);
+                    var checkSourcePathResult = ResourceRegistry.ResolveResourcePath(sourceResource);
+                    Guard.IsTrue(checkSourcePathResult.IsSuccess && sourcePath == checkSourcePathResult.Value);
 
                     var destResource = ResourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
 

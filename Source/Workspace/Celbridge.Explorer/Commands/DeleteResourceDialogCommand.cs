@@ -131,4 +131,5 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             command.Resources = resources;
         });
     }
+
 }

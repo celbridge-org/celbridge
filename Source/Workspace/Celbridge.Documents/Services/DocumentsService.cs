@@ -12,7 +12,7 @@ namespace Celbridge.Documents.Services;
 public class DocumentsService : IDocumentsService, IDisposable
 {
     private const string DocumentLayoutKey = "DocumentLayout";
-    private const string SelectedDocumentKey = "SelectedDocument";
+    private const string ActiveDocumentKey = "ActiveDocument";
     private const string SectionRatiosKey = "SectionRatios";
 
     private readonly IServiceProvider _serviceProvider;
@@ -20,6 +20,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly IFeatureFlags _featureFlags;
 
     /// <summary>
@@ -27,7 +28,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// </summary>
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
 
-    public ResourceKey SelectedDocument { get; private set; }
+    public ResourceKey ActiveDocument { get; private set; }
 
     /// <summary>
     /// Gets all open documents with their addresses (UI positions).
@@ -49,6 +50,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         ICommandService commandService,
         IModuleService moduleService,
         IWorkspaceWrapper workspaceWrapper,
+        ITextBinarySniffer textBinarySniffer,
         IFeatureFlags featureFlags)
     {
         // Only the workspace service is allowed to instantiate this service
@@ -59,12 +61,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         _logger = logger;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _textBinarySniffer = textBinarySniffer;
         _featureFlags = featureFlags;
 
         _messengerService.Register<ExtensionsInitializedMessage>(this, OnExtensionsInitializedMessage);
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoadedMessage);
         _messengerService.Register<DocumentLayoutChangedMessage>(this, OnDocumentLayoutChangedMessage);
-        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
         _messengerService.Register<SectionRatiosChangedMessage>(this, OnSectionRatiosChangedMessage);
         _messengerService.Register<DocumentResourceChangedMessage>(this, OnDocumentResourceChangedMessage);
 
@@ -126,14 +129,14 @@ public class DocumentsService : IDocumentsService, IDisposable
         _isWorkspaceLoaded = true;
     }
 
-    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
+    private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)
     {
-        SelectedDocument = message.DocumentResource;
+        ActiveDocument = message.DocumentResource;
 
         if (_isWorkspaceLoaded)
         {
             // Ignore change events that happen while loading the workspace
-            _ = StoreSelectedDocument();
+            _ = StoreActiveDocument();
         }
     }
 
@@ -210,9 +213,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (!_fileTypeHelper.IsRecognizedExtension(extension))
         {
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
+            var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+            if (resolveResult.IsFailure)
+            {
+                return DocumentViewType.UnsupportedFormat;
+            }
 
-            var result = TextBinarySniffer.IsTextFile(filePath);
+            var result = _textBinarySniffer.IsTextFile(resolveResult.Value);
             if (result.IsFailure)
             {
                 // Failed to determine if the file is text
@@ -274,13 +281,19 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "")
+    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "", bool activate = true)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
-        if (string.IsNullOrEmpty(filePath) ||
-            !File.Exists(filePath))
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
+
+        if (!File.Exists(filePath))
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
         }
@@ -290,7 +303,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
-        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload, location);
+        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload, location, activate);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
@@ -302,13 +315,19 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "")
+    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "", bool activate = true)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
-        if (string.IsNullOrEmpty(filePath) ||
-            !File.Exists(filePath))
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
+
+        if (!File.Exists(filePath))
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
         }
@@ -319,7 +338,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         var address = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: 0);
-        var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
+        var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address, activate);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}' at section {sectionIndex}")
@@ -351,16 +370,16 @@ public class DocumentsService : IDocumentsService, IDisposable
         return Result.Ok();
     }
 
-    public Result SelectDocument(ResourceKey fileResource)
+    public Result ActivateDocument(ResourceKey fileResource)
     {
-        var selectResult = DocumentsPanel.SelectDocument(fileResource);
-        if (selectResult.IsFailure)
+        var activateResult = DocumentsPanel.ActivateDocument(fileResource);
+        if (activateResult.IsFailure)
         {
-            return Result.Fail($"Failed to select opened document for file resource '{fileResource}'")
-                .WithErrors(selectResult);
+            return Result.Fail($"Failed to activate opened document for file resource '{fileResource}'")
+                .WithErrors(activateResult);
         }
 
-        _logger.LogTrace($"Selected document for file resource '{fileResource}'");
+        _logger.LogTrace($"Activated document for file resource '{fileResource}'");
 
         return Result.Ok();
     }
@@ -403,14 +422,14 @@ public class DocumentsService : IDocumentsService, IDisposable
     }
 
 
-    public async Task StoreSelectedDocument()
+    public async Task StoreActiveDocument()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var fileResource = SelectedDocument.ToString();
+        var fileResource = ActiveDocument.ToString();
 
-        await workspaceSettings.SetPropertyAsync(SelectedDocumentKey, fileResource);
+        await workspaceSettings.SetPropertyAsync(ActiveDocumentKey, fileResource);
     }
 
     public async Task StoreSectionRatios(List<double> ratios)
@@ -472,7 +491,14 @@ public class DocumentsService : IDocumentsService, IDisposable
                 continue;
             }
 
-            var filePath = resourceRegistry.GetResourcePath(fileResource);
+            var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+            if (resolveResult.IsFailure)
+            {
+                _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
+                continue;
+            }
+            var filePath = resolveResult.Value;
+
             if (!CanAccessFile(filePath))
             {
                 _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
@@ -491,7 +517,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         // Restore selected document
-        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(SelectedDocumentKey);
+        var selectedDocument = await workspaceSettings.GetPropertyAsync<string>(ActiveDocumentKey);
         if (string.IsNullOrEmpty(selectedDocument))
         {
             return;
@@ -515,8 +541,8 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (normalizeResult.IsSuccess)
         {
             var normalizedResource = normalizeResult.Value;
-            var readmePath = resourceRegistry.GetResourcePath(normalizedResource);
-            if (CanAccessFile(readmePath))
+            var resolveResult = resourceRegistry.ResolveResourcePath(normalizedResource);
+            if (resolveResult.IsSuccess && CanAccessFile(resolveResult.Value))
             {
                 _commandService.Execute<IOpenDocumentCommand>(command =>
                 {
@@ -531,7 +557,13 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         // First, try to get a document view from the registry
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var filePath = resourceRegistry.GetResourcePath(fileResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+        var filePath = resolveResult.Value;
 
         var factoryResult = _documentEditorRegistry.GetFactory(fileResource, filePath);
         if (factoryResult.IsSuccess)
@@ -586,7 +618,13 @@ public class DocumentsService : IDocumentsService, IDisposable
         var newResource = message.NewResource.ToString();
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var newResourcePath = resourceRegistry.GetResourcePath(message.NewResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(message.NewResource);
+        if (resolveResult.IsFailure)
+        {
+            _logger.LogError(resolveResult, $"Failed to resolve path for renamed resource: '{message.NewResource}'");
+            return;
+        }
+        var newResourcePath = resolveResult.Value;
 
         Guard.IsTrue(File.Exists(newResourcePath));
 

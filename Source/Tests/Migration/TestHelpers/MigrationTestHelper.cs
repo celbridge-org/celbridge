@@ -1,5 +1,4 @@
 using Celbridge.ApplicationEnvironment;
-using Celbridge.Logging;
 
 namespace Celbridge.Tests.Migration.TestHelpers;
 

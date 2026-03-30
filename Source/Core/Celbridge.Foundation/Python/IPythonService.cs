@@ -11,12 +11,7 @@ public interface IPythonService
     Task<Result> InitializePython();
 
     /// <summary>
-    /// Gets the RPC client used to communicate with the Python host.
-    /// </summary>
-    IPythonRpcClient RpcClient { get; }
-
-    /// <summary>
-    /// Returns whether the python host is currently available to execute scripts.
+    /// Returns whether the Python connector is currently available.
     /// </summary>
     bool IsPythonHostAvailable { get; }
 }

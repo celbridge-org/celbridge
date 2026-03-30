@@ -63,7 +63,7 @@ public class InspectorService : IInspectorService, IDisposable
         _componentEditorCache = _serviceProvider.GetRequiredService<ComponentEditorCache>();
         _entityAnnotationCache = _serviceProvider.GetRequiredService<EntityAnnotationCache>();
 
-        _messengerService.Register<SelectedDocumentChangedMessage>(this, OnSelectedDocumentChangedMessage);
+        _messengerService.Register<ActiveDocumentChangedMessage>(this, OnActiveDocumentChangedMessage);
         _messengerService.Register<SelectedComponentChangedMessage>(this, OnSelectedComponentChangedMessage);
 
         InspectorFactory = _serviceProvider.GetRequiredService<IInspectorFactory>();
@@ -111,7 +111,7 @@ public class InspectorService : IInspectorService, IDisposable
         return _entityAnnotationCache.GetEntityAnnotation(resource);
     }
 
-    private void OnSelectedDocumentChangedMessage(object recipient, SelectedDocumentChangedMessage message)
+    private void OnActiveDocumentChangedMessage(object recipient, ActiveDocumentChangedMessage message)
     {
         if (InspectedResource == message.DocumentResource)
         {

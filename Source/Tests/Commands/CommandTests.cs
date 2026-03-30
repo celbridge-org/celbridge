@@ -1,7 +1,6 @@
 using Celbridge.Commands.Services;
 using Celbridge.Commands;
 using Celbridge.Logging.Services;
-using Celbridge.Logging;
 using Celbridge.Messaging.Services;
 using Celbridge.Messaging;
 using Celbridge.UserInterface.Services;

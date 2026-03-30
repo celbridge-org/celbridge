@@ -5,6 +5,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Services;
 using Celbridge.Screenplay.ViewModels;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Microsoft.Web.WebView2.Core;
@@ -26,8 +27,9 @@ public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocume
         ILogger<SceneDocumentView> logger,
         IMessengerService messengerService,
         IUserInterfaceService userInterfaceService,
-        IWebViewFactory webViewFactory)
-        : base(messengerService, webViewFactory)
+        IWebViewFactory webViewFactory,
+        IFeatureFlags featureFlags)
+        : base(messengerService, webViewFactory, featureFlags)
     {
         this.InitializeComponent();
 

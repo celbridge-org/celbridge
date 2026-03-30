@@ -8,7 +8,7 @@ namespace Celbridge.Resources.Commands;
 
 public class AddResourceCommand : CommandBase, IAddResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public ResourceType ResourceType { get; set; }
     public string SourcePath { get; set; } = string.Empty;
@@ -56,7 +56,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
                 command.ForceReload = false;
             });
 
-            _commandService.Execute<ISelectDocumentCommand>(command =>
+            _commandService.Execute<IActivateDocumentCommand>(command =>
             {
                 command.FileResource = DestResource;
             });

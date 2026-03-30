@@ -16,7 +16,7 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 2;
-    public string GroupId => ExplorerMenuGroups.Clipboard;
+    public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public CopyMenuOption(
         IStringLocalizer stringLocalizer,

@@ -16,7 +16,7 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 1;
-    public string GroupId => ExplorerMenuGroups.Clipboard;
+    public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public CutMenuOption(
         IStringLocalizer stringLocalizer,

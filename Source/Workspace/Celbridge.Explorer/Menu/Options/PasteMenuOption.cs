@@ -16,7 +16,7 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 3;
-    public string GroupId => ExplorerMenuGroups.Clipboard;
+    public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public PasteMenuOption(
         IStringLocalizer stringLocalizer,

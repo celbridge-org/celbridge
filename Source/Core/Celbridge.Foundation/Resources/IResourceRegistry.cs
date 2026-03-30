@@ -33,15 +33,19 @@ public interface IResourceRegistry
     Result<ResourceKey> GetResourceKey(string resourcePath);
 
     /// <summary>
-    /// Returns the absolute path for a resource.
+    /// Resolves a resource to its absolute filesystem path.
+    /// Validates path containment and checks for symlinks/junctions.
+    /// Fails if the path escapes the project folder or traverses a reparse point.
     /// </summary>
-    string GetResourcePath(IResource resource);
+    Result<string> ResolveResourcePath(IResource resource);
 
     /// <summary>
-    /// Returns the absolute path for a resource key.
+    /// Resolves a resource key to its absolute filesystem path.
+    /// Validates path containment and checks for symlinks/junctions.
     /// The path will be generated even if the resource does not exist yet in the project.
+    /// Fails if the path escapes the project folder or traverses a reparse point.
     /// </summary>
-    string GetResourcePath(ResourceKey resource);
+    Result<string> ResolveResourcePath(ResourceKey resource);
 
     /// <summary>
     /// Normalizes the resource key so that it matches the exact casing as it exists on disk.

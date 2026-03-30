@@ -288,7 +288,12 @@ public sealed class CodeEditorPreviewHelper : IHostCodePreview, IDisposable
         }
 
         var resourcePath = fullPath.Substring(_projectFolderPath.Length).TrimStart(Path.DirectorySeparatorChar);
-        var resourceKey = new ResourceKey(resourcePath.Replace(Path.DirectorySeparatorChar, '/'));
+        var resourceKeyString = resourcePath.Replace(Path.DirectorySeparatorChar, '/');
+        if (!ResourceKey.TryCreate(resourceKeyString, out var resourceKey))
+        {
+            _logger.LogWarning($"Invalid resource key derived from link: {resourceKeyString}");
+            return;
+        }
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {

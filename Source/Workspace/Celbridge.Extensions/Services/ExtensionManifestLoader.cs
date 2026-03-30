@@ -29,6 +29,7 @@ public static class ExtensionManifestLoader
     private const string TemplateFileKey = "template_file";
     private const string DefaultKey = "default";
     private const string EntryPointKey = "entry_point";
+    private const string DevToolsEnabledKey = "webview_dev_tools";
     private const string WordWrapKey = "word_wrap";
     private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
     private const string MinimapEnabledKey = "minimap_enabled";
@@ -227,6 +228,7 @@ public static class ExtensionManifestLoader
         TomlTable documentTable)
     {
         var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
+        var devToolsEnabled = GetBoolOrNull(documentTable, DevToolsEnabledKey) ?? true;
 
         return new CustomDocumentContribution
         {
@@ -235,7 +237,8 @@ public static class ExtensionManifestLoader
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,
             Templates = templates.AsReadOnly(),
-            EntryPoint = entryPoint
+            EntryPoint = entryPoint,
+            DevToolsEnabled = devToolsEnabled
         };
     }
 

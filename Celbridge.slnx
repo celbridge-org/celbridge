@@ -11,10 +11,12 @@
   </Folder>
 
   <Folder Name="/Core/">
+    <Project Path="Source/Core/Celbridge.Server/Celbridge.Server.csproj" />
     <Project Path="Source/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
     <Project Path="Source/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
     <Project Path="Source/Core/Celbridge.Host/Celbridge.Host.csproj" />
     <Project Path="Source/Core/Celbridge.Logging/Celbridge.Logging.csproj" />
+    <Project Path="Source/Core/Celbridge.Tools/Celbridge.Tools.csproj" />
     <Project Path="Source/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
     <Project Path="Source/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
     <Project Path="Source/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
@@ -62,8 +64,5 @@
     <Project Path="Source/Tests/Celbridge.Tests.csproj" />
   </Folder>
 
-  <Folder Name="/Python/">
-    <Project Path="Source/Python/Celbridge.Python.Packages.csproj" />
-  </Folder>
 
 </Solution>

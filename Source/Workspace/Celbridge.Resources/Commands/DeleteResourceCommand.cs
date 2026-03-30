@@ -6,7 +6,7 @@ namespace Celbridge.Resources.Commands;
 
 public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public List<ResourceKey> Resources { get; set; } = new();
 
@@ -49,7 +49,14 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         {
             foreach (var resource in Resources)
             {
-                var resourcePath = resourceRegistry.GetResourcePath(resource);
+                var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+                if (resolveResult.IsFailure)
+                {
+                    _logger.LogWarning($"Cannot delete resource because path could not be resolved: '{resource}'");
+                    failedItems.Add(resource.ResourceName);
+                    continue;
+                }
+                var resourcePath = resolveResult.Value;
 
                 Result deleteResult;
 

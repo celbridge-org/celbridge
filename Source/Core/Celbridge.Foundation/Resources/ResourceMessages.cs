@@ -9,18 +9,25 @@ public enum ResourceOperationType
     Copy,
     Move,
     Rename,
-    Create
+    Create,
+    Archive,
+    Extract
 }
 
 /// <summary>
-/// A message sent to request a resource registry update after command execution.
+/// A message sent to request a synchronous resource registry update after command execution.
 /// </summary>
-public record RequestResourceRegistryUpdateMessage(bool ForceImmediate);
+public record RequestResourceRegistryUpdateMessage;
 
 /// <summary>
 /// A message sent when the resource registry has been updated.
 /// </summary>
 public record ResourceRegistryUpdatedMessage;
+
+/// <summary>
+/// A message sent to request a resource tree view refresh without updating the resource registry.
+/// </summary>
+public record RefreshResourceTreeMessage;
 
 /// <summary>
 /// A message sent when a resource has been moved or renamed.

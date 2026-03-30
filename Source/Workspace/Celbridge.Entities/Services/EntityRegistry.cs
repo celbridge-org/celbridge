@@ -4,8 +4,8 @@ using Celbridge.Entities.Models;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
+using Celbridge.Logging;
 using Json.Schema;
-using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Entities.Services;
 
@@ -104,8 +104,12 @@ public class EntityRegistry
                 }
 
                 // Get the resource path (may be a file or a folder)
-                var resourcePath = resourceRegistry.GetResourcePath(resourceKey);
-                if (Path.Exists(resourcePath))
+                var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
+                if (resolveResult.IsFailure)
+                {
+                    continue;
+                }
+                if (Path.Exists(resolveResult.Value))
                 {
                     continue;
                 }

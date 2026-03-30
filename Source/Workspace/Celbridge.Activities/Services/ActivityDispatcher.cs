@@ -48,7 +48,7 @@ public class ActivityDispatcher
             }
         }
 
-        _messengerService.Register<SelectedDocumentChangedMessage>(this, (s, e) => OnUpdateMessage(e.DocumentResource));
+        _messengerService.Register<ActiveDocumentChangedMessage>(this, (s, e) => OnUpdateMessage(e.DocumentResource));
         _messengerService.Register<ComponentChangedMessage>(this, (s, e) => OnUpdateMessage(e.ComponentKey.Resource));
 
         void OnUpdateMessage(ResourceKey resource)

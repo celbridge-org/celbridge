@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Celbridge.Search.Services;
 
 /// <summary>
@@ -41,6 +43,20 @@ public class TextMatcher
             index = foundIndex + 1;
         }
 
+        return matches;
+    }
+
+    /// <summary>
+    /// Finds all matches of a compiled regex within a line of text.
+    /// </summary>
+    public List<(int Start, int Length)> FindRegexMatches(string line, Regex regex)
+    {
+        var matches = new List<(int Start, int Length)>();
+        var regexMatches = regex.Matches(line);
+        foreach (Match regexMatch in regexMatches)
+        {
+            matches.Add((regexMatch.Index, regexMatch.Length));
+        }
         return matches;
     }
 

@@ -93,7 +93,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             return;
         }
 
-        ViewModel.OnSelectedDocumentChanged(documentResource);
+        ViewModel.OnActiveDocumentChanged(documentResource);
     }
 
     private void OnSectionDocumentsLayoutChanged(DocumentSection section, List<ResourceKey> documents)
@@ -282,22 +282,17 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return addresses;
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload)
-    {
-        return await OpenDocument(fileResource, filePath, forceReload, string.Empty);
-    }
-
-    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location)
+    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location = "", bool activate = true)
     {
         // Check if the file is already opened in any section
         var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResource);
         if (existingTab != null && existingSection != null)
         {
-            // Activate the existing tab
-            existingSection.SelectTab(existingTab);
-
-            // Make it the active document
-            SectionContainer.ActivateDocument(fileResource, existingSection.SectionIndex);
+            if (activate)
+            {
+                existingSection.SelectTab(existingTab);
+                SectionContainer.ActivateDocument(fileResource, existingSection.SectionIndex);
+            }
 
             if (forceReload)
             {
@@ -333,7 +328,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
         targetSection.AddTab(documentTab);
-        targetSection.SelectTab(documentTab);
+
+        if (activate)
+        {
+            targetSection.SelectTab(documentTab);
+        }
 
         var createResult = await ViewModel.CreateDocumentView(fileResource);
         if (createResult.IsFailure)
@@ -355,8 +354,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // Update all tab names to handle any filename ambiguity
         UpdateAllTabDisplayNames();
 
-        // Make the newly opened document the active document
-        SectionContainer.ActivateDocument(fileResource, activeSectionIndex);
+        if (activate)
+        {
+            SectionContainer.ActivateDocument(fileResource, activeSectionIndex);
+        }
 
         // Navigate to location if specified
         if (!string.IsNullOrEmpty(location))
@@ -367,7 +368,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return Result.Ok();
     }
 
-    public async Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address)
+    public async Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address, bool activate = true)
     {
         // Validate section index
         int sectionIndex = address.SectionIndex;
@@ -387,10 +388,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 SectionContainer.MoveTabToSection(existingTab, sectionIndex);
             }
 
-            // Activate the tab and make it the active document
-            var targetSection = SectionContainer.GetSection(sectionIndex);
-            targetSection.SelectTab(existingTab);
-            SectionContainer.ActivateDocument(fileResource, sectionIndex);
+            if (activate)
+            {
+                var targetSection = SectionContainer.GetSection(sectionIndex);
+                targetSection.SelectTab(existingTab);
+                SectionContainer.ActivateDocument(fileResource, sectionIndex);
+            }
+
             return Result.Ok();
         }
 
@@ -403,7 +407,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
         targetSectionForNew.AddTab(documentTab);
-        targetSectionForNew.SelectTab(documentTab);
+
+        if (activate)
+        {
+            targetSectionForNew.SelectTab(documentTab);
+        }
 
         var createResult = await ViewModel.CreateDocumentView(fileResource);
         if (createResult.IsFailure)
@@ -420,8 +428,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
 
-        // Make the newly opened document the active document
-        SectionContainer.ActivateDocument(fileResource, sectionIndex);
+        if (activate)
+        {
+            SectionContainer.ActivateDocument(fileResource, sectionIndex);
+        }
 
         return Result.Ok();
     }
@@ -547,12 +557,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return Result.Ok();
     }
 
-    public Result SelectDocument(ResourceKey fileResource)
+    public Result ActivateDocument(ResourceKey fileResource)
     {
         var (section, documentTab) = SectionContainer.FindDocumentTab(fileResource);
         if (documentTab != null && section != null)
         {
-            // Selecting a tab will trigger section selection, which will update container selection
+            // Selecting a tab will trigger section selection, which will update container activation
             section.SelectTab(documentTab);
             return Result.Ok();
         }

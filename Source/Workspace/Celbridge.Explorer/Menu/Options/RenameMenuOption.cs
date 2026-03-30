@@ -15,7 +15,7 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public int Priority => 5;
-    public string GroupId => ExplorerMenuGroups.Clipboard;
+    public string GroupId => nameof(ExplorerMenuGroup.EditActions);
 
     public RenameMenuOption(
         IStringLocalizer stringLocalizer,

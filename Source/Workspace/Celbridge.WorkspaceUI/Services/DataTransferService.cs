@@ -108,7 +108,13 @@ public class DataTransferService : IDataTransferService, IDisposable
             return Result<IResourceTransfer>.Fail($"Resource '{destFolderResource}' is not a folder resource");
         }
 
-        var destFolderPath = resourceRegistry.GetResourcePath(resource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result<IResourceTransfer>.Fail($"Failed to resolve path for resource: '{destFolderResource}'")
+                .WithErrors(resolveResult);
+        }
+        var destFolderPath = resolveResult.Value;
         if (!Directory.Exists(destFolderPath))
         {
             return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");

@@ -16,10 +16,10 @@ public interface IDocumentsService
     Task RestorePanelState();
 
     /// <summary>
-    /// The resource key for the currently selected document.
-    /// This is the empty resource if no document is currently selected.
+    /// The resource key for the currently active document.
+    /// This is the empty resource if no document is currently active.
     /// </summary>
-    ResourceKey SelectedDocument { get; }
+    ResourceKey ActiveDocument { get; }
 
     /// <summary>
     /// Gets all open documents with their addresses.
@@ -52,15 +52,16 @@ public interface IDocumentsService
 
     /// <summary>
     /// Opens a file resource as a document in the documents panel, optionally reloading if already open
-    /// and navigating to a specific location.
+    /// and navigating to a specific location. When activate is true, the document becomes the active tab.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "");
+    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "", bool activate = true);
 
     /// <summary>
     /// Opens a file resource as a document in a specific section of the documents panel.
     /// If the document is already open in another section, it will be moved to the target section.
+    /// When activate is true, the document becomes the active tab.
     /// </summary>
-    Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "");
+    Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "", bool activate = true);
 
     /// <summary>
     /// Closes an opened document in the documents panel.
@@ -69,10 +70,10 @@ public interface IDocumentsService
     Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose);
 
     /// <summary>
-    /// Selects an opened document in the documents panel.
+    /// Activates an opened document in the documents panel, making it the active tab.
     /// Fails if the specified document is not opened.
     /// </summary>
-    Result SelectDocument(ResourceKey fileResource);
+    Result ActivateDocument(ResourceKey fileResource);
 
     /// <summary>
     /// Save any modified documents to disk.
@@ -88,8 +89,8 @@ public interface IDocumentsService
     Task StoreDocumentLayout();
 
     /// <summary>
-    /// Stores the currently selected document in persistent storage.
-    /// This document will be selected at the start of the next editing session.
+    /// Stores the currently active document in persistent storage.
+    /// This document will be activated at the start of the next editing session.
     /// </summary>
-    Task StoreSelectedDocument();
+    Task StoreActiveDocument();
 }

@@ -1,12 +1,16 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.Versioning;
-using System.Security.Cryptography;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
+using Celbridge.Server;
 using Celbridge.Console;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Logging;
+using Celbridge.Settings;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Logging;
 
 namespace Celbridge.Python.Services;
 
@@ -23,52 +27,43 @@ public class PythonService : IPythonService, IDisposable
     private const string UVBinFolderName = "uv_bin";
     private const string IPythonCacheFolderName = "ipython";
     private const string PythonFingerprintFileName = "python_config.fingerprint";
-
-    // Environment variable names
-    private const string UVPythonInstallDirEnv = "UV_PYTHON_INSTALL_DIR";
-    private const string UVToolDirEnv = "UV_TOOL_DIR";
-    private const string UVToolBinDirEnv = "UV_TOOL_BIN_DIR";
-    private const string CelbridgeVersionEnv = "CELBRIDGE_VERSION";
-    private const string PythonLogLevelEnv = "PYTHON_LOG_LEVEL";
-    private const string PythonLogDirEnv = "PYTHON_LOG_DIR";
-    private const string PythonLogMaxFilesEnv = "PYTHON_LOG_MAX_FILES";
-    private const string CelbridgeRpcPipeEnv = "CELBRIDGE_RPC_PIPE";
-    private const string CelbridgeUVPathEnv = "CELBRIDGE_UV_PATH";
-    private const string CelbridgeUVCacheDirEnv = "CELBRIDGE_UV_CACHE_DIR";
-    private const string CelbridgePackagePathEnv = "CELBRIDGE_PACKAGE_PATH";
+    private const string InstalledVersionFileName = "installed_version.txt";
 
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IEnvironmentService _environmentService;
+    private readonly IServerService _serverService;
     private readonly IMessengerService _messengerService;
+    private readonly IFeatureFlags _featureFlags;
     private readonly ILogger<PythonService> _logger;
-    private readonly Func<string, IRpcService> _rpcServiceFactory;
-    private readonly Func<IRpcService, IPythonRpcClient> _pythonRpcClientFactory;
-
-    private IRpcService? _rpcService;
-    private IPythonRpcClient? _pythonRpcClient;
-
-    public IPythonRpcClient RpcClient => _pythonRpcClient!;
-
-    public bool IsPythonHostAvailable { get; private set; } = false;
+    private readonly ITcpTransport _tcpTransport;
+    private CancellationTokenSource? _rpcCancellationTokenSource;
+    private string _pendingFingerprint = string.Empty;
+    private string _pendingCacheDir = string.Empty;
+    private bool _fingerprintSaved;
+    private volatile bool _hadConnection;
 
     public PythonService(
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IEnvironmentService environmentService,
+        IServerService serverService,
         IMessengerService messengerService,
+        IFeatureFlags featureFlags,
         ILogger<PythonService> logger,
-        Func<string, IRpcService> rpcServiceFactory,
-        Func<IRpcService, IPythonRpcClient> pythonRpcClientFactory)
+        ITcpTransport tcpTransport)
     {
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _environmentService = environmentService;
+        _serverService = serverService;
         _messengerService = messengerService;
+        _featureFlags = featureFlags;
         _logger = logger;
-        _rpcServiceFactory = rpcServiceFactory;
-        _pythonRpcClientFactory = pythonRpcClientFactory;
+        _tcpTransport = tcpTransport;
     }
+
+    public bool IsPythonHostAvailable { get; private set; } = false;
 
     [SupportedOSPlatform("windows10.0.10240.0")]
     public async Task<Result> InitializePython()
@@ -105,7 +100,25 @@ public class PythonService : IPythonService, IDisposable
             // Ensure that python support files are installed
             var workingDir = project.ProjectFolderPath;
 
-            var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
+            var environmentInfo = _environmentService.GetEnvironmentInfo();
+            var appVersion = environmentInfo.AppVersion;
+
+            // Load the saved fingerprint once for use in both the pre-install check
+            // and the offline mode comparison later.
+            var cacheDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
+            var savedFingerprint = LoadSavedFingerprint(cacheDir);
+
+            // If no fingerprint file exists, delete the installer's version marker BEFORE
+            // the installer runs. This ensures the installer re-extracts assets (including
+            // the wheel) even if the app version hasn't changed.
+            if (savedFingerprint is null)
+            {
+                _logger.LogInformation("No Python fingerprint found, will force full reinstall");
+                var pythonFolderForCleanup = Path.Combine(
+                    ApplicationData.Current.LocalFolder.Path, "Python");
+                DeleteInstalledVersionMarker(pythonFolderForCleanup);
+            }
+
             var installResult = await PythonInstaller.InstallPythonAsync(appVersion);
             if (installResult.IsFailure)
             {
@@ -137,39 +150,46 @@ public class PythonService : IPythonService, IDisposable
             // Set where uv installs Python interpreters
             var uvPythonInstallDir = Path.Combine(pythonFolder, UVPythonInstallsFolderName);
             Directory.CreateDirectory(uvPythonInstallDir);
-            Environment.SetEnvironmentVariable(UVPythonInstallDirEnv, uvPythonInstallDir);
 
-            // Set UV_TOOL_DIR and UV_TOOL_BIN_DIR so the REPL process can access the installed celbridge tool
-            // e.g. !celbridge help
-            var uvToolDir = Path.Combine(pythonFolder, UVToolsFolderName);
-            var uvToolBinDir = Path.Combine(pythonFolder, UVBinFolderName);
-            Environment.SetEnvironmentVariable(UVToolDirEnv, uvToolDir);
-            Environment.SetEnvironmentVariable(UVToolBinDirEnv, uvToolBinDir);
-
-            // Ensure the ipython storage dir exists
+            // Prepare the per-process environment variables for the terminal.
+            // These are injected into the child process environment block rather than set
+            // process-wide, so multiple terminals can have different configurations.
             var ipythonDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder, IPythonCacheFolderName);
             Directory.CreateDirectory(ipythonDir);
 
-            // Set the Celbridge version number as an environment variable so we can print it at startup.
-            var environmentInfo = _environmentService.GetEnvironmentInfo();
-            var version = environmentInfo.AppVersion;
             var configuration = environmentInfo.Configuration;
-            var celbridgeVersion = configuration == "Debug" ? $"{version} (Debug)" : $"{version}";
-            Environment.SetEnvironmentVariable(CelbridgeVersionEnv, celbridgeVersion);
+            var celbridgeVersion = configuration == "Debug" ? $"{appVersion} (Debug)" : $"{appVersion}";
 
-            // Set Python logging environment variables
-            Environment.SetEnvironmentVariable(PythonLogLevelEnv, "DEBUG");
             var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.LogsFolder);
-            Environment.SetEnvironmentVariable(PythonLogDirEnv, pythonLogFolder);
-            Environment.SetEnvironmentVariable(PythonLogMaxFilesEnv, PythonLogMaxFiles.ToString());
 
-            // Generate unique pipe name for JSON-RPC communication
-            var pipeName = $"celbridge_rpc_{Guid.NewGuid():N}";
-            Environment.SetEnvironmentVariable(CelbridgeRpcPipeEnv, pipeName);
-            _logger.LogInformation("Generated RPC pipe name: {PipeName}", pipeName);
+            // Find a free TCP port for JSON-RPC communication
+            var rpcPort = GetAvailableTcpPort();
+            _logger.LogInformation("Selected RPC TCP port: {Port}", rpcPort);
+
+            // Build the per-process environment for the terminal
+            var uvToolsFolder = Path.Combine(pythonFolder, UVToolsFolderName);
+            var uvBinFolder = Path.Combine(pythonFolder, UVBinFolderName);
+            var currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+            var terminalPath = currentPath.Contains(uvBinFolder, StringComparison.OrdinalIgnoreCase)
+                ? currentPath
+                : uvBinFolder + Path.PathSeparator + currentPath;
+
+            var terminalEnvironment = new Dictionary<string, string>
+            {
+                ["CELBRIDGE_RPC_PORT"] = rpcPort.ToString(),
+                ["CELBRIDGE_MCP_PORT"] = _serverService.Port.ToString(),
+                ["CELBRIDGE_MCP_TOOLS"] = _featureFlags.IsEnabled(FeatureFlagConstants.McpTools) ? "1" : "0",
+                ["CELBRIDGE_PROJECT_FOLDER"] = project.ProjectFolderPath,
+                ["CELBRIDGE_VERSION"] = celbridgeVersion,
+                ["CELBRIDGE_IPYTHON_DIR"] = ipythonDir,
+                ["PYTHON_LOG_LEVEL"] = "DEBUG",
+                ["PYTHON_LOG_DIR"] = pythonLogFolder,
+                ["PYTHON_LOG_MAX_FILES"] = PythonLogMaxFiles.ToString(),
+                ["UV_PYTHON_INSTALL_DIR"] = uvPythonInstallDir,
+                ["PATH"] = terminalPath
+            };
 
             // Get the path to the celbridge wheel file
-            // This is the CLI application that implements the core functionality of Celbridge.
             var findCelbridgeWheelResult = FindWheelFile(pythonFolder, "celbridge");
             if (findCelbridgeWheelResult.IsFailure)
             {
@@ -178,26 +198,8 @@ public class PythonService : IPythonService, IDisposable
             }
             var celbridgeWheelPath = findCelbridgeWheelResult.Value;
 
-            // Set environment variables for celbridge_host to use uv with dependency isolation
-            Environment.SetEnvironmentVariable(CelbridgeUVPathEnv, uvExePath);
-            Environment.SetEnvironmentVariable(CelbridgeUVCacheDirEnv, uvCacheDir);
-            Environment.SetEnvironmentVariable(CelbridgePackagePathEnv, celbridgeWheelPath);
-
-            // Get the path to the celbridge_host wheel file
-            var findHostWheelResult = FindWheelFile(pythonFolder, "celbridge_host");
-            if (findHostWheelResult.IsFailure)
-            {
-                return Result.Fail("Failed to find celbridge_host wheel file")
-                    .WithErrors(findHostWheelResult);
-            }
-            var hostWheelPath = findHostWheelResult.Value;
-
-            // The celbridge_host and ipython packages are always included
-            var packageArgs = new List<string>()
-            {
-                "--with", hostWheelPath,
-                "--with", IPythonCacheFolderName
-            };
+            // The celbridge wheel includes ipython as a dependency, so no separate --with is needed
+            var packageArgs = new List<string>();
 
             // Add any additional packages specified in the project config
             var pythonPackages = pythonConfig.Dependencies;
@@ -211,88 +213,106 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Determine if we can use offline mode (no network required).
-            // The fingerprint includes the config AND the directory structure of the Python install
-            // folder on disk. If the app is uninstalled and reinstalled, the directory structure
-            // changes (missing Python versions, cached packages, etc.), causing a fingerprint
-            // mismatch that forces online mode to re-download everything.
-            var cacheDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
-            var installDirFingerprint = ComputeDirectoryFingerprint(pythonFolder);
-            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, hostWheelPath, celbridgeWheelPath, pythonPackages, installDirFingerprint);
-            var savedFingerprint = LoadSavedFingerprint(cacheDir);
+            // The fingerprint includes the config and a hash of the wheel file contents.
+            // A change to any of these forces online mode to re-download everything.
+            var wheelHash = FileHashHelper.HashFileContents(celbridgeWheelPath);
+            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, wheelHash, pythonPackages);
             var useOfflineMode = currentFingerprint == savedFingerprint;
+
             if (useOfflineMode)
             {
                 _logger.LogInformation("Python config unchanged since last run, using offline mode");
             }
+            else if (savedFingerprint is null)
+            {
+                // No fingerprint file found. Wipe the uv cache and tool folders to force
+                // a full reinstall of the Python interpreter, packages, and tools.
+                // The installed version marker was already deleted before the installer ran.
+                _logger.LogInformation("No Python fingerprint found, clearing uv cache for full reinstall");
+                ClearUvCache(uvCacheDir);
+                ClearUvCache(uvToolsFolder);
+                ClearUvCache(uvBinFolder);
+            }
+            else
+            {
+                _logger.LogInformation("Python config changed since last run, using online mode");
+            }
 
-            // Run the celbridge module then drop to the IPython REPL
-            // The order of the command line arguments is important!
+            // Install the celbridge package as a uv tool so the 'celbridge' command is
+            // available on PATH for the user to type in the terminal after exiting the REPL.
+            var shouldInstallTool = !useOfflineMode || !Directory.Exists(uvBinFolder);
+            if (shouldInstallTool)
+            {
+                await InstallCelbridgeToolAsync(
+                    uvExePath, uvCacheDir, uvToolsFolder, uvBinFolder,
+                    pythonVersion!, celbridgeWheelPath);
+            }
 
-            var builder = new CommandLineBuilder(uvExePath)
-                .Add("run")                                 // uv run
-                .Add("--cache-dir", uvCacheDir);             // cache uv files in app data folder (not globally per-user)
+            // Build the inner command that launches the celbridge Python connector
+            var uvBuilder = new CommandLineBuilder(uvExePath)
+                .Add("run")
+                .Add("--cache-dir", uvCacheDir);
 
             if (useOfflineMode)
             {
-                builder.Add("--offline");                   // use only locally cached packages (no network required)
+                uvBuilder.Add("--offline");
             }
 
-            var commandLine = builder
-                .Add("--no-project")                        // ignore pyproject.toml file if present (dependencies are passed via --with instead)
-                .Add("--python", pythonVersion!)            // python interpreter version
-                .Add("--managed-python")                    // only use uv-managed Python, ignore system Python
-                                                            //.Add("--refresh-package", "celbridge_host") // uncomment to always refresh the celbridge_host package
-                .Add(packageArgs.ToArray())                 // specify the packages to install     
-                .Add("python")                              // run the python interpreter
-                .Add("-m", "IPython")                       // use IPython
-                .Add("--no-banner")                         // don't show the IPython banner
-                .Add("--ipython-dir", ipythonDir)           // use a ipython storage dir in the celbridge cache folder
-                .Add("-m", "celbridge_host")                // run the celbridge module
-                .Add("-i")                                  // drop to interactive mode after running celbridge module
+            var uvCommand = uvBuilder
+                .Add("--no-project")
+                .Add("--python", pythonVersion!)
+                .Add("--managed-python")
+                .Add("--with", celbridgeWheelPath)
+                .Add(packageArgs.ToArray())
+                .Add("python")
+                .Add("-m", "celbridge")
                 .ToString();
 
-            // Save the current fingerprint so subsequent runs can use offline mode
-            SaveFingerprint(cacheDir, currentFingerprint);
+            // Wrap in a shell so the terminal stays alive after the REPL exits.
+            // This lets the user type 'celbridge-py' to start a new session.
+            var commandLine = OperatingSystem.IsWindows()
+                ? $"cmd.exe /k \"{uvCommand}\""
+                : $"bash -c '{uvCommand}; exec bash'";
+
+            // Cancel any previous RPC listening loop in case InitializePython
+            // is called again after a project reload.
+            _rpcCancellationTokenSource?.Cancel();
+            _rpcCancellationTokenSource?.Dispose();
+
+            // Unsubscribe previous handlers to prevent accumulation on reload
+            _tcpTransport.ConnectionAccepted -= OnConnectionAccepted;
+            _tcpTransport.ConnectionLost -= OnConnectionLost;
+
+            // Reset connection tracking state for this initialization
+            _pendingFingerprint = currentFingerprint;
+            _pendingCacheDir = cacheDir;
+            _fingerprintSaved = false;
+            _hadConnection = false;
+
+            // Subscribe to connection events to track Python host availability
+            _tcpTransport.ConnectionAccepted += OnConnectionAccepted;
+            _tcpTransport.ConnectionLost += OnConnectionLost;
+
+            // Start the RPC accept loop in the background
+            _rpcCancellationTokenSource = new CancellationTokenSource();
+            _ = Task.Run(() => _tcpTransport.StartListeningAsync(rpcPort, _rpcCancellationTokenSource.Token));
 
             var terminal = _workspaceWrapper.WorkspaceService.ConsoleService.Terminal;
 
-            // Start the terminal process
-            // Any errors during Python/uv initialization will be displayed in the terminal
-            terminal.Start(commandLine, workingDir);
-            _logger.LogInformation("Python terminal started successfully");
-
-            // Create RPC service (but don't connect yet)
-            _rpcService = _rpcServiceFactory(pipeName);
-
-            // Connect to RPC in the background without blocking workspace loading
-            // The Python process needs time to start up and create the RPC server
-            _ = Task.Run(async () =>
+            terminal.ProcessExited += (sender, eventArgs) =>
             {
-                try
+                if (!_hadConnection)
                 {
-                    // Wait for Python process to start RPC server (with timeout)
-                    var connectResult = await _rpcService.ConnectAsync();
-                    if (connectResult.IsFailure)
-                    {
-                        _logger.LogWarning("Failed to connect to Python RPC server: {Error}", connectResult.Error);
-                        _logger.LogWarning("Python REPL is available, but RPC features may not work until the connection is established.");
-                        return;
-                    }
-
-                    // Create Python RPC client for strongly-typed Python method calls
-                    _pythonRpcClient = _pythonRpcClientFactory(_rpcService);
-                    _logger.LogInformation("Python RPC client connected successfully");
-
-                    IsPythonHostAvailable = true;
-
-                    var message = new PythonHostInitializedMessage();
-                    _messengerService.Send(message);
+                    _logger.LogError("Python process exited before establishing an RPC connection");
+                    var projectFile = Path.GetFileName(project.ProjectFilePath);
+                    var errorMessage = new ConsoleErrorMessage(ConsoleErrorType.PythonHostProcessError, projectFile);
+                    _messengerService.Send(errorMessage);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Exception occurred while connecting to Python RPC server");
-                }
-            });
+            };
+
+            // Start the terminal process with per-process environment variables
+            terminal.Start(commandLine, workingDir, terminalEnvironment);
+            _logger.LogInformation("Python terminal started successfully");
 
             return Result.Ok();
         }
@@ -303,25 +323,142 @@ public class PythonService : IPythonService, IDisposable
         }
     }
 
+    private void OnConnectionAccepted(int connectionId)
+    {
+        _logger.LogInformation("Python RPC connection {ConnectionId} established", connectionId);
+        _hadConnection = true;
+
+        // Save the fingerprint on the first successful connection.
+        // This means subsequent runs can use offline mode.
+        if (!_fingerprintSaved)
+        {
+            SaveFingerprint(_pendingCacheDir, _pendingFingerprint);
+            _fingerprintSaved = true;
+        }
+
+        IsPythonHostAvailable = true;
+        _messengerService.Send(new PythonHostInitializedMessage());
+    }
+
+    private void OnConnectionLost(int connectionId)
+    {
+        _logger.LogInformation("Python RPC connection {ConnectionId} lost", connectionId);
+        IsPythonHostAvailable = _tcpTransport.ActiveConnectionCount > 0;
+    }
+
     /// <summary>
-    /// Computes a fingerprint of the current Python configuration and installed state.
-    /// Includes the directory structure of the Python install folder so that any change
-    /// to installed Python versions, cached packages, or tools causes a fingerprint mismatch
+    /// Installs the celbridge package as a uv tool so the 'celbridge' command is
+    /// available on PATH for manual invocation in the terminal.
+    /// </summary>
+    [SupportedOSPlatform("windows10.0.10240.0")]
+    private async Task InstallCelbridgeToolAsync(
+        string uvExePath,
+        string uvCacheDir,
+        string uvToolsFolder,
+        string uvBinFolder,
+        string pythonVersion,
+        string celbridgeWheelPath)
+    {
+        _logger.LogInformation("Installing celbridge as uv tool");
+
+        // Build the arguments list separately from the executable path.
+        // ProcessStartInfo takes FileName and Arguments as separate fields,
+        // so we don't use CommandLineBuilder here (which combines them).
+        var toolInstallArguments = new CommandLineBuilder("tool")
+            .Add("install")
+            .Add("--force")
+            .Add("--cache-dir", uvCacheDir)
+            .Add("--python", pythonVersion)
+            .Add("--managed-python")
+            .Add(celbridgeWheelPath)
+            .ToString();
+
+        _logger.LogDebug("uv tool install command: {FileName} {Arguments}", uvExePath, toolInstallArguments);
+
+        // uv tool install uses UV_TOOL_DIR and UV_TOOL_BIN_DIR environment variables
+        // (not CLI flags) to control where tools are installed.
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = uvExePath,
+            Arguments = toolInstallArguments,
+            WorkingDirectory = Path.GetDirectoryName(uvExePath)!,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        processStartInfo.Environment["UV_TOOL_DIR"] = uvToolsFolder;
+        processStartInfo.Environment["UV_TOOL_BIN_DIR"] = uvBinFolder;
+        processStartInfo.Environment["UV_PYTHON_INSTALL_DIR"] =
+            Path.Combine(Path.GetDirectoryName(uvExePath)!, UVPythonInstallsFolderName);
+
+        using var process = Process.Start(processStartInfo);
+        if (process != null)
+        {
+            // Read stdout and stderr before waiting to avoid deadlocks
+            // when the output buffer fills up
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+
+            // Timeout after 2 minutes to avoid hanging indefinitely if uv
+            // stalls on network issues or DNS resolution.
+            using var timeoutCancellation = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            try
+            {
+                await process.WaitForExitAsync(timeoutCancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("uv tool install timed out after 2 minutes, killing process");
+                process.Kill(entireProcessTree: true);
+                return;
+            }
+
+            var stdout = await stdoutTask;
+            var stderr = await stderrTask;
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogWarning("uv tool install exited with code {ExitCode}. Stderr: {Stderr}. Stdout: {Stdout}",
+                    process.ExitCode, stderr, stdout);
+            }
+            else
+            {
+                _logger.LogInformation("celbridge tool installed successfully");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds an available TCP port by binding to port 0 and reading the assigned port.
+    /// </summary>
+    private static int GetAvailableTcpPort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
+    }
+
+    /// <summary>
+    /// Computes a fingerprint of the current Python configuration.
+    /// Includes a hash of the wheel file contents so that any change to the app
+    /// version, wheel content, or dependencies causes a fingerprint mismatch
     /// that forces online mode.
     /// </summary>
     private static string ComputeConfigFingerprint(
         string appVersion,
         string pythonVersion,
-        string hostWheelPath,
         string celbridgeWheelPath,
-        IReadOnlyList<string>? dependencies,
-        string installDirFingerprint)
+        string wheelHash,
+        IReadOnlyList<string>? dependencies)
     {
         var sb = new StringBuilder();
         sb.AppendLine(appVersion);
         sb.AppendLine(pythonVersion);
-        sb.AppendLine(Path.GetFileName(hostWheelPath));
         sb.AppendLine(Path.GetFileName(celbridgeWheelPath));
+        sb.AppendLine(wheelHash);
 
         if (dependencies is not null)
         {
@@ -331,31 +468,7 @@ public class PythonService : IPythonService, IDisposable
             }
         }
 
-        sb.AppendLine(installDirFingerprint);
-
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
-        return Convert.ToHexString(bytes);
-    }
-
-    /// <summary>
-    /// Computes a fingerprint of the directory structure under the given folder.
-    /// Uses sorted subdirectory names (recursively) so that any change to the installed
-    /// Python versions, cached packages, or tools produces a different fingerprint.
-    /// </summary>
-    private static string ComputeDirectoryFingerprint(string folderPath)
-    {
-        if (!Directory.Exists(folderPath))
-        {
-            return string.Empty;
-        }
-
-        var directoryNames = Directory.GetDirectories(folderPath, "*", SearchOption.AllDirectories)
-            .Select(path => Path.GetRelativePath(folderPath, path))
-            .OrderBy(name => name, StringComparer.Ordinal);
-
-        var combined = string.Join("\n", directoryNames);
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
-        return Convert.ToHexString(bytes);
+        return FileHashHelper.HashString(sb.ToString());
     }
 
     /// <summary>
@@ -399,7 +512,47 @@ public class PythonService : IPythonService, IDisposable
     }
 
     /// <summary>
-    /// Finds the latest version of a wheel file for the specified package in the given folder.
+    /// Clears the uv package cache folder to force a full reinstall of the Python
+    /// interpreter and all packages on the next uv run.
+    /// </summary>
+    private static void ClearUvCache(string uvCacheFolder)
+    {
+        try
+        {
+            if (Directory.Exists(uvCacheFolder))
+            {
+                Directory.Delete(uvCacheFolder, recursive: true);
+            }
+        }
+        catch
+        {
+            // Non-critical: if we can't clear the cache, uv will still
+            // check for updates in online mode.
+        }
+    }
+
+    /// <summary>
+    /// Deletes the installed version marker file so that PythonInstaller treats
+    /// the next run as a fresh install, re-extracting the wheel and uv assets.
+    /// </summary>
+    private static void DeleteInstalledVersionMarker(string pythonFolder)
+    {
+        try
+        {
+            var markerPath = Path.Combine(pythonFolder, InstalledVersionFileName);
+            if (File.Exists(markerPath))
+            {
+                File.Delete(markerPath);
+            }
+        }
+        catch
+        {
+            // Non-critical: PythonInstaller will still check the version content.
+        }
+    }
+
+    /// <summary>
+    /// Finds a wheel file for the specified package in the given folder.
     /// </summary>
     private static Result<string> FindWheelFile(string folderPath, string packageName)
     {
@@ -413,45 +566,7 @@ public class PythonService : IPythonService, IDisposable
                 return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");
             }
 
-            // Parse version numbers and find the latest
-            var wheelVersions = wheelFiles
-                .Select(filePath =>
-                {
-                    var fileName = Path.GetFileName(filePath);
-                    Version? version = null;
-
-                    // Extract version from wheel filename (format: {packageName}-1.2.3-py3-none-any.whl)
-                    try
-                    {
-                        var parts = fileName.Split('-');
-                        if (parts.Length >= 2 && parts[0] == packageName)
-                        {
-                            var versionString = parts[1];
-                            Version.TryParse(versionString, out version);
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore parsing errors
-                    }
-
-                    return new
-                    {
-                        Path = filePath,
-                        FileName = fileName,
-                        Version = version
-                    };
-                })
-                .Where(x => x.Version != null)
-                .OrderByDescending(x => x.Version)
-                .ToList();
-
-            if (wheelVersions.Count == 0)
-            {
-                return Result<string>.Fail($"No valid versioned wheel files found for package '{packageName}'");
-            }
-
-            return Result<string>.Ok(wheelVersions.First().Path);
+            return Result<string>.Ok(wheelFiles[0]);
         }
         catch (Exception ex)
         {
@@ -474,9 +589,11 @@ public class PythonService : IPythonService, IDisposable
         {
             if (disposing)
             {
-                // Dispose RPC service
-                _rpcService?.Dispose();
-                _rpcService = null;
+                _rpcCancellationTokenSource?.Cancel();
+                _rpcCancellationTokenSource?.Dispose();
+                _rpcCancellationTokenSource = null;
+
+                _tcpTransport.Dispose();
             }
 
             _disposed = true;

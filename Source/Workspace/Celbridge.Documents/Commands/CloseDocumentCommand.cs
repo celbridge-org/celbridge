@@ -51,4 +51,5 @@ public class CloseDocumentCommand : CommandBase, ICloseDocumentCommand
             command.ForceClose = forceClose;
         });
     }
+
 }

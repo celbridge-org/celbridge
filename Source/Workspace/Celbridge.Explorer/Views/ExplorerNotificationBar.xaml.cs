@@ -66,6 +66,8 @@ public sealed partial class ExplorerNotificationBar : UserControl
             ResourceOperationType.Move => "Explorer_OperationFailed_Move",
             ResourceOperationType.Rename => "Explorer_OperationFailed_Rename",
             ResourceOperationType.Create => "Explorer_OperationFailed_Create",
+            ResourceOperationType.Archive => "Explorer_OperationFailed_Archive",
+            ResourceOperationType.Extract => "Explorer_OperationFailed_Extract",
             _ => "Explorer_OperationFailed_Unknown"
         };
 

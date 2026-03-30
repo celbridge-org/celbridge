@@ -113,6 +113,35 @@ public class CommandService : ICommandService
         return Result.Ok();
     }
 
+    public async Task<Result<TResult>> ExecuteAsync<TCommand, TResult>(
+        Action<TCommand>? configure = null,
+        [CallerFilePath] string filePath = "",
+        [CallerLineNumber] int lineNumber = 0)
+        where TCommand : IExecutableCommand<TResult>
+        where TResult : notnull
+    {
+        // ExecuteAsync<TCommand> resolves the command from DI internally, so we
+        // don't have direct access to the command instance. We capture a reference
+        // to it via the configure callback so we can read ResultValue after
+        // execution completes.
+        TCommand? capturedCommand = default;
+
+        var result = await ExecuteAsync<TCommand>(command =>
+        {
+            configure?.Invoke(command);
+            capturedCommand = command;
+        }, filePath, lineNumber);
+
+        if (result.IsFailure)
+        {
+            return Result<TResult>.Fail(result.FirstErrorMessage)
+                .WithErrors(result);
+        }
+
+        // The command populated ResultValue during its ExecuteAsync().
+        return Result<TResult>.Ok(capturedCommand!.ResultValue);
+    }
+
     public bool ContainsCommandsOfType<T>() where T : notnull
     {
         lock (_lock)
@@ -198,21 +227,29 @@ public class CommandService : ICommandService
                             _logger.LogError(executeResult, "Execute command failed");
                         }
 
+                        // Update the resource registry synchronously before notifying callers.
+                        // This ensures ExecuteAsync callers see an up-to-date registry.
+                        if (command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
+                        {
+                            var message = new RequestResourceRegistryUpdateMessage();
+                            _messengerService.Send(message);
+                        }
+
+                        // Refresh the resource tree view if the command requires it.
+                        // This is a lightweight alternative to UpdateResources for commands
+                        // that only modify tree view state without changing resources on disk.
+                        // Skip if UpdateResources is also set, as the registry update already
+                        // triggers a tree rebuild.
+                        if (command.CommandFlags.HasFlag(CommandFlags.RefreshResourceTree) &&
+                            !command.CommandFlags.HasFlag(CommandFlags.UpdateResources))
+                        {
+                            var refreshMessage = new RefreshResourceTreeMessage();
+                            _messengerService.Send(refreshMessage);
+                        }
+
                         // Call the OnExecute callback if it is set.
                         // This is used by the ExecuteAsync() methods to notify the caller about the execution.
                         command.OnExecute?.Invoke(executeResult);
-
-                        // Handle resource updates based on command flags
-                        if (command.CommandFlags.HasFlag(CommandFlags.ForceUpdateResources))
-                        {
-                            var message = new RequestResourceRegistryUpdateMessage(ForceImmediate: true);
-                            _messengerService.Send(message);
-                        }
-                        else if (command.CommandFlags.HasFlag(CommandFlags.RequestUpdateResources))
-                        {
-                            var message = new RequestResourceRegistryUpdateMessage(ForceImmediate: false);
-                            _messengerService.Send(message);
-                        }
 
                         // Save the workspace state if the command requires it.
                         if (command.CommandFlags.HasFlag(CommandFlags.SaveWorkspaceState))

@@ -6,7 +6,7 @@ namespace Celbridge.GenerativeAI.Commands;
 
 public class MakeTextCommand : CommandBase, IMakeTextCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.ForceUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     private ILogger<MakeTextCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -39,7 +39,13 @@ public class MakeTextCommand : CommandBase, IMakeTextCommand
 
         // Todo: Update this to support undo/redo
 
-        var destFilePath = resourceRegistry.GetResourcePath(DestFileResource);
+        var resolveDestResult = resourceRegistry.ResolveResourcePath(DestFileResource);
+        if (resolveDestResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{DestFileResource}'")
+                .WithErrors(resolveDestResult);
+        }
+        var destFilePath = resolveDestResult.Value;
 
         var parentFolder = Path.GetDirectoryName(destFilePath);
         if (!Directory.Exists(parentFolder))

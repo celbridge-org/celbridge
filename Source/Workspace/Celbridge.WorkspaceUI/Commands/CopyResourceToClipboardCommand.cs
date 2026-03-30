@@ -43,26 +43,30 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
 
             if (resource is IFileResource fileResource)
             {
-                var filePath = resourceRegistry.GetResourcePath(fileResource);
-                if (!string.IsNullOrEmpty(filePath))
+                var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+                if (resolveResult.IsFailure)
                 {
-                    var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
-                    if (storageFile != null)
-                    {
-                        storageItems.Add(storageFile);
-                    }
+                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.Error}");
+                    continue;
+                }
+                var storageFile = await StorageFile.GetFileFromPathAsync(resolveResult.Value);
+                if (storageFile != null)
+                {
+                    storageItems.Add(storageFile);
                 }
             }
             else if (resource is IFolderResource folderResource)
             {
-                var folderPath = resourceRegistry.GetResourcePath(folderResource);
-                if (!string.IsNullOrEmpty(folderPath))
+                var resolveResult = resourceRegistry.ResolveResourcePath(folderResource);
+                if (resolveResult.IsFailure)
                 {
-                    var storageFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
-                    if (storageFolder != null)
-                    {
-                        storageItems.Add(storageFolder);
-                    }
+                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.Error}");
+                    continue;
+                }
+                var storageFolder = await StorageFolder.GetFolderFromPathAsync(resolveResult.Value);
+                if (storageFolder != null)
+                {
+                    storageItems.Add(storageFolder);
                 }
             }
         }

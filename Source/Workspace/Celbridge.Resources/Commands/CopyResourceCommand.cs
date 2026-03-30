@@ -9,7 +9,7 @@ namespace Celbridge.Resources.Commands;
 
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
-    public override CommandFlags CommandFlags => CommandFlags.RequestUpdateResources;
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     public List<ResourceKey> SourceResources { get; set; } = new();
     public ResourceKey DestResource { get; set; }
@@ -288,4 +288,5 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             command.TransferMode = DataTransferMode.Move;
         });
     }
+
 }

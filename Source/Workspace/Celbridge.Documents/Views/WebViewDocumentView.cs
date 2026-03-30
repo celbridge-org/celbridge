@@ -4,6 +4,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Messaging;
+using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
 using Celbridge.WebView.Services;
@@ -18,6 +19,7 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 {
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
+    private readonly IFeatureFlags _featureFlags;
 
     // JSON-RPC infrastructure
     private WebViewHostChannel? _hostChannel;
@@ -48,10 +50,22 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
     protected WebViewDocumentView(
         IMessengerService messengerService,
-        IWebViewFactory webViewFactory)
+        IWebViewFactory webViewFactory,
+        IFeatureFlags featureFlags)
     {
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
+        _featureFlags = featureFlags;
+    }
+
+    /// <summary>
+    /// Returns whether browser developer tools should be enabled for this WebView.
+    /// The default checks the global webview-dev-tools feature flag.
+    /// Override to enforce a stricter or more permissive policy for a specific view.
+    /// </summary>
+    protected virtual bool GetDevToolsEnabled()
+    {
+        return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevTools);
     }
 
     /// <summary>
@@ -78,6 +92,9 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
         // Add to the visual tree
         WebViewContainer.Children.Add(WebView);
+
+        // Apply developer tools access policy for this view
+        WebView.CoreWebView2.Settings.AreDevToolsEnabled = GetDevToolsEnabled();
 
         // Set up focus handling
         WebView.GotFocus -= WebView_GotFocus;

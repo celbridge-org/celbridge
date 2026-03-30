@@ -10,6 +10,9 @@
 *.userosscache
 *.sln.docstates
 
+# Development app settings (use appsettings.json as template)
+appsettings.development.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -411,6 +414,9 @@ solution-config.props
 # SpreadJS library
 **/SpreadJS/lib/
 
+# SpreadJS license keys
+**/SpreadsheetLicenseKeys.private.cs
+
 # Celbridge ephemeral data
 .cache/
 .trash/
@@ -426,3 +432,6 @@ Source/Celbridge/DesignDocs/
 
 # Claude Code local settings
 **/.claude/settings.local.json
+
+# MCP server config (generated at runtime by the broker)
+.mcp.json

@@ -32,7 +32,8 @@ public class Module : IModule
 
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
-        return [new CodeEditorFactory(serviceProvider)];
+        var textBinarySniffer = serviceProvider.GetRequiredService<ITextBinarySniffer>();
+        return [new CodeEditorFactory(serviceProvider, textBinarySniffer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

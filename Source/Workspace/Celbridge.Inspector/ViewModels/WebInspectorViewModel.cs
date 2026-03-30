@@ -1,18 +1,24 @@
 using System.Text.Json.Nodes;
+using Celbridge.Server;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.WebView;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Inspector.ViewModels;
 
 public partial class WebInspectorViewModel : InspectorViewModel
 {
     private readonly ILogger<WebInspectorViewModel> _logger;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IFileServer _fileServer;
+    private readonly IWebViewService _webViewService;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsUrlValid))]
@@ -32,13 +38,24 @@ public partial class WebInspectorViewModel : InspectorViewModel
     [ObservableProperty]
     private string _currentUrl = string.Empty;
 
-    public bool IsUrlValid => ValidateAndNormalizeUrl(SourceUrl, out _);
+    public bool IsUrlValid => ValidateAndNormalizeUrl(SourceUrl, Resource, out _);
 
     public bool HasUrlError => !string.IsNullOrWhiteSpace(SourceUrl) && !IsUrlValid;
 
-    public string UrlErrorMessage => HasUrlError ? "The entered URL is not valid. Please enter a valid web address." : string.Empty;
+    public string UrlErrorMessage
+    {
+        get
+        {
+            if (!HasUrlError)
+            {
+                return string.Empty;
+            }
 
-    private bool _supressSaving;
+            return _stringLocalizer.GetString("WebInspector_InvalidUrl");
+        }
+    }
+
+    private bool _suppressSaving;
 
     // Code gen requires a parameterless constructor
     public WebInspectorViewModel()
@@ -48,12 +65,18 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
     public WebInspectorViewModel(
         ILogger<WebInspectorViewModel> logger,
+        IStringLocalizer stringLocalizer,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileServer projectFileServer,
+        IWebViewService webViewService)
     {
         _logger = logger;
+        _stringLocalizer = stringLocalizer;
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _fileServer = projectFileServer;
+        _webViewService = webViewService;
 
         _messengerService.Register<WebAppNavigationStateChangedMessage>(this, OnWebAppNavigationStateChanged);
         PropertyChanged += ViewModel_PropertyChanged;
@@ -73,18 +96,17 @@ public partial class WebInspectorViewModel : InspectorViewModel
     public IRelayCommand HomeCommand => new RelayCommand(Home_Executed);
     private void Home_Executed()
     {
-        if (!ValidateAndNormalizeUrl(SourceUrl, out var normalizedUrl))
+        if (!ValidateAndNormalizeUrl(SourceUrl, Resource, out var navigateUrl))
         {
             return;
         }
 
-        // Update the source URL if it was normalized (e.g., added https://)
-        if (normalizedUrl != SourceUrl)
+        if (string.Equals(navigateUrl, CurrentUrl, StringComparison.OrdinalIgnoreCase))
         {
-            SourceUrl = normalizedUrl;
+            return;
         }
 
-        _messengerService.Send(new WebAppNavigateMessage(Resource, normalizedUrl));
+        _messengerService.Send(new WebAppNavigateMessage(Resource, navigateUrl));
     }
 
     public IRelayCommand RefreshCommand => new RelayCommand(Refresh_Executed);
@@ -105,9 +127,9 @@ public partial class WebInspectorViewModel : InspectorViewModel
         _messengerService.Send(new WebAppGoForwardMessage(Resource));
     }
 
-    private static bool ValidateAndNormalizeUrl(string url, out string normalizedUrl)
+    private bool ValidateAndNormalizeUrl(string url, ResourceKey contextResource, out string navigateUrl)
     {
-        normalizedUrl = string.Empty;
+        navigateUrl = string.Empty;
 
         if (string.IsNullOrWhiteSpace(url))
         {
@@ -115,70 +137,118 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
 
         var trimmedUrl = url.Trim();
+        var urlKind = _webViewService.ClassifyUrl(trimmedUrl);
 
-        // If it already has a supported scheme, validate it as-is
-        if (trimmedUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            trimmedUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-            trimmedUrl.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        switch (urlKind)
         {
-            if (Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) &&
-                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeFile))
-            {
-                normalizedUrl = trimmedUrl;
-                return true;
-            }
+            case UrlType.WebUrl:
+                if (Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) &&
+                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                {
+                    navigateUrl = trimmedUrl;
+                    return true;
+                }
+                return false;
+
+            case UrlType.LocalAbsolute:
+                var resourcePath = _webViewService.StripLocalScheme(trimmedUrl);
+                var absoluteUrl = _fileServer.ResolveLocalFileUrl(resourcePath, contextResource);
+                if (!string.IsNullOrEmpty(absoluteUrl))
+                {
+                    navigateUrl = absoluteUrl;
+                    return true;
+                }
+                // Fall back to resource registry check in case the file
+                // server is not ready yet (e.g. during initial load).
+                return ResolveResourceKey(resourcePath, contextResource);
+
+            case UrlType.LocalPath:
+                var relativeUrl = _fileServer.ResolveLocalFileUrl(trimmedUrl, contextResource);
+                if (!string.IsNullOrEmpty(relativeUrl))
+                {
+                    navigateUrl = relativeUrl;
+                    return true;
+                }
+                return ResolveResourceKey(trimmedUrl, contextResource);
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks whether a path resolves to an existing resource, trying
+    /// relative to the context resource's folder first, then as an
+    /// absolute resource key.
+    /// </summary>
+    private bool ResolveResourceKey(string path, ResourceKey contextResource)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
             return false;
         }
 
-        // Try adding https:// and validate using .NET's Uri class
-        // This handles IDN (internationalized domain names), IPv4, IPv6, ports, paths, etc.
-        var urlWithScheme = $"https://{trimmedUrl}";
-        if (Uri.TryCreate(urlWithScheme, UriKind.Absolute, out var testUri) &&
-            testUri.Scheme == Uri.UriSchemeHttps)
+        if (!contextResource.IsEmpty)
         {
-            // Additional validation: ensure the host is a valid DNS name, IPv4, or IPv6
-            var hostType = Uri.CheckHostName(testUri.Host);
-            if (hostType == UriHostNameType.Dns ||
-                hostType == UriHostNameType.IPv4 ||
-                hostType == UriHostNameType.IPv6)
+            var contextFolder = contextResource.GetParent();
+            var candidateKeyString = contextFolder.IsEmpty ? path : $"{contextFolder}/{path}";
+            if (ResourceKey.TryCreate(candidateKeyString, out var candidateKey))
             {
-                normalizedUrl = urlWithScheme;
-                return true;
+                var getResult = _resourceRegistry.GetResource(candidateKey);
+                if (getResult.IsSuccess)
+                {
+                    return true;
+                }
             }
         }
 
-        return false;
+        if (!ResourceKey.TryCreate(path, out var absoluteKey))
+        {
+            return false;
+        }
+        var absoluteResult = _resourceRegistry.GetResource(absoluteKey);
+        return absoluteResult.IsSuccess;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(Resource))
         {
-            var webFilePath = _resourceRegistry.GetResourcePath(Resource);
-            var loadResult = LoadURL(webFilePath);
+            var resolveLoadResult = _resourceRegistry.ResolveResourcePath(Resource);
+            if (resolveLoadResult.IsFailure)
+            {
+                _logger.LogError(resolveLoadResult, $"Failed to resolve path for resource: '{Resource}'");
+                return;
+            }
+            var loadResult = LoadWebApp(resolveLoadResult.Value);
             if (loadResult.IsFailure)
             {
-                _logger.LogError(loadResult, $"Failed to load URL from file: {webFilePath}");
+                _logger.LogError(loadResult, $"Failed to load .webapp file: {resolveLoadResult.Value}");
                 return;
             }
 
-            _supressSaving = true;
+            _suppressSaving = true;
             SourceUrl = loadResult.Value;
-            _supressSaving = false;
+            _suppressSaving = false;
         }
-        else if (e.PropertyName == nameof(SourceUrl) && !_supressSaving)
+        else if (e.PropertyName == nameof(SourceUrl) && !_suppressSaving)
         {
-            var webFilePath = _resourceRegistry.GetResourcePath(Resource);
-            var saveResult = SaveURL(webFilePath, SourceUrl);
+            var resolveSaveResult = _resourceRegistry.ResolveResourcePath(Resource);
+            if (resolveSaveResult.IsFailure)
+            {
+                _logger.LogError(resolveSaveResult, $"Failed to resolve path for resource: '{Resource}'");
+                return;
+            }
+            var saveResult = SaveWebApp(resolveSaveResult.Value, SourceUrl);
             if (saveResult.IsFailure)
             {
-                _logger.LogError(saveResult, $"Failed to save URL to file: {webFilePath}");
+                _logger.LogError(saveResult, $"Failed to save .webapp file: {resolveSaveResult.Value}");
                 return;
             }
         }
     }
 
-    private Result<string> LoadURL(string webFilePath)
+    private Result<string> LoadWebApp(string webFilePath)
     {
         if (!File.Exists(webFilePath))
         {
@@ -191,7 +261,6 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
             if (string.IsNullOrEmpty(json))
             {
-                // No data populated yet in the .webapp file, default to empty url
                 return Result<string>.Ok(string.Empty);
             }
 
@@ -201,41 +270,33 @@ public partial class WebInspectorViewModel : InspectorViewModel
                 return Result<string>.Fail($"Failed to parse JSON file: {webFilePath}");
             }
 
-            var urlToken = jsonObject["sourceUrl"];
-            if (urlToken is null)
-            {
-                return Result<string>.Fail($"'sourceUrl' property not found in JSON file: {webFilePath}");
-            }
+            var sourceUrl = jsonObject["sourceUrl"]?.ToString() ?? string.Empty;
 
-            string url = urlToken.ToString();
-
-            return Result<string>.Ok(url);
+            return Result<string>.Ok(sourceUrl);
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"An exception occurred when loading URL from file: {webFilePath}")
+            return Result<string>.Fail($"An exception occurred when loading .webapp file: {webFilePath}")
                 .WithException(ex);
         }
     }
 
-    private Result SaveURL(string webFilePath, string url)
+    private Result SaveWebApp(string webFilePath, string sourceUrl)
     {
         try
         {
-            // Create a new JSON object with just the 'url' property
             var jsonObject = new JsonObject
             {
-                ["sourceUrl"] = url
+                ["sourceUrl"] = sourceUrl
             };
 
-            // Write the new JSON object to the file, overwriting any existing content
             File.WriteAllText(webFilePath, jsonObject.ToJsonString());
 
             return Result.Ok();
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when saving URL to file: {webFilePath}")
+            return Result.Fail($"An exception occurred when saving .webapp file: {webFilePath}")
                 .WithException(ex);
         }
     }

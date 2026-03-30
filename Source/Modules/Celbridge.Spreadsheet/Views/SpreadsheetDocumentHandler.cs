@@ -26,7 +26,7 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
     /// <summary>
     /// Whether a spreadsheet import is currently in progress.
     /// </summary>
-    internal bool IsImportInProgress { get; private set; }
+    internal bool IsImportInProgress { get; set; }
 
     /// <summary>
     /// Whether another import was requested while one was already in progress.
@@ -123,6 +123,7 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
         {
             _logger.LogDebug("Processing pending import request");
             HasPendingImport = false;
+            IsImportInProgress = true;
             _notifyExternalChange();
         }
     }

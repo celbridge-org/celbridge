@@ -11,4 +11,11 @@ public partial record CustomDocumentContribution : DocumentContribution
     /// Entry point for the custom editor (e.g., "index.html").
     /// </summary>
     public string EntryPoint { get; init; } = "index.html";
+
+    /// <summary>
+    /// Whether browser developer tools are allowed for this editor.
+    /// Defaults to true so extension authors can debug their editors.
+    /// The global webview-dev-tools feature flag must also be enabled for DevTools to be accessible.
+    /// </summary>
+    public bool DevToolsEnabled { get; init; } = true;
 }
