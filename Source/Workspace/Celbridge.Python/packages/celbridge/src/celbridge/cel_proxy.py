@@ -98,36 +98,47 @@ class CelProxy:
         )
         object.__setattr__(self, "agent", agent_namespace)
 
+        def run_test():
+            """Run the Celbridge MCP integration test suite.
+
+            Tests all tool namespaces: app, query, explorer, document, file, package.
+            """
+            from celbridge.test_suite import main as run_integration_test
+            run_integration_test()
+
+        object.__setattr__(self, "test", run_test)
+
+    _namespace_descriptions = {
+        "app": "Application status, logging, and alerts",
+        "document": "Open, edit, and manage editor documents",
+        "explorer": "File and folder operations in the project tree",
+        "file": "Read files, search, and query project structure",
+        "package": "Archive, publish, and install packages",
+        "query": "Agent context and Python API reference",
+    }
+
     def _build_help_doc(self) -> str:
-        """Build a comprehensive docstring for help(cel) from discovered tools."""
+        """Build a compact docstring for help(cel) listing namespaces only."""
         lines = [
             "Provides Python access to the Celbridge application via RPC.",
-            "Use help(cel.<namespace>) for details on a specific group.",
-            "Use help(<command>) for detailed help on a specific command.",
+            "",
+            "Namespaces (use help(cel.<name>) for details):",
             "",
         ]
 
-        top_level_tools, namespaced_tools = partition_tools_by_namespace(self._tools)
-
-        if top_level_tools:
-            for tool in sorted(top_level_tools, key=lambda t: t.get("alias", "")):
-                alias = tool.get("alias", "")
-                signature = build_signature(tool)
-                description = tool.get("description", "")
-                lines.append(f"cel.{alias}{signature}")
-                if description:
-                    lines.append(f"    {description}")
-                lines.append("")
+        _, namespaced_tools = partition_tools_by_namespace(self._tools)
 
         for namespace_name in sorted(namespaced_tools.keys()):
-            lines.append(format_namespace_doc(namespace_name, namespaced_tools[namespace_name]))
+            method_count = len(namespaced_tools[namespace_name])
+            description = self._namespace_descriptions.get(namespace_name, "")
+            lines.append(f"  cel.{namespace_name:<12} {description} ({method_count} methods)")
 
-        lines.append("cel.agent")
-        lines.append("    .claude()")
-        lines.append("        Launch restricted Claude Code CLI with Celbridge MCP tools")
         lines.append("")
-        lines.append("cel.tools()")
-        lines.append("    Print tool descriptors as JSON")
+        lines.append("Built-in commands:")
+        lines.append("")
+        lines.append("  cel.agent.claude()  Launch restricted Claude Code CLI")
+        lines.append("  cel.test()          Run the MCP integration test suite")
+        lines.append("  cel.tools()         Print raw tool descriptors as JSON")
 
         return "\n".join(lines)
 
@@ -195,7 +206,9 @@ class CelProxy:
         before being sent as JSON-RPC arguments.
         """
         alias = tool.get("alias", tool_name)
-        parameter_names = [p["name"] for p in tool.get("parameters", [])]
+        parameters = tool.get("parameters", [])
+        parameter_names = [p["name"] for p in parameters]
+        parameter_types = {p["name"]: p.get("type", "") for p in parameters}
         signature = build_signature(tool)
 
         def proxy(*args, **kwargs):
@@ -213,6 +226,12 @@ class CelProxy:
 
             for key, value in kwargs.items():
                 arguments[snake_to_camel(key)] = value
+
+            # Auto-serialize list/dict arguments when the tool parameter
+            # expects a string (e.g., edits_json, resources, files).
+            for param_name, param_value in arguments.items():
+                if isinstance(param_value, (list, dict)) and parameter_types.get(param_name) == "string":
+                    arguments[param_name] = json.dumps(param_value)
 
             result = self._client.call("tools/call", name=tool_name, arguments=arguments)
 

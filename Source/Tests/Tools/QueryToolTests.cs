@@ -39,6 +39,62 @@ public class QueryToolTests
         text.Should().Contain("explorer_get_context");
     }
 
+    [Test]
+    public void GetPythonApi_ReturnsApiReference()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetPythonApi());
+
+        text.Should().Contain("# Celbridge Python API Reference");
+    }
+
+    [Test]
+    public void GetPythonApi_ContainsAllNamespaces()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetPythonApi());
+
+        text.Should().Contain("## app");
+        text.Should().Contain("## document");
+        text.Should().Contain("## explorer");
+        text.Should().Contain("## file");
+        text.Should().Contain("## package");
+        text.Should().Contain("## query");
+    }
+
+    [Test]
+    public void GetPythonApi_ContainsMethodSignatures()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetPythonApi());
+
+        text.Should().Contain("document.apply_edits(");
+        text.Should().Contain("file_resource: str");
+        text.Should().Contain("file.read(");
+        text.Should().Contain("explorer.get_context()");
+    }
+
+    [Test]
+    public void GetPythonApi_ContainsReturnTypeAnnotations()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetPythonApi());
+
+        // Tools with /// <returns> tags should have return type annotations
+        text.Should().Contain("-> ");
+    }
+
+    [Test]
+    public void GetPythonApi_CompactFormat_NoMarkdownHeadingsPerMethod()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetPythonApi());
+
+        // Methods should be listed compactly with indent, not as ### headings
+        text.Should().NotContain("### app.");
+        text.Should().Contain("  app.get_status(");
+    }
+
     private static string GetResultText(CallToolResult result)
     {
         return result.Content.OfType<TextContentBlock>().Single().Text;

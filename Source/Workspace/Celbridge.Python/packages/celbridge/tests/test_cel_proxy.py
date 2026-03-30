@@ -389,26 +389,18 @@ def test_multiple_tools_in_same_namespace():
 
 
 def test_help_cel_shows_typed_signatures():
-    """Test that help(cel) via __doc__ includes typed signatures."""
+    """Test that help(cel) shows compact namespace listing."""
     tools = [
-        {"name": "app/version", "alias": "version", "description": "Returns the app version", "parameters": []},
-        {"name": "app/log", "alias": "log", "description": "Writes a log message", "parameters": []},
-        {
-            "name": "document/open",
-            "alias": "open",
-            "description": "Opens a document",
-            "parameters": [
-                {"name": "fileResource", "type": "string", "hasDefaultValue": False}
-            ],
-        },
+        {"name": "app/version", "alias": "app.version", "description": "Returns the app version", "parameters": []},
+        {"name": "app/log", "alias": "app.log", "description": "Writes a log message", "parameters": []},
     ]
     mock_client = _make_mock_client(tools)
     cel = CelProxy(mock_client)
 
     doc = cel.__doc__
-    assert "cel.version()" in doc
-    assert "cel.log()" in doc
-    assert "cel.open(file_resource: str)" in doc
+    assert "cel.app" in doc
+    assert "2 methods" in doc
+    assert "Namespaces" in doc
     assert "cel.tools()" in doc
 
 
@@ -450,9 +442,8 @@ def test_help_namespace_shows_all_commands():
 
 
 def test_help_cel_shows_namespaced_tools():
-    """Test that __doc__ groups dotted aliases under namespaces."""
+    """Test that __doc__ lists namespaces with method counts."""
     tools = [
-        {"name": "app/version", "alias": "version", "description": "Returns version", "parameters": []},
         {"name": "excel/delete_sheet", "alias": "sheet.delete", "description": "Deletes a sheet", "parameters": []},
         {"name": "excel/rename_sheet", "alias": "sheet.rename", "description": "Renames a sheet", "parameters": []},
     ]
@@ -460,10 +451,9 @@ def test_help_cel_shows_namespaced_tools():
     cel = CelProxy(mock_client)
 
     doc = cel.__doc__
-    assert "cel.version()" in doc
     assert "cel.sheet" in doc
-    assert ".delete()" in doc
-    assert ".rename()" in doc
+    assert "2 methods" in doc
+    assert "cel.test()" in doc
 
 
 # -- Edge cases --
@@ -584,3 +574,67 @@ def test_tools_without_alias_are_skipped():
     assert not hasattr(cel, "version")
     assert not hasattr(cel, "app_version")
     assert hasattr(cel, "log")
+
+
+def test_list_argument_auto_serialized_for_string_parameter():
+    """Test that list/dict arguments are auto-serialized to JSON when the
+    tool parameter type is string."""
+    tools = [
+        {
+            "name": "file/read_many",
+            "alias": "file.read_many",
+            "description": "Reads multiple files",
+            "parameters": [
+                {"name": "resources", "type": "string", "hasDefaultValue": False},
+            ],
+        }
+    ]
+    mock_client = MagicMock()
+    captured_arguments = {}
+
+    def call_side_effect(method, **kwargs):
+        if method == "tools/list":
+            return tools
+        if method == "tools/call":
+            captured_arguments.update(kwargs.get("arguments", {}))
+            return {"isSuccess": True, "errorMessage": "", "value": "{}"}
+        return None
+
+    mock_client.call.side_effect = call_side_effect
+    cel = CelProxy(mock_client)
+
+    cel.file.read_many(["a.txt", "b.txt"])
+
+    assert captured_arguments["resources"] == '["a.txt", "b.txt"]'
+
+
+def test_list_argument_not_serialized_for_non_string_parameter():
+    """Test that list arguments are left as-is when the parameter type is
+    not string."""
+    tools = [
+        {
+            "name": "misc/array_tool",
+            "alias": "misc.array_tool",
+            "description": "Tool with array parameter",
+            "parameters": [
+                {"name": "items", "type": "array", "hasDefaultValue": False},
+            ],
+        }
+    ]
+    mock_client = MagicMock()
+    captured_arguments = {}
+
+    def call_side_effect(method, **kwargs):
+        if method == "tools/list":
+            return tools
+        if method == "tools/call":
+            captured_arguments.update(kwargs.get("arguments", {}))
+            return {"isSuccess": True, "errorMessage": "", "value": None}
+        return None
+
+    mock_client.call.side_effect = call_side_effect
+    cel = CelProxy(mock_client)
+
+    cel.misc.array_tool(["a", "b"])
+
+    assert captured_arguments["items"] == ["a", "b"]

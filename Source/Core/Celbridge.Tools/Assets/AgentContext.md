@@ -78,6 +78,8 @@ never needs to poll or wait for an operation to finish.
 ## Python Scripting
 
 Import modules from the `celbridge` package. Module names match tool namespaces.
+Call `query_get_python_api` for the full API reference with method signatures,
+parameter types, and installed Python packages.
 
 ```python
 from celbridge import app, document
