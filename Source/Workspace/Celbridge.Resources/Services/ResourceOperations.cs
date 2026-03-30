@@ -644,12 +644,7 @@ internal class CreateFolderOperation : FileOperation
                 return Task.FromResult((Result)Result.Fail($"Folder already exists: {_folderPath}"));
             }
 
-            var parentFolder = Path.GetDirectoryName(_folderPath);
-            if (!Directory.Exists(parentFolder))
-            {
-                return Task.FromResult((Result)Result.Fail($"Parent folder does not exist: {parentFolder}"));
-            }
-
+            // Directory.CreateDirectory handles intermediate parent folders automatically
             Directory.CreateDirectory(_folderPath);
             return Task.FromResult(Result.Ok());
         }

@@ -47,6 +47,7 @@ public static class ServiceConfiguration
         services.AddTransient<IApplyEditsCommand, ApplyEditsCommand>();
         services.AddTransient<IWriteDocumentCommand, WriteDocumentCommand>();
         services.AddTransient<IWriteBinaryDocumentCommand, WriteBinaryDocumentCommand>();
+        services.AddTransient<IDeleteLinesCommand, DeleteLinesCommand>();
         services.AddTransient<IFindReplaceDocumentCommand, FindReplaceDocumentCommand>();
     }
 }

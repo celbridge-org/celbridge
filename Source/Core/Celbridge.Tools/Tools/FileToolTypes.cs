@@ -93,3 +93,9 @@ public record class ApplyEditsResult(List<AffectedLineRange> AffectedLines, int?
 /// follow-up file_read call.
 /// </summary>
 public record class AffectedLineRange(int From, int To, List<string>? ContextLines = null);
+
+/// <summary>
+/// Result returned by document_delete_lines with the deleted range, new line count,
+/// and context lines around the deletion point for verification.
+/// </summary>
+public record class DeleteLinesResult(int DeletedFrom, int DeletedTo, int TotalLineCount, List<string>? ContextLines = null);

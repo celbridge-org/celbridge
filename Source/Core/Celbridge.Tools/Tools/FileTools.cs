@@ -21,17 +21,18 @@ public partial class FileTools : AgentToolBase
     public FileTools(IApplicationServiceProvider services) : base(services) { }
 
     /// <summary>
-    /// Reads the text content of a file. Supports optional line range via offset and limit.
-    /// When offset or limit are specified, returns JSON with content and totalLineCount.
-    /// When neither is specified, returns the raw file content as plain text.
+    /// Reads the text content of a file. Always returns JSON with content and totalLineCount.
+    /// Supports optional line range via offset and limit.
+    /// For large files, use file_get_info first to check line count and size before reading.
     /// </summary>
     /// <param name="resource">Resource key of the file to read.</param>
     /// <param name="offset">Starting line number (1-based). Use 0 to read from the beginning.</param>
     /// <param name="limit">Maximum number of lines to return. Use 0 to read to the end.</param>
-    /// <returns>Plain text when reading the whole file, or JSON with fields: content (string), totalLineCount (int) when using offset/limit.</returns>
+    /// <param name="lineNumbers">When true, prefix each line in content with its 1-based line number (e.g. "1: first line"). Line numbers reflect actual positions in the file, even when using offset.</param>
+    /// <returns>JSON with fields: content (string), totalLineCount (int).</returns>
     [McpServerTool(Name = "file_read", ReadOnly = true)]
     [ToolAlias("file.read")]
-    public async partial Task<CallToolResult> Read(string resource, int offset = 0, int limit = 0)
+    public async partial Task<CallToolResult> Read(string resource, int offset = 0, int limit = 0, bool lineNumbers = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
@@ -56,7 +57,16 @@ public partial class FileTools : AgentToolBase
         if (offset == 0 && limit == 0)
         {
             var text = await File.ReadAllTextAsync(resourcePath);
-            return SuccessResult(text);
+            var lineCount = FileReadHelper.CountLines(text);
+
+            if (lineNumbers)
+            {
+                var splitLines = text.Split('\n');
+                text = FileReadHelper.AddLineNumbers(splitLines, 1);
+            }
+
+            var wholeFileResult = new FileReadResult(text, lineCount);
+            return SuccessResult(SerializeJson(wholeFileResult));
         }
 
         var lines = await File.ReadAllLinesAsync(resourcePath);
@@ -71,8 +81,18 @@ public partial class FileTools : AgentToolBase
             return SuccessResult(SerializeJson(emptyResult));
         }
 
-        var selectedLines = lines.Skip(startIndex).Take(count);
-        var content = string.Join(Environment.NewLine, selectedLines);
+        var selectedLines = lines.Skip(startIndex).Take(count).ToArray();
+        string content;
+
+        if (lineNumbers)
+        {
+            var firstLineNumber = startIndex + 1;
+            content = FileReadHelper.AddLineNumbers(selectedLines, firstLineNumber);
+        }
+        else
+        {
+            content = string.Join(Environment.NewLine, selectedLines);
+        }
 
         var readResult = new FileReadResult(content, totalLineCount);
         return SuccessResult(SerializeJson(readResult));
