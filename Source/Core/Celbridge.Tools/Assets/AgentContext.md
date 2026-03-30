@@ -17,10 +17,22 @@ the project content root.
 Never use backslashes, absolute paths, or leading slashes. When in doubt, call
 `file_get_tree` with an empty resource key to see the project's resource keys.
 
+## Context Prioritization
+
+When the user refers to a file without specifying which one, resolve ambiguity using
+the current workspace context before searching the whole project:
+
+1. **Active document** — the document the user is looking at right now (`document_get_context`, check `activeDocument`).
+2. **Other open documents** — files already open in the editor tabs (`document_get_context`, check `openDocuments`).
+3. **Explorer context** — the selected resource and expanded folders in the explorer panel (`explorer_get_context`).
+
+Only fall back to a broad project search (`file_grep`, `file_get_tree`) when these
+sources do not resolve the reference.
+
 ## Workspace Panels
 
-- **Explorer** — the project file tree. Use `explorer_*` tools to create, move, and delete resources.
-- **Documents** — the editor area. Files open as tabs across up to 3 sections (sectionIndex 0, 1, 2 from left to right). Use `document_*` tools to open, edit, and manage documents.
+- **Explorer** — the project file tree. Use `explorer_*` tools to create, move, and delete resources. `explorer_undo` / `explorer_redo` only affect file system operations (create, delete, move, rename, copy) — they cannot undo document text edits.
+- **Documents** — the editor area. Files open as tabs across up to 3 sections (sectionIndex 0, 1, 2 from left to right). Use `document_*` tools to open, edit, and manage documents. To undo a text edit, apply a reverse edit with `document_apply_edits` or `document_delete_lines`.
 - **Inspector** — shows contextual properties for the selected resource.
 - **Search** — full-text search across project files. Use `file_grep` from the agent.
 - **Console** — the built-in Python REPL for running and testing scripts interactively.
