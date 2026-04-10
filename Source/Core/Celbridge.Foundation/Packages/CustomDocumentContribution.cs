@@ -18,4 +18,10 @@ public partial record CustomDocumentContribution : DocumentContribution
     /// The global webview-dev-tools feature flag must also be enabled for DevTools to be accessible.
     /// </summary>
     public bool DevToolsEnabled { get; init; } = true;
+
+    /// <summary>
+    /// Whether this editor handles binary file content.
+    /// When true, content is transferred as base64 and saved/loaded as raw bytes.
+    /// </summary>
+    public bool Binary { get; init; } = false;
 }

@@ -30,6 +30,7 @@ public static class PackageManifestLoader
     private const string DefaultKey = "default";
     private const string EntryPointKey = "entry_point";
     private const string DevToolsEnabledKey = "webview_dev_tools";
+    private const string BinaryKey = "binary";
     private const string WordWrapKey = "word_wrap";
     private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
     private const string MinimapEnabledKey = "minimap_enabled";
@@ -229,6 +230,7 @@ public static class PackageManifestLoader
     {
         var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
         var devToolsEnabled = GetBoolOrNull(documentTable, DevToolsEnabledKey) ?? true;
+        var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
 
         return new CustomDocumentContribution
         {
@@ -238,7 +240,8 @@ public static class PackageManifestLoader
             Priority = priority,
             Templates = templates.AsReadOnly(),
             EntryPoint = entryPoint,
-            DevToolsEnabled = devToolsEnabled
+            DevToolsEnabled = devToolsEnabled,
+            Binary = binary
         };
     }
 

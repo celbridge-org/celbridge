@@ -161,6 +161,37 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Decodes base64 content and saves as binary to the file at FilePath.
+    /// Handles the IsSavingFile flag and updates file tracking info.
+    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// </summary>
+    protected async Task<Result> SaveBinaryToFileAsync(string base64Content)
+    {
+        try
+        {
+            IsSavingFile = true;
+            var bytes = Convert.FromBase64String(base64Content);
+            await File.WriteAllBytesAsync(FilePath, bytes);
+            UpdateFileTrackingInfo();
+        }
+        catch (FormatException)
+        {
+            return Result.Fail($"Invalid base64 content when saving binary file: '{FilePath}'");
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to save binary file: '{FilePath}'")
+                .WithException(ex);
+        }
+        finally
+        {
+            IsSavingFile = false;
+        }
+
+        return Result.Ok();
+    }
+
+    /// <summary>
     /// Override this method to perform cleanup when the document is closed.
     /// Always call base.Cleanup() to ensure file-change monitoring is properly unregistered.
     /// </summary>

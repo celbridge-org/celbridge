@@ -27,7 +27,14 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Loads text content from the file.
+    /// Whether this contribution handles binary file content.
+    /// </summary>
+    private bool IsBinary => Contribution?.Binary ?? false;
+
+    /// <summary>
+    /// Loads content from the file.
+    /// For binary documents, returns base64-encoded content.
+    /// For text documents, returns the raw text.
     /// Returns template content for empty or missing files when the manifest declares a default template.
     /// Returns empty string if no template is available.
     /// </summary>
@@ -36,6 +43,18 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         if (!File.Exists(FilePath))
         {
             return GetDefaultTemplateContent();
+        }
+
+        if (IsBinary)
+        {
+            var bytes = await File.ReadAllBytesAsync(FilePath);
+            if (bytes.Length == 0)
+            {
+                return GetDefaultTemplateContent();
+            }
+
+            UpdateFileTrackingInfo();
+            return Convert.ToBase64String(bytes);
         }
 
         var content = await File.ReadAllTextAsync(FilePath);
@@ -50,10 +69,17 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     }
 
     /// <summary>
-    /// Saves text content to the file.
+    /// Saves content to the file.
+    /// For binary documents, decodes base64 content and writes raw bytes.
+    /// For text documents, writes the content as text.
     /// </summary>
     public async Task<Result> SaveTextContentAsync(string content)
     {
+        if (IsBinary)
+        {
+            return await SaveBinaryToFileAsync(content);
+        }
+
         return await SaveTextToFileAsync(content);
     }
 

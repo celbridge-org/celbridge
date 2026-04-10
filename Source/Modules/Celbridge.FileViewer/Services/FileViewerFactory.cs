@@ -26,7 +26,6 @@ public class FileViewerFactory : DocumentEditorFactoryBase
         var extensions = new List<string>
         {
             // Images
-            ".png",
             ".jpg",
             ".jpeg",
             ".gif",
