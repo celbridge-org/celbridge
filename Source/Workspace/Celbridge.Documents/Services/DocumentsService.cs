@@ -593,6 +593,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         // Set the active document (which also selects it in its section)
         DocumentsPanel.ActiveDocument = selectedDocumentKey;
+
+        // Ensure all sections with tabs have a visible selected tab, not just the active section
+        DocumentsPanel.EnsureVisibleTabsSelected();
     }
 
     private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)

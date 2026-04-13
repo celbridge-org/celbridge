@@ -1,8 +1,6 @@
 using Celbridge.Commands;
-using Celbridge.DataTransfer;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
-using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
@@ -49,7 +47,6 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         IDocumentsLogger logger,
         IMessengerService messengerService,
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper,
         IWindowModeService windowModeService,
         IDialogService dialogService,
         IStringLocalizer stringLocalizer)
@@ -354,9 +351,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         }
 
         // Resolve the file path from the resource key
-        var resourceRegistry = ServiceLocator.AcquireService<IWorkspaceWrapper>()
-            .WorkspaceService.ResourceService.Registry;
-        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        var resolveResult = ViewModel.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
@@ -630,47 +625,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     /// </summary>
     private void UpdateEditorDisplayName(DocumentTab documentTab, DocumentEditorId documentEditorId = default)
     {
-        var extension = Path.GetExtension(documentTab.ViewModel.FileResource.ToString()).ToLowerInvariant();
-        var documentsService = ViewModel.GetDocumentsService();
-        var editorRegistry = documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
-
-        // If a specific editor was used, look it up directly
-        if (!documentEditorId.IsEmpty)
+        var displayInfo = ViewModel.ResolveEditorDisplayInfo(documentTab.ViewModel.FileResource, documentEditorId);
+        if (displayInfo is not null)
         {
-            var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
-            if (factoryResult.IsSuccess)
-            {
-                documentTab.ViewModel.EditorId = factoryResult.Value.EditorId;
-                if (factories.Count >= 2)
-                {
-                    documentTab.ViewModel.EditorDisplayName = factoryResult.Value.DisplayName;
-                }
-                return;
-            }
-        }
-
-        // Fall back to priority-based resolution
-        if (factories.Count >= 2)
-        {
-            var resourceRegistry = ServiceLocator.AcquireService<IWorkspaceWrapper>()
-                .WorkspaceService.ResourceService.Registry;
-            var resolveResult = resourceRegistry.ResolveResourcePath(documentTab.ViewModel.FileResource);
-            var filePath = resolveResult.IsSuccess ? resolveResult.Value : string.Empty;
-
-            foreach (var factory in factories)
-            {
-                if (factory.CanHandleResource(documentTab.ViewModel.FileResource, filePath))
-                {
-                    documentTab.ViewModel.EditorDisplayName = factory.DisplayName;
-                    documentTab.ViewModel.EditorId = factory.EditorId;
-                    break;
-                }
-            }
-        }
-        else if (factories.Count == 1)
-        {
-            documentTab.ViewModel.EditorId = factories[0].EditorId;
+            documentTab.ViewModel.EditorId = displayInfo.EditorId;
+            documentTab.ViewModel.EditorDisplayName = displayInfo.EditorDisplayName;
         }
     }
 
@@ -723,6 +682,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 }
             }
         }
+    }
+
+    public void EnsureVisibleTabsSelected()
+    {
+        SectionContainer.EnsureVisibleTabsSelected();
     }
 
     public void Shutdown()
@@ -919,107 +883,61 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private void SelectFileForTab(DocumentTab tab)
     {
-        var fileResource = tab.ViewModel.FileResource;
-
-        _commandService.Execute<ISelectResourceCommand>(command =>
-        {
-            command.Resource = fileResource;
-            command.ShowExplorerPanel = true;
-        });
+        ViewModel.SelectFileForTab(tab.ViewModel.FileResource);
     }
 
     private void CopyResourceKeyForTab(DocumentTab tab)
     {
-        var fileResource = tab.ViewModel.FileResource;
-        var resourceKey = fileResource.ToString();
-
-        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = resourceKey;
-            command.TransferMode = DataTransferMode.Copy;
-        });
+        ViewModel.CopyResourceKeyForTab(tab.ViewModel.FileResource);
     }
 
     private void CopyFilePathForTab(DocumentTab tab)
     {
-        var filePath = tab.ViewModel.FilePath;
-
-        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
-        {
-            command.Text = filePath;
-            command.TransferMode = DataTransferMode.Copy;
-        });
+        ViewModel.CopyFilePathForTab(tab.ViewModel.FilePath);
     }
 
     private void OpenFileExplorerForTab(DocumentTab tab)
     {
-        var fileResource = tab.ViewModel.FileResource;
-
-        _commandService.Execute<IOpenFileManagerCommand>(command =>
-        {
-            command.Resource = fileResource;
-        });
+        ViewModel.OpenFileExplorerForTab(tab.ViewModel.FileResource);
     }
 
     private void OpenApplicationForTab(DocumentTab tab)
     {
-        var fileResource = tab.ViewModel.FileResource;
-
-        _commandService.Execute<IOpenApplicationCommand>(command =>
-        {
-            command.Resource = fileResource;
-        });
+        ViewModel.OpenApplicationForTab(tab.ViewModel.FileResource);
     }
 
     private async Task ReopenTab(DocumentTab tab)
     {
         var fileResource = tab.ViewModel.FileResource;
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        var documentsService = ViewModel.GetDocumentsService();
-        var editorRegistry = documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
 
         var selectedEditorId = DocumentEditorId.Empty;
 
-        if (factories.Count >= 2)
+        var editorChoices = ViewModel.GetChoicesForFileExtension(extension, tab.ViewModel.EditorId);
+        if (editorChoices is not null)
         {
-            // Pre-select the current editor
-            var currentEditorId = tab.ViewModel.EditorId;
-            int defaultIndex = 0;
-            for (int i = 0; i < factories.Count; i++)
-            {
-                if (factories[i].EditorId == currentEditorId)
-                {
-                    defaultIndex = i;
-                    break;
-                }
-            }
-
             // Multiple editors available — show choice dialog
-            var displayNames = factories.Select(f => f.DisplayName).ToList();
-            var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
-            var dialogService = ServiceLocator.AcquireService<IDialogService>();
+            var title = _stringLocalizer.GetString("OpenWithDialog_Title");
+            var message = _stringLocalizer.GetString("OpenWithDialog_Message");
+            var checkbox = new ChoiceDialogCheckbox(_stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
 
-            var title = stringLocalizer.GetString("OpenWithDialog_Title");
-            var message = stringLocalizer.GetString("OpenWithDialog_Message");
-            var checkbox = new ChoiceDialogCheckbox(stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
-
-            var choiceResult = await dialogService.ShowChoiceDialogAsync(title, message, displayNames, defaultIndex, checkbox);
+            var choiceResult = await _dialogService.ShowChoiceDialogAsync(
+                title, message, editorChoices.DisplayNames, editorChoices.DefaultIndex, checkbox);
             if (choiceResult.IsFailure)
             {
                 return;
             }
 
-            selectedEditorId = factories[choiceResult.Value.SelectedIndex].EditorId;
+            selectedEditorId = editorChoices.Factories[choiceResult.Value.SelectedIndex].EditorId;
 
             if (choiceResult.Value.CheckboxChecked)
             {
-                var workspaceSettings = ServiceLocator.AcquireService<IWorkspaceWrapper>()
-                    .WorkspaceService.WorkspaceSettings;
-                var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-                await workspaceSettings.SetPropertyAsync(preferenceKey, selectedEditorId.ToString());
+                await ViewModel.StoreEditorPreferenceAsync(extension, selectedEditorId);
             }
         }
+
+        // Capture the section index before closing so we can reopen in the same section
+        var sectionIndex = tab.SectionIndex;
 
         // Save editor state before closing
         string? editorState = null;
@@ -1044,13 +962,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         NotifyLayoutChanged();
 
-        // Reopen with the selected editor and restore editor state
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.ForceReload = true;
-            command.EditorId = selectedEditorId;
-            command.EditorStateJson = editorState;
-        });
+        // Reopen with the selected editor and restore editor state in the same section
+        ViewModel.ReopenDocumentWithEditor(fileResource, selectedEditorId, editorState, sectionIndex);
     }
 }

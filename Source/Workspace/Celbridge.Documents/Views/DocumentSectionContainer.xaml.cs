@@ -809,6 +809,23 @@ public sealed partial class DocumentSectionContainer : UserControl
         FilesDropped?.Invoke(targetSection, resources);
     }
 
+    /// <summary>
+    /// Ensures each section that contains tabs has a selected tab.
+    /// Sections that already have a selection are left unchanged.
+    /// </summary>
+    public void EnsureVisibleTabsSelected()
+    {
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            if (section.TabCount > 0 && section.GetSelectedDocument().IsEmpty)
+            {
+                var firstTab = section.GetAllTabs().First();
+                section.SelectTab(firstTab);
+            }
+        }
+    }
+
     private void NotifyLayoutChanged()
     {
         // Re-fire OpenDocumentsChanged for all visible sections to ensure the layout is persisted
