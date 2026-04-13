@@ -7,7 +7,7 @@ namespace Celbridge.Packages;
 /// Each extension can contribute one or more document editors via its extension.toml.
 /// Subclasses define the specific editor type and its configuration.
 /// </summary>
-public abstract partial record DocumentContribution
+public abstract partial record DocumentEditorContribution
 {
     /// <summary>
     /// The parent package that provides this contribution.

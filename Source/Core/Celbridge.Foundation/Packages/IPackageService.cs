@@ -32,7 +32,7 @@ public interface IPackageService
     /// <summary>
     /// Returns all document editor contributions from all discovered packages.
     /// </summary>
-    IReadOnlyList<DocumentContribution> GetAllDocumentEditors();
+    IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors();
 
     /// <summary>
     /// Gets the default template content for a file extension, if provided by a package.

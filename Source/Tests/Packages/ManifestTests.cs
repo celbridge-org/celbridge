@@ -57,10 +57,10 @@ public class ManifestTests
         package.DocumentEditors.Should().ContainSingle();
 
         var contribution = package.DocumentEditors[0];
-        contribution.Should().BeOfType<CustomDocumentContribution>();
+        contribution.Should().BeOfType<CustomDocumentEditorContribution>();
         contribution.Id.Should().Be("my-editor-doc");
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".myext");
-        ((CustomDocumentContribution)contribution).EntryPoint.Should().Be("index.html");
+        ((CustomDocumentEditorContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Package.PackageFolder.Should().Be(_tempFolder);
         contribution.Package.HostName.Should().Be("pkg-test-my-editor.celbridge");
     }
@@ -97,9 +97,9 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         var contribution = result.Value.DocumentEditors[0];
-        contribution.Should().BeOfType<CodeDocumentContribution>();
+        contribution.Should().BeOfType<CodeDocumentEditorContribution>();
 
-        var codeContribution = (CodeDocumentContribution)contribution;
+        var codeContribution = (CodeDocumentEditorContribution)contribution;
         codeContribution.CodePreview.Should().NotBeNull();
         codeContribution.CodePreview!.EntryPoint.Should().Be("preview/index.html");
         codeContribution.CodeEditor.Should().NotBeNull();
@@ -418,10 +418,10 @@ public class ManifestTests
         package.Info.FeatureFlag.Should().Be("full-pkg");
 
         var contribution = package.DocumentEditors[0];
-        contribution.Should().BeOfType<CustomDocumentContribution>();
+        contribution.Should().BeOfType<CustomDocumentEditorContribution>();
         contribution.Id.Should().Be("full-doc");
         contribution.FileTypes.Should().ContainSingle().Which.FileExtension.Should().Be(".full");
-        ((CustomDocumentContribution)contribution).EntryPoint.Should().Be("index.html");
+        ((CustomDocumentEditorContribution)contribution).EntryPoint.Should().Be("index.html");
         contribution.Priority.Should().Be(EditorPriority.Specialized);
         contribution.Templates.Should().HaveCount(1);
     }
@@ -461,9 +461,9 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().HaveCount(2);
-        result.Value.DocumentEditors[0].Should().BeOfType<CustomDocumentContribution>();
+        result.Value.DocumentEditors[0].Should().BeOfType<CustomDocumentEditorContribution>();
         result.Value.DocumentEditors[0].Id.Should().Be("doc-a");
-        result.Value.DocumentEditors[1].Should().BeOfType<CodeDocumentContribution>();
+        result.Value.DocumentEditors[1].Should().BeOfType<CodeDocumentEditorContribution>();
         result.Value.DocumentEditors[1].Id.Should().Be("doc-b");
     }
 
@@ -498,7 +498,7 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var codeContribution = result.Value.DocumentEditors[0] as CodeDocumentContribution;
+        var codeContribution = result.Value.DocumentEditors[0] as CodeDocumentEditorContribution;
         codeContribution.Should().NotBeNull();
         codeContribution!.CodeEditor.Should().NotBeNull();
         codeContribution.CodeEditor!.WordWrap.Should().BeTrue();
@@ -595,7 +595,7 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsSuccess.Should().BeTrue();
-        var customContribution = result.Value.DocumentEditors[0] as CustomDocumentContribution;
+        var customContribution = result.Value.DocumentEditors[0] as CustomDocumentEditorContribution;
         customContribution.Should().NotBeNull();
         customContribution!.EntryPoint.Should().Be("index.html");
     }

@@ -50,7 +50,7 @@ public class PackageRegistry
         return combined.AsReadOnly();
     }
 
-    public IReadOnlyList<DocumentContribution> GetAllDocumentEditors()
+    public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
     {
         return GetAllPackages()
             .SelectMany(package => package.DocumentEditors)
@@ -206,7 +206,7 @@ public class PackageRegistry
     /// Falls back to the package name.
     /// </summary>
     private static string ResolveDisplayName(
-        DocumentContribution contribution,
+        DocumentEditorContribution contribution,
         IReadOnlyDictionary<string, string> localizationStrings)
     {
         var firstFileType = contribution.FileTypes.FirstOrDefault();

@@ -15,7 +15,7 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document view for custom WebView-based contribution editors.
-/// Configured from a DocumentContribution, delegates RPC handling to handler classes.
+/// Configured from a DocumentEditorContribution, delegates RPC handling to handler classes.
 /// </summary>
 public sealed partial class ContributionDocumentView : WebViewDocumentView
 {
@@ -37,7 +37,7 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
     /// The document contribution that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public CustomDocumentContribution? Contribution { get; set; }
+    public CustomDocumentEditorContribution? Contribution { get; set; }
 
     protected override bool GetDevToolsEnabled()
     {

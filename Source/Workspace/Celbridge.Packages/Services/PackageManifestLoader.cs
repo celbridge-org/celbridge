@@ -5,7 +5,7 @@ using Tomlyn.Model;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Parses package.toml and referenced document TOML files to produce DocumentContribution objects.
+/// Parses package.toml and referenced document TOML files to produce DocumentEditorContribution objects.
 /// Handles the two-level manifest structure: package identity + document contributions.
 /// </summary>
 public static class PackageManifestLoader
@@ -105,7 +105,7 @@ public static class PackageManifestLoader
                 }
             }
 
-            var documentEditors = new List<DocumentContribution>();
+            var documentEditors = new List<DocumentEditorContribution>();
             foreach (var relativePath in documentPaths)
             {
                 var fullPath = Path.Combine(packageFolder, relativePath);
@@ -131,9 +131,9 @@ public static class PackageManifestLoader
     }
 
     /// <summary>
-    /// Parses a single document TOML file into a DocumentContribution.
+    /// Parses a single document TOML file into a DocumentEditorContribution.
     /// </summary>
-    private static Result<DocumentContribution> LoadDocument(
+    private static Result<DocumentEditorContribution> LoadDocument(
         string documentTomlPath,
         PackageInfo packageInfo)
     {
@@ -206,13 +206,13 @@ public static class PackageManifestLoader
                 }
             }
 
-            DocumentContribution contribution = documentType switch
+            DocumentEditorContribution contribution = documentType switch
             {
                 CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates),
                 _ => BuildCustomContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates, documentTable)
             };
 
-            return Result<DocumentContribution>.Ok(contribution);
+            return Result<DocumentEditorContribution>.Ok(contribution);
         }
         catch (Exception ex)
         {
@@ -220,7 +220,7 @@ public static class PackageManifestLoader
         }
     }
 
-    private static CustomDocumentContribution BuildCustomContribution(
+    private static CustomDocumentEditorContribution BuildCustomContribution(
         TomlTable root,
         PackageInfo packageInfo,
         string documentId,
@@ -234,7 +234,7 @@ public static class PackageManifestLoader
         var devToolsEnabled = GetBoolOrNull(documentTable, DevToolsEnabledKey) ?? true;
         var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
 
-        return new CustomDocumentContribution
+        return new CustomDocumentEditorContribution
         {
             Package = packageInfo,
             Id = documentId,
@@ -248,7 +248,7 @@ public static class PackageManifestLoader
         };
     }
 
-    private static CodeDocumentContribution BuildCodeContribution(
+    private static CodeDocumentEditorContribution BuildCodeContribution(
         TomlTable root,
         PackageInfo packageInfo,
         string documentId,
@@ -282,7 +282,7 @@ public static class PackageManifestLoader
             };
         }
 
-        return new CodeDocumentContribution
+        return new CodeDocumentEditorContribution
         {
             Package = packageInfo,
             Id = documentId,

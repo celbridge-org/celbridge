@@ -35,7 +35,7 @@ public class PackageService : IPackageService
         return _registry.GetAllPackages();
     }
 
-    public IReadOnlyList<DocumentContribution> GetAllDocumentEditors()
+    public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
     {
         return _registry.GetAllDocumentEditors();
     }

@@ -5,7 +5,7 @@ namespace Celbridge.Packages;
 /// The extension provides the entire UI via an HTML entry point.
 /// Communicates with the host via the IHostDocument JSON-RPC protocol.
 /// </summary>
-public partial record CustomDocumentContribution : DocumentContribution
+public partial record CustomDocumentEditorContribution : DocumentEditorContribution
 {
     /// <summary>
     /// Entry point for the custom editor (e.g., "index.html").

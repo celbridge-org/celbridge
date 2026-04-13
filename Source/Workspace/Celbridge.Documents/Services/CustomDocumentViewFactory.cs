@@ -6,12 +6,12 @@ namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// Factory for creating ContributionDocumentView instances for custom (WebView-based)
-/// extension editors. One instance per discovered CustomDocumentContribution.
+/// extension editors. One instance per discovered CustomDocumentEditorContribution.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly CustomDocumentContribution _contribution;
+    private readonly CustomDocumentEditorContribution _contribution;
     private readonly IFeatureFlags _featureFlags;
     private readonly string _resolvedDisplayName;
 
@@ -26,7 +26,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     public CustomDocumentViewFactory(
         IServiceProvider serviceProvider,
-        CustomDocumentContribution contribution,
+        CustomDocumentEditorContribution contribution,
         IFeatureFlags featureFlags,
         IPackageLocalizationService localizationService)
     {

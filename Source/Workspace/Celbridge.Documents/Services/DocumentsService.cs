@@ -121,7 +121,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             {
                 try
                 {
-                    if (contribution is not CustomDocumentContribution customContribution)
+                    if (contribution is not CustomDocumentEditorContribution customContribution)
                     {
                         continue;
                     }

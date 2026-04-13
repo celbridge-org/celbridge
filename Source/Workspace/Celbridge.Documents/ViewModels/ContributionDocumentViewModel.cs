@@ -17,7 +17,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// The document contribution this view model serves.
     /// Set by the view after construction.
     /// </summary>
-    public CustomDocumentContribution? Contribution { get; set; }
+    public CustomDocumentEditorContribution? Contribution { get; set; }
 
     public ContributionDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
     {

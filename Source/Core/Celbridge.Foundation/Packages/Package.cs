@@ -14,5 +14,5 @@ public record Package
     /// <summary>
     /// Document editor contributions provided by this package.
     /// </summary>
-    public IReadOnlyList<DocumentContribution> DocumentEditors { get; init; } = [];
+    public IReadOnlyList<DocumentEditorContribution> DocumentEditors { get; init; } = [];
 }
