@@ -2,6 +2,7 @@ using Celbridge.Documents;
 using Celbridge.Documents.Services;
 using Celbridge.Documents.Views;
 using Celbridge.FileViewer.Views;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.FileViewer.Services;
 
@@ -13,14 +14,25 @@ public class FileViewerFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly FileTypeHelper _fileTypeHelper;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IReadOnlyList<string> _supportedExtensions;
+
+    public override DocumentEditorId EditorId { get; } = new("celbridge.file-viewer");
+
+    public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_FileViewer");
 
     public override IReadOnlyList<string> SupportedExtensions => _supportedExtensions;
 
-    public FileViewerFactory(IServiceProvider serviceProvider, FileTypeHelper fileTypeHelper)
+    public override EditorPriority Priority => EditorPriority.General;
+
+    public FileViewerFactory(
+        IServiceProvider serviceProvider,
+        FileTypeHelper fileTypeHelper,
+        IStringLocalizer stringLocalizer)
     {
         _serviceProvider = serviceProvider;
         _fileTypeHelper = fileTypeHelper;
+        _stringLocalizer = stringLocalizer;
 
         // File viewer supported extensions
         var extensions = new List<string>
@@ -28,6 +40,7 @@ public class FileViewerFactory : DocumentEditorFactoryBase
             // Images
             ".jpg",
             ".jpeg",
+            ".png",
             ".gif",
             ".webp",
             ".svg",
@@ -55,7 +68,7 @@ public class FileViewerFactory : DocumentEditorFactoryBase
         _supportedExtensions = extensions.AsReadOnly();
     }
 
-    public override bool CanHandle(ResourceKey fileResource, string filePath)
+    public override bool CanHandleResource(ResourceKey fileResource, string filePath)
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
         return _fileTypeHelper.IsWebViewerFile(extension);

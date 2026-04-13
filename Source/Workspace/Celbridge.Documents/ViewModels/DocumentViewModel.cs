@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -10,6 +11,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     protected const double SaveDelay = 1.0; // Seconds
 
     private IMessengerService? _messengerService;
+    private ILogger<DocumentViewModel>? _logger;
 
     [ObservableProperty]
     private ResourceKey _fileResource = string.Empty;
@@ -82,7 +84,19 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     protected void EnableFileChangeMonitoring()
     {
+        Guard.IsNull(_messengerService, "File change monitoring is already enabled");
+
         _messengerService = ServiceLocator.AcquireService<IMessengerService>();
+
+        try
+        {
+            _logger = ServiceLocator.AcquireService<ILogger<DocumentViewModel>>();
+        }
+        catch
+        {
+            // Logger may not be available in test environments
+        }
+
         _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
     }
@@ -103,6 +117,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         // Check if this change is genuinely different from our last save
         if (IsFileChangedExternally())
         {
+            _logger?.LogDebug($"External change detected for '{FileResource}', requesting reload");
             RaiseReloadRequested();
         }
     }

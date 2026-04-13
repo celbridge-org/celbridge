@@ -68,7 +68,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             else if (OpenDocument)
             {
                 // Open the document and apply edits through the editor
-                var openResult = await documentsService.OpenDocument(resource, forceReload: false, location: string.Empty, activate: false);
+                var openResult = await documentsService.OpenDocument(resource, new OpenDocumentOptions(Activate: false));
                 if (openResult.IsFailure)
                 {
                     _logger.LogWarning($"Failed to open document for applying edits: {resource}");

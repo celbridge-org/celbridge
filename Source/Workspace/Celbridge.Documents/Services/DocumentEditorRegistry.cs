@@ -9,6 +9,8 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     private bool _disposed;
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
+    private readonly HashSet<DocumentEditorId> _registeredEditorIds = new();
+    private readonly Dictionary<DocumentEditorId, IDocumentEditorFactory> _idToFactory = new();
 
     /// <summary>
     /// Registers a document editor factory.
@@ -22,6 +24,15 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             return Result.Fail("Factory must support at least one extension");
         }
 
+        if (!_registeredEditorIds.Add(factory.EditorId))
+        {
+            return Result.Fail(
+                $"Duplicate editor ID '{factory.EditorId}' detected. " +
+                $"Skipping registration of '{factory.DisplayName}'. " +
+                $"An editor with this ID is already registered as '{_idToFactory[factory.EditorId].DisplayName}'.");
+        }
+
+        _idToFactory[factory.EditorId] = factory;
         _factories.Add(factory);
 
         // Index the factory by each supported extension
@@ -58,7 +69,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             // Find the first factory (sorted by priority) that can handle the resource
             foreach (var factory in factoryList)
             {
-                if (factory.CanHandle(fileResource, filePath))
+                if (factory.CanHandleResource(fileResource, filePath))
                 {
                     return Result<IDocumentEditorFactory>.Ok(factory);
                 }
@@ -83,6 +94,34 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     public IReadOnlyList<IDocumentEditorFactory> GetAllFactories()
     {
         return _factories.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Gets all factories that can handle the specified extension, sorted by priority.
+    /// </summary>
+    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForFileExtension(string fileExtension)
+    {
+        var normalizedExtension = fileExtension.ToLowerInvariant();
+
+        if (_extensionToFactories.TryGetValue(normalizedExtension, out var factoryList))
+        {
+            return factoryList.AsReadOnly();
+        }
+
+        return [];
+    }
+
+    /// <summary>
+    /// Gets a factory by its DocumentEditorId.
+    /// </summary>
+    public Result<IDocumentEditorFactory> GetFactoryById(DocumentEditorId documentEditorId)
+    {
+        if (_idToFactory.TryGetValue(documentEditorId, out var factory))
+        {
+            return Result<IDocumentEditorFactory>.Ok(factory);
+        }
+
+        return Result<IDocumentEditorFactory>.Fail($"No factory found with DocumentEditorId: '{documentEditorId}'");
     }
 
     /// <summary>
@@ -139,5 +178,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
         _factories.Clear();
         _extensionToFactories.Clear();
+        _registeredEditorIds.Clear();
+        _idToFactory.Clear();
     }
 }

@@ -47,5 +47,12 @@ public interface IDialogService
     /// Fails if no project is currently loaded.
     /// </summary>
     Task<Result<ResourceKey>> ShowResourcePickerDialogAsync(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
+
+    /// <summary>
+    /// Display a Choice Dialog that lets the user pick from a list of named options.
+    /// When checkbox is provided, shows a checkbox below the options.
+    /// Returns the selected index and checkbox state, or fails if the user cancels.
+    /// </summary>
+    Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null);
 }
 

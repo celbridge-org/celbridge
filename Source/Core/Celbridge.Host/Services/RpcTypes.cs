@@ -14,7 +14,7 @@ public record DocumentMetadata(string FilePath, string ResourceKey, string FileN
 /// Result of the document/initialize request.
 /// Localization is handled by JS fetching from the extension's localization folder.
 /// </summary>
-public record InitializeResult(string Content, DocumentMetadata Metadata);
+public record InitializeResult(string Content, DocumentMetadata Metadata, string? EditorStateJson = null);
 
 // =============================================================================
 // Document Operation Results

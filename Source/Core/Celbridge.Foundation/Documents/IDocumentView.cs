@@ -59,9 +59,20 @@ public interface IDocumentView
     Task<bool> CanClose();
 
     /// <summary>
-    /// Called when the document is about to close. 
-    /// This can be used to clear the document view state and free resources, etc. before the document view closes. 
+    /// Called when the document is about to close.
+    /// This can be used to clear the document view state and free resources, etc. before the document view closes.
     /// This approach is used instead of the Dispose Pattern to support pooling use cases.
     /// </summary>
     Task PrepareToClose();
+
+    /// <summary>
+    /// Saves the editor's UI state as an opaque JSON string.
+    /// Returns null if the editor does not support state preservation.
+    /// </summary>
+    Task<string?> SaveEditorStateAsync();
+
+    /// <summary>
+    /// Restores previously saved editor state from an opaque JSON string.
+    /// </summary>
+    Task RestoreEditorStateAsync(string state);
 }

@@ -274,6 +274,41 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         return Result.Ok();
     }
 
+    public override async Task<string?> SaveEditorStateAsync()
+    {
+        if (Host is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Host.RequestStateAsync();
+        }
+        catch
+        {
+            // Editor doesn't implement state saving — that's fine
+            return null;
+        }
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        if (Host is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await Host.NotifyRestoreStateAsync(state);
+        }
+        catch
+        {
+            // Editor doesn't implement state restoration — that's fine
+        }
+    }
+
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);

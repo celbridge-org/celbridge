@@ -24,31 +24,31 @@ public class MarkdownEditorFactoryTests
     }
 
     [Test]
-    public void CanHandle_ReturnsTrue_ForMdExtension()
+    public void CanHandleResource_ReturnsTrue_ForMdExtension()
     {
         var fileResource = new ResourceKey("document.md");
 
-        var result = _factory.CanHandle(fileResource, string.Empty);
+        var result = _factory.CanHandleResource(fileResource, string.Empty);
 
         result.Should().BeTrue();
     }
 
     [Test]
-    public void CanHandle_ReturnsTrue_ForMarkdownExtension()
+    public void CanHandleResource_ReturnsTrue_ForMarkdownExtension()
     {
         var fileResource = new ResourceKey("document.markdown");
 
-        var result = _factory.CanHandle(fileResource, string.Empty);
+        var result = _factory.CanHandleResource(fileResource, string.Empty);
 
         result.Should().BeTrue();
     }
 
     [Test]
-    public void CanHandle_ReturnsFalse_ForUnsupportedExtension()
+    public void CanHandleResource_ReturnsFalse_ForUnsupportedExtension()
     {
         var fileResource = new ResourceKey("document.txt");
 
-        var result = _factory.CanHandle(fileResource, string.Empty);
+        var result = _factory.CanHandleResource(fileResource, string.Empty);
 
         result.Should().BeFalse();
     }

@@ -188,6 +188,22 @@ client.document.onExternalChange(async () => {
     }
 });
 
+// Expose state functions for C# interop via SaveEditorStateAsync/RestoreEditorStateAsync.
+// captureViewState returns a JSON string directly, restoreViewState accepts a JSON string.
+window.captureDocumentViewState = () => {
+    const state = captureViewState();
+    return state ? JSON.stringify(state) : null;
+};
+
+window.restoreDocumentViewState = (stateJson) => {
+    try {
+        const state = JSON.parse(stateJson);
+        restoreViewState(state);
+    } catch (e) {
+        console.warn('[Spreadsheet] Failed to restore view state from JSON:', e);
+    }
+};
+
 // Handle save requests from host
 client.document.onRequestSave(async () => {
     try {

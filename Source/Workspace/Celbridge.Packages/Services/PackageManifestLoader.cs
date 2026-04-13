@@ -168,6 +168,7 @@ public static class PackageManifestLoader
             }
 
             var documentType = GetString(documentTable, TypeKey).ToLowerInvariant();
+            var displayName = GetString(documentTable, DisplayNameKey);
             var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
             var fileTypes = new List<DocumentFileType>();
@@ -207,8 +208,8 @@ public static class PackageManifestLoader
 
             DocumentContribution contribution = documentType switch
             {
-                CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, fileTypes, priority, templates),
-                _ => BuildCustomContribution(root, packageInfo, documentId, fileTypes, priority, templates, documentTable)
+                CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates),
+                _ => BuildCustomContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates, documentTable)
             };
 
             return Result<DocumentContribution>.Ok(contribution);
@@ -223,6 +224,7 @@ public static class PackageManifestLoader
         TomlTable root,
         PackageInfo packageInfo,
         string documentId,
+        string displayName,
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
         List<DocumentTemplate> templates,
@@ -236,6 +238,7 @@ public static class PackageManifestLoader
         {
             Package = packageInfo,
             Id = documentId,
+            DisplayName = displayName,
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,
             Templates = templates.AsReadOnly(),
@@ -249,6 +252,7 @@ public static class PackageManifestLoader
         TomlTable root,
         PackageInfo packageInfo,
         string documentId,
+        string displayName,
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
         List<DocumentTemplate> templates)
@@ -282,6 +286,7 @@ public static class PackageManifestLoader
         {
             Package = packageInfo,
             Id = documentId,
+            DisplayName = displayName,
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,
             Templates = templates.AsReadOnly(),

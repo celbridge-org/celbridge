@@ -20,10 +20,35 @@ public partial class DocumentTabViewModel : ObservableObject
     [ObservableProperty]
     private string _filePath = string.Empty;
 
+    [ObservableProperty]
+    private string _editorDisplayName = string.Empty;
+
+    /// <summary>
+    /// The editor that created this tab's document view.
+    /// </summary>
+    public DocumentEditorId EditorId { get; set; }
+
     /// <summary>
     /// Returns the file extension for the current resource, used by the FileIcon control.
     /// </summary>
     public string FileExtension => Path.GetExtension(FileResource.ResourceName);
+
+    /// <summary>
+    /// Tooltip text for the tab. Includes editor name when multiple editors are available.
+    /// </summary>
+    public string TabTooltip => string.IsNullOrEmpty(EditorDisplayName)
+        ? FilePath
+        : $"{FilePath} - {EditorDisplayName}";
+
+    partial void OnFilePathChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnEditorDisplayNameChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
 
     partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
     {
@@ -77,6 +102,15 @@ public partial class DocumentTabViewModel : ObservableObject
             var getResult = _resourceRegistry.GetResource(FileResource);
             if (getResult.IsFailure)
             {
+                // The file may have been temporarily deleted as part of a "write temp, delete original,
+                // rename temp" save pattern used by some editors and coding agents. Check if the file
+                // still exists on disk before closing — the resource registry may not have caught up
+                // with the rename yet.
+                if (File.Exists(FilePath))
+                {
+                    return;
+                }
+
                 // The resource no longer exists, so close the document.
                 // We force the close operation because the resource no longer exists.
                 // We use a command instead of calling CloseDocument() directly to help avoid race conditions.

@@ -57,7 +57,7 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
             if (documentView is not null)
             {
                 // Document is already open, force reload to pick up new content
-                var openResult = await documentsService.OpenDocument(FileResource, forceReload: true, location: string.Empty, activate: false);
+                var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(ForceReload: true, Activate: false));
                 if (openResult.IsFailure)
                 {
                     return Result.Fail($"Failed to reload binary document: '{FileResource}'")
@@ -67,7 +67,7 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
             else
             {
                 // Open the document so the editor can manage it
-                var openResult = await documentsService.OpenDocument(FileResource, forceReload: false, location: string.Empty, activate: false);
+                var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(Activate: false));
                 if (openResult.IsFailure)
                 {
                     return Result.Fail($"Failed to open binary document: '{FileResource}'")

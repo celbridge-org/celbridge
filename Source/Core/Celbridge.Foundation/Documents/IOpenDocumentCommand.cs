@@ -33,4 +33,14 @@ public interface IOpenDocumentCommand : IExecutableCommand
     /// When false, the document is opened but the currently active tab is preserved.
     /// </summary>
     bool Activate { get; set; }
+
+    /// <summary>
+    /// When set, opens the document with this specific editor instead of the default.
+    /// </summary>
+    DocumentEditorId EditorId { get; set; }
+
+    /// <summary>
+    /// When set, restores this editor state after the document opens.
+    /// </summary>
+    string? EditorStateJson { get; set; }
 }

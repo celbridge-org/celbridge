@@ -262,9 +262,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         await SectionContainer.ResetSectionRatiosAsync();
     }
 
-    public Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses()
+    public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments()
     {
-        var addresses = new Dictionary<ResourceKey, DocumentAddress>();
+        var documents = new List<OpenDocumentInfo>();
 
         for (int sectionIndex = 0; sectionIndex < SectionContainer.SectionCount; sectionIndex++)
         {
@@ -272,29 +272,70 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             int tabOrder = 0;
             foreach (var tab in section.GetAllTabs())
             {
-                addresses[tab.ViewModel.FileResource] = new DocumentAddress(
-                    WindowIndex: 0, // Always 0 for now (single window)
+                var address = new DocumentAddress(
+                    WindowIndex: 0,
                     SectionIndex: sectionIndex,
                     TabOrder: tabOrder++);
+
+                documents.Add(new OpenDocumentInfo(
+                    tab.ViewModel.FileResource,
+                    address,
+                    tab.ViewModel.EditorId));
             }
         }
 
-        return addresses;
+        return documents;
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location = "", bool activate = true)
+    public async Task<Result> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
+        var effectiveOptions = options ?? new OpenDocumentOptions();
+
+        // Resolve the target section from the address, defaulting to the active section
+        var address = effectiveOptions.Address;
+        int sectionIndex = address is not null ? address.SectionIndex : SectionContainer.ActiveSectionIndex;
+        if (sectionIndex < 0 || sectionIndex >= SectionContainer.SectionCount)
+        {
+            sectionIndex = 0;
+        }
+
         // Check if the file is already opened in any section
         var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResource);
         if (existingTab != null && existingSection != null)
         {
-            if (activate)
+            // If a different editor was requested, close and reopen with the new editor
+            if (!effectiveOptions.EditorId.IsEmpty &&
+                !existingTab.ViewModel.EditorId.IsEmpty &&
+                effectiveOptions.EditorId != existingTab.ViewModel.EditorId)
             {
-                existingSection.SelectTab(existingTab);
-                SectionContainer.ActivateDocument(fileResource, existingSection.SectionIndex);
+                var closeResult = await existingTab.ViewModel.CloseDocument(forceClose: false);
+                if (closeResult.IsFailure || !closeResult.Value)
+                {
+                    return Result.Ok();
+                }
+
+                existingSection.RemoveTab(existingTab);
+                NotifyLayoutChanged();
+
+                var reopenAddress = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: 0);
+                var reopenOptions = effectiveOptions with { Address = reopenAddress };
+                return await OpenDocument(fileResource, reopenOptions);
             }
 
-            if (forceReload)
+            // If already open in a different section, move it
+            if (existingSection.SectionIndex != sectionIndex)
+            {
+                SectionContainer.MoveTabToSection(existingTab, sectionIndex);
+            }
+
+            if (effectiveOptions.Activate)
+            {
+                var targetSection = SectionContainer.GetSection(sectionIndex);
+                targetSection.SelectTab(existingTab);
+                SectionContainer.ActivateDocument(fileResource, sectionIndex);
+            }
+
+            if (effectiveOptions.ForceReload)
             {
                 var reloadResult = await existingTab.ViewModel.ReloadDocument();
                 if (reloadResult.IsFailure)
@@ -304,99 +345,24 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 }
             }
 
-            // Navigate to location if specified
-            if (!string.IsNullOrEmpty(location))
+            if (!string.IsNullOrEmpty(effectiveOptions.Location))
             {
-                await NavigateToLocation(fileResource, location);
+                await NavigateToLocation(fileResource, effectiveOptions.Location);
             }
 
             return Result.Ok();
         }
 
-        // Open in the active section
-        var activeSectionIndex = SectionContainer.ActiveSectionIndex;
-        var targetSection = SectionContainer.GetSection(activeSectionIndex);
-
-        //
-        // Add a new DocumentTab to the section immediately.
-        // This provides some early visual feedback that the document is loading.
-        //
-
-        var documentTab = new DocumentTab();
-        documentTab.ViewModel.FileResource = fileResource;
-        documentTab.ViewModel.FilePath = filePath;
-        documentTab.ViewModel.DocumentName = fileResource.ResourceName;
-
-        targetSection.AddTab(documentTab);
-
-        if (activate)
+        // Resolve the file path from the resource key
+        var resourceRegistry = ServiceLocator.AcquireService<IWorkspaceWrapper>()
+            .WorkspaceService.ResourceService.Registry;
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
         {
-            targetSection.SelectTab(documentTab);
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
         }
-
-        var createResult = await ViewModel.CreateDocumentView(fileResource);
-        if (createResult.IsFailure)
-        {
-            targetSection.RemoveTab(documentTab);
-
-            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
-                .WithErrors(createResult);
-        }
-        var documentView = createResult.Value;
-
-        // Populate the tab content
-        documentTab.ViewModel.DocumentView = documentView;
-        documentTab.Content = documentView;
-
-        // Force the content to refresh
-        targetSection.RefreshSelectedTab();
-
-        // Update all tab names to handle any filename ambiguity
-        UpdateAllTabDisplayNames();
-
-        if (activate)
-        {
-            SectionContainer.ActivateDocument(fileResource, activeSectionIndex);
-        }
-
-        // Navigate to location if specified
-        if (!string.IsNullOrEmpty(location))
-        {
-            await NavigateToLocation(fileResource, location);
-        }
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address, bool activate = true)
-    {
-        // Validate section index
-        int sectionIndex = address.SectionIndex;
-        if (sectionIndex < 0 || sectionIndex >= SectionContainer.SectionCount)
-        {
-            // Fall back to section 0 if invalid
-            sectionIndex = 0;
-        }
-
-        // Check if the file is already opened in any section
-        var (existingSection, existingTab) = SectionContainer.FindDocumentTab(fileResource);
-        if (existingTab != null && existingSection != null)
-        {
-            // If already open in a different section, move it
-            if (existingSection.SectionIndex != sectionIndex)
-            {
-                SectionContainer.MoveTabToSection(existingTab, sectionIndex);
-            }
-
-            if (activate)
-            {
-                var targetSection = SectionContainer.GetSection(sectionIndex);
-                targetSection.SelectTab(existingTab);
-                SectionContainer.ActivateDocument(fileResource, sectionIndex);
-            }
-
-            return Result.Ok();
-        }
+        var filePath = resolveResult.Value;
 
         // Open in the specified section
         var targetSectionForNew = SectionContainer.GetSection(sectionIndex);
@@ -408,12 +374,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
         targetSectionForNew.AddTab(documentTab);
 
-        if (activate)
+        if (effectiveOptions.Activate)
         {
             targetSectionForNew.SelectTab(documentTab);
         }
 
-        var createResult = await ViewModel.CreateDocumentView(fileResource);
+        var createResult = await ViewModel.CreateDocumentView(fileResource, effectiveOptions.EditorId);
         if (createResult.IsFailure)
         {
             targetSectionForNew.RemoveTab(documentTab);
@@ -425,12 +391,24 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.Content = documentView;
 
+        UpdateEditorDisplayName(documentTab, effectiveOptions.EditorId);
+
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
 
-        if (activate)
+        if (effectiveOptions.Activate)
         {
             SectionContainer.ActivateDocument(fileResource, sectionIndex);
+        }
+
+        if (!string.IsNullOrEmpty(effectiveOptions.Location))
+        {
+            await NavigateToLocation(fileResource, effectiveOptions.Location);
+        }
+
+        if (!string.IsNullOrEmpty(effectiveOptions.EditorStateJson))
+        {
+            await documentView.RestoreEditorStateAsync(effectiveOptions.EditorStateJson);
         }
 
         return Result.Ok();
@@ -650,6 +628,52 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     /// Tabs with unique filenames show just the filename; tabs with ambiguous filenames
     /// show additional path segments to differentiate them.
     /// </summary>
+    private void UpdateEditorDisplayName(DocumentTab documentTab, DocumentEditorId documentEditorId = default)
+    {
+        var extension = Path.GetExtension(documentTab.ViewModel.FileResource.ToString()).ToLowerInvariant();
+        var documentsService = ViewModel.GetDocumentsService();
+        var editorRegistry = documentsService.DocumentEditorRegistry;
+        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+
+        // If a specific editor was used, look it up directly
+        if (!documentEditorId.IsEmpty)
+        {
+            var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
+            if (factoryResult.IsSuccess)
+            {
+                documentTab.ViewModel.EditorId = factoryResult.Value.EditorId;
+                if (factories.Count >= 2)
+                {
+                    documentTab.ViewModel.EditorDisplayName = factoryResult.Value.DisplayName;
+                }
+                return;
+            }
+        }
+
+        // Fall back to priority-based resolution
+        if (factories.Count >= 2)
+        {
+            var resourceRegistry = ServiceLocator.AcquireService<IWorkspaceWrapper>()
+                .WorkspaceService.ResourceService.Registry;
+            var resolveResult = resourceRegistry.ResolveResourcePath(documentTab.ViewModel.FileResource);
+            var filePath = resolveResult.IsSuccess ? resolveResult.Value : string.Empty;
+
+            foreach (var factory in factories)
+            {
+                if (factory.CanHandleResource(documentTab.ViewModel.FileResource, filePath))
+                {
+                    documentTab.ViewModel.EditorDisplayName = factory.DisplayName;
+                    documentTab.ViewModel.EditorId = factory.EditorId;
+                    break;
+                }
+            }
+        }
+        else if (factories.Count == 1)
+        {
+            documentTab.ViewModel.EditorId = factories[0].EditorId;
+        }
+    }
+
     private void UpdateAllTabDisplayNames()
     {
         // Collect all tabs from all sections
@@ -748,6 +772,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 break;
             case DocumentTabMenuAction.OpenApplication:
                 OpenApplicationForTab(tab);
+                break;
+            case DocumentTabMenuAction.Reopen:
+                _ = ReopenTab(tab);
                 break;
         }
     }
@@ -941,6 +968,89 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         _commandService.Execute<IOpenApplicationCommand>(command =>
         {
             command.Resource = fileResource;
+        });
+    }
+
+    private async Task ReopenTab(DocumentTab tab)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        var documentsService = ViewModel.GetDocumentsService();
+        var editorRegistry = documentsService.DocumentEditorRegistry;
+        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+
+        var selectedEditorId = DocumentEditorId.Empty;
+
+        if (factories.Count >= 2)
+        {
+            // Pre-select the current editor
+            var currentEditorId = tab.ViewModel.EditorId;
+            int defaultIndex = 0;
+            for (int i = 0; i < factories.Count; i++)
+            {
+                if (factories[i].EditorId == currentEditorId)
+                {
+                    defaultIndex = i;
+                    break;
+                }
+            }
+
+            // Multiple editors available — show choice dialog
+            var displayNames = factories.Select(f => f.DisplayName).ToList();
+            var stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
+            var dialogService = ServiceLocator.AcquireService<IDialogService>();
+
+            var title = stringLocalizer.GetString("OpenWithDialog_Title");
+            var message = stringLocalizer.GetString("OpenWithDialog_Message");
+            var checkbox = new ChoiceDialogCheckbox(stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
+
+            var choiceResult = await dialogService.ShowChoiceDialogAsync(title, message, displayNames, defaultIndex, checkbox);
+            if (choiceResult.IsFailure)
+            {
+                return;
+            }
+
+            selectedEditorId = factories[choiceResult.Value.SelectedIndex].EditorId;
+
+            if (choiceResult.Value.CheckboxChecked)
+            {
+                var workspaceSettings = ServiceLocator.AcquireService<IWorkspaceWrapper>()
+                    .WorkspaceService.WorkspaceSettings;
+                var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
+                await workspaceSettings.SetPropertyAsync(preferenceKey, selectedEditorId.ToString());
+            }
+        }
+
+        // Save editor state before closing
+        string? editorState = null;
+        if (tab.ViewModel.DocumentView is not null)
+        {
+            editorState = await tab.ViewModel.DocumentView.SaveEditorStateAsync();
+        }
+
+        // Close the document
+        var closeResult = await tab.ViewModel.CloseDocument(forceClose: false);
+        if (closeResult.IsFailure || !closeResult.Value)
+        {
+            return;
+        }
+
+        // Find and remove the tab from its section
+        var (section, _) = SectionContainer.FindDocumentTab(fileResource);
+        if (section is not null)
+        {
+            section.RemoveTab(tab);
+        }
+
+        NotifyLayoutChanged();
+
+        // Reopen with the selected editor and restore editor state
+        _commandService.Execute<IOpenDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+            command.ForceReload = true;
+            command.EditorId = selectedEditorId;
+            command.EditorStateJson = editorState;
         });
     }
 }

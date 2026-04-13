@@ -22,16 +22,17 @@ public interface IDocumentsService
     ResourceKey ActiveDocument { get; }
 
     /// <summary>
-    /// Gets all open documents with their addresses.
+    /// Returns a snapshot of all open documents with their addresses and editor IDs.
     /// </summary>
-    Dictionary<ResourceKey, DocumentAddress> OpenDocumentAddresses { get; }
+    IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
 
     /// <summary>
     /// Create a document view for the specified file resource.
     /// The type of document view created is based on the file extension.
+    /// When documentEditorId is specified, uses that specific editor instead of the default.
     /// Fails if the file resource does not exist.
     /// </summary>
-    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource);
+    Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId editorId = default);
 
     /// <summary>
     /// Returns the document view type for the specified file resource.
@@ -51,17 +52,9 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
-    /// Opens a file resource as a document in the documents panel, optionally reloading if already open
-    /// and navigating to a specific location. When activate is true, the document becomes the active tab.
+    /// Opens a file resource as a document in the documents panel.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "", bool activate = true);
-
-    /// <summary>
-    /// Opens a file resource as a document in a specific section of the documents panel.
-    /// If the document is already open in another section, it will be moved to the target section.
-    /// When activate is true, the document becomes the active tab.
-    /// </summary>
-    Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "", bool activate = true);
+    Task<Result> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);
 
     /// <summary>
     /// Closes an opened document in the documents panel.
@@ -93,4 +86,15 @@ public interface IDocumentsService
     /// This document will be activated at the start of the next editing session.
     /// </summary>
     Task StoreActiveDocument();
+
+    /// <summary>
+    /// Saves editor UI state (scroll position, view mode, etc.) for all open documents.
+    /// </summary>
+    Task StoreEditorStates();
+
+    /// <summary>
+    /// Clears the stored editor state for a specific document.
+    /// Called when a document fails to open, to prevent stale state from persisting.
+    /// </summary>
+    Task ClearEditorState(ResourceKey fileResource);
 }

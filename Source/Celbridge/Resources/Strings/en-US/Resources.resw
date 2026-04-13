@@ -995,4 +995,37 @@ Do you wish to continue?</value>
   <data name="Package_InstallConfirm_Message" xml:space="preserve">
     <value>Install package '{0}' from the remote registry?</value>
   </data>
+  <data name="DocumentEditor_CodeEditor" xml:space="preserve">
+    <value>Code Editor</value>
+  </data>
+  <data name="DocumentEditor_FileViewer" xml:space="preserve">
+    <value>File Viewer</value>
+  </data>
+  <data name="DocumentEditor_MarkdownEditor" xml:space="preserve">
+    <value>Markdown Editor</value>
+  </data>
+  <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
+    <value>Spreadsheet Editor</value>
+  </data>
+  <data name="DocumentEditor_SceneEditor" xml:space="preserve">
+    <value>Scene Editor</value>
+  </data>
+  <data name="DocumentEditor_WebAppEditor" xml:space="preserve">
+    <value>Web App Editor</value>
+  </data>
+  <data name="Explorer_OpenWith" xml:space="preserve">
+    <value>Open with...</value>
+  </data>
+  <data name="OpenWithDialog_Title" xml:space="preserve">
+    <value>Choose Editor</value>
+  </data>
+  <data name="OpenWithDialog_Message" xml:space="preserve">
+    <value>Select which editor to use for this file type:</value>
+  </data>
+  <data name="OpenWithDialog_UseAsDefault" xml:space="preserve">
+    <value>Use as default for this file type</value>
+  </data>
+  <data name="DocumentTab_Reopen" xml:space="preserve">
+    <value>Reopen</value>
+  </data>
 </root>

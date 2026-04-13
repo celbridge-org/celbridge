@@ -3,6 +3,8 @@ using System.Text.Json;
 using Celbridge.Code.Views;
 using Celbridge.Documents.Views;
 using Celbridge.Logging;
+using Microsoft.Extensions.Localization;
+
 namespace Celbridge.Code.Services;
 
 /// <summary>
@@ -15,6 +17,7 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
     private const string CodeEditorTypesResourceName = "Celbridge.Code.Assets.CodeEditorTypes.json";
     private readonly IServiceProvider _serviceProvider;
     private readonly ITextBinarySniffer _textBinarySniffer;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly Dictionary<string, string> _extensionToLanguage;
 
 #if WINDOWS
@@ -24,14 +27,22 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
     private bool _isDisposed;
 #endif
 
+    public DocumentEditorId EditorId { get; } = new("celbridge.code-editor");
+
+    public string DisplayName => _stringLocalizer.GetString("DocumentEditor_CodeEditor");
+
     public IReadOnlyList<string> SupportedExtensions { get; }
 
     public EditorPriority Priority => EditorPriority.General;
 
-    public CodeEditorFactory(IServiceProvider serviceProvider, ITextBinarySniffer textBinarySniffer)
+    public CodeEditorFactory(
+        IServiceProvider serviceProvider,
+        ITextBinarySniffer textBinarySniffer,
+        IStringLocalizer stringLocalizer)
     {
         _serviceProvider = serviceProvider;
         _textBinarySniffer = textBinarySniffer;
+        _stringLocalizer = stringLocalizer;
 
 #if WINDOWS
         _logger = ServiceLocator.AcquireService<ILogger<CodeEditorFactory>>();
@@ -44,7 +55,7 @@ public class CodeEditorFactory : IDocumentEditorFactory, IDisposable
         SupportedExtensions = _extensionToLanguage.Keys.ToList().AsReadOnly();
     }
 
-    public bool CanHandle(ResourceKey fileResource, string filePath)
+    public bool CanHandleResource(ResourceKey fileResource, string filePath)
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
 

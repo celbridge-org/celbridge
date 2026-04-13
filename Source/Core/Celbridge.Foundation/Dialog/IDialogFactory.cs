@@ -41,4 +41,10 @@ public interface IDialogFactory
     /// Create a Resource Picker Dialog filtered to the specified file extensions.
     /// </summary>
     IResourcePickerDialog CreateResourcePickerDialog(IResourceRegistry registry, IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
+
+    /// <summary>
+    /// Create a Choice Dialog that lets the user pick from a list of named options.
+    /// When checkbox is provided, shows a checkbox below the options.
+    /// </summary>
+    IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null);
 }

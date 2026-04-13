@@ -131,8 +131,15 @@ public class WorkspaceLoader
 
         // Register all packages before restoring documents so that restored documents can use editors
         // defined in packages.
-        var packageService = workspaceService.PackageService;
-        packageService.RegisterPackages(projectFolderPath);
+        try
+        {
+            var packageService = workspaceService.PackageService;
+            packageService.RegisterPackages(projectFolderPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
+        }
 
         // Open previous opened documents in the Documents Panel
         var documentsService = workspaceService.DocumentsService;
@@ -144,6 +151,7 @@ public class WorkspaceLoader
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
+        await documentsService.StoreEditorStates();
 
         //
         // Populate title bar shortcut buttons from project config

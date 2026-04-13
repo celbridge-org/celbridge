@@ -35,9 +35,9 @@ public class DocumentToolTests
 
         var activeResource = new ResourceKey("notes/readme.md");
         documentsService.ActiveDocument.Returns(activeResource);
-        documentsService.OpenDocumentAddresses.Returns(new Dictionary<ResourceKey, DocumentAddress>
+        documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
-            [activeResource] = new DocumentAddress(0, 0, 0)
+            new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
         });
         documentsPanel.SectionCount.Returns(1);
 
@@ -68,10 +68,10 @@ public class DocumentToolTests
         var otherResource = new ResourceKey("tests/test_main.py");
 
         documentsService.ActiveDocument.Returns(activeResource);
-        documentsService.OpenDocumentAddresses.Returns(new Dictionary<ResourceKey, DocumentAddress>
+        documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>
         {
-            [activeResource] = new DocumentAddress(0, 0, 0),
-            [otherResource] = new DocumentAddress(0, 1, 0)
+            new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty),
+            new(otherResource, new DocumentAddress(0, 1, 0), DocumentEditorId.Empty)
         });
         documentsPanel.SectionCount.Returns(2);
 
@@ -101,7 +101,7 @@ public class DocumentToolTests
         var documentsPanel = Substitute.For<IDocumentsPanel>();
 
         documentsService.ActiveDocument.Returns(ResourceKey.Empty);
-        documentsService.OpenDocumentAddresses.Returns(new Dictionary<ResourceKey, DocumentAddress>());
+        documentsService.GetOpenDocuments().Returns(new List<OpenDocumentInfo>());
         documentsPanel.SectionCount.Returns(1);
 
         _workspaceService.DocumentsService.Returns(documentsService);

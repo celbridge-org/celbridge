@@ -65,6 +65,12 @@ public sealed partial class CodeEditor : UserControl
     public event Action? ContentChanged;
 
     /// <summary>
+    /// Raised when the JS client requests a content reload via the document/load RPC.
+    /// This fires during external change reloads, before the JS sets the new content in the editor.
+    /// </summary>
+    public event Action? ContentLoadRequested;
+
+    /// <summary>
     /// Raised when the editor receives focus.
     /// </summary>
     public event Action? EditorFocused;
@@ -126,6 +132,7 @@ public sealed partial class CodeEditor : UserControl
             _logger,
             _state,
             () => ContentChanged?.Invoke());
+        _documentHandler.ContentLoadRequested += () => ContentLoadRequested?.Invoke();
 
         var inputHandler = new CodeEditorInputHandler(
             scrollPercentage => ScrollPositionChanged?.Invoke(scrollPercentage));

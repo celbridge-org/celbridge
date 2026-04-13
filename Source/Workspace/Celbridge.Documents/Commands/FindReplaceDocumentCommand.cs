@@ -75,7 +75,7 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
     {
         if (documentView is null)
         {
-            var openResult = await documentsService.OpenDocument(FileResource, forceReload: false, location: string.Empty, activate: false);
+            var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(Activate: false));
             if (openResult.IsFailure)
             {
                 return Result.Fail($"Failed to open document: '{FileResource}'")

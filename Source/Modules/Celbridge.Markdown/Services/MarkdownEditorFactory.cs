@@ -13,6 +13,10 @@ public class MarkdownEditorFactory : DocumentEditorFactoryBase
     private readonly IServiceProvider _serviceProvider;
     private readonly IStringLocalizer _stringLocalizer;
 
+    public override DocumentEditorId EditorId { get; } = new("celbridge.markdown-editor");
+
+    public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_MarkdownEditor");
+
     public override IReadOnlyList<string> SupportedExtensions { get; } = [".md", ".markdown"];
 
     public MarkdownEditorFactory(IServiceProvider serviceProvider, IStringLocalizer stringLocalizer)

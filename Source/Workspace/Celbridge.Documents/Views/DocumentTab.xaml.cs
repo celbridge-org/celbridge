@@ -23,7 +23,8 @@ public enum DocumentTabMenuAction
     CopyFilePath,
     SelectFile,
     OpenFileExplorer,
-    OpenApplication
+    OpenApplication,
+    Reopen
 }
 
 // I've tried writing this class using a C# Markup class subclassed from TabViewItem, but it didn't work.
@@ -83,6 +84,7 @@ public partial class DocumentTab : TabViewItem
         SelectFileMenuItem.Text = _stringLocalizer.GetString("DocumentTab_SelectFile");
         OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileExplorer");
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
+        ReopenMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Reopen");
     }
 
     /// <summary>
@@ -157,6 +159,11 @@ public partial class DocumentTab : TabViewItem
     private void ContextMenu_OpenApplication(object sender, RoutedEventArgs e)
     {
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.OpenApplication);
+    }
+
+    private void ContextMenu_Reopen(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.Reopen);
     }
 
     private void TabContextMenu_Opening(object sender, object e)

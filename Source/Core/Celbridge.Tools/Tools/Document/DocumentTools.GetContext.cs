@@ -33,17 +33,17 @@ public partial class DocumentTools
         var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         var documentsPanel = workspaceWrapper.WorkspaceService.DocumentsPanel;
 
-        var openDocuments = documentsService.OpenDocumentAddresses;
+        var openDocuments = documentsService.GetOpenDocuments();
         var activeDocument = documentsService.ActiveDocument;
 
         var documents = new List<OpenDocumentEntry>();
-        foreach (var (resource, address) in openDocuments)
+        foreach (var document in openDocuments)
         {
             documents.Add(new OpenDocumentEntry(
-                resource.ToString(),
-                address.SectionIndex,
-                address.TabOrder,
-                resource == activeDocument));
+                document.FileResource.ToString(),
+                document.Address.SectionIndex,
+                document.Address.TabOrder,
+                document.FileResource == activeDocument));
         }
 
         var result = new DocumentContextResult(

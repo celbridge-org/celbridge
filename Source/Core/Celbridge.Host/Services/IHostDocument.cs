@@ -15,6 +15,8 @@ public static class DocumentRpcMethods
     public const string ImportComplete = "document/importComplete";
     public const string ClientReady = "document/clientReady";
     public const string ContentLoaded = "document/contentLoaded";
+    public const string RequestState = "document/requestState";
+    public const string RestoreState = "document/restoreState";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -99,4 +101,16 @@ public static class HostDocumentExtensions
     /// </summary>
     public static Task NotifyExternalChangeAsync(this CelbridgeHost host)
         => host.Rpc.NotifyAsync(DocumentRpcMethods.ExternalChange);
+
+    /// <summary>
+    /// Requests the WebView to return its current editor state as an opaque JSON string.
+    /// </summary>
+    public static Task<string?> RequestStateAsync(this CelbridgeHost host)
+        => host.Rpc.InvokeAsync<string?>(DocumentRpcMethods.RequestState);
+
+    /// <summary>
+    /// Sends previously saved editor state to the WebView for restoration.
+    /// </summary>
+    public static Task NotifyRestoreStateAsync(this CelbridgeHost host, string state)
+        => host.Rpc.InvokeAsync(DocumentRpcMethods.RestoreState, state);
 }

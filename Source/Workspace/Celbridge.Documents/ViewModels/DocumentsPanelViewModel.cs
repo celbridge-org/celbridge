@@ -28,9 +28,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.UnregisterAll(this);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
     {
-        var createResult = await _documentsService.CreateDocumentView(fileResource);
+        var createResult = await _documentsService.CreateDocumentView(fileResource, documentEditorId);
         if (createResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
@@ -76,6 +76,11 @@ public partial class DocumentsPanelViewModel : ObservableObject
         // Notify the DocumentsService about the section ratios change.
         var message = new SectionRatiosChangedMessage(ratios);
         _messengerService.Send(message);
+    }
+
+    public IDocumentsService GetDocumentsService()
+    {
+        return _documentsService;
     }
 
     public ResourceKey GetResourceKey(IFileResource fileResource)

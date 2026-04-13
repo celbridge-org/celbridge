@@ -48,6 +48,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     private SplitterHelper? _splitterHelper;
     private CancellationTokenSource? _reloadDebounceCancellation;
     private int _reloadDebounceVersion;
+    private double _lastScrollPercentage;
     private double _editorRatio = 1.0;
     private double _previewRatio = 1.0;
     private double _totalDragDelta;
@@ -153,6 +154,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         // Subscribe to CodeEditor events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
+        MonacoEditor.ContentLoadRequested += OnMonacoContentLoadRequested;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
         MonacoEditor.ScrollPositionChanged += OnMonacoScrollPositionChanged;
 
@@ -420,6 +422,55 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         }
     }
 
+    public override async Task<string?> SaveEditorStateAsync()
+    {
+        try
+        {
+            var state = new Dictionary<string, object>
+            {
+                ["scrollPercentage"] = _lastScrollPercentage,
+                ["viewMode"] = ViewMode.ToString()
+            };
+
+            return JsonSerializer.Serialize(state);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state);
+            if (parsed is null)
+            {
+                return;
+            }
+
+            if (parsed.TryGetValue("viewMode", out var viewModeElement) &&
+                Enum.TryParse<SplitEditorViewMode>(viewModeElement.GetString(), out var viewMode))
+            {
+                if (InitialViewMode.HasValue)
+                {
+                    SetViewMode(viewMode);
+                }
+            }
+
+            if (parsed.TryGetValue("scrollPercentage", out var scrollElement))
+            {
+                var scrollPercentage = scrollElement.GetDouble();
+                await MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
+            }
+        }
+        catch
+        {
+            // Ignore incompatible or corrupt state
+        }
+    }
+
     public override async Task PrepareToClose()
     {
         try
@@ -482,6 +533,27 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         }
     }
 
+    private void OnMonacoContentLoadRequested()
+    {
+        // The JS client has requested a content reload (during an external file change).
+        // After LoadAsync returns, the JS will call setValue with the new content, followed by
+        // a double-requestAnimationFrame to restore editor state. We schedule a deferred preview
+        // update to run after this sequence completes.
+        // The normal OnMonacoContentChanged path doesn't fire during external reloads because
+        // Monaco suppresses content change notifications to avoid marking the document as unsaved.
+        if (IsPreviewVisible && _previewHelper is not null)
+        {
+            var previewHelper = _previewHelper;
+            _ = Task.Delay(500).ContinueWith(_ =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    _ = previewHelper.UpdateAsync();
+                });
+            }, TaskScheduler.Default);
+        }
+    }
+
     private void OnMonacoEditorFocused()
     {
         // Notify the system that this document view has focus
@@ -491,6 +563,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
+        _lastScrollPercentage = scrollPercentage;
+
         // Only sync scroll in Split mode where both editor and preview are visible.
         // In Preview mode the editor is collapsed, so its scroll position is always
         // zero and forwarding it would reset the preview scroll to the top.

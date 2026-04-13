@@ -26,6 +26,10 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public bool Activate { get; set; } = true;
 
+    public DocumentEditorId EditorId { get; set; }
+
+    public string? EditorStateJson { get; set; }
+
     public OpenDocumentCommand(
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
@@ -74,17 +78,13 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return Result.Fail($"This file format is not supported: '{FileResource}'");
         }
 
-        Result openResult;
-        if (TargetSectionIndex.HasValue)
-        {
-            // Open in the specified section
-            openResult = await documentsService.OpenDocumentAtSection(FileResource, TargetSectionIndex.Value, ForceReload, Location, Activate);
-        }
-        else
-        {
-            // Open in the active section (default behavior)
-            openResult = await documentsService.OpenDocument(FileResource, ForceReload, Location, Activate);
-        }
+        DocumentAddress? address = TargetSectionIndex.HasValue
+            ? new DocumentAddress(WindowIndex: 0, SectionIndex: TargetSectionIndex.Value, TabOrder: 0)
+            : null;
+
+        var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorStateJson);
+
+        var openResult = await documentsService.OpenDocument(FileResource, options);
 
         if (openResult.IsFailure)
         {

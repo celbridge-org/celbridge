@@ -47,7 +47,7 @@ public class DeleteLinesCommand : CommandBase, IDeleteLinesCommand
         }
         else if (OpenDocument)
         {
-            var openResult = await documentsService.OpenDocument(Resource, forceReload: false, location: string.Empty, activate: false);
+            var openResult = await documentsService.OpenDocument(Resource, new OpenDocumentOptions(Activate: false));
             if (openResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to open document for deleting lines: {Resource}");

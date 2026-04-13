@@ -20,6 +20,11 @@ public abstract partial record DocumentContribution
     public string Id { get; init; } = string.Empty;
 
     /// <summary>
+    /// Display name or localization key for this document editor.
+    /// </summary>
+    public string DisplayName { get; init; } = string.Empty;
+
+    /// <summary>
     /// The document file types this editor handles. Each entry declares the file extension and
     /// an optional display name or localization key for the Add File dialog.
     /// </summary>

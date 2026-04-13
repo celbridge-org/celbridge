@@ -31,6 +31,12 @@ internal sealed class CodeEditorDocumentHandler : IHostDocument
     /// </summary>
     internal TaskCompletionSource<string>? GetContentTcs { get; set; }
 
+    /// <summary>
+    /// Raised when the JS client requests a content reload via the document/load RPC.
+    /// This fires before the JS sets the content in the editor.
+    /// </summary>
+    internal event Action? ContentLoadRequested;
+
     public CodeEditorDocumentHandler(
         ILogger logger,
         CodeEditorState state,
@@ -64,6 +70,8 @@ internal sealed class CodeEditorDocumentHandler : IHostDocument
         {
             _logger.LogWarning($"LoadAsync has no ContentLoader for file: {_state.ResourceKey}");
         }
+
+        ContentLoadRequested?.Invoke();
 
         var metadata = CreateMetadata();
 

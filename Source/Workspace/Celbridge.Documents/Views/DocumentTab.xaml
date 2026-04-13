@@ -29,6 +29,8 @@
             <MenuFlyoutSeparator />
             <MenuFlyoutItem x:Name="OpenFileExplorerMenuItem" Click="ContextMenu_OpenFileExplorer" />
             <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
+            <MenuFlyoutSeparator x:Name="ReopenSeparator" />
+            <MenuFlyoutItem x:Name="ReopenMenuItem" Click="ContextMenu_Reopen" />
         </MenuFlyout>
     </muxc:TabViewItem.ContextFlyout>
 
@@ -44,7 +46,7 @@
 
                 <TextBlock Text="{x:Bind ViewModel.DocumentName, Mode=OneWay}"
                            Margin="4,0,0,0"
-                           ToolTipService.ToolTip="{x:Bind ViewModel.FilePath, Mode=OneWay}"
+                           ToolTipService.ToolTip="{x:Bind ViewModel.TabTooltip, Mode=OneWay}"
                            ToolTipService.Placement="Bottom" />
             </StackPanel>
             

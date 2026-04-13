@@ -200,9 +200,18 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetSectionRatios(List<double> ratios)
     {
-        if (ratios == null || ratios.Count == 0)
+        if (ratios == null || ratios.Count != _sectionCount)
         {
             return;
+        }
+
+        // Validate that all ratios are finite positive numbers
+        foreach (var ratio in ratios)
+        {
+            if (double.IsNaN(ratio) || double.IsInfinity(ratio) || ratio <= 0)
+            {
+                return;
+            }
         }
 
         // Apply ratios as Star values to columns
@@ -213,8 +222,7 @@ public sealed partial class DocumentSectionContainer : UserControl
             // Skip splitter columns (odd indices)
             if (i % 2 == 0)
             {
-                var ratio = Math.Max(ratios[ratioIndex], 0.1); // Minimum ratio to prevent collapse
-                colDef.Width = new GridLength(ratio, GridUnitType.Star);
+                colDef.Width = new GridLength(ratios[ratioIndex], GridUnitType.Star);
                 ratioIndex++;
             }
         }

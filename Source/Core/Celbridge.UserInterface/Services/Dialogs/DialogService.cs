@@ -147,4 +147,10 @@ public class DialogService : IDialogService
         var dialog = _dialogFactory.CreateResourcePickerDialog(registry, extensions, title, showPreview);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
+
+    public async Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null)
+    {
+        var dialog = _dialogFactory.CreateChoiceDialog(titleText, messageText, options, defaultIndex, checkbox);
+        return await ShowDialogAsync(dialog.ShowDialogAsync);
+    }
 }

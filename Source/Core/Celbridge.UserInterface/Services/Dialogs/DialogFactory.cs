@@ -90,5 +90,12 @@ public class DialogFactory : IDialogFactory
         }
         return dialog;
     }
+
+    public IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null)
+    {
+        var dialog = new ChoiceDialog();
+        dialog.Initialize(titleText, messageText, options, defaultIndex, checkbox);
+        return dialog;
+    }
 }
 

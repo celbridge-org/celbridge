@@ -1,5 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.WebApp.Views;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.WebApp.Services;
 
@@ -10,12 +11,18 @@ namespace Celbridge.WebApp.Services;
 public class WebAppEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly IStringLocalizer _stringLocalizer;
+
+    public override DocumentEditorId EditorId { get; } = new("celbridge.webapp-editor");
+
+    public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_WebAppEditor");
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = [".webapp"];
 
-    public WebAppEditorFactory(IServiceProvider serviceProvider)
+    public WebAppEditorFactory(IServiceProvider serviceProvider, IStringLocalizer stringLocalizer)
     {
         _serviceProvider = serviceProvider;
+        _stringLocalizer = stringLocalizer;
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

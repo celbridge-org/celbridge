@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
+using Microsoft.Extensions.Localization;
 using Celbridge.Screenplay.Commands;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Services;
@@ -62,7 +63,8 @@ public class Module : IModule
 
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
-        return [new SceneEditorFactory(serviceProvider)];
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return [new SceneEditorFactory(serviceProvider, stringLocalizer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)
