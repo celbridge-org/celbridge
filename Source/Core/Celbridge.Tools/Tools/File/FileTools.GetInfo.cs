@@ -23,52 +23,42 @@ public partial class FileTools
     /// <returns>JSON object with fields: type (string: "file" or "folder"), size (long, files only), modified (string, ISO 8601), extension (string, files only), isText (bool, files only), lineCount (int, text files only).</returns>
     [McpServerTool(Name = "file_get_info", ReadOnly = true)]
     [ToolAlias("file.get_info")]
-    public partial CallToolResult GetInfo(string resource)
+    public async partial Task<CallToolResult> GetInfo(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ErrorResult($"Invalid resource key: '{resource}'");
         }
 
-        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        // Route through the command queue so the snapshot observes state after all
+        // previously enqueued commands have run. The command resolves the registry
+        // path and captures disk metadata on the command thread.
+        var (callResult, snapshot) = await ExecuteCommandAsync<IGetFileInfoCommand, FileInfoSnapshot>(
+            command => command.Resource = resourceKey);
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
-        if (resolveResult.IsFailure)
+        if (callResult.IsError == true || snapshot is null)
         {
-            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+            return callResult;
         }
-        var resourcePath = resolveResult.Value;
 
-        if (File.Exists(resourcePath))
+        if (!snapshot.Exists)
         {
-            var fileInfo = new FileInfo(resourcePath);
-            var textBinarySniffer = GetRequiredService<ITextBinarySniffer>();
-            var isText = IsTextFile(textBinarySniffer, resourcePath);
-            int? lineCount = null;
+            return ErrorResult($"Resource not found: '{resource}'");
+        }
 
-            if (isText)
-            {
-                lineCount = File.ReadAllLines(resourcePath).Length;
-            }
-
-            var result = new FileInfoResult(
+        if (snapshot.IsFile)
+        {
+            var fileResult = new FileInfoResult(
                 "file",
-                fileInfo.Length,
-                fileInfo.LastWriteTimeUtc.ToString("o"),
-                fileInfo.Extension,
-                isText,
-                lineCount);
-            return SuccessResult(SerializeJson(result));
+                snapshot.Size,
+                snapshot.ModifiedUtc.ToString("o"),
+                snapshot.Extension,
+                snapshot.IsText,
+                snapshot.LineCount);
+            return SuccessResult(SerializeJson(fileResult));
         }
 
-        if (Directory.Exists(resourcePath))
-        {
-            var directoryInfo = new DirectoryInfo(resourcePath);
-            var result = new FolderInfoResult("folder", directoryInfo.LastWriteTimeUtc.ToString("o"));
-            return SuccessResult(SerializeJson(result));
-        }
-
-        return ErrorResult($"Resource not found: '{resource}'");
+        var folderResult = new FolderInfoResult("folder", snapshot.ModifiedUtc.ToString("o"));
+        return SuccessResult(SerializeJson(folderResult));
     }
 }

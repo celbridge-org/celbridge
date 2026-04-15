@@ -25,25 +25,22 @@ public partial class FileTools
     /// <returns>JSON array of objects with fields: name (string), type (string: "file" or "folder"), size (long, files only), modified (string, ISO 8601).</returns>
     [McpServerTool(Name = "file_list_contents", ReadOnly = true)]
     [ToolAlias("file.list_contents")]
-    public partial CallToolResult ListContents(string resource, string glob = "")
+    public async partial Task<CallToolResult> ListContents(string resource, string glob = "")
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ErrorResult($"Invalid resource key: '{resource}'");
         }
 
-        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(resourceKey);
-        if (getResult.IsFailure)
+        // Route through the command queue so the snapshot observes state after all
+        // previously enqueued commands have run. The command reads directly from the
+        // resource registry on the command thread, which is the synchronization point
+        // for registry mutations (folder adds, renames, etc).
+        var (callResult, snapshot) = await ExecuteCommandAsync<IListFolderContentsCommand, FolderContentsSnapshot>(
+            command => command.Resource = resourceKey);
+        if (callResult.IsError == true || snapshot is null)
         {
-            return ErrorResult($"Resource not found: '{resource}'");
-        }
-
-        if (getResult.Value is not IFolderResource folderResource)
-        {
-            return ErrorResult($"Resource is not a folder: '{resource}'");
+            return callResult;
         }
 
         Regex? globRegex = null;
@@ -54,43 +51,27 @@ public partial class FileTools
         }
 
         var items = new List<object>();
-        foreach (var child in folderResource.Children)
+        foreach (var entry in snapshot.Entries)
         {
-            if (globRegex is not null && !globRegex.IsMatch(child.Name))
+            if (globRegex is not null && !globRegex.IsMatch(entry.Name))
             {
                 continue;
             }
 
-            var childKey = resourceRegistry.GetResourceKey(child);
-
-            if (child is IFolderResource)
+            if (entry.IsFolder)
             {
-                var resolveChildResult = resourceRegistry.ResolveResourcePath(childKey);
-                if (resolveChildResult.IsFailure)
-                {
-                    continue;
-                }
-                var directoryInfo = new DirectoryInfo(resolveChildResult.Value);
-                var folderItem = new ListContentsFolderItem(
-                    child.Name,
+                items.Add(new ListContentsFolderItem(
+                    entry.Name,
                     "folder",
-                    directoryInfo.LastWriteTimeUtc.ToString("o"));
-                items.Add(folderItem);
+                    entry.ModifiedUtc.ToString("o")));
             }
             else
             {
-                var resolveChildResult = resourceRegistry.ResolveResourcePath(childKey);
-                if (resolveChildResult.IsFailure)
-                {
-                    continue;
-                }
-                var fileInfo = new FileInfo(resolveChildResult.Value);
-                var fileItem = new ListContentsFileItem(
-                    child.Name,
+                items.Add(new ListContentsFileItem(
+                    entry.Name,
                     "file",
-                    fileInfo.Length,
-                    fileInfo.LastWriteTimeUtc.ToString("o"));
-                items.Add(fileItem);
+                    entry.Size,
+                    entry.ModifiedUtc.ToString("o")));
             }
         }
 

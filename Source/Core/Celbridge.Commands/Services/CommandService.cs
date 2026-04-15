@@ -216,9 +216,15 @@ public class CommandService : ICommandService
                     var scopeName = $"Execute {command.GetType().Name}";
                     using (_logger.BeginScope(scopeName))
                     {
-                        // Log the command execution at the debug level
-                        string logEntry = _logSerializer.SerializeObject(startedMessage, false);
-                        _logger.LogDebug(logEntry);
+                        // Log the command execution at the debug level.
+                        // Query commands are skipped to avoid flooding the audit log when tools
+                        // poll read-only state frequently.
+                        bool isQuery = command.CommandFlags.HasFlag(CommandFlags.Query);
+                        if (!isQuery)
+                        {
+                            string logEntry = _logSerializer.SerializeObject(startedMessage, false);
+                            _logger.LogDebug(logEntry);
+                        }
 
                         var executeResult = await command.ExecuteAsync();
 

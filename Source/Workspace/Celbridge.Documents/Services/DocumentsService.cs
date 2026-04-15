@@ -32,17 +32,20 @@ public class DocumentsService : IDocumentsService, IDisposable
     public ResourceKey ActiveDocument { get; private set; }
 
     /// <summary>
-    /// Cached snapshot of the open documents, refreshed on the UI thread in response to
-    /// DocumentLayoutChangedMessage. Worker threads (e.g. MCP tool handlers) read this field
-    /// instead of reaching into TabView.TabItems, which has UI-thread affinity.
+    /// Returns the currently open documents from the documents panel.
+    /// Must be called on the UI thread because it reads TabView-backed state.
+    /// MCP tools reach this via a Query command that runs on the command-queue worker,
+    /// which executes on the UI thread.
     /// </summary>
-    private volatile IReadOnlyList<OpenDocumentInfo> _openDocumentsCache = Array.Empty<OpenDocumentInfo>();
+    public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
     /// <summary>
-    /// Returns a snapshot of the open documents captured the last time the document layout changed.
-    /// Safe to call from any thread.
+    /// Returns the number of visible document sections from the documents panel.
+    /// Must be called on the UI thread because it reads TabView-backed state.
+    /// MCP tools reach this via a Query command that runs on the command-queue worker,
+    /// which executes on the UI thread.
     /// </summary>
-    public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => _openDocumentsCache;
+    public int SectionCount => DocumentsPanel.SectionCount;
 
     private bool _isWorkspaceLoaded;
 
@@ -175,12 +178,6 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
-        // The messenger delivers synchronously on the publisher's thread, and the publisher is
-        // the documents panel view model which runs on the UI thread. It is therefore safe to
-        // read the TabView-backed panel state here. Capture it into the cache so that worker
-        // threads never touch WinUI collections directly.
-        _openDocumentsCache = DocumentsPanel.GetOpenDocuments();
-
         if (_isWorkspaceLoaded)
         {
             _ = StoreDocumentLayout();

@@ -22,7 +22,14 @@ public interface IDocumentsService
     ResourceKey ActiveDocument { get; }
 
     /// <summary>
+    /// The number of visible document sections in the documents panel.
+    /// This is a cached snapshot that is safe to read from any thread.
+    /// </summary>
+    int SectionCount { get; }
+
+    /// <summary>
     /// Returns a snapshot of all open documents with their addresses and editor IDs.
+    /// This is a cached snapshot that is safe to read from any thread.
     /// </summary>
     IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
 

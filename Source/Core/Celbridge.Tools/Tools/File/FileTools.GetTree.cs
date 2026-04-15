@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -29,36 +28,56 @@ public partial class FileTools
     /// <returns>JSON tree where each node has: name (string), type (string), children (array, folders only), and truncated (bool, present on folder nodes at depth limit that have children).</returns>
     [McpServerTool(Name = "file_get_tree", ReadOnly = true)]
     [ToolAlias("file.get_tree")]
-    public partial CallToolResult GetTree(string resource, int depth = 3, string glob = "", string type = "")
+    public async partial Task<CallToolResult> GetTree(string resource, int depth = 3, string glob = "", string type = "")
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ErrorResult($"Invalid resource key: '{resource}'");
         }
 
-        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(resourceKey);
-        if (getResult.IsFailure)
+        // Route through the command queue so the snapshot observes state after all
+        // previously enqueued commands have run. The command reads the registry and
+        // builds the filtered tree on the command thread.
+        var (callResult, snapshot) = await ExecuteCommandAsync<IGetFileTreeCommand, FileTreeSnapshot>(command =>
         {
-            return ErrorResult($"Resource not found: '{resource}'");
+            command.Resource = resourceKey;
+            command.Depth = depth;
+            command.Glob = glob;
+            command.TypeFilter = type;
+        });
+
+        if (callResult.IsError == true || snapshot is null)
+        {
+            return callResult;
         }
 
-        if (getResult.Value is not IFolderResource folderResource)
+        var rootNode = snapshot.Root is not null
+            ? ConvertNode(snapshot.Root)
+            : new TreeFolderNode(string.Empty, "folder", new List<object>());
+
+        return SuccessResult(SerializeJson(rootNode));
+    }
+
+    private static TreeFolderNode ConvertNode(FileTreeSnapshotNode node)
+    {
+        var children = new List<object>();
+        foreach (var child in node.Children)
         {
-            return ErrorResult($"Resource is not a folder: '{resource}'");
+            if (child.IsFolder)
+            {
+                children.Add(ConvertNode(child));
+            }
+            else
+            {
+                children.Add(new TreeFileNode(child.Name, "file"));
+            }
         }
 
-        Regex? globRegex = null;
-        if (!string.IsNullOrEmpty(glob))
+        if (node.Truncated)
         {
-            var regexPattern = GlobHelper.GlobToRegex(glob);
-            globRegex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+            return new TreeFolderNode(node.Name, "folder", children, Truncated: true);
         }
 
-        var tree = FileToolHelpers.BuildTree(folderResource, depth, globRegex, type)
-            ?? new TreeFolderNode(folderResource.Name, "folder", new List<object>());
-        return SuccessResult(SerializeJson(tree));
+        return new TreeFolderNode(node.Name, "folder", children);
     }
 }
