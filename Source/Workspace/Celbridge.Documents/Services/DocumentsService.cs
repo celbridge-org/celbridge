@@ -32,9 +32,17 @@ public class DocumentsService : IDocumentsService, IDisposable
     public ResourceKey ActiveDocument { get; private set; }
 
     /// <summary>
-    /// Gets all open documents with their addresses (UI positions).
+    /// Cached snapshot of the open documents, refreshed on the UI thread in response to
+    /// DocumentLayoutChangedMessage. Worker threads (e.g. MCP tool handlers) read this field
+    /// instead of reaching into TabView.TabItems, which has UI-thread affinity.
     /// </summary>
-    public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
+    private volatile IReadOnlyList<OpenDocumentInfo> _openDocumentsCache = Array.Empty<OpenDocumentInfo>();
+
+    /// <summary>
+    /// Returns a snapshot of the open documents captured the last time the document layout changed.
+    /// Safe to call from any thread.
+    /// </summary>
+    public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => _openDocumentsCache;
 
     private bool _isWorkspaceLoaded;
 
@@ -167,6 +175,12 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
+        // The messenger delivers synchronously on the publisher's thread, and the publisher is
+        // the documents panel view model which runs on the UI thread. It is therefore safe to
+        // read the TabView-backed panel state here. Capture it into the cache so that worker
+        // threads never touch WinUI collections directly.
+        _openDocumentsCache = DocumentsPanel.GetOpenDocuments();
+
         if (_isWorkspaceLoaded)
         {
             _ = StoreDocumentLayout();
