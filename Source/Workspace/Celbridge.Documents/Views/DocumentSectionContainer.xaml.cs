@@ -259,6 +259,14 @@ public sealed partial class DocumentSectionContainer : UserControl
             return;
         }
 
+        // Enforce the invariant: the active document's tab must be the selected tab in its section
+        var section = _sections[sectionIndex];
+        var tab = section.GetDocumentTab(fileResource);
+        if (tab is not null)
+        {
+            section.SelectTab(tab);
+        }
+
         // Update the active document directly
         _activeSectionIndex = sectionIndex;
         _activeDocument = fileResource;
@@ -534,8 +542,21 @@ public sealed partial class DocumentSectionContainer : UserControl
         if (_activeSectionIndex >= newSectionCount)
         {
             _activeSectionIndex = targetSectionIndex;
-            UpdateTabSelectionIndicators();
         }
+
+        // Enforce the invariant: the active document's tab must be the selected tab in its section.
+        // Migrating tabs doesn't automatically re-select the active document in the target section,
+        // so re-apply the selection here.
+        if (!_activeDocument.IsEmpty)
+        {
+            var (activeSection, activeTab) = FindDocumentTab(_activeDocument);
+            if (activeSection is not null && activeTab is not null)
+            {
+                activeSection.SelectTab(activeTab);
+            }
+        }
+
+        UpdateTabSelectionIndicators();
     }
 
     private void RebuildGrid()

@@ -21,31 +21,29 @@ client.theme.onChanged((theme) => {
     applyTheme(theme);
 });
 
-// Listen for external content changes (when scene data is updated)
-client.document.onExternalChange(async () => {
-    try {
-        const result = await client.document.load();
-        document.getElementById('screenplay-container').innerHTML = result.content;
-    } catch (e) {
-        console.error('[Screenplay] Failed to reload content:', e);
-    }
-});
-
 // Initialize the editor
 async function initializeEditor() {
     try {
         // Enable debug logging during development
         // client.setLogLevel('debug');
 
-        // Initialize the client - this loads content from C#
-        const result = await client.initialize();
+        await client.initializeDocument({
+            onContent: (content) => {
+                // Apply initial theme
+                applyTheme(client.theme.current);
 
-        // Apply initial theme
-        applyTheme(client.theme.current);
-
-        // Set the screenplay content
-        document.getElementById('screenplay-container').innerHTML = result.content;
-
+                // Set the screenplay content
+                document.getElementById('screenplay-container').innerHTML = content;
+            },
+            onExternalChange: async () => {
+                try {
+                    const result = await client.document.load();
+                    document.getElementById('screenplay-container').innerHTML = result.content;
+                } catch (e) {
+                    console.error('[Screenplay] Failed to reload content:', e);
+                }
+            }
+        });
     } catch (e) {
         console.error('[Screenplay] Failed to initialize:', e);
     }

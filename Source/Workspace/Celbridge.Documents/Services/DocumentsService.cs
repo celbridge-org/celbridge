@@ -431,13 +431,28 @@ public class DocumentsService : IDocumentsService, IDisposable
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        var editorStates = new Dictionary<string, string>();
+        // Start with existing saved states so that editors that aren't ready yet
+        // (e.g., WebView still loading) preserve their previously saved state.
+        var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+            ?? new Dictionary<string, string>();
+
+        // Track which documents are currently open so we can remove stale entries
+        var openDocumentKeys = new HashSet<string>();
 
         foreach (var document in GetOpenDocuments())
         {
+            var resourceKey = document.FileResource.ToString();
+            openDocumentKeys.Add(resourceKey);
+
             var documentView = DocumentsPanel.GetDocumentView(document.FileResource);
             if (documentView is null)
             {
+                continue;
+            }
+
+            if (!documentView.IsEditorStateReady)
+            {
+                // Editor still initializing — preserve existing saved state
                 continue;
             }
 
@@ -446,13 +461,25 @@ public class DocumentsService : IDocumentsService, IDisposable
                 var state = await documentView.SaveEditorStateAsync();
                 if (!string.IsNullOrEmpty(state))
                 {
-                    editorStates[document.FileResource.ToString()] = state;
+                    editorStates[resourceKey] = state;
+                }
+                else
+                {
+                    // Editor is ready but has no state — remove any stale entry
+                    editorStates.Remove(resourceKey);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug($"Could not save editor state for '{document.FileResource}': {ex.Message}");
+                _logger.LogDebug($"Could not save editor state for '{resourceKey}': {ex.Message}");
             }
+        }
+
+        // Remove entries for documents that are no longer open
+        var staleKeys = editorStates.Keys.Where(key => !openDocumentKeys.Contains(key)).ToList();
+        foreach (var staleKey in staleKeys)
+        {
+            editorStates.Remove(staleKey);
         }
 
         await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);

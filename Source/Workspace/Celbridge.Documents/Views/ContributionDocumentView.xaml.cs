@@ -202,6 +202,8 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
                 CreateDocumentMetadata,
                 CompleteSave);
 
+            _documentHandler.ContentLoaded += SetContentLoaded;
+
             var dialogHandler = new ContributionDialogHandler(
                 _dialogService,
                 _stringLocalizer,
@@ -274,46 +276,16 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         return Result.Ok();
     }
 
-    public override async Task<string?> SaveEditorStateAsync()
-    {
-        if (Host is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            return await Host.RequestStateAsync();
-        }
-        catch
-        {
-            // Editor doesn't implement state saving — that's fine
-            return null;
-        }
-    }
-
-    public override async Task RestoreEditorStateAsync(string state)
-    {
-        if (Host is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await Host.NotifyRestoreStateAsync(state);
-        }
-        catch
-        {
-            // Editor doesn't implement state restoration — that's fine
-        }
-    }
-
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);
 
         Loaded -= ContributionDocumentView_Loaded;
+
+        if (_documentHandler is not null)
+        {
+            _documentHandler.ContentLoaded -= SetContentLoaded;
+        }
 
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
 

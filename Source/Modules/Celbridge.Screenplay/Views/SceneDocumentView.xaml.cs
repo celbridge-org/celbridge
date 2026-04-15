@@ -156,6 +156,11 @@ public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocume
         throw new NotSupportedException("Save is not supported by the Screenplay viewer (read-only).");
     }
 
+    public void OnContentLoaded()
+    {
+        SetContentLoaded();
+    }
+
     #endregion
 
     public override async Task PrepareToClose()

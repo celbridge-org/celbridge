@@ -29,6 +29,12 @@ public interface IOpenDocumentCommand : IExecutableCommand
     int? TargetSectionIndex { get; set; }
 
     /// <summary>
+    /// Optional tab position within the section.
+    /// If null, the tab is appended at the end.
+    /// </summary>
+    int? TargetTabIndex { get; set; }
+
+    /// <summary>
     /// When true, the opened document becomes the active tab.
     /// When false, the document is opened but the currently active tab is preserved.
     /// </summary>

@@ -112,6 +112,42 @@ export class Celbridge {
     }
 
     /**
+     * Initializes the client, loads content, registers handlers, and signals readiness.
+     * This is the recommended way to set up a document editor — it ensures notifyContentLoaded()
+     * is always called after content loading and handler registration complete.
+     *
+     * @param {Object} handlers - Handler callbacks for document events.
+     * @param {Function} [handlers.onContent] - Called with (content, metadata) after initialization.
+     * @param {Function} [handlers.onRequestSave] - Called when the host requests a save.
+     * @param {Function} [handlers.onExternalChange] - Called when the file changes externally.
+     * @param {Function} [handlers.onRequestState] - Called when the host requests editor state. Should return a string or null.
+     * @param {Function} [handlers.onRestoreState] - Called with a state string to restore.
+     * @returns {Promise<InitializeResult>} - The initialization result with content and config.
+     */
+    async initializeDocument(handlers = {}) {
+        const result = await this.initialize();
+
+        if (handlers.onContent) {
+            await handlers.onContent(result.content, result.metadata);
+        }
+        if (handlers.onRequestSave) {
+            this.document.onRequestSave(handlers.onRequestSave);
+        }
+        if (handlers.onExternalChange) {
+            this.document.onExternalChange(handlers.onExternalChange);
+        }
+        if (handlers.onRequestState) {
+            this.document.onRequestState(handlers.onRequestState);
+        }
+        if (handlers.onRestoreState) {
+            this.document.onRestoreState(handlers.onRestoreState);
+        }
+
+        this.document.notifyContentLoaded();
+        return result;
+    }
+
+    /**
      * Internal method to send requests (used by sub-modules).
      * @param {string} method - The method name.
      * @param {Object} params - The request parameters.

@@ -207,78 +207,73 @@ async function handleEditorInitialize(params) {
             monaco.editor.setModelLanguage(editor.getModel(), language);
         }
 
-        // Initialize the host connection and get content
-        const result = await client.initialize();
+        // Initialize the host connection, load content, and register handlers.
+        // notifyContentLoaded() is called automatically after this completes.
+        await client.initializeDocument({
+            onContent: (content) => {
+                if (content) {
+                    editor.setValue(content);
+                }
+            },
+            onRequestSave: async () => {
+                const content = editor.getValue();
+                await client.document.save(content);
+            },
+            onExternalChange: async () => {
+                // Capture editor state before reload
+                const savedScrollTop = editor.getScrollTop();
+                const savedPosition = editor.getPosition();
+                const savedSelections = editor.getSelections();
 
-        // Set the content
-        if (result.content) {
-            editor.setValue(result.content);
-        }
+                // Suppress content change and scroll notifications during the entire
+                // reload cycle, including the deferred state restoration. This prevents
+                // setValue() from sending a scroll-position-zero event to the preview.
+                isReloadingExternally = true;
 
-        // Register for save requests
-        client.document.onRequestSave(async () => {
-            const content = editor.getValue();
-            await client.document.save(content);
-        });
+                const result = await client.document.load();
+                if (result.content !== undefined) {
+                    editor.setValue(result.content);
+                }
 
-        // Register for external change notifications
-        client.document.onExternalChange(async () => {
-            // Capture editor state before reload
-            const savedScrollTop = editor.getScrollTop();
-            const savedPosition = editor.getPosition();
-            const savedSelections = editor.getSelections();
-
-            // Suppress content change and scroll notifications during the entire
-            // reload cycle, including the deferred state restoration. This prevents
-            // setValue() from sending a scroll-position-zero event to the preview.
-            isReloadingExternally = true;
-
-            const result = await client.document.load();
-            if (result.content !== undefined) {
-                editor.setValue(result.content);
-            }
-
-            // Restore editor state after setValue, using double-requestAnimationFrame
-            // to ensure Monaco has completed its internal layout operations.
-            // Keep isReloadingExternally true until restoration is complete.
-            requestAnimationFrame(() => {
+                // Restore editor state after setValue, using double-requestAnimationFrame
+                // to ensure Monaco has completed its internal layout operations.
+                // Keep isReloadingExternally true until restoration is complete.
                 requestAnimationFrame(() => {
-                    const model = editor.getModel();
-                    const lineCount = model.getLineCount();
+                    requestAnimationFrame(() => {
+                        const model = editor.getModel();
+                        const lineCount = model.getLineCount();
 
-                    // Restore selections, clamping each to valid ranges
-                    if (savedSelections && savedSelections.length > 0) {
-                        const clampedSelections = savedSelections.map(selection => {
-                            const startLine = Math.min(selection.startLineNumber, lineCount);
-                            const startMaxColumn = model.getLineMaxColumn(startLine);
-                            const endLine = Math.min(selection.endLineNumber, lineCount);
-                            const endMaxColumn = model.getLineMaxColumn(endLine);
-                            return {
-                                startLineNumber: startLine,
-                                startColumn: Math.min(selection.startColumn, startMaxColumn),
-                                endLineNumber: endLine,
-                                endColumn: Math.min(selection.endColumn, endMaxColumn)
-                            };
-                        });
-                        editor.setSelections(clampedSelections);
-                    } else if (savedPosition) {
-                        const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
-                        const maxColumn = model.getLineMaxColumn(clampedLine);
-                        const clampedColumn = Math.min(savedPosition.column, maxColumn);
-                        editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
-                    }
+                        // Restore selections, clamping each to valid ranges
+                        if (savedSelections && savedSelections.length > 0) {
+                            const clampedSelections = savedSelections.map(selection => {
+                                const startLine = Math.min(selection.startLineNumber, lineCount);
+                                const startMaxColumn = model.getLineMaxColumn(startLine);
+                                const endLine = Math.min(selection.endLineNumber, lineCount);
+                                const endMaxColumn = model.getLineMaxColumn(endLine);
+                                return {
+                                    startLineNumber: startLine,
+                                    startColumn: Math.min(selection.startColumn, startMaxColumn),
+                                    endLineNumber: endLine,
+                                    endColumn: Math.min(selection.endColumn, endMaxColumn)
+                                };
+                            });
+                            editor.setSelections(clampedSelections);
+                        } else if (savedPosition) {
+                            const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
+                            const maxColumn = model.getLineMaxColumn(clampedLine);
+                            const clampedColumn = Math.min(savedPosition.column, maxColumn);
+                            editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
+                        }
 
-                    editor.setScrollTop(savedScrollTop);
+                        editor.setScrollTop(savedScrollTop);
 
-                    isReloadingExternally = false;
+                        isReloadingExternally = false;
+                    });
                 });
-            });
+            }
         });
 
         isInitialized = true;
-
-        // Notify host that content is loaded and editor is ready for edits
-        client.document.notifyContentLoaded();
 
         // Apply any navigation that arrived before content was loaded
         if (pendingNavigation) {

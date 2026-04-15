@@ -215,15 +215,4 @@ public partial class DocumentsPanelViewModel : ObservableObject
         await workspaceSettings.SetPropertyAsync(preferenceKey, editorId.ToString());
     }
 
-    public void ReopenDocumentWithEditor(ResourceKey fileResource, DocumentEditorId editorId, string? editorStateJson, int targetSectionIndex)
-    {
-        _commandService.Execute<IOpenDocumentCommand>(command =>
-        {
-            command.FileResource = fileResource;
-            command.ForceReload = true;
-            command.EditorId = editorId;
-            command.EditorStateJson = editorStateJson;
-            command.TargetSectionIndex = targetSectionIndex;
-        });
-    }
 }

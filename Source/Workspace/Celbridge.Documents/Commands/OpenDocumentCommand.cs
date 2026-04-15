@@ -24,6 +24,8 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public int? TargetSectionIndex { get; set; }
 
+    public int? TargetTabIndex { get; set; }
+
     public bool Activate { get; set; } = true;
 
     public DocumentEditorId EditorId { get; set; }
@@ -79,7 +81,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         }
 
         DocumentAddress? address = TargetSectionIndex.HasValue
-            ? new DocumentAddress(WindowIndex: 0, SectionIndex: TargetSectionIndex.Value, TabOrder: 0)
+            ? new DocumentAddress(WindowIndex: 0, SectionIndex: TargetSectionIndex.Value, TabOrder: TargetTabIndex ?? 0)
             : null;
 
         var options = new OpenDocumentOptions(address, ForceReload, Location, Activate, EditorId, EditorStateJson);

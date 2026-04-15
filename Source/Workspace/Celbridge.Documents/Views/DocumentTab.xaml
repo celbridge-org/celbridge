@@ -31,6 +31,7 @@
             <MenuFlyoutItem x:Name="OpenApplicationMenuItem" Click="ContextMenu_OpenApplication" />
             <MenuFlyoutSeparator x:Name="ReopenSeparator" />
             <MenuFlyoutItem x:Name="ReopenMenuItem" Click="ContextMenu_Reopen" />
+            <MenuFlyoutItem x:Name="ReopenWithMenuItem" Click="ContextMenu_ReopenWith" />
         </MenuFlyout>
     </muxc:TabViewItem.ContextFlyout>
 

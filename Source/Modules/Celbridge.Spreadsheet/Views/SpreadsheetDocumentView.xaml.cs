@@ -36,7 +36,6 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
 
     private SpreadsheetDocumentHandler? _documentHandler;
 
-    private string? _pendingEditorStateJson;
     private CancellationTokenSource? _importDebounceCts;
     private int _importDebounceVersion;
 
@@ -206,7 +205,7 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
                 CompleteSave,
                 () => Host?.NotifyExternalChangeAsync());
 
-            _documentHandler.ImportCompleted += OnImportCompleted;
+            _documentHandler.ContentLoaded += SetContentLoaded;
 
             Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
 
@@ -313,63 +312,6 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
         return await ViewModel.LoadContent();
     }
 
-    public override async Task<string?> SaveEditorStateAsync()
-    {
-        try
-        {
-            if (WebView?.CoreWebView2 is null)
-            {
-                return null;
-            }
-
-            // ExecuteScriptAsync returns the JS result as a JSON value.
-            // If JS returns a string, C# receives a JSON-encoded string (e.g., "\"...\"").
-            // If JS returns null, C# receives "null".
-            var jsonResult = await WebView.CoreWebView2.ExecuteScriptAsync("window.captureDocumentViewState()");
-            if (jsonResult == "null" || string.IsNullOrEmpty(jsonResult))
-            {
-                return null;
-            }
-
-            // Unwrap the JSON-encoded string to get the raw state JSON
-            return System.Text.Json.JsonSerializer.Deserialize<string>(jsonResult);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    public override async Task RestoreEditorStateAsync(string state)
-    {
-        if (WebView?.CoreWebView2 is null)
-        {
-            // WebView not yet initialized — defer until after InitSpreadsheetViewAsync completes
-            _pendingEditorStateJson = state;
-            return;
-        }
-
-        try
-        {
-            var jsonEncodedState = System.Text.Json.JsonSerializer.Serialize(state);
-            await WebView.CoreWebView2.ExecuteScriptAsync($"window.restoreDocumentViewState({jsonEncodedState})");
-        }
-        catch
-        {
-            // Ignore incompatible or corrupt state
-        }
-    }
-
-    private async void OnImportCompleted()
-    {
-        if (_pendingEditorStateJson is not null)
-        {
-            var state = _pendingEditorStateJson;
-            _pendingEditorStateJson = null;
-            await RestoreEditorStateAsync(state);
-        }
-    }
-
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);
@@ -380,7 +322,7 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
         ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
         if (_documentHandler is not null)
         {
-            _documentHandler.ImportCompleted -= OnImportCompleted;
+            _documentHandler.ContentLoaded -= SetContentLoaded;
         }
 
         // Cancel and dispose any pending debounce timer

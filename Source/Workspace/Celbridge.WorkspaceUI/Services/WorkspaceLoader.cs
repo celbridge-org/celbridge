@@ -151,7 +151,6 @@ public class WorkspaceLoader
         await explorerService.StoreSelectedResources();
         await documentsService.StoreActiveDocument();
         await documentsService.StoreDocumentLayout();
-        await documentsService.StoreEditorStates();
 
         //
         // Populate title bar shortcut buttons from project config

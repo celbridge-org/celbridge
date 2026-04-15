@@ -301,9 +301,11 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         if (existingTab != null && existingSection != null)
         {
             // If a different editor was requested, close and reopen with the new editor
-            if (!effectiveOptions.EditorId.IsEmpty &&
+            bool isDifferentEditor = !effectiveOptions.EditorId.IsEmpty &&
                 !existingTab.ViewModel.EditorId.IsEmpty &&
-                effectiveOptions.EditorId != existingTab.ViewModel.EditorId)
+                effectiveOptions.EditorId != existingTab.ViewModel.EditorId;
+
+            if (isDifferentEditor)
             {
                 var closeResult = await existingTab.ViewModel.CloseDocument(forceClose: false);
                 if (closeResult.IsFailure || !closeResult.Value)
@@ -314,7 +316,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 existingSection.RemoveTab(existingTab);
                 NotifyLayoutChanged();
 
-                var reopenAddress = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: 0);
+                var tabOrder = effectiveOptions.Address?.TabOrder ?? 0;
+                var reopenAddress = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: tabOrder);
                 var reopenOptions = effectiveOptions with { Address = reopenAddress };
                 return await OpenDocument(fileResource, reopenOptions);
             }
@@ -367,7 +370,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.FilePath = filePath;
         documentTab.ViewModel.DocumentName = fileResource.ResourceName;
 
-        targetSectionForNew.AddTab(documentTab);
+        if (address is not null)
+        {
+            targetSectionForNew.InsertTab(documentTab, address.TabOrder);
+        }
+        else
+        {
+            targetSectionForNew.AddTab(documentTab);
+        }
 
         if (effectiveOptions.Activate)
         {
@@ -740,6 +750,9 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             case DocumentTabMenuAction.Reopen:
                 _ = ReopenTab(tab);
                 break;
+            case DocumentTabMenuAction.ReopenWith:
+                _ = ReopenTabWithDialog(tab);
+                break;
         }
     }
 
@@ -906,12 +919,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         ViewModel.OpenApplicationForTab(tab.ViewModel.FileResource);
     }
 
-    private async Task ReopenTab(DocumentTab tab)
+    private Task ReopenTab(DocumentTab tab)
+    {
+        // Reopen using the current editor — no dialog
+        return ReopenTabWithEditor(tab, tab.ViewModel.EditorId);
+    }
+
+    private async Task ReopenTabWithDialog(DocumentTab tab)
     {
         var fileResource = tab.ViewModel.FileResource;
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
 
-        var selectedEditorId = DocumentEditorId.Empty;
+        var selectedEditorId = tab.ViewModel.EditorId;
 
         var editorChoices = ViewModel.GetChoicesForFileExtension(extension, tab.ViewModel.EditorId);
         if (editorChoices is not null)
@@ -936,33 +955,42 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             }
         }
 
-        // Capture the section index before closing so we can reopen in the same section
-        var sectionIndex = tab.SectionIndex;
+        await ReopenTabWithEditor(tab, selectedEditorId);
+    }
 
-        // Save editor state before closing
+    private async Task ReopenTabWithEditor(DocumentTab tab, DocumentEditorId editorId)
+    {
+        var fileResource = tab.ViewModel.FileResource;
+
+        // Capture state before closing so we can restore it after reopening
+        var sectionIndex = tab.SectionIndex;
+        var (currentSection, _) = SectionContainer.FindDocumentTab(fileResource);
+        var tabIndex = currentSection?.GetTabIndex(tab) ?? 0;
+
         string? editorState = null;
         if (tab.ViewModel.DocumentView is not null)
         {
             editorState = await tab.ViewModel.DocumentView.SaveEditorStateAsync();
         }
 
-        // Close the document
-        var closeResult = await tab.ViewModel.CloseDocument(forceClose: false);
-        if (closeResult.IsFailure || !closeResult.Value)
+        // Close then reopen via the command service, which processes them sequentially
+        var closeResult = await _commandService.ExecuteAsync<ICloseDocumentCommand>(command =>
+        {
+            command.FileResource = fileResource;
+        });
+
+        if (closeResult.IsFailure)
         {
             return;
         }
 
-        // Find and remove the tab from its section
-        var (section, _) = SectionContainer.FindDocumentTab(fileResource);
-        if (section is not null)
+        _commandService.Execute<IOpenDocumentCommand>(command =>
         {
-            section.RemoveTab(tab);
-        }
-
-        NotifyLayoutChanged();
-
-        // Reopen with the selected editor and restore editor state in the same section
-        ViewModel.ReopenDocumentWithEditor(fileResource, selectedEditorId, editorState, sectionIndex);
+            command.FileResource = fileResource;
+            command.EditorId = editorId;
+            command.EditorStateJson = editorState;
+            command.TargetSectionIndex = sectionIndex;
+            command.TargetTabIndex = tabIndex;
+        });
     }
 }

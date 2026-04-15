@@ -89,4 +89,27 @@ export class DocumentAPI {
     notifyContentLoaded() {
         this.#transport.notify('document/contentLoaded', {});
     }
+
+    /**
+     * Registers a handler for state save requests from the host.
+     * The handler should return the current editor state as a JSON string, or null
+     * if the editor has no state to save.
+     * @param {Function} handler - Called when the host requests the editor state. Should return a string or null.
+     */
+    onRequestState(handler) {
+        this.#transport.setRequestHandler('document/requestState', handler);
+    }
+
+    /**
+     * Registers a handler for state restore requests from the host.
+     * The handler receives a previously saved state string and should restore the editor to that state.
+     * @param {Function} handler - Called with the state string to restore.
+     */
+    onRestoreState(handler) {
+        this.#transport.setRequestHandler('document/restoreState', (params) => {
+            // The host sends the state string as a positional argument, which arrives as an array
+            const state = Array.isArray(params) ? params[0] : params;
+            handler(state);
+        });
+    }
 }

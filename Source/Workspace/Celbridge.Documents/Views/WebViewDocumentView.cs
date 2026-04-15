@@ -33,6 +33,12 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     /// </summary>
     protected CelbridgeHost? Host { get; private set; }
 
+    // Deferred editor state for views where the WebView initializes asynchronously.
+    // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
+    // and SetContentLoaded applies it once the JS client signals readiness.
+    private string? _pendingEditorStateJson;
+    private bool _isContentLoaded;
+
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
     private bool _hasPendingSave;
@@ -47,6 +53,11 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     /// Subclasses must set this in their constructor before calling AcquireWebViewAsync().
     /// </summary>
     protected Panel? WebViewContainer { get; set; }
+
+    /// <summary>
+    /// Whether the JS client has signaled that content is loaded and the editor is ready.
+    /// </summary>
+    protected bool IsContentLoaded => _isContentLoaded;
 
     protected WebViewDocumentView(
         IMessengerService messengerService,
@@ -230,6 +241,60 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
             locale);
     }
 
+    public override bool IsEditorStateReady => _isContentLoaded;
+
+    /// <summary>
+    /// Call this when the JS client signals that content is loaded and the editor is ready.
+    /// Sets the content-loaded flag and applies any editor state that was deferred.
+    /// Typically wired as a handler for the document handler's ContentLoaded event.
+    /// </summary>
+    protected async void SetContentLoaded()
+    {
+        _isContentLoaded = true;
+
+        if (_pendingEditorStateJson is not null)
+        {
+            var state = _pendingEditorStateJson;
+            _pendingEditorStateJson = null;
+            await RestoreEditorStateAsync(state);
+        }
+    }
+
+    public override async Task<string?> SaveEditorStateAsync()
+    {
+        if (Host is null || !_isContentLoaded)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Host.RequestStateAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        if (!_isContentLoaded)
+        {
+            _pendingEditorStateJson = state;
+            return;
+        }
+
+        try
+        {
+            await Host!.NotifyRestoreStateAsync(state);
+        }
+        catch
+        {
+            // Editor doesn't implement state restoration
+        }
+    }
+
     /// <summary>
     /// Opens a URL in the system's default browser using the command service.
     /// </summary>
@@ -259,6 +324,9 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
     public override async Task PrepareToClose()
     {
+        _isContentLoaded = false;
+        _pendingEditorStateJson = null;
+
         // Unregister theme syncing if enabled
         if (_userInterfaceService is not null)
         {

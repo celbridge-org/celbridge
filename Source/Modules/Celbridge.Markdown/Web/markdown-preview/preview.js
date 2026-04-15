@@ -330,21 +330,60 @@ function init() {
         renderMarkdown(content);
 
         // Restore scroll position after render, using requestAnimationFrame
-        // to ensure the DOM has been updated with the new content
-        requestAnimationFrame(() => {
-            container.scrollTop = savedScrollTop;
-        });
+        // to ensure the DOM has been updated with the new content.
+        // Skip the restore if scrollTop was 0 (nothing meaningful to preserve) so
+        // any scroll position pushed from the host via onScroll takes effect.
+        if (savedScrollTop > 0) {
+            requestAnimationFrame(() => {
+                container.scrollTop = savedScrollTop;
+            });
+        }
     });
 
-    // Register handler for scroll position changes
+    // Register handler for scroll position changes from the host
     celbridge.codePreview.onScroll((percentage) => {
+        suppressScrollSync = true;
         scrollToPosition(percentage);
+        // Reset the flag after the scroll event has been dispatched
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                suppressScrollSync = false;
+            });
+        });
     });
 
     // Set up click-to-sync handler
     setupClickToSync();
 
+    // Set up scroll-to-sync handler so the host can track the preview's scroll position
+    setupScrollToSync();
+
     console.log('Markdown preview initialized');
+}
+
+// Flag set when the host initiated a scroll, so we don't echo it back
+let suppressScrollSync = false;
+
+/**
+ * Report the preview's scroll position to the host so it can be restored later.
+ * Throttled with rAF to avoid flooding the RPC channel.
+ */
+function setupScrollToSync() {
+    const container = document.getElementById('preview-container');
+    let scrollSyncPending = false;
+
+    container.addEventListener('scroll', () => {
+        if (suppressScrollSync || scrollSyncPending) {
+            return;
+        }
+        scrollSyncPending = true;
+        requestAnimationFrame(() => {
+            scrollSyncPending = false;
+            const scrollHeight = container.scrollHeight - container.clientHeight;
+            const percentage = scrollHeight > 0 ? container.scrollTop / scrollHeight : 0;
+            celbridge.codePreview.syncToEditor(Math.max(0, Math.min(1, percentage)));
+        });
+    });
 }
 
 // Initialize when DOM is ready

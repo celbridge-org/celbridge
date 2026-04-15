@@ -3,6 +3,7 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
+using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -24,7 +25,8 @@ public enum DocumentTabMenuAction
     SelectFile,
     OpenFileExplorer,
     OpenApplication,
-    Reopen
+    Reopen,
+    ReopenWith
 }
 
 // I've tried writing this class using a C# Markup class subclassed from TabViewItem, but it didn't work.
@@ -85,6 +87,7 @@ public partial class DocumentTab : TabViewItem
         OpenFileExplorerMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenFileExplorer");
         OpenApplicationMenuItem.Text = _stringLocalizer.GetString("DocumentTab_OpenApplication");
         ReopenMenuItem.Text = _stringLocalizer.GetString("DocumentTab_Reopen");
+        ReopenWithMenuItem.Text = _stringLocalizer.GetString("DocumentTab_ReopenWith");
     }
 
     /// <summary>
@@ -166,6 +169,11 @@ public partial class DocumentTab : TabViewItem
         ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.Reopen);
     }
 
+    private void ContextMenu_ReopenWith(object sender, RoutedEventArgs e)
+    {
+        ContextMenuActionRequested?.Invoke(this, DocumentTabMenuAction.ReopenWith);
+    }
+
     private void TabContextMenu_Opening(object sender, object e)
     {
         // Find the parent TabView to get tab count and position
@@ -202,6 +210,16 @@ public partial class DocumentTab : TabViewItem
         // Show "Move Right" only if there's a section to the right
         bool canMoveRight = hasMultipleSections && SectionIndex < VisibleSectionCount - 1;
         MoveRightMenuItem.Visibility = canMoveRight ? Visibility.Visible : Visibility.Collapsed;
+
+        // Show "Reopen with..." only when there are multiple editors registered for this file type
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        if (workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            var extension = System.IO.Path.GetExtension(ViewModel.FileResource.ToString()).ToLowerInvariant();
+            var factories = workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
+                .GetFactoriesForFileExtension(extension);
+            ReopenWithMenuItem.Visibility = factories.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         // Show the separator only if at least one move option is visible
         MoveSeparator.Visibility = (canMoveLeft || canMoveRight) ? Visibility.Visible : Visibility.Collapsed;

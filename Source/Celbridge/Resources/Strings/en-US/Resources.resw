@@ -1028,4 +1028,7 @@ Do you wish to continue?</value>
   <data name="DocumentTab_Reopen" xml:space="preserve">
     <value>Reopen</value>
   </data>
+  <data name="DocumentTab_ReopenWith" xml:space="preserve">
+    <value>Reopen with...</value>
+  </data>
 </root>

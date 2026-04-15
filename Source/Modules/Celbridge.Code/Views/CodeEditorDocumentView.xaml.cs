@@ -39,6 +39,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     private readonly CodeEditorViewModel _viewModel;
 
     private CodeEditorPreviewHelper? _previewHelper;
+    private string? _pendingEditorStateJson;
+    private bool _isEditorReady;
 
     private readonly ColumnDefinition _editorColumn;
     private readonly ColumnDefinition _splitterColumn;
@@ -58,6 +60,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
     public override bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
+
+    public override bool IsEditorStateReady => _isEditorReady;
 
     /// <summary>
     /// The current view mode of the editor.
@@ -325,10 +329,20 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             return initResult;
         }
 
+        _isEditorReady = true;
+
         // Apply the initial view mode after the editor is ready
         if (_previewHelper is not null && InitialViewMode.HasValue)
         {
             SetViewMode(InitialViewMode.Value);
+        }
+
+        // Apply any editor state that was deferred because the editor wasn't ready yet
+        if (_pendingEditorStateJson is not null)
+        {
+            var pendingState = _pendingEditorStateJson;
+            _pendingEditorStateJson = null;
+            await RestoreEditorStateAsync(pendingState);
         }
 
         return initResult;
@@ -426,9 +440,15 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     {
         try
         {
+            // In Preview mode, Monaco is collapsed and its scroll is always zero.
+            // The preview pane's scroll position is what the user actually sees.
+            var scrollPercentage = ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null
+                ? _previewHelper.LastScrollPercentage
+                : _lastScrollPercentage;
+
             var state = new Dictionary<string, object>
             {
-                ["scrollPercentage"] = _lastScrollPercentage,
+                ["scrollPercentage"] = scrollPercentage,
                 ["viewMode"] = ViewMode.ToString()
             };
 
@@ -442,6 +462,13 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     public override async Task RestoreEditorStateAsync(string state)
     {
+        if (!_isEditorReady)
+        {
+            // Editor not yet initialized — defer until after LoadContent completes
+            _pendingEditorStateJson = state;
+            return;
+        }
+
         try
         {
             var parsed = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state);
@@ -463,6 +490,13 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             {
                 var scrollPercentage = scrollElement.GetDouble();
                 await MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
+
+                // In Preview mode, Monaco is collapsed so scrolling it has no visible effect.
+                // Scroll the preview pane directly to restore the user's view.
+                if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
+                {
+                    _previewHelper.ScrollToPercentage(scrollPercentage);
+                }
             }
         }
         catch

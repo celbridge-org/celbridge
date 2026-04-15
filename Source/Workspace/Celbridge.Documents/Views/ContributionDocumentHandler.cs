@@ -21,6 +21,11 @@ internal sealed class ContributionDocumentHandler : IHostDocument
     /// </summary>
     internal TaskCompletionSource<Result>? SaveResultTcs { get; set; }
 
+    /// <summary>
+    /// Raised when the WebView client signals that content has been loaded and the editor is ready.
+    /// </summary>
+    internal event Action? ContentLoaded;
+
     public ContributionDocumentHandler(
         ContributionDocumentViewModel viewModel,
         ILogger logger,
@@ -89,5 +94,10 @@ internal sealed class ContributionDocumentHandler : IHostDocument
     public void OnDocumentChanged()
     {
         _viewModel.OnDataChanged();
+    }
+
+    public void OnContentLoaded()
+    {
+        ContentLoaded?.Invoke();
     }
 }

@@ -412,46 +412,6 @@ editor.on('transaction', ({ transaction }) => {
 });
 
 // ---------------------------------------------------------------------------
-// Client-based initialization and event handling
-// ---------------------------------------------------------------------------
-
-// Handle external file changes
-client.document.onExternalChange(async () => {
-    // Preserve editor state during reload
-    const scrollTop = editorWrapperEl.scrollTop;
-    const { from, to } = editor.state.selection;
-
-    try {
-        const { content } = await client.document.load();
-        // Parse JSON content and set it
-        const jsonContent = content ? JSON.parse(content) : { type: 'doc', content: [{ type: 'paragraph' }] };
-        editor.commands.setContent(jsonContent);
-
-        // Restore selection if possible
-        const maxPos = editor.state.doc.content.size;
-        const newFrom = Math.min(from, maxPos);
-        const newTo = Math.min(to, maxPos);
-        editor.commands.setTextSelection({ from: newFrom, to: newTo });
-
-        // Restore scroll position
-        editorWrapperEl.scrollTop = scrollTop;
-    } catch (e) {
-        console.error('[Note] Failed to reload content:', e);
-    }
-});
-
-// Handle save requests from host
-client.document.onRequestSave(async () => {
-    // Serialize to JSON (native TipTap format)
-    const jsonContent = JSON.stringify(editor.getJSON());
-
-    try {
-        await client.document.save(jsonContent);
-    } catch (e) {
-        console.error('[Note] Failed to save:', e);
-    }
-});
-
 // Handle theme changes
 client.theme.onChanged((theme) => {
     // Theme is handled by CSS prefers-color-scheme via WebView2 settings
@@ -487,39 +447,90 @@ async function initializeEditor() {
         // Enable debug logging during development
         // client.setLogLevel('debug');
 
-        const result = await client.initialize();
+        await client.initializeDocument({
+            onContent: async (content, metadata) => {
+                // Set base URLs for resolving relative paths
+                projectBaseUrl = 'https://project.celbridge/';
+                const resourceKey = metadata?.resourceKey || '';
+                const lastSlash = resourceKey.lastIndexOf('/');
+                documentBaseUrl = lastSlash >= 0
+                    ? `${projectBaseUrl}${resourceKey.substring(0, lastSlash + 1)}`
+                    : projectBaseUrl;
 
-        // Set base URLs for resolving relative paths
-        projectBaseUrl = 'https://project.celbridge/';
-        const resourceKey = result.metadata?.resourceKey || '';
-        const lastSlash = resourceKey.lastIndexOf('/');
-        documentBaseUrl = lastSlash >= 0
-            ? `${projectBaseUrl}${resourceKey.substring(0, lastSlash + 1)}`
-            : projectBaseUrl;
+                // Localization is auto-loaded by celbridge.js during initialize()
+                // Update the TipTap placeholder with the localized text
+                const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
+                if (placeholderExt) {
+                    placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
+                    editor.view.dispatch(editor.state.tr);
+                }
 
-        // Localization is auto-loaded by celbridge.js during initialize()
-        // Update the TipTap placeholder with the localized text
-        const placeholderExt = editor.extensionManager.extensions.find(e => e.name === 'placeholder');
-        if (placeholderExt) {
-            placeholderExt.options.placeholder = t('Note_NoteEditor_Placeholder');
-            editor.view.dispatch(editor.state.tr);
-        }
+                // Parse JSON content and load into editor
+                let jsonContent = { type: 'doc', content: [{ type: 'paragraph' }] };
+                if (content) {
+                    try {
+                        jsonContent = JSON.parse(content);
+                    } catch (e) {
+                        console.warn('[Note] Failed to parse content as JSON, using empty document');
+                    }
+                }
+                editor.commands.setContent(jsonContent);
 
-        // Parse JSON content and load into editor
-        let jsonContent = { type: 'doc', content: [{ type: 'paragraph' }] };
-        if (result.content) {
-            try {
-                jsonContent = JSON.parse(result.content);
-            } catch (e) {
-                console.warn('[Note] Failed to parse content as JSON, using empty document');
+                // Show the editor
+                editorWrapperEl.classList.add('visible');
+                toolbarEl.classList.add('visible');
+            },
+            onRequestSave: async () => {
+                const jsonContent = JSON.stringify(editor.getJSON());
+                try {
+                    await client.document.save(jsonContent);
+                } catch (e) {
+                    console.error('[Note] Failed to save:', e);
+                }
+            },
+            onExternalChange: async () => {
+                const scrollTop = editorWrapperEl.scrollTop;
+                const { from, to } = editor.state.selection;
+
+                try {
+                    const { content } = await client.document.load();
+                    const jsonContent = content ? JSON.parse(content) : { type: 'doc', content: [{ type: 'paragraph' }] };
+                    editor.commands.setContent(jsonContent);
+
+                    const maxPos = editor.state.doc.content.size;
+                    const newFrom = Math.min(from, maxPos);
+                    const newTo = Math.min(to, maxPos);
+                    editor.commands.setTextSelection({ from: newFrom, to: newTo });
+
+                    editorWrapperEl.scrollTop = scrollTop;
+                } catch (e) {
+                    console.error('[Note] Failed to reload content:', e);
+                }
+            },
+            onRequestState: () => {
+                return JSON.stringify({
+                    scrollTop: editorWrapperEl.scrollTop,
+                    selectionFrom: editor.state.selection.from,
+                    selectionTo: editor.state.selection.to
+                });
+            },
+            onRestoreState: (stateJson) => {
+                try {
+                    const state = JSON.parse(stateJson);
+                    if (state.selectionFrom !== undefined && state.selectionTo !== undefined) {
+                        const maxPos = editor.state.doc.content.size;
+                        const from = Math.min(state.selectionFrom, maxPos);
+                        const to = Math.min(state.selectionTo, maxPos);
+                        editor.commands.setTextSelection({ from, to });
+                    }
+                    if (state.scrollTop !== undefined) {
+                        editorWrapperEl.scrollTop = state.scrollTop;
+                    }
+                } catch (e) {
+                    console.error('[Note] Failed to restore state:', e);
+                }
             }
-        }
-        editor.commands.setContent(jsonContent);
-
-        // Show the editor
-        editorWrapperEl.classList.add('visible');
-        toolbarEl.classList.add('visible');
-
+        });
     } catch (e) {
         console.error('[Note] Failed to initialize:', e);
     }

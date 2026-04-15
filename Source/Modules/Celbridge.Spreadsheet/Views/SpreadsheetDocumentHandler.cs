@@ -24,9 +24,9 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
     internal TaskCompletionSource<Result>? SaveResultTcs { get; set; }
 
     /// <summary>
-    /// Raised when the spreadsheet data has been imported and the editor is ready.
+    /// Raised when the WebView client signals that content has been loaded and the editor is ready.
     /// </summary>
-    internal event Action? ImportCompleted;
+    internal event Action? ContentLoaded;
 
     /// <summary>
     /// Whether a spreadsheet import is currently in progress.
@@ -111,6 +111,11 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
         _viewModel.OnDataChanged();
     }
 
+    public void OnContentLoaded()
+    {
+        ContentLoaded?.Invoke();
+    }
+
     public void OnImportComplete(bool success, string? error = null)
     {
         IsImportInProgress = false;
@@ -122,7 +127,6 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
         else
         {
             _logger.LogDebug("Spreadsheet import completed successfully");
-            ImportCompleted?.Invoke();
         }
 
         if (HasPendingImport)
