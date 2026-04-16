@@ -248,15 +248,23 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     public override bool IsEditorStateReady => _isContentLoaded;
 
     /// <summary>
+    /// Raised each time the JS client signals content is loaded, with the reason supplied by JS.
+    /// Subclasses and the framework reload orchestration subscribe here to react to reload events
+    /// without each editor having to wire up its own event routing.
+    /// </summary>
+    protected event Action<ContentLoadedReason>? ContentLoaded;
+
+    /// <summary>
     /// Call this when the JS client signals that content is loaded and the editor is ready.
     /// On the initial load, sets the content-loaded flag and applies any editor state that was deferred.
-    /// Subsequent reload notifications (ContentLoadedReason.ExternalReload) are no-ops at this layer;
-    /// consumers that need to react to reloads subscribe to their editor's ContentLoaded event directly.
+    /// The ContentLoaded event is raised for every reason so subscribers can branch on it.
     /// The method is async void because it is invoked from an event handler; all exceptions are caught
     /// here so that a faulty editor cannot crash the process.
     /// </summary>
     protected async void SetContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
     {
+        ContentLoaded?.Invoke(reason);
+
         if (reason != ContentLoadedReason.Initial)
         {
             return;
@@ -281,6 +289,69 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
             // Editor state restoration is best-effort: a corrupt or incompatible state should
             // never tear down the process. Log and swallow to preserve the async void safety contract.
             _logger.LogError(ex, "Failed to restore editor state after content loaded");
+        }
+    }
+
+    /// <summary>
+    /// Orchestrates an external reload with editor-state preservation. Captures state via
+    /// SaveEditorStateAsync before the JS reload, sends the external-change notification, waits
+    /// for the JS side to signal completion by emitting ContentLoadedReason.ExternalReload, then
+    /// restores state via RestoreEditorStateAsync. Subclasses call this from their reload handler
+    /// instead of calling Host.NotifyExternalChangeAsync directly, so every editor gets consistent
+    /// state preservation and we have a single place to evolve the reload contract.
+    /// </summary>
+    protected async Task ReloadWithStatePreservationAsync()
+    {
+        if (Host is null)
+        {
+            return;
+        }
+
+        // Capture editor state before the content is replaced. A null return is valid: the editor
+        // may not implement onRequestState (or may not be ready), in which case we simply skip the
+        // restore step after reload.
+        string? savedState = null;
+        try
+        {
+            savedState = await SaveEditorStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to capture editor state before external reload; continuing without preservation");
+        }
+
+        // Subscribe for the JS-side completion signal so we run the restore at the right moment.
+        var reloadComplete = new TaskCompletionSource();
+        void OnReloaded(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.ExternalReload)
+            {
+                reloadComplete.TrySetResult();
+            }
+        }
+        ContentLoaded += OnReloaded;
+
+        try
+        {
+            await Host.NotifyExternalChangeAsync();
+
+            // Wait for the JS side to report that the reload cycle is complete. The timeout guards
+            // against editors that don't yet emit the ExternalReload signal: they simply miss out
+            // on state preservation rather than hanging the UI.
+            var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            if (completed != reloadComplete.Task)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(savedState))
+            {
+                await RestoreEditorStateAsync(savedState);
+            }
+        }
+        finally
+        {
+            ContentLoaded -= OnReloaded;
         }
     }
 

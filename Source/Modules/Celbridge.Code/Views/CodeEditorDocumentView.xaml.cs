@@ -609,23 +609,14 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
+        // Track the editor's scroll percentage so SaveEditorStateAsync can persist it
+        // across document close/reopen and workspace reloads. We deliberately do NOT
+        // forward the scroll to the preview pane: markdown source lines and their
+        // rendered output don't have matching heights, so percentage-based editor-to-
+        // preview sync makes the preview jump around distractingly while the user edits.
+        // The reverse direction (preview -> editor via OnSyncToEditor) remains active so
+        // readers can drag the preview to a section and the editor follows.
         _lastScrollPercentage = scrollPercentage;
-
-        // Only sync scroll in Split mode where both editor and preview are visible.
-        // In Preview mode the editor is collapsed, so its scroll position is always
-        // zero and forwarding it would reset the preview scroll to the top.
-        if (ViewMode != SplitEditorViewMode.Split)
-        {
-            return;
-        }
-
-        // Same dispatcher marshal as OnMonacoContentChanged/OnMonacoContentLoaded:
-        // NotifyCodePreviewScrollAsync posts to the preview's CoreWebView2 and must be
-        // invoked on the UI thread.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            _previewHelper?.NotifyScrollPositionChanged(scrollPercentage);
-        });
     }
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)
@@ -650,9 +641,63 @@ public sealed partial class CodeEditorDocumentView : DocumentView
                     return;
                 }
 
-                MonacoEditor.NotifyExternalChange();
+                _ = ReloadWithStatePreservationAsync();
             });
         }, TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// External-reload orchestration specific to the Monaco editor. Mirrors
+    /// WebViewDocumentView.ReloadWithStatePreservationAsync but uses MonacoEditor's host and
+    /// ContentLoaded event because CodeEditorDocumentView does not extend WebViewDocumentView
+    /// (its WebView is owned by the nested CodeEditor control). The orchestration pattern is the
+    /// same so both paths behave identically: capture state, trigger reload, wait for completion,
+    /// restore state.
+    /// Note: monaco.js also preserves cursor and selection inline in rAF because those aren't
+    /// captured by the C# SaveEditorState override yet. That inline preservation is complementary
+    /// to the framework orchestration rather than a duplicate.
+    /// </summary>
+    private async Task ReloadWithStatePreservationAsync()
+    {
+        string? savedState = null;
+        try
+        {
+            savedState = await SaveEditorStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to capture Monaco editor state before external reload; continuing without preservation");
+        }
+
+        var reloadComplete = new TaskCompletionSource();
+        void OnLoaded(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.ExternalReload)
+            {
+                reloadComplete.TrySetResult();
+            }
+        }
+        MonacoEditor.ContentLoaded += OnLoaded;
+
+        try
+        {
+            MonacoEditor.NotifyExternalChange();
+
+            var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            if (completed != reloadComplete.Task)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(savedState))
+            {
+                await RestoreEditorStateAsync(savedState);
+            }
+        }
+        finally
+        {
+            MonacoEditor.ContentLoaded -= OnLoaded;
+        }
     }
 
     #endregion

@@ -2,6 +2,7 @@
 // Uses celbridge.js for JSON-RPC communication with the host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {
@@ -42,6 +43,11 @@ async function initializeEditor() {
                 } catch (e) {
                     console.error('[Screenplay] Failed to reload content:', e);
                 }
+
+                // Signal to the framework that the reload cycle is complete. Screenplay has no
+                // editor state to preserve, but emitting the signal keeps the reload contract
+                // uniform across editors and avoids the framework's 5s timeout.
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
             }
         });
     } catch (e) {

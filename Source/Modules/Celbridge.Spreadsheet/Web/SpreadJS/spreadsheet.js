@@ -2,6 +2,7 @@
 // Uses celbridge.js for JSON-RPC communication with the host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {
@@ -221,13 +222,17 @@ async function initializeEditor() {
                 }
             },
             onExternalChange: async () => {
+                // Editor state (zoom, active sheet, selection) is preserved by the framework via
+                // onRequestState / onRestoreState, orchestrated around this handler by
+                // SpreadsheetDocumentView. Just load the new content and signal completion.
                 try {
-                    const viewState = captureViewState();
                     const result = await client.document.load();
-                    await deserializeExcelData(result.content, viewState);
+                    await deserializeExcelData(result.content);
                 } catch (e) {
                     console.error('[Spreadsheet] Failed to reload content:', e);
                 }
+
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
             },
             onRequestState: () => {
                 const state = captureViewState();

@@ -374,7 +374,10 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
                     _documentHandler.IsImportInProgress = true;
                 }
 
-                Host?.NotifyExternalChangeAsync();
+                // Route through the base class orchestration so editor state (zoom, active sheet,
+                // selection) is preserved across the reload via the standard onRequestState /
+                // onRestoreState flow. Fire-and-forget: the orchestration handles its own errors.
+                _ = ReloadWithStatePreservationAsync();
             });
         }, TaskScheduler.Default);
     }

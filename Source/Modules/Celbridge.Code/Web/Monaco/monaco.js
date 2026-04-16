@@ -250,32 +250,45 @@ async function handleEditorInitialize(params) {
                 // Note: this callback is throttled when Monaco is collapsed, but that's fine because
                 // the state it restores is only visible when the editor is shown.
                 requestAnimationFrame(() => {
-                    const model = editor.getModel();
-                    const lineCount = model.getLineCount();
+                    try {
+                        const model = editor.getModel();
 
-                    // Restore selections, clamping each to valid ranges
-                    if (savedSelections && savedSelections.length > 0) {
-                        const clampedSelections = savedSelections.map(selection => {
-                            const startLine = Math.min(selection.startLineNumber, lineCount);
-                            const startMaxColumn = model.getLineMaxColumn(startLine);
-                            const endLine = Math.min(selection.endLineNumber, lineCount);
-                            const endMaxColumn = model.getLineMaxColumn(endLine);
-                            return {
-                                startLineNumber: startLine,
-                                startColumn: Math.min(selection.startColumn, startMaxColumn),
-                                endLineNumber: endLine,
-                                endColumn: Math.min(selection.endColumn, endMaxColumn)
-                            };
-                        });
-                        editor.setSelections(clampedSelections);
-                    } else if (savedPosition) {
-                        const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
-                        const maxColumn = model.getLineMaxColumn(clampedLine);
-                        const clampedColumn = Math.min(savedPosition.column, maxColumn);
-                        editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
+                        // Restore selections, clamping each end against the new document bounds.
+                        // Use Monaco's ISelection shape (selectionStart*/position*) rather than the
+                        // IRange shape — setSelections requires ISelection fields or it throws.
+                        // model.validatePosition handles clamping to valid line/column ranges.
+                        if (savedSelections && savedSelections.length > 0) {
+                            const clampedSelections = savedSelections.map(selection => {
+                                const anchor = model.validatePosition({
+                                    lineNumber: selection.selectionStartLineNumber,
+                                    column: selection.selectionStartColumn
+                                });
+                                const cursor = model.validatePosition({
+                                    lineNumber: selection.positionLineNumber,
+                                    column: selection.positionColumn
+                                });
+                                return {
+                                    selectionStartLineNumber: anchor.lineNumber,
+                                    selectionStartColumn: anchor.column,
+                                    positionLineNumber: cursor.lineNumber,
+                                    positionColumn: cursor.column
+                                };
+                            });
+                            editor.setSelections(clampedSelections);
+                        } else if (savedPosition) {
+                            const clamped = model.validatePosition({
+                                lineNumber: savedPosition.lineNumber,
+                                column: savedPosition.column
+                            });
+                            editor.setPosition(clamped);
+                        }
+
+                        editor.setScrollTop(savedScrollTop);
+                    } catch (err) {
+                        // Defensive: if anything unexpected throws, we still need the flag reset
+                        // below to run so future edits aren't silently dropped.
+                        console.error('[monaco] External-reload state restore failed:', err);
                     }
-
-                    editor.setScrollTop(savedScrollTop);
 
                     isReloadingExternally = false;
                 });
