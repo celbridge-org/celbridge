@@ -37,6 +37,12 @@ internal sealed class CodeEditorDocumentHandler : IHostDocument
     /// </summary>
     internal event Action? ContentLoadRequested;
 
+    /// <summary>
+    /// Raised every time the editor signals it has finished loading (or reloading) content.
+    /// The reason argument distinguishes the initial load from an external-change reload.
+    /// </summary>
+    internal event Action<ContentLoadedReason>? ContentLoaded;
+
     public CodeEditorDocumentHandler(
         ILogger logger,
         CodeEditorState state,
@@ -99,9 +105,13 @@ internal sealed class CodeEditorDocumentHandler : IHostDocument
         ClientReadyTcs?.TrySetResult();
     }
 
-    public void OnContentLoaded()
+    public void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
     {
+        // TrySetResult is idempotent: the TCS only fires on the initial load (the first call),
+        // subsequent reload notifications are no-ops at this point.
         ContentLoadedTcs?.TrySetResult();
+
+        ContentLoaded?.Invoke(reason);
     }
 
     private DocumentMetadata CreateMetadata()

@@ -4,6 +4,7 @@
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from '../lib/tiptap.js';
 import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
@@ -489,23 +490,18 @@ async function initializeEditor() {
                 }
             },
             onExternalChange: async () => {
-                const scrollTop = editorWrapperEl.scrollTop;
-                const { from, to } = editor.state.selection;
-
+                // Editor state (scroll, selection) is preserved by the framework via
+                // onRequestState / onRestoreState, orchestrated around this handler by
+                // ContributionDocumentView. Just load the new content and signal completion.
                 try {
                     const { content } = await client.document.load();
                     const jsonContent = content ? JSON.parse(content) : { type: 'doc', content: [{ type: 'paragraph' }] };
                     editor.commands.setContent(jsonContent);
-
-                    const maxPos = editor.state.doc.content.size;
-                    const newFrom = Math.min(from, maxPos);
-                    const newTo = Math.min(to, maxPos);
-                    editor.commands.setTextSelection({ from: newFrom, to: newTo });
-
-                    editorWrapperEl.scrollTop = scrollTop;
                 } catch (e) {
                     console.error('[Note] Failed to reload content:', e);
                 }
+
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
             },
             onRequestState: () => {
                 return JSON.stringify({

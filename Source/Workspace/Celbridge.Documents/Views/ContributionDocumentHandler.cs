@@ -23,8 +23,9 @@ internal sealed class ContributionDocumentHandler : IHostDocument
 
     /// <summary>
     /// Raised when the WebView client signals that content has been loaded and the editor is ready.
+    /// The argument distinguishes the initial load from an external-change reload.
     /// </summary>
-    internal event Action? ContentLoaded;
+    internal event Action<ContentLoadedReason>? ContentLoaded;
 
     public ContributionDocumentHandler(
         ContributionDocumentViewModel viewModel,
@@ -96,8 +97,8 @@ internal sealed class ContributionDocumentHandler : IHostDocument
         _viewModel.OnDataChanged();
     }
 
-    public void OnContentLoaded()
+    public void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
     {
-        ContentLoaded?.Invoke();
+        ContentLoaded?.Invoke(reason);
     }
 }

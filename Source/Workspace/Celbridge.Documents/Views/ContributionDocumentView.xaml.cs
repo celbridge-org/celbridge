@@ -296,9 +296,77 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
-        if (Host is not null)
+        // This method is async void because it's an event handler. All exceptions must be caught
+        // so that a faulty editor cannot crash the process.
+        try
+        {
+            await ReloadWithStatePreservationAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "External reload failed for contribution document");
+        }
+    }
+
+    /// <summary>
+    /// Orchestrates an external reload with editor-state preservation. Contribution editors
+    /// implement onRequestState / onRestoreState for session persistence; we reuse the same
+    /// plumbing around external file changes so the editor's zoom/scroll/selection survive a
+    /// reload triggered from disk. The JS side of the editor must signal completion by calling
+    /// client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload) at the end of
+    /// its onExternalChange handler. If it doesn't, we time out and skip the restore step.
+    /// </summary>
+    private async Task ReloadWithStatePreservationAsync()
+    {
+        if (Host is null || _documentHandler is null)
+        {
+            return;
+        }
+
+        // Capture editor state before the content is replaced. A null return is valid: the editor
+        // may not implement onRequestState, in which case we skip the restore step below.
+        string? savedState = null;
+        try
+        {
+            savedState = await Host.RequestStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to capture editor state before external reload; continuing without preservation");
+        }
+
+        // Subscribe for the JS-side completion signal so we can run the restore at the right moment.
+        var reloadComplete = new TaskCompletionSource();
+        void OnLoaded(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.ExternalReload)
+            {
+                reloadComplete.TrySetResult();
+            }
+        }
+        _documentHandler.ContentLoaded += OnLoaded;
+
+        try
         {
             await Host.NotifyExternalChangeAsync();
+
+            // Wait for the JS side to report that the reload cycle is complete. The timeout guards
+            // against editors that don't yet emit the ExternalReload signal; they simply miss out
+            // on state preservation rather than hanging the UI.
+            var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            if (completed != reloadComplete.Task)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(savedState))
+            {
+                await Host.NotifyRestoreStateAsync(savedState);
+            }
+        }
+        finally
+        {
+            _documentHandler.ContentLoaded -= OnLoaded;
         }
     }
 }

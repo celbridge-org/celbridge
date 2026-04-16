@@ -1,6 +1,31 @@
+using System.Text.Json.Serialization;
 using StreamJsonRpc;
 
 namespace Celbridge.Host;
+
+/// <summary>
+/// Reason values passed with document/contentLoaded notifications so consumers can distinguish
+/// the initial content load from subsequent reloads triggered by external file changes.
+/// The enum is serialized as a JSON string via JsonStringEnumConverter; the exact wire strings
+/// are declared via JsonStringEnumMemberName so the JSON format is decoupled from the identifiers.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ContentLoadedReason>))]
+public enum ContentLoadedReason
+{
+    /// <summary>
+    /// Fired once after the initial content load when a document first opens.
+    /// </summary>
+    [JsonStringEnumMemberName("initial")]
+    Initial,
+
+    /// <summary>
+    /// Fired each time the editor finishes processing an external file change (setValue plus
+    /// any state restoration). Used by consumers that need to refresh dependent views once the
+    /// reload cycle is fully complete.
+    /// </summary>
+    [JsonStringEnumMemberName("external-reload")]
+    ExternalReload,
+}
 
 public static class DocumentRpcMethods
 {
@@ -80,11 +105,12 @@ public interface IHostDocument
     void OnClientReady() { }
 
     /// <summary>
-    /// Called when document content has been loaded and the editor is ready for edits.
-    /// Override to handle content loaded notification.
+    /// Called every time the editor has finished loading (or reloading) content and is ready for edits.
+    /// The reason parameter distinguishes the initial load from reloads triggered by external file changes.
+    /// Defaults to Initial so older JS clients that send no payload continue to behave as before.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ContentLoaded)]
-    void OnContentLoaded() { }
+    void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial) { }
 }
 
 public static class HostDocumentExtensions

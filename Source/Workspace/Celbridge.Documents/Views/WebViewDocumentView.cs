@@ -249,13 +249,19 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
     /// <summary>
     /// Call this when the JS client signals that content is loaded and the editor is ready.
-    /// Sets the content-loaded flag and applies any editor state that was deferred.
-    /// Typically wired as a handler for the document handler's ContentLoaded event.
-    /// The method is async void because it is invoked from a parameterless event handler;
-    /// all exceptions are caught here so that a faulty editor cannot crash the process.
+    /// On the initial load, sets the content-loaded flag and applies any editor state that was deferred.
+    /// Subsequent reload notifications (ContentLoadedReason.ExternalReload) are no-ops at this layer;
+    /// consumers that need to react to reloads subscribe to their editor's ContentLoaded event directly.
+    /// The method is async void because it is invoked from an event handler; all exceptions are caught
+    /// here so that a faulty editor cannot crash the process.
     /// </summary>
-    protected async void SetContentLoaded()
+    protected async void SetContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
     {
+        if (reason != ContentLoadedReason.Initial)
+        {
+            return;
+        }
+
         _isContentLoaded = true;
 
         if (_pendingEditorStateJson is null)

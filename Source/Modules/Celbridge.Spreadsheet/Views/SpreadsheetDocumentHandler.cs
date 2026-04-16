@@ -25,8 +25,9 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
 
     /// <summary>
     /// Raised when the WebView client signals that content has been loaded and the editor is ready.
+    /// The argument distinguishes the initial load from an external-change reload.
     /// </summary>
-    internal event Action? ContentLoaded;
+    internal event Action<ContentLoadedReason>? ContentLoaded;
 
     /// <summary>
     /// Whether a spreadsheet import is currently in progress.
@@ -111,9 +112,9 @@ internal sealed class SpreadsheetDocumentHandler : IHostDocument
         _viewModel.OnDataChanged();
     }
 
-    public void OnContentLoaded()
+    public void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
     {
-        ContentLoaded?.Invoke();
+        ContentLoaded?.Invoke(reason);
     }
 
     public void OnImportComplete(bool success, string? error = null)

@@ -3,6 +3,7 @@ using Celbridge.Code.ViewModels;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -158,7 +159,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         // Subscribe to CodeEditor events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
-        MonacoEditor.ContentLoadRequested += OnMonacoContentLoadRequested;
+        MonacoEditor.ContentLoaded += OnMonacoContentLoaded;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
         MonacoEditor.ScrollPositionChanged += OnMonacoScrollPositionChanged;
 
@@ -562,32 +563,41 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         // Mark document as having unsaved changes
         _viewModel.OnTextChanged();
 
-        // Update preview if visible
-        if (IsPreviewVisible && _previewHelper is not null)
+        // Update preview if visible. The handler is invoked from the RPC pipeline on a worker
+        // thread; UpdateAsync ultimately calls CoreWebView2.PostWebMessageAsJson which has
+        // UI-thread affinity, so we marshal onto the dispatcher before triggering it.
+        DispatcherQueue.TryEnqueue(() =>
         {
-            _ = _previewHelper.UpdateAsync();
-        }
+            if (IsPreviewVisible && _previewHelper is not null)
+            {
+                _ = _previewHelper.UpdateAsync();
+            }
+        });
     }
 
-    private void OnMonacoContentLoadRequested()
+    private void OnMonacoContentLoaded(ContentLoadedReason reason)
     {
-        // The JS client has requested a content reload (during an external file change).
-        // After LoadAsync returns, the JS will call setValue with the new content, followed by
-        // a double-requestAnimationFrame to restore editor state. We schedule a deferred preview
-        // update to run after this sequence completes.
-        // The normal OnMonacoContentChanged path doesn't fire during external reloads because
-        // Monaco suppresses content change notifications to avoid marking the document as unsaved.
-        if (IsPreviewVisible && _previewHelper is not null)
+        // The JS client emits document/contentLoaded whenever setValue completes. Only the
+        // external-reload case needs to refresh the preview here: the normal OnMonacoContentChanged
+        // path covers user edits, and the initial load's preview is rendered by the first
+        // InitializeAsync call. Monaco suppresses content change notifications during external
+        // reloads to avoid marking the document as unsaved, so without this hook the preview
+        // would go stale.
+        if (reason != ContentLoadedReason.ExternalReload)
         {
-            var previewHelper = _previewHelper;
-            _ = Task.Delay(500).ContinueWith(_ =>
-            {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    _ = previewHelper.UpdateAsync();
-                });
-            }, TaskScheduler.Default);
+            return;
         }
+
+        // This handler is invoked from the RPC pipeline on a worker thread. The preview update
+        // eventually calls into CoreWebView2, which has UI-thread affinity, so we must marshal
+        // onto the dispatcher before triggering UpdateAsync.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (IsPreviewVisible && _previewHelper is not null)
+            {
+                _ = _previewHelper.UpdateAsync();
+            }
+        });
     }
 
     private void OnMonacoEditorFocused()
@@ -604,10 +614,18 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         // Only sync scroll in Split mode where both editor and preview are visible.
         // In Preview mode the editor is collapsed, so its scroll position is always
         // zero and forwarding it would reset the preview scroll to the top.
-        if (ViewMode == SplitEditorViewMode.Split)
+        if (ViewMode != SplitEditorViewMode.Split)
+        {
+            return;
+        }
+
+        // Same dispatcher marshal as OnMonacoContentChanged/OnMonacoContentLoaded:
+        // NotifyCodePreviewScrollAsync posts to the preview's CoreWebView2 and must be
+        // invoked on the UI thread.
+        DispatcherQueue.TryEnqueue(() =>
         {
             _previewHelper?.NotifyScrollPositionChanged(scrollPercentage);
-        }
+        });
     }
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)

@@ -7,6 +7,16 @@
  */
 
 /**
+ * Reason values passed with document/contentLoaded notifications. Consumers on the host side
+ * use these to tell an initial load apart from a subsequent external-change reload. Values
+ * must match the ContentLoadedReason constants defined on the C# host.
+ */
+export const ContentLoadedReason = Object.freeze({
+    Initial: 'initial',
+    ExternalReload: 'external-reload',
+});
+
+/**
  * Document operations API.
  */
 export class DocumentAPI {
@@ -85,9 +95,12 @@ export class DocumentAPI {
     /**
      * Notifies the host that document content has been loaded and the editor is ready for edits.
      * Call this after content has been set in the editor (e.g., after setValue in Monaco).
+     * @param {string} [reason] - One of ContentLoadedReason.Initial (default) or
+     *   ContentLoadedReason.ExternalReload. Consumers branch on this to distinguish the first
+     *   content load from reloads triggered by external file changes.
      */
-    notifyContentLoaded() {
-        this.#transport.notify('document/contentLoaded', {});
+    notifyContentLoaded(reason = ContentLoadedReason.Initial) {
+        this.#transport.notify('document/contentLoaded', { reason });
     }
 
     /**

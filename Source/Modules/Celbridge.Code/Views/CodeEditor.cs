@@ -71,6 +71,12 @@ public sealed partial class CodeEditor : UserControl
     public event Action? ContentLoadRequested;
 
     /// <summary>
+    /// Raised every time the Monaco editor has finished loading or reloading content.
+    /// The reason argument distinguishes the initial load from an external-change reload.
+    /// </summary>
+    public event Action<ContentLoadedReason>? ContentLoaded;
+
+    /// <summary>
     /// Raised when the editor receives focus.
     /// </summary>
     public event Action? EditorFocused;
@@ -133,6 +139,7 @@ public sealed partial class CodeEditor : UserControl
             _state,
             () => ContentChanged?.Invoke());
         _documentHandler.ContentLoadRequested += () => ContentLoadRequested?.Invoke();
+        _documentHandler.ContentLoaded += reason => ContentLoaded?.Invoke(reason);
 
         var inputHandler = new CodeEditorInputHandler(
             scrollPercentage => ScrollPositionChanged?.Invoke(scrollPercentage));

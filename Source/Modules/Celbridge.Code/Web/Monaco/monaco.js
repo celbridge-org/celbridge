@@ -2,6 +2,7 @@
 // Uses celbridge.js for JSON-RPC communication with the host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 import { monacoClient } from './monaco-client.js';
 
 // State
@@ -235,40 +236,48 @@ async function handleEditorInitialize(params) {
                     editor.setValue(result.content);
                 }
 
-                // Restore editor state after setValue, using double-requestAnimationFrame
-                // to ensure Monaco has completed its internal layout operations.
-                // Keep isReloadingExternally true until restoration is complete.
+                // Signal to the host that new content has been loaded so consumers (e.g. the code
+                // editor preview pane) can refresh. This must fire outside the rAF chain below:
+                // when the Monaco WebView is collapsed (Preview mode), requestAnimationFrame is
+                // throttled by the browser and the rAF callbacks don't run until the WebView
+                // becomes visible again. The preview's refresh is independent of Monaco's internal
+                // visual layout, so sending the signal here is safe.
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
+
+                // Restore editor state after setValue. One requestAnimationFrame is enough to let
+                // Monaco flush its internal view-layout scheduler; setValue itself updates the model
+                // synchronously. Keep isReloadingExternally true until restoration is complete.
+                // Note: this callback is throttled when Monaco is collapsed, but that's fine because
+                // the state it restores is only visible when the editor is shown.
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        const model = editor.getModel();
-                        const lineCount = model.getLineCount();
+                    const model = editor.getModel();
+                    const lineCount = model.getLineCount();
 
-                        // Restore selections, clamping each to valid ranges
-                        if (savedSelections && savedSelections.length > 0) {
-                            const clampedSelections = savedSelections.map(selection => {
-                                const startLine = Math.min(selection.startLineNumber, lineCount);
-                                const startMaxColumn = model.getLineMaxColumn(startLine);
-                                const endLine = Math.min(selection.endLineNumber, lineCount);
-                                const endMaxColumn = model.getLineMaxColumn(endLine);
-                                return {
-                                    startLineNumber: startLine,
-                                    startColumn: Math.min(selection.startColumn, startMaxColumn),
-                                    endLineNumber: endLine,
-                                    endColumn: Math.min(selection.endColumn, endMaxColumn)
-                                };
-                            });
-                            editor.setSelections(clampedSelections);
-                        } else if (savedPosition) {
-                            const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
-                            const maxColumn = model.getLineMaxColumn(clampedLine);
-                            const clampedColumn = Math.min(savedPosition.column, maxColumn);
-                            editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
-                        }
+                    // Restore selections, clamping each to valid ranges
+                    if (savedSelections && savedSelections.length > 0) {
+                        const clampedSelections = savedSelections.map(selection => {
+                            const startLine = Math.min(selection.startLineNumber, lineCount);
+                            const startMaxColumn = model.getLineMaxColumn(startLine);
+                            const endLine = Math.min(selection.endLineNumber, lineCount);
+                            const endMaxColumn = model.getLineMaxColumn(endLine);
+                            return {
+                                startLineNumber: startLine,
+                                startColumn: Math.min(selection.startColumn, startMaxColumn),
+                                endLineNumber: endLine,
+                                endColumn: Math.min(selection.endColumn, endMaxColumn)
+                            };
+                        });
+                        editor.setSelections(clampedSelections);
+                    } else if (savedPosition) {
+                        const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
+                        const maxColumn = model.getLineMaxColumn(clampedLine);
+                        const clampedColumn = Math.min(savedPosition.column, maxColumn);
+                        editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
+                    }
 
-                        editor.setScrollTop(savedScrollTop);
+                    editor.setScrollTop(savedScrollTop);
 
-                        isReloadingExternally = false;
-                    });
+                    isReloadingExternally = false;
                 });
             }
         });
@@ -295,29 +304,27 @@ function handleEditorSetLanguage(language) {
 }
 
 function applyNavigation(lineNumber, column, endLineNumber, endColumn) {
-    // Use double-requestAnimationFrame to ensure Monaco has completed its internal
-    // layout operations after setValue() before applying navigation
+    // One requestAnimationFrame is enough to let Monaco flush any pending view layout after a
+    // preceding setValue() so the line/column we navigate to resolves against the committed state.
     requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            if (endLineNumber > 0) {
-                // Select the matched text range (supports both single-line and multi-line selections)
-                editor.setSelection({
-                    startLineNumber: lineNumber,
-                    startColumn: column,
-                    endLineNumber: endLineNumber,
-                    endColumn: endColumn
-                });
-            } else {
-                // No range provided - just position the cursor
-                editor.setPosition({ lineNumber: lineNumber, column: column });
-            }
+        if (endLineNumber > 0) {
+            // Select the matched text range (supports both single-line and multi-line selections)
+            editor.setSelection({
+                startLineNumber: lineNumber,
+                startColumn: column,
+                endLineNumber: endLineNumber,
+                endColumn: endColumn
+            });
+        } else {
+            // No range provided - just position the cursor
+            editor.setPosition({ lineNumber: lineNumber, column: column });
+        }
 
-            // Reveal the line in the center of the editor viewport
-            editor.revealLineInCenter(lineNumber);
+        // Reveal the line in the center of the editor viewport
+        editor.revealLineInCenter(lineNumber);
 
-            // Focus the editor to make the cursor visible
-            editor.focus();
-        });
+        // Focus the editor to make the cursor visible
+        editor.focus();
     });
 }
 
