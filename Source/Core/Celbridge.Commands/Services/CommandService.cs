@@ -270,9 +270,20 @@ public class CommandService : ICommandService
                 }
                 catch (Exception ex)
                 {
-                    // I decided not to localize this because exceptions should never occur. This is not text that the
-                    // user is expected to ever see.
                     _logger.LogError(ex, $"An exception occurred when executing the command. Check the log file for more information.");
+
+                    // Complete the OnExecute callback with a failure so any awaiting ExecuteAsync call
+                    // returns instead of hanging forever.
+                    try
+                    {
+                        var failureResult = Result.Fail($"Command execution threw an exception: {ex.Message}")
+                            .WithException(ex);
+                        command.OnExecute?.Invoke(failureResult);
+                    }
+                    catch (Exception callbackException)
+                    {
+                        _logger.LogError(callbackException, "An exception occurred while notifying command callback of a failure.");
+                    }
                 }
             }
 

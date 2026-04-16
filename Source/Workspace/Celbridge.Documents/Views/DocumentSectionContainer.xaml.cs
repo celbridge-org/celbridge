@@ -4,6 +4,11 @@ using Celbridge.UserInterface.Views.Controls;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
+/// Identifies an open document by its containing section and the tab that hosts its view.
+/// </summary>
+public record DocumentTabLocation(DocumentSection Section, DocumentTab Tab);
+
+/// <summary>
 /// Container that manages 1-3 document sections with resizable splitters between them.
 /// </summary>
 public sealed partial class DocumentSectionContainer : UserControl
@@ -414,14 +419,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         // Find which section contains this document
-        var (section, tab) = FindDocumentTab(fileResource);
-        if (section != null && tab != null)
+        var location = FindDocumentTab(fileResource);
+        if (location is not null)
         {
             // Select the tab in its section
-            section.SelectTab(tab);
+            location.Section.SelectTab(location.Tab);
 
             // Directly update active document (don't rely on events for programmatic selection)
-            _activeSectionIndex = section.SectionIndex;
+            _activeSectionIndex = location.Section.SectionIndex;
             _activeDocument = fileResource;
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
@@ -429,19 +434,20 @@ public sealed partial class DocumentSectionContainer : UserControl
     }
 
     /// <summary>
-    /// Gets the DocumentTab for a given resource across all sections.
+    /// Locates the open document tab for the given resource and the section that contains it.
+    /// Returns null when no tab is currently open for the resource.
     /// </summary>
-    public (DocumentSection? Section, DocumentTab? Tab) FindDocumentTab(ResourceKey fileResource)
+    public DocumentTabLocation? FindDocumentTab(ResourceKey fileResource)
     {
         for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
         {
             var tab = _sections[i].GetDocumentTab(fileResource);
             if (tab != null)
             {
-                return (_sections[i], tab);
+                return new DocumentTabLocation(_sections[i], tab);
             }
         }
-        return (null, null);
+        return null;
     }
 
     /// <summary>
@@ -477,12 +483,13 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         // Find the source section
-        var (sourceSection, foundTab) = FindDocumentTab(tab.ViewModel.FileResource);
-        if (sourceSection == null || foundTab == null)
+        var location = FindDocumentTab(tab.ViewModel.FileResource);
+        if (location is null)
         {
             return false;
         }
 
+        var sourceSection = location.Section;
         var targetSection = _sections[targetSectionIndex];
         if (sourceSection == targetSection)
         {
@@ -549,10 +556,10 @@ public sealed partial class DocumentSectionContainer : UserControl
         // so re-apply the selection here.
         if (!_activeDocument.IsEmpty)
         {
-            var (activeSection, activeTab) = FindDocumentTab(_activeDocument);
-            if (activeSection is not null && activeTab is not null)
+            var activeLocation = FindDocumentTab(_activeDocument);
+            if (activeLocation is not null)
             {
-                activeSection.SelectTab(activeTab);
+                activeLocation.Section.SelectTab(activeLocation.Tab);
             }
         }
 

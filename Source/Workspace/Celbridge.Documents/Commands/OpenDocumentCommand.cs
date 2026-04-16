@@ -32,6 +32,13 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
 
     public string? EditorStateJson { get; set; }
 
+    /// <summary>
+    /// The outcome of the open operation. Only meaningful when ExecuteAsync returned Result.Ok.
+    /// Defaults to Opened so that ExecuteAsync<IOpenDocumentCommand, OpenDocumentOutcome> callers
+    /// see a sane value even if they mistakenly read it after a failure.
+    /// </summary>
+    public OpenDocumentOutcome ResultValue { get; private set; } = OpenDocumentOutcome.Opened;
+
     public OpenDocumentCommand(
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
@@ -98,6 +105,9 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
             return Result.Fail($"An error occurred while attempting to open '{FileResource}'")
                 .WithErrors(openResult);
         }
+
+        // Propagate the outcome to callers that need the result of the operation.
+        ResultValue = openResult.Value;
 
         return Result.Ok();
     }

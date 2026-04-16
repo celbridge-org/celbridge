@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.ContextMenu;
 using Celbridge.Dialog;
 using Celbridge.Documents;
+using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -17,6 +18,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
+    private readonly ILogger<OpenWithMenuOption> _logger;
 
     public int Priority => 3;
     public string GroupId => nameof(ExplorerMenuGroup.DocumentActions);
@@ -25,12 +27,14 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         IStringLocalizer stringLocalizer,
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ILogger<OpenWithMenuOption> logger)
     {
         _stringLocalizer = stringLocalizer;
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
         _dialogService = dialogService;
+        _logger = logger;
     }
 
     public MenuItemDisplayInfo GetDisplayInfo(ExplorerMenuContext context)
@@ -56,6 +60,18 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
     public async void Execute(ExplorerMenuContext context)
     {
+        try
+        {
+            await ExecuteAsync(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Open With menu option failed");
+        }
+    }
+
+    private async Task ExecuteAsync(ExplorerMenuContext context)
+    {
         if (context.ClickedResource is not IFileResource clickedFile)
         {
             return;
@@ -78,7 +94,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         var currentEditorId = DocumentEditorId.Empty;
         var openDocument = _workspaceWrapper.WorkspaceService.DocumentsService
             .GetOpenDocuments()
-            .FirstOrDefault(d => d.FileResource == resourceKey);
+            .FirstOrDefault(document => document.FileResource == resourceKey);
 
         if (openDocument is not null)
         {
@@ -91,9 +107,11 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         if (currentEditorId.IsEmpty)
         {
             var preferredId = await workspaceSettings.GetPropertyAsync<string>(preferenceKey);
-            if (!string.IsNullOrEmpty(preferredId))
+            // Use TryParse rather than the throwing constructor: a persisted preference may
+            // reference an editor that has been renamed or uninstalled.
+            if (!string.IsNullOrEmpty(preferredId) && DocumentEditorId.TryParse(preferredId, out var parsedPreferredId))
             {
-                currentEditorId = new DocumentEditorId(preferredId);
+                currentEditorId = parsedPreferredId;
             }
         }
 
@@ -110,7 +128,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
             }
         }
 
-        var displayNames = factories.Select(f => f.DisplayName).ToList();
+        var displayNames = factories.Select(factory => factory.DisplayName).ToList();
 
         var title = _stringLocalizer.GetString("OpenWithDialog_Title");
         var message = _stringLocalizer.GetString("OpenWithDialog_Message");

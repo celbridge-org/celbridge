@@ -1,9 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Packages;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
+using Celbridge.Packages;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -202,7 +202,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         var createResult = await CreateDocumentViewInternalAsync(fileResource, documentEditorId);
         if (createResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
+            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
                 .WithErrors(createResult);
         }
         var documentView = createResult.Value;
@@ -214,18 +214,20 @@ public class DocumentsService : IDocumentsService, IDisposable
         var setFileResult = await documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'")
+            return Result.Fail($"Failed to set file resource for document view: '{fileResource}'")
                 .WithErrors(setFileResult);
         }
 
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'")
+            return Result.Fail($"Failed to load content for document view: '{fileResource}'")
                 .WithErrors(loadResult);
         }
 
-        return Result<IDocumentView>.Ok(documentView);
+        // IDocumentView is an interface, so the implicit T -> Result<T> conversion doesn't apply;
+        // use the OkResult extension method to wrap the value.
+        return documentView.OkResult();
     }
 
     /// <summary>
@@ -314,25 +316,25 @@ public class DocumentsService : IDocumentsService, IDisposable
         var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
-            return Result<string>.Fail($"Failed to resolve path for resource: '{fileResource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
                 .WithErrors(resolveResult);
         }
         var filePath = resolveResult.Value;
 
         if (!File.Exists(filePath))
         {
-            return Result<string>.Fail($"File path does not exist: '{filePath}'");
+            return Result.Fail($"File path does not exist: '{filePath}'");
         }
 
         if (!CanAccessFile(filePath))
         {
-            return Result<string>.Fail($"File exists but cannot be opened: '{filePath}'");
+            return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
-        return Result<string>.Ok(filePath);
+        return filePath;
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
+    public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
         var resolveResult = ResolveAndValidateFilePath(fileResource);
         if (resolveResult.IsFailure)
@@ -347,10 +349,18 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
                 .WithErrors(openResult);
         }
+        var outcome = openResult.Value;
 
-        _logger.LogTrace($"Opened document for file resource '{fileResource}'");
+        if (outcome == OpenDocumentOutcome.Cancelled)
+        {
+            _logger.LogTrace($"Open document was cancelled for file resource '{fileResource}'");
+        }
+        else
+        {
+            _logger.LogTrace($"Opened document for file resource '{fileResource}'");
+        }
 
-        return Result.Ok();
+        return outcome;
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
@@ -482,7 +492,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogDebug($"Could not save editor state for '{resourceKey}': {ex.Message}");
+                _logger.LogDebug(ex, $"Could not save editor state for '{resourceKey}'");
             }
         }
 
@@ -509,9 +519,11 @@ public class DocumentsService : IDocumentsService, IDisposable
                 await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore errors when clearing state defensively
+            // Clearing state is best-effort: losing a stale entry is harmless, but we still log
+            // at debug level so unexpected failures are visible to developers.
+            _logger.LogDebug(ex, $"Failed to clear editor state for '{fileResource}'");
         }
     }
 
@@ -595,9 +607,19 @@ public class DocumentsService : IDocumentsService, IDisposable
             int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
-            var editorId = string.IsNullOrEmpty(stored.DocumentEditorId)
-                ? DocumentEditorId.Empty
-                : new DocumentEditorId(stored.DocumentEditorId);
+            // Use TryParse rather than the throwing constructor: a persisted editor id may reference
+            // a package or contribution that has since been renamed or uninstalled, and an invalid
+            // value should fall back to the default editor instead of aborting the restore.
+            DocumentEditorId editorId;
+            if (string.IsNullOrEmpty(stored.DocumentEditorId))
+            {
+                editorId = DocumentEditorId.Empty;
+            }
+            else if (!DocumentEditorId.TryParse(stored.DocumentEditorId, out editorId))
+            {
+                _logger.LogWarning($"Stored document editor id '{stored.DocumentEditorId}' is invalid and will be ignored for resource '{fileResource}'");
+                editorId = DocumentEditorId.Empty;
+            }
 
             string? editorStateJson = null;
             editorStates?.TryGetValue(fileResource.ToString(), out editorStateJson);
@@ -663,25 +685,38 @@ public class DocumentsService : IDocumentsService, IDisposable
         var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
                 .WithErrors(resolveResult);
         }
         var filePath = resolveResult.Value;
 
-        // If a specific editor was requested, use it directly
+        // If a specific editor was requested, use it directly. Do not fall through to priority-based
+        // resolution on failure: silently opening a different editor than the one the caller asked for
+        // is confusing and hides real problems (e.g., "Open With..." handing a file to a factory that
+        // cannot handle it).
         if (!documentEditorId.IsEmpty)
         {
-            var byIdResult = _documentEditorRegistry.GetFactoryById(documentEditorId);
-            if (byIdResult.IsSuccess && byIdResult.Value.CanHandleResource(fileResource, filePath))
+            var getFactoryResult = _documentEditorRegistry.GetFactoryById(documentEditorId);
+            if (getFactoryResult.IsFailure)
             {
-                var createResult = byIdResult.Value.CreateDocumentView(fileResource);
-                if (createResult.IsSuccess)
-                {
-                    return createResult;
-                }
-
-                _logger.LogWarning(createResult, $"Requested editor '{documentEditorId}' failed to create view for: '{fileResource}'");
+                return Result.Fail($"No document editor is registered with id '{documentEditorId}'")
+                    .WithErrors(getFactoryResult);
             }
+            var requestedFactory = getFactoryResult.Value;
+
+            if (!requestedFactory.CanHandleResource(fileResource, filePath))
+            {
+                return Result.Fail($"Document editor '{documentEditorId}' cannot handle file resource: '{fileResource}'");
+            }
+
+            var createResult = requestedFactory.CreateDocumentView(fileResource);
+            if (createResult.IsFailure)
+            {
+                return Result.Fail($"Document editor '{documentEditorId}' failed to create view for: '{fileResource}'")
+                    .WithErrors(createResult);
+            }
+
+            return createResult;
         }
 
         // Check workspace preference for this extension
@@ -694,13 +729,17 @@ public class DocumentsService : IDocumentsService, IDisposable
 
             if (!string.IsNullOrEmpty(preferredEditorId))
             {
-                var preferredResult = _documentEditorRegistry.GetFactoryById(preferredEditorId);
-                if (preferredResult.IsSuccess && preferredResult.Value.CanHandleResource(fileResource, filePath))
+                var getPreferredFactoryResult = _documentEditorRegistry.GetFactoryById(preferredEditorId);
+                if (getPreferredFactoryResult.IsSuccess)
                 {
-                    var createResult = preferredResult.Value.CreateDocumentView(fileResource);
-                    if (createResult.IsSuccess)
+                    var preferredFactory = getPreferredFactoryResult.Value;
+                    if (preferredFactory.CanHandleResource(fileResource, filePath))
                     {
-                        return createResult;
+                        var createResult = preferredFactory.CreateDocumentView(fileResource);
+                        if (createResult.IsSuccess)
+                        {
+                            return createResult;
+                        }
                     }
                 }
             }
@@ -726,7 +765,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         if (viewType == DocumentViewType.UnsupportedFormat)
         {
-            return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
+            return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
         // For text documents with unrecognized extensions, try to find a factory that can handle them
@@ -746,12 +785,12 @@ public class DocumentsService : IDocumentsService, IDisposable
                 }
             }
 
-            // Ultimate fallback to TextBoxDocumentView
+            // Ultimate fallback to TextBoxDocumentView.
             var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
-            return Result<IDocumentView>.Ok(textBoxView);
+            return textBoxView.OkResult<IDocumentView>();
         }
 
-        return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+        return Result.Fail($"Failed to create document view for file: '{fileResource}'");
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)

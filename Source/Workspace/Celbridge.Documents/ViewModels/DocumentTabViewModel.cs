@@ -5,6 +5,23 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
+/// <summary>
+/// Describes the result of a successful call to DocumentTabViewModel.CloseDocument.
+/// A Result.Fail is still reserved for genuine errors (save failure, etc.).
+/// </summary>
+public enum CloseDocumentOutcome
+{
+    /// <summary>
+    /// The document was closed and its view was cleaned up.
+    /// </summary>
+    Closed,
+
+    /// <summary>
+    /// The close was cancelled.
+    /// </summary>
+    Cancelled,
+}
+
 public partial class DocumentTabViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
@@ -138,10 +155,8 @@ public partial class DocumentTabViewModel : ObservableObject
     /// <summary>
     /// Close the opened document.
     /// forceClose forces the document to close without allowing the document to cancel the close operation.
-    /// Returns false if the document cancelled the close operation, e.g. via a confirmation dialog.
-    /// The call fails if the close operation failed due to an error.
     /// </summary>
-    public async Task<Result<bool>> CloseDocument(bool forceClose)
+    public async Task<Result<CloseDocumentOutcome>> CloseDocument(bool forceClose)
     {
         Guard.IsNotNull(DocumentView);
 
@@ -154,14 +169,14 @@ public partial class DocumentTabViewModel : ObservableObject
             UnregisterMessageHandlers();
             await DocumentView.PrepareToClose();
 
-            return Result<bool>.Ok(true);
+            return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Closed);
         }
 
         var canClose = forceClose || await DocumentView.CanClose();
         if (!canClose)
         {
-            // The close operation was cancelled by the document view.
-            return Result<bool>.Ok(false);
+            // The document view refused to close (user save-prompt dialog or programmatic veto).
+            return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Cancelled);
         }
 
         if (DocumentView.HasUnsavedChanges)
@@ -169,7 +184,7 @@ public partial class DocumentTabViewModel : ObservableObject
             var saveResult = await DocumentView.SaveDocument();
             if (saveResult.IsFailure)
             {
-                return Result<bool>.Fail($"Saving document failed for file resource: '{FileResource}'")
+                return Result<CloseDocumentOutcome>.Fail($"Saving document failed for file resource: '{FileResource}'")
                     .WithErrors(saveResult);
             }
         }
@@ -178,7 +193,7 @@ public partial class DocumentTabViewModel : ObservableObject
         UnregisterMessageHandlers();
         await DocumentView.PrepareToClose();
 
-        return Result<bool>.Ok(true);
+        return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Closed);
     }
 
     public async Task<Result> ReloadDocument()

@@ -49,6 +49,22 @@ public readonly struct DocumentEditorId : IEquatable<DocumentEditorId>
         return hasDot;
     }
 
+    /// <summary>
+    /// Tries to parse a string into a DocumentEditorId without throwing on invalid input.
+    /// Returns true on success; false and DocumentEditorId.Empty on failure.
+    /// </summary>
+    public static bool TryParse(string? id, out DocumentEditorId result)
+    {
+        if (string.IsNullOrEmpty(id) || !IsValid(id))
+        {
+            result = Empty;
+            return false;
+        }
+
+        result = new DocumentEditorId(id);
+        return true;
+    }
+
     public override string ToString()
     {
         return _id ?? string.Empty;

@@ -40,7 +40,7 @@ public interface IDocumentsPanel
     /// <summary>
     /// Open a file resource as a document in the documents panel.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);
+    Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);
 
     /// <summary>
     /// Close an opened document in the documents panel.

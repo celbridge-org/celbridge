@@ -3,9 +3,11 @@ using Celbridge.Commands;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Open a document in the documents panel.
+/// Open a document in the documents panel. ResultValue reports whether the open completed
+/// or was cancelled, so automation consumers (such as MCP tools and scripts) can distinguish
+/// a no-op close refusal from a genuine open.
 /// </summary>
-public interface IOpenDocumentCommand : IExecutableCommand
+public interface IOpenDocumentCommand : IExecutableCommand<OpenDocumentOutcome>
 {
     /// <summary>
     /// The resource key of the file to open.

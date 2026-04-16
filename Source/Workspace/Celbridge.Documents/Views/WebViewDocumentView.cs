@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -20,6 +21,7 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IFeatureFlags _featureFlags;
+    private readonly ILogger<WebViewDocumentView> _logger;
 
     // JSON-RPC infrastructure
     private WebViewHostChannel? _hostChannel;
@@ -67,6 +69,8 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _featureFlags = featureFlags;
+
+        _logger = ServiceLocator.AcquireService<ILogger<WebViewDocumentView>>();
     }
 
     /// <summary>
@@ -247,16 +251,30 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     /// Call this when the JS client signals that content is loaded and the editor is ready.
     /// Sets the content-loaded flag and applies any editor state that was deferred.
     /// Typically wired as a handler for the document handler's ContentLoaded event.
+    /// The method is async void because it is invoked from a parameterless event handler;
+    /// all exceptions are caught here so that a faulty editor cannot crash the process.
     /// </summary>
     protected async void SetContentLoaded()
     {
         _isContentLoaded = true;
 
-        if (_pendingEditorStateJson is not null)
+        if (_pendingEditorStateJson is null)
         {
-            var state = _pendingEditorStateJson;
-            _pendingEditorStateJson = null;
+            return;
+        }
+
+        var state = _pendingEditorStateJson;
+        _pendingEditorStateJson = null;
+
+        try
+        {
             await RestoreEditorStateAsync(state);
+        }
+        catch (Exception ex)
+        {
+            // Editor state restoration is best-effort: a corrupt or incompatible state should
+            // never tear down the process. Log and swallow to preserve the async void safety contract.
+            _logger.LogError(ex, "Failed to restore editor state after content loaded");
         }
     }
 

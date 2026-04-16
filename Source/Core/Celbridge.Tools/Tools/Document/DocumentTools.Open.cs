@@ -15,7 +15,7 @@ public partial class DocumentTools
     /// <param name="sectionIndex">Target editor section: 0 (left), 1 (center), 2 (right). Use -1 to open in the active section (default).</param>
     /// <param name="forceReload">Force reload even if already open.</param>
     /// <param name="activate">When true, the opened document becomes the active tab.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <returns>"opened" when the document is now open (including activating an already-open tab), or "cancelled" when the open was a no-op because an existing tab refused to close. An error message is returned if the operation failed.</returns>
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
     public async partial Task<CallToolResult> Open(string fileResource, int sectionIndex = -1, bool forceReload = false, bool activate = false)
@@ -32,12 +32,21 @@ public partial class DocumentTools
 
         int? targetSectionIndex = sectionIndex == -1 ? null : sectionIndex;
 
-        return await ExecuteCommandAsync<IOpenDocumentCommand>(command =>
+        var (callResult, outcome) = await ExecuteCommandAsync<IOpenDocumentCommand, OpenDocumentOutcome>(command =>
         {
             command.FileResource = fileResourceKey;
             command.TargetSectionIndex = targetSectionIndex;
             command.ForceReload = forceReload;
             command.Activate = activate;
         });
+
+        if (callResult.IsError == true)
+        {
+            return callResult;
+        }
+
+        return outcome == OpenDocumentOutcome.Cancelled
+            ? SuccessResult("cancelled")
+            : SuccessResult("opened");
     }
 }

@@ -438,6 +438,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     public override async Task<string?> SaveEditorStateAsync()
     {
+        await Task.CompletedTask;
+
         try
         {
             // In Preview mode, Monaco is collapsed and its scroll is always zero.
