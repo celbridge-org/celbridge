@@ -317,7 +317,7 @@ function handleEditorSetLanguage(language) {
 }
 
 function applyNavigation(lineNumber, column, endLineNumber, endColumn) {
-    // One requestAnimationFrame is enough to let Monaco flush any pending view layout after a
+    // Use a requestAnimationFrame to let Monaco flush any pending view layout after a
     // preceding setValue() so the line/column we navigate to resolves against the committed state.
     requestAnimationFrame(() => {
         if (endLineNumber > 0) {
