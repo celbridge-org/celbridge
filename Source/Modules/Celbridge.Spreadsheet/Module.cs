@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents.Services;
 using Celbridge.Modules;
+using Microsoft.Extensions.Localization;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Services;
 using Celbridge.Spreadsheet.ViewModels;
@@ -50,7 +51,8 @@ public class Module : IModule
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
         var fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
-        return [new SpreadsheetEditorFactory(serviceProvider, fileTypeHelper)];
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return [new SpreadsheetEditorFactory(serviceProvider, fileTypeHelper, stringLocalizer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

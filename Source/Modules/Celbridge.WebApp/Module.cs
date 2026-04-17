@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
+using Microsoft.Extensions.Localization;
 using Celbridge.WebApp.Services;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.WebApp.Views;
@@ -33,7 +34,8 @@ public class Module : IModule
 
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
-        return [new WebAppEditorFactory(serviceProvider)];
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return [new WebAppEditorFactory(serviceProvider, stringLocalizer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

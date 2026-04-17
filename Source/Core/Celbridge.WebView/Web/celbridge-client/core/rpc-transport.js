@@ -34,6 +34,9 @@ export class RpcTransport {
     /** @type {Object<string, Function[]>} */
     #eventHandlers = {};
 
+    /** @type {Object<string, Function>} */
+    #requestHandlers = {};
+
     /**
      * Gets the protocol version.
      * @returns {string}
@@ -171,6 +174,17 @@ export class RpcTransport {
     }
 
     /**
+     * Registers a handler for incoming RPC requests from the host.
+     * Unlike event handlers (for notifications), request handlers return a value
+     * that is sent back to the host as a response. Only one handler per method is supported.
+     * @param {string} method - The request method name.
+     * @param {Function} handler - The handler function. May return a value or a Promise.
+     */
+    setRequestHandler(method, handler) {
+        this.#requestHandlers[method] = handler;
+    }
+
+    /**
      * Removes an event handler.
      * @param {string} method - The notification method name.
      * @param {Function} handler - The handler function to remove.
@@ -196,6 +210,12 @@ export class RpcTransport {
             // Response (has id and either result or error)
             if ('id' in message && (('result' in message) || ('error' in message))) {
                 this.#handleResponse(message);
+                return;
+            }
+
+            // Request from host (has both method and id, expects a response)
+            if ('method' in message && 'id' in message) {
+                this.#handleRequest(message);
                 return;
             }
 
@@ -254,6 +274,43 @@ export class RpcTransport {
                     this.#log('error', `Error in notification handler for ${method}`, error);
                 }
             }
+        }
+    }
+
+    /**
+     * Handles an incoming request from the host that expects a response.
+     * @param {Object} message - The parsed message with method, id, and optional params.
+     */
+    async #handleRequest(message) {
+        const { method, id, params } = message;
+        this.#log('debug', `<- request #${id}: ${method}`, params);
+
+        const handler = this.#requestHandlers[method];
+        if (!handler) {
+            const errorResponse = {
+                jsonrpc: '2.0',
+                id,
+                error: { code: -32601, message: `Method not found: ${method}` }
+            };
+            this.#postMessage(JSON.stringify(errorResponse));
+            return;
+        }
+
+        try {
+            const result = await handler(params);
+            const response = {
+                jsonrpc: '2.0',
+                id,
+                result: result !== undefined ? result : null
+            };
+            this.#postMessage(JSON.stringify(response));
+        } catch (error) {
+            const errorResponse = {
+                jsonrpc: '2.0',
+                id,
+                error: { code: -32000, message: error.message || 'Handler error' }
+            };
+            this.#postMessage(JSON.stringify(errorResponse));
         }
     }
 

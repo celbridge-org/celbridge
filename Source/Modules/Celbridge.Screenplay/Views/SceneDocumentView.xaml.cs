@@ -76,8 +76,10 @@ public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocume
             return;
         }
 
-        // Notify JS to reload content
-        Host?.NotifyExternalChangeAsync();
+        // Route through the base orchestration for consistency with the other editors. Screenplay
+        // has no editor state to preserve (read-only), so the save/restore round-trip is a no-op,
+        // but using the same orchestration keeps the reload contract uniform across editors.
+        _ = ReloadWithStatePreservationAsync();
     }
 
     private async void SceneDocumentView_Loaded(object sender, RoutedEventArgs e)
@@ -154,6 +156,11 @@ public sealed partial class SceneDocumentView : WebViewDocumentView, IHostDocume
     public Task<SaveResult> SaveAsync(string content)
     {
         throw new NotSupportedException("Save is not supported by the Screenplay viewer (read-only).");
+    }
+
+    public void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
+    {
+        SetContentLoaded(reason);
     }
 
     #endregion

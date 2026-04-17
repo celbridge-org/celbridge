@@ -174,16 +174,16 @@ public sealed partial class WorkspacePage : Page
         _ = ViewModel.LoadWorkspaceAsync();
     }
 
-    private void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
+    private async void WorkspacePage_Unloaded(object sender, RoutedEventArgs e)
     {
         // Only perform cleanup if the cache has been disabled (intentional unload)
         if (NavigationCacheMode == NavigationCacheMode.Disabled)
         {
-            PerformCleanup();
+            await PerformCleanupAsync();
         }
     }
 
-    private void PerformCleanup()
+    private async Task PerformCleanupAsync()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
@@ -194,6 +194,9 @@ public sealed partial class WorkspacePage : Page
         // Unregister message handlers
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         messengerService.UnregisterAll(this);
+
+        // Save editor states before closing documents, while editors are still alive
+        await workspaceService.DocumentsService.StoreDocumentEditorStates();
 
         // Close all open documents and clean up their WebView2 resources
         workspaceService.DocumentsPanel.Shutdown();

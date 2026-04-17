@@ -64,7 +64,7 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
             // Route through the editor for undo support
             if (documentView is null)
             {
-                var openResult = await documentsService.OpenDocument(FileResource, forceReload: false, location: string.Empty, activate: false);
+                var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(Activate: false));
                 if (openResult.IsFailure)
                 {
                     return Result.Fail($"Failed to open document: '{FileResource}'")

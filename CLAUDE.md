@@ -70,6 +70,17 @@ python run_tests.py
 - Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
 - Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
 - Place `Dispose` implementation at the end of a class; declare all private fields at the top
+- Split multi-condition `if` statements so each clause is on its own line, with the logical operator (`&&`, `||`) at the end of the preceding line
+- Put a blank line between the final `return` of a method and the preceding code block (e.g., after a closing `}`)
+- Keep the `async` keyword on `*Async` methods even when the body is synchronous; suppress CS1998 by adding `await Task.CompletedTask;` at the top of the body (precedent: `DocumentView.SaveDocumentContentAsync`)
+- Use the Parameter Object pattern for methods with 4+ parameters: identity args (what/where) stay as direct arguments; behavioral/option args group into a record
+- Prefer small record types over named tuples for multi-value returns, especially when nullable-wrapping the record can replace field-level nullability
+- Colocate small helper types (under ~15 lines, single primary consumer) with their consumer rather than in dedicated files
+- Use the project's `ILogger<T>` for all diagnostics; never use `Debug.WriteLine`, `Console.Write*`, or `Trace.Write*`. For abstract base classes where constructor injection would cascade, use `ServiceLocator.AcquireService<ILogger<T>>()` (precedent: `WebViewDocumentView`, `CodeEditorDocumentView`)
+- When logging an exception, pass the exception object to the logger overload (e.g. `_logger.LogError(ex, "...")`); do not interpolate `ex.Message` or `ex.ToString()` into the message string
+- Keep XML doc comments concise: describe *what* the member does. Do not embed implementation rationale, caller behavior, or detail already carried by types (enums, records, nullable returns)
+- Model user or programmatic cancellation as a typed success outcome (e.g., `Result<OutcomeEnum>` with a `Cancelled` value), not as `Result.Fail`; `Result.Fail` stays reserved for genuine errors (precedent: `OpenDocumentOutcome`, `CloseDocumentOutcome`)
+- Minimize `Result<T>` boilerplate at return sites: use implicit conversions (`return value;` for concrete types; `return Result.Fail("message");` for failures). For interface return types, use the `OkResult<T>()` extension from `ResultExtensions`. Always unpack `result.Value` into a named temporary variable before using it
 
 ## Architecture
 
@@ -77,6 +88,7 @@ python run_tests.py
   - IWorkspaceSettingsService, IWorkspaceSettings, IResourceRegistry, IResourceTransferService, IResourceOperationService, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
 - Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
 - The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
+- Never bypass `ICommandService` to call methods directly. Every important operation goes through the command service for automation and auditing support. If a command-based flow has a bug, fix it within the command service pattern (e.g., add new command options or fix the command handling logic)
 
 ## MCP Tools
 

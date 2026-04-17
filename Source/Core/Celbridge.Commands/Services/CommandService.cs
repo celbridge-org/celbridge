@@ -216,9 +216,15 @@ public class CommandService : ICommandService
                     var scopeName = $"Execute {command.GetType().Name}";
                     using (_logger.BeginScope(scopeName))
                     {
-                        // Log the command execution at the debug level
-                        string logEntry = _logSerializer.SerializeObject(startedMessage, false);
-                        _logger.LogDebug(logEntry);
+                        // Log the command execution at the debug level. Commands tagged with
+                        // SuppressCommandLog (typically read-only queries polled by tools) are
+                        // skipped to avoid flooding the audit log.
+                        bool suppressLog = command.CommandFlags.HasFlag(CommandFlags.SuppressCommandLog);
+                        if (!suppressLog)
+                        {
+                            string logEntry = _logSerializer.SerializeObject(startedMessage, false);
+                            _logger.LogDebug(logEntry);
+                        }
 
                         var executeResult = await command.ExecuteAsync();
 
@@ -264,9 +270,20 @@ public class CommandService : ICommandService
                 }
                 catch (Exception ex)
                 {
-                    // I decided not to localize this because exceptions should never occur. This is not text that the
-                    // user is expected to ever see.
                     _logger.LogError(ex, $"An exception occurred when executing the command. Check the log file for more information.");
+
+                    // Complete the OnExecute callback with a failure so any awaiting ExecuteAsync call
+                    // returns instead of hanging forever.
+                    try
+                    {
+                        var failureResult = Result.Fail($"Command execution threw an exception: {ex.Message}")
+                            .WithException(ex);
+                        command.OnExecute?.Invoke(failureResult);
+                    }
+                    catch (Exception callbackException)
+                    {
+                        _logger.LogError(callbackException, "An exception occurred while notifying command callback of a failure.");
+                    }
                 }
             }
 

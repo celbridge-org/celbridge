@@ -1,5 +1,6 @@
 using Celbridge.Documents.Services;
 using Celbridge.Spreadsheet.Views;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Spreadsheet.Services;
 
@@ -11,16 +12,25 @@ public class SpreadsheetEditorFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly FileTypeHelper _fileTypeHelper;
+    private readonly IStringLocalizer _stringLocalizer;
+
+    public override DocumentEditorId EditorId { get; } = new("celbridge.spreadsheet-editor");
+
+    public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_SpreadsheetEditor");
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = [".xlsx"];
 
-    public SpreadsheetEditorFactory(IServiceProvider serviceProvider, FileTypeHelper fileTypeHelper)
+    public SpreadsheetEditorFactory(
+        IServiceProvider serviceProvider,
+        FileTypeHelper fileTypeHelper,
+        IStringLocalizer stringLocalizer)
     {
         _serviceProvider = serviceProvider;
         _fileTypeHelper = fileTypeHelper;
+        _stringLocalizer = stringLocalizer;
     }
 
-    public override bool CanHandle(ResourceKey fileResource, string filePath)
+    public override bool CanHandleResource(ResourceKey fileResource, string filePath)
     {
         // Only handle if SpreadJS is available AND extension matches
         if (!_fileTypeHelper.IsSpreadJSAvailable)
@@ -28,7 +38,7 @@ public class SpreadsheetEditorFactory : DocumentEditorFactoryBase
             return false;
         }
 
-        return base.CanHandle(fileResource, filePath);
+        return base.CanHandleResource(fileResource, filePath);
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

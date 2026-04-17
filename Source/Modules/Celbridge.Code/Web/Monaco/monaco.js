@@ -2,6 +2,7 @@
 // Uses celbridge.js for JSON-RPC communication with the host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 import { monacoClient } from './monaco-client.js';
 
 // State
@@ -207,78 +208,94 @@ async function handleEditorInitialize(params) {
             monaco.editor.setModelLanguage(editor.getModel(), language);
         }
 
-        // Initialize the host connection and get content
-        const result = await client.initialize();
+        // Initialize the host connection, load content, and register handlers.
+        // notifyContentLoaded() is called automatically after this completes.
+        await client.initializeDocument({
+            onContent: (content) => {
+                if (content) {
+                    editor.setValue(content);
+                }
+            },
+            onRequestSave: async () => {
+                const content = editor.getValue();
+                await client.document.save(content);
+            },
+            onExternalChange: async () => {
+                // Capture editor state before reload
+                const savedScrollTop = editor.getScrollTop();
+                const savedPosition = editor.getPosition();
+                const savedSelections = editor.getSelections();
 
-        // Set the content
-        if (result.content) {
-            editor.setValue(result.content);
-        }
+                // Suppress content change and scroll notifications during the entire
+                // reload cycle, including the deferred state restoration. This prevents
+                // setValue() from sending a scroll-position-zero event to the preview.
+                isReloadingExternally = true;
 
-        // Register for save requests
-        client.document.onRequestSave(async () => {
-            const content = editor.getValue();
-            await client.document.save(content);
-        });
+                const result = await client.document.load();
+                if (result.content !== undefined) {
+                    editor.setValue(result.content);
+                }
 
-        // Register for external change notifications
-        client.document.onExternalChange(async () => {
-            // Capture editor state before reload
-            const savedScrollTop = editor.getScrollTop();
-            const savedPosition = editor.getPosition();
-            const savedSelections = editor.getSelections();
+                // Signal to the host that new content has been loaded so consumers (e.g. the code
+                // editor preview pane) can refresh. This must fire outside the rAF chain below:
+                // when the Monaco WebView is collapsed (Preview mode), requestAnimationFrame is
+                // throttled by the browser and the rAF callbacks don't run until the WebView
+                // becomes visible again. The preview's refresh is independent of Monaco's internal
+                // visual layout, so sending the signal here is safe.
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
 
-            // Suppress content change and scroll notifications during the entire
-            // reload cycle, including the deferred state restoration. This prevents
-            // setValue() from sending a scroll-position-zero event to the preview.
-            isReloadingExternally = true;
-
-            const result = await client.document.load();
-            if (result.content !== undefined) {
-                editor.setValue(result.content);
-            }
-
-            // Restore editor state after setValue, using double-requestAnimationFrame
-            // to ensure Monaco has completed its internal layout operations.
-            // Keep isReloadingExternally true until restoration is complete.
-            requestAnimationFrame(() => {
+                // Restore editor state after setValue. One requestAnimationFrame is enough to let
+                // Monaco flush its internal view-layout scheduler; setValue itself updates the model
+                // synchronously. Keep isReloadingExternally true until restoration is complete.
+                // Note: this callback is throttled when Monaco is collapsed, but that's fine because
+                // the state it restores is only visible when the editor is shown.
                 requestAnimationFrame(() => {
-                    const model = editor.getModel();
-                    const lineCount = model.getLineCount();
+                    try {
+                        const model = editor.getModel();
 
-                    // Restore selections, clamping each to valid ranges
-                    if (savedSelections && savedSelections.length > 0) {
-                        const clampedSelections = savedSelections.map(selection => {
-                            const startLine = Math.min(selection.startLineNumber, lineCount);
-                            const startMaxColumn = model.getLineMaxColumn(startLine);
-                            const endLine = Math.min(selection.endLineNumber, lineCount);
-                            const endMaxColumn = model.getLineMaxColumn(endLine);
-                            return {
-                                startLineNumber: startLine,
-                                startColumn: Math.min(selection.startColumn, startMaxColumn),
-                                endLineNumber: endLine,
-                                endColumn: Math.min(selection.endColumn, endMaxColumn)
-                            };
-                        });
-                        editor.setSelections(clampedSelections);
-                    } else if (savedPosition) {
-                        const clampedLine = Math.min(savedPosition.lineNumber, lineCount);
-                        const maxColumn = model.getLineMaxColumn(clampedLine);
-                        const clampedColumn = Math.min(savedPosition.column, maxColumn);
-                        editor.setPosition({ lineNumber: clampedLine, column: clampedColumn });
+                        // Restore selections, clamping each end against the new document bounds.
+                        // Use Monaco's ISelection shape (selectionStart*/position*) rather than the
+                        // IRange shape — setSelections requires ISelection fields or it throws.
+                        // model.validatePosition handles clamping to valid line/column ranges.
+                        if (savedSelections && savedSelections.length > 0) {
+                            const clampedSelections = savedSelections.map(selection => {
+                                const anchor = model.validatePosition({
+                                    lineNumber: selection.selectionStartLineNumber,
+                                    column: selection.selectionStartColumn
+                                });
+                                const cursor = model.validatePosition({
+                                    lineNumber: selection.positionLineNumber,
+                                    column: selection.positionColumn
+                                });
+                                return {
+                                    selectionStartLineNumber: anchor.lineNumber,
+                                    selectionStartColumn: anchor.column,
+                                    positionLineNumber: cursor.lineNumber,
+                                    positionColumn: cursor.column
+                                };
+                            });
+                            editor.setSelections(clampedSelections);
+                        } else if (savedPosition) {
+                            const clamped = model.validatePosition({
+                                lineNumber: savedPosition.lineNumber,
+                                column: savedPosition.column
+                            });
+                            editor.setPosition(clamped);
+                        }
+
+                        editor.setScrollTop(savedScrollTop);
+                    } catch (err) {
+                        // Defensive: if anything unexpected throws, we still need the flag reset
+                        // below to run so future edits aren't silently dropped.
+                        console.error('[monaco] External-reload state restore failed:', err);
                     }
-
-                    editor.setScrollTop(savedScrollTop);
 
                     isReloadingExternally = false;
                 });
-            });
+            }
         });
 
         isInitialized = true;
-
-        // Notify host that content is loaded and editor is ready for edits
-        client.document.notifyContentLoaded();
 
         // Apply any navigation that arrived before content was loaded
         if (pendingNavigation) {
@@ -300,29 +317,27 @@ function handleEditorSetLanguage(language) {
 }
 
 function applyNavigation(lineNumber, column, endLineNumber, endColumn) {
-    // Use double-requestAnimationFrame to ensure Monaco has completed its internal
-    // layout operations after setValue() before applying navigation
+    // Use a requestAnimationFrame to let Monaco flush any pending view layout after a
+    // preceding setValue() so the line/column we navigate to resolves against the committed state.
     requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            if (endLineNumber > 0) {
-                // Select the matched text range (supports both single-line and multi-line selections)
-                editor.setSelection({
-                    startLineNumber: lineNumber,
-                    startColumn: column,
-                    endLineNumber: endLineNumber,
-                    endColumn: endColumn
-                });
-            } else {
-                // No range provided - just position the cursor
-                editor.setPosition({ lineNumber: lineNumber, column: column });
-            }
+        if (endLineNumber > 0) {
+            // Select the matched text range (supports both single-line and multi-line selections)
+            editor.setSelection({
+                startLineNumber: lineNumber,
+                startColumn: column,
+                endLineNumber: endLineNumber,
+                endColumn: endColumn
+            });
+        } else {
+            // No range provided - just position the cursor
+            editor.setPosition({ lineNumber: lineNumber, column: column });
+        }
 
-            // Reveal the line in the center of the editor viewport
-            editor.revealLineInCenter(lineNumber);
+        // Reveal the line in the center of the editor viewport
+        editor.revealLineInCenter(lineNumber);
 
-            // Focus the editor to make the cursor visible
-            editor.focus();
-        });
+        // Focus the editor to make the cursor visible
+        editor.focus();
     });
 }
 

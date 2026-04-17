@@ -6,30 +6,53 @@ namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// Factory for creating ContributionDocumentView instances for custom (WebView-based)
-/// extension editors. One instance per discovered CustomDocumentContribution.
+/// extension editors. One instance per discovered CustomDocumentEditorContribution.
 /// </summary>
 public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly CustomDocumentContribution _contribution;
+    private readonly CustomDocumentEditorContribution _contribution;
     private readonly IFeatureFlags _featureFlags;
+    private readonly string _resolvedDisplayName;
+
+    public override DocumentEditorId EditorId => new($"{_contribution.Package.Id}.{_contribution.Id}");
+
+    public override string DisplayName => _resolvedDisplayName;
 
     public override IReadOnlyList<string> SupportedExtensions =>
-        _contribution.FileTypes.Select(ft => ft.FileExtension).ToList();
+        _contribution.FileTypes.Select(fileType => fileType.FileExtension).ToList();
 
     public override EditorPriority Priority => _contribution.Priority;
 
     public CustomDocumentViewFactory(
         IServiceProvider serviceProvider,
-        CustomDocumentContribution contribution,
-        IFeatureFlags featureFlags)
+        CustomDocumentEditorContribution contribution,
+        IFeatureFlags featureFlags,
+        IPackageLocalizationService localizationService)
     {
         _serviceProvider = serviceProvider;
         _contribution = contribution;
         _featureFlags = featureFlags;
+        _resolvedDisplayName = ResolveDisplayName(localizationService);
     }
 
-    public override bool CanHandle(ResourceKey fileResource, string filePath)
+    private string ResolveDisplayName(IPackageLocalizationService localizationService)
+    {
+        if (string.IsNullOrEmpty(_contribution.DisplayName))
+        {
+            return _contribution.Package.Name;
+        }
+
+        var localizationStrings = localizationService.LoadStrings(_contribution.Package.PackageFolder);
+        if (localizationStrings.TryGetValue(_contribution.DisplayName, out var localizedName))
+        {
+            return localizedName;
+        }
+
+        return _contribution.DisplayName;
+    }
+
+    public override bool CanHandleResource(ResourceKey fileResource, string filePath)
     {
         if (!string.IsNullOrEmpty(_contribution.Package.FeatureFlag) &&
             !_featureFlags.IsEnabled(_contribution.Package.FeatureFlag))
@@ -37,7 +60,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
             return false;
         }
 
-        return base.CanHandle(fileResource, filePath);
+        return base.CanHandleResource(fileResource, filePath);
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)

@@ -27,9 +27,9 @@ public interface IDocumentsPanel
     Task ResetSectionRatiosAsync();
 
     /// <summary>
-    /// Returns all open documents with their addresses (UI positions).
+    /// Returns a snapshot of all open documents with their addresses and editor IDs.
     /// </summary>
-    Dictionary<ResourceKey, DocumentAddress> GetDocumentAddresses();
+    IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
 
     /// <summary>
     /// Gets the document view for an already-opened document.
@@ -38,16 +38,9 @@ public interface IDocumentsPanel
     IDocumentView? GetDocumentView(ResourceKey fileResource);
 
     /// <summary>
-    /// Open a file resource as a document in the documents panel and optionally navigate to a specific location.
-    /// When activate is true, the document becomes the active tab.
+    /// Open a file resource as a document in the documents panel.
     /// </summary>
-    Task<Result> OpenDocument(ResourceKey fileResource, string filePath, bool forceReload, string location = "", bool activate = true);
-
-    /// <summary>
-    /// Open a file resource as a document at a specific address (UI position).
-    /// When activate is true, the document becomes the active tab.
-    /// </summary>
-    Task<Result> OpenDocumentAtAddress(ResourceKey fileResource, string filePath, DocumentAddress address, bool activate = true);
+    Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);
 
     /// <summary>
     /// Close an opened document in the documents panel.

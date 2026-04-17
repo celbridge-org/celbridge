@@ -7,7 +7,7 @@ namespace Celbridge.Packages;
 /// Each extension can contribute one or more document editors via its extension.toml.
 /// Subclasses define the specific editor type and its configuration.
 /// </summary>
-public abstract partial record DocumentContribution
+public abstract partial record DocumentEditorContribution
 {
     /// <summary>
     /// The parent package that provides this contribution.
@@ -18,6 +18,11 @@ public abstract partial record DocumentContribution
     /// Unique identifier for this document contribution (e.g., "note-document").
     /// </summary>
     public string Id { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Display name or localization key for this document editor.
+    /// </summary>
+    public string DisplayName { get; init; } = string.Empty;
 
     /// <summary>
     /// The document file types this editor handles. Each entry declares the file extension and

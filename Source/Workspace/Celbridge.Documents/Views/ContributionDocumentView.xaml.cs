@@ -15,7 +15,7 @@ namespace Celbridge.Documents.Views;
 
 /// <summary>
 /// Document view for custom WebView-based contribution editors.
-/// Configured from a DocumentContribution, delegates RPC handling to handler classes.
+/// Configured from a DocumentEditorContribution, delegates RPC handling to handler classes.
 /// </summary>
 public sealed partial class ContributionDocumentView : WebViewDocumentView
 {
@@ -37,7 +37,7 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
     /// The document contribution that configures this view.
     /// Must be set before LoadContent() is called.
     /// </summary>
-    public CustomDocumentContribution? Contribution { get; set; }
+    public CustomDocumentEditorContribution? Contribution { get; set; }
 
     protected override bool GetDevToolsEnabled()
     {
@@ -202,6 +202,8 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
                 CreateDocumentMetadata,
                 CompleteSave);
 
+            _documentHandler.ContentLoaded += SetContentLoaded;
+
             var dialogHandler = new ContributionDialogHandler(
                 _dialogService,
                 _stringLocalizer,
@@ -280,6 +282,11 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
         Loaded -= ContributionDocumentView_Loaded;
 
+        if (_documentHandler is not null)
+        {
+            _documentHandler.ContentLoaded -= SetContentLoaded;
+        }
+
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
 
         _viewModel.Cleanup();
@@ -289,9 +296,15 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
-        if (Host is not null)
+        // This method is async void because it's an event handler. All exceptions must be caught
+        // so that a faulty editor cannot crash the process.
+        try
         {
-            await Host.NotifyExternalChangeAsync();
+            await ReloadWithStatePreservationAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "External reload failed for contribution document");
         }
     }
 }

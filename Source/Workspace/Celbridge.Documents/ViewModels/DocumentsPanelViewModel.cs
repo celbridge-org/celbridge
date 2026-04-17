@@ -1,4 +1,6 @@
 using Celbridge.Commands;
+using Celbridge.DataTransfer;
+using Celbridge.Explorer;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,9 +30,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.UnregisterAll(this);
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
     {
-        var createResult = await _documentsService.CreateDocumentView(fileResource);
+        var createResult = await _documentsService.CreateDocumentView(fileResource, documentEditorId);
         if (createResult.IsFailure)
         {
             return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
@@ -78,9 +80,141 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
+    public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)
+    {
+        await _documentsService.StoreDocumentEditorState(fileResource, state);
+    }
+
     public ResourceKey GetResourceKey(IFileResource fileResource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         return resourceRegistry.GetResourceKey(fileResource);
     }
+
+    public Result<string> ResolveResourcePath(ResourceKey fileResource)
+    {
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        return resourceRegistry.ResolveResourcePath(fileResource);
+    }
+
+    public void SelectFileForTab(ResourceKey fileResource)
+    {
+        _commandService.Execute<ISelectResourceCommand>(command =>
+        {
+            command.Resource = fileResource;
+            command.ShowExplorerPanel = true;
+        });
+    }
+
+    public void CopyResourceKeyForTab(ResourceKey fileResource)
+    {
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = fileResource.ToString();
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
+    public void CopyFilePathForTab(string filePath)
+    {
+        _commandService.Execute<ICopyTextToClipboardCommand>(command =>
+        {
+            command.Text = filePath;
+            command.TransferMode = DataTransferMode.Copy;
+        });
+    }
+
+    public void OpenFileExplorerForTab(ResourceKey fileResource)
+    {
+        _commandService.Execute<IOpenFileManagerCommand>(command =>
+        {
+            command.Resource = fileResource;
+        });
+    }
+
+    public void OpenApplicationForTab(ResourceKey fileResource)
+    {
+        _commandService.Execute<IOpenApplicationCommand>(command =>
+        {
+            command.Resource = fileResource;
+        });
+    }
+
+    public record class EditorDisplayInfo(DocumentEditorId EditorId, string EditorDisplayName);
+
+    public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, DocumentEditorId documentEditorId)
+    {
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        var editorRegistry = _documentsService.DocumentEditorRegistry;
+        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+
+        if (!documentEditorId.IsEmpty)
+        {
+            var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
+            if (factoryResult.IsSuccess)
+            {
+                var displayName = factories.Count >= 2 ? factoryResult.Value.DisplayName : string.Empty;
+                return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
+            }
+        }
+
+        if (factories.Count >= 2)
+        {
+            var resolveResult = ResolveResourcePath(fileResource);
+            var filePath = resolveResult.IsSuccess ? resolveResult.Value : string.Empty;
+
+            foreach (var factory in factories)
+            {
+                if (factory.CanHandleResource(fileResource, filePath))
+                {
+                    return new EditorDisplayInfo(factory.EditorId, factory.DisplayName);
+                }
+            }
+        }
+        else if (factories.Count == 1)
+        {
+            return new EditorDisplayInfo(factories[0].EditorId, string.Empty);
+        }
+
+        return null;
+    }
+
+    public record class EditorChoiceInfo(
+        IReadOnlyList<IDocumentEditorFactory> Factories,
+        List<string> DisplayNames,
+        int DefaultIndex);
+
+    public EditorChoiceInfo? GetChoicesForFileExtension(string extension, DocumentEditorId currentEditorId)
+    {
+        var editorRegistry = _documentsService.DocumentEditorRegistry;
+        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+
+        if (factories.Count < 2)
+        {
+            return null;
+        }
+
+        int defaultIndex = 0;
+        for (int i = 0; i < factories.Count; i++)
+        {
+            if (factories[i].EditorId == currentEditorId)
+            {
+                defaultIndex = i;
+                break;
+            }
+        }
+
+        var displayNames = factories.Select(factory => factory.DisplayName).ToList();
+        return new EditorChoiceInfo(factories, displayNames, defaultIndex);
+    }
+
+    public void StoreEditorPreference(string extension, DocumentEditorId editorId)
+    {
+        _commandService.Execute<ISetEditorPreferenceCommand>(command =>
+        {
+            command.Extension = extension;
+            command.EditorId = editorId;
+        });
+    }
+
 }

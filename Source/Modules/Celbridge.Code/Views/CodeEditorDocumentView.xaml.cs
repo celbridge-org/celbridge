@@ -3,6 +3,7 @@ using Celbridge.Code.ViewModels;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -39,6 +40,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     private readonly CodeEditorViewModel _viewModel;
 
     private CodeEditorPreviewHelper? _previewHelper;
+    private string? _pendingEditorStateJson;
+    private bool _isEditorReady;
 
     private readonly ColumnDefinition _editorColumn;
     private readonly ColumnDefinition _splitterColumn;
@@ -48,6 +51,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     private SplitterHelper? _splitterHelper;
     private CancellationTokenSource? _reloadDebounceCancellation;
     private int _reloadDebounceVersion;
+    private double _lastScrollPercentage;
     private double _editorRatio = 1.0;
     private double _previewRatio = 1.0;
     private double _totalDragDelta;
@@ -153,6 +157,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         // Subscribe to CodeEditor events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
+        MonacoEditor.ContentLoaded += OnMonacoContentLoaded;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
         MonacoEditor.ScrollPositionChanged += OnMonacoScrollPositionChanged;
 
@@ -323,10 +328,20 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             return initResult;
         }
 
+        _isEditorReady = true;
+
         // Apply the initial view mode after the editor is ready
         if (_previewHelper is not null && InitialViewMode.HasValue)
         {
             SetViewMode(InitialViewMode.Value);
+        }
+
+        // Apply any editor state that was deferred because the editor wasn't ready yet
+        if (_pendingEditorStateJson is not null)
+        {
+            var pendingState = _pendingEditorStateJson;
+            _pendingEditorStateJson = null;
+            await RestoreEditorStateAsync(pendingState);
         }
 
         return initResult;
@@ -420,6 +435,82 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         }
     }
 
+    public override async Task<string?> TrySaveEditorStateAsync()
+    {
+        await Task.CompletedTask;
+
+        if (!_isEditorReady)
+        {
+            return null;
+        }
+
+        try
+        {
+            // In Preview mode, Monaco is collapsed and its scroll is always zero.
+            // The preview pane's scroll position is what the user actually sees.
+            var scrollPercentage = ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null
+                ? _previewHelper.LastScrollPercentage
+                : _lastScrollPercentage;
+
+            var state = new Dictionary<string, object>
+            {
+                ["scrollPercentage"] = scrollPercentage,
+                ["viewMode"] = ViewMode.ToString()
+            };
+
+            return JsonSerializer.Serialize(state);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        if (!_isEditorReady)
+        {
+            // Editor not yet initialized. Defer until after LoadContent completes
+            _pendingEditorStateJson = state;
+            return;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(state);
+            if (parsed is null)
+            {
+                return;
+            }
+
+            if (parsed.TryGetValue("viewMode", out var viewModeElement) &&
+                Enum.TryParse<SplitEditorViewMode>(viewModeElement.GetString(), out var viewMode))
+            {
+                if (InitialViewMode.HasValue)
+                {
+                    SetViewMode(viewMode);
+                }
+            }
+
+            if (parsed.TryGetValue("scrollPercentage", out var scrollElement))
+            {
+                var scrollPercentage = scrollElement.GetDouble();
+                await MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
+
+                // In Preview mode, Monaco is collapsed so scrolling it has no visible effect.
+                // Scroll the preview pane directly to restore the user's view.
+                if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
+                {
+                    _previewHelper.ScrollToPercentage(scrollPercentage);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore incompatible or corrupt state
+        }
+    }
+
     public override async Task PrepareToClose()
     {
         try
@@ -475,11 +566,41 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         // Mark document as having unsaved changes
         _viewModel.OnTextChanged();
 
-        // Update preview if visible
-        if (IsPreviewVisible && _previewHelper is not null)
+        // Update preview if visible. The handler is invoked from the RPC pipeline on a worker
+        // thread; UpdateAsync ultimately calls CoreWebView2.PostWebMessageAsJson which has
+        // UI-thread affinity, so we marshal onto the dispatcher before triggering it.
+        DispatcherQueue.TryEnqueue(() =>
         {
-            _ = _previewHelper.UpdateAsync();
+            if (IsPreviewVisible && _previewHelper is not null)
+            {
+                _ = _previewHelper.UpdateAsync();
+            }
+        });
+    }
+
+    private void OnMonacoContentLoaded(ContentLoadedReason reason)
+    {
+        // The JS client emits document/contentLoaded whenever setValue completes. Only the
+        // external-reload case needs to refresh the preview here: the normal OnMonacoContentChanged
+        // path covers user edits, and the initial load's preview is rendered by the first
+        // InitializeAsync call. Monaco suppresses content change notifications during external
+        // reloads to avoid marking the document as unsaved, so without this hook the preview
+        // would go stale.
+        if (reason != ContentLoadedReason.ExternalReload)
+        {
+            return;
         }
+
+        // This handler is invoked from the RPC pipeline on a worker thread. The preview update
+        // eventually calls into CoreWebView2, which has UI-thread affinity, so we must marshal
+        // onto the dispatcher before triggering UpdateAsync.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (IsPreviewVisible && _previewHelper is not null)
+            {
+                _ = _previewHelper.UpdateAsync();
+            }
+        });
     }
 
     private void OnMonacoEditorFocused()
@@ -491,13 +612,14 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private void OnMonacoScrollPositionChanged(double scrollPercentage)
     {
-        // Only sync scroll in Split mode where both editor and preview are visible.
-        // In Preview mode the editor is collapsed, so its scroll position is always
-        // zero and forwarding it would reset the preview scroll to the top.
-        if (ViewMode == SplitEditorViewMode.Split)
-        {
-            _previewHelper?.NotifyScrollPositionChanged(scrollPercentage);
-        }
+        // Track the editor's scroll percentage so SaveEditorStateAsync can persist it
+        // across document close/reopen and workspace reloads. We deliberately do NOT
+        // forward the scroll to the preview pane: markdown source lines and their
+        // rendered output don't have matching heights, so percentage-based editor-to-
+        // preview sync makes the preview jump around distractingly while the user edits.
+        // The reverse direction (preview -> editor via OnSyncToEditor) remains active so
+        // readers can drag the preview to a section and the editor follows.
+        _lastScrollPercentage = scrollPercentage;
     }
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)
@@ -522,9 +644,63 @@ public sealed partial class CodeEditorDocumentView : DocumentView
                     return;
                 }
 
-                MonacoEditor.NotifyExternalChange();
+                _ = ReloadWithStatePreservationAsync();
             });
         }, TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// External-reload orchestration specific to the Monaco editor. Mirrors
+    /// WebViewDocumentView.ReloadWithStatePreservationAsync but uses MonacoEditor's host and
+    /// ContentLoaded event because CodeEditorDocumentView does not extend WebViewDocumentView
+    /// (its WebView is owned by the nested CodeEditor control). The orchestration pattern is the
+    /// same so both paths behave identically: capture state, trigger reload, wait for completion,
+    /// restore state.
+    /// Note: monaco.js also preserves cursor and selection inline in rAF because those aren't
+    /// captured by the C# SaveEditorState override yet. That inline preservation is complementary
+    /// to the framework orchestration rather than a duplicate.
+    /// </summary>
+    private async Task ReloadWithStatePreservationAsync()
+    {
+        string? savedState = null;
+        try
+        {
+            savedState = await TrySaveEditorStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to capture Monaco editor state before external reload; continuing without preservation");
+        }
+
+        var reloadComplete = new TaskCompletionSource();
+        void OnLoaded(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.ExternalReload)
+            {
+                reloadComplete.TrySetResult();
+            }
+        }
+        MonacoEditor.ContentLoaded += OnLoaded;
+
+        try
+        {
+            MonacoEditor.NotifyExternalChange();
+
+            var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            if (completed != reloadComplete.Task)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(savedState))
+            {
+                await RestoreEditorStateAsync(savedState);
+            }
+        }
+        finally
+        {
+            MonacoEditor.ContentLoaded -= OnLoaded;
+        }
     }
 
     #endregion

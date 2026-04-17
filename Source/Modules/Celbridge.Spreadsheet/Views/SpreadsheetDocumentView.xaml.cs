@@ -205,6 +205,8 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
                 CompleteSave,
                 () => Host?.NotifyExternalChangeAsync());
 
+            _documentHandler.ContentLoaded += SetContentLoaded;
+
             Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
 
             StartHostListener();
@@ -316,8 +318,12 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
 
         Loaded -= SpreadsheetDocumentView_Loaded;
 
-        // Unsubscribe from ViewModel events
+        // Unsubscribe from events
         ViewModel.ReloadRequested -= ViewModel_ReloadRequested;
+        if (_documentHandler is not null)
+        {
+            _documentHandler.ContentLoaded -= SetContentLoaded;
+        }
 
         // Cancel and dispose any pending debounce timer
         _importDebounceCts?.Cancel();
@@ -368,7 +374,10 @@ public sealed partial class SpreadsheetDocumentView : WebViewDocumentView
                     _documentHandler.IsImportInProgress = true;
                 }
 
-                Host?.NotifyExternalChangeAsync();
+                // Route through the base class orchestration so editor state (zoom, active sheet,
+                // selection) is preserved across the reload via the standard onRequestState /
+                // onRestoreState flow. Fire-and-forget: the orchestration handles its own errors.
+                _ = ReloadWithStatePreservationAsync();
             });
         }, TaskScheduler.Default);
     }

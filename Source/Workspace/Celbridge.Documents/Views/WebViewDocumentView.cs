@@ -3,6 +3,7 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -20,6 +21,7 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
     private readonly IFeatureFlags _featureFlags;
+    private readonly ILogger<WebViewDocumentView> _logger;
 
     // JSON-RPC infrastructure
     private WebViewHostChannel? _hostChannel;
@@ -32,6 +34,12 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     /// Subclasses can use this to register additional RPC targets and send notifications.
     /// </summary>
     protected CelbridgeHost? Host { get; private set; }
+
+    // Deferred editor state for views where the WebView initializes asynchronously.
+    // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
+    // and SetContentLoaded applies it once the JS client signals readiness.
+    private string? _pendingEditorStateJson;
+    private bool _isContentLoaded;
 
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
@@ -48,6 +56,11 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     /// </summary>
     protected Panel? WebViewContainer { get; set; }
 
+    /// <summary>
+    /// Whether the JS client has signaled that content is loaded and the editor is ready.
+    /// </summary>
+    protected bool IsContentLoaded => _isContentLoaded;
+
     protected WebViewDocumentView(
         IMessengerService messengerService,
         IWebViewFactory webViewFactory,
@@ -56,6 +69,8 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _featureFlags = featureFlags;
+
+        _logger = ServiceLocator.AcquireService<ILogger<WebViewDocumentView>>();
     }
 
     /// <summary>
@@ -231,6 +246,152 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
     }
 
     /// <summary>
+    /// Raised each time the JS client signals content is loaded, with the reason supplied by JS.
+    /// Subclasses and the framework reload orchestration subscribe here to react to reload events
+    /// without each editor having to wire up its own event routing.
+    /// </summary>
+    protected event Action<ContentLoadedReason>? ContentLoaded;
+
+    /// <summary>
+    /// Call this when the JS client signals that content is loaded and the editor is ready.
+    /// On the initial load, sets the content-loaded flag and applies any editor state that was deferred.
+    /// The ContentLoaded event is raised for every reason so subscribers can branch on it.
+    /// The method is async void because it is invoked from an event handler; all exceptions are caught
+    /// here so that a faulty editor cannot crash the process.
+    /// </summary>
+    protected async void SetContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
+    {
+        ContentLoaded?.Invoke(reason);
+
+        if (reason != ContentLoadedReason.Initial)
+        {
+            return;
+        }
+
+        _isContentLoaded = true;
+
+        if (_pendingEditorStateJson is null)
+        {
+            return;
+        }
+
+        var state = _pendingEditorStateJson;
+        _pendingEditorStateJson = null;
+
+        try
+        {
+            await RestoreEditorStateAsync(state);
+        }
+        catch (Exception ex)
+        {
+            // Editor state restoration is best-effort: a corrupt or incompatible state should
+            // never tear down the process. Log and swallow to preserve the async void safety contract.
+            _logger.LogError(ex, "Failed to restore editor state after content loaded");
+        }
+    }
+
+    /// <summary>
+    /// Orchestrates an external reload with editor-state preservation. Captures state via
+    /// SaveEditorStateAsync before the JS reload, sends the external-change notification, waits
+    /// for the JS side to signal completion by emitting ContentLoadedReason.ExternalReload, then
+    /// restores state via RestoreEditorStateAsync. Subclasses call this from their reload handler
+    /// instead of calling Host.NotifyExternalChangeAsync directly, so every editor gets consistent
+    /// state preservation and we have a single place to evolve the reload contract.
+    /// </summary>
+    protected async Task ReloadWithStatePreservationAsync()
+    {
+        if (Host is null)
+        {
+            return;
+        }
+
+        // Capture editor state before the content is replaced. A null return is valid: the editor
+        // may not be ready, may not implement onRequestState, or may have no state worth saving.
+        // In any of those cases we simply skip the restore step after reload.
+        string? savedState = null;
+        try
+        {
+            savedState = await TrySaveEditorStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to capture editor state before external reload; continuing without preservation");
+        }
+
+        // Subscribe for the JS-side completion signal so we run the restore at the right moment.
+        var reloadComplete = new TaskCompletionSource();
+        void OnReloaded(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.ExternalReload)
+            {
+                reloadComplete.TrySetResult();
+            }
+        }
+        ContentLoaded += OnReloaded;
+
+        try
+        {
+            await Host.NotifyExternalChangeAsync();
+
+            // Wait for the JS side to report that the reload cycle is complete. The timeout guards
+            // against editors that don't yet emit the ExternalReload signal: they simply miss out
+            // on state preservation rather than hanging the UI.
+            var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            if (completed != reloadComplete.Task)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(savedState))
+            {
+                await RestoreEditorStateAsync(savedState);
+            }
+        }
+        finally
+        {
+            ContentLoaded -= OnReloaded;
+        }
+    }
+
+    public override async Task<string?> TrySaveEditorStateAsync()
+    {
+        // Host may be null during initial WebView acquisition and between PrepareToClose and disposal.
+        // _isContentLoaded is false until the JS client emits ContentLoadedReason.Initial; calling
+        // RequestStateAsync before that races with JS handler registration and would time out.
+        if (Host is null || !_isContentLoaded)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Host.RequestStateAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        if (!_isContentLoaded)
+        {
+            _pendingEditorStateJson = state;
+            return;
+        }
+
+        try
+        {
+            await Host!.RestoreStateAsync(state);
+        }
+        catch
+        {
+            // Editor doesn't implement state restoration
+        }
+    }
+
+    /// <summary>
     /// Opens a URL in the system's default browser using the command service.
     /// </summary>
     protected static void OpenSystemBrowser(ICommandService commandService, string? uri)
@@ -259,6 +420,9 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
     public override async Task PrepareToClose()
     {
+        _isContentLoaded = false;
+        _pendingEditorStateJson = null;
+
         // Unregister theme syncing if enabled
         if (_userInterfaceService is not null)
         {

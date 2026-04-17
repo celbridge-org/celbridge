@@ -1,6 +1,31 @@
+using System.Text.Json.Serialization;
 using StreamJsonRpc;
 
 namespace Celbridge.Host;
+
+/// <summary>
+/// Reason values passed with document/contentLoaded notifications so consumers can distinguish
+/// the initial content load from subsequent reloads triggered by external file changes.
+/// The enum is serialized as a JSON string via JsonStringEnumConverter; the exact wire strings
+/// are declared via JsonStringEnumMemberName so the JSON format is decoupled from the identifiers.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ContentLoadedReason>))]
+public enum ContentLoadedReason
+{
+    /// <summary>
+    /// Fired once after the initial content load when a document first opens.
+    /// </summary>
+    [JsonStringEnumMemberName("initial")]
+    Initial,
+
+    /// <summary>
+    /// Fired each time the editor finishes processing an external file change (setValue plus
+    /// any state restoration). Used by consumers that need to refresh dependent views once the
+    /// reload cycle is fully complete.
+    /// </summary>
+    [JsonStringEnumMemberName("external-reload")]
+    ExternalReload,
+}
 
 public static class DocumentRpcMethods
 {
@@ -15,6 +40,8 @@ public static class DocumentRpcMethods
     public const string ImportComplete = "document/importComplete";
     public const string ClientReady = "document/clientReady";
     public const string ContentLoaded = "document/contentLoaded";
+    public const string RequestState = "document/requestState";
+    public const string RestoreState = "document/restoreState";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -78,11 +105,12 @@ public interface IHostDocument
     void OnClientReady() { }
 
     /// <summary>
-    /// Called when document content has been loaded and the editor is ready for edits.
-    /// Override to handle content loaded notification.
+    /// Called every time the editor has finished loading (or reloading) content and is ready for edits.
+    /// The reason parameter distinguishes the initial load from reloads triggered by external file changes.
+    /// Defaults to Initial so older JS clients that send no payload continue to behave as before.
     /// </summary>
     [JsonRpcMethod(DocumentRpcMethods.ContentLoaded)]
-    void OnContentLoaded() { }
+    void OnContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial) { }
 }
 
 public static class HostDocumentExtensions
@@ -99,4 +127,17 @@ public static class HostDocumentExtensions
     /// </summary>
     public static Task NotifyExternalChangeAsync(this CelbridgeHost host)
         => host.Rpc.NotifyAsync(DocumentRpcMethods.ExternalChange);
+
+    /// <summary>
+    /// Requests the WebView to return its current editor state as an opaque JSON string.
+    /// </summary>
+    public static Task<string?> RequestStateAsync(this CelbridgeHost host)
+        => host.Rpc.InvokeAsync<string?>(DocumentRpcMethods.RequestState);
+
+    /// <summary>
+    /// Sends previously saved editor state to the WebView for restoration.
+    /// Returns when the WebView has acknowledged processing the state.
+    /// </summary>
+    public static Task RestoreStateAsync(this CelbridgeHost host, string state)
+        => host.Rpc.InvokeAsync(DocumentRpcMethods.RestoreState, state);
 }

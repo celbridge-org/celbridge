@@ -1,0 +1,19 @@
+﻿<ContentDialog
+    x:Class="Celbridge.UserInterface.Views.ChoiceDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Celbridge.UserInterface.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{x:Bind ViewModel.TitleText, Mode=OneWay}">
+
+    <StackPanel Spacing="12">
+        <TextBlock Text="{x:Bind ViewModel.MessageText, Mode=OneWay}"
+                   TextWrapping="WrapWholeWords" />
+        <RadioButtons x:Name="OptionsRadioButtons"
+                      SelectionChanged="OptionsRadioButtons_SelectionChanged" />
+        <CheckBox x:Name="OptionCheckbox"
+                  Visibility="Collapsed"
+                  IsChecked="{x:Bind ViewModel.CheckboxChecked, Mode=TwoWay}" />
+    </StackPanel>
+
+</ContentDialog>

@@ -88,6 +88,21 @@ public sealed partial class DocumentSection : UserControl
     }
 
     /// <summary>
+    /// Throws if the calling code is not on the UI thread. TabView.TabItems has WinUI thread
+    /// affinity and reading it off-thread produces a COMException that is hard to diagnose.
+    /// Worker-thread readers should go through the cached snapshot on DocumentsService instead.
+    /// </summary>
+    private void EnsureUIThread()
+    {
+        if (!DispatcherQueue.HasThreadAccess)
+        {
+            throw new InvalidOperationException(
+                "DocumentSection must be accessed on the UI thread. " +
+                "Worker-thread reads should go through the cached snapshot on DocumentsService.");
+        }
+    }
+
+    /// <summary>
     /// Disables the add/remove animations on the TabView's internal tab strip.
     /// </summary>
     private void DisableTabViewAnimations()
@@ -114,6 +129,8 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public List<ResourceKey> GetOpenDocuments()
     {
+        EnsureUIThread();
+
         var openDocuments = new List<ResourceKey>();
         foreach (var tabItem in TabView.TabItems)
         {
@@ -143,6 +160,8 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public ResourceKey GetSelectedDocument()
     {
+        EnsureUIThread();
+
         var documentTab = TabView.SelectedItem as DocumentTab;
         if (documentTab is not null)
         {
@@ -156,6 +175,8 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public bool ContainsDocument(ResourceKey fileResource)
     {
+        EnsureUIThread();
+
         foreach (var tabItem in TabView.TabItems)
         {
             if (tabItem is DocumentTab tab && fileResource == tab.ViewModel.FileResource)
@@ -171,6 +192,8 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public DocumentTab? GetDocumentTab(ResourceKey fileResource)
     {
+        EnsureUIThread();
+
         foreach (var tabItem in TabView.TabItems)
         {
             if (tabItem is DocumentTab tab && fileResource == tab.ViewModel.FileResource)
@@ -247,13 +270,21 @@ public sealed partial class DocumentSection : UserControl
     /// <summary>
     /// Gets the number of tabs in this section.
     /// </summary>
-    public int TabCount => TabView.TabItems.Count;
+    public int TabCount
+    {
+        get
+        {
+            EnsureUIThread();
+            return TabView.TabItems.Count;
+        }
+    }
 
     /// <summary>
     /// Gets the index of the specified tab, or -1 if not found.
     /// </summary>
     public int GetTabIndex(DocumentTab tab)
     {
+        EnsureUIThread();
         return TabView.TabItems.IndexOf(tab);
     }
 
@@ -262,6 +293,8 @@ public sealed partial class DocumentSection : UserControl
     /// </summary>
     public IEnumerable<DocumentTab> GetAllTabs()
     {
+        EnsureUIThread();
+
         foreach (var tabItem in TabView.TabItems)
         {
             if (tabItem is DocumentTab tab)

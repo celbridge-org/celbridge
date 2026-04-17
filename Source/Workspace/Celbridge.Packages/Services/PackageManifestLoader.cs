@@ -5,7 +5,7 @@ using Tomlyn.Model;
 namespace Celbridge.Packages;
 
 /// <summary>
-/// Parses package.toml and referenced document TOML files to produce DocumentContribution objects.
+/// Parses package.toml and referenced document TOML files to produce DocumentEditorContribution objects.
 /// Handles the two-level manifest structure: package identity + document contributions.
 /// </summary>
 public static class PackageManifestLoader
@@ -30,6 +30,7 @@ public static class PackageManifestLoader
     private const string DefaultKey = "default";
     private const string EntryPointKey = "entry_point";
     private const string DevToolsEnabledKey = "webview_dev_tools";
+    private const string BinaryKey = "binary";
     private const string WordWrapKey = "word_wrap";
     private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
     private const string MinimapEnabledKey = "minimap_enabled";
@@ -104,7 +105,7 @@ public static class PackageManifestLoader
                 }
             }
 
-            var documentEditors = new List<DocumentContribution>();
+            var documentEditors = new List<DocumentEditorContribution>();
             foreach (var relativePath in documentPaths)
             {
                 var fullPath = Path.Combine(packageFolder, relativePath);
@@ -130,9 +131,9 @@ public static class PackageManifestLoader
     }
 
     /// <summary>
-    /// Parses a single document TOML file into a DocumentContribution.
+    /// Parses a single document TOML file into a DocumentEditorContribution.
     /// </summary>
-    private static Result<DocumentContribution> LoadDocument(
+    private static Result<DocumentEditorContribution> LoadDocument(
         string documentTomlPath,
         PackageInfo packageInfo)
     {
@@ -167,6 +168,7 @@ public static class PackageManifestLoader
             }
 
             var documentType = GetString(documentTable, TypeKey).ToLowerInvariant();
+            var displayName = GetString(documentTable, DisplayNameKey);
             var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
             var fileTypes = new List<DocumentFileType>();
@@ -204,13 +206,28 @@ public static class PackageManifestLoader
                 }
             }
 
-            DocumentContribution contribution = documentType switch
+            // Custom contributions have their editor id composed as "{packageId}.{documentId}" at
+            // factory-construction time. Validate the composed id here so plugin authors fail fast
+            // at manifest parse with a clear message, rather than hitting a DocumentEditorId
+            // constructor throw later when someone tries to open a file of this type.
+            if (documentType != CodeDocumentType)
             {
-                CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, fileTypes, priority, templates),
-                _ => BuildCustomContribution(root, packageInfo, documentId, fileTypes, priority, templates, documentTable)
+                var composedEditorId = $"{packageInfo.Id}.{documentId}";
+                if (!DocumentEditorId.IsValid(composedEditorId))
+                {
+                    return Result.Fail(
+                        $"Invalid document editor id '{composedEditorId}' in manifest: {documentTomlPath}. " +
+                        $"Package id and document id must combine to form a DocumentEditorId using only lowercase letters, digits, dots, and hyphens.");
+                }
+            }
+
+            DocumentEditorContribution contribution = documentType switch
+            {
+                CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates),
+                _ => BuildCustomContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates, documentTable)
             };
 
-            return Result<DocumentContribution>.Ok(contribution);
+            return Result<DocumentEditorContribution>.Ok(contribution);
         }
         catch (Exception ex)
         {
@@ -218,10 +235,11 @@ public static class PackageManifestLoader
         }
     }
 
-    private static CustomDocumentContribution BuildCustomContribution(
+    private static CustomDocumentEditorContribution BuildCustomContribution(
         TomlTable root,
         PackageInfo packageInfo,
         string documentId,
+        string displayName,
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
         List<DocumentTemplate> templates,
@@ -229,23 +247,27 @@ public static class PackageManifestLoader
     {
         var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
         var devToolsEnabled = GetBoolOrNull(documentTable, DevToolsEnabledKey) ?? true;
+        var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
 
-        return new CustomDocumentContribution
+        return new CustomDocumentEditorContribution
         {
             Package = packageInfo,
             Id = documentId,
+            DisplayName = displayName,
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,
             Templates = templates.AsReadOnly(),
             EntryPoint = entryPoint,
-            DevToolsEnabled = devToolsEnabled
+            DevToolsEnabled = devToolsEnabled,
+            Binary = binary
         };
     }
 
-    private static CodeDocumentContribution BuildCodeContribution(
+    private static CodeDocumentEditorContribution BuildCodeContribution(
         TomlTable root,
         PackageInfo packageInfo,
         string documentId,
+        string displayName,
         List<DocumentFileType> fileTypes,
         EditorPriority priority,
         List<DocumentTemplate> templates)
@@ -275,10 +297,11 @@ public static class PackageManifestLoader
             };
         }
 
-        return new CodeDocumentContribution
+        return new CodeDocumentEditorContribution
         {
             Package = packageInfo,
             Id = documentId,
+            DisplayName = displayName,
             FileTypes = fileTypes.AsReadOnly(),
             Priority = priority,
             Templates = templates.AsReadOnly(),

@@ -32,6 +32,14 @@ public sealed class CodeEditorPreviewHelper : IHostCodePreview, IDisposable
     private string _lastPreviewContent = string.Empty;
     private ICodePreviewRenderer? _previewRenderer;
     private ResourceKey _fileResource;
+    private double _lastPreviewScrollPercentage;
+    private double? _pendingInitialScrollPercentage;
+
+    /// <summary>
+    /// The most recent scroll position reported by the preview, as a percentage (0.0 to 1.0).
+    /// Updated when the preview scrolls or when Monaco forwards a scroll position to it.
+    /// </summary>
+    public double LastScrollPercentage => _lastPreviewScrollPercentage;
     private string _projectFolderPath = string.Empty;
     private string _documentPath = string.Empty;
 
@@ -204,6 +212,14 @@ public sealed class CodeEditorPreviewHelper : IHostCodePreview, IDisposable
             _lastPreviewContent = content;
 
             await _previewHost.NotifyCodePreviewUpdateAsync(content);
+
+            // Apply any scroll position that was requested before the preview was ready.
+            // Content has just been pushed, so the preview's scroll height will be valid shortly.
+            if (_pendingInitialScrollPercentage is double pendingScroll)
+            {
+                _pendingInitialScrollPercentage = null;
+                await _previewHost.NotifyCodePreviewScrollAsync(pendingScroll);
+            }
         }
         catch (Exception ex)
         {
@@ -220,6 +236,8 @@ public sealed class CodeEditorPreviewHelper : IHostCodePreview, IDisposable
     /// </summary>
     public void NotifyScrollPositionChanged(double scrollPercentage)
     {
+        _lastPreviewScrollPercentage = scrollPercentage;
+
         if (_isPreviewInitialized && _previewHost is not null)
         {
             _ = _previewHost.NotifyCodePreviewScrollAsync(scrollPercentage);
@@ -311,7 +329,32 @@ public sealed class CodeEditorPreviewHelper : IHostCodePreview, IDisposable
 
     public void OnSyncToEditor(double scrollPercentage)
     {
+        _lastPreviewScrollPercentage = scrollPercentage;
         _ = _scrollEditor(scrollPercentage);
+    }
+
+    /// <summary>
+    /// Scrolls the preview to the given percentage (0.0 to 1.0).
+    /// If the preview is not yet initialized or its content is not yet rendered,
+    /// the scroll is deferred and applied after the next content update.
+    /// </summary>
+    public void ScrollToPercentage(double scrollPercentage)
+    {
+        _lastPreviewScrollPercentage = scrollPercentage;
+
+        // Defer the scroll until after the preview has initialized and content has been rendered.
+        // Without this, a scroll sent before the first content update gets lost because the
+        // preview's scroll height is 0.
+        if (!_isPreviewInitialized || string.IsNullOrEmpty(_lastPreviewContent))
+        {
+            _pendingInitialScrollPercentage = scrollPercentage;
+            return;
+        }
+
+        if (_previewHost is not null)
+        {
+            _ = _previewHost.NotifyCodePreviewScrollAsync(scrollPercentage);
+        }
     }
 
     #endregion

@@ -168,7 +168,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
     private void OnFileSystemRenamed(object sender, RenamedEventArgs e)
     {
-        if (ShouldIgnorePath(e.FullPath) || ShouldIgnorePath(e.OldFullPath))
+        // Only check the new path for ignore rules. The old path may no longer exist on disk
+        // (the rename has already completed), so File.GetAttributes would throw and cause the
+        // event to be incorrectly ignored. This is critical for editors and coding agents that
+        // use a "write temp, delete original, rename temp" save pattern.
+        if (ShouldIgnorePath(e.FullPath))
         {
             return;
         }

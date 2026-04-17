@@ -37,5 +37,9 @@ public static class ServiceConfiguration
 
         services.AddTransient<IUndoResourceCommand, UndoResourceCommand>();
         services.AddTransient<IRedoResourceCommand, RedoResourceCommand>();
+
+        services.AddTransient<IListFolderContentsCommand, ListFolderContentsCommand>();
+        services.AddTransient<IGetFileTreeCommand, GetFileTreeCommand>();
+        services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
     }
 }

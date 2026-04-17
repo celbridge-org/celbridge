@@ -131,8 +131,15 @@ public class WorkspaceLoader
 
         // Register all packages before restoring documents so that restored documents can use editors
         // defined in packages.
-        var packageService = workspaceService.PackageService;
-        packageService.RegisterPackages(projectFolderPath);
+        try
+        {
+            var packageService = workspaceService.PackageService;
+            packageService.RegisterPackages(projectFolderPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
+        }
 
         // Open previous opened documents in the Documents Panel
         var documentsService = workspaceService.DocumentsService;

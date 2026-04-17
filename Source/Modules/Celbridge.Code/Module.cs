@@ -3,6 +3,7 @@ using Celbridge.Code.Services;
 using Celbridge.Code.ViewModels;
 using Celbridge.Code.Views;
 using Celbridge.Modules;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Code;
 
@@ -33,7 +34,8 @@ public class Module : IModule
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
         var textBinarySniffer = serviceProvider.GetRequiredService<ITextBinarySniffer>();
-        return [new CodeEditorFactory(serviceProvider, textBinarySniffer)];
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return [new CodeEditorFactory(serviceProvider, textBinarySniffer, stringLocalizer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

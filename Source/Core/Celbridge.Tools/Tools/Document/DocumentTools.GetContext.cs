@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Documents;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -27,28 +28,32 @@ public partial class DocumentTools
     /// <returns>JSON object with fields: activeDocument (string, resource key of the active document or empty), sectionCount (int, number of visible editor sections 1-3), openDocuments (array of objects with resource (string), sectionIndex (int), tabOrder (int), isActive (bool)).</returns>
     [McpServerTool(Name = "document_get_context", ReadOnly = true)]
     [ToolAlias("document.get_context")]
-    public partial CallToolResult GetContext()
+    public async partial Task<CallToolResult> GetContext()
     {
-        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
-        var documentsPanel = workspaceWrapper.WorkspaceService.DocumentsPanel;
+        // Route through the command queue so the snapshot observes state after all
+        // previously enqueued commands have run. The underlying read is served from
+        // a cache on DocumentsService, so this never touches WinUI collections.
+        var (callResult, snapshot) = await ExecuteCommandAsync<IGetDocumentContextCommand, DocumentContextSnapshot>();
+        if (callResult.IsError == true || snapshot is null)
+        {
+            return callResult;
+        }
 
-        var openDocuments = documentsService.OpenDocumentAddresses;
-        var activeDocument = documentsService.ActiveDocument;
+        var activeDocument = snapshot.ActiveDocument;
 
         var documents = new List<OpenDocumentEntry>();
-        foreach (var (resource, address) in openDocuments)
+        foreach (var document in snapshot.OpenDocuments)
         {
             documents.Add(new OpenDocumentEntry(
-                resource.ToString(),
-                address.SectionIndex,
-                address.TabOrder,
-                resource == activeDocument));
+                document.FileResource.ToString(),
+                document.Address.SectionIndex,
+                document.Address.TabOrder,
+                document.FileResource == activeDocument));
         }
 
         var result = new DocumentContextResult(
             activeDocument.ToString(),
-            documentsPanel.SectionCount,
+            snapshot.SectionCount,
             documents);
 
         var json = JsonSerializer.Serialize(result, JsonOptions);

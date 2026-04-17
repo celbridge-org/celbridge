@@ -44,7 +44,7 @@ public record CodeEditorConfig
 /// <summary>
 /// A Monaco-based code editor contribution.
 /// </summary>
-public partial record CodeDocumentContribution : DocumentContribution
+public partial record CodeDocumentEditorContribution : DocumentEditorContribution
 {
     /// <summary>
     /// Code editor configuration.

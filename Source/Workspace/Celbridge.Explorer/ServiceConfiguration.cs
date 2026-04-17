@@ -70,5 +70,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, UnarchiveMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenFileExplorerMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenApplicationMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenWithMenuOption>();
     }
 }

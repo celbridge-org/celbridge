@@ -122,4 +122,14 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     {
         await Task.CompletedTask;
     }
+
+    public virtual Task<string?> TrySaveEditorStateAsync()
+    {
+        return Task.FromResult<string?>(null);
+    }
+
+    public virtual Task RestoreEditorStateAsync(string state)
+    {
+        return Task.CompletedTask;
+    }
 }

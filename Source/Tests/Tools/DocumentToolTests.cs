@@ -1,7 +1,7 @@
 using System.Text.Json;
+using Celbridge.Commands;
 using Celbridge.Server;
 using Celbridge.Tools;
-using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tests.Tools;
@@ -13,39 +13,47 @@ namespace Celbridge.Tests.Tools;
 public class DocumentToolTests
 {
     private IApplicationServiceProvider _services = null!;
-    private IWorkspaceWrapper _workspaceWrapper = null!;
-    private IWorkspaceService _workspaceService = null!;
+    private ICommandService _commandService = null!;
 
     [SetUp]
     public void SetUp()
     {
         _services = Substitute.For<IApplicationServiceProvider>();
-        _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _workspaceService = Substitute.For<IWorkspaceService>();
+        _commandService = Substitute.For<ICommandService>();
 
-        _workspaceWrapper.WorkspaceService.Returns(_workspaceService);
-        _services.GetRequiredService<IWorkspaceWrapper>().Returns(_workspaceWrapper);
+        _services.GetRequiredService<ICommandService>().Returns(_commandService);
+    }
+
+    /// <summary>
+    /// Configures the mocked command service to return the given snapshot when the
+    /// GetContext query command is executed. Returns Result.Ok(snapshot) so the tool
+    /// treats it as a successful query.
+    /// </summary>
+    private void StubGetContextSnapshot(DocumentContextSnapshot snapshot)
+    {
+        _commandService
+            .ExecuteAsync<IGetDocumentContextCommand, DocumentContextSnapshot>(
+                Arg.Any<Action<IGetDocumentContextCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Result<DocumentContextSnapshot>.Ok(snapshot));
     }
 
     [Test]
-    public void GetContext_ReturnsActiveDocument()
+    public async Task GetContext_ReturnsActiveDocument()
     {
-        var documentsService = Substitute.For<IDocumentsService>();
-        var documentsPanel = Substitute.For<IDocumentsPanel>();
-
         var activeResource = new ResourceKey("notes/readme.md");
-        documentsService.ActiveDocument.Returns(activeResource);
-        documentsService.OpenDocumentAddresses.Returns(new Dictionary<ResourceKey, DocumentAddress>
-        {
-            [activeResource] = new DocumentAddress(0, 0, 0)
-        });
-        documentsPanel.SectionCount.Returns(1);
-
-        _workspaceService.DocumentsService.Returns(documentsService);
-        _workspaceService.DocumentsPanel.Returns(documentsPanel);
+        var snapshot = new DocumentContextSnapshot(
+            activeResource,
+            1,
+            new List<OpenDocumentInfo>
+            {
+                new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
+            });
+        StubGetContextSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(tools.GetContext());
+        var root = ParseResult(await tools.GetContext());
 
         root.GetProperty("activeDocument").GetString().Should().Be("notes/readme.md");
         root.GetProperty("sectionCount").GetInt32().Should().Be(1);
@@ -59,27 +67,22 @@ public class DocumentToolTests
     }
 
     [Test]
-    public void GetContext_MultipleDocumentsAcrossSections()
+    public async Task GetContext_MultipleDocumentsAcrossSections()
     {
-        var documentsService = Substitute.For<IDocumentsService>();
-        var documentsPanel = Substitute.For<IDocumentsPanel>();
-
         var activeResource = new ResourceKey("src/main.py");
         var otherResource = new ResourceKey("tests/test_main.py");
-
-        documentsService.ActiveDocument.Returns(activeResource);
-        documentsService.OpenDocumentAddresses.Returns(new Dictionary<ResourceKey, DocumentAddress>
-        {
-            [activeResource] = new DocumentAddress(0, 0, 0),
-            [otherResource] = new DocumentAddress(0, 1, 0)
-        });
-        documentsPanel.SectionCount.Returns(2);
-
-        _workspaceService.DocumentsService.Returns(documentsService);
-        _workspaceService.DocumentsPanel.Returns(documentsPanel);
+        var snapshot = new DocumentContextSnapshot(
+            activeResource,
+            2,
+            new List<OpenDocumentInfo>
+            {
+                new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty),
+                new(otherResource, new DocumentAddress(0, 1, 0), DocumentEditorId.Empty)
+            });
+        StubGetContextSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(tools.GetContext());
+        var root = ParseResult(await tools.GetContext());
 
         root.GetProperty("sectionCount").GetInt32().Should().Be(2);
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(2);
@@ -95,20 +98,16 @@ public class DocumentToolTests
     }
 
     [Test]
-    public void GetContext_NoDocumentsOpen()
+    public async Task GetContext_NoDocumentsOpen()
     {
-        var documentsService = Substitute.For<IDocumentsService>();
-        var documentsPanel = Substitute.For<IDocumentsPanel>();
-
-        documentsService.ActiveDocument.Returns(ResourceKey.Empty);
-        documentsService.OpenDocumentAddresses.Returns(new Dictionary<ResourceKey, DocumentAddress>());
-        documentsPanel.SectionCount.Returns(1);
-
-        _workspaceService.DocumentsService.Returns(documentsService);
-        _workspaceService.DocumentsPanel.Returns(documentsPanel);
+        var snapshot = new DocumentContextSnapshot(
+            ResourceKey.Empty,
+            1,
+            new List<OpenDocumentInfo>());
+        StubGetContextSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(tools.GetContext());
+        var root = ParseResult(await tools.GetContext());
 
         root.GetProperty("activeDocument").GetString().Should().BeEmpty();
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(0);

@@ -23,6 +23,16 @@ public enum EditorPriority
 public interface IDocumentEditorFactory
 {
     /// <summary>
+    /// Stable identifier for this editor.
+    /// </summary>
+    DocumentEditorId EditorId { get; }
+
+    /// <summary>
+    /// Localized display name for this editor, shown in menus and tooltips.
+    /// </summary>
+    string DisplayName { get; }
+
+    /// <summary>
     /// The file extensions this factory handles (e.g., ".md", ".txt", ".cs").
     /// Extensions should be lowercase with leading dot.
     /// </summary>
@@ -36,10 +46,8 @@ public interface IDocumentEditorFactory
 
     /// <summary>
     /// Determines if this factory can handle the given file resource.
-    /// This allows for more sophisticated matching beyond just file extension
-    /// (e.g., checking file content, size, or other criteria).
     /// </summary>
-    bool CanHandle(ResourceKey fileResource, string filePath);
+    bool CanHandleResource(ResourceKey fileResource, string filePath);
 
     /// <summary>
     /// Creates a document view for the specified file resource.

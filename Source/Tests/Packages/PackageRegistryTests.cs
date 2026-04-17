@@ -66,7 +66,7 @@ public class PackageServiceTests
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Name.Should().Be("My Editor");
-        contributions[0].Should().BeOfType<CustomDocumentContribution>();
+        contributions[0].Should().BeOfType<CustomDocumentEditorContribution>();
     }
 
     [Test]

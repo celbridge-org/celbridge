@@ -2,6 +2,7 @@
 // Uses celbridge.js for JSON-RPC communication with the host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {
@@ -45,25 +46,29 @@ async function deserializeExcelData(base64Data, viewState = null) {
             spread.suspendPaint();
         }
 
-        await spread.import(file, () => {
-            console.log("Base64 data import completed.");
-            if (viewState) {
-                requestAnimationFrame(() => {
-                    restoreViewState(viewState);
-                    spread.resumePaint();
+        await new Promise((resolve, reject) => {
+            spread.import(file, () => {
+                if (viewState) {
+                    requestAnimationFrame(() => {
+                        restoreViewState(viewState);
+                        spread.resumePaint();
+                        client.document.notifyImportComplete(true);
+                        resolve();
+                    });
+                } else {
                     client.document.notifyImportComplete(true);
-                });
-            } else {
-                client.document.notifyImportComplete(true);
-            }
-        }, (error) => {
-            if (viewState) {
-                spread.resumePaint();
-            }
-            console.error("Import error:", error);
-            client.document.notifyImportComplete(false, error?.message || 'Import failed');
-        }, {
-            fileType: GC.Spread.Sheets.FileType.excel
+                    resolve();
+                }
+            }, (error) => {
+                if (viewState) {
+                    spread.resumePaint();
+                }
+                console.error("Import error:", error);
+                client.document.notifyImportComplete(false, error?.message || 'Import failed');
+                reject(error);
+            }, {
+                fileType: GC.Spread.Sheets.FileType.excel
+            });
         });
     } catch (err) {
         if (viewState) {
@@ -174,32 +179,6 @@ function listenForChanges() {
 }
 
 // ---------------------------------------------------------------------------
-// Client Event Handlers
-// ---------------------------------------------------------------------------
-
-// Handle external file changes - reload from disk
-client.document.onExternalChange(async () => {
-    try {
-        const viewState = captureViewState();
-        const result = await client.document.load();
-        await deserializeExcelData(result.content, viewState);
-    } catch (e) {
-        console.error('[Spreadsheet] Failed to reload content:', e);
-    }
-});
-
-// Handle save requests from host
-client.document.onRequestSave(async () => {
-    try {
-        const base64Data = await serializeExcelData();
-        await client.document.save(base64Data);
-        console.log("Exported workbook to host");
-    } catch (e) {
-        console.error('[Spreadsheet] Failed to save:', e);
-    }
-});
-
-// ---------------------------------------------------------------------------
 // Initialization
 // ---------------------------------------------------------------------------
 
@@ -222,23 +201,50 @@ function initializeSpreadsheet() {
 
 async function initializeEditor() {
     try {
-        // Initialize the SpreadJS designer
         initializeSpreadsheet();
 
-        // Enable debug logging during development
-        // client.setLogLevel('debug');
+        await client.initializeDocument({
+            onContent: async (content) => {
+                if (content) {
+                    await deserializeExcelData(content);
+                } else {
+                    client.document.notifyImportComplete(true);
+                }
+            },
+            onRequestSave: async () => {
+                try {
+                    const base64Data = await serializeExcelData();
+                    await client.document.save(base64Data);
+                } catch (e) {
+                    console.error('[Spreadsheet] Failed to save:', e);
+                }
+            },
+            onExternalChange: async () => {
+                // Editor state (zoom, active sheet, selection) is preserved by the framework via
+                // onRequestState / onRestoreState, orchestrated around this handler by
+                // SpreadsheetDocumentView. Just load the new content and signal completion.
+                try {
+                    const result = await client.document.load();
+                    await deserializeExcelData(result.content);
+                } catch (e) {
+                    console.error('[Spreadsheet] Failed to reload content:', e);
+                }
 
-        // Initialize the client - this loads content from C#
-        const result = await client.initialize();
-
-        // Import the spreadsheet data (content contains base64 Excel data)
-        if (result.content) {
-            await deserializeExcelData(result.content);
-        } else {
-            // No content means new/empty spreadsheet
-            client.document.notifyImportComplete(true);
-        }
-
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
+            },
+            onRequestState: () => {
+                const state = captureViewState();
+                return state ? JSON.stringify(state) : null;
+            },
+            onRestoreState: (stateJson) => {
+                try {
+                    const state = JSON.parse(stateJson);
+                    restoreViewState(state);
+                } catch (e) {
+                    console.warn('[Spreadsheet] Failed to restore view state:', e);
+                }
+            }
+        });
     } catch (e) {
         console.error('[Spreadsheet] Failed to initialize:', e);
     }

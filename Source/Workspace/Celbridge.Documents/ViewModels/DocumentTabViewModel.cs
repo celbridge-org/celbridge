@@ -5,6 +5,23 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
 
+/// <summary>
+/// Describes the result of a successful call to DocumentTabViewModel.CloseDocument.
+/// A Result.Fail is still reserved for genuine errors (save failure, etc.).
+/// </summary>
+public enum CloseDocumentOutcome
+{
+    /// <summary>
+    /// The document was closed and its view was cleaned up.
+    /// </summary>
+    Closed,
+
+    /// <summary>
+    /// The close was cancelled.
+    /// </summary>
+    Cancelled,
+}
+
 public partial class DocumentTabViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
@@ -20,10 +37,35 @@ public partial class DocumentTabViewModel : ObservableObject
     [ObservableProperty]
     private string _filePath = string.Empty;
 
+    [ObservableProperty]
+    private string _editorDisplayName = string.Empty;
+
+    /// <summary>
+    /// The editor that created this tab's document view.
+    /// </summary>
+    public DocumentEditorId EditorId { get; set; }
+
     /// <summary>
     /// Returns the file extension for the current resource, used by the FileIcon control.
     /// </summary>
     public string FileExtension => Path.GetExtension(FileResource.ResourceName);
+
+    /// <summary>
+    /// Tooltip text for the tab. Includes editor name when multiple editors are available.
+    /// </summary>
+    public string TabTooltip => string.IsNullOrEmpty(EditorDisplayName)
+        ? FilePath
+        : $"{FilePath} - {EditorDisplayName}";
+
+    partial void OnFilePathChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
+
+    partial void OnEditorDisplayNameChanged(string? oldValue, string newValue)
+    {
+        OnPropertyChanged(nameof(TabTooltip));
+    }
 
     partial void OnFileResourceChanged(ResourceKey oldValue, ResourceKey newValue)
     {
@@ -32,6 +74,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
     public IDocumentView? DocumentView { get; set; }
 
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private ResourceKeyChangedMessage? _pendingResourceKeyChangedMessage;
 
     public DocumentTabViewModel(
@@ -41,6 +84,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // We can't use the view's Loaded & Unloaded methods to register & unregister here.
@@ -55,6 +99,25 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
+    }
+
+    /// <summary>
+    /// Returns true if more than one editor is registered for this document's file extension,
+    /// meaning a "Reopen with..." menu option is worth showing to the user. Returns false during
+    /// workspace teardown so the context menu gracefully hides the item when state is transient.
+    /// </summary>
+    public bool HasMultipleCompatibleEditors()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(FileResource.ToString()).ToLowerInvariant();
+        var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
+            .GetFactoriesForFileExtension(extension);
+
+        return factories.Count >= 2;
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
@@ -77,6 +140,15 @@ public partial class DocumentTabViewModel : ObservableObject
             var getResult = _resourceRegistry.GetResource(FileResource);
             if (getResult.IsFailure)
             {
+                // The file may have been temporarily deleted as part of a "write temp, delete original,
+                // rename temp" save pattern used by some editors and coding agents. Check if the file
+                // still exists on disk before closing. The resource registry may not have caught up
+                // with the rename yet.
+                if (File.Exists(FilePath))
+                {
+                    return;
+                }
+
                 // The resource no longer exists, so close the document.
                 // We force the close operation because the resource no longer exists.
                 // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
@@ -104,10 +176,8 @@ public partial class DocumentTabViewModel : ObservableObject
     /// <summary>
     /// Close the opened document.
     /// forceClose forces the document to close without allowing the document to cancel the close operation.
-    /// Returns false if the document cancelled the close operation, e.g. via a confirmation dialog.
-    /// The call fails if the close operation failed due to an error.
     /// </summary>
-    public async Task<Result<bool>> CloseDocument(bool forceClose)
+    public async Task<Result<CloseDocumentOutcome>> CloseDocument(bool forceClose)
     {
         Guard.IsNotNull(DocumentView);
 
@@ -120,14 +190,14 @@ public partial class DocumentTabViewModel : ObservableObject
             UnregisterMessageHandlers();
             await DocumentView.PrepareToClose();
 
-            return Result<bool>.Ok(true);
+            return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Closed);
         }
 
         var canClose = forceClose || await DocumentView.CanClose();
         if (!canClose)
         {
-            // The close operation was cancelled by the document view.
-            return Result<bool>.Ok(false);
+            // The document view refused to close (user save-prompt dialog or programmatic veto).
+            return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Cancelled);
         }
 
         if (DocumentView.HasUnsavedChanges)
@@ -135,7 +205,7 @@ public partial class DocumentTabViewModel : ObservableObject
             var saveResult = await DocumentView.SaveDocument();
             if (saveResult.IsFailure)
             {
-                return Result<bool>.Fail($"Saving document failed for file resource: '{FileResource}'")
+                return Result<CloseDocumentOutcome>.Fail($"Saving document failed for file resource: '{FileResource}'")
                     .WithErrors(saveResult);
             }
         }
@@ -144,7 +214,7 @@ public partial class DocumentTabViewModel : ObservableObject
         UnregisterMessageHandlers();
         await DocumentView.PrepareToClose();
 
-        return Result<bool>.Ok(true);
+        return Result<CloseDocumentOutcome>.Ok(CloseDocumentOutcome.Closed);
     }
 
     public async Task<Result> ReloadDocument()

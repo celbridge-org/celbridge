@@ -5,6 +5,7 @@ using Celbridge.FileViewer.Services;
 using Celbridge.FileViewer.ViewModels;
 using Celbridge.FileViewer.Views;
 using Celbridge.Modules;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.FileViewer;
 
@@ -35,7 +36,8 @@ public class Module : IModule
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
         var fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
-        return [new FileViewerFactory(serviceProvider, fileTypeHelper)];
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return [new FileViewerFactory(serviceProvider, fileTypeHelper, stringLocalizer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

@@ -2,6 +2,7 @@
 // Uses celbridge.js for JSON-RPC communication with the host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 // Only proceed if running in WebView
 if (!window.isWebView) {
@@ -21,31 +22,34 @@ client.theme.onChanged((theme) => {
     applyTheme(theme);
 });
 
-// Listen for external content changes (when scene data is updated)
-client.document.onExternalChange(async () => {
-    try {
-        const result = await client.document.load();
-        document.getElementById('screenplay-container').innerHTML = result.content;
-    } catch (e) {
-        console.error('[Screenplay] Failed to reload content:', e);
-    }
-});
-
 // Initialize the editor
 async function initializeEditor() {
     try {
         // Enable debug logging during development
         // client.setLogLevel('debug');
 
-        // Initialize the client - this loads content from C#
-        const result = await client.initialize();
+        await client.initializeDocument({
+            onContent: (content) => {
+                // Apply initial theme
+                applyTheme(client.theme.current);
 
-        // Apply initial theme
-        applyTheme(client.theme.current);
+                // Set the screenplay content
+                document.getElementById('screenplay-container').innerHTML = content;
+            },
+            onExternalChange: async () => {
+                try {
+                    const result = await client.document.load();
+                    document.getElementById('screenplay-container').innerHTML = result.content;
+                } catch (e) {
+                    console.error('[Screenplay] Failed to reload content:', e);
+                }
 
-        // Set the screenplay content
-        document.getElementById('screenplay-container').innerHTML = result.content;
-
+                // Signal to the framework that the reload cycle is complete. Screenplay has no
+                // editor state to preserve, but emitting the signal keeps the reload contract
+                // uniform across editors and avoids the framework's 5s timeout.
+                client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
+            }
+        });
     } catch (e) {
         console.error('[Screenplay] Failed to initialize:', e);
     }

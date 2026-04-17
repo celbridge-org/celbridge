@@ -4,6 +4,11 @@ using Celbridge.UserInterface.Views.Controls;
 namespace Celbridge.Documents.Views;
 
 /// <summary>
+/// Identifies an open document by its containing section and the tab that hosts its view.
+/// </summary>
+public record DocumentTabLocation(DocumentSection Section, DocumentTab Tab);
+
+/// <summary>
 /// Container that manages 1-3 document sections with resizable splitters between them.
 /// </summary>
 public sealed partial class DocumentSectionContainer : UserControl
@@ -200,21 +205,29 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// </summary>
     public void SetSectionRatios(List<double> ratios)
     {
-        if (ratios == null || ratios.Count == 0)
+        if (ratios == null || ratios.Count != _sectionCount)
         {
             return;
+        }
+
+        // Validate that all ratios are finite positive numbers
+        foreach (var ratio in ratios)
+        {
+            if (double.IsNaN(ratio) || double.IsInfinity(ratio) || ratio <= 0)
+            {
+                return;
+            }
         }
 
         // Apply ratios as Star values to columns
         int ratioIndex = 0;
         for (int i = 0; i < RootGrid.ColumnDefinitions.Count && ratioIndex < ratios.Count; i++)
         {
-            var colDef = RootGrid.ColumnDefinitions[i];
+            var columnDefinition = RootGrid.ColumnDefinitions[i];
             // Skip splitter columns (odd indices)
             if (i % 2 == 0)
             {
-                var ratio = Math.Max(ratios[ratioIndex], 0.1); // Minimum ratio to prevent collapse
-                colDef.Width = new GridLength(ratio, GridUnitType.Star);
+                columnDefinition.Width = new GridLength(ratios[ratioIndex], GridUnitType.Star);
                 ratioIndex++;
             }
         }
@@ -249,6 +262,14 @@ public sealed partial class DocumentSectionContainer : UserControl
         if (sectionIndex < 0 || sectionIndex >= _sectionCount)
         {
             return;
+        }
+
+        // Enforce the invariant: the active document's tab must be the selected tab in its section
+        var section = _sections[sectionIndex];
+        var tab = section.GetDocumentTab(fileResource);
+        if (tab is not null)
+        {
+            section.SelectTab(tab);
         }
 
         // Update the active document directly
@@ -394,38 +415,46 @@ public sealed partial class DocumentSectionContainer : UserControl
             _activeSectionIndex = 0;
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
+            EnsureVisibleTabsSelected();
             return;
         }
 
         // Find which section contains this document
-        var (section, tab) = FindDocumentTab(fileResource);
-        if (section != null && tab != null)
+        var location = FindDocumentTab(fileResource);
+        if (location is not null)
         {
             // Select the tab in its section
-            section.SelectTab(tab);
+            location.Section.SelectTab(location.Tab);
 
             // Directly update active document (don't rely on events for programmatic selection)
-            _activeSectionIndex = section.SectionIndex;
+            _activeSectionIndex = location.Section.SectionIndex;
             _activeDocument = fileResource;
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
         }
+
+        // During workspace restore many tabs are inserted with Activate=false, so non-active
+        // sections end up with no selected tab. SetActiveDocument is the hook that runs after
+        // all of those inserts finish, so enforce the "every populated section has a visible
+        // selected tab" invariant here.
+        EnsureVisibleTabsSelected();
     }
 
     /// <summary>
-    /// Gets the DocumentTab for a given resource across all sections.
+    /// Locates the open document tab for the given resource and the section that contains it.
+    /// Returns null when no tab is currently open for the resource.
     /// </summary>
-    public (DocumentSection? Section, DocumentTab? Tab) FindDocumentTab(ResourceKey fileResource)
+    public DocumentTabLocation? FindDocumentTab(ResourceKey fileResource)
     {
         for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
         {
             var tab = _sections[i].GetDocumentTab(fileResource);
             if (tab != null)
             {
-                return (_sections[i], tab);
+                return new DocumentTabLocation(_sections[i], tab);
             }
         }
-        return (null, null);
+        return null;
     }
 
     /// <summary>
@@ -461,12 +490,13 @@ public sealed partial class DocumentSectionContainer : UserControl
         }
 
         // Find the source section
-        var (sourceSection, foundTab) = FindDocumentTab(tab.ViewModel.FileResource);
-        if (sourceSection == null || foundTab == null)
+        var location = FindDocumentTab(tab.ViewModel.FileResource);
+        if (location is null)
         {
             return false;
         }
 
+        var sourceSection = location.Section;
         var targetSection = _sections[targetSectionIndex];
         if (sourceSection == targetSection)
         {
@@ -526,8 +556,21 @@ public sealed partial class DocumentSectionContainer : UserControl
         if (_activeSectionIndex >= newSectionCount)
         {
             _activeSectionIndex = targetSectionIndex;
-            UpdateTabSelectionIndicators();
         }
+
+        // Enforce the invariant: the active document's tab must be the selected tab in its section.
+        // Migrating tabs doesn't automatically re-select the active document in the target section,
+        // so re-apply the selection here.
+        if (!_activeDocument.IsEmpty)
+        {
+            var activeLocation = FindDocumentTab(_activeDocument);
+            if (activeLocation is not null)
+            {
+                activeLocation.Section.SelectTab(activeLocation.Tab);
+            }
+        }
+
+        UpdateTabSelectionIndicators();
     }
 
     private void RebuildGrid()
@@ -717,12 +760,12 @@ public sealed partial class DocumentSectionContainer : UserControl
         // Set all section columns to equal star values
         for (int i = 0; i < RootGrid.ColumnDefinitions.Count; i++)
         {
-            var colDef = RootGrid.ColumnDefinitions[i];
+            var columnDefinition = RootGrid.ColumnDefinitions[i];
             // Section columns are at even indices (0, 2, 4)
             // Splitter columns are at odd indices (1, 3)
             if (i % 2 == 0)
             {
-                colDef.Width = new GridLength(1, GridUnitType.Star);
+                columnDefinition.Width = new GridLength(1, GridUnitType.Star);
             }
         }
 
@@ -799,6 +842,23 @@ public sealed partial class DocumentSectionContainer : UserControl
     private void OnSectionFilesDropped(DocumentSection targetSection, List<IResource> resources)
     {
         FilesDropped?.Invoke(targetSection, resources);
+    }
+
+    /// <summary>
+    /// Ensures each section that contains tabs has a selected tab.
+    /// Sections that already have a selection are left unchanged.
+    /// </summary>
+    private void EnsureVisibleTabsSelected()
+    {
+        for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
+        {
+            var section = _sections[i];
+            if (section.TabCount > 0 && section.GetSelectedDocument().IsEmpty)
+            {
+                var firstTab = section.GetAllTabs().First();
+                section.SelectTab(firstTab);
+            }
+        }
     }
 
     private void NotifyLayoutChanged()

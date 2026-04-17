@@ -1,9 +1,9 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Views;
-using Celbridge.Packages;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
+using Celbridge.Packages;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -14,6 +14,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private const string DocumentLayoutKey = "DocumentLayout";
     private const string ActiveDocumentKey = "ActiveDocument";
     private const string SectionRatiosKey = "SectionRatios";
+    private const string DocumentEditorStatesKey = "DocumentEditorStates";
 
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DocumentsService> _logger;
@@ -31,9 +32,17 @@ public class DocumentsService : IDocumentsService, IDisposable
     public ResourceKey ActiveDocument { get; private set; }
 
     /// <summary>
-    /// Gets all open documents with their addresses (UI positions).
+    /// Returns the currently open documents from the documents panel.
+    /// Reads TabView-backed state, so callers must be on the UI thread. MCP tools satisfy this
+    /// by going through a query command on the command-queue worker, which executes on the UI thread.
     /// </summary>
-    public Dictionary<ResourceKey, DocumentAddress> OpenDocumentAddresses { get; } = new();
+    public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
+
+    /// <summary>
+    /// Returns the number of visible document sections. Reads an int, which is atomic in .NET,
+    /// so this property is safe to call from any thread.
+    /// </summary>
+    public int SectionCount => DocumentsPanel.SectionCount;
 
     private bool _isWorkspaceLoaded;
 
@@ -89,37 +98,61 @@ public class DocumentsService : IDocumentsService, IDisposable
     {
         foreach (var module in moduleService.LoadedModules)
         {
-            var factories = module.CreateDocumentEditorFactories(_serviceProvider);
-            foreach (var factory in factories)
+            try
             {
-                var result = _documentEditorRegistry.RegisterFactory(factory);
-                if (result.IsFailure)
+                var factories = module.CreateDocumentEditorFactories(_serviceProvider);
+                foreach (var factory in factories)
                 {
-                    _logger.LogWarning(result, $"Failed to register document editor factory");
+                    var result = _documentEditorRegistry.RegisterFactory(factory);
+                    if (result.IsFailure)
+                    {
+                        _logger.LogWarning(result, $"Failed to register document editor factory");
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, $"An exception occurred while registering editor factories from module: {module.GetType().Name}");
             }
         }
     }
 
     private void OnPackagesInitializedMessage(object recipient, PackagesInitializedMessage message)
     {
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var contributions = workspaceService.PackageService.GetAllDocumentEditors();
-
-        foreach (var contribution in contributions)
+        try
         {
-            if (contribution is not CustomDocumentContribution customContribution)
+            var workspaceService = _workspaceWrapper.WorkspaceService;
+            var contributions = workspaceService.PackageService.GetAllDocumentEditors();
+            var localizationService = _serviceProvider.GetRequiredService<IPackageLocalizationService>();
+
+            foreach (var contribution in contributions)
             {
-                continue;
+                try
+                {
+                    if (contribution is not CustomDocumentEditorContribution customContribution)
+                    {
+                        continue;
+                    }
+
+                    var factory = new CustomDocumentViewFactory(_serviceProvider, customContribution, _featureFlags, localizationService);
+                    var result = _documentEditorRegistry.RegisterFactory(factory);
+                    if (result.IsFailure)
+                    {
+                        _logger.LogWarning(result,
+                            $"Failed to register contribution editor factory for: {contribution.Package.Name}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        $"An exception occurred while registering contribution editor for: {contribution.Package?.Name ?? contribution.Id}");
+                }
             }
 
-            var factory = new CustomDocumentViewFactory(_serviceProvider, customContribution, _featureFlags);
-            var result = _documentEditorRegistry.RegisterFactory(factory);
-            if (result.IsFailure)
-            {
-                _logger.LogWarning(result,
-                    $"Failed to register contribution editor factory for: {contribution.Package.Name}");
-            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "An exception occurred while initializing package document editors");
         }
     }
 
@@ -142,18 +175,8 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     private void OnDocumentLayoutChangedMessage(object recipient, DocumentLayoutChangedMessage message)
     {
-        // Query the panel for current document addresses
-        var addresses = DocumentsPanel.GetDocumentAddresses();
-
-        OpenDocumentAddresses.Clear();
-        foreach (var kvp in addresses)
-        {
-            OpenDocumentAddresses[kvp.Key] = kvp.Value;
-        }
-
         if (_isWorkspaceLoaded)
         {
-            // Ignore change events that happen while loading the workspace
             _ = StoreDocumentLayout();
         }
     }
@@ -167,16 +190,16 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource)
+    public async Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
     {
         //
         // Create the appropriate document view control for this document type
         //
 
-        var createResult = CreateDocumentViewInternal(fileResource);
+        var createResult = await CreateDocumentViewInternalAsync(fileResource, documentEditorId);
         if (createResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
+            return Result.Fail($"Failed to create document view for file resource: '{fileResource}'")
                 .WithErrors(createResult);
         }
         var documentView = createResult.Value;
@@ -188,18 +211,20 @@ public class DocumentsService : IDocumentsService, IDisposable
         var setFileResult = await documentView.SetFileResource(fileResource);
         if (setFileResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to set file resource for document view: '{fileResource}'")
+            return Result.Fail($"Failed to set file resource for document view: '{fileResource}'")
                 .WithErrors(setFileResult);
         }
 
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to load content for document view: '{fileResource}'")
+            return Result.Fail($"Failed to load content for document view: '{fileResource}'")
                 .WithErrors(loadResult);
         }
 
-        return Result<IDocumentView>.Ok(documentView);
+        // IDocumentView is an interface, so the implicit T -> Result<T> conversion doesn't apply;
+        // use the OkResult extension method to wrap the value.
+        return documentView.OkResult();
     }
 
     /// <summary>
@@ -257,6 +282,41 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
+    public async Task<DocumentEditorId> GetEditorPreferenceAsync(string extension)
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
+        var preferredId = await workspaceSettings.GetPropertyAsync<string>(preferenceKey);
+
+        // TryParse handles empty/null/malformed strings; callers are responsible
+        // for checking whether the returned id still maps to a registered editor.
+        if (string.IsNullOrEmpty(preferredId) || !DocumentEditorId.TryParse(preferredId, out var editorId))
+        {
+            return DocumentEditorId.Empty;
+        }
+
+        return editorId;
+    }
+
+    public async Task SetEditorPreferenceAsync(string extension, DocumentEditorId editorId)
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
+
+        if (editorId.IsEmpty)
+        {
+            // Empty editorId signals that the user wants to clear the preference for this extension
+            await workspaceSettings.DeletePropertyAsync(preferenceKey);
+            return;
+        }
+
+        await workspaceSettings.SetPropertyAsync(preferenceKey, editorId.ToString());
+    }
+
     public bool CanAccessFile(string resourcePath)
     {
         if (string.IsNullOrEmpty(resourcePath) ||
@@ -281,7 +341,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    public async Task<Result> OpenDocument(ResourceKey fileResource, bool forceReload = false, string location = "", bool activate = true)
+    private Result<string> ResolveAndValidateFilePath(ResourceKey fileResource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -303,57 +363,36 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }
 
-        var openResult = await DocumentsPanel.OpenDocument(fileResource, filePath, forceReload, location, activate);
+        return filePath;
+    }
+
+    public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
+    {
+        var resolveResult = ResolveAndValidateFilePath(fileResource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to open document for file resource '{fileResource}'")
+                .WithErrors(resolveResult);
+        }
+
+        var openResult = await DocumentsPanel.OpenDocument(fileResource, options);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
                 .WithErrors(openResult);
         }
+        var outcome = openResult.Value;
 
-        _logger.LogTrace($"Opened document for file resource '{fileResource}'");
-
-        return Result.Ok();
-    }
-
-    public async Task<Result> OpenDocumentAtSection(ResourceKey fileResource, int sectionIndex, bool forceReload = false, string location = "", bool activate = true)
-    {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
-        if (resolveResult.IsFailure)
+        if (outcome == OpenDocumentOutcome.Cancelled)
         {
-            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
-                .WithErrors(resolveResult);
+            _logger.LogTrace($"Open document was cancelled for file resource '{fileResource}'");
         }
-        var filePath = resolveResult.Value;
-
-        if (!File.Exists(filePath))
+        else
         {
-            return Result.Fail($"File path does not exist: '{filePath}'");
+            _logger.LogTrace($"Opened document for file resource '{fileResource}'");
         }
 
-        if (!CanAccessFile(filePath))
-        {
-            return Result.Fail($"File exists but cannot be opened: '{filePath}'");
-        }
-
-        var address = new DocumentAddress(WindowIndex: 0, SectionIndex: sectionIndex, TabOrder: 0);
-        var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address, activate);
-        if (openResult.IsFailure)
-        {
-            return Result.Fail($"Failed to open document for file resource '{fileResource}' at section {sectionIndex}")
-                .WithErrors(openResult);
-        }
-
-        // Navigate to location if specified
-        if (!string.IsNullOrEmpty(location))
-        {
-            await DocumentsPanel.NavigateToLocation(fileResource, location);
-        }
-
-        _logger.LogTrace($"Opened document for file resource '{fileResource}' at section {sectionIndex}");
-
-        return Result.Ok();
+        return outcome;
     }
 
     public async Task<Result> CloseDocument(ResourceKey fileResource, bool forceClose)
@@ -399,23 +438,23 @@ public class DocumentsService : IDocumentsService, IDisposable
     /// <summary>
     /// DTO for serializing document addresses to workspace settings.
     /// </summary>
-    private record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder);
+    private record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder, string DocumentEditorId = "");
 
     public async Task StoreDocumentLayout()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
-        // Store documents with their addresses
-        var storedAddresses = OpenDocumentAddresses
-            .Select(kvp => new StoredDocumentAddress(
-                kvp.Key.ToString(),
-                kvp.Value.WindowIndex,
-                kvp.Value.SectionIndex,
-                kvp.Value.TabOrder))
-            .OrderBy(addr => addr.WindowIndex)
-            .ThenBy(addr => addr.SectionIndex)
-            .ThenBy(addr => addr.TabOrder)
+        var storedAddresses = GetOpenDocuments()
+            .Select(document => new StoredDocumentAddress(
+                document.FileResource.ToString(),
+                document.Address.WindowIndex,
+                document.Address.SectionIndex,
+                document.Address.TabOrder,
+                document.EditorId.ToString()))
+            .OrderBy(address => address.WindowIndex)
+            .ThenBy(address => address.SectionIndex)
+            .ThenBy(address => address.TabOrder)
             .ToList();
 
         await workspaceSettings.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
@@ -439,6 +478,91 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         await workspaceSettings.SetPropertyAsync(SectionRatiosKey, ratios);
     }
+
+    public async Task StoreDocumentEditorStates()
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        // Start with existing saved states so that editors that aren't ready yet
+        // (e.g., WebView still loading) preserve their previously saved state.
+        var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+            ?? new Dictionary<string, string>();
+
+        // Track which documents are currently open so we can remove stale entries
+        var openDocumentKeys = new HashSet<string>();
+
+        foreach (var document in GetOpenDocuments())
+        {
+            var resourceKey = document.FileResource.ToString();
+            openDocumentKeys.Add(resourceKey);
+
+            var documentView = DocumentsPanel.GetDocumentView(document.FileResource);
+            if (documentView is null)
+            {
+                continue;
+            }
+
+            try
+            {
+                // A null / empty return from TrySaveEditorStateAsync means the editor is either
+                // still initialising or has no state to contribute. In both cases we keep the
+                // previously saved state rather than overwriting it. Losing state on a transient
+                // "not ready" would surprise the user who carefully set scroll/zoom and then
+                // happens to reload a workspace while a tab is mid-init.
+                var state = await documentView.TrySaveEditorStateAsync();
+                if (!string.IsNullOrEmpty(state))
+                {
+                    editorStates[resourceKey] = state;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, $"Could not save editor state for '{resourceKey}'");
+            }
+        }
+
+        // Remove entries for documents that are no longer open
+        var staleKeys = editorStates.Keys.Where(key => !openDocumentKeys.Contains(key)).ToList();
+        foreach (var staleKey in staleKeys)
+        {
+            editorStates.Remove(staleKey);
+        }
+
+        await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
+    }
+
+    public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        try
+        {
+            var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+                ?? new Dictionary<string, string>();
+
+            var resourceKey = fileResource.ToString();
+            if (!string.IsNullOrEmpty(state))
+            {
+                editorStates[resourceKey] = state;
+            }
+            else
+            {
+                editorStates.Remove(resourceKey);
+            }
+
+            await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
+        }
+        catch (Exception ex)
+        {
+            // Best-effort persistence: losing editor state is a user convenience, not data loss.
+            // Log at debug level so unexpected failures are visible without being alarming.
+            _logger.LogDebug(ex, $"Failed to store editor state for '{fileResource}'");
+        }
+    }
+
+
 
     public async Task RestorePanelState()
     {
@@ -472,6 +596,17 @@ public class DocumentsService : IDocumentsService, IDisposable
             // No documents to restore - open default readme
             await OpenDefaultReadme(resourceRegistry);
             return;
+        }
+
+        // Load saved editor states for restoration after documents are opened
+        Dictionary<string, string>? editorStates = null;
+        try
+        {
+            editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey);
+        }
+        catch
+        {
+            _logger.LogDebug("Could not load editor states - starting fresh");
         }
 
         int currentSectionCount = DocumentsPanel.SectionCount;
@@ -509,10 +644,34 @@ public class DocumentsService : IDocumentsService, IDisposable
             int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
-            var openResult = await DocumentsPanel.OpenDocumentAtAddress(fileResource, filePath, address);
+            // Use TryParse rather than the throwing constructor: a persisted editor id may reference
+            // a package or contribution that has since been renamed or uninstalled, and an invalid
+            // value should fall back to the default editor instead of aborting the restore.
+            DocumentEditorId editorId;
+            if (string.IsNullOrEmpty(stored.DocumentEditorId))
+            {
+                editorId = DocumentEditorId.Empty;
+            }
+            else if (!DocumentEditorId.TryParse(stored.DocumentEditorId, out editorId))
+            {
+                _logger.LogWarning($"Stored document editor id '{stored.DocumentEditorId}' is invalid and will be ignored for resource '{fileResource}'");
+                editorId = DocumentEditorId.Empty;
+            }
+
+            string? editorStateJson = null;
+            editorStates?.TryGetValue(fileResource.ToString(), out editorStateJson);
+
+            var restoreOptions = new OpenDocumentOptions(
+                Address: address,
+                Activate: false,
+                EditorId: editorId,
+                EditorStateJson: editorStateJson);
+
+            var openResult = await DocumentsPanel.OpenDocument(fileResource, restoreOptions);
             if (openResult.IsFailure)
             {
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
+                await StoreDocumentEditorState(fileResource, null);
             }
         }
 
@@ -529,7 +688,9 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        // Set the active document (which also selects it in its section)
+        // Set the active document. SectionContainer.SetActiveDocument also enforces the invariant
+        // that every populated section has a selected tab, so non-active sections that had tabs
+        // inserted during restore get a sensible default selection automatically.
         DocumentsPanel.ActiveDocument = selectedDocumentKey;
     }
 
@@ -553,18 +714,72 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
     }
 
-    private Result<IDocumentView> CreateDocumentViewInternal(ResourceKey fileResource)
+    private async Task<Result<IDocumentView>> CreateDocumentViewInternalAsync(ResourceKey fileResource, DocumentEditorId documentEditorId = default)
     {
         // First, try to get a document view from the registry
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
-            return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
                 .WithErrors(resolveResult);
         }
         var filePath = resolveResult.Value;
 
+        // If a specific editor was requested, use it directly. Do not fall through to priority-based
+        // resolution on failure: silently opening a different editor than the one the caller asked for
+        // is confusing and hides real problems (e.g., "Open With..." handing a file to a factory that
+        // cannot handle it).
+        if (!documentEditorId.IsEmpty)
+        {
+            var getFactoryResult = _documentEditorRegistry.GetFactoryById(documentEditorId);
+            if (getFactoryResult.IsFailure)
+            {
+                return Result.Fail($"No document editor is registered with id '{documentEditorId}'")
+                    .WithErrors(getFactoryResult);
+            }
+            var requestedFactory = getFactoryResult.Value;
+
+            if (!requestedFactory.CanHandleResource(fileResource, filePath))
+            {
+                return Result.Fail($"Document editor '{documentEditorId}' cannot handle file resource: '{fileResource}'");
+            }
+
+            var createResult = requestedFactory.CreateDocumentView(fileResource);
+            if (createResult.IsFailure)
+            {
+                return Result.Fail($"Document editor '{documentEditorId}' failed to create view for: '{fileResource}'")
+                    .WithErrors(createResult);
+            }
+
+            return createResult;
+        }
+
+        // Check workspace preference for this extension
+        if (documentEditorId.IsEmpty)
+        {
+            var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+            var preferredEditorId = await GetEditorPreferenceAsync(extension);
+
+            if (!preferredEditorId.IsEmpty)
+            {
+                var getPreferredFactoryResult = _documentEditorRegistry.GetFactoryById(preferredEditorId);
+                if (getPreferredFactoryResult.IsSuccess)
+                {
+                    var preferredFactory = getPreferredFactoryResult.Value;
+                    if (preferredFactory.CanHandleResource(fileResource, filePath))
+                    {
+                        var createResult = preferredFactory.CreateDocumentView(fileResource);
+                        if (createResult.IsSuccess)
+                        {
+                            return createResult;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fall back to priority-based factory resolution
         var factoryResult = _documentEditorRegistry.GetFactory(fileResource, filePath);
         if (factoryResult.IsSuccess)
         {
@@ -584,7 +799,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         if (viewType == DocumentViewType.UnsupportedFormat)
         {
-            return Result<IDocumentView>.Fail($"File resource is not a supported document format: '{fileResource}'");
+            return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
         // For text documents with unrecognized extensions, try to find a factory that can handle them
@@ -592,9 +807,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (viewType == DocumentViewType.TextDocument)
         {
             // Check all factories to see if any can handle this text file
-            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(f => f.Priority))
+            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(candidate => candidate.Priority))
             {
-                if (factory.CanHandle(fileResource, filePath))
+                if (factory.CanHandleResource(fileResource, filePath))
                 {
                     var createResult = factory.CreateDocumentView(fileResource);
                     if (createResult.IsSuccess)
@@ -604,12 +819,12 @@ public class DocumentsService : IDocumentsService, IDisposable
                 }
             }
 
-            // Ultimate fallback to TextBoxDocumentView
+            // Ultimate fallback to TextBoxDocumentView.
             var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
-            return Result<IDocumentView>.Ok(textBoxView);
+            return textBoxView.OkResult<IDocumentView>();
         }
 
-        return Result<IDocumentView>.Fail($"Failed to create document view for file: '{fileResource}'");
+        return Result.Fail($"Failed to create document view for file: '{fileResource}'");
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
