@@ -206,6 +206,21 @@ public static class PackageManifestLoader
                 }
             }
 
+            // Custom contributions have their editor id composed as "{packageId}.{documentId}" at
+            // factory-construction time. Validate the composed id here so plugin authors fail fast
+            // at manifest parse with a clear message, rather than hitting a DocumentEditorId
+            // constructor throw later when someone tries to open a file of this type.
+            if (documentType != CodeDocumentType)
+            {
+                var composedEditorId = $"{packageInfo.Id}.{documentId}";
+                if (!DocumentEditorId.IsValid(composedEditorId))
+                {
+                    return Result.Fail(
+                        $"Invalid document editor id '{composedEditorId}' in manifest: {documentTomlPath}. " +
+                        $"Package id and document id must combine to form a DocumentEditorId using only lowercase letters, digits, dots, and hyphens.");
+                }
+            }
+
             DocumentEditorContribution contribution = documentType switch
             {
                 CodeDocumentType => BuildCodeContribution(root, packageInfo, documentId, displayName, fileTypes, priority, templates),

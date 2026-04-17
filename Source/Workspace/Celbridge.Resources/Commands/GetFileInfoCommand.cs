@@ -9,7 +9,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ITextBinarySniffer _textBinarySniffer;
 
-    public override CommandFlags CommandFlags => CommandFlags.Query;
+    public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     public ResourceKey Resource { get; set; }
 
@@ -31,14 +31,16 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         _textBinarySniffer = textBinarySniffer;
     }
 
-    public override Task<Result> ExecuteAsync()
+    public override async Task<Result> ExecuteAsync()
     {
+        await Task.CompletedTask;
+
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"Failed to resolve path for resource: '{Resource}'"));
+            return Result.Fail($"Failed to resolve path for resource: '{Resource}'");
         }
         var resourcePath = resolveResult.Value;
 
@@ -62,7 +64,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 IsText: isText,
                 LineCount: lineCount);
 
-            return Task.FromResult(Result.Ok());
+            return Result.Ok();
         }
 
         if (Directory.Exists(resourcePath))
@@ -78,10 +80,10 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 IsText: false,
                 LineCount: null);
 
-            return Task.FromResult(Result.Ok());
+            return Result.Ok();
         }
 
-        return Task.FromResult<Result>(Result.Fail($"Resource not found: '{Resource}'"));
+        return Result.Fail($"Resource not found: '{Resource}'");
     }
 
     private static bool IsTextFile(ITextBinarySniffer textBinarySniffer, string filePath)

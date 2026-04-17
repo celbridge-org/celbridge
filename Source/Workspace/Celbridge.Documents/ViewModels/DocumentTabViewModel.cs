@@ -74,6 +74,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
     public IDocumentView? DocumentView { get; set; }
 
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private ResourceKeyChangedMessage? _pendingResourceKeyChangedMessage;
 
     public DocumentTabViewModel(
@@ -83,6 +84,7 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         // We can't use the view's Loaded & Unloaded methods to register & unregister here.
@@ -97,6 +99,25 @@ public partial class DocumentTabViewModel : ObservableObject
 
         _messengerService.Register<ResourceRegistryUpdatedMessage>(this, OnResourceRegistryUpdatedMessage);
         _messengerService.Register<ResourceKeyChangedMessage>(this, OnResourceKeyChangedMessage);
+    }
+
+    /// <summary>
+    /// Returns true if more than one editor is registered for this document's file extension,
+    /// meaning a "Reopen with..." menu option is worth showing to the user. Returns false during
+    /// workspace teardown so the context menu gracefully hides the item when state is transient.
+    /// </summary>
+    public bool HasMultipleCompatibleEditors()
+    {
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(FileResource.ToString()).ToLowerInvariant();
+        var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
+            .GetFactoriesForFileExtension(extension);
+
+        return factories.Count >= 2;
     }
 
     private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
@@ -121,7 +142,7 @@ public partial class DocumentTabViewModel : ObservableObject
             {
                 // The file may have been temporarily deleted as part of a "write temp, delete original,
                 // rename temp" save pattern used by some editors and coding agents. Check if the file
-                // still exists on disk before closing — the resource registry may not have caught up
+                // still exists on disk before closing. The resource registry may not have caught up
                 // with the rename yet.
                 if (File.Exists(FilePath))
                 {

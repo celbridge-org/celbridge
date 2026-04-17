@@ -245,8 +245,6 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
             locale);
     }
 
-    public override bool IsEditorStateReady => _isContentLoaded;
-
     /// <summary>
     /// Raised each time the JS client signals content is loaded, with the reason supplied by JS.
     /// Subclasses and the framework reload orchestration subscribe here to react to reload events
@@ -308,12 +306,12 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         }
 
         // Capture editor state before the content is replaced. A null return is valid: the editor
-        // may not implement onRequestState (or may not be ready), in which case we simply skip the
-        // restore step after reload.
+        // may not be ready, may not implement onRequestState, or may have no state worth saving.
+        // In any of those cases we simply skip the restore step after reload.
         string? savedState = null;
         try
         {
-            savedState = await SaveEditorStateAsync();
+            savedState = await TrySaveEditorStateAsync();
         }
         catch (Exception ex)
         {
@@ -355,8 +353,11 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
         }
     }
 
-    public override async Task<string?> SaveEditorStateAsync()
+    public override async Task<string?> TrySaveEditorStateAsync()
     {
+        // Host may be null during initial WebView acquisition and between PrepareToClose and disposal.
+        // _isContentLoaded is false until the JS client emits ContentLoadedReason.Initial; calling
+        // RequestStateAsync before that races with JS handler registration and would time out.
         if (Host is null || !_isContentLoaded)
         {
             return null;
@@ -382,7 +383,7 @@ public abstract partial class WebViewDocumentView : DocumentView, IHostInput
 
         try
         {
-            await Host!.NotifyRestoreStateAsync(state);
+            await Host!.RestoreStateAsync(state);
         }
         catch
         {

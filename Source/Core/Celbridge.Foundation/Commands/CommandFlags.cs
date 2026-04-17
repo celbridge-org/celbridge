@@ -27,10 +27,8 @@ public enum CommandFlags
     SaveWorkspaceState = 1 << 3,
 
     /// <summary>
-    /// Marks the command as a read-only query. The command still executes sequentially on
-    /// the command queue so it observes state after all previously enqueued commands have
-    /// run, but the command service skips per-command debug log entries to avoid flooding
-    /// the audit log when tools poll read-only state frequently.
+    /// Suppress the command service's per-command debug log entry for this command.
+    /// Typically set on read-only query commands that tools poll frequently, to avoid flooding the log.
     /// </summary>
-    Query = 1 << 4
+    SuppressCommandLog = 1 << 4
 }

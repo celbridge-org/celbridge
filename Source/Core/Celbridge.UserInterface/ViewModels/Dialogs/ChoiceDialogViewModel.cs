@@ -13,6 +13,4 @@ public partial class ChoiceDialogViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _checkboxChecked;
-
-    public List<string> Options { get; set; } = new();
 }

@@ -31,9 +31,9 @@ public class ThrowingTestCommand : CommandBase
     }
 }
 
-public class QueryTestCommand : CommandBase
+public class SuppressLogTestCommand : CommandBase
 {
-    public override CommandFlags CommandFlags => CommandFlags.Query;
+    public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     public bool ExecuteComplete { get; private set; }
 
@@ -81,7 +81,7 @@ public class CommandTests
         services.AddSingleton<IWorkspaceWrapper, WorkspaceWrapper>();
         services.AddTransient<TestCommand>();
         services.AddTransient<ThrowingTestCommand>();
-        services.AddTransient<QueryTestCommand>();
+        services.AddTransient<SuppressLogTestCommand>();
         services.AddTransient<DoubleThrowingTestCommand>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -212,20 +212,21 @@ public class CommandTests
     }
 
     [Test]
-    public async Task Query_FlaggedCommandExecutes()
+    public async Task SuppressCommandLog_FlaggedCommandExecutes()
     {
-        // Query commands are routed through the same queue as mutating commands. They should still
-        // execute end-to-end; the only difference is that the audit log entry is suppressed.
+        // Commands flagged with SuppressCommandLog are routed through the same queue as
+        // mutating commands. They should still execute end-to-end; the only difference is
+        // that the per-command audit log entry is skipped.
         Guard.IsNotNull(_commandService);
 
-        QueryTestCommand? capturedCommand = null;
-        await _commandService.ExecuteAsync<QueryTestCommand>(command =>
+        SuppressLogTestCommand? capturedCommand = null;
+        await _commandService.ExecuteAsync<SuppressLogTestCommand>(command =>
         {
             capturedCommand = command;
         });
 
         Guard.IsNotNull(capturedCommand);
         capturedCommand.ExecuteComplete.Should().BeTrue();
-        capturedCommand.CommandFlags.HasFlag(CommandFlags.Query).Should().BeTrue();
+        capturedCommand.CommandFlags.HasFlag(CommandFlags.SuppressCommandLog).Should().BeTrue();
     }
 }

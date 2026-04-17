@@ -50,5 +50,6 @@ public static class ServiceConfiguration
         services.AddTransient<IDeleteLinesCommand, DeleteLinesCommand>();
         services.AddTransient<IFindReplaceDocumentCommand, FindReplaceDocumentCommand>();
         services.AddTransient<IGetDocumentContextCommand, GetDocumentContextCommand>();
+        services.AddTransient<ISetEditorPreferenceCommand, SetEditorPreferenceCommand>();
     }
 }

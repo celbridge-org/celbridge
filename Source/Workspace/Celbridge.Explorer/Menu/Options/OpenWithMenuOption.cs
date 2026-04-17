@@ -101,18 +101,13 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
             currentEditorId = openDocument.EditorId;
         }
 
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
+        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
 
         if (currentEditorId.IsEmpty)
         {
-            var preferredId = await workspaceSettings.GetPropertyAsync<string>(preferenceKey);
-            // Use TryParse rather than the throwing constructor: a persisted preference may
-            // reference an editor that has been renamed or uninstalled.
-            if (!string.IsNullOrEmpty(preferredId) && DocumentEditorId.TryParse(preferredId, out var parsedPreferredId))
-            {
-                currentEditorId = parsedPreferredId;
-            }
+            // GetEditorPreferenceAsync validates the stored value and returns Empty if a
+            // persisted preference references an editor that has since been renamed or uninstalled.
+            currentEditorId = await documentsService.GetEditorPreferenceAsync(extension);
         }
 
         int defaultIndex = 0;
@@ -133,8 +128,9 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         var title = _stringLocalizer.GetString("OpenWithDialog_Title");
         var message = _stringLocalizer.GetString("OpenWithDialog_Message");
         var checkbox = new ChoiceDialogCheckbox(_stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
+        var openButtonText = _stringLocalizer.GetString("OpenWithDialog_OpenButton");
 
-        var choiceResult = await _dialogService.ShowChoiceDialogAsync(title, message, displayNames, defaultIndex, checkbox);
+        var choiceResult = await _dialogService.ShowChoiceDialogAsync(title, message, displayNames, defaultIndex, checkbox, primaryButtonText: openButtonText);
         if (choiceResult.IsFailure)
         {
             return;
@@ -144,7 +140,11 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
         if (choiceResult.Value.CheckboxChecked)
         {
-            await workspaceSettings.SetPropertyAsync(preferenceKey, selectedFactory.EditorId.ToString());
+            _commandService.Execute<ISetEditorPreferenceCommand>(command =>
+            {
+                command.Extension = extension;
+                command.EditorId = selectedFactory.EditorId;
+            });
         }
 
         _commandService.Execute<IOpenDocumentCommand>(command =>

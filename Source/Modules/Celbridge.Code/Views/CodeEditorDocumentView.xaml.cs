@@ -62,8 +62,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     public override bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
 
-    public override bool IsEditorStateReady => _isEditorReady;
-
     /// <summary>
     /// The current view mode of the editor.
     /// </summary>
@@ -437,9 +435,14 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         }
     }
 
-    public override async Task<string?> SaveEditorStateAsync()
+    public override async Task<string?> TrySaveEditorStateAsync()
     {
         await Task.CompletedTask;
+
+        if (!_isEditorReady)
+        {
+            return null;
+        }
 
         try
         {
@@ -467,7 +470,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     {
         if (!_isEditorReady)
         {
-            // Editor not yet initialized — defer until after LoadContent completes
+            // Editor not yet initialized. Defer until after LoadContent completes
             _pendingEditorStateJson = state;
             return;
         }
@@ -662,7 +665,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         string? savedState = null;
         try
         {
-            savedState = await SaveEditorStateAsync();
+            savedState = await TrySaveEditorStateAsync();
         }
         catch (Exception ex)
         {

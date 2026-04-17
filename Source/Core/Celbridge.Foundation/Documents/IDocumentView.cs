@@ -66,18 +66,9 @@ public interface IDocumentView
     Task PrepareToClose();
 
     /// <summary>
-    /// Whether the editor is ready to save and restore state.
-    /// Returns false while the editor is still initializing (e.g., WebView loading).
-    /// StoreEditorStates skips documents that are not ready, preserving their previously saved state.
+    /// Captures the editor's UI state as an opaque JSON string, or null if no state is available.
     /// </summary>
-    bool IsEditorStateReady { get; }
-
-    /// <summary>
-    /// Saves the editor's UI state as an opaque JSON string.
-    /// Returns null if the editor does not support state preservation.
-    /// Only called when IsEditorStateReady is true.
-    /// </summary>
-    Task<string?> SaveEditorStateAsync();
+    Task<string?> TrySaveEditorStateAsync();
 
     /// <summary>
     /// Restores previously saved editor state from an opaque JSON string.

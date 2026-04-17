@@ -80,9 +80,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
         _messengerService.Send(message);
     }
 
-    public IDocumentsService GetDocumentsService()
+    public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)
     {
-        return _documentsService;
+        await _documentsService.StoreDocumentEditorState(fileResource, state);
     }
 
     public ResourceKey GetResourceKey(IFileResource fileResource)
@@ -204,15 +204,17 @@ public partial class DocumentsPanelViewModel : ObservableObject
             }
         }
 
-        var displayNames = factories.Select(f => f.DisplayName).ToList();
+        var displayNames = factories.Select(factory => factory.DisplayName).ToList();
         return new EditorChoiceInfo(factories, displayNames, defaultIndex);
     }
 
-    public async Task StoreEditorPreferenceAsync(string extension, DocumentEditorId editorId)
+    public void StoreEditorPreference(string extension, DocumentEditorId editorId)
     {
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-        await workspaceSettings.SetPropertyAsync(preferenceKey, editorId.ToString());
+        _commandService.Execute<ISetEditorPreferenceCommand>(command =>
+        {
+            command.Extension = extension;
+            command.EditorId = editorId;
+        });
     }
 
 }

@@ -51,8 +51,10 @@ public interface IDialogService
     /// <summary>
     /// Display a Choice Dialog that lets the user pick from a list of named options.
     /// When checkbox is provided, shows a checkbox below the options.
+    /// Optional primaryButtonText and secondaryButtonText override the default OK/Cancel labels
+    /// so callers can surface context-appropriate verbs (e.g. "Open", "Apply").
     /// Returns the selected index and checkbox state, or fails if the user cancels.
     /// </summary>
-    Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null);
+    Task<Result<ChoiceDialogResult>> ShowChoiceDialogAsync(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null);
 }
 

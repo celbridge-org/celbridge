@@ -59,6 +59,18 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
+    /// Returns the stored editor preference for a file extension, or DocumentEditorId.Empty
+    /// if no preference is stored (or the stored value is invalid).
+    /// </summary>
+    Task<DocumentEditorId> GetEditorPreferenceAsync(string extension);
+
+    /// <summary>
+    /// Stores the user's preferred editor for a file extension. Pass DocumentEditorId.Empty
+    /// to clear the preference.
+    /// </summary>
+    Task SetEditorPreferenceAsync(string extension, DocumentEditorId editorId);
+
+    /// <summary>
     /// Opens a file resource as a document in the documents panel.
     /// </summary>
     Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null);
@@ -95,13 +107,14 @@ public interface IDocumentsService
     Task StoreActiveDocument();
 
     /// <summary>
-    /// Saves editor UI state (scroll position, view mode, etc.) for all open documents.
+    /// Saves editor state (scroll position, view mode, etc.) for all open documents.
     /// </summary>
-    Task StoreEditorStates();
+    Task StoreDocumentEditorStates();
 
     /// <summary>
-    /// Clears the stored editor state for a specific document.
-    /// Called when a document fails to open, to prevent stale state from persisting.
+    /// Saves editor state for a single document. Called when a document tab is about to close
+    /// so its state survives close/reopen within the same workspace session. Pass a non-empty state
+    /// string to persist, or null/empty to clear any existing entry for the resource.
     /// </summary>
-    Task ClearEditorState(ResourceKey fileResource);
+    Task StoreDocumentEditorState(ResourceKey fileResource, string? state);
 }

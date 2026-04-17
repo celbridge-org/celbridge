@@ -48,7 +48,6 @@ async function deserializeExcelData(base64Data, viewState = null) {
 
         await new Promise((resolve, reject) => {
             spread.import(file, () => {
-                console.log("Base64 data import completed.");
                 if (viewState) {
                     requestAnimationFrame(() => {
                         restoreViewState(viewState);
@@ -216,7 +215,6 @@ async function initializeEditor() {
                 try {
                     const base64Data = await serializeExcelData();
                     await client.document.save(base64Data);
-                    console.log("Exported workbook to host");
                 } catch (e) {
                     console.error('[Spreadsheet] Failed to save:', e);
                 }

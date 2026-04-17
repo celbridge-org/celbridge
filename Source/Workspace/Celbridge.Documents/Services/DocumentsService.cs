@@ -33,17 +33,14 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     /// <summary>
     /// Returns the currently open documents from the documents panel.
-    /// Must be called on the UI thread because it reads TabView-backed state.
-    /// MCP tools reach this via a Query command that runs on the command-queue worker,
-    /// which executes on the UI thread.
+    /// Reads TabView-backed state, so callers must be on the UI thread. MCP tools satisfy this
+    /// by going through a query command on the command-queue worker, which executes on the UI thread.
     /// </summary>
     public IReadOnlyList<OpenDocumentInfo> GetOpenDocuments() => DocumentsPanel.GetOpenDocuments();
 
     /// <summary>
-    /// Returns the number of visible document sections from the documents panel.
-    /// Must be called on the UI thread because it reads TabView-backed state.
-    /// MCP tools reach this via a Query command that runs on the command-queue worker,
-    /// which executes on the UI thread.
+    /// Returns the number of visible document sections. Reads an int, which is atomic in .NET,
+    /// so this property is safe to call from any thread.
     /// </summary>
     public int SectionCount => DocumentsPanel.SectionCount;
 
@@ -285,6 +282,41 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
+    public async Task<DocumentEditorId> GetEditorPreferenceAsync(string extension)
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
+        var preferredId = await workspaceSettings.GetPropertyAsync<string>(preferenceKey);
+
+        // TryParse handles empty/null/malformed strings; callers are responsible
+        // for checking whether the returned id still maps to a registered editor.
+        if (string.IsNullOrEmpty(preferredId) || !DocumentEditorId.TryParse(preferredId, out var editorId))
+        {
+            return DocumentEditorId.Empty;
+        }
+
+        return editorId;
+    }
+
+    public async Task SetEditorPreferenceAsync(string extension, DocumentEditorId editorId)
+    {
+        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        Guard.IsNotNull(workspaceSettings);
+
+        var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
+
+        if (editorId.IsEmpty)
+        {
+            // Empty editorId signals that the user wants to clear the preference for this extension
+            await workspaceSettings.DeletePropertyAsync(preferenceKey);
+            return;
+        }
+
+        await workspaceSettings.SetPropertyAsync(preferenceKey, editorId.ToString());
+    }
+
     public bool CanAccessFile(string resourcePath)
     {
         if (string.IsNullOrEmpty(resourcePath) ||
@@ -420,9 +452,9 @@ public class DocumentsService : IDocumentsService, IDisposable
                 document.Address.SectionIndex,
                 document.Address.TabOrder,
                 document.EditorId.ToString()))
-            .OrderBy(addr => addr.WindowIndex)
-            .ThenBy(addr => addr.SectionIndex)
-            .ThenBy(addr => addr.TabOrder)
+            .OrderBy(address => address.WindowIndex)
+            .ThenBy(address => address.SectionIndex)
+            .ThenBy(address => address.TabOrder)
             .ToList();
 
         await workspaceSettings.SetPropertyAsync(DocumentLayoutKey, storedAddresses);
@@ -447,7 +479,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         await workspaceSettings.SetPropertyAsync(SectionRatiosKey, ratios);
     }
 
-    public async Task StoreEditorStates()
+    public async Task StoreDocumentEditorStates()
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
@@ -471,23 +503,17 @@ public class DocumentsService : IDocumentsService, IDisposable
                 continue;
             }
 
-            if (!documentView.IsEditorStateReady)
-            {
-                // Editor still initializing — preserve existing saved state
-                continue;
-            }
-
             try
             {
-                var state = await documentView.SaveEditorStateAsync();
+                // A null / empty return from TrySaveEditorStateAsync means the editor is either
+                // still initialising or has no state to contribute. In both cases we keep the
+                // previously saved state rather than overwriting it. Losing state on a transient
+                // "not ready" would surprise the user who carefully set scroll/zoom and then
+                // happens to reload a workspace while a tab is mid-init.
+                var state = await documentView.TrySaveEditorStateAsync();
                 if (!string.IsNullOrEmpty(state))
                 {
                     editorStates[resourceKey] = state;
-                }
-                else
-                {
-                    // Editor is ready but has no state — remove any stale entry
-                    editorStates.Remove(resourceKey);
                 }
             }
             catch (Exception ex)
@@ -506,26 +532,37 @@ public class DocumentsService : IDocumentsService, IDisposable
         await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
     }
 
-    public async Task ClearEditorState(ResourceKey fileResource)
+    public async Task StoreDocumentEditorState(ResourceKey fileResource, string? state)
     {
         var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
         Guard.IsNotNull(workspaceSettings);
 
         try
         {
-            var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey);
-            if (editorStates is not null && editorStates.Remove(fileResource.ToString()))
+            var editorStates = await workspaceSettings.GetPropertyAsync<Dictionary<string, string>>(DocumentEditorStatesKey)
+                ?? new Dictionary<string, string>();
+
+            var resourceKey = fileResource.ToString();
+            if (!string.IsNullOrEmpty(state))
             {
-                await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
+                editorStates[resourceKey] = state;
             }
+            else
+            {
+                editorStates.Remove(resourceKey);
+            }
+
+            await workspaceSettings.SetPropertyAsync(DocumentEditorStatesKey, editorStates);
         }
         catch (Exception ex)
         {
-            // Clearing state is best-effort: losing a stale entry is harmless, but we still log
-            // at debug level so unexpected failures are visible to developers.
-            _logger.LogDebug(ex, $"Failed to clear editor state for '{fileResource}'");
+            // Best-effort persistence: losing editor state is a user convenience, not data loss.
+            // Log at debug level so unexpected failures are visible without being alarming.
+            _logger.LogDebug(ex, $"Failed to store editor state for '{fileResource}'");
         }
     }
+
+
 
     public async Task RestorePanelState()
     {
@@ -634,7 +671,7 @@ public class DocumentsService : IDocumentsService, IDisposable
             if (openResult.IsFailure)
             {
                 _logger.LogWarning(openResult, $"Failed to open previously open document '{fileResource}'");
-                await ClearEditorState(fileResource);
+                await StoreDocumentEditorState(fileResource, null);
             }
         }
 
@@ -651,11 +688,10 @@ public class DocumentsService : IDocumentsService, IDisposable
             return;
         }
 
-        // Set the active document (which also selects it in its section)
+        // Set the active document. SectionContainer.SetActiveDocument also enforces the invariant
+        // that every populated section has a selected tab, so non-active sections that had tabs
+        // inserted during restore get a sensible default selection automatically.
         DocumentsPanel.ActiveDocument = selectedDocumentKey;
-
-        // Ensure all sections with tabs have a visible selected tab, not just the active section
-        DocumentsPanel.EnsureVisibleTabsSelected();
     }
 
     private async Task OpenDefaultReadme(IResourceRegistry resourceRegistry)
@@ -723,11 +759,9 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (documentEditorId.IsEmpty)
         {
             var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-            var preferenceKey = DocumentConstants.GetEditorPreferenceKey(extension);
-            var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-            var preferredEditorId = await workspaceSettings.GetPropertyAsync<string>(preferenceKey);
+            var preferredEditorId = await GetEditorPreferenceAsync(extension);
 
-            if (!string.IsNullOrEmpty(preferredEditorId))
+            if (!preferredEditorId.IsEmpty)
             {
                 var getPreferredFactoryResult = _documentEditorRegistry.GetFactoryById(preferredEditorId);
                 if (getPreferredFactoryResult.IsSuccess)
@@ -773,7 +807,7 @@ public class DocumentsService : IDocumentsService, IDisposable
         if (viewType == DocumentViewType.TextDocument)
         {
             // Check all factories to see if any can handle this text file
-            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(f => f.Priority))
+            foreach (var factory in _documentEditorRegistry.GetAllFactories().OrderBy(candidate => candidate.Priority))
             {
                 if (factory.CanHandleResource(fileResource, filePath))
                 {

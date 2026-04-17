@@ -20,7 +20,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
     public override string DisplayName => _resolvedDisplayName;
 
     public override IReadOnlyList<string> SupportedExtensions =>
-        _contribution.FileTypes.Select(ft => ft.FileExtension).ToList();
+        _contribution.FileTypes.Select(fileType => fileType.FileExtension).ToList();
 
     public override EditorPriority Priority => _contribution.Priority;
 

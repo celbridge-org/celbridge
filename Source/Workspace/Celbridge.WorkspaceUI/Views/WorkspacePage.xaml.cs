@@ -196,7 +196,7 @@ public sealed partial class WorkspacePage : Page
         messengerService.UnregisterAll(this);
 
         // Save editor states before closing documents, while editors are still alive
-        await workspaceService.DocumentsService.StoreEditorStates();
+        await workspaceService.DocumentsService.StoreDocumentEditorStates();
 
         // Close all open documents and clean up their WebView2 resources
         workspaceService.DocumentsPanel.Shutdown();

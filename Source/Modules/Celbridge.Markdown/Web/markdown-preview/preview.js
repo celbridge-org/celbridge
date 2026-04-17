@@ -357,8 +357,6 @@ function init() {
 
     // Set up scroll-to-sync handler so the host can track the preview's scroll position
     setupScrollToSync();
-
-    console.log('Markdown preview initialized');
 }
 
 // Flag set when the host initiated a scroll, so we don't echo it back

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Celbridge.Commands;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -8,7 +9,7 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public override CommandFlags CommandFlags => CommandFlags.Query;
+    public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     public ResourceKey Resource { get; set; }
     public int Depth { get; set; } = 3;
@@ -23,36 +24,33 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public override Task<Result> ExecuteAsync()
+    public override async Task<Result> ExecuteAsync()
     {
+        await Task.CompletedTask;
+
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"Resource not found: '{Resource}'"));
+            return Result.Fail($"Resource not found: '{Resource}'");
         }
 
         if (getResult.Value is not IFolderResource folderResource)
         {
-            return Task.FromResult<Result>(Result.Fail($"Resource is not a folder: '{Resource}'"));
+            return Result.Fail($"Resource is not a folder: '{Resource}'");
         }
 
         Regex? globRegex = null;
         if (!string.IsNullOrEmpty(Glob))
         {
-            // Inlined from GlobHelper.GlobToRegex. Resources does not depend on Utilities,
-            // so the conversion is duplicated here rather than pulling in the extra reference.
-            var escaped = Regex.Escape(Glob)
-                .Replace("\\*", ".*")
-                .Replace("\\?", ".");
-            globRegex = new Regex($"^{escaped}$", RegexOptions.IgnoreCase);
+            globRegex = new Regex(GlobHelper.GlobToRegex(Glob), RegexOptions.IgnoreCase);
         }
 
         var rootNode = BuildSnapshot(folderResource, Depth, globRegex, TypeFilter);
         ResultValue = new FileTreeSnapshot(rootNode);
 
-        return Task.FromResult(Result.Ok());
+        return Result.Ok();
     }
 
     private static FileTreeSnapshotNode? BuildSnapshot(

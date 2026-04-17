@@ -91,10 +91,22 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null)
+    public IChoiceDialog CreateChoiceDialog(string titleText, string messageText, IReadOnlyList<string> options, int defaultIndex = 0, ChoiceDialogCheckbox? checkbox = null, string? primaryButtonText = null, string? secondaryButtonText = null)
     {
         var dialog = new ChoiceDialog();
         dialog.Initialize(titleText, messageText, options, defaultIndex, checkbox);
+
+        // Only override the default button text if custom text is provided
+        if (primaryButtonText is not null)
+        {
+            dialog.PrimaryButtonText = primaryButtonText;
+        }
+
+        if (secondaryButtonText is not null)
+        {
+            dialog.SecondaryButtonText = secondaryButtonText;
+        }
+
         return dialog;
     }
 }

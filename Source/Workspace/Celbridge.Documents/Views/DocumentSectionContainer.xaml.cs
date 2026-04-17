@@ -223,11 +223,11 @@ public sealed partial class DocumentSectionContainer : UserControl
         int ratioIndex = 0;
         for (int i = 0; i < RootGrid.ColumnDefinitions.Count && ratioIndex < ratios.Count; i++)
         {
-            var colDef = RootGrid.ColumnDefinitions[i];
+            var columnDefinition = RootGrid.ColumnDefinitions[i];
             // Skip splitter columns (odd indices)
             if (i % 2 == 0)
             {
-                colDef.Width = new GridLength(ratios[ratioIndex], GridUnitType.Star);
+                columnDefinition.Width = new GridLength(ratios[ratioIndex], GridUnitType.Star);
                 ratioIndex++;
             }
         }
@@ -415,6 +415,7 @@ public sealed partial class DocumentSectionContainer : UserControl
             _activeSectionIndex = 0;
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
+            EnsureVisibleTabsSelected();
             return;
         }
 
@@ -431,6 +432,12 @@ public sealed partial class DocumentSectionContainer : UserControl
             UpdateTabSelectionIndicators();
             ActiveDocumentChanged?.Invoke(_activeDocument);
         }
+
+        // During workspace restore many tabs are inserted with Activate=false, so non-active
+        // sections end up with no selected tab. SetActiveDocument is the hook that runs after
+        // all of those inserts finish, so enforce the "every populated section has a visible
+        // selected tab" invariant here.
+        EnsureVisibleTabsSelected();
     }
 
     /// <summary>
@@ -753,12 +760,12 @@ public sealed partial class DocumentSectionContainer : UserControl
         // Set all section columns to equal star values
         for (int i = 0; i < RootGrid.ColumnDefinitions.Count; i++)
         {
-            var colDef = RootGrid.ColumnDefinitions[i];
+            var columnDefinition = RootGrid.ColumnDefinitions[i];
             // Section columns are at even indices (0, 2, 4)
             // Splitter columns are at odd indices (1, 3)
             if (i % 2 == 0)
             {
-                colDef.Width = new GridLength(1, GridUnitType.Star);
+                columnDefinition.Width = new GridLength(1, GridUnitType.Star);
             }
         }
 
@@ -841,7 +848,7 @@ public sealed partial class DocumentSectionContainer : UserControl
     /// Ensures each section that contains tabs has a selected tab.
     /// Sections that already have a selection are left unchanged.
     /// </summary>
-    public void EnsureVisibleTabsSelected()
+    private void EnsureVisibleTabsSelected()
     {
         for (int i = 0; i < _sectionCount && i < _sections.Count; i++)
         {

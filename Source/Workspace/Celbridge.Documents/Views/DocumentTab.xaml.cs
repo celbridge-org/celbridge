@@ -3,7 +3,6 @@ using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
 using Celbridge.UserInterface.Helpers;
-using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Documents.Views;
@@ -212,14 +211,7 @@ public partial class DocumentTab : TabViewItem
         MoveRightMenuItem.Visibility = canMoveRight ? Visibility.Visible : Visibility.Collapsed;
 
         // Show "Reopen with..." only when there are multiple editors registered for this file type
-        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        if (workspaceWrapper.IsWorkspacePageLoaded)
-        {
-            var extension = System.IO.Path.GetExtension(ViewModel.FileResource.ToString()).ToLowerInvariant();
-            var factories = workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
-                .GetFactoriesForFileExtension(extension);
-            ReopenWithMenuItem.Visibility = factories.Count >= 2 ? Visibility.Visible : Visibility.Collapsed;
-        }
+        ReopenWithMenuItem.Visibility = ViewModel.HasMultipleCompatibleEditors() ? Visibility.Visible : Visibility.Collapsed;
 
         // Show the separator only if at least one move option is visible
         MoveSeparator.Visibility = (canMoveLeft || canMoveRight) ? Visibility.Visible : Visibility.Collapsed;

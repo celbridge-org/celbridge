@@ -136,7 +136,8 @@ public static class HostDocumentExtensions
 
     /// <summary>
     /// Sends previously saved editor state to the WebView for restoration.
+    /// Returns when the WebView has acknowledged processing the state.
     /// </summary>
-    public static Task NotifyRestoreStateAsync(this CelbridgeHost host, string state)
+    public static Task RestoreStateAsync(this CelbridgeHost host, string state)
         => host.Rpc.InvokeAsync(DocumentRpcMethods.RestoreState, state);
 }

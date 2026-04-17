@@ -123,9 +123,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         await Task.CompletedTask;
     }
 
-    public virtual bool IsEditorStateReady => true;
-
-    public virtual Task<string?> SaveEditorStateAsync()
+    public virtual Task<string?> TrySaveEditorStateAsync()
     {
         return Task.FromResult<string?>(null);
     }

@@ -457,6 +457,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var section = location.Section;
             var documentTab = location.Tab;
 
+            // Capture editor state before the document view is torn down by CloseDocument.
+            // If the close is cancelled this value is discarded.
+            var capturedEditorState = await TryCaptureEditorStateAsync(documentTab);
+
             var closeResult = await documentTab.ViewModel.CloseDocument(forceClose);
             if (closeResult.IsFailure)
             {
@@ -466,6 +470,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             if (closeResult.Value == CloseDocumentOutcome.Closed)
             {
+                // Persist the captured state so the next open can restore it. The service call
+                // is best-effort and handles its own errors.
+                await ViewModel.StoreDocumentEditorState(fileResource, capturedEditorState);
+
                 // Get the tab index before removing it (needed for selecting next document)
                 int tabIndex = section.GetTabIndex(documentTab);
 
@@ -485,6 +493,28 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         // state we were trying to get into anyway, so we consider this a success.
 
         return Result.Ok();
+    }
+
+    /// <summary>
+    /// Returns the editor state JSON for the given tab, or null if the view isn't ready, hasn't
+    /// been created, or anything throws. Best-effort: editor state is a user convenience, not data.
+    /// </summary>
+    private static async Task<string?> TryCaptureEditorStateAsync(DocumentTab documentTab)
+    {
+        var documentView = documentTab.ViewModel.DocumentView;
+        if (documentView is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await documentView.TrySaveEditorStateAsync();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<Result> SaveModifiedDocuments(double deltaTime)
@@ -704,17 +734,12 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 }
 
                 var disambiguatedNames = PathDisambiguationHelper.DisambiguatePaths(tabsToDisambiguate);
-                foreach (var kvp in disambiguatedNames)
+                foreach (var entry in disambiguatedNames)
                 {
-                    kvp.Key.ViewModel.DocumentName = kvp.Value;
+                    entry.Key.ViewModel.DocumentName = entry.Value;
                 }
             }
         }
-    }
-
-    public void EnsureVisibleTabsSelected()
-    {
-        SectionContainer.EnsureVisibleTabsSelected();
     }
 
     public void Shutdown()
@@ -947,7 +972,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
     private Task ReopenTab(DocumentTab tab)
     {
-        // Reopen using the current editor — no dialog
+        // Reopen using the current editor (no dialog)
         return ReopenTabWithEditor(tab, tab.ViewModel.EditorId);
     }
 
@@ -961,7 +986,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         var editorChoices = ViewModel.GetChoicesForFileExtension(extension, tab.ViewModel.EditorId);
         if (editorChoices is not null)
         {
-            // Multiple editors available — show choice dialog
+            // Multiple editors available, show choice dialog
             var title = _stringLocalizer.GetString("OpenWithDialog_Title");
             var message = _stringLocalizer.GetString("OpenWithDialog_Message");
             var checkbox = new ChoiceDialogCheckbox(_stringLocalizer.GetString("OpenWithDialog_UseAsDefault"));
@@ -977,7 +1002,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             if (choiceResult.Value.CheckboxChecked)
             {
-                await ViewModel.StoreEditorPreferenceAsync(extension, selectedEditorId);
+                ViewModel.StoreEditorPreference(extension, selectedEditorId);
             }
         }
 
@@ -996,7 +1021,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         string? editorState = null;
         if (tab.ViewModel.DocumentView is not null)
         {
-            editorState = await tab.ViewModel.DocumentView.SaveEditorStateAsync();
+            editorState = await tab.ViewModel.DocumentView.TrySaveEditorStateAsync();
         }
 
         // Close then reopen via the command service, which processes them sequentially

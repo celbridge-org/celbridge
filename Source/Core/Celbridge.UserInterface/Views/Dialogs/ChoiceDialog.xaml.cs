@@ -26,7 +26,6 @@ public sealed partial class ChoiceDialog : ContentDialog, IChoiceDialog
     {
         ViewModel.TitleText = titleText;
         ViewModel.MessageText = messageText;
-        ViewModel.Options = new List<string>(options);
         ViewModel.SelectedIndex = defaultIndex;
 
         foreach (var option in options)

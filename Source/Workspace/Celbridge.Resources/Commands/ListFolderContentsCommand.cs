@@ -7,7 +7,7 @@ public class ListFolderContentsCommand : CommandBase, IListFolderContentsCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public override CommandFlags CommandFlags => CommandFlags.Query;
+    public override CommandFlags CommandFlags => CommandFlags.SuppressCommandLog;
 
     public ResourceKey Resource { get; set; }
 
@@ -19,19 +19,21 @@ public class ListFolderContentsCommand : CommandBase, IListFolderContentsCommand
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public override Task<Result> ExecuteAsync()
+    public override async Task<Result> ExecuteAsync()
     {
+        await Task.CompletedTask;
+
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"Resource not found: '{Resource}'"));
+            return Result.Fail($"Resource not found: '{Resource}'");
         }
 
         if (getResult.Value is not IFolderResource folderResource)
         {
-            return Task.FromResult<Result>(Result.Fail($"Resource is not a folder: '{Resource}'"));
+            return Result.Fail($"Resource is not a folder: '{Resource}'");
         }
 
         var entries = new List<FolderContentsEntry>();
@@ -67,6 +69,6 @@ public class ListFolderContentsCommand : CommandBase, IListFolderContentsCommand
 
         ResultValue = new FolderContentsSnapshot(entries);
 
-        return Task.FromResult(Result.Ok());
+        return Result.Ok();
     }
 }

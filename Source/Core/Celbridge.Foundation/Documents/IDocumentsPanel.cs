@@ -70,12 +70,6 @@ public interface IDocumentsPanel
     Task<Result> ChangeDocumentResource(ResourceKey oldResource, DocumentViewType oldDocumentType, ResourceKey newResource, string newResourcePath, DocumentViewType newDocumentType);
 
     /// <summary>
-    /// Ensures each section that contains tabs has a selected tab visible.
-    /// Sections that already have a selection are left unchanged.
-    /// </summary>
-    void EnsureVisibleTabsSelected();
-
-    /// <summary>
     /// Closes all open documents and cleans up their resources. Called when the workspace is being unloaded.
     /// </summary>
     void Shutdown();
