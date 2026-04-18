@@ -25,6 +25,13 @@ public record CodeEditorOptions
     public bool MinimapEnabled { get; init; } = true;
 
     /// <summary>
+    /// URL of an ES module that implements the split-editor preview contract
+    /// When non-null, the editor loads the module into a sandboxed iframe alongside Monaco.
+    /// When null, the editor is a plain code view.
+    /// </summary>
+    public string? PreviewRendererUrl { get; init; } = null;
+
+    /// <summary>
     /// Default options suitable for most editing scenarios.
     /// </summary>
     public static CodeEditorOptions Default => new();

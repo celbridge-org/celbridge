@@ -2,22 +2,158 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <!-- Suppress default favicon.ico request so it doesn't show as a 404 in the console. -->
+    <link rel="icon" href="data:," />
     <link rel="stylesheet"
           data-name="vs/editor/editor.main"
           href="./min/vs/editor/editor.main.css" />
     <style>
-        html, body { height: 100%; margin: 0; }
-        #container {
-            height: 100vh;
+        html, body {
+            height: 100%;
+            margin: 0;
             overflow: hidden;
+        }
+
+        /* Theme via [data-theme] attribute (WebView2 doesn't reliably
+           re-evaluate prefers-color-scheme). Accent color is hardcoded
+           because the CSS AccentColor keyword renders as transparent. */
+        :root {
+            --accent-color: #0078D4;
+            --divider-base-color: rgba(0, 0, 0, 0.0803);
+        }
+        [data-theme="dark"] {
+            --accent-color: #60CDFF;
+            --divider-base-color: rgba(255, 255, 255, 0.0837);
+        }
+
+        #split-root {
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #editor-pane {
+            flex: 1 1 0;
+            min-width: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #container {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #divider {
+            flex: 0 0 8px;
+            position: relative;
+            cursor: col-resize;
+            user-select: none;
+            display: none;
+            background-color: transparent;
+            z-index: 100;
+        }
+
+        /* Persistent thin divider line, matches DividerBrush */
+        #divider::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            transform: translateX(-50%);
+            background-color: var(--divider-base-color);
+            pointer-events: none;
+        }
+
+        /* Accent-colored overlay, fades in on hover, held during drag.
+           Matches the XAML Splitter's 200ms-delay 200ms-fade animation. */
+        #divider::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            transform: translateX(-50%);
+            background-color: var(--accent-color);
+            opacity: 0;
+            transition: opacity 200ms ease-out 200ms;
+            pointer-events: none;
+        }
+
+        #divider:hover::after,
+        #divider.dragging::after {
+            opacity: 1;
+        }
+
+        /* During drag, suppress the fade timing so the accent line stays solid
+           even when the pointer momentarily leaves the 8px grab area. */
+        #divider.dragging::after {
+            transition: opacity 0ms;
+        }
+
+        /* During drag, thicken the base line to 4px to match the Splitter's
+           DraggingLineThickness. */
+        #divider.dragging::before {
+            width: 4px;
+            background-color: var(--accent-color);
+        }
+
+        #preview-pane {
+            flex: 1 1 0;
+            min-width: 0;
+            height: 100%;
+            display: none;
+        }
+
+        #preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        /* View mode presentations */
+        #split-root.mode-source #divider,
+        #split-root.mode-source #preview-pane {
+            display: none;
+        }
+
+        #split-root.mode-split #divider,
+        #split-root.mode-split #preview-pane {
+            display: block;
+        }
+
+        #split-root.mode-preview #editor-pane,
+        #split-root.mode-preview #divider {
+            display: none;
+        }
+
+        #split-root.mode-preview #preview-pane {
+            display: block;
+            flex: 1 1 auto;
         }
     </style>
 </head>
 <body>
-    <div id="container"></div>
+    <div id="split-root" class="mode-source">
+        <div id="editor-pane">
+            <div id="container"></div>
+        </div>
+        <div id="divider"></div>
+        <div id="preview-pane">
+            <!-- No sandbox: the iframe needs same-origin access for contentDocument,
+                 and allow-same-origin + allow-scripts is equivalent to no sandbox. -->
+            <iframe id="preview-iframe"
+                    src="about:blank"></iframe>
+        </div>
+    </div>
 
-        <!-- Step 1: Load Monaco Editor AMD Loader -->
-        <script src="./min/vs/loader.js"></script>
-        <script type="module" src="monaco.js"></script>
-    </body>
-    </html>
+    <!-- Step 1: Load Monaco Editor AMD Loader -->
+    <script src="./min/vs/loader.js"></script>
+    <script type="module" src="monaco.js"></script>
+</body>
+</html>

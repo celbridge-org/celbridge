@@ -26,9 +26,9 @@ celbridge-client/
 ├── localization.js       # Localization utilities for WebView editors
 ├── types.js              # JSDoc type definitions
 ├── api/                  # API modules
-│   ├── code-preview-api.js  # Code preview operations
 │   ├── dialog-api.js     # Dialog operations
 │   ├── document-api.js   # Document operations
+│   ├── input-api.js      # Input events (keyboard, link clicks, scroll)
 │   ├── localization-api.js
 │   └── theme-api.js      # Theme events
 ├── core/

@@ -6,7 +6,7 @@ namespace Celbridge.Markdown.Services;
 
 /// <summary>
 /// Factory for creating Markdown document views using the unified CodeEditorDocumentView.
-/// Configures preview rendering and snippet toolbar for Markdown editing.
+/// Enables the in-editor markdown preview and attaches the snippet toolbar.
 /// </summary>
 public class MarkdownEditorFactory : DocumentEditorFactoryBase
 {
@@ -25,14 +25,21 @@ public class MarkdownEditorFactory : DocumentEditorFactoryBase
         _stringLocalizer = stringLocalizer;
     }
 
+    // URL of the markdown preview ES module served by Monaco's virtual host.
+    // The split-editor preview contract is generic: point this at any module that exports
+    // the initialize/render/setBasePath/setScrollPercentage/getScrollPercentage functions.
+    // Must use the same scheme as Monaco's host page so the iframe is same-origin and the
+    // parent can manipulate its contentDocument directly.
+    private const string MarkdownPreviewRendererUrl =
+        "http://monaco.celbridge/markdown-preview/preview-module.js";
+
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
     {
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<CodeEditorDocumentView>();
 
-        // Configure the preview renderer
-        var previewRenderer = new MarkdownPreviewRenderer();
-        view.ConfigurePreview(previewRenderer);
+        // Attach the markdown preview renderer
+        view.SetPreviewRenderer(MarkdownPreviewRendererUrl);
 
         // Default to Preview mode for Markdown files
         view.InitialViewMode = SplitEditorViewMode.Preview;

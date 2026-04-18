@@ -10,5 +10,6 @@ internal sealed class CodeEditorState
     public string Content { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
     public string ResourceKey { get; set; } = string.Empty;
+    public string ProjectFolderPath { get; set; } = string.Empty;
     public Func<Task<string>>? ContentLoader { get; set; }
 }

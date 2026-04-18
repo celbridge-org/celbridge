@@ -15,6 +15,9 @@ internal static class CodeEditorRpcMethods
     public const string InsertText = "codeEditor/insertText";
     public const string ApplyEdits = "codeEditor/applyEdits";
     public const string ApplyCustomization = "codeEditor/applyCustomization";
+    public const string SetPreviewRenderer = "codeEditor/setPreviewRenderer";
+    public const string SetViewMode = "codeEditor/setViewMode";
+    public const string SetBasePath = "codeEditor/setBasePath";
 }
 
 /// <summary>
@@ -73,7 +76,8 @@ public class CodeEditorHost : IDisposable
             language,
             scrollBeyondLastLine = options.ScrollBeyondLastLine,
             wordWrap = options.WordWrap,
-            minimapEnabled = options.MinimapEnabled
+            minimapEnabled = options.MinimapEnabled,
+            previewRendererUrl = options.PreviewRendererUrl
         });
     }
 
@@ -133,6 +137,32 @@ public class CodeEditorHost : IDisposable
     public Task ApplyCustomizationAsync(string scriptUrl)
     {
         return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.ApplyCustomization, new { scriptUrl });
+    }
+
+    /// <summary>
+    /// Attaches or detaches a split-editor preview renderer.
+    /// Pass a URL to an ES module that implements the preview contract to enable the
+    /// split editor or pass null to disable it.
+    /// </summary>
+    public Task SetPreviewRendererAsync(string? rendererUrl)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.SetPreviewRenderer, new { rendererUrl });
+    }
+
+    /// <summary>
+    /// Sets the current view mode (source | split | preview).
+    /// </summary>
+    public Task SetViewModeAsync(string viewMode)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.SetViewMode, new { viewMode });
+    }
+
+    /// <summary>
+    /// Sets the base path used by the preview renderer to resolve relative resource references.
+    /// </summary>
+    public Task SetBasePathAsync(string basePath)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.SetBasePath, new { basePath });
     }
 
     public void Dispose()

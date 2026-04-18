@@ -116,11 +116,12 @@ internal sealed class CodeEditorDocumentHandler : IHostDocument
 
     private DocumentMetadata CreateMetadata()
     {
-        var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        // Monaco does not ship celbridge.js localization files; sending an empty
+        // locale tells the client not to attempt a /localization/{locale}.json fetch.
         return new DocumentMetadata(
             _state.FilePath,
             _state.ResourceKey,
             Path.GetFileName(_state.FilePath),
-            locale);
+            string.Empty);
     }
 }

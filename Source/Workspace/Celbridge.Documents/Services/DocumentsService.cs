@@ -139,7 +139,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                     if (result.IsFailure)
                     {
                         _logger.LogWarning(result,
-                            $"Failed to register contribution editor factory for: {contribution.Package.Name}");
+                            $"Failed to register contribution editor factory for: {contribution?.Package?.Name}");
                     }
                 }
                 catch (Exception ex)

@@ -1,15 +1,10 @@
 using System.Text.Json;
 using Celbridge.Code.ViewModels;
-using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.UserInterface;
-using Celbridge.UserInterface.Helpers;
-using Celbridge.UserInterface.Views.Controls;
-using Celbridge.WebView;
 using Celbridge.Workspace;
 
 namespace Celbridge.Code.Views;
@@ -26,8 +21,9 @@ public enum SplitEditorViewMode
 
 /// <summary>
 /// Unified document view for editing code/text files using a Monaco code editor.
-/// Optionally supports a preview panel (configured via ICodePreviewRenderer) with split/preview/source view modes.
-/// Accepts custom toolbar content via the CustomToolbar property (e.g., Markdown snippet buttons).
+/// Optionally enables an in-page split-editor preview (via SetPreviewRenderer) with
+/// split/preview/source view modes. Accepts custom toolbar content via the CustomToolbar
+/// property (e.g. format-specific snippet buttons).
 /// </summary>
 public sealed partial class CodeEditorDocumentView : DocumentView
 {
@@ -39,24 +35,14 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     private readonly CodeEditorViewModel _viewModel;
 
-    private CodeEditorPreviewHelper? _previewHelper;
     private string? _pendingEditorStateJson;
     private bool _isEditorReady;
-
-    private readonly ColumnDefinition _editorColumn;
-    private readonly ColumnDefinition _splitterColumn;
-    private readonly ColumnDefinition _previewColumn;
-    private readonly Splitter _splitter;
-    private readonly Grid _previewContainer;
-    private SplitterHelper? _splitterHelper;
+    private bool _hasPreviewRenderer;
+    private string? _previewRendererUrl;
     private CancellationTokenSource? _reloadDebounceCancellation;
     private int _reloadDebounceVersion;
     private double _lastScrollPercentage;
-    private double _editorRatio = 1.0;
-    private double _previewRatio = 1.0;
-    private double _totalDragDelta;
-    private const double MinDragDistance = 3.0;
-    private const int MinSectionSize = 200;
+    private double _lastPreviewScrollPercentage;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -79,7 +65,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
     /// <summary>
     /// Optional initial view mode to apply after LoadContent() initializes the editor.
-    /// Only used when a preview renderer is configured. Default is null (stays in Source mode).
+    /// Only used when a preview renderer is attached. Default is null (stays in Source mode).
     /// </summary>
     public SplitEditorViewMode? InitialViewMode { get; set; }
 
@@ -157,94 +143,46 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         // Subscribe to CodeEditor events
         MonacoEditor.ContentChanged += OnMonacoContentChanged;
-        MonacoEditor.ContentLoaded += OnMonacoContentLoaded;
         MonacoEditor.EditorFocused += OnMonacoEditorFocused;
         MonacoEditor.ScrollPositionChanged += OnMonacoScrollPositionChanged;
+        MonacoEditor.PreviewScrollPositionChanged += OnMonacoPreviewScrollPositionChanged;
 
         // Subscribe to ViewModel reload requests (external file changes)
         _viewModel.ReloadRequested += OnViewModelReloadRequested;
-
-        // Build the split/preview layout programmatically
-        _editorColumn = new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) };
-        _splitterColumn = new ColumnDefinition { Width = new GridLength(0) };
-        _previewColumn = new ColumnDefinition { Width = new GridLength(0) };
-
-        EditorContainer.ColumnDefinitions.Add(_editorColumn);
-        EditorContainer.ColumnDefinitions.Add(_splitterColumn);
-        EditorContainer.ColumnDefinitions.Add(_previewColumn);
-
-        // Place the MonacoEditor in the first column
-        Grid.SetColumn(MonacoEditor, 0);
-
-        // Create splitter
-        _splitter = new Splitter
-        {
-            Orientation = Orientation.Vertical,
-            Visibility = Visibility.Collapsed
-        };
-        _splitter.DragStarted += OnSplitterDragStarted;
-        _splitter.DragDelta += OnSplitterDragDelta;
-        _splitter.DragCompleted += OnSplitterDragCompleted;
-        _splitter.DoubleClicked += OnSplitterDoubleClicked;
-        Grid.SetColumn(_splitter, 1);
-        EditorContainer.Children.Add(_splitter);
-
-        // Create preview container
-        _previewContainer = new Grid
-        {
-            Visibility = Visibility.Collapsed,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
-        Grid.SetColumn(_previewContainer, 2);
-        EditorContainer.Children.Add(_previewContainer);
-
-        // Subscribe to theme changes for preview
-        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChanged);
     }
 
-    #region Preview Configuration
-
     /// <summary>
-    /// Configures the editor with a preview renderer.
-    /// Call this before LoadContent() to enable the split editor with preview.
-    /// The project folder path and document path are filled in automatically by SetFileResource().
+    /// Attaches a split-editor preview renderer, or detaches the current one.
+    /// Pass a URL to an ES module that implements the preview contract to enable the
+    /// split editor; pass null to disable it. Call this before LoadContent() so the
+    /// editor initializes with the renderer wired in from the start.
     /// </summary>
-    public void ConfigurePreview(ICodePreviewRenderer previewRenderer)
+    public void SetPreviewRenderer(string? rendererUrl)
     {
-        _previewHelper = new CodeEditorPreviewHelper(
-            ServiceLocator.AcquireService<ILogger<CodeEditorPreviewHelper>>(),
-            ServiceLocator.AcquireService<ICommandService>(),
-            ServiceLocator.AcquireService<IWebViewFactory>(),
-            ServiceLocator.AcquireService<IUserInterfaceService>(),
-            _previewContainer,
-            MonacoEditor.GetContentAsync,
-            MonacoEditor.ScrollToPercentageAsync);
+        _previewRendererUrl = rendererUrl;
+        _hasPreviewRenderer = !string.IsNullOrEmpty(rendererUrl);
 
-        _previewHelper.Configure(previewRenderer);
+        if (_hasPreviewRenderer)
+        {
+            // Disable scroll-beyond-last-line for proper scroll sync with the preview pane.
+            MonacoEditor.Options = MonacoEditor.Options with
+            {
+                PreviewRendererUrl = rendererUrl,
+                ScrollBeyondLastLine = false
+            };
+            ViewModePanel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            MonacoEditor.Options = MonacoEditor.Options with { PreviewRendererUrl = null };
+            ViewModePanel.Visibility = Visibility.Collapsed;
+        }
 
-        // Disable scroll-beyond-last-line for proper scroll sync with preview
-        MonacoEditor.Options = new CodeEditorOptions { ScrollBeyondLastLine = false };
-
-        // Show view mode buttons
-        ViewModePanel.Visibility = Visibility.Visible;
         UpdateToolbarVisibility();
     }
 
     /// <summary>
-    /// Updates the document path for resolving relative resources in the preview.
-    /// </summary>
-    public void UpdateDocumentPath(ResourceKey fileResource, string documentPath)
-    {
-        _previewHelper?.UpdateDocumentPath(fileResource, documentPath);
-    }
-
-    #endregion
-
-    #region View Mode
-
-    /// <summary>
-    /// Sets the view mode, updating the editor and preview panel layout accordingly.
+    /// Sets the view mode, updating the Monaco editor and preview pane layout accordingly.
     /// </summary>
     public void SetViewMode(SplitEditorViewMode viewMode)
     {
@@ -254,7 +192,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         }
 
         ViewMode = viewMode;
-        UpdatePreviewLayout(viewMode);
+        _ = MonacoEditor.SetViewModeAsync(viewMode.ToString().ToLowerInvariant());
         UpdateViewModeButtons(viewMode);
 
         ViewModeChanged?.Invoke(this, viewMode);
@@ -282,10 +220,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         SourceModeButton.IsChecked = viewMode == SplitEditorViewMode.Source;
     }
 
-    #endregion
-
-    #region Document Lifecycle
-
     public override async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         var result = await base.SetFileResource(fileResource);
@@ -294,10 +228,12 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             return result;
         }
 
-        // If preview is configured, fill in the paths from the registry
-        if (_previewHelper is not null)
+        // Push the base path to the preview renderer so relative resources resolve correctly.
+        // Harmless when no preview renderer is attached: the call is skipped.
+        if (_hasPreviewRenderer && _isEditorReady)
         {
-            _previewHelper.SetPaths(fileResource, ResourceRegistry.ProjectFolderPath, DocumentViewModel.FilePath);
+            var basePath = fileResource.GetParent().ToString();
+            await MonacoEditor.UpdateBasePathAsync(basePath);
         }
 
         return Result.Ok();
@@ -321,7 +257,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             content,
             language,
             _viewModel.FilePath,
-            _viewModel.FileResource.ToString());
+            _viewModel.FileResource.ToString(),
+            ResourceRegistry.ProjectFolderPath);
 
         if (initResult.IsFailure)
         {
@@ -330,8 +267,15 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         _isEditorReady = true;
 
+        // Push the preview base path now that the editor is ready to receive RPCs
+        if (_hasPreviewRenderer)
+        {
+            var basePath = _viewModel.FileResource.GetParent().ToString();
+            await MonacoEditor.UpdateBasePathAsync(basePath);
+        }
+
         // Apply the initial view mode after the editor is ready
-        if (_previewHelper is not null && InitialViewMode.HasValue)
+        if (_hasPreviewRenderer && InitialViewMode.HasValue)
         {
             SetViewMode(InitialViewMode.Value);
         }
@@ -403,7 +347,7 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             var endColumn = root.TryGetProperty("endColumn", out var endColProp) ? endColProp.GetInt32() : 0;
 
             // Switch to Split mode when navigating in Preview mode so the user can see the text selection
-            if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
+            if (ViewMode == SplitEditorViewMode.Preview && _hasPreviewRenderer)
             {
                 SetViewMode(SplitEditorViewMode.Split);
             }
@@ -448,8 +392,8 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         {
             // In Preview mode, Monaco is collapsed and its scroll is always zero.
             // The preview pane's scroll position is what the user actually sees.
-            var scrollPercentage = ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null
-                ? _previewHelper.LastScrollPercentage
+            var scrollPercentage = ViewMode == SplitEditorViewMode.Preview && _hasPreviewRenderer
+                ? _lastPreviewScrollPercentage
                 : _lastScrollPercentage;
 
             var state = new Dictionary<string, object>
@@ -496,13 +440,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             {
                 var scrollPercentage = scrollElement.GetDouble();
                 await MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
-
-                // In Preview mode, Monaco is collapsed so scrolling it has no visible effect.
-                // Scroll the preview pane directly to restore the user's view.
-                if (ViewMode == SplitEditorViewMode.Preview && _previewHelper is not null)
-                {
-                    _previewHelper.ScrollToPercentage(scrollPercentage);
-                }
             }
         }
         catch
@@ -519,12 +456,9 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             MonacoEditor.ContentChanged -= OnMonacoContentChanged;
             MonacoEditor.EditorFocused -= OnMonacoEditorFocused;
             MonacoEditor.ScrollPositionChanged -= OnMonacoScrollPositionChanged;
+            MonacoEditor.PreviewScrollPositionChanged -= OnMonacoPreviewScrollPositionChanged;
             MonacoEditor.ContentLoader = null;
             _viewModel.ReloadRequested -= OnViewModelReloadRequested;
-            _splitter.DragStarted -= OnSplitterDragStarted;
-            _splitter.DragDelta -= OnSplitterDragDelta;
-            _splitter.DragCompleted -= OnSplitterDragCompleted;
-            _splitter.DoubleClicked -= OnSplitterDoubleClicked;
 
             // Cancel and dispose any pending reload debounce timer
             _reloadDebounceCancellation?.Cancel();
@@ -538,13 +472,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
             // Cleanup code editor control
             await MonacoEditor.CleanupAsync();
-
-            // Cleanup preview
-            if (_previewHelper is not null)
-            {
-                await _previewHelper.CleanupAsync();
-                _previewHelper.Dispose();
-            }
         }
         catch (Exception ex)
         {
@@ -557,50 +484,11 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     /// </summary>
     public Task InsertTextAtCaretAsync(string text) => MonacoEditor.InsertTextAtCaretAsync(text);
 
-    #endregion
-
-    #region Monaco Event Handlers
-
     private void OnMonacoContentChanged()
     {
-        // Mark document as having unsaved changes
+        // Mark document as having unsaved changes. Preview updates are driven by monaco.js
+        // directly on the JS side; there is no host-side preview refresh to trigger here.
         _viewModel.OnTextChanged();
-
-        // Update preview if visible. The handler is invoked from the RPC pipeline on a worker
-        // thread; UpdateAsync ultimately calls CoreWebView2.PostWebMessageAsJson which has
-        // UI-thread affinity, so we marshal onto the dispatcher before triggering it.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (IsPreviewVisible && _previewHelper is not null)
-            {
-                _ = _previewHelper.UpdateAsync();
-            }
-        });
-    }
-
-    private void OnMonacoContentLoaded(ContentLoadedReason reason)
-    {
-        // The JS client emits document/contentLoaded whenever setValue completes. Only the
-        // external-reload case needs to refresh the preview here: the normal OnMonacoContentChanged
-        // path covers user edits, and the initial load's preview is rendered by the first
-        // InitializeAsync call. Monaco suppresses content change notifications during external
-        // reloads to avoid marking the document as unsaved, so without this hook the preview
-        // would go stale.
-        if (reason != ContentLoadedReason.ExternalReload)
-        {
-            return;
-        }
-
-        // This handler is invoked from the RPC pipeline on a worker thread. The preview update
-        // eventually calls into CoreWebView2, which has UI-thread affinity, so we must marshal
-        // onto the dispatcher before triggering UpdateAsync.
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (IsPreviewVisible && _previewHelper is not null)
-            {
-                _ = _previewHelper.UpdateAsync();
-            }
-        });
     }
 
     private void OnMonacoEditorFocused()
@@ -614,12 +502,17 @@ public sealed partial class CodeEditorDocumentView : DocumentView
     {
         // Track the editor's scroll percentage so SaveEditorStateAsync can persist it
         // across document close/reopen and workspace reloads. We deliberately do NOT
-        // forward the scroll to the preview pane: markdown source lines and their
-        // rendered output don't have matching heights, so percentage-based editor-to-
-        // preview sync makes the preview jump around distractingly while the user edits.
-        // The reverse direction (preview -> editor via OnSyncToEditor) remains active so
-        // readers can drag the preview to a section and the editor follows.
+        // forward the scroll to the preview pane: source lines and their rendered output
+        // don't have matching heights, so percentage-based editor-to-preview sync makes
+        // the preview jump around distractingly while the user edits. The reverse
+        // direction (preview -> editor via onSyncToEditor in monaco.js) remains active
+        // so readers can drag the preview to a section and the editor follows.
         _lastScrollPercentage = scrollPercentage;
+    }
+
+    private void OnMonacoPreviewScrollPositionChanged(double scrollPercentage)
+    {
+        _lastPreviewScrollPercentage = scrollPercentage;
     }
 
     private void OnViewModelReloadRequested(object? sender, EventArgs e)
@@ -703,10 +596,6 @@ public sealed partial class CodeEditorDocumentView : DocumentView
         }
     }
 
-    #endregion
-
-    #region Toolbar
-
     private void UpdateToolbarVisibility()
     {
         var hasViewModeButtons = ViewModePanel.Visibility == Visibility.Visible;
@@ -720,121 +609,4 @@ public sealed partial class CodeEditorDocumentView : DocumentView
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
-
-    #endregion
-
-    #region Preview Layout
-
-    private void UpdatePreviewLayout(SplitEditorViewMode viewMode)
-    {
-        switch (viewMode)
-        {
-            case SplitEditorViewMode.Source:
-                MonacoEditor.Visibility = Visibility.Visible;
-                _editorColumn.Width = new GridLength(1, GridUnitType.Star);
-                _splitterColumn.Width = new GridLength(0);
-                _previewColumn.Width = new GridLength(0);
-                _splitter.Visibility = Visibility.Collapsed;
-                _previewContainer.Visibility = Visibility.Collapsed;
-                break;
-
-            case SplitEditorViewMode.Split:
-                MonacoEditor.Visibility = Visibility.Visible;
-                _editorColumn.Width = new GridLength(_editorRatio, GridUnitType.Star);
-                _splitterColumn.Width = new GridLength(1, GridUnitType.Pixel);
-                _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
-                _splitter.Visibility = Visibility.Visible;
-                _previewContainer.Visibility = Visibility.Visible;
-                if (_previewHelper is not null)
-                {
-                    _ = _previewHelper.InitializeAsync();
-                }
-                break;
-
-            case SplitEditorViewMode.Preview:
-                MonacoEditor.Visibility = Visibility.Collapsed;
-                _editorColumn.Width = new GridLength(0);
-                _splitterColumn.Width = new GridLength(0);
-                _previewColumn.Width = new GridLength(1, GridUnitType.Star);
-                _splitter.Visibility = Visibility.Collapsed;
-                _previewContainer.Visibility = Visibility.Visible;
-                if (_previewHelper is not null)
-                {
-                    _ = _previewHelper.InitializeAsync();
-                }
-                break;
-        }
-    }
-
-    #endregion
-
-    #region Splitter
-
-    private void OnSplitterDragStarted(object? sender, EventArgs e)
-    {
-        _totalDragDelta = 0;
-
-        _splitterHelper ??= new SplitterHelper(
-            EditorContainer,
-            GridResizeMode.Columns,
-            firstIndex: 0,
-            secondIndex: 2,
-            minSize: MinSectionSize);
-
-        _splitterHelper.OnDragStarted();
-    }
-
-    private void OnSplitterDragDelta(object? sender, double delta)
-    {
-        _totalDragDelta += Math.Abs(delta);
-        _splitterHelper?.OnDragDelta(delta);
-    }
-
-    private void OnSplitterDragCompleted(object? sender, EventArgs e)
-    {
-        if (_totalDragDelta < MinDragDistance)
-        {
-            return;
-        }
-
-        ConvertColumnsToStar();
-    }
-
-    private void OnSplitterDoubleClicked(object? sender, EventArgs e)
-    {
-        _editorRatio = 1.0;
-        _previewRatio = 1.0;
-
-        _editorColumn.Width = new GridLength(1, GridUnitType.Star);
-        _previewColumn.Width = new GridLength(1, GridUnitType.Star);
-    }
-
-    private void ConvertColumnsToStar()
-    {
-        var editorWidth = _editorColumn.ActualWidth;
-        var previewWidth = _previewColumn.ActualWidth;
-        var totalWidth = editorWidth + previewWidth;
-
-        if (totalWidth <= 0)
-        {
-            return;
-        }
-
-        _editorRatio = editorWidth / totalWidth;
-        _previewRatio = previewWidth / totalWidth;
-
-        _editorColumn.Width = new GridLength(_editorRatio, GridUnitType.Star);
-        _previewColumn.Width = new GridLength(_previewRatio, GridUnitType.Star);
-    }
-
-    #endregion
-
-    #region Theme
-
-    private void OnThemeChanged(object recipient, ThemeChangedMessage message)
-    {
-        _previewHelper?.ApplyTheme();
-    }
-
-    #endregion
 }

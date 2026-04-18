@@ -83,6 +83,47 @@ class MonacoClient {
             handler(params.scriptUrl);
         });
     }
+
+    /**
+     * Registers a handler for preview-renderer attach/detach requests from the host.
+     * @param {function(string|null): void} handler - The handler function receiving the
+     *   renderer module URL (null to detach the current renderer).
+     */
+    onSetPreviewRenderer(handler) {
+        this.#transport.addEventListener('codeEditor/setPreviewRenderer', (params) => {
+            handler(params.rendererUrl ?? null);
+        });
+    }
+
+    /**
+     * Registers a handler for view-mode change requests from the host.
+     * @param {function(string): void} handler - The handler function receiving the view mode ('source' | 'split' | 'preview').
+     */
+    onSetViewMode(handler) {
+        this.#transport.addEventListener('codeEditor/setViewMode', (params) => {
+            handler(params.viewMode);
+        });
+    }
+
+    /**
+     * Registers a handler for base-path updates from the host.
+     * Used by the markdown preview to resolve relative resource paths.
+     * @param {function(string): void} handler - The handler function receiving the base path.
+     */
+    onSetBasePath(handler) {
+        this.#transport.addEventListener('codeEditor/setBasePath', (params) => {
+            handler(params.basePath);
+        });
+    }
+
+    /**
+     * Notifies the host that the preview pane scrolled.
+     * Used for state preservation across external reloads and session restore.
+     * @param {number} percentage - The preview scroll position as a percentage (0.0 to 1.0).
+     */
+    notifyPreviewScrolled(percentage) {
+        this.#transport.notify('input/previewScrollChanged', { scrollPercentage: percentage });
+    }
 }
 
 // Export singleton instance

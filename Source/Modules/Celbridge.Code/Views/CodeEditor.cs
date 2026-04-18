@@ -87,6 +87,12 @@ public sealed partial class CodeEditor : UserControl
     /// </summary>
     public event Action<double>? ScrollPositionChanged;
 
+    /// <summary>
+    /// Raised when the scroll position changes in the split-editor preview pane.
+    /// The parameter is the scroll percentage (0.0 to 1.0).
+    /// </summary>
+    public event Action<double>? PreviewScrollPositionChanged;
+
     public CodeEditor()
     {
         _logger = ServiceLocator.AcquireService<ILogger<CodeEditor>>();
@@ -142,7 +148,9 @@ public sealed partial class CodeEditor : UserControl
         _documentHandler.ContentLoaded += reason => ContentLoaded?.Invoke(reason);
 
         var inputHandler = new CodeEditorInputHandler(
-            scrollPercentage => ScrollPositionChanged?.Invoke(scrollPercentage));
+            _state,
+            scrollPercentage => ScrollPositionChanged?.Invoke(scrollPercentage),
+            scrollPercentage => PreviewScrollPositionChanged?.Invoke(scrollPercentage));
 
         _host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
         _host.AddLocalRpcTarget<IHostInput>(inputHandler);
@@ -187,12 +195,16 @@ public sealed partial class CodeEditor : UserControl
     /// Otherwise, performs full initialization.
     /// Waits for Monaco to signal that content is loaded before returning.
     /// </summary>
-    public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey)
+    public async Task<Result> InitializeAsync(string content, string language, string filePath, string resourceKey, string projectFolderPath = "")
     {
         _state.Content = content;
         _language = language;
         _state.FilePath = filePath;
         _state.ResourceKey = resourceKey;
+        if (!string.IsNullOrEmpty(projectFolderPath))
+        {
+            _state.ProjectFolderPath = projectFolderPath;
+        }
 
         // If not pre-initialized, do the full initialization now
         if (!_isPreInitialized)
@@ -207,6 +219,19 @@ public sealed partial class CodeEditor : UserControl
         if (_host is null)
         {
             return Result.Fail("Failed to initialize JSON-RPC host");
+        }
+
+        // Map the project folder so preview renderers can resolve relative image/resource URLs.
+        // Harmless when no preview renderer is attached because nothing references project.celbridge.
+        // Called here (not in PreInitializeAsync) because the project path isn't known
+        // during pre-warm; SetVirtualHostNameToFolderMapping is idempotent so calling it
+        // again on subsequent initializations is safe.
+        if (!string.IsNullOrEmpty(_state.ProjectFolderPath) && _webView?.CoreWebView2 is not null)
+        {
+            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "project.celbridge",
+                _state.ProjectFolderPath,
+                CoreWebView2HostResourceAccessKind.Allow);
         }
 
         var contentLoadedTcs = new TaskCompletionSource();
@@ -349,6 +374,46 @@ public sealed partial class CodeEditor : UserControl
         if (_host is not null)
         {
             await _host.ScrollToPercentageAsync(percentage);
+        }
+    }
+
+    /// <summary>
+    /// Attaches or detaches a split-editor preview renderer.
+    /// Pass a URL to an ES module that implements the preview contract to enable the
+    /// split editor; pass null to disable it.
+    /// Safe to call before or after InitializeAsync; pre-init values update the options
+    /// used by the first initialize RPC, post-init values drive the setPreviewRenderer RPC.
+    /// </summary>
+    public async Task SetPreviewRendererAsync(string? rendererUrl)
+    {
+        Options = Options with { PreviewRendererUrl = rendererUrl };
+
+        if (_host is not null)
+        {
+            await _host.SetPreviewRendererAsync(rendererUrl);
+        }
+    }
+
+    /// <summary>
+    /// Sets the current view mode (source | split | preview).
+    /// Only meaningful when a preview renderer is attached.
+    /// </summary>
+    public async Task SetViewModeAsync(string viewMode)
+    {
+        if (_host is not null)
+        {
+            await _host.SetViewModeAsync(viewMode);
+        }
+    }
+
+    /// <summary>
+    /// Updates the base path used by the preview renderer to resolve relative resource references.
+    /// </summary>
+    public async Task UpdateBasePathAsync(string basePath)
+    {
+        if (_host is not null)
+        {
+            await _host.SetBasePathAsync(basePath);
         }
     }
 

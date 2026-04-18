@@ -5,6 +5,12 @@ import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 import { monacoClient } from './monaco-client.js';
 
+const ViewMode = Object.freeze({
+    Source: 'source',
+    Split: 'split',
+    Preview: 'preview'
+});
+
 // State
 let editor = null;
 let client = null;
@@ -13,6 +19,27 @@ let currentLanguage = 'plaintext';
 let pendingNavigation = null;
 let isReloadingExternally = false;
 
+// Split-view / preview state. The preview renderer is format-agnostic: the host
+// supplies a URL to an ES module that implements the preview contract
+// (initialize / render / setBasePath / setScrollPercentage / getScrollPercentage).
+// Markdown, AsciiDoc, RST, or any future format is just a different module URL.
+let splitRootElement = null;
+let editorPaneElement = null;
+let dividerElement = null;
+let previewPaneElement = null;
+let previewIframe = null;
+let currentViewMode = ViewMode.Source;
+let previewRendererUrl = null;
+let previewModule = null;
+let previewModulePromise = null;
+let pendingBasePath = '';
+
+// Split-mode flex ratio (editor share of the total). Survives drags and mode
+// switches so returning to Split preserves the user's chosen proportion.
+let editorFlexShare = 0.5;
+const minFlexShare = 0.1;
+const maxFlexShare = 0.9;
+
 // Configure AMD loader and load Monaco
 require.config({ paths: { 'vs': './min/vs' } });
 require(['vs/editor/editor.main'], function() {
@@ -20,6 +47,9 @@ require(['vs/editor/editor.main'], function() {
 });
 
 function initializeEditor() {
+    cachePreviewDomElements();
+    setupDividerDrag();
+
     // Determine initial theme from system preference
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = prefersDark ? 'vs-dark' : 'vs-light';
@@ -43,12 +73,28 @@ function initializeEditor() {
     notifyClientReady();
 }
 
+function cachePreviewDomElements() {
+    splitRootElement = document.getElementById('split-root');
+    editorPaneElement = document.getElementById('editor-pane');
+    dividerElement = document.getElementById('divider');
+    previewPaneElement = document.getElementById('preview-pane');
+    previewIframe = document.getElementById('preview-iframe');
+}
+
 function setupThemeListener() {
-    // Listen for system color scheme changes (triggered by WebView2's PreferredColorScheme)
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        const theme = e.matches ? 'vs-dark' : 'vs-light';
-        monaco.editor.setTheme(theme);
-    });
+    // Listen for color scheme changes (triggered by WebView2's PreferredColorScheme).
+    // The CSS @media (prefers-color-scheme) queries don't consistently re-evaluate on
+    // WebView2 theme swaps, so we drive theme-dependent CSS via a data-theme attribute
+    // on <html> and toggle it from this listener alongside Monaco's built-in theme.
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const applyTheme = (isDark) => {
+        document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+        monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs-light');
+    };
+
+    applyTheme(mediaQuery.matches);
+    mediaQuery.addEventListener('change', (e) => applyTheme(e.matches));
 }
 
 function notifyClientReady() {
@@ -62,14 +108,14 @@ function notifyClientReady() {
 
 function setupLineEndings() {
     const isWindows = /windows/i.test(
-        navigator.userAgentData?.platform || 
-        navigator.platform || 
+        navigator.userAgentData?.platform ||
+        navigator.platform ||
         navigator.userAgent
     );
 
     const model = editor.getModel();
-    model.setEOL(isWindows 
-        ? monaco.editor.EndOfLineSequence.CRLF 
+    model.setEOL(isWindows
+        ? monaco.editor.EndOfLineSequence.CRLF
         : monaco.editor.EndOfLineSequence.LF
     );
 }
@@ -78,6 +124,13 @@ function setupContentChangeListener() {
     editor.getModel().onDidChangeContent((event) => {
         if (window.isWebView && isInitialized && client && !isReloadingExternally) {
             client.document.notifyChanged();
+        }
+
+        // Sync the preview to the latest editor content. No RPC boundary; the
+        // renderer runs inside this same Monaco page and writes HTML into the
+        // sandboxed preview iframe.
+        if (previewModule) {
+            previewModule.render(editor.getValue());
         }
     });
 }
@@ -208,6 +261,14 @@ async function handleEditorInitialize(params) {
             monaco.editor.setModelLanguage(editor.getModel(), language);
         }
 
+        // Start loading the preview renderer in parallel with document init when the
+        // host specified one. Fire-and-forget: document init continues regardless;
+        // the module calls render(currentContent) once loaded, so a late init still
+        // catches up.
+        if (typeof params.previewRendererUrl === 'string' && params.previewRendererUrl.length > 0) {
+            handleSetPreviewRenderer(params.previewRendererUrl);
+        }
+
         // Initialize the host connection, load content, and register handlers.
         // notifyContentLoaded() is called automatically after this completes.
         await client.initializeDocument({
@@ -234,6 +295,13 @@ async function handleEditorInitialize(params) {
                 const result = await client.document.load();
                 if (result.content !== undefined) {
                     editor.setValue(result.content);
+                }
+
+                // Re-render the preview with the new content. The content-change
+                // listener is gated on isReloadingExternally, so we drive the
+                // preview explicitly here.
+                if (previewModule) {
+                    previewModule.render(editor.getValue());
                 }
 
                 // Signal to the host that new content has been loaded so consumers (e.g. the code
@@ -373,8 +441,236 @@ async function handleApplyCustomization(scriptUrl) {
             console.warn('Customization script does not export an activate function:', scriptUrl);
         }
     } catch (ex) {
-        console.error('Failed to load customization script:', scriptUrl, ex);
+        console.error('Customization script does not export an activate function:', scriptUrl, ex);
     }
+}
+
+async function handleSetPreviewRenderer(rendererUrl) {
+    if (rendererUrl === previewRendererUrl) {
+        return;
+    }
+
+    if (!rendererUrl) {
+        // Detaching the renderer: return to Source view and reset the iframe so
+        // stale preview DOM does not persist if a renderer is re-attached later.
+        previewRendererUrl = null;
+        previewModule = null;
+        previewModulePromise = null;
+        applyViewMode(ViewMode.Source);
+        if (previewIframe) {
+            previewIframe.src = 'about:blank';
+        }
+        return;
+    }
+
+    // Switching renderers (from one URL to another, or from null to a URL) requires
+    // reloading the module. Drop any existing module so ensurePreviewModuleLoaded
+    // imports the new URL.
+    if (previewRendererUrl !== rendererUrl) {
+        previewModule = null;
+        previewModulePromise = null;
+    }
+    previewRendererUrl = rendererUrl;
+
+    await ensurePreviewModuleLoaded();
+
+    if (previewModule && editor) {
+        previewModule.render(editor.getValue());
+    }
+}
+
+function handleSetViewMode(viewMode) {
+    if (!viewMode) {
+        return;
+    }
+    applyViewMode(viewMode);
+}
+
+function handleSetBasePath(basePath) {
+    pendingBasePath = basePath || '';
+    if (previewModule) {
+        previewModule.setBasePath(pendingBasePath);
+    }
+}
+
+function applyViewMode(viewMode) {
+    if (viewMode !== ViewMode.Source &&
+        viewMode !== ViewMode.Split &&
+        viewMode !== ViewMode.Preview) {
+        return;
+    }
+
+    if (!splitRootElement) {
+        return;
+    }
+
+    currentViewMode = viewMode;
+    splitRootElement.classList.remove('mode-source', 'mode-split', 'mode-preview');
+    splitRootElement.classList.add(`mode-${viewMode}`);
+
+    // In Split mode, apply the current ratio to both panes. In Source/Preview
+    // we clear the inline flex styles so the editor pane can expand to fill
+    // the available space (the Split-mode drag pins flex-grow values that
+    // would otherwise stick around and leave the editor at its previous
+    // split-width after switching modes).
+    if (editorPaneElement && previewPaneElement) {
+        if (viewMode === ViewMode.Split) {
+            applyFlexShare();
+        } else {
+            editorPaneElement.style.flex = '';
+            previewPaneElement.style.flex = '';
+        }
+    }
+
+    // Monaco does not re-measure until its container gets a real size; give
+    // it one frame after the CSS change, then force a layout pass.
+    requestAnimationFrame(() => {
+        if (editor) {
+            editor.layout();
+        }
+    });
+}
+
+function applyFlexShare() {
+    if (!editorPaneElement || !previewPaneElement) {
+        return;
+    }
+    editorPaneElement.style.flex = `${editorFlexShare} 1 0`;
+    previewPaneElement.style.flex = `${1 - editorFlexShare} 1 0`;
+}
+
+async function ensurePreviewModuleLoaded() {
+    if (previewModule) {
+        return previewModule;
+    }
+
+    if (!previewModulePromise) {
+        previewModulePromise = loadPreviewModule();
+    }
+
+    previewModule = await previewModulePromise;
+    return previewModule;
+}
+
+async function loadPreviewModule() {
+    if (!previewIframe) {
+        throw new Error('Preview iframe element is missing');
+    }
+    if (!previewRendererUrl) {
+        throw new Error('No preview renderer URL configured');
+    }
+
+    // The preview module owns its own iframe shell setup; monaco.js stays generic
+    // across preview formats by just importing the URL the host gave it.
+    const module = await import(/* @vite-ignore */ previewRendererUrl);
+
+    await module.initialize(previewIframe, {
+        onOpenResource: (href) => {
+            if (window.isWebView && client) {
+                client.input.notifyOpenResource(href);
+            }
+        },
+        onOpenExternal: (href) => {
+            if (window.isWebView && client) {
+                client.input.notifyOpenExternal(href);
+            }
+        },
+        onSyncToEditor: (percentage) => {
+            handleScrollToPercentage(percentage);
+            if (window.isWebView) {
+                monacoClient.notifyPreviewScrolled(percentage);
+            }
+        }
+    });
+
+    if (pendingBasePath) {
+        module.setBasePath(pendingBasePath);
+    }
+
+    return module;
+}
+
+function setupDividerDrag() {
+    if (!dividerElement || !editorPaneElement || !splitRootElement) {
+        return;
+    }
+
+    // Matches the XAML Splitter's DoubleClickDebounceMs: suppress drag updates
+    // for a short window after a double-click so the reset isn't immediately
+    // overwritten by a trailing drag delta.
+    const doubleClickDebounceMs = 500;
+    let lastDoubleClickTime = 0;
+
+    let dragStartX = 0;
+    let dragStartWidth = 0;
+    let isDragging = false;
+
+    function onPointerMove(event) {
+        if (!isDragging) {
+            return;
+        }
+        if (performance.now() - lastDoubleClickTime < doubleClickDebounceMs) {
+            return;
+        }
+
+        const delta = event.clientX - dragStartX;
+        const totalWidth = splitRootElement.clientWidth;
+        if (totalWidth <= 0) {
+            return;
+        }
+
+        const newEditorWidth = dragStartWidth + delta;
+        const share = newEditorWidth / totalWidth;
+        editorFlexShare = Math.max(minFlexShare, Math.min(maxFlexShare, share));
+        applyFlexShare();
+        if (editor) {
+            editor.layout();
+        }
+    }
+
+    function onPointerUp(event) {
+        if (!isDragging) {
+            return;
+        }
+        isDragging = false;
+        dividerElement.classList.remove('dragging');
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        try {
+            dividerElement.releasePointerCapture(event.pointerId);
+        } catch {
+            // Ignore if pointer capture was already released
+        }
+    }
+
+    dividerElement.addEventListener('pointerdown', (event) => {
+        if (currentViewMode !== ViewMode.Split) {
+            return;
+        }
+        if (performance.now() - lastDoubleClickTime < doubleClickDebounceMs) {
+            return;
+        }
+        isDragging = true;
+        dragStartX = event.clientX;
+        dragStartWidth = editorPaneElement.getBoundingClientRect().width;
+        dividerElement.classList.add('dragging');
+        try {
+            dividerElement.setPointerCapture(event.pointerId);
+        } catch {
+            // Some environments don't support pointer capture; fall back to window listeners
+        }
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+    });
+
+    dividerElement.addEventListener('dblclick', () => {
+        lastDoubleClickTime = performance.now();
+        editorFlexShare = 0.5;
+        applyFlexShare();
+        if (editor) {
+            editor.layout();
+        }
+    });
 }
 
 // Register RPC handlers via monaco-client
@@ -386,4 +682,7 @@ if (window.isWebView) {
     monacoClient.onInsertText(handleInsertText);
     monacoClient.onApplyEdits(handleApplyEdits);
     monacoClient.onApplyCustomization(handleApplyCustomization);
+    monacoClient.onSetPreviewRenderer(handleSetPreviewRenderer);
+    monacoClient.onSetViewMode(handleSetViewMode);
+    monacoClient.onSetBasePath(handleSetBasePath);
 }
