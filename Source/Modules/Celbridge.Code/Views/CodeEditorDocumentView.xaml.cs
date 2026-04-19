@@ -390,15 +390,14 @@ public sealed partial class CodeEditorDocumentView : DocumentView
 
         try
         {
-            // In Preview mode, Monaco is collapsed and its scroll is always zero.
-            // The preview pane's scroll position is what the user actually sees.
-            var scrollPercentage = ViewMode == SplitEditorViewMode.Preview && _hasPreviewRenderer
-                ? _lastPreviewScrollPercentage
-                : _lastScrollPercentage;
-
+            // Save both pane scrolls independently: in Split mode each pane can
+            // have its own position (editor-to-preview sync is one-directional),
+            // and in Source/Preview mode the hidden pane's last-known value is
+            // still what the user will see if they switch modes after reopen.
             var state = new Dictionary<string, object>
             {
-                ["scrollPercentage"] = scrollPercentage,
+                ["editorScrollPercentage"] = _lastScrollPercentage,
+                ["previewScrollPercentage"] = _lastPreviewScrollPercentage,
                 ["viewMode"] = ViewMode.ToString()
             };
 
@@ -427,19 +426,37 @@ public sealed partial class CodeEditorDocumentView : DocumentView
                 return;
             }
 
+            var restoredViewMode = SplitEditorViewMode.Source;
             if (parsed.TryGetValue("viewMode", out var viewModeElement) &&
-                Enum.TryParse<SplitEditorViewMode>(viewModeElement.GetString(), out var viewMode))
+                Enum.TryParse<SplitEditorViewMode>(viewModeElement.GetString(), out var parsedViewMode))
             {
+                restoredViewMode = parsedViewMode;
                 if (InitialViewMode.HasValue)
                 {
-                    SetViewMode(viewMode);
+                    SetViewMode(restoredViewMode);
                 }
             }
 
-            if (parsed.TryGetValue("scrollPercentage", out var scrollElement))
+            // Seed the tracked scroll percentages from restored state directly.
+            // The JS-side scroll notifications that normally keep these in sync
+            // are suppressed for programmatic scrolls (preview) or skipped when
+            // the pane is collapsed (editor in Preview mode), so without this
+            // the next save after a restore would persist a stale zero.
+            if (parsed.TryGetValue("editorScrollPercentage", out var editorScrollElement))
             {
-                var scrollPercentage = scrollElement.GetDouble();
-                await MonacoEditor.ScrollToPercentageAsync(scrollPercentage);
+                var editorScroll = editorScrollElement.GetDouble();
+                _lastScrollPercentage = editorScroll;
+                await MonacoEditor.ScrollToPercentageAsync(editorScroll);
+            }
+
+            if (parsed.TryGetValue("previewScrollPercentage", out var previewScrollElement) &&
+                _hasPreviewRenderer &&
+                (restoredViewMode == SplitEditorViewMode.Preview ||
+                 restoredViewMode == SplitEditorViewMode.Split))
+            {
+                var previewScroll = previewScrollElement.GetDouble();
+                _lastPreviewScrollPercentage = previewScroll;
+                await MonacoEditor.ScrollPreviewToPercentageAsync(previewScroll);
             }
         }
         catch

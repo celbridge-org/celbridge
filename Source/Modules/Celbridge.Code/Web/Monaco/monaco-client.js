@@ -1,11 +1,10 @@
-// Monaco Client: Monaco-specific API for communicating with the Celbridge Monaco host.
-// Uses the shared RPC transport from celbridge.js.
+// Monaco Client: thin RPC transport wrapper for Monaco editor communication.
+// The host drives the editor via `codeEditor/*` requests; the editor notifies
+// the host via `input/*` notifications. See monaco.js for the request handler
+// registrations.
 
 import { RpcTransport } from 'https://shared.celbridge/celbridge-client/core/rpc-transport.js';
 
-/**
- * Monaco Client for editor communication.
- */
 class MonacoClient {
     /** @type {RpcTransport} */
     #transport;
@@ -15,116 +14,22 @@ class MonacoClient {
     }
 
     /**
-     * Registers a handler for editor initialization requests from the host.
-     * @param {function(Object): void} handler - The handler function receiving the editor options.
+     * Registers a handler for an incoming host request.
+     * @param {string} wireName - The JSON-RPC method name (e.g. 'codeEditor/setLanguage').
+     * @param {(params: Object) => void} handler - Receives the full params object.
      */
-    onInitialize(handler) {
-        this.#transport.addEventListener('codeEditor/initialize', (params) => {
-            handler(params);
-        });
-    }
-
-    /**
-     * Registers a handler for language change requests from the host.
-     * @param {function(string): void} handler - The handler function receiving the language.
-     */
-    onSetLanguage(handler) {
-        this.#transport.addEventListener('codeEditor/setLanguage', (params) => {
-            handler(params.language);
-        });
-    }
-
-    /**
-     * Registers a handler for navigation requests from the host.
-     * @param {function(number, number): void} handler - The handler function receiving lineNumber and column.
-     */
-    onNavigateToLocation(handler) {
-        this.#transport.addEventListener('codeEditor/navigateToLocation', (params) => {
-            handler(params.lineNumber, params.column, params.endLineNumber || 0, params.endColumn || 0);
-        });
-    }
-
-    /**
-     * Registers a handler for scroll-to-percentage requests from the host.
-     * @param {function(number): void} handler - The handler function receiving the scroll percentage (0-1).
-     */
-    onScrollToPercentage(handler) {
-        this.#transport.addEventListener('codeEditor/scrollToPercentage', (params) => {
-            handler(params.percentage);
-        });
-    }
-
-    /**
-     * Registers a handler for insert-text requests from the host.
-     * @param {function(string): void} handler - The handler function receiving the text to insert.
-     */
-    onInsertText(handler) {
-        this.#transport.addEventListener('codeEditor/insertText', (params) => {
-            handler(params.text);
-        });
-    }
-
-    /**
-     * Registers a handler for apply-edits requests from the host.
-     * @param {function(Array): void} handler - The handler function receiving the edits array.
-     */
-    onApplyEdits(handler) {
-        this.#transport.addEventListener('codeEditor/applyEdits', (params) => {
-            handler(params.edits);
-        });
-    }
-
-    /**
-     * Registers a handler for applying a customization script from the host.
-     * @param {function(string): void} handler - The handler function receiving the script URL.
-     */
-    onApplyCustomization(handler) {
-        this.#transport.addEventListener('codeEditor/applyCustomization', (params) => {
-            handler(params.scriptUrl);
-        });
-    }
-
-    /**
-     * Registers a handler for preview-renderer attach/detach requests from the host.
-     * @param {function(string|null): void} handler - The handler function receiving the
-     *   renderer module URL (null to detach the current renderer).
-     */
-    onSetPreviewRenderer(handler) {
-        this.#transport.addEventListener('codeEditor/setPreviewRenderer', (params) => {
-            handler(params.rendererUrl ?? null);
-        });
-    }
-
-    /**
-     * Registers a handler for view-mode change requests from the host.
-     * @param {function(string): void} handler - The handler function receiving the view mode ('source' | 'split' | 'preview').
-     */
-    onSetViewMode(handler) {
-        this.#transport.addEventListener('codeEditor/setViewMode', (params) => {
-            handler(params.viewMode);
-        });
-    }
-
-    /**
-     * Registers a handler for base-path updates from the host.
-     * Used by the markdown preview to resolve relative resource paths.
-     * @param {function(string): void} handler - The handler function receiving the base path.
-     */
-    onSetBasePath(handler) {
-        this.#transport.addEventListener('codeEditor/setBasePath', (params) => {
-            handler(params.basePath);
-        });
+    onRequest(wireName, handler) {
+        this.#transport.addEventListener(wireName, handler);
     }
 
     /**
      * Notifies the host that the preview pane scrolled.
      * Used for state preservation across external reloads and session restore.
-     * @param {number} percentage - The preview scroll position as a percentage (0.0 to 1.0).
+     * @param {number} percentage - The preview scroll position (0.0 to 1.0).
      */
     notifyPreviewScrolled(percentage) {
         this.#transport.notify('input/previewScrollChanged', { scrollPercentage: percentage });
     }
 }
 
-// Export singleton instance
 export const monacoClient = new MonacoClient();

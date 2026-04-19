@@ -18,6 +18,7 @@ internal static class CodeEditorRpcMethods
     public const string SetPreviewRenderer = "codeEditor/setPreviewRenderer";
     public const string SetViewMode = "codeEditor/setViewMode";
     public const string SetBasePath = "codeEditor/setBasePath";
+    public const string SetPreviewScrollPercentage = "codeEditor/setPreviewScrollPercentage";
 }
 
 /// <summary>
@@ -163,6 +164,14 @@ public class CodeEditorHost : IDisposable
     public Task SetBasePathAsync(string basePath)
     {
         return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.SetBasePath, new { basePath });
+    }
+
+    /// <summary>
+    /// Scrolls the preview pane to a specific percentage position.
+    /// </summary>
+    public Task SetPreviewScrollPercentageAsync(double percentage)
+    {
+        return _host.Rpc.NotifyWithParameterObjectAsync(CodeEditorRpcMethods.SetPreviewScrollPercentage, new { percentage });
     }
 
     public void Dispose()

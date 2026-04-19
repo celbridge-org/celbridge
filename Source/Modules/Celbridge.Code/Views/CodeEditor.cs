@@ -378,6 +378,17 @@ public sealed partial class CodeEditor : UserControl
     }
 
     /// <summary>
+    /// Scrolls the preview pane to a specific percentage position.
+    /// </summary>
+    public async Task ScrollPreviewToPercentageAsync(double percentage)
+    {
+        if (_host is not null)
+        {
+            await _host.SetPreviewScrollPercentageAsync(percentage);
+        }
+    }
+
+    /// <summary>
     /// Attaches or detaches a split-editor preview renderer.
     /// Pass a URL to an ES module that implements the preview contract to enable the
     /// split editor; pass null to disable it.

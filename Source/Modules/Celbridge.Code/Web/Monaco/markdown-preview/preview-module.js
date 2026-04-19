@@ -13,6 +13,8 @@ let currentContent = '';
 let previewContentElement = null;
 let previewContainerElement = null;
 let suppressScrollSync = false;
+let pendingScrollPercentage = null;
+let scrollResizeObserver = null;
 
 configureMarked();
 
@@ -254,18 +256,34 @@ export function render(markdown) {
 
 /**
  * Scrolls the preview to the given percentage (0-1).
+ * Returns true if the scroll was applied, false if it could not be (the
+ * preview container is missing or has no measurable scroll range). In the
+ * "not ready" case the value is queued internally and retried via a
+ * ResizeObserver once the container gains layout — the common scenario is
+ * project reload, where tabs are restored but not activated so the iframe
+ * body has zero layout until the tab is selected.
  * The resulting scroll event is swallowed to prevent echoing back to the editor.
  */
 export function setScrollPercentage(percentage) {
     if (!previewContainerElement) {
-        return;
+        pendingScrollPercentage = percentage;
+        return false;
     }
 
     const scrollHeight = previewContainerElement.scrollHeight - previewContainerElement.clientHeight;
     if (scrollHeight <= 0) {
-        return;
+        pendingScrollPercentage = percentage;
+        startScrollRetry();
+        return false;
     }
 
+    applyScroll(scrollHeight, percentage);
+    pendingScrollPercentage = null;
+    stopScrollRetry();
+    return true;
+}
+
+function applyScroll(scrollHeight, percentage) {
     suppressScrollSync = true;
     previewContainerElement.scrollTop = scrollHeight * Math.max(0, Math.min(1, percentage));
     requestAnimationFrame(() => {
@@ -273,6 +291,33 @@ export function setScrollPercentage(percentage) {
             suppressScrollSync = false;
         });
     });
+}
+
+function startScrollRetry() {
+    if (scrollResizeObserver || !previewContainerElement) {
+        return;
+    }
+
+    scrollResizeObserver = new ResizeObserver(() => {
+        if (pendingScrollPercentage === null || !previewContainerElement) {
+            stopScrollRetry();
+            return;
+        }
+        const scrollHeight = previewContainerElement.scrollHeight - previewContainerElement.clientHeight;
+        if (scrollHeight > 0) {
+            applyScroll(scrollHeight, pendingScrollPercentage);
+            pendingScrollPercentage = null;
+            stopScrollRetry();
+        }
+    });
+    scrollResizeObserver.observe(previewContainerElement);
+}
+
+function stopScrollRetry() {
+    if (scrollResizeObserver) {
+        scrollResizeObserver.disconnect();
+        scrollResizeObserver = null;
+    }
 }
 
 /**

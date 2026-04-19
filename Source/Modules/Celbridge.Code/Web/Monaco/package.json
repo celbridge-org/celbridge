@@ -1,0 +1,15 @@
+{
+    "name": "monaco-editor-webview",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Monaco editor WebView bundle for Celbridge's code editor (pure-JS modules tested with Vitest)",
+    "scripts": {
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "devDependencies": {
+        "jsdom": "^25.0.0",
+        "vitest": "^2.0.0"
+    }
+}
