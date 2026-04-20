@@ -47,4 +47,23 @@ export class InputAPI {
     notifyOpenExternal(href) {
         this.#transport.notify('input/openExternal', { href });
     }
+
+    /**
+     * Notifies the host that a global keyboard shortcut was pressed in the editor.
+     * Use this to forward Celbridge-level shortcuts (e.g. Ctrl+S, Ctrl+W) when focus
+     * is inside the editor so the host can route them to IKeyboardShortcutService.
+     * @param {string} key - The key name (e.g. "S", "W", "F11").
+     * @param {Object} [modifiers] - Modifier key state.
+     * @param {boolean} [modifiers.ctrl] - Whether Ctrl (or Cmd on macOS) is pressed.
+     * @param {boolean} [modifiers.shift] - Whether Shift is pressed.
+     * @param {boolean} [modifiers.alt] - Whether Alt (or Option on macOS) is pressed.
+     */
+    notifyShortcut(key, modifiers = {}) {
+        this.#transport.notify('input/keyboardShortcut', {
+            key,
+            ctrlKey: modifiers.ctrl === true,
+            shiftKey: modifiers.shift === true,
+            altKey: modifiers.alt === true
+        });
+    }
 }

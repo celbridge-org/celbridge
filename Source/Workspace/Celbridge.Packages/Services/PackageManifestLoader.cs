@@ -12,12 +12,15 @@ public static class PackageManifestLoader
 {
     private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
+    private const string ModSection = "mod";
     private const string DocumentSection = "document";
     private const string DocumentEditorsKey = "document_editors";
     private const string DocumentFileTypesSection = "document_file_types";
     private const string DocumentTemplatesSection = "document_templates";
     private const string CodeEditorSection = "code_editor";
     private const string CodePreviewSection = "code_preview";
+    private const string RequiresToolsKey = "requires_tools";
+    private const string RequiresSecretsKey = "requires_secrets";
 
     private const string IdKey = "id";
     private const string NameKey = "name";
@@ -79,13 +82,24 @@ public static class PackageManifestLoader
             var safeName = packageId.Replace('.', '-').ToLowerInvariant();
             var hostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
 
+            var requiresTools = Array.Empty<string>() as IReadOnlyList<string>;
+            var requiresSecrets = Array.Empty<string>() as IReadOnlyList<string>;
+            if (root.TryGetValue(ModSection, out var modObject) &&
+                modObject is TomlTable modTable)
+            {
+                requiresTools = GetStringArray(modTable, RequiresToolsKey);
+                requiresSecrets = GetStringArray(modTable, RequiresSecretsKey);
+            }
+
             var packageInfo = new PackageInfo
             {
                 Id = packageId,
                 Name = packageName,
                 FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,
-                HostName = hostName
+                HostName = hostName,
+                RequiresTools = requiresTools,
+                RequiresSecrets = requiresSecrets
             };
 
             var documentPaths = new List<string>();
@@ -362,5 +376,24 @@ public static class PackageManifestLoader
         }
 
         return null;
+    }
+
+    private static IReadOnlyList<string> GetStringArray(TomlTable table, string key)
+    {
+        if (!table.TryGetValue(key, out var value) || value is not TomlArray array)
+        {
+            return Array.Empty<string>();
+        }
+
+        var result = new List<string>(array.Count);
+        foreach (var element in array)
+        {
+            if (element is string str && !string.IsNullOrEmpty(str))
+            {
+                result.Add(str);
+            }
+        }
+
+        return result.AsReadOnly();
     }
 }

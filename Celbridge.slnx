@@ -20,6 +20,7 @@
     <Project Path="Source/Core/Celbridge.Messaging/Celbridge.Messaging.csproj" />
     <Project Path="Source/Core/Celbridge.Modules/Celbridge.Modules.csproj" />
     <Project Path="Source/Core/Celbridge.Projects/Celbridge.Projects.csproj" />
+    <Project Path="Source/Core/Celbridge.Secrets/Celbridge.Secrets.csproj" />
     <Project Path="Source/Core/Celbridge.Settings/Celbridge.Settings.csproj" />
     <Project Path="Source/Core/Celbridge.UserInterface/Celbridge.UserInterface.csproj" />
     <Project Path="Source/Core/Celbridge.Utilities/Celbridge.Utilities.csproj" />

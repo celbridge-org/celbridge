@@ -600,6 +600,100 @@ public class ManifestTests
         customContribution!.EntryPoint.Should().Be("index.html");
     }
 
+    [Test]
+    public void LoadPackage_WithModSection_ParsesRequiresToolsAndSecrets()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.mod-section"
+            name = "ModSection"
+            version = "1.0.0"
+
+            [mod]
+            requires_tools = ["app.*", "document.open"]
+            requires_secrets = ["spreadjs_license", "spreadjs_designer_license"]
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "mod-section-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".ms"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        var info = result.Value.Info;
+        info.RequiresTools.Should().Equal("app.*", "document.open");
+        info.RequiresSecrets.Should().Equal("spreadjs_license", "spreadjs_designer_license");
+    }
+
+    [Test]
+    public void LoadPackage_WithoutModSection_DefaultsToEmptyRequirements()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.no-mod"
+            name = "NoMod"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "no-mod-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".nm"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.RequiresTools.Should().BeEmpty();
+        result.Value.Info.RequiresSecrets.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_ModSectionWithNonStringEntries_SkipsInvalid()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.mixed"
+            name = "Mixed"
+            version = "1.0.0"
+
+            [mod]
+            requires_tools = ["app.*", 42, "", "file.read"]
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "mixed-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".mx"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.RequiresTools.Should().Equal("app.*", "file.read");
+    }
+
     private void WritePackageToml(string content)
     {
         File.WriteAllText(Path.Combine(_tempFolder, "package.toml"), content);

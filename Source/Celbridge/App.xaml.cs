@@ -292,6 +292,7 @@ public partial class App : Application
         Messaging.ServiceConfiguration.ConfigureServices(services);
         Modules.ServiceConfiguration.ConfigureServices(services);
         Projects.ServiceConfiguration.ConfigureServices(services);
+        Secrets.ServiceConfiguration.ConfigureServices(services);
         Settings.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);

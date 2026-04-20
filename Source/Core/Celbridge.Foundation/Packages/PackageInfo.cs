@@ -22,6 +22,16 @@ public partial record PackageInfo
     public string? FeatureFlag { get; init; }
 
     /// <summary>
+    /// Tool allowlist declared under [mod].requires_tools.
+    /// </summary>
+    public IReadOnlyList<string> RequiresTools { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Secret names declared under [mod].requires_secrets.
+    /// </summary>
+    public IReadOnlyList<string> RequiresSecrets { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// The folder containing the package (set during loading, not from TOML).
     /// </summary>
     public string PackageFolder { get; init; } = string.Empty;

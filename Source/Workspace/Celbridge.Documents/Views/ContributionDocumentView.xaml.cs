@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
@@ -5,6 +6,8 @@ using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
+using Celbridge.Secrets;
+using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
@@ -26,10 +29,12 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
+    private readonly IServiceProvider _serviceProvider;
 
     private readonly ContributionDocumentViewModel _viewModel;
 
     private ContributionDocumentHandler? _documentHandler;
+    private ContributionToolsHandler? _toolsHandler;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -61,6 +66,7 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
+        _serviceProvider = serviceProvider;
 
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
@@ -164,6 +170,8 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
             ApplyThemeToWebView();
 
+            await InjectCelbridgeContextAsync(Contribution.Package);
+
             // Block all navigations except the package's own host name
             var allowedHostPrefix = $"https://{Contribution.Package.HostName}/";
             WebView.NavigationStarting += (s, args) =>
@@ -211,6 +219,13 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
             Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
             Host.AddLocalRpcTarget<IHostDialog>(dialogHandler);
+
+            var toolBridge = _serviceProvider.GetService<IMcpToolBridge>();
+            if (toolBridge is not null)
+            {
+                _toolsHandler = new ContributionToolsHandler(toolBridge, Contribution.Package.RequiresTools);
+                Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
+            }
 
             StartHostListener();
 
@@ -307,4 +322,64 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
             _logger.LogError(ex, "External reload failed for contribution document");
         }
     }
+
+    private async Task InjectCelbridgeContextAsync(PackageInfo package)
+    {
+        var allowedTools = package.RequiresTools;
+        var secrets = ResolvePackageSecrets(package);
+
+        var contextJson = JsonSerializer.Serialize(
+            new CelbridgeContext(allowedTools, secrets),
+            ContextSerializerOptions);
+
+        var coreWebView2 = WebView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            _logger.LogWarning("Cannot inject celbridge context: CoreWebView2 is not available");
+            return;
+        }
+
+        var script = $"window.__celbridgeContext = {contextJson};";
+        await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+    }
+
+    private IReadOnlyDictionary<string, string> ResolvePackageSecrets(PackageInfo package)
+    {
+        if (package.RequiresSecrets.Count == 0)
+        {
+            return EmptySecrets;
+        }
+
+        var secretRegistry = _serviceProvider.GetService<ISecretRegistry>();
+        if (secretRegistry is null)
+        {
+            _logger.LogWarning(
+                "Package '{PackageId}' declares {Count} required secret(s) but no ISecretRegistry is registered",
+                package.Id, package.RequiresSecrets.Count);
+            return EmptySecrets;
+        }
+
+        var resolveResult = secretRegistry.ResolveAll(package.RequiresSecrets);
+        if (resolveResult.IsFailure)
+        {
+            _logger.LogError(
+                "Failed to resolve secrets for package '{PackageId}': {Error}",
+                package.Id, resolveResult.FirstErrorMessage);
+            return EmptySecrets;
+        }
+
+        return resolveResult.Value;
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> EmptySecrets =
+        new Dictionary<string, string>();
+
+    private static readonly JsonSerializerOptions ContextSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    private sealed record CelbridgeContext(
+        IReadOnlyList<string> AllowedTools,
+        IReadOnlyDictionary<string, string> Secrets);
 }

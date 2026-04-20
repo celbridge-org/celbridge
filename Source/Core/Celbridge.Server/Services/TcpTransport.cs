@@ -14,7 +14,7 @@ namespace Celbridge.Server.Services;
 public class TcpTransport : ITcpTransport
 {
     private readonly ILogger<TcpTransport> _logger;
-    private readonly McpToolBridge _mcpToolBridge;
+    private readonly IMcpToolBridge _mcpToolBridge;
     private readonly List<object> _additionalTargets = new();
 
     private TcpListener? _listener;
@@ -33,7 +33,7 @@ public class TcpTransport : ITcpTransport
 
     public TcpTransport(
         ILogger<TcpTransport> logger,
-        McpToolBridge mcpToolBridge)
+        IMcpToolBridge mcpToolBridge)
     {
         _logger = logger;
         _mcpToolBridge = mcpToolBridge;
