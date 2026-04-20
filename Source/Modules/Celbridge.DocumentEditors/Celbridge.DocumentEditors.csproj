@@ -7,27 +7,26 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
 
     <UnoFeatures>
-      CSharpMarkup;
-      Lottie;
       Hosting;
-      Toolkit;
-      Logging;
-      Mvvm;
-      Configuration;
-      Localization;
-      ThemeService;
     </UnoFeatures>
 
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
-    <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
+    <Content Include="Editors\**" />
+    <!-- Per-editor convention: compiled libraries live in `lib/` and are shipped;
+         vendoring toolchain sources live in `lib/build/` and are excluded from runtime.
+         Today only the Notes editor uses this (TipTap is reassembled into lib/tiptap.js
+         from multiple npm packages); the pattern is broad so future editors get the same
+         behaviour for free. -->
+    <Content Remove="Editors\**\lib\build\**" />
   </ItemGroup>
-  
-</Project>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+  </ItemGroup>
+
+  </Project>

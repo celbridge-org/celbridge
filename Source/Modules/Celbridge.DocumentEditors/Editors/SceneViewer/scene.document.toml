@@ -1,0 +1,10 @@
+[document]
+id = "scene-viewer-document"
+type = "custom"
+entry_point = "index.html"
+priority = "specialized"
+external_content = true
+
+[[document_file_types]]
+extension = ".scene"
+display_name = "SceneViewer_FileType_Scene"

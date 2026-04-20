@@ -72,9 +72,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Modules\Celbridge.Code\Celbridge.Code.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Core\Celbridge.Core.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.FileViewer\Celbridge.FileViewer.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.Notes\Celbridge.Notes.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.WebApp\Celbridge.WebApp.csproj" />

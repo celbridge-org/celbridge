@@ -86,7 +86,11 @@ class CelProxy:
 
         self._register_builtin_commands()
         self._build_namespace_docs()
-        self.__doc__ = self._build_help_doc()
+        # Pydoc renders `help(instance)` via `type(instance).__doc__`, ignoring any
+        # docstring assigned to the instance itself. CelProxy is effectively a singleton
+        # in the REPL, so mutating the class docstring is safe and is the only way to
+        # make the dynamic command list visible to `help(cel)`.
+        type(self).__doc__ = self._build_help_doc()
 
     def _register_builtin_commands(self) -> None:
         """Register built-in commands that are implemented in Python, not via MCP."""
@@ -143,14 +147,22 @@ class CelProxy:
         return "\n".join(lines)
 
     def _build_namespace_docs(self) -> None:
-        """Build __doc__ for each ToolNamespace from its registered methods."""
+        """Build __doc__ for each ToolNamespace from its registered methods.
+
+        Each namespace gets its own dynamically created ToolNamespace subclass so
+        that `help(cel.app)` shows app-specific docs without aliasing every other
+        namespace's docstring (which sharing the base ToolNamespace would cause,
+        since pydoc reads the class docstring rather than the instance one).
+        """
         _, namespaced_tools = partition_tools_by_namespace(self._tools)
 
         for namespace_name, tools in namespaced_tools.items():
             namespace = getattr(self, namespace_name, None)
             if namespace is None:
                 continue
-            namespace.__doc__ = format_namespace_doc(namespace_name, tools)
+            namespace_doc = format_namespace_doc(namespace_name, tools)
+            namespace_class = type(namespace_name, (ToolNamespace,), {"__doc__": namespace_doc})
+            namespace.__class__ = namespace_class
 
     def _register_proxy(self, alias: str, proxy) -> None:
         """Register a proxy method on this object, creating namespaces for dotted aliases."""

@@ -1,12 +1,9 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
-using Microsoft.Extensions.Localization;
 using Celbridge.Screenplay.Commands;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Services;
-using Celbridge.Screenplay.ViewModels;
-using Celbridge.Screenplay.Views;
 
 namespace Celbridge.Screenplay;
 
@@ -26,18 +23,7 @@ public class Module : IModule
         services.AddTransient<ScreenplayActivity>();
         services.AddTransient<ScreenplayLoader>();
         services.AddTransient<ScreenplaySaver>();
-
-        //
-        // Register views
-        //
-
-        services.AddTransient<SceneDocumentView>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<SceneDocumentViewModel>();
+        services.AddTransient<IDocumentContentProvider, ScreenplayContentProvider>();
 
         //
         // Register components
@@ -63,8 +49,7 @@ public class Module : IModule
 
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
-        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        return [new SceneEditorFactory(serviceProvider, stringLocalizer)];
+        return [];
     }
 
     public Result<IActivity> CreateActivity(string activityName)
@@ -78,8 +63,8 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public string? GetBundledPackageFolder()
+    public IReadOnlyList<string> GetBundledPackageFolders()
     {
-        return null;
+        return Array.Empty<string>();
     }
 }

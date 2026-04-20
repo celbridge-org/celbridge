@@ -1,47 +1,41 @@
-using Celbridge.Documents.ViewModels;
+using System.Net;
+using System.Text;
+using System.Text.Json.Nodes;
+using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Models;
 using Celbridge.Workspace;
-using CommunityToolkit.Mvvm.ComponentModel;
 using Humanizer;
-using System.Net;
-using System.Text;
-using System.Text.Json.Nodes;
 
-namespace Celbridge.Screenplay.ViewModels;
+namespace Celbridge.Screenplay.Services;
 
-public partial class SceneDocumentViewModel : DocumentViewModel
+/// <summary>
+/// Generates the HTML body content rendered by the celbridge-scene-viewer contribution package
+/// from the entity components stored against a .scene resource.
+/// </summary>
+public sealed class ScreenplayContentProvider : IDocumentContentProvider
 {
+    private const string SceneExtension = ".scene";
+
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IEntityService EntityService => _workspaceWrapper.WorkspaceService.EntityService;
 
-    [ObservableProperty]
-    private string _htmlContent = string.Empty;
-
-    // Code gen requires a parameterless constructor
-    public SceneDocumentViewModel()
-    {
-        throw new NotImplementedException();
-    }
-
-    public SceneDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    public ScreenplayContentProvider(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Result LoadContent()
+    public bool CanHandle(ResourceKey fileResource)
     {
-        var generateResult = GenerateScreenplayContent(FileResource);
-        if (generateResult.IsFailure)
-        {
-            return Result.Fail($"Failed to generate screenplay content")
-                .WithErrors(generateResult);
-        }
+        var extension = Path.GetExtension(fileResource.ToString());
+        return string.Equals(extension, SceneExtension, StringComparison.OrdinalIgnoreCase);
+    }
 
-        HtmlContent = generateResult.Value;
-        return Result.Ok();
+    public Task<Result<string>> LoadContentAsync(ResourceKey fileResource)
+    {
+        return Task.FromResult(GenerateScreenplayContent(fileResource));
     }
 
     private Result<string> GenerateScreenplayContent(ResourceKey sceneResource)
@@ -78,7 +72,6 @@ public partial class SceneDocumentViewModel : DocumentViewModel
 
         var sb = new StringBuilder();
 
-        // Generate only the body content (HTML structure is in index.html)
         sb.AppendLine("<div class=\"screenplay\">");
         sb.AppendLine("<div class=\"page\">");
 
@@ -161,7 +154,7 @@ public partial class SceneDocumentViewModel : DocumentViewModel
         sb.AppendLine("</div>"); // page
         sb.AppendLine("</div>"); // screenplay
 
-        return Result<string>.Ok(sb.ToString());
+        return sb.ToString();
     }
 
     private Result<List<Character>> GetCharacters(ResourceKey sceneResource)
@@ -265,6 +258,6 @@ public partial class SceneDocumentViewModel : DocumentViewModel
             characters.Add(character);
         }
 
-        return Result<List<Character>>.Ok(characters);
+        return characters;
     }
 }

@@ -80,9 +80,9 @@ public class ModuleService : IModuleService
     public IReadOnlyList<string> GetBundledPackageFolders()
     {
         return _moduleLoader.LoadedModules.Values
-            .Select(m => m.GetBundledPackageFolder())
+            .SelectMany(m => m.GetBundledPackageFolders())
             .Where(d => !string.IsNullOrEmpty(d))
-            .ToList()!;
+            .ToList();
     }
 
     public Result<IActivity> CreateActivity(string activityName)

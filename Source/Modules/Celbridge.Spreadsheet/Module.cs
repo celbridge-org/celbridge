@@ -66,8 +66,8 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public string? GetBundledPackageFolder()
+    public IReadOnlyList<string> GetBundledPackageFolders()
     {
-        return null;
+        return Array.Empty<string>();
     }
 }

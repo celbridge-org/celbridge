@@ -1,0 +1,82 @@
+[document]
+id = "file-viewer-document"
+type = "custom"
+entry_point = "index.html"
+priority = "general"
+external_content = true
+
+[[document_file_types]]
+extension = ".jpg"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".jpeg"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".png"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".gif"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".webp"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".svg"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".bmp"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".ico"
+display_name = "FileViewer_FileType_Image"
+
+[[document_file_types]]
+extension = ".mp3"
+display_name = "FileViewer_FileType_Audio"
+
+[[document_file_types]]
+extension = ".wav"
+display_name = "FileViewer_FileType_Audio"
+
+[[document_file_types]]
+extension = ".ogg"
+display_name = "FileViewer_FileType_Audio"
+
+[[document_file_types]]
+extension = ".flac"
+display_name = "FileViewer_FileType_Audio"
+
+[[document_file_types]]
+extension = ".m4a"
+display_name = "FileViewer_FileType_Audio"
+
+[[document_file_types]]
+extension = ".mp4"
+display_name = "FileViewer_FileType_Video"
+
+[[document_file_types]]
+extension = ".webm"
+display_name = "FileViewer_FileType_Video"
+
+[[document_file_types]]
+extension = ".avi"
+display_name = "FileViewer_FileType_Video"
+
+[[document_file_types]]
+extension = ".mov"
+display_name = "FileViewer_FileType_Video"
+
+[[document_file_types]]
+extension = ".mkv"
+display_name = "FileViewer_FileType_Video"
+
+[[document_file_types]]
+extension = ".pdf"
+display_name = "FileViewer_FileType_Pdf"

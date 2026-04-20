@@ -24,4 +24,13 @@ public partial record CustomDocumentEditorContribution : DocumentEditorContribut
     /// When true, content is transferred as base64 and saved/loaded as raw bytes.
     /// </summary>
     public bool Binary { get; init; } = false;
+
+    /// <summary>
+    /// Whether this editor sources its content from outside the file bytes
+    /// (e.g., the JS fetches the file directly from the project virtual host,
+    /// or a host-side IDocumentContentProvider supplies generated content).
+    /// When true, the host returns an empty content string from InitializeAsync / LoadAsync
+    /// unless a registered IDocumentContentProvider matches the resource.
+    /// </summary>
+    public bool ExternalContent { get; init; } = false;
 }

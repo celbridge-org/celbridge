@@ -27,18 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Web\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="ClosedXML" />
     <PackageReference Include="Humanizer" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Entities\Celbridge.Entities.csproj" />
   </ItemGroup>

@@ -1,0 +1,61 @@
+/* Celbridge File Viewer Styles */
+
+.theme-light {
+    --bg-color: #ffffff;
+    --text-color: #1a1a1a;
+    --border-color: #d0d0d0;
+}
+
+.theme-dark {
+    --bg-color: #1e1e1e;
+    --text-color: #e8e8e8;
+    --border-color: #3a3a3a;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: Arial, sans-serif;
+}
+
+#file-viewer-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.file-video,
+.file-audio {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.file-audio {
+    width: 80%;
+}
+
+.file-pdf {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.file-error {
+    padding: 1em 1.5em;
+    color: var(--text-color);
+    font-size: 0.95em;
+    text-align: center;
+}

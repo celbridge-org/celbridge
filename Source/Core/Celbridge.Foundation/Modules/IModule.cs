@@ -35,8 +35,8 @@ public interface IModule
     IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider);
 
     /// <summary>
-    /// Returns the absolute path to the module's bundled package folder,
-    /// or null if this module does not bundle a package.
+    /// Returns the absolute paths of all package folders bundled with this module.
+    /// Returns an empty list if the module bundles no packages.
     /// </summary>
-    string? GetBundledPackageFolder();
+    IReadOnlyList<string> GetBundledPackageFolders();
 }
