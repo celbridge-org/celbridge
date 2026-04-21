@@ -91,6 +91,15 @@ python run_tests.py
 - The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
 - Never bypass `ICommandService` to call methods directly. Every important operation goes through the command service for automation and auditing support. If a command-based flow has a bug, fix it within the command service pattern (e.g., add new command options or fix the command handling logic)
 
+## Save Model
+
+Documents auto-save via `DocumentViewModel.OnDataChanged()` → per-view save timer (~1s). There is no user-facing Save command and no "unsaved changes" state; users recover via undo/redo.
+
+- Do not add save commands, shortcuts, or UI affordances. If on-demand flushing is needed, route through `IDocumentView.SaveDocument()` (precedent: `ApplyEditsCommand.ForceSave`).
+- Do not add "discard unsaved changes?" prompts on close — closing always saves.
+- Route programmatic edits through `IDocumentView.ApplyEditsAsync` so they join the editor's undo stack. `ApplyEditsCommand` with `OpenDocument=false` is the explicit exception for background edits where an undo entry has no meaning.
+- `MonitoredResourceChangedMessage` fires on every save; `DocumentViewModel` filters self-triggered events via `IsSavingFile` + hash. New consumers should expect high-frequency events.
+
 ## MCP Tools
 
 MCP tool classes in `Celbridge.Tools` use the MCP SDK's `XmlToDescriptionGenerator` source generator, which converts XML doc comments into `[Description]` attributes at build time. This means:

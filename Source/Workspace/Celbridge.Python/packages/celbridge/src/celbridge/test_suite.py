@@ -341,6 +341,39 @@ class TestDocument(unittest.TestCase):
         result = file.read("TestDocument/hello.txt")
         self.assertIn("Celbridge", result["content"])
 
+    def test_apply_edits_open_document_persists_and_reports_post_edit_state(self):
+        """Regression: when open_document=True the edit routes through the
+        editor. The response must describe the document AFTER the edit and
+        the file on disk must reflect it immediately (without waiting for
+        the save timer). Previously the response showed pre-edit line count
+        and the disk file was stale, forcing agents to retry or re-read."""
+        edits = [
+            {
+                "line": 1,
+                "column": 1,
+                "endLine": 1,
+                "endColumn": -1,
+                "newText": "Regression line 1\nRegression line 2",
+            }
+        ]
+        result = document.apply_edits(
+            "TestDocument/hello.txt", json.dumps(edits), open_document=True
+        )
+
+        # Disk reflects the edit immediately — ForceSave flushed it.
+        disk = file.read("TestDocument/hello.txt")
+        self.assertIn("Regression line 1", disk["content"])
+        self.assertIn("Regression line 2", disk["content"])
+
+        # Response totalLineCount matches the actual post-edit line count.
+        disk_line_count = len(disk["content"].splitlines())
+        self.assertEqual(result["totalLineCount"], disk_line_count)
+
+        # contextLines describe the post-edit content around the affected region.
+        affected = result["affectedLines"][0]
+        context_text = "\n".join(affected["contextLines"])
+        self.assertIn("Regression line 1", context_text)
+
     def test_find_replace(self):
         result = document.find_replace(
             "TestDocument/hello.txt",

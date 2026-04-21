@@ -137,7 +137,7 @@ public class PackageRegistry
         var packageFolders = _moduleService.GetBundledPackageFolders();
         foreach (var packageFolder in packageFolders)
         {
-            var package = TryLoadPackage(packageFolder);
+            var package = TryLoadPackage(packageFolder, isBundled: true);
             if (package is not null)
             {
                 _bundledPackages.Add(package);
@@ -162,7 +162,7 @@ public class PackageRegistry
         var packageFolders = Directory.GetDirectories(packagesFolder);
         foreach (var packageFolder in packageFolders)
         {
-            var package = TryLoadPackage(packageFolder);
+            var package = TryLoadPackage(packageFolder, isBundled: false);
             if (package is not null)
             {
                 _projectPackages.Add(package);
@@ -172,8 +172,12 @@ public class PackageRegistry
 
     /// <summary>
     /// Attempts to load a package from a folder. Returns null on failure.
+    /// isBundled records whether this package ships inside a Celbridge module DLL
+    /// (trusted) or was loaded from the workspace's packages/ folder or the remote
+    /// registry (untrusted). The flag propagates to PackageInfo.IsBundled, which
+    /// downstream consumers use to gate sensitive capabilities such as secret injection.
     /// </summary>
-    private Package? TryLoadPackage(string packageFolder)
+    private Package? TryLoadPackage(string packageFolder, bool isBundled)
     {
         var manifestPath = Path.Combine(packageFolder, ManifestFileName);
 
@@ -182,7 +186,7 @@ public class PackageRegistry
             return null;
         }
 
-        var loadResult = PackageManifestLoader.LoadPackage(manifestPath);
+        var loadResult = PackageManifestLoader.LoadPackage(manifestPath, isBundled);
 
         if (loadResult.IsFailure)
         {

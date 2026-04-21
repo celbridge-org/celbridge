@@ -932,57 +932,6 @@ Do you wish to continue?</value>
   <data name="SearchPanel_ClearHistoryText" xml:space="preserve">
     <value>Clear Recent</value>
   </data>
-  <data name="Markdown_ViewMode_Preview" xml:space="preserve">
-    <value>Rendered preview</value>
-  </data>
-  <data name="Markdown_ViewMode_Split" xml:space="preserve">
-    <value>Editor and preview side by side</value>
-  </data>
-  <data name="Markdown_ViewMode_Source" xml:space="preserve">
-    <value>Source editor</value>
-  </data>
-  <data name="Markdown_Snippet_Insert" xml:space="preserve">
-    <value>Insert markdown snippet</value>
-  </data>
-  <data name="Markdown_Snippet_Bold" xml:space="preserve">
-    <value>Bold</value>
-  </data>
-  <data name="Markdown_Snippet_Italic" xml:space="preserve">
-    <value>Italic</value>
-  </data>
-  <data name="Markdown_Snippet_Strikethrough" xml:space="preserve">
-    <value>Strikethrough</value>
-  </data>
-  <data name="Markdown_Snippet_UnorderedList" xml:space="preserve">
-    <value>Unordered List</value>
-  </data>
-  <data name="Markdown_Snippet_OrderedList" xml:space="preserve">
-    <value>Ordered List</value>
-  </data>
-  <data name="Markdown_Snippet_TaskList" xml:space="preserve">
-    <value>Task List</value>
-  </data>
-  <data name="Markdown_Snippet_CodeBlock" xml:space="preserve">
-    <value>Code Block</value>
-  </data>
-  <data name="Markdown_Snippet_Blockquote" xml:space="preserve">
-    <value>Blockquote</value>
-  </data>
-  <data name="Markdown_Snippet_Link" xml:space="preserve">
-    <value>Link</value>
-  </data>
-  <data name="Markdown_Snippet_Image" xml:space="preserve">
-    <value>Image</value>
-  </data>
-  <data name="Markdown_Snippet_Table" xml:space="preserve">
-    <value>Table</value>
-  </data>
-  <data name="Markdown_Snippet_Footnote" xml:space="preserve">
-    <value>Footnote</value>
-  </data>
-  <data name="Markdown_Snippet_HorizontalRule" xml:space="preserve">
-    <value>Horizontal Rule</value>
-  </data>
   <data name="Package_PublishConfirm_Title" xml:space="preserve">
     <value>Publish Package</value>
   </data>
@@ -994,15 +943,6 @@ Do you wish to continue?</value>
   </data>
   <data name="Package_InstallConfirm_Message" xml:space="preserve">
     <value>Install package '{0}' from the remote registry?</value>
-  </data>
-  <data name="DocumentEditor_CodeEditor" xml:space="preserve">
-    <value>Code Editor</value>
-  </data>
-  <data name="DocumentEditor_FileViewer" xml:space="preserve">
-    <value>File Viewer</value>
-  </data>
-  <data name="DocumentEditor_MarkdownEditor" xml:space="preserve">
-    <value>Markdown Editor</value>
   </data>
   <data name="DocumentEditor_SpreadsheetEditor" xml:space="preserve">
     <value>Spreadsheet Editor</value>

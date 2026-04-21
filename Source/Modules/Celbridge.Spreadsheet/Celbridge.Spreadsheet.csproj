@@ -20,6 +20,11 @@
       ThemeService;
     </UnoFeatures>
 
+    <!-- Declares the neutral language for the Windows Resource Manager so PRI257/PRI263
+         don't fire when language-qualified resources (from SpreadJS, etc.) are present
+         without an en-US counterpart. -->
+    <DefaultLanguage>en-US</DefaultLanguage>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,11 +33,15 @@
 
   <ItemGroup>
     <Content Include="Web\**" />
-    <!-- Excluding SpreadJS locale files for languages not supported by the app. -->
-    <!-- These files have .ja. and .ko. in their names which the PRI indexer treats as -->
-    <!-- language-qualified resources, generating PRI257/PRI263 warnings. -->
-    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\gc.spread.sheets.resources.ja.18.1.4.min.js" />
-    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\gc.spread.sheets.resources.ko.18.1.4.min.js" />
+    <!-- SpreadJS ships localized resource bundles the app does not use. The ja/, ko/,
+         and zh/ subfolders contain files whose names embed the language code (e.g.
+         gc.spread.sheets.resources.ja.18.1.4.min.js), which the PRI indexer treats as
+         language-qualified resources and complains about when no en-* counterpart exists.
+         These bundles are not referenced by our SpreadJS integration; removing them
+         keeps the indexer quiet and trims the package. -->
+    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\ja\**" />
+    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\ko\**" />
+    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\zh\**" />
   </ItemGroup>
 
   <ItemGroup>

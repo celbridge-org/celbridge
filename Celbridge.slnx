@@ -28,10 +28,8 @@
   </Folder>
 
   <Folder Name="/Modules/">
-    <Project Path="Source/Modules/Celbridge.Code/Celbridge.Code.csproj" />
     <Project Path="Source/Modules/Celbridge.Core/Celbridge.Core.csproj" />
     <Project Path="Source/Modules/Celbridge.DocumentEditors/Celbridge.DocumentEditors.csproj" />
-    <Project Path="Source/Modules/Celbridge.Markdown/Celbridge.Markdown.csproj" />
     <Project Path="Source/Modules/Celbridge.Screenplay/Celbridge.Screenplay.csproj" />
     <Project Path="Source/Modules/Celbridge.Spreadsheet/Celbridge.Spreadsheet.csproj" />
     <Project Path="Source/Modules/Celbridge.WebApp/Celbridge.WebApp.csproj" />

@@ -601,6 +601,64 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_DefaultsIsBundledToFalse()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.default-bundled"
+            name = "Default"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "default-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".db"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.IsBundled.Should().BeFalse();
+    }
+
+    [Test]
+    public void LoadPackage_WithIsBundledTrue_SetsFlagOnPackageInfo()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.bundled"
+            name = "Bundled"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "bundled-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".bd"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(
+            Path.Combine(_tempFolder, "package.toml"),
+            isBundled: true);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.IsBundled.Should().BeTrue();
+    }
+
+    [Test]
     public void LoadPackage_WithModSection_ParsesRequiresToolsAndSecrets()
     {
         WritePackageToml("""
@@ -692,6 +750,106 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.RequiresTools.Should().Equal("app.*", "file.read");
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFile_ExpandsToEachJsonKey()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.code"
+            name = "Code"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["code.document.toml"]
+            """);
+
+        WriteDocumentToml("code.document.toml", """
+            [document]
+            id = "code-doc"
+            type = "custom"
+            entry_point = "index.html"
+
+            [[document_file_types]]
+            extensions_file = "types.json"
+            display_name = "Code_FileType_Code"
+            """);
+
+        File.WriteAllText(Path.Combine(_tempFolder, "types.json"),
+            """{ ".js": "javascript", ".py": "python", ".cs": "csharp" }""");
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        var contribution = result.Value.DocumentEditors[0];
+        contribution.FileTypes.Select(fileType => fileType.FileExtension)
+            .Should().BeEquivalentTo([".js", ".py", ".cs"]);
+        contribution.FileTypes.Should().AllSatisfy(fileType =>
+            fileType.DisplayName.Should().Be("Code_FileType_Code"));
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFile_MissingFile_DocumentSkipped()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.missing-ext"
+            name = "Missing"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "missing-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extensions_file = "nonexistent.json"
+            display_name = "X"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        // A broken document manifest is silently skipped — matches the existing
+        // behavior for missing file-types sections and other per-document errors.
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFile_CombinedWithExtension_DocumentSkipped()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.conflict"
+            name = "Conflict"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "conflict-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".x"
+            extensions_file = "types.json"
+            display_name = "X"
+            """);
+
+        File.WriteAllText(Path.Combine(_tempFolder, "types.json"), """{ ".y": "yaml" }""");
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
     }
 
     private void WritePackageToml(string content)

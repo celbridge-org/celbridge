@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet"
+          data-name="vs/editor/editor.main"
+          href="./min/vs/editor/editor.main.css" />
+    <link rel="stylesheet" href="https://shared.celbridge/bootstrap-icons/bootstrap-icons.css" />
+    <link rel="stylesheet" href="./css/editor.css" />
+    <link rel="stylesheet" href="./css/toolbar.css" />
+</head>
+<body>
+    <div id="editor-root">
+        <div id="toolbar" hidden>
+            <div id="view-mode-panel" class="toolbar-panel" hidden>
+                <button id="view-mode-preview"
+                        type="button"
+                        class="toolbar-btn"
+                        data-loc-key="CodeEditor_ViewMode_Preview"
+                        data-loc-attr="title"
+                        aria-pressed="false">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+                <button id="view-mode-split"
+                        type="button"
+                        class="toolbar-btn"
+                        data-loc-key="CodeEditor_ViewMode_Split"
+                        data-loc-attr="title"
+                        aria-pressed="false">
+                    <i class="bi bi-layout-split" aria-hidden="true"></i>
+                </button>
+                <button id="view-mode-source"
+                        type="button"
+                        class="toolbar-btn"
+                        data-loc-key="CodeEditor_ViewMode_Source"
+                        data-loc-attr="title"
+                        aria-pressed="true">
+                    <i class="bi bi-code-slash" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div id="snippet-separator" class="toolbar-separator" hidden></div>
+
+            <div id="snippet-panel" class="toolbar-panel" hidden>
+                <button id="snippet-button"
+                        type="button"
+                        class="toolbar-btn"
+                        data-loc-key="CodeEditor_Snippet_Insert"
+                        data-loc-attr="title"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="split-root" class="mode-source">
+            <div id="editor-pane">
+                <div id="container"></div>
+            </div>
+            <div id="divider"></div>
+            <div id="preview-pane">
+                <!-- No sandbox: the iframe needs same-origin access for contentDocument,
+                     and allow-same-origin + allow-scripts is equivalent to no sandbox. -->
+                <iframe id="preview-iframe" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snippet menu renders at document root so positioning isn't clipped by toolbar overflow -->
+    <div id="snippet-menu" class="snippet-menu" role="menu" hidden></div>
+
+    <!-- Step 1: Load Monaco Editor AMD Loader -->
+    <script src="./min/vs/loader.js"></script>
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>

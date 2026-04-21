@@ -40,4 +40,12 @@ public partial record PackageInfo
     /// A unique virtual host name for this package's assets (set during loading, not from TOML).
     /// </summary>
     public string HostName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// True for packages that ship embedded in module DLLs (trusted, ride the module's
+    /// own trust boundary). False for packages loaded from the project's packages/
+    /// folder or installed from the remote registry. Downstream consumers gate
+    /// sensitive capabilities (secret injection, priority ceilings, etc.) on this flag.
+    /// </summary>
+    public bool IsBundled { get; init; } = false;
 }

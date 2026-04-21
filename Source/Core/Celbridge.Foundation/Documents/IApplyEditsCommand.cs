@@ -66,4 +66,13 @@ public interface IApplyEditsCommand : IExecutableCommand
     /// When false but the document is already open, routes through the editor to avoid auto-save race conditions.
     /// </summary>
     bool OpenDocument { get; set; }
+
+    /// <summary>
+    /// When true, edits are saved to disk before the command returns. Only affects
+    /// edits routed through an open editor (OpenDocument=true, or the document was
+    /// already open). Without this flag the edit sits in the editor until the
+    /// save timer fires. The direct-to-disk path (OpenDocument=false on a
+    /// closed document) already writes synchronously and is unaffected by ForceSave.
+    /// </summary>
+    bool ForceSave { get; set; }
 }

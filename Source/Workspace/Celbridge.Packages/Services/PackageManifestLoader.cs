@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Documents;
 using Tomlyn;
 using Tomlyn.Model;
@@ -19,6 +20,7 @@ public static class PackageManifestLoader
     private const string DocumentTemplatesSection = "document_templates";
     private const string CodeEditorSection = "code_editor";
     private const string CodePreviewSection = "code_preview";
+    private const string OptionsSection = "options";
     private const string RequiresToolsKey = "requires_tools";
     private const string RequiresSecretsKey = "requires_secrets";
 
@@ -28,6 +30,7 @@ public static class PackageManifestLoader
     private const string TypeKey = "type";
     private const string PriorityKey = "priority";
     private const string ExtensionKey = "extension";
+    private const string ExtensionsFileKey = "extensions_file";
     private const string DisplayNameKey = "display_name";
     private const string TemplateFileKey = "template_file";
     private const string DefaultKey = "default";
@@ -48,8 +51,10 @@ public static class PackageManifestLoader
 
     /// <summary>
     /// Loads a package from a package.toml file, including all referenced document editor contributions.
+    /// Callers must pass <paramref name="isBundled"/> to indicate whether this package ships
+    /// inside a module DLL (trusted) or was loaded from the project / remote registry (untrusted).
     /// </summary>
-    public static Result<Package> LoadPackage(string packageTomlPath)
+    public static Result<Package> LoadPackage(string packageTomlPath, bool isBundled = false)
     {
         try
         {
@@ -100,7 +105,8 @@ public static class PackageManifestLoader
                 PackageFolder = packageFolder,
                 HostName = hostName,
                 RequiresTools = requiresTools,
-                RequiresSecrets = requiresSecrets
+                RequiresSecrets = requiresSecrets,
+                IsBundled = isBundled
             };
 
             var documentPaths = new List<string>();
@@ -192,11 +198,35 @@ public static class PackageManifestLoader
             {
                 foreach (var fileTypeTable in fileTypesArray)
                 {
-                    fileTypes.Add(new DocumentFileType
+                    var fileTypeDisplayName = GetString(fileTypeTable, DisplayNameKey);
+                    var extensionLiteral = GetStringOrNull(fileTypeTable, ExtensionKey);
+                    var extensionsFilePath = GetStringOrNull(fileTypeTable, ExtensionsFileKey);
+
+                    if (!string.IsNullOrEmpty(extensionsFilePath))
                     {
-                        FileExtension = GetString(fileTypeTable, ExtensionKey),
-                        DisplayName = GetString(fileTypeTable, DisplayNameKey)
-                    });
+                        if (!string.IsNullOrEmpty(extensionLiteral))
+                        {
+                            return Result.Fail(
+                                $"A [[document_file_types]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {documentTomlPath}");
+                        }
+
+                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName);
+                        if (expandResult.IsFailure)
+                        {
+                            return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {documentTomlPath}")
+                                .WithErrors(expandResult);
+                        }
+
+                        fileTypes.AddRange(expandResult.Value);
+                    }
+                    else
+                    {
+                        fileTypes.Add(new DocumentFileType
+                        {
+                            FileExtension = extensionLiteral ?? string.Empty,
+                            DisplayName = fileTypeDisplayName
+                        });
+                    }
                 }
             }
 
@@ -265,6 +295,8 @@ public static class PackageManifestLoader
         var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
         var externalContent = GetBoolOrNull(documentTable, ExternalContentKey) ?? false;
 
+        var options = ParseOptionsTable(root);
+
         return new CustomDocumentEditorContribution
         {
             Package = packageInfo,
@@ -276,8 +308,38 @@ public static class PackageManifestLoader
             EntryPoint = entryPoint,
             DevToolsEnabled = devToolsEnabled,
             Binary = binary,
-            ExternalContent = externalContent
+            ExternalContent = externalContent,
+            Options = options
         };
+    }
+
+    private static IReadOnlyDictionary<string, string> ParseOptionsTable(TomlTable root)
+    {
+        if (!root.TryGetValue(OptionsSection, out var optionsObject) ||
+            optionsObject is not TomlTable optionsTable)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        var result = new Dictionary<string, string>();
+        foreach (var entry in optionsTable)
+        {
+            var stringValue = entry.Value switch
+            {
+                string s => s,
+                bool b => b ? "true" : "false",
+                long l => l.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                _ => null
+            };
+
+            if (stringValue is not null)
+            {
+                result[entry.Key] = stringValue;
+            }
+        }
+
+        return result;
     }
 
     private static CodeDocumentEditorContribution BuildCodeContribution(
@@ -325,6 +387,45 @@ public static class PackageManifestLoader
             CodePreview = codePreview,
             CodeEditor = codeEditor
         };
+    }
+
+    private static Result<List<DocumentFileType>> ExpandExtensionsFile(
+        string packageFolder,
+        string relativePath,
+        string displayName)
+    {
+        var fullPath = Path.Combine(packageFolder, relativePath);
+        if (!File.Exists(fullPath))
+        {
+            return Result.Fail($"Extensions file not found: {fullPath}");
+        }
+
+        try
+        {
+            var json = File.ReadAllText(fullPath);
+            using var document = JsonDocument.Parse(json);
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return Result.Fail($"Extensions file must be a JSON object with extension keys: {fullPath}");
+            }
+
+            var result = new List<DocumentFileType>();
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                result.Add(new DocumentFileType
+                {
+                    FileExtension = property.Name,
+                    DisplayName = displayName
+                });
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to parse extensions file: {fullPath}").WithException(ex);
+        }
     }
 
     private static EditorPriority ParseEditorPriority(string? value)

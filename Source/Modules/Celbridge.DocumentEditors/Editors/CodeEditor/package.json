@@ -1,0 +1,15 @@
+{
+    "name": "celbridge-code-editor",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Celbridge code editor contribution package (Monaco + markdown preview, tested with Vitest)",
+    "scripts": {
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "devDependencies": {
+        "jsdom": "^25.0.0",
+        "vitest": "^2.0.0"
+    }
+}

@@ -13,6 +13,11 @@
       Hosting;
     </UnoFeatures>
 
+    <!-- Suppress PRI249 false-positive warnings caused by the Monaco editor's bundled
+         files using content-hashed names (e.g. editor.worker-DbHNojjm.js) being parsed
+         as Windows resource qualifiers. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +28,23 @@
          from multiple npm packages); the pattern is broad so future editors get the same
          behaviour for free. -->
     <Content Remove="Editors\**\lib\build\**" />
+    <!-- Test assets are run under Vitest from the package folder but must not ship
+         with the plugin. -->
+    <Content Remove="Editors\**\tests\**" />
+    <Content Remove="Editors\**\node_modules\**" />
+    <Content Remove="Editors\**\package.json" />
+    <Content Remove="Editors\**\package-lock.json" />
+    <Content Remove="Editors\**\vitest.config.js" />
+    <!-- Per-package READMEs document the contribution surface for package authors;
+         they are not runtime assets and are excluded from the shipped bundle. -->
+    <Content Remove="Editors\**\README.md" />
+    <!-- Monaco bundle: these localized NLS shims trigger PRI249 / localization warnings
+         during the build. Excluded to match the previous Celbridge.Code behaviour. -->
+    <Content Remove="Editors\CodeEditor\min\vs\base\common\worker\simpleWorker.nls.zh-cn.js" />
+    <Content Remove="Editors\CodeEditor\min\vs\base\common\worker\simpleWorker.nls.zh-tw.js" />
+    <Content Remove="Editors\CodeEditor\min\vs\basic-languages\st\st.js" />
+    <Content Remove="Editors\CodeEditor\min\vs\editor\editor.main.nls.zh-cn.js" />
+    <Content Remove="Editors\CodeEditor\min\vs\editor\editor.main.nls.zh-tw.js" />
   </ItemGroup>
 
   <ItemGroup>

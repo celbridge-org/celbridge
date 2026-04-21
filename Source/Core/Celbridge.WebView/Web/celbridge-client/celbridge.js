@@ -68,6 +68,14 @@ export class Celbridge {
     secrets;
 
     /**
+     * Package-defined options parsed from the `[options]` table of the editor's
+     * document manifest. Keys and values are opaque to the Celbridge host; the
+     * editor decides how to interpret them.
+     * @type {Readonly<Object<string, string>>}
+     */
+    options;
+
+    /**
      * Creates a new Celbridge instance.
      * @param {Object} [options] - Configuration options.
      * @param {Function} [options.postMessage] - Custom postMessage function (for testing).
@@ -89,6 +97,7 @@ export class Celbridge {
         this.localization = new LocalizationAPI(this.#transport);
         this.tools = new ToolsAPI(this.#transport, context.allowedTools);
         this.secrets = context.secrets;
+        this.options = context.options;
     }
 
     /**
@@ -180,6 +189,18 @@ export class Celbridge {
     }
 
     /**
+     * Registers a handler for a custom host-to-client notification (fire-and-forget).
+     * Use this when a package needs to receive RPC calls beyond the standard lifecycle —
+     * e.g., editor-specific operations like navigate-to-location or apply-edits.
+     * The handler receives the full params object.
+     * @param {string} method - The RPC method name (e.g. 'editor/navigateToLocation').
+     * @param {Function} handler - Called with the notification params object.
+     */
+    onNotification(method, handler) {
+        this.#transport.addEventListener(method, handler);
+    }
+
+    /**
      * Internal method to send requests (used by sub-modules).
      * @param {string} method - The method name.
      * @param {Object} params - The request parameters.
@@ -209,9 +230,11 @@ export class Celbridge {
  * - `secrets` is a map of secret name to resolved value, populated from the package's
  *   `requires_secrets`. Scrubbed from the global scope after this read so DevTools
  *   inspection has only a short window before the property is gone.
+ * - `options` is a map of opaque string values from the package's `[options]` table.
+ *   Used by editors to configure themselves (e.g., which preview renderer to load).
  *
  * @param {Object} [providedContext] - Context passed via constructor options (testing).
- * @returns {{ allowedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>> }}
+ * @returns {{ allowedTools: ReadonlyArray<string>, secrets: Readonly<Object<string, string>>, options: Readonly<Object<string, string>> }}
  */
 function readAndScrubContext(providedContext) {
     const fromArg = providedContext ?? null;
@@ -231,19 +254,26 @@ function readAndScrubContext(providedContext) {
         ? Object.freeze([...raw.allowedTools])
         : Object.freeze([]);
 
-    const secretsSource = (raw && typeof raw.secrets === 'object' && raw.secrets !== null)
-        ? raw.secrets
-        : null;
-    const secrets = {};
-    if (secretsSource) {
-        for (const [key, value] of Object.entries(secretsSource)) {
+    const secrets = readStringMap(raw?.secrets);
+    const options = readStringMap(raw?.options);
+
+    return {
+        allowedTools,
+        secrets: Object.freeze(secrets),
+        options: Object.freeze(options)
+    };
+}
+
+function readStringMap(source) {
+    const result = {};
+    if (source && typeof source === 'object') {
+        for (const [key, value] of Object.entries(source)) {
             if (typeof value === 'string') {
-                secrets[key] = value;
+                result[key] = value;
             }
         }
     }
-
-    return { allowedTools, secrets: Object.freeze(secrets) };
+    return result;
 }
 
 // Lazy singleton instance for typical usage

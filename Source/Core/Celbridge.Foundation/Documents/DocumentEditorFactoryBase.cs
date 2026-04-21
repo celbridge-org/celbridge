@@ -3,7 +3,7 @@ namespace Celbridge.Documents;
 /// <summary>
 /// Base class for document editor factories that provides default implementations
 /// for common patterns like extension-based CanHandleResource and default Priority.
-/// Factories with custom logic (e.g., CodeEditorFactory) can implement IDocumentEditorFactory directly.
+/// Factories with custom logic can implement IDocumentEditorFactory directly.
 /// </summary>
 public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 {

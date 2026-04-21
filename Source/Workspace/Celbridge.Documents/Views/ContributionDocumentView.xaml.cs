@@ -23,6 +23,7 @@ namespace Celbridge.Documents.Views;
 public sealed partial class ContributionDocumentView : WebViewDocumentView
 {
     private const int SaveRequestTimeoutSeconds = 30;
+    private const int LoadContentTimeoutSeconds = 10;
 
     private readonly ILogger<ContributionDocumentView> _logger;
     private readonly ICommandService _commandService;
@@ -35,6 +36,11 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
     private ContributionDocumentHandler? _documentHandler;
     private ContributionToolsHandler? _toolsHandler;
+
+    // Completed by InitContributionViewAsync with the init outcome. LoadContent
+    // triggers the init on first call and awaits this TCS so the open-document
+    // flow returns only when the WebView and host are ready for RPCs.
+    private TaskCompletionSource<Result>? _initTcs;
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -75,8 +81,6 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         WebViewContainer = ContributionWebViewContainer;
 
         EnableThemeSyncing(userInterfaceService);
-
-        Loaded += ContributionDocumentView_Loaded;
 
         _viewModel.ReloadRequested += ViewModel_ReloadRequested;
     }
@@ -130,18 +134,13 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         return result;
     }
 
-    private async void ContributionDocumentView_Loaded(object sender, RoutedEventArgs e)
-    {
-        Loaded -= ContributionDocumentView_Loaded;
-
-        await InitContributionViewAsync();
-    }
-
     private async Task InitContributionViewAsync()
     {
         if (Contribution is null)
         {
-            _logger.LogError("Cannot initialize contribution view: Contribution is not set");
+            var error = "Cannot initialize contribution view: Contribution is not set";
+            _logger.LogError(error);
+            _initTcs!.TrySetResult(Result.Fail(error));
             return;
         }
 
@@ -170,7 +169,7 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
             ApplyThemeToWebView();
 
-            await InjectCelbridgeContextAsync(Contribution.Package);
+            await InjectCelbridgeContextAsync(Contribution.Package, Contribution.Options);
 
             // Block all navigations except the package's own host name
             var allowedHostPrefix = $"https://{Contribution.Package.HostName}/";
@@ -233,10 +232,15 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
+
+            _initTcs!.TrySetResult(Result.Ok());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Failed to initialize contribution view: {Contribution.Package.Name}");
+            var failure = Result.Fail($"Failed to initialize contribution view: {Contribution.Package.Id}")
+                .WithException(ex);
+            _initTcs!.TrySetResult(failure);
         }
     }
 
@@ -287,15 +291,133 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
     public override async Task<Result> LoadContent()
     {
-        await Task.CompletedTask;
-        return Result.Ok();
+        // LoadContent drives WebView initialization directly — not via the
+        // XAML Loaded event. DocumentsService.CreateDocumentView calls
+        // LoadContent before the view is added to the visual tree, so a
+        // Loaded-driven init would not fire in time for LoadContent to
+        // observe the editor's ContentLoaded signal. LoadContent returns
+        // only once the editor is ready for RPCs, so callers that open a
+        // document and immediately send it an RPC (ApplyEditsCommand,
+        // NavigateToLocation, etc.) find the host ready to dispatch.
+        if (_initTcs is null)
+        {
+            _initTcs = new TaskCompletionSource<Result>();
+            _ = InitContributionViewAsync();
+        }
+
+        var initResult = await _initTcs.Task;
+        if (initResult.IsFailure)
+        {
+            return initResult;
+        }
+
+        if (IsContentLoaded)
+        {
+            return Result.Ok();
+        }
+
+        var readyTcs = new TaskCompletionSource();
+        void OnContentLoadedHandler(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.Initial)
+            {
+                readyTcs.TrySetResult();
+            }
+        }
+
+        ContentLoaded += OnContentLoadedHandler;
+        try
+        {
+            // Double-check after subscribing to avoid a race where the load
+            // completes between the first check and the subscription.
+            if (IsContentLoaded)
+            {
+                return Result.Ok();
+            }
+
+            var timeout = TimeSpan.FromSeconds(LoadContentTimeoutSeconds);
+            var completed = await Task.WhenAny(readyTcs.Task, Task.Delay(timeout));
+            if (completed != readyTcs.Task)
+            {
+                var errorMessage = $"Contribution document failed to load within {LoadContentTimeoutSeconds} seconds. " +
+                                   $"Package: {Contribution?.Package.Id}. File: {_viewModel.FilePath}";
+                _logger.LogError(errorMessage);
+                return Result.Fail(errorMessage);
+            }
+
+            return Result.Ok();
+        }
+        finally
+        {
+            ContentLoaded -= OnContentLoadedHandler;
+        }
+    }
+
+    public override async Task<Result> NavigateToLocation(string location)
+    {
+        if (Host is null ||
+            string.IsNullOrEmpty(location))
+        {
+            return Result.Ok();
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(location);
+            var root = doc.RootElement;
+
+            var lineNumber = root.TryGetProperty("lineNumber", out var lineProp) ? lineProp.GetInt32() : 1;
+            var column = root.TryGetProperty("column", out var colProp) ? colProp.GetInt32() : 1;
+            var endLineNumber = root.TryGetProperty("endLineNumber", out var endLineProp) ? endLineProp.GetInt32() : 0;
+            var endColumn = root.TryGetProperty("endColumn", out var endColProp) ? endColProp.GetInt32() : 0;
+
+            await Host.Rpc.NotifyWithParameterObjectAsync(
+                "editor/navigateToLocation",
+                new { lineNumber, column, endLineNumber, endColumn });
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to navigate to location: {location}")
+                .WithException(ex);
+        }
+    }
+
+    public override async Task<Result> ApplyEditsAsync(IEnumerable<TextEdit> edits)
+    {
+        if (Host is null)
+        {
+            return Result.Fail("Host not initialized");
+        }
+
+        try
+        {
+            var wireEdits = edits.Select(edit => new
+            {
+                line = edit.Line,
+                column = edit.Column,
+                endLine = edit.EndLine,
+                endColumn = edit.EndColumn,
+                newText = edit.NewText
+            });
+
+            await Host.Rpc.NotifyWithParameterObjectAsync(
+                "editor/applyEdits",
+                new { edits = wireEdits });
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail("Failed to apply edits to document")
+                .WithException(ex);
+        }
     }
 
     public override async Task PrepareToClose()
     {
         _messengerService.UnregisterAll(this);
-
-        Loaded -= ContributionDocumentView_Loaded;
 
         if (_documentHandler is not null)
         {
@@ -323,13 +445,15 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         }
     }
 
-    private async Task InjectCelbridgeContextAsync(PackageInfo package)
+    private async Task InjectCelbridgeContextAsync(
+        PackageInfo package,
+        IReadOnlyDictionary<string, string> options)
     {
         var allowedTools = package.RequiresTools;
         var secrets = ResolvePackageSecrets(package);
 
         var contextJson = JsonSerializer.Serialize(
-            new CelbridgeContext(allowedTools, secrets),
+            new CelbridgeContext(allowedTools, secrets, options),
             ContextSerializerOptions);
 
         var coreWebView2 = WebView?.CoreWebView2;
@@ -347,6 +471,20 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
     {
         if (package.RequiresSecrets.Count == 0)
         {
+            return EmptySecrets;
+        }
+
+        // Gate: only bundled packages (shipped inside module DLLs) can request secrets.
+        // Project-contributed and registry-installed packages would otherwise be able to
+        // exfiltrate any secret whose name they know (e.g. `spreadjs_license` is visible
+        // in public source). When a legitimate third-party use case appears, replace this
+        // blanket block with a per-secret consent prompt persisted per package-id.
+        if (!package.IsBundled)
+        {
+            _logger.LogWarning(
+                "Non-bundled package '{PackageId}' declares {Count} required secret(s); " +
+                "secret injection is only permitted for bundled packages. Secrets: {Secrets}",
+                package.Id, package.RequiresSecrets.Count, string.Join(", ", package.RequiresSecrets));
             return EmptySecrets;
         }
 
@@ -381,5 +519,6 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
     private sealed record CelbridgeContext(
         IReadOnlyList<string> AllowedTools,
-        IReadOnlyDictionary<string, string> Secrets);
+        IReadOnlyDictionary<string, string> Secrets,
+        IReadOnlyDictionary<string, string> Options);
 }

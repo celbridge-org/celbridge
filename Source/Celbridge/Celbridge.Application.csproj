@@ -30,8 +30,15 @@
     </UnoFeatures>
 
     <DefaultLanguage>en-US</DefaultLanguage>
-    
+
     <AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
+
+    <!-- DEP0840 is an informational packaging note from Visual Studio about which
+         WinAppRuntime packages must be present on the target machine for F5 deploy.
+         We ship WindowsAppSDKSelfContained, so the note is redundant.
+         NETSDK1198 fires when VS probes for a per-platform publish profile
+         (win-AnyCPU.pubxml) that we don't maintain in source control. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);DEP0840;NETSDK1198</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -70,10 +77,8 @@
 
   <!-- Modules -->
   <ItemGroup>
-    <ProjectReference Include="..\Modules\Celbridge.Code\Celbridge.Code.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Core\Celbridge.Core.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.Markdown\Celbridge.Markdown.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.WebApp\Celbridge.WebApp.csproj" />

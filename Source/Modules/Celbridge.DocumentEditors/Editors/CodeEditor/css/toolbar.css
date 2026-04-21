@@ -1,0 +1,124 @@
+#toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background-color: var(--toolbar-bg);
+    border-bottom: 1px solid var(--toolbar-border);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    color: var(--toolbar-btn-fg);
+}
+
+#toolbar[hidden] {
+    display: none;
+}
+
+.toolbar-panel {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.toolbar-panel[hidden] {
+    display: none;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: var(--toolbar-border);
+    margin: 0 4px;
+}
+
+.toolbar-separator[hidden] {
+    display: none;
+}
+
+.toolbar-btn {
+    box-sizing: border-box;
+    width: 32px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background-color: transparent;
+    color: var(--toolbar-btn-fg);
+    cursor: pointer;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+    background-color: var(--toolbar-btn-hover-bg);
+}
+
+.toolbar-btn.active {
+    background-color: var(--toolbar-btn-active-bg);
+    border-color: var(--accent-color);
+}
+
+.toolbar-btn:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 1px;
+}
+
+.toolbar-btn:disabled {
+    color: var(--toolbar-btn-disabled-fg);
+    cursor: default;
+}
+
+/* Bootstrap Icons sized to match the Segoe Fluent Icons used in the Celbridge
+   chrome (tab strip, sidebar toggle, app toolbar). Notes uses 16px because it
+   is a dedicated editor surface; CodeEditor's toolbar sits under the chrome
+   and should blend in. */
+.toolbar-btn .bi {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.snippet-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 180px;
+    padding: 4px 0;
+    background-color: var(--toolbar-bg);
+    border: 1px solid var(--toolbar-border);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+}
+
+.snippet-menu[hidden] {
+    display: none;
+}
+
+.snippet-menu-item {
+    display: block;
+    width: 100%;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--toolbar-btn-fg);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.snippet-menu-item:hover {
+    background-color: var(--toolbar-btn-hover-bg);
+}
+
+.snippet-menu-item:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+}
+
+.snippet-menu-separator {
+    height: 1px;
+    margin: 4px 0;
+    background-color: var(--toolbar-border);
+}

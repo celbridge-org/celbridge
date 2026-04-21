@@ -37,6 +37,7 @@ public class Module : IModule
             Path.Combine(editorsRoot, "Notes"),
             Path.Combine(editorsRoot, "FileViewer"),
             Path.Combine(editorsRoot, "SceneViewer"),
+            Path.Combine(editorsRoot, "CodeEditor"),
         };
     }
 }

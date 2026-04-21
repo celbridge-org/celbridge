@@ -33,4 +33,13 @@ public partial record CustomDocumentEditorContribution : DocumentEditorContribut
     /// unless a registered IDocumentContentProvider matches the resource.
     /// </summary>
     public bool ExternalContent { get; init; } = false;
+
+    /// <summary>
+    /// Package-defined options parsed from the [options] table of the document manifest.
+    /// Keys and values are opaque to the host, the editor interprets them.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Options { get; init; } = EmptyOptions;
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyOptions =
+        new Dictionary<string, string>();
 }
