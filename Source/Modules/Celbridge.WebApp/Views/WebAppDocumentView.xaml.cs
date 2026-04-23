@@ -1,22 +1,36 @@
-using Celbridge.Server;
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Settings;
+using Celbridge.Server;
+using Celbridge.UserInterface;
 using Celbridge.WebApp.ViewModels;
 using Celbridge.WebView;
+using Celbridge.WebView.Services;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.WebApp.Views;
 
-public sealed partial class WebAppDocumentView : WebViewDocumentView
+/// <summary>
+/// Hosts an arbitrary user URL from a .webapp document. Does not load a fixed
+/// editor bundle and does not fit the contribution package model, so it inherits
+/// DocumentView directly and owns its own WebView2 lifecycle.
+/// </summary>
+public sealed partial class WebAppDocumentView : DocumentView, IHostInput
 {
     private readonly ILogger<WebAppDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
+    private readonly IWebViewFactory _webViewFactory;
+    private readonly IWebViewService _webViewService;
+
+    private WebView2? _webView;
+    private WebViewHostChannel? _hostChannel;
+    private CelbridgeHost? _host;
+
     private bool _isFileServerReady;
 
     public WebAppDocumentViewModel ViewModel { get; }
@@ -30,20 +44,18 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         IMessengerService messengerService,
         IWebViewFactory webViewFactory,
         IFileServer projectFileServer,
-        IFeatureFlags featureFlags)
-        : base(messengerService, webViewFactory, featureFlags)
+        IWebViewService webViewService)
     {
         this.InitializeComponent();
 
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
+        _webViewFactory = webViewFactory;
+        _webViewService = webViewService;
         _isFileServerReady = projectFileServer.IsReady;
 
         ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
-
-        // Set the container where the WebView will be placed
-        WebViewContainer = AppWebViewContainer;
 
         Loaded += WebAppDocumentView_Loaded;
 
@@ -54,20 +66,21 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         _messengerService.Register<ProjectFileServerReadyMessage>(this, OnProjectFileServerReady);
     }
 
+    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    {
+        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
+    }
+
     private void OnProjectFileServerReady(object recipient, ProjectFileServerReadyMessage message)
     {
         _isFileServerReady = true;
         TryNavigate();
     }
 
-    /// <summary>
-    /// Navigates the WebView to the resolved URL if it is ready.
-    /// For resource keys (no scheme), navigation is deferred until
-    /// the project file server is available.
-    /// </summary>
     private void TryNavigate()
     {
-        if (WebView?.CoreWebView2 is null || string.IsNullOrEmpty(ViewModel.SourceUrl))
+        if (_webView?.CoreWebView2 is null || string.IsNullOrEmpty(ViewModel.SourceUrl))
         {
             return;
         }
@@ -80,7 +93,7 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         var navigateUrl = ViewModel.NavigateUrl;
         if (!string.IsNullOrEmpty(navigateUrl))
         {
-            WebView.CoreWebView2.Navigate(navigateUrl);
+            _webView.CoreWebView2.Navigate(navigateUrl);
         }
     }
 
@@ -91,15 +104,15 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
             return;
         }
 
-        if (WebView is null)
+        if (_webView is null)
         {
             return;
         }
 
         try
         {
-            await WebView.EnsureCoreWebView2Async();
-            WebView.CoreWebView2.Navigate(message.Url);
+            await _webView.EnsureCoreWebView2Async();
+            _webView.CoreWebView2.Navigate(message.Url);
         }
         catch (Exception ex)
         {
@@ -114,20 +127,19 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
             return;
         }
 
-        if (WebView is null)
+        if (_webView is null)
         {
             return;
         }
 
         try
         {
-            await WebView.EnsureCoreWebView2Async();
+            await _webView.EnsureCoreWebView2Async();
 
-            // Clear the cache before refreshing to ensure fresh content
-            await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync(
+            await _webView.CoreWebView2.Profile.ClearBrowsingDataAsync(
                 CoreWebView2BrowsingDataKinds.CacheStorage | CoreWebView2BrowsingDataKinds.DiskCache);
 
-            WebView.CoreWebView2.Reload();
+            _webView.CoreWebView2.Reload();
         }
         catch (Exception ex)
         {
@@ -142,17 +154,17 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
             return;
         }
 
-        if (WebView is null)
+        if (_webView is null)
         {
             return;
         }
 
         try
         {
-            await WebView.EnsureCoreWebView2Async();
-            if (WebView.CoreWebView2.CanGoBack)
+            await _webView.EnsureCoreWebView2Async();
+            if (_webView.CoreWebView2.CanGoBack)
             {
-                WebView.CoreWebView2.GoBack();
+                _webView.CoreWebView2.GoBack();
             }
         }
         catch (Exception ex)
@@ -168,17 +180,17 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
             return;
         }
 
-        if (WebView is null)
+        if (_webView is null)
         {
             return;
         }
 
         try
         {
-            await WebView.EnsureCoreWebView2Async();
-            if (WebView.CoreWebView2.CanGoForward)
+            await _webView.EnsureCoreWebView2Async();
+            if (_webView.CoreWebView2.CanGoForward)
             {
-                WebView.CoreWebView2.GoForward();
+                _webView.CoreWebView2.GoForward();
             }
         }
         catch (Exception ex)
@@ -191,35 +203,68 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
     {
         Loaded -= WebAppDocumentView_Loaded;
 
-        await InitWebAppViewAsync();
+        // async void is required for a Loaded handler. Any exception in init
+        // must be caught here so a faulty load cannot crash the process.
+        try
+        {
+            _webView = await _webViewFactory.AcquireAsync();
+            AppWebViewContainer.Children.Add(_webView);
+
+            _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
+
+            _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
+            _host = new CelbridgeHost(_hostChannel);
+            _host.AddLocalRpcTarget<IHostInput>(this);
+            _host.StartListening();
+
+            _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+            _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+
+            _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+            _webView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
+
+            _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
+            _webView.CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
+
+            _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+            _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
+
+            TryNavigate();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize WebApp document view");
+            TeardownWebViewState();
+        }
     }
 
-    private async Task InitWebAppViewAsync()
+    /// <summary>
+    /// Tears down the WebView, host channel, and associated event handlers. Safe
+    /// to call multiple times and from partially initialized states. Used on
+    /// orderly shutdown (PrepareToClose) and on failure recovery (Loaded catch).
+    /// </summary>
+    private void TeardownWebViewState()
     {
-        // Acquire WebView from factory and add to container
-        await AcquireWebViewAsync();
+        if (_webView?.CoreWebView2 is not null)
+        {
+            _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
+            _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+            _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
+            _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+        }
 
-        // Initialize the host
-        InitializeHost();
-        StartHostListener();
+        if (_webView is not null)
+        {
+            AppWebViewContainer.Children.Remove(_webView);
+            _webView.Close();
+            _webView = null;
+        }
 
-        // Ensure we only register once for these events
-        WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-        WebView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
+        _host?.Dispose();
+        _hostChannel?.Detach();
 
-        WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-        WebView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
-
-        WebView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
-        WebView.CoreWebView2.HistoryChanged += CoreWebView2_HistoryChanged;
-
-        WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
-        WebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
-
-        // Navigate if the URL is ready. For resource keys served via the
-        // project file server, navigation is deferred until
-        // ProjectFileServerReadyMessage is received.
-        TryNavigate();
+        _host = null;
+        _hostChannel = null;
     }
 
     private void CoreWebView2_HistoryChanged(object? sender, object e)
@@ -234,12 +279,12 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
 
     private void SendNavigationStateChanged()
     {
-        if (WebView is null)
+        if (_webView is null)
         {
             return;
         }
 
-        var coreWebView = WebView.CoreWebView2;
+        var coreWebView = _webView.CoreWebView2;
 
         var canRefresh = coreWebView is not null &&
                          !string.IsNullOrEmpty(coreWebView.Source) &&
@@ -268,9 +313,6 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
 
         var filename = Path.GetFileName(downloadPath);
 
-        //
-        // Map the download path to a unique path in the project folder 
-        //
         var resolveResult = ResourceRegistry.ResolveResourcePath(filename);
         if (resolveResult.IsFailure)
         {
@@ -281,15 +323,11 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         var getResult = PathHelper.GetUniquePath(requestedPath);
         if (getResult.IsFailure)
         {
-            // Don't allow the download to proceed if we can't generate a unique path
             args.Cancel = true;
             return;
         }
         var savePath = getResult.Value;
 
-        //
-        // Get the resource key for the save path
-        //
         var getResourceResult = ResourceRegistry.GetResourceKey(savePath);
         if (getResourceResult.IsFailure)
         {
@@ -298,21 +336,14 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
         }
         var saveResourceKey = getResourceResult.Value;
 
-        //
-        // Redirect download to a temporary path
-        //
         var extension = Path.GetExtension(filename);
         var tempPath = PathHelper.GetTemporaryFilePath("Downloads", extension);
         args.ResultFilePath = tempPath;
 
-        //
-        // Handle download state changes
-        //
         args.DownloadOperation.StateChanged += (s, e) =>
         {
             if (s.State == CoreWebView2DownloadState.Completed)
             {
-                // Move the file to the requested path, with undo support.
                 _commandService.Execute<IAddResourceCommand>(command =>
                 {
                     command.ResourceType = ResourceType.File;
@@ -329,19 +360,13 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
 
     public override async Task<Result> LoadContent()
     {
-        // Be aware that this method can be called multiple times if the document is reloaded as a result of
-        // the user changing the URL in the inspector.
-
-        // Load URL from file - actual navigation happens in InitWebAppViewAsync when the view is loaded
         var loadResult = await ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {
             return loadResult;
         }
 
-        // If the WebView is already initialized (reload case), try to navigate.
-        // For resource keys, navigation may be deferred until the file server is ready.
-        if (WebView?.CoreWebView2 is not null)
+        if (_webView?.CoreWebView2 is not null)
         {
             TryNavigate();
         }
@@ -351,10 +376,8 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
 
     private void WebView_NewWindowRequested(CoreWebView2 sender, CoreWebView2NewWindowRequestedEventArgs args)
     {
-        // Prevent the new window from being created
         args.Handled = true;
 
-        // Open the url in the default system browser
         var url = args.Uri;
         if (!string.IsNullOrEmpty(url))
         {
@@ -366,13 +389,7 @@ public sealed partial class WebAppDocumentView : WebViewDocumentView
     {
         _messengerService.UnregisterAll(this);
 
-        if (WebView?.CoreWebView2 is not null)
-        {
-            WebView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
-            WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
-            WebView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
-            WebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
-        }
+        TeardownWebViewState();
 
         await base.PrepareToClose();
     }

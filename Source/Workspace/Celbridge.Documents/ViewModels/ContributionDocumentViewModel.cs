@@ -12,6 +12,7 @@ namespace Celbridge.Documents.ViewModels;
 public partial class ContributionDocumentViewModel : DocumentViewModel
 {
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
     /// <summary>
     /// The document contribution this view model serves.
@@ -19,9 +20,12 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// </summary>
     public CustomDocumentEditorContribution? Contribution { get; set; }
 
-    public ContributionDocumentViewModel(IWorkspaceWrapper workspaceWrapper)
+    public ContributionDocumentViewModel(
+        IWorkspaceWrapper workspaceWrapper,
+        IEnumerable<IDocumentContentProvider> contentProviders)
     {
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _contentProviders = contentProviders.ToList().AsReadOnly();
 
         EnableFileChangeMonitoring();
     }
@@ -32,7 +36,16 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     private bool IsBinary => Contribution?.Binary ?? false;
 
     /// <summary>
+    /// Whether this contribution sources its content outside the file bytes.
+    /// When true, the host returns generated content from a matching IDocumentContentProvider,
+    /// or an empty string if no provider matches (the editor's JS is expected to fetch its own data).
+    /// </summary>
+    private bool IsExternalContent => Contribution?.ExternalContent ?? false;
+
+    /// <summary>
     /// Loads content from the file.
+    /// For external-content documents, returns generated content from a matching IDocumentContentProvider,
+    /// or an empty string when no provider matches.
     /// For binary documents, returns base64-encoded content.
     /// For text documents, returns the raw text.
     /// Returns template content for empty or missing files when the manifest declares a default template.
@@ -40,6 +53,22 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// </summary>
     public async Task<string> LoadTextContentAsync()
     {
+        if (IsExternalContent)
+        {
+            var provider = FindContentProvider();
+            if (provider is not null)
+            {
+                var generateResult = await provider.LoadContentAsync(FileResource);
+                if (generateResult.IsSuccess)
+                {
+                    UpdateFileTrackingInfo();
+                    return generateResult.Value;
+                }
+            }
+
+            return string.Empty;
+        }
+
         if (!File.Exists(FilePath))
         {
             return GetDefaultTemplateContent();
@@ -68,13 +97,33 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         return content;
     }
 
+    private IDocumentContentProvider? FindContentProvider()
+    {
+        foreach (var provider in _contentProviders)
+        {
+            if (provider.CanHandle(FileResource))
+            {
+                return provider;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Saves content to the file.
+    /// External-content editors are read-only views over derived data and ignore save requests.
     /// For binary documents, decodes base64 content and writes raw bytes.
     /// For text documents, writes the content as text.
     /// </summary>
     public async Task<Result> SaveTextContentAsync(string content)
     {
+        if (IsExternalContent)
+        {
+            await Task.CompletedTask;
+            return Result.Ok();
+        }
+
         if (IsBinary)
         {
             return await SaveBinaryToFileAsync(content);

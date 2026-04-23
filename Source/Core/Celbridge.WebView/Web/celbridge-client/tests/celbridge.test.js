@@ -349,58 +349,7 @@ describe('Celbridge', () => {
         });
     });
 
-    describe('code preview operations', () => {
-        it('should start with empty basePath', () => {
-            const { client } = createTestClient();
-            expect(client.codePreview.basePath).toBe('');
-        });
-
-        it('should update basePath and call handler on setBasePath notification', async () => {
-            const { client, simulateResponse, simulateNotification } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            const handler = vi.fn();
-            client.codePreview.onSetBasePath(handler);
-
-            simulateNotification('codePreview/setBasePath', { basePath: '/projects/myproject' });
-
-            expect(client.codePreview.basePath).toBe('/projects/myproject');
-            expect(handler).toHaveBeenCalledWith('/projects/myproject');
-        });
-
-        it('should call handler on update notification with content', async () => {
-            const { client, simulateResponse, simulateNotification } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            const handler = vi.fn();
-            client.codePreview.onUpdate(handler);
-
-            simulateNotification('codePreview/update', { content: '<h1>Hello</h1>' });
-
-            expect(handler).toHaveBeenCalledWith('<h1>Hello</h1>');
-        });
-
-        it('should call handler on scroll notification with percentage', async () => {
-            const { client, simulateResponse, simulateNotification } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            const handler = vi.fn();
-            client.codePreview.onScroll(handler);
-
-            simulateNotification('codePreview/scroll', { scrollPercentage: 0.5 });
-
-            expect(handler).toHaveBeenCalledWith(0.5);
-        });
-
+    describe('open resource / open external notifications', () => {
         it('should send openResource notification with href', async () => {
             const { client, sentMessages, simulateResponse } = createTestClient();
 
@@ -408,11 +357,11 @@ describe('Celbridge', () => {
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            client.codePreview.openResource('docs/intro.md');
+            client.input.notifyOpenResource('docs/intro.md');
 
             expect(sentMessages).toHaveLength(2);
             const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('codePreview/openResource');
+            expect(notification.method).toBe('input/openResource');
             expect(notification.params.href).toBe('docs/intro.md');
             expect(notification.id).toBeUndefined();
         });
@@ -424,26 +373,11 @@ describe('Celbridge', () => {
             simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
             await initPromise;
 
-            client.codePreview.openExternal('https://example.com');
+            client.input.notifyOpenExternal('https://example.com');
 
             const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('codePreview/openExternal');
+            expect(notification.method).toBe('input/openExternal');
             expect(notification.params.href).toBe('https://example.com');
-            expect(notification.id).toBeUndefined();
-        });
-
-        it('should send syncToEditor notification with scroll percentage', async () => {
-            const { client, sentMessages, simulateResponse } = createTestClient();
-
-            const initPromise = client.initialize();
-            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
-            await initPromise;
-
-            client.codePreview.syncToEditor(0.25);
-
-            const notification = JSON.parse(sentMessages[1]);
-            expect(notification.method).toBe('codePreview/syncToEditor');
-            expect(notification.params.scrollPercentage).toBe(0.25);
             expect(notification.id).toBeUndefined();
         });
     });

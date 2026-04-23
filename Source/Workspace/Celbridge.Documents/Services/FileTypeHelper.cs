@@ -8,17 +8,11 @@ public class FileTypeHelper
 {
     private const string FileViewerTypesResourceName = "Celbridge.Documents.Assets.DocumentTypes.FileViewerTypes.json";
     private const string PlaintextLanguage = "plaintext";
-    private const string SpreadJSCoreScript = "ms-appx:///Celbridge.Spreadsheet/Web/SpreadJS/lib/spreadjs/scripts/gc.spread.sheets.all.18.1.4.min.js";
 
     private List<string> _fileViewerExtensions = new();
     private HashSet<string> _binaryFileExtensions = new();
 
     private IDocumentEditorRegistry? _documentEditorRegistry;
-
-    /// <summary>
-    /// Indicates whether the SpreadJS Excel editor is available.
-    /// </summary>
-    public bool IsSpreadJSAvailable { get; private set; }
 
     /// <summary>
     /// Sets the document editor registry for querying language mappings and supported extensions.
@@ -35,15 +29,6 @@ public class FileTypeHelper
         if (loadWebResult.IsFailure)
         {
             return loadWebResult;
-        }
-
-        // The SpreadJS Excel editor is only available in Celbridge installer builds.
-        IsSpreadJSAvailable = CheckSpreadJSInstalled();
-
-        if (IsSpreadJSAvailable)
-        {
-            // Only add Excel extension if SpreadJS is available.
-            _binaryFileExtensions.Add(ExplorerConstants.ExcelExtension);
         }
 
         // Initialize the set of supported binary file extensions.
@@ -69,13 +54,6 @@ public class FileTypeHelper
         if (fileExtension == ExplorerConstants.MarkdownExtension)
         {
             return DocumentViewType.Markdown;
-        }
-
-        if (fileExtension == ExplorerConstants.ExcelExtension)
-        {
-            // Only return Spreadsheet view type if SpreadJS is available.
-            // Otherwise, return UnsupportedFormat so the user is prompted to open with default app.
-            return IsSpreadJSAvailable ? DocumentViewType.Spreadsheet : DocumentViewType.UnsupportedFormat;
         }
 
         if (IsWebViewerFile(fileExtension))
@@ -194,25 +172,5 @@ public class FileTypeHelper
         }
 
         return Result.Ok();
-    }
-
-    /// <summary>
-    /// Checks if the SpreadJS library has been installed in the app package.
-    /// </summary>
-    private static bool CheckSpreadJSInstalled()
-    {
-        try
-        {
-            var uri = new Uri(SpreadJSCoreScript);
-            // Use synchronous wait since this is called during initialization
-            var task = StorageFile.GetFileFromApplicationUriAsync(uri).AsTask();
-            task.Wait();
-            return true;
-        }
-        catch
-        {
-            // The SpreadJS library is not installed
-            return false;
-        }
     }
 }

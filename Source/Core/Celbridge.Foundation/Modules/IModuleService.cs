@@ -1,4 +1,5 @@
 using Celbridge.Activities;
+using Celbridge.Packages;
 
 namespace Celbridge.Modules;
 
@@ -28,7 +29,7 @@ public interface IModuleService
     Result<IActivity> CreateActivity(string activityName);
 
     /// <summary>
-    /// Returns package folders from all loaded modules that bundle packages.
+    /// Returns bundled-package descriptors contributed by all loaded modules.
     /// </summary>
-    IReadOnlyList<string> GetBundledPackageFolders();
+    IReadOnlyList<BundledPackageDescriptor> GetBundledPackages();
 }

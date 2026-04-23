@@ -139,7 +139,7 @@ public class DocumentsService : IDocumentsService, IDisposable
                     if (result.IsFailure)
                     {
                         _logger.LogWarning(result,
-                            $"Failed to register contribution editor factory for: {contribution.Package.Name}");
+                            $"Failed to register contribution editor factory for: {contribution?.Package?.Name}");
                     }
                 }
                 catch (Exception ex)
@@ -802,8 +802,8 @@ public class DocumentsService : IDocumentsService, IDisposable
             return Result.Fail($"File resource is not a supported document format: '{fileResource}'");
         }
 
-        // For text documents with unrecognized extensions, try to find a factory that can handle them
-        // This allows CodeEditorFactory to handle arbitrary text files on Windows via TextBinarySniffer
+        // For text documents with unrecognized extensions, try to find a factory that can handle them.
+        // Useful when a factory declares support via CanHandleResource rather than a fixed extension list.
         if (viewType == DocumentViewType.TextDocument)
         {
             // Check all factories to see if any can handle this text file

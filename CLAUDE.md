@@ -67,6 +67,7 @@ python run_tests.py
 - Code-behind files use `.xaml.cs` naming convention (e.g., `MyView.xaml.cs`)
 - Never use `/// <param>` XML documentation — it is verbose and hard to keep synchronized (exception: MCP tool methods in `Celbridge.Tools` where the MCP SDK source generator requires them for parameter descriptions)
 - Do not use special characters like arrows or emojis in code comments
+- Use full stops rather than semicolons in comment and documentation prose. This applies to English text only, not C# statement terminators
 - Always use localized strings for user-facing text: add entries to `Resources.resw` and access via `IStringLocalizer.GetString()` in code-behind, then bind with `{x:Bind}`
 - Unit tests should cover the happy case and the most common failure modes; do not aim for complete coverage for its own sake
 - Place `Dispose` implementation at the end of a class; declare all private fields at the top
@@ -76,9 +77,10 @@ python run_tests.py
 - Use the Parameter Object pattern for methods with 4+ parameters: identity args (what/where) stay as direct arguments; behavioral/option args group into a record
 - Prefer small record types over named tuples for multi-value returns, especially when nullable-wrapping the record can replace field-level nullability
 - Colocate small helper types (under ~15 lines, single primary consumer) with their consumer rather than in dedicated files
-- Use the project's `ILogger<T>` for all diagnostics; never use `Debug.WriteLine`, `Console.Write*`, or `Trace.Write*`. For abstract base classes where constructor injection would cascade, use `ServiceLocator.AcquireService<ILogger<T>>()` (precedent: `WebViewDocumentView`, `CodeEditorDocumentView`)
+- Use the project's `ILogger<T>` for all diagnostics; never use `Debug.WriteLine`, `Console.Write*`, or `Trace.Write*`. For abstract base classes where constructor injection would cascade, use `ServiceLocator.AcquireService<ILogger<T>>()` (precedent: `DocumentView`)
 - When logging an exception, pass the exception object to the logger overload (e.g. `_logger.LogError(ex, "...")`); do not interpolate `ex.Message` or `ex.ToString()` into the message string
-- Keep XML doc comments concise: describe *what* the member does. Do not embed implementation rationale, caller behavior, or detail already carried by types (enums, records, nullable returns)
+- Keep XML doc comments concise but informative: one or two `<summary>` sentences describing *what* the member does, written so a reader who hasn't seen the class can understand it. If one line would just rephrase the member name (e.g. `"Typed counterpart of X"`), use two — conciseness is the constraint, not the goal. Do not embed implementation rationale, caller behavior, or detail already carried by types (enums, records, nullable returns). Avoid inline formatting tags (`<c>`, `<list>`, `<item>`) and multi-paragraph `<remarks>` blocks; plain type names read fine without `<see cref>` prose in summaries
+- Interface members and public types in `Celbridge.Foundation` must always carry a concise `<summary>` — the Foundation abstractions are how a reader understands the system, so every interface method, public record, and public enum there needs enough comment to stand alone. Conversely, skip xmldoc on concrete-class members by default: the interface they implement already documents them, and duplicated comments drift out of sync with the implementation. Exception: when the implementation has behavior that isn't obvious from the signature (unusual threading constraints, hidden side effects, non-obvious failure modes, subtle invariants), add a brief note. Treat the exception as rare — if the summary would just restate the name or repeat the interface comment, skip it
 - Model user or programmatic cancellation as a typed success outcome (e.g., `Result<OutcomeEnum>` with a `Cancelled` value), not as `Result.Fail`; `Result.Fail` stays reserved for genuine errors (precedent: `OpenDocumentOutcome`, `CloseDocumentOutcome`)
 - Minimize `Result<T>` boilerplate at return sites: use implicit conversions (`return value;` for concrete types; `return Result.Fail("message");` for failures). For interface return types, use the `OkResult<T>()` extension from `ResultExtensions`. Always unpack `result.Value` into a named temporary variable before using it
 
@@ -89,6 +91,15 @@ python run_tests.py
 - Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
 - The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
 - Never bypass `ICommandService` to call methods directly. Every important operation goes through the command service for automation and auditing support. If a command-based flow has a bug, fix it within the command service pattern (e.g., add new command options or fix the command handling logic)
+
+## Save Model
+
+Documents auto-save via `DocumentViewModel.OnDataChanged()` → per-view save timer (~1s). There is no user-facing Save command and no "unsaved changes" state; users recover via undo/redo.
+
+- Do not add save commands, shortcuts, or UI affordances. If on-demand flushing is needed, route through `IDocumentView.SaveDocument()` (precedent: `ApplyEditsCommand.ForceSave`).
+- Do not add "discard unsaved changes?" prompts on close — closing always saves.
+- Route programmatic edits through `IDocumentView.ApplyEditsAsync` so they join the editor's undo stack. `ApplyEditsCommand` with `OpenDocument=false` is the explicit exception for background edits where an undo entry has no meaning.
+- `MonitoredResourceChangedMessage` fires on every save; `DocumentViewModel` filters self-triggered events via `IsSavingFile` + hash. New consumers should expect high-frequency events.
 
 ## MCP Tools
 

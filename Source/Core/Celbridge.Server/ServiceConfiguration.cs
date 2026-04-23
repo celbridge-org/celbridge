@@ -8,7 +8,7 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IFileServer, FileServer>();
-        services.AddSingleton<McpToolBridge>();
+        services.AddSingleton<IMcpToolBridge, McpToolBridge>();
         services.AddSingleton<IAgentServer, Services.AgentServer>();
         services.AddSingleton<IServerService, ServerService>();
         services.AddTransient<ITcpTransport, TcpTransport>();

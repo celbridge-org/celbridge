@@ -1,0 +1,24 @@
+[document]
+id = "markdown-document"
+type = "custom"
+entry_point = "index.html"
+priority = "specialized"
+display_name = "CodeEditor_Editor_Markdown"
+
+# Package-defined options threaded into window.__celbridgeContext.options
+# and exposed to the editor JS via celbridge.options.
+# The code editor checks preview_renderer_url, initial_view_mode, and
+# enable_snippet_toolbar to configure the Monaco shell for markdown.
+[options]
+preview_renderer_url = "https://pkg-celbridge-code-editor.celbridge/markdown-preview/preview-module.js"
+initial_view_mode = "preview"
+enable_snippet_toolbar = "true"
+snippet_set = "markdown"
+
+[[document_file_types]]
+extension = ".md"
+display_name = "CodeEditor_FileType_Markdown"
+
+[[document_file_types]]
+extension = ".markdown"
+display_name = "CodeEditor_FileType_Markdown"

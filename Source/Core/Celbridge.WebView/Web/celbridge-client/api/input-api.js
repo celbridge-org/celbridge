@@ -31,4 +31,39 @@ export class InputAPI {
     notifyScrollChanged(percentage) {
         this.#transport.notify('input/scrollChanged', { scrollPercentage: percentage });
     }
+
+    /**
+     * Notifies the host to open a local resource (e.g., a linked document).
+     * @param {string} href - The relative path to the resource, resolved against the document folder by the host.
+     */
+    notifyOpenResource(href) {
+        this.#transport.notify('input/openResource', { href });
+    }
+
+    /**
+     * Notifies the host to open an external URL in the default browser.
+     * @param {string} href - The URL to open.
+     */
+    notifyOpenExternal(href) {
+        this.#transport.notify('input/openExternal', { href });
+    }
+
+    /**
+     * Notifies the host that a global keyboard shortcut was pressed in the editor.
+     * Use this to forward Celbridge-level shortcuts (e.g. Ctrl+W) when focus
+     * is inside the editor so the host can route them to IKeyboardShortcutService.
+     * @param {string} key - The key name (e.g. "W", "F11").
+     * @param {Object} [modifiers] - Modifier key state.
+     * @param {boolean} [modifiers.ctrl] - Whether Ctrl (or Cmd on macOS) is pressed.
+     * @param {boolean} [modifiers.shift] - Whether Shift is pressed.
+     * @param {boolean} [modifiers.alt] - Whether Alt (or Option on macOS) is pressed.
+     */
+    notifyShortcut(key, modifiers = {}) {
+        this.#transport.notify('input/keyboardShortcut', {
+            key,
+            ctrlKey: modifiers.ctrl === true,
+            shiftKey: modifiers.shift === true,
+            altKey: modifiers.alt === true
+        });
+    }
 }

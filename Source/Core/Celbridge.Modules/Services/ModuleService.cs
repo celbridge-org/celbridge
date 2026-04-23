@@ -1,5 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Modules.Services;
@@ -77,12 +78,12 @@ public class ModuleService : IModuleService
 
     public IReadOnlyList<IModule> LoadedModules => _moduleLoader.LoadedModules.Values.ToList();
 
-    public IReadOnlyList<string> GetBundledPackageFolders()
+    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
     {
         return _moduleLoader.LoadedModules.Values
-            .Select(m => m.GetBundledPackageFolder())
-            .Where(d => !string.IsNullOrEmpty(d))
-            .ToList()!;
+            .SelectMany(m => m.GetBundledPackages())
+            .Where(d => !string.IsNullOrEmpty(d.Folder))
+            .ToList();
     }
 
     public Result<IActivity> CreateActivity(string activityName)

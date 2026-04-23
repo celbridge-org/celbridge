@@ -54,4 +54,12 @@ public interface IWebViewService
     /// returning the resource key path.
     /// </summary>
     string StripLocalScheme(string url);
+
+    /// <summary>
+    /// Returns true if the WebViewDevTools feature flag is enabled in the
+    /// user's .celbridge config. Callers that additionally need to block
+    /// DevTools for a specific host (e.g. a bundled package that embeds
+    /// sensitive material) should combine this with their own check.
+    /// </summary>
+    bool IsDevToolsFeatureEnabled();
 }

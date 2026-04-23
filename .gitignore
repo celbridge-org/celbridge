@@ -415,9 +415,7 @@ solution-config.props
 .celbridge/
 
 # SpreadJS library
-**/SpreadJS/lib/
-
-# SpreadJS license keys
+**/Celbridge.Spreadsheet/Package/lib/
 **/SpreadsheetLicenseKeys.private.cs
 
 # Package API credentials

@@ -1,3 +1,4 @@
+using Celbridge.Settings;
 using Celbridge.WebView;
 using Celbridge.WebView.Services;
 
@@ -11,7 +12,8 @@ public class WebViewServiceUrlTests
     [SetUp]
     public void SetUp()
     {
-        _webViewService = new WebViewService();
+        var featureFlags = Substitute.For<IFeatureFlags>();
+        _webViewService = new WebViewService(featureFlags);
     }
 
     [TestCase("https://example.com", UrlType.WebUrl)]

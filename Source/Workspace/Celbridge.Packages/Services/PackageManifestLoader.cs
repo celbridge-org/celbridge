@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Documents;
 using Tomlyn;
 using Tomlyn.Model;
@@ -12,12 +13,15 @@ public static class PackageManifestLoader
 {
     private const string PackageSection = "package";
     private const string ContributesSection = "contributes";
+    private const string ModSection = "mod";
     private const string DocumentSection = "document";
     private const string DocumentEditorsKey = "document_editors";
     private const string DocumentFileTypesSection = "document_file_types";
     private const string DocumentTemplatesSection = "document_templates";
     private const string CodeEditorSection = "code_editor";
     private const string CodePreviewSection = "code_preview";
+    private const string OptionsSection = "options";
+    private const string RequiresToolsKey = "requires_tools";
 
     private const string IdKey = "id";
     private const string NameKey = "name";
@@ -25,12 +29,13 @@ public static class PackageManifestLoader
     private const string TypeKey = "type";
     private const string PriorityKey = "priority";
     private const string ExtensionKey = "extension";
+    private const string ExtensionsFileKey = "extensions_file";
     private const string DisplayNameKey = "display_name";
     private const string TemplateFileKey = "template_file";
     private const string DefaultKey = "default";
     private const string EntryPointKey = "entry_point";
-    private const string DevToolsEnabledKey = "webview_dev_tools";
     private const string BinaryKey = "binary";
+    private const string ExternalContentKey = "external_content";
     private const string WordWrapKey = "word_wrap";
     private const string ScrollBeyondLastLineKey = "scroll_beyond_last_line";
     private const string MinimapEnabledKey = "minimap_enabled";
@@ -42,10 +47,19 @@ public static class PackageManifestLoader
     private const string PackageHostPrefix = "pkg-";
     private const string HostSuffix = ".celbridge";
 
+    private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
+
     /// <summary>
     /// Loads a package from a package.toml file, including all referenced document editor contributions.
+    /// hostNameOverride, when non-null, replaces the default package-id-derived virtual host name.
+    /// secrets, when non-empty, populates PackageInfo.Secrets for WebView injection.
+    /// devToolsBlocked, when true, permanently disables DevTools on WebViews hosting this package.
     /// </summary>
-    public static Result<Package> LoadPackage(string packageTomlPath)
+    public static Result<Package> LoadPackage(
+        string packageTomlPath,
+        string? hostNameOverride = null,
+        IReadOnlyDictionary<string, string>? secrets = null,
+        bool devToolsBlocked = false)
     {
         try
         {
@@ -73,11 +87,31 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package missing required '{IdKey}' field: {packageTomlPath}");
             }
 
+            if (!PackageId.IsValid(packageId))
+            {
+                return Result.Fail($"Package has invalid '{IdKey}' value '{packageId}': {packageTomlPath}. Package ids must use only lowercase ASCII letters, digits, dots, and hyphens, with no leading, trailing, or consecutive dots.");
+            }
+
             var packageName = GetString(packageTable, NameKey);
             var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
             var safeName = packageId.Replace('.', '-').ToLowerInvariant();
-            var hostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
+            var defaultHostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
+
+            // Bundled packages may pin the virtual host name via the C#-side
+            // BundledPackageDescriptor (e.g. SpreadJS licensing requires `spreadjs.celbridge`).
+            // The override is deliberately not surfaced in package.toml so that non-bundled
+            // packages cannot impersonate a bundled host.
+            var hostName = !string.IsNullOrEmpty(hostNameOverride) ? hostNameOverride : defaultHostName;
+
+            var requiresTools = Array.Empty<string>() as IReadOnlyList<string>;
+            if (root.TryGetValue(ModSection, out var modObject) &&
+                modObject is TomlTable modTable)
+            {
+                requiresTools = GetStringArray(modTable, RequiresToolsKey);
+            }
+
+            var packageSecrets = secrets ?? EmptySecrets;
 
             var packageInfo = new PackageInfo
             {
@@ -85,7 +119,10 @@ public static class PackageManifestLoader
                 Name = packageName,
                 FeatureFlag = featureFlag,
                 PackageFolder = packageFolder,
-                HostName = hostName
+                HostName = hostName,
+                RequiresTools = requiresTools,
+                Secrets = packageSecrets,
+                DevToolsBlocked = devToolsBlocked
             };
 
             var documentPaths = new List<string>();
@@ -169,6 +206,12 @@ public static class PackageManifestLoader
 
             var documentType = GetString(documentTable, TypeKey).ToLowerInvariant();
             var displayName = GetString(documentTable, DisplayNameKey);
+            if (string.IsNullOrEmpty(displayName))
+            {
+                return Result.Fail(
+                    $"Document missing required '{DisplayNameKey}' field in [{DocumentSection}] section: {documentTomlPath}. " +
+                    $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
+            }
             var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
             var fileTypes = new List<DocumentFileType>();
@@ -177,11 +220,42 @@ public static class PackageManifestLoader
             {
                 foreach (var fileTypeTable in fileTypesArray)
                 {
-                    fileTypes.Add(new DocumentFileType
+                    var fileTypeDisplayName = GetString(fileTypeTable, DisplayNameKey);
+                    if (string.IsNullOrEmpty(fileTypeDisplayName))
                     {
-                        FileExtension = GetString(fileTypeTable, ExtensionKey),
-                        DisplayName = GetString(fileTypeTable, DisplayNameKey)
-                    });
+                        return Result.Fail(
+                            $"File type missing required '{DisplayNameKey}' field in [[{DocumentFileTypesSection}]] entry: {documentTomlPath}. " +
+                            $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
+                    }
+
+                    var extensionLiteral = GetStringOrNull(fileTypeTable, ExtensionKey);
+                    var extensionsFilePath = GetStringOrNull(fileTypeTable, ExtensionsFileKey);
+
+                    if (!string.IsNullOrEmpty(extensionsFilePath))
+                    {
+                        if (!string.IsNullOrEmpty(extensionLiteral))
+                        {
+                            return Result.Fail(
+                                $"A [[document_file_types]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {documentTomlPath}");
+                        }
+
+                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName);
+                        if (expandResult.IsFailure)
+                        {
+                            return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {documentTomlPath}")
+                                .WithErrors(expandResult);
+                        }
+
+                        fileTypes.AddRange(expandResult.Value);
+                    }
+                    else
+                    {
+                        fileTypes.Add(new DocumentFileType
+                        {
+                            FileExtension = extensionLiteral ?? string.Empty,
+                            DisplayName = fileTypeDisplayName
+                        });
+                    }
                 }
             }
 
@@ -204,6 +278,18 @@ public static class PackageManifestLoader
                         Default = GetBool(templateTable, DefaultKey)
                     });
                 }
+            }
+
+            // An editor with external_content = true sources its content from outside the file bytes,
+            // so a starter template would never be written to disk. The combination is meaningless,
+            // and accepting it silently hides an authoring mistake.
+            if (documentType != CodeDocumentType &&
+                templates.Count > 0 &&
+                (GetBoolOrNull(documentTable, ExternalContentKey) ?? false))
+            {
+                return Result.Fail(
+                    $"Document manifest '{documentTomlPath}' declares both '{ExternalContentKey} = true' and '{DocumentTemplatesSection}'. " +
+                    $"Templates cannot be used with external content.");
             }
 
             // Custom contributions have their editor id composed as "{packageId}.{documentId}" at
@@ -246,8 +332,10 @@ public static class PackageManifestLoader
         TomlTable documentTable)
     {
         var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
-        var devToolsEnabled = GetBoolOrNull(documentTable, DevToolsEnabledKey) ?? true;
         var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
+        var externalContent = GetBoolOrNull(documentTable, ExternalContentKey) ?? false;
+
+        var options = ParseOptionsTable(root);
 
         return new CustomDocumentEditorContribution
         {
@@ -258,9 +346,39 @@ public static class PackageManifestLoader
             Priority = priority,
             Templates = templates.AsReadOnly(),
             EntryPoint = entryPoint,
-            DevToolsEnabled = devToolsEnabled,
-            Binary = binary
+            Binary = binary,
+            ExternalContent = externalContent,
+            Options = options
         };
+    }
+
+    private static IReadOnlyDictionary<string, string> ParseOptionsTable(TomlTable root)
+    {
+        if (!root.TryGetValue(OptionsSection, out var optionsObject) ||
+            optionsObject is not TomlTable optionsTable)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        var result = new Dictionary<string, string>();
+        foreach (var entry in optionsTable)
+        {
+            var stringValue = entry.Value switch
+            {
+                string s => s,
+                bool b => b ? "true" : "false",
+                long l => l.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                double d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                _ => null
+            };
+
+            if (stringValue is not null)
+            {
+                result[entry.Key] = stringValue;
+            }
+        }
+
+        return result;
     }
 
     private static CodeDocumentEditorContribution BuildCodeContribution(
@@ -308,6 +426,45 @@ public static class PackageManifestLoader
             CodePreview = codePreview,
             CodeEditor = codeEditor
         };
+    }
+
+    private static Result<List<DocumentFileType>> ExpandExtensionsFile(
+        string packageFolder,
+        string relativePath,
+        string displayName)
+    {
+        var fullPath = Path.Combine(packageFolder, relativePath);
+        if (!File.Exists(fullPath))
+        {
+            return Result.Fail($"Extensions file not found: {fullPath}");
+        }
+
+        try
+        {
+            var json = File.ReadAllText(fullPath);
+            using var document = JsonDocument.Parse(json);
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return Result.Fail($"Extensions file must be a JSON object with extension keys: {fullPath}");
+            }
+
+            var result = new List<DocumentFileType>();
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                result.Add(new DocumentFileType
+                {
+                    FileExtension = property.Name,
+                    DisplayName = displayName
+                });
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to parse extensions file: {fullPath}").WithException(ex);
+        }
     }
 
     private static EditorPriority ParseEditorPriority(string? value)
@@ -362,5 +519,24 @@ public static class PackageManifestLoader
         }
 
         return null;
+    }
+
+    private static IReadOnlyList<string> GetStringArray(TomlTable table, string key)
+    {
+        if (!table.TryGetValue(key, out var value) || value is not TomlArray array)
+        {
+            return Array.Empty<string>();
+        }
+
+        var result = new List<string>(array.Count);
+        foreach (var element in array)
+        {
+            if (element is string str && !string.IsNullOrEmpty(str))
+            {
+                result.Add(str);
+            }
+        }
+
+        return result.AsReadOnly();
     }
 }

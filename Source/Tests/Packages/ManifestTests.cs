@@ -41,9 +41,11 @@ public class ManifestTests
             id = "my-editor-doc"
             type = "custom"
             entry_point = "index.html"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".myext"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -82,9 +84,11 @@ public class ManifestTests
             [document]
             id = "cpv-doc"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".cpv"
+            display_name = "TestFileType"
 
             [code_editor]
             customizations = "customize.js"
@@ -107,6 +111,39 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_HostNameOverride_ReplacesDefault()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.my-editor"
+            name = "My Editor"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["editor.document.toml"]
+            """);
+
+        WriteDocumentToml("editor.document.toml", """
+            [document]
+            id = "my-editor-doc"
+            type = "custom"
+            entry_point = "index.html"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".myext"
+            display_name = "TestFileType"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(
+            Path.Combine(_tempFolder, "package.toml"),
+            hostNameOverride: "custom.celbridge");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.HostName.Should().Be("custom.celbridge");
+    }
+
+    [Test]
     public void LoadPackage_MissingPackageId_ReturnsFailure()
     {
         WritePackageToml("""
@@ -121,6 +158,69 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [TestCase("Celbridge.Notes", Description = "uppercase rejected")]
+    [TestCase("CELBRIDGE.notes", Description = "all-caps rejected")]
+    [TestCase("has_underscore.notes", Description = "underscore rejected")]
+    [TestCase("has spaces.notes", Description = "whitespace rejected")]
+    [TestCase(".leading-dot", Description = "leading dot rejected")]
+    [TestCase("trailing-dot.", Description = "trailing dot rejected")]
+    [TestCase("double..dot", Description = "consecutive dots rejected")]
+    [TestCase(".", Description = "bare dot rejected")]
+    public void LoadPackage_InvalidIdFormat_ReturnsFailure(string invalidId)
+    {
+        WritePackageToml($"""
+            [package]
+            id = "{invalidId}"
+            name = "Test"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("invalid");
+    }
+
+    [TestCase("celbridge.notes", Description = "reserved namespace prefix")]
+    [TestCase("my-org.my-tool", Description = "dotted namespace")]
+    [TestCase("a.b", Description = "minimal dotted")]
+    [TestCase("a.b.c.d", Description = "deeply nested")]
+    [TestCase("digits123.allowed", Description = "digits in namespace")]
+    [TestCase("hyphens-are-fine.here", Description = "hyphens in namespace")]
+    [TestCase("flat-name", Description = "flat global namespace id")]
+    [TestCase("simple", Description = "single-word flat id")]
+    [TestCase("a", Description = "single character")]
+    public void LoadPackage_ValidIdFormats_Accepted(string validId)
+    {
+        WritePackageToml($"""
+            [package]
+            id = "{validId}"
+            name = "Test"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "test-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".test"
+            display_name = "TestFileType"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Test]
@@ -153,11 +253,42 @@ public class ManifestTests
             [document]
             id = "empty-doc"
             type = "custom"
+            display_name = "TestEditor"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         // Document with no document_file_types is skipped (invalid)
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_FileTypeMissingDisplayName_SkipsDocument()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.no-file-type-display"
+            name = "NoFileTypeDisplay"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "nftd-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".nftd"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        // Document with a file type missing display_name is skipped (invalid).
         result.IsSuccess.Should().BeTrue();
         result.Value.DocumentEditors.Should().BeEmpty();
     }
@@ -200,9 +331,11 @@ public class ManifestTests
             [document]
             id = "basic-doc"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".bas"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -229,9 +362,11 @@ public class ManifestTests
             id = "priority-doc"
             type = "code"
             priority = "general"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".pri"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -258,9 +393,11 @@ public class ManifestTests
             [document]
             id = "flagged-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".flag"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -287,9 +424,11 @@ public class ManifestTests
             [document]
             id = "noflag-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".nf"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -316,9 +455,11 @@ public class ManifestTests
             [document]
             id = "templated-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".tmpl"
+            display_name = "TestFileType"
 
             [[document_templates]]
             id = "empty"
@@ -366,9 +507,11 @@ public class ManifestTests
             [document]
             id = "notemplates-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".nt"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -397,6 +540,7 @@ public class ManifestTests
             type = "custom"
             entry_point = "index.html"
             priority = "default"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".full"
@@ -443,18 +587,22 @@ public class ManifestTests
             [document]
             id = "doc-a"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".aaa"
+            display_name = "TestFileType"
             """);
 
         WriteDocumentToml("b.document.toml", """
             [document]
             id = "doc-b"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".bbb"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -484,9 +632,11 @@ public class ManifestTests
             [document]
             id = "code-editor-doc"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".mon"
+            display_name = "TestFileType"
 
             [code_editor]
             word_wrap = true
@@ -544,18 +694,22 @@ public class ManifestTests
             [document]
             id = "doc-a"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".aaa"
+            display_name = "TestFileType"
             """);
 
         WriteDocumentToml("b.document.toml", """
             [document]
             id = "doc-b"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".bbb"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -587,9 +741,11 @@ public class ManifestTests
             [document]
             id = "no-entry-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".ne"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -598,6 +754,277 @@ public class ManifestTests
         var customContribution = result.Value.DocumentEditors[0] as CustomDocumentEditorContribution;
         customContribution.Should().NotBeNull();
         customContribution!.EntryPoint.Should().Be("index.html");
+    }
+
+    [Test]
+    public void LoadPackage_WithModSection_ParsesRequiresTools()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.mod-section"
+            name = "ModSection"
+            version = "1.0.0"
+
+            [mod]
+            requires_tools = ["app.*", "document.open"]
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "mod-section-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".ms"
+            display_name = "TestFileType"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        var info = result.Value.Info;
+        info.RequiresTools.Should().Equal("app.*", "document.open");
+    }
+
+    [Test]
+    public void LoadPackage_SecretsParameter_PopulatesPackageInfo()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.secrets"
+            name = "WithSecrets"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "secrets-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".sec"
+            display_name = "TestFileType"
+            """);
+
+        var suppliedSecrets = new Dictionary<string, string>
+        {
+            ["license"] = "abc123",
+            ["designer_license"] = "def456",
+        };
+
+        var result = PackageManifestLoader.LoadPackage(
+            Path.Combine(_tempFolder, "package.toml"),
+            secrets: suppliedSecrets);
+
+        result.IsSuccess.Should().BeTrue();
+        var info = result.Value.Info;
+        info.Secrets.Should().HaveCount(2);
+        info.Secrets["license"].Should().Be("abc123");
+        info.Secrets["designer_license"].Should().Be("def456");
+    }
+
+    [Test]
+    public void LoadPackage_NoSecretsParameter_LeavesSecretsEmpty()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.no-secrets"
+            name = "NoSecrets"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "no-secrets-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".ns"
+            display_name = "TestFileType"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.Secrets.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_WithoutModSection_DefaultsToEmptyRequirements()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.no-mod"
+            name = "NoMod"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "no-mod-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".nm"
+            display_name = "TestFileType"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.RequiresTools.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_ModSectionWithNonStringEntries_SkipsInvalid()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.mixed"
+            name = "Mixed"
+            version = "1.0.0"
+
+            [mod]
+            requires_tools = ["app.*", 42, "", "file.read"]
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "mixed-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".mx"
+            display_name = "TestFileType"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.RequiresTools.Should().Equal("app.*", "file.read");
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFile_ExpandsToEachJsonKey()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.code"
+            name = "Code"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["code.document.toml"]
+            """);
+
+        WriteDocumentToml("code.document.toml", """
+            [document]
+            id = "code-doc"
+            type = "custom"
+            entry_point = "index.html"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extensions_file = "types.json"
+            display_name = "Code_FileType_Code"
+            """);
+
+        File.WriteAllText(Path.Combine(_tempFolder, "types.json"),
+            """{ ".js": "javascript", ".py": "python", ".cs": "csharp" }""");
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        var contribution = result.Value.DocumentEditors[0];
+        contribution.FileTypes.Select(fileType => fileType.FileExtension)
+            .Should().BeEquivalentTo([".js", ".py", ".cs"]);
+        contribution.FileTypes.Should().AllSatisfy(fileType =>
+            fileType.DisplayName.Should().Be("Code_FileType_Code"));
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFile_MissingFile_DocumentSkipped()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.missing-ext"
+            name = "Missing"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "missing-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extensions_file = "nonexistent.json"
+            display_name = "X"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        // A broken document manifest is silently skipped — matches the existing
+        // behavior for missing file-types sections and other per-document errors.
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
+    [Test]
+    public void LoadPackage_ExtensionsFile_CombinedWithExtension_DocumentSkipped()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.conflict"
+            name = "Conflict"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "conflict-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".x"
+            extensions_file = "types.json"
+            display_name = "X"
+            """);
+
+        File.WriteAllText(Path.Combine(_tempFolder, "types.json"), """{ ".y": "yaml" }""");
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
     }
 
     private void WritePackageToml(string content)

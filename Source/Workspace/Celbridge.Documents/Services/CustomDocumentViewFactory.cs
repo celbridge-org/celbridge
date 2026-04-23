@@ -38,18 +38,20 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     private string ResolveDisplayName(IPackageLocalizationService localizationService)
     {
-        if (string.IsNullOrEmpty(_contribution.DisplayName))
-        {
-            return _contribution.Package.Name;
-        }
+        // The manifest loader requires every document contribution to set
+        // display_name, so _contribution.DisplayName is guaranteed non-empty
+        // here. The value may be a localization key or a plain string; run it
+        // through the package's localization dictionary and return the raw
+        // value when the key is not present (which also handles plain strings).
+        var displayKey = _contribution.DisplayName;
 
         var localizationStrings = localizationService.LoadStrings(_contribution.Package.PackageFolder);
-        if (localizationStrings.TryGetValue(_contribution.DisplayName, out var localizedName))
+        if (localizationStrings.TryGetValue(displayKey, out var localizedName))
         {
             return localizedName;
         }
 
-        return _contribution.DisplayName;
+        return displayKey;
     }
 
     public override bool CanHandleResource(ResourceKey fileResource, string filePath)

@@ -1,4 +1,4 @@
-﻿<views:WebViewDocumentView
+﻿<views:DocumentView
     x:Class="Celbridge.Documents.Views.ContributionDocumentView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -8,4 +8,4 @@
     <Grid x:Name="ContributionWebViewContainer"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch" />
-</views:WebViewDocumentView>
+</views:DocumentView>

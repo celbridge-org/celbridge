@@ -1,0 +1,10 @@
+[document]
+id = "code-document"
+type = "custom"
+entry_point = "index.html"
+priority = "general"
+display_name = "CodeEditor_Editor_Code"
+
+[[document_file_types]]
+extensions_file = "js/code-editor-types.json"
+display_name = "CodeEditor_FileType_Code"

@@ -14,7 +14,7 @@ namespace Celbridge.Server.Services;
 public class TcpTransport : ITcpTransport
 {
     private readonly ILogger<TcpTransport> _logger;
-    private readonly McpToolBridge _mcpToolBridge;
+    private readonly IMcpToolBridge _mcpToolBridge;
     private readonly List<object> _additionalTargets = new();
 
     private TcpListener? _listener;
@@ -33,7 +33,7 @@ public class TcpTransport : ITcpTransport
 
     public TcpTransport(
         ILogger<TcpTransport> logger,
-        McpToolBridge mcpToolBridge)
+        IMcpToolBridge mcpToolBridge)
     {
         _logger = logger;
         _mcpToolBridge = mcpToolBridge;
@@ -109,7 +109,10 @@ public class TcpTransport : ITcpTransport
         // Register the MCP tool bridge (tools/list, tools/call).
         // The [JsonRpcMethod] attributes on McpToolBridge override the
         // method name transform, so slashed names work correctly.
-        jsonRpc.AddLocalRpcTarget(_mcpToolBridge, targetOptions);
+        // Pass the runtime type explicitly: the generic AddLocalRpcTarget<T> overload
+        // would otherwise reflect on the static IMcpToolBridge type, missing the
+        // [JsonRpcMethod]-decorated methods that live on the concrete class.
+        jsonRpc.AddLocalRpcTarget(_mcpToolBridge.GetType(), _mcpToolBridge, targetOptions);
 
         // Register any additional targets (e.g. PythonRpcHandler)
         foreach (var target in _additionalTargets)

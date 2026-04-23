@@ -1,4 +1,4 @@
-<Project Sdk="Uno.Sdk">
+﻿<Project Sdk="Uno.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net9.0;net9.0-windows10.0.22621;net9.0-desktop</TargetFrameworks>
     <UnoDisableVSWarnNetIsFirst>true</UnoDisableVSWarnNetIsFirst>
@@ -9,15 +9,7 @@
     <Nullable>enable</Nullable>
 
     <UnoFeatures>
-      CSharpMarkup;
-      Lottie;
       Hosting;
-      Toolkit;
-      Logging;
-      Mvvm;
-      Configuration;
-      Localization;
-      ThemeService;
     </UnoFeatures>
 
   </PropertyGroup>
@@ -27,22 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Web\**" />
-    <!-- Excluding SpreadJS locale files for languages not supported by the app. -->
-    <!-- These files have .ja. and .ko. in their names which the PRI indexer treats as -->
-    <!-- language-qualified resources, generating PRI257/PRI263 warnings. -->
-    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\gc.spread.sheets.resources.ja.18.1.4.min.js" />
-    <Content Remove="Web\SpreadJS\lib\spreadjs\scripts\resources\gc.spread.sheets.resources.ko.18.1.4.min.js" />
+    <Content Include="Package\**" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
-    <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Entities\Celbridge.Entities.csproj" />
   </ItemGroup>
 
 </Project>
-

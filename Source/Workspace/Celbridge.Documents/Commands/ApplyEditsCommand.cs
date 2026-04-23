@@ -16,6 +16,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
     public List<DocumentEdit> Edits { get; set; } = new();
     public bool OpenDocument { get; set; } = true;
+    public bool ForceSave { get; set; }
 
     public ApplyEditsCommand(
         ILogger<ApplyEditsCommand> logger,
@@ -100,6 +101,40 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                 {
                     _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
                     failedResources.Add(resource);
+                }
+            }
+        }
+
+        if (ForceSave)
+        {
+            // Flush the edits to disk before the command returns so MCP callers'
+            // follow-up disk reads see the post-edit state. We do NOT gate on
+            // HasUnsavedChanges here: ApplyEditsAsync is a fire-and-forget
+            // notification, and the document/changed round-trip that flips the
+            // flag often hasn't arrived by the time this loop runs. Calling
+            // SaveDocument unconditionally is safe — StreamJsonRpc orders
+            // the outbound editor/applyEdits before document/requestSave,
+            // so JS always returns post-edit content. The worst case (the
+            // edit was a no-op, e.g. replacing text with identical text) is
+            // an identical disk rewrite.
+            foreach (var documentEdit in Edits)
+            {
+                var resource = documentEdit.Resource;
+                if (failedResources.Contains(resource))
+                {
+                    continue;
+                }
+
+                var view = documentsPanel.GetDocumentView(resource);
+                if (view is null)
+                {
+                    continue;
+                }
+
+                var saveResult = await view.SaveDocument();
+                if (saveResult.IsFailure)
+                {
+                    _logger.LogWarning(saveResult, $"Failed to force-save document after applying edits: {resource}");
                 }
             }
         }

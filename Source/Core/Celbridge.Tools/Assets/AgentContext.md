@@ -29,6 +29,23 @@ the current workspace context before searching the whole project:
 Only fall back to a broad project search (`file_grep`, `file_get_tree`) when these
 sources do not resolve the reference.
 
+## Document Changes and Saving
+
+Celbridge saves automatically — there is no save tool. Editing tools
+(`document_apply_edits`, `document_write`, `document_find_replace`,
+`document_delete_lines`, `document_write_binary`) flush to disk before returning,
+so a follow-up `file_read` sees the result.
+
+Each takes `open_document` (default `true`). When true, the edit routes through
+Monaco and joins the document's undo stack (one undo reverses it). When false, it
+goes straight to disk: no tab, no undo entry, faster.
+
+Prefer `true` for small targeted edits on existing files (<=3 files, user likely
+reviewing). Prefer `false` for new file creation (no prior content to undo), bulk
+operations, and edits the user did not ask to review. Within an opened scope,
+favour several `document_apply_edits` calls over one `document_write` so each
+change is a separate undo step.
+
 ## Workspace Panels
 
 - **Explorer** — the project file tree. Use `explorer_*` tools to create, move, and delete resources. `explorer_undo` / `explorer_redo` only affect file system operations (create, delete, move, rename, copy) — they cannot undo document text edits.

@@ -110,11 +110,8 @@ public partial class App : Application
                     // Modules may use Nuget packages
                     var modules = new List<string>()
                     {
-                        "Celbridge.Code",
                         "Celbridge.Core",
-                        "Celbridge.FileViewer",
-                        "Celbridge.Markdown",
-                        "Celbridge.Notes",
+                        "Celbridge.DocumentEditors",
                         "Celbridge.Screenplay",
                         "Celbridge.Spreadsheet",
                         "Celbridge.WebApp",

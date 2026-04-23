@@ -40,6 +40,11 @@ public enum ConsoleErrorType
     /// The shortcut configuration in the project file contains errors.
     /// </summary>
     ShortcutConfigError,
+
+    /// <summary>
+    /// One or more packages failed to load during project discovery.
+    /// </summary>
+    PackageLoadError,
 }
 
 /// <summary>

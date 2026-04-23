@@ -2,7 +2,8 @@
   "name": "celbridge",
   "private": true,
   "workspaces": [
-    "Core/Celbridge.WebView/Web/celbridge-client"
+    "Core/Celbridge.WebView/Web/celbridge-client",
+    "Modules/Celbridge.DocumentEditors/Editors/CodeEditor"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",

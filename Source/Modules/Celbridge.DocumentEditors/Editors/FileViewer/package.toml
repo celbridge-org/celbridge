@@ -1,0 +1,7 @@
+[package]
+id = "celbridge.file-viewer"
+name = "FileViewer_Package_Name"
+version = "1.0.0"
+
+[contributes]
+document_editors = ["fileviewer.document.toml"]
