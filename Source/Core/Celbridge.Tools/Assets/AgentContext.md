@@ -164,6 +164,18 @@ supported (`document.*`, `file.*`).
 requires_tools = ["document.*", "file.*", "app.get_status"]
 ```
 
+**Use the alias form — `namespace.snake_case_method` — in the manifest.** This
+is the same form listed in the Python API reference, and it matches the MCP
+tool name after swapping the first underscore for a dot. The JS proxy converts
+to camelCase at the call site, but the manifest does NOT. Examples:
+
+- `"file.list_contents"` → call site `cel.file.listContents(...)`
+- `"file.read_binary"` → call site `cel.file.readBinary(...)`
+- `"document.apply_edits"` → call site `cel.document.applyEdits(...)`
+
+Do not use camelCase (`"file.listContents"`) or the MCP underscore form
+(`"file_list_contents"`) — neither matches.
+
 Then import the client from the `shared.celbridge` virtual host and call
 host tools through the `cel` global (populated after `initialize()`
 resolves):

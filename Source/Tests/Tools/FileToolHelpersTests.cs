@@ -53,7 +53,11 @@ public class FileToolHelpersTests
     //
 
     [TestCase("*.py", "foo.py", true)]
-    [TestCase("*.py", "src/foo.py", false, TestName = "PathGlobToRegex_StarExtension_NoMatchAcrossSlash")]
+    [TestCase("*.py", "src/foo.py", true, TestName = "PathGlobToRegex_StarExtension_MatchesAtAnyDepth")]
+    [TestCase("*.py", "a/b/foo.py", true, TestName = "PathGlobToRegex_StarExtension_MatchesDeepNesting")]
+    [TestCase("*.py", "foo.txt", false, TestName = "PathGlobToRegex_StarExtension_RequiresExtensionMatch")]
+    [TestCase("readme", "readme", true, TestName = "PathGlobToRegex_BareName_MatchesTopLevel")]
+    [TestCase("readme", "src/readme", true, TestName = "PathGlobToRegex_BareName_MatchesAtAnyDepth")]
     [TestCase("src/*.cs", "src/foo.cs", true)]
     [TestCase("src/*.cs", "src/sub/foo.cs", false, TestName = "PathGlobToRegex_Star_NoMatchAcrossSlash")]
     [TestCase("src/*.cs", "other/foo.cs", false)]

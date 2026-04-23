@@ -19,6 +19,24 @@ Glob patterns are supported. The host re-enforces the allowlist on every
 call; a tool within a partially-matched namespace that is not itself
 allowed is rejected at call time with CEL_TOOL_DENIED.
 
+### Naming: manifest vs. JS call site
+
+The allowlist uses the tool's **alias** form: `namespace.snake_case_method`.
+The signatures listed below use the **JS method** form: `cel.namespace.camelCaseMethod`.
+The JS proxy converts snake_case to camelCase automatically — the manifest does not.
+
+Matching pairs (always declare the left form, always call the right form):
+
+  requires_tools entry       →  JS call site
+  "file.list_contents"       →  cel.file.listContents(...)
+  "file.read_binary"         →  cel.file.readBinary(...)
+  "document.apply_edits"     →  cel.document.applyEdits(...)
+  "explorer.create_folder"   →  cel.explorer.createFolder(...)
+
+Do NOT use `"file.listContents"` (camelCase in the manifest) or underscore MCP
+names like `"file_list_contents"` — both fail to match, and the `cel.*` proxy
+will omit the namespace with no diagnostic beyond a later `TypeError`.
+
 ## Getting Started
 
 Package extensions run inside a WebView hosted by a document editor contribution.
