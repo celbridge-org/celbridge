@@ -107,6 +107,37 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_HostNameOverride_ReplacesDefault()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.my-editor"
+            name = "My Editor"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["editor.document.toml"]
+            """);
+
+        WriteDocumentToml("editor.document.toml", """
+            [document]
+            id = "my-editor-doc"
+            type = "custom"
+            entry_point = "index.html"
+
+            [[document_file_types]]
+            extension = ".myext"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(
+            Path.Combine(_tempFolder, "package.toml"),
+            hostNameOverride: "custom.celbridge");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.HostName.Should().Be("custom.celbridge");
+    }
+
+    [Test]
     public void LoadPackage_MissingPackageId_ReturnsFailure()
     {
         WritePackageToml("""
@@ -121,6 +152,67 @@ public class ManifestTests
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [TestCase("Celbridge.Notes", Description = "uppercase rejected")]
+    [TestCase("CELBRIDGE.notes", Description = "all-caps rejected")]
+    [TestCase("has_underscore.notes", Description = "underscore rejected")]
+    [TestCase("has spaces.notes", Description = "whitespace rejected")]
+    [TestCase(".leading-dot", Description = "leading dot rejected")]
+    [TestCase("trailing-dot.", Description = "trailing dot rejected")]
+    [TestCase("double..dot", Description = "consecutive dots rejected")]
+    [TestCase(".", Description = "bare dot rejected")]
+    public void LoadPackage_InvalidIdFormat_ReturnsFailure(string invalidId)
+    {
+        WritePackageToml($"""
+            [package]
+            id = "{invalidId}"
+            name = "Test"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("invalid");
+    }
+
+    [TestCase("celbridge.notes", Description = "reserved namespace prefix")]
+    [TestCase("my-org.my-tool", Description = "dotted namespace")]
+    [TestCase("a.b", Description = "minimal dotted")]
+    [TestCase("a.b.c.d", Description = "deeply nested")]
+    [TestCase("digits123.allowed", Description = "digits in namespace")]
+    [TestCase("hyphens-are-fine.here", Description = "hyphens in namespace")]
+    [TestCase("flat-name", Description = "flat global namespace id")]
+    [TestCase("simple", Description = "single-word flat id")]
+    [TestCase("a", Description = "single character")]
+    public void LoadPackage_ValidIdFormats_Accepted(string validId)
+    {
+        WritePackageToml($"""
+            [package]
+            id = "{validId}"
+            name = "Test"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "test-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".test"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Test]
@@ -601,65 +693,7 @@ public class ManifestTests
     }
 
     [Test]
-    public void LoadPackage_DefaultsIsBundledToFalse()
-    {
-        WritePackageToml("""
-            [package]
-            id = "test.default-bundled"
-            name = "Default"
-            version = "1.0.0"
-
-            [contributes]
-            document_editors = ["doc.document.toml"]
-            """);
-
-        WriteDocumentToml("doc.document.toml", """
-            [document]
-            id = "default-doc"
-            type = "custom"
-
-            [[document_file_types]]
-            extension = ".db"
-            """);
-
-        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Info.IsBundled.Should().BeFalse();
-    }
-
-    [Test]
-    public void LoadPackage_WithIsBundledTrue_SetsFlagOnPackageInfo()
-    {
-        WritePackageToml("""
-            [package]
-            id = "test.bundled"
-            name = "Bundled"
-            version = "1.0.0"
-
-            [contributes]
-            document_editors = ["doc.document.toml"]
-            """);
-
-        WriteDocumentToml("doc.document.toml", """
-            [document]
-            id = "bundled-doc"
-            type = "custom"
-
-            [[document_file_types]]
-            extension = ".bd"
-            """);
-
-        var result = PackageManifestLoader.LoadPackage(
-            Path.Combine(_tempFolder, "package.toml"),
-            isBundled: true);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Info.IsBundled.Should().BeTrue();
-    }
-
-    [Test]
-    public void LoadPackage_WithModSection_ParsesRequiresToolsAndSecrets()
+    public void LoadPackage_WithModSection_ParsesRequiresTools()
     {
         WritePackageToml("""
             [package]
@@ -669,7 +703,6 @@ public class ManifestTests
 
             [mod]
             requires_tools = ["app.*", "document.open"]
-            requires_secrets = ["spreadjs_license", "spreadjs_designer_license"]
 
             [contributes]
             document_editors = ["doc.document.toml"]
@@ -689,7 +722,73 @@ public class ManifestTests
         result.IsSuccess.Should().BeTrue();
         var info = result.Value.Info;
         info.RequiresTools.Should().Equal("app.*", "document.open");
-        info.RequiresSecrets.Should().Equal("spreadjs_license", "spreadjs_designer_license");
+    }
+
+    [Test]
+    public void LoadPackage_SecretsParameter_PopulatesPackageInfo()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.secrets"
+            name = "WithSecrets"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "secrets-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".sec"
+            """);
+
+        var suppliedSecrets = new Dictionary<string, string>
+        {
+            ["license"] = "abc123",
+            ["designer_license"] = "def456",
+        };
+
+        var result = PackageManifestLoader.LoadPackage(
+            Path.Combine(_tempFolder, "package.toml"),
+            secrets: suppliedSecrets);
+
+        result.IsSuccess.Should().BeTrue();
+        var info = result.Value.Info;
+        info.Secrets.Should().HaveCount(2);
+        info.Secrets["license"].Should().Be("abc123");
+        info.Secrets["designer_license"].Should().Be("def456");
+    }
+
+    [Test]
+    public void LoadPackage_NoSecretsParameter_LeavesSecretsEmpty()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.no-secrets"
+            name = "NoSecrets"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "no-secrets-doc"
+            type = "custom"
+
+            [[document_file_types]]
+            extension = ".ns"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Info.Secrets.Should().BeEmpty();
     }
 
     [Test]
@@ -718,7 +817,6 @@ public class ManifestTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Info.RequiresTools.Should().BeEmpty();
-        result.Value.Info.RequiresSecrets.Should().BeEmpty();
     }
 
     [Test]

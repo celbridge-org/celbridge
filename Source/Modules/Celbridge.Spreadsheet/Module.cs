@@ -1,16 +1,23 @@
 using Celbridge.Activities;
-using Celbridge.Documents.Services;
+using Celbridge.Logging;
 using Celbridge.Modules;
-using Microsoft.Extensions.Localization;
+using Celbridge.Packages;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Services;
-using Celbridge.Spreadsheet.ViewModels;
-using Celbridge.Spreadsheet.Views;
 
 namespace Celbridge.Spreadsheet;
 
+/// <summary>
+/// SpreadJS spreadsheet editor integration.
+/// Bundles the "celbridge.spreadsheet" package.
+/// </summary>
 public class Module : IModule
 {
+    private const string PackageFolderName = "Package";
+    private const string LibraryFolderName = "lib";
+    private const string SpreadJSLicenseKeyName = "spreadjs_license_key";
+    private const string SpreadJSDesignerLicenseKeyName = "spreadjs_designer_license_key";
+
     public IReadOnlyList<string> SupportedActivities { get; } = new List<string>()
     {
         nameof(SpreadsheetActivity)
@@ -18,28 +25,7 @@ public class Module : IModule
 
     public void ConfigureServices(IModuleServiceCollection services)
     {
-        //
-        // Register services
-        //
-
         services.AddTransient<SpreadsheetActivity>();
-
-        //
-        // Register views
-        //
-
-        services.AddTransient<SpreadsheetDocumentView>();
-
-        //
-        // Register view models
-        //
-
-        services.AddTransient<SpreadsheetDocumentViewModel>();
-
-        //
-        // Register components
-        //
-
         services.AddTransient<SpreadsheetEditor>();
     }
 
@@ -50,9 +36,7 @@ public class Module : IModule
 
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
-        var fileTypeHelper = serviceProvider.GetRequiredService<FileTypeHelper>();
-        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        return [new SpreadsheetEditorFactory(serviceProvider, fileTypeHelper, stringLocalizer)];
+        return Array.Empty<IDocumentEditorFactory>();
     }
 
     public Result<IActivity> CreateActivity(string activityName)
@@ -66,8 +50,39 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public IReadOnlyList<string> GetBundledPackageFolders()
+    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
     {
-        return Array.Empty<string>();
+        var packageFolder = Path.Combine(AppContext.BaseDirectory, "Celbridge.Spreadsheet", PackageFolderName);
+
+        // The public GitHub repo does not include the SpreadJS library files because we don't
+        // have a license to distribute them. If the library is not present, we skip
+        // registering the package.
+        var libraryFolder = Path.Combine(packageFolder, LibraryFolderName);
+        var isLibraryPresent = Directory.Exists(libraryFolder) &&
+                               Directory.EnumerateFiles(libraryFolder, "*.js", SearchOption.AllDirectories).Any();
+        if (!isLibraryPresent)
+        {
+            var logger = ServiceLocator.AcquireService<ILogger<Module>>();
+            logger.LogInformation("SpreadJS library not found under '{LibraryFolder}'; skipping celbridge.spreadsheet package registration", libraryFolder);
+
+            return Array.Empty<BundledPackageDescriptor>();
+        }
+
+        var secrets = new Dictionary<string, string>
+        {
+            [SpreadJSLicenseKeyName] = SpreadsheetLicenseKeys.LicenseKey,
+            [SpreadJSDesignerLicenseKeyName] = SpreadsheetLicenseKeys.DesignerLicenseKey,
+        };
+
+        return new[]
+        {
+            new BundledPackageDescriptor
+            {
+                Folder = packageFolder,
+                HostNameOverride = "spreadjs.celbridge",
+                Secrets = secrets,
+                DevToolsBlocked = true,
+            }
+        };
     }
 }

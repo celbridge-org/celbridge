@@ -12,6 +12,11 @@ public class PackageRegistry
 {
     private const string PackagesFolderName = "packages";
     private const string ManifestFileName = "package.toml";
+    private const string ReservedIdPrefix = "celbridge.";
+
+    // Editors like the code editor can handle 150+ extensions; listing them all
+    // makes the discovery log unreadable. Above this count we elide to a count.
+    private const int MaxInlineExtensionsInLog = 20;
 
     private readonly ILogger<PackageRegistry> _logger;
     private readonly IModuleService _moduleService;
@@ -33,13 +38,31 @@ public class PackageRegistry
         _localizationService = localizationService;
     }
 
-    public void DiscoverPackages(string projectFolderPath)
+    public PackageDiscoveryReport DiscoverPackages(string projectFolderPath)
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
 
-        DiscoverBundledPackages();
-        DiscoverProjectPackages(projectFolderPath);
+        var bundledFailures = DiscoverBundledPackages();
+        var projectFailures = DiscoverProjectPackages(projectFolderPath);
+
+        var failures = new List<PackageLoadFailure>(bundledFailures.Count + projectFailures.Count);
+        failures.AddRange(bundledFailures);
+        failures.AddRange(projectFailures);
+
+        var report = new PackageDiscoveryReport
+        {
+            BundledPackageCount = _bundledPackages.Count,
+            ProjectPackageCount = _projectPackages.Count,
+            Failures = failures.AsReadOnly()
+        };
+
+        LogDiscoveredPackages();
+
+        _logger.LogInformation(
+            $"Package discovery complete: {report.BundledPackageCount} bundled, {report.ProjectPackageCount} project, {report.Failures.Count} failed");
+
+        return report;
     }
 
     public IReadOnlyList<Package> GetAllPackages()
@@ -132,76 +155,252 @@ public class PackageRegistry
         return null;
     }
 
-    private void DiscoverBundledPackages()
+    private List<PackageLoadFailure> DiscoverBundledPackages()
     {
-        var packageFolders = _moduleService.GetBundledPackageFolders();
-        foreach (var packageFolder in packageFolders)
+        var failures = new List<PackageLoadFailure>();
+        var descriptors = _moduleService.GetBundledPackages();
+        var candidates = new List<Package>();
+
+        foreach (var descriptor in descriptors)
         {
-            var package = TryLoadPackage(packageFolder, isBundled: true);
-            if (package is not null)
+            var manifestPath = Path.Combine(descriptor.Folder, ManifestFileName);
+            if (!File.Exists(manifestPath))
             {
-                _bundledPackages.Add(package);
+                // A bundled package with no manifest is a build-time error.
+                // Either the descriptor folder is wrong or the package content
+                // did not ship with the module.
+                _logger.LogError($"Bundled package is missing its manifest: {manifestPath}");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = descriptor.Folder,
+                    PackageId = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest
+                });
+                continue;
             }
+
+            var loadResult = PackageManifestLoader.LoadPackage(
+                manifestPath,
+                descriptor.HostNameOverride,
+                descriptor.Secrets,
+                descriptor.DevToolsBlocked);
+            if (loadResult.IsFailure)
+            {
+                _logger.LogError(loadResult, $"Failed to load bundled package: {manifestPath}");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = descriptor.Folder,
+                    PackageId = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest
+                });
+                continue;
+            }
+
+            var package = loadResult.Value;
+            candidates.Add(package);
         }
+
+        // Any group of bundled packages that share an id is a first-party build bug.
+        // Skip every colliding package so the conflict is visible rather than silently
+        // picking a winner, and log at Error level so CI and developers notice.
+        foreach (var group in candidates.GroupBy(p => p.Info.Id, StringComparer.Ordinal))
+        {
+            var members = group.ToList();
+            if (members.Count > 1)
+            {
+                _logger.LogError(
+                    $"Multiple bundled packages declare id '{group.Key}'. All {members.Count} instances skipped.");
+                foreach (var member in members)
+                {
+                    failures.Add(new PackageLoadFailure
+                    {
+                        Folder = member.Info.PackageFolder,
+                        PackageId = group.Key,
+                        Reason = PackageLoadFailureReason.DuplicateId
+                    });
+                }
+                continue;
+            }
+
+            _bundledPackages.Add(members[0]);
+        }
+
+        return failures;
     }
 
-    private void DiscoverProjectPackages(string projectFolderPath)
+    private List<PackageLoadFailure> DiscoverProjectPackages(string projectFolderPath)
     {
+        var failures = new List<PackageLoadFailure>();
+
         if (string.IsNullOrEmpty(projectFolderPath))
         {
-            return;
+            return failures;
         }
 
         var packagesFolder = Path.Combine(projectFolderPath, PackagesFolderName);
-
         if (!Directory.Exists(packagesFolder))
         {
-            return;
+            return failures;
         }
 
         var packageFolders = Directory.GetDirectories(packagesFolder);
+        var candidates = new List<Package>();
+
         foreach (var packageFolder in packageFolders)
         {
-            var package = TryLoadPackage(packageFolder, isBundled: false);
-            if (package is not null)
+            var manifestPath = Path.Combine(packageFolder, ManifestFileName);
+            if (!File.Exists(manifestPath))
             {
-                _projectPackages.Add(package);
+                // A folder under packages/ with no manifest is not a package.
+                // Silently skip rather than report as a failure.
+                continue;
             }
+
+            var loadResult = PackageManifestLoader.LoadPackage(manifestPath, hostNameOverride: null, secrets: null);
+            if (loadResult.IsFailure)
+            {
+                _logger.LogWarning(loadResult, $"Skipping invalid project package: {manifestPath}");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = packageFolder,
+                    PackageId = null,
+                    Reason = PackageLoadFailureReason.InvalidManifest
+                });
+                continue;
+            }
+
+            var package = loadResult.Value;
+
+            // The "celbridge." id namespace is reserved for first-party packages
+            // shipped inside Celbridge module DLLs. Project packages that try to
+            // claim a reserved id are rejected so they cannot impersonate a
+            // bundled package in logs, diagnostics, or resource lookups.
+            if (package.Info.Id.StartsWith(ReservedIdPrefix, StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    $"Skipping project package with reserved '{ReservedIdPrefix}' id prefix: {package.Info.Id}");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = packageFolder,
+                    PackageId = package.Info.Id,
+                    Reason = PackageLoadFailureReason.ReservedIdPrefix
+                });
+                continue;
+            }
+
+            // Any other dotted id claims a namespace whose ownership a registry
+            // would need to validate. Until such a registry exists, project
+            // packages must use flat global-namespace ids. Allowing arbitrary
+            // dotted ids now would let them collide with future registered
+            // namespaces once the registry is introduced.
+            if (package.Info.Id.Contains('.'))
+            {
+                _logger.LogWarning(
+                    $"Skipping project package '{package.Info.Id}' with dotted id: no namespace registry is available to validate the prefix.");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = packageFolder,
+                    PackageId = package.Info.Id,
+                    Reason = PackageLoadFailureReason.UnregisteredNamespace
+                });
+                continue;
+            }
+
+            if (_bundledPackages.Any(b => b.Info.Id.Equals(package.Info.Id, StringComparison.Ordinal)))
+            {
+                _logger.LogWarning(
+                    $"Skipping project package '{package.Info.Id}' because its id conflicts with a bundled package.");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = packageFolder,
+                    PackageId = package.Info.Id,
+                    Reason = PackageLoadFailureReason.DuplicateId
+                });
+                continue;
+            }
+
+            candidates.Add(package);
+        }
+
+        // When two project packages share an id we cannot tell the legitimate
+        // one from an impostor, so skip every colliding package rather than pick
+        // a winner based on filesystem ordering. The user sees a missing editor,
+        // investigates, and resolves the conflict.
+        foreach (var group in candidates.GroupBy(p => p.Info.Id, StringComparer.Ordinal))
+        {
+            var members = group.ToList();
+            if (members.Count > 1)
+            {
+                _logger.LogWarning(
+                    $"Multiple project packages declare id '{group.Key}'. All {members.Count} instances skipped to avoid ambiguity.");
+                foreach (var member in members)
+                {
+                    failures.Add(new PackageLoadFailure
+                    {
+                        Folder = member.Info.PackageFolder,
+                        PackageId = group.Key,
+                        Reason = PackageLoadFailureReason.DuplicateId
+                    });
+                }
+                continue;
+            }
+
+            _projectPackages.Add(members[0]);
+        }
+
+        return failures;
+    }
+
+    // Runs after dedup so that duplicate-id packages rejected by the group
+    // passes do not appear in the log. Emits one Info-level line per accepted
+    // package so a support reader can tell at a glance which packages loaded,
+    // whether each is bundled or project-provided, and which file extensions
+    // each document editor handles.
+    private void LogDiscoveredPackages()
+    {
+        foreach (var package in _bundledPackages)
+        {
+            LogDiscoveredPackage(package, "bundled");
+        }
+
+        foreach (var package in _projectPackages)
+        {
+            LogDiscoveredPackage(package, "project");
         }
     }
 
-    /// <summary>
-    /// Attempts to load a package from a folder. Returns null on failure.
-    /// isBundled records whether this package ships inside a Celbridge module DLL
-    /// (trusted) or was loaded from the workspace's packages/ folder or the remote
-    /// registry (untrusted). The flag propagates to PackageInfo.IsBundled, which
-    /// downstream consumers use to gate sensitive capabilities such as secret injection.
-    /// </summary>
-    private Package? TryLoadPackage(string packageFolder, bool isBundled)
+    private void LogDiscoveredPackage(Package package, string source)
     {
-        var manifestPath = Path.Combine(packageFolder, ManifestFileName);
+        var editorCount = package.DocumentEditors.Count;
 
-        if (!File.Exists(manifestPath))
+        if (editorCount == 0)
         {
-            return null;
+            _logger.LogInformation(
+                $"Discovered {source} package '{package.Info.Id}' (no document editors)");
+            return;
         }
 
-        var loadResult = PackageManifestLoader.LoadPackage(manifestPath, isBundled);
-
-        if (loadResult.IsFailure)
+        var editorDescriptions = new List<string>(editorCount);
+        foreach (var editor in package.DocumentEditors)
         {
-            _logger.LogWarning(loadResult, $"Skipping invalid package: {manifestPath}");
-            return null;
+            var extensionCount = editor.FileTypes.Count;
+            string extensionList;
+            if (extensionCount > MaxInlineExtensionsInLog)
+            {
+                extensionList = $"{extensionCount} extensions";
+            }
+            else
+            {
+                extensionList = string.Join(", ", editor.FileTypes.Select(ft => ft.FileExtension));
+            }
+            editorDescriptions.Add($"{editor.Id} [{extensionList}]");
         }
 
-        var package = loadResult.Value;
-        foreach (var documentEditor in package.DocumentEditors)
-        {
-            var contributionType = documentEditor.GetType().Name;
-            _logger.LogDebug($"Discovered package document: {documentEditor.Id} ({contributionType}) for {string.Join(", ", documentEditor.FileTypes.Select(ft => ft.FileExtension))}");
-        }
+        var editorLabel = editorCount == 1 ? "document editor" : "document editors";
+        var editorList = string.Join("; ", editorDescriptions);
 
-        return package;
+        _logger.LogInformation(
+            $"Discovered {source} package '{package.Info.Id}' ({editorCount} {editorLabel}: {editorList})");
     }
 
     /// <summary>
@@ -213,15 +412,25 @@ public class PackageRegistry
         DocumentEditorContribution contribution,
         IReadOnlyDictionary<string, string> localizationStrings)
     {
+        // Prefer the first file type's display name; fall back to the package
+        // name. Either can be a localization key, so run the chosen value
+        // through the package's localization dictionary before returning it.
+        string displayKey;
         var firstFileType = contribution.FileTypes.FirstOrDefault();
         if (firstFileType is not null && !string.IsNullOrEmpty(firstFileType.DisplayName))
         {
-            if (localizationStrings.TryGetValue(firstFileType.DisplayName, out var localizedName))
-            {
-                return localizedName;
-            }
-            return firstFileType.DisplayName;
+            displayKey = firstFileType.DisplayName;
         }
-        return contribution.Package.Name;
+        else
+        {
+            displayKey = contribution.Package.Name;
+        }
+
+        if (localizationStrings.TryGetValue(displayKey, out var localizedName))
+        {
+            return localizedName;
+        }
+
+        return displayKey;
     }
 }

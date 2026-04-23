@@ -38,18 +38,27 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     private string ResolveDisplayName(IPackageLocalizationService localizationService)
     {
-        if (string.IsNullOrEmpty(_contribution.DisplayName))
+        // Prefer the contribution's own display name when set; otherwise fall
+        // back to the package name. Both can be localization keys (e.g.
+        // "FileViewer_Package_Name"), so run the chosen value through the
+        // package's localization dictionary before returning it.
+        string displayKey;
+        if (!string.IsNullOrEmpty(_contribution.DisplayName))
         {
-            return _contribution.Package.Name;
+            displayKey = _contribution.DisplayName;
+        }
+        else
+        {
+            displayKey = _contribution.Package.Name;
         }
 
         var localizationStrings = localizationService.LoadStrings(_contribution.Package.PackageFolder);
-        if (localizationStrings.TryGetValue(_contribution.DisplayName, out var localizedName))
+        if (localizationStrings.TryGetValue(displayKey, out var localizedName))
         {
             return localizedName;
         }
 
-        return _contribution.DisplayName;
+        return displayKey;
     }
 
     public override bool CanHandleResource(ResourceKey fileResource, string filePath)

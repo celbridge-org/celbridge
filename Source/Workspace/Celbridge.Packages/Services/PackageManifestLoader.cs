@@ -22,7 +22,6 @@ public static class PackageManifestLoader
     private const string CodePreviewSection = "code_preview";
     private const string OptionsSection = "options";
     private const string RequiresToolsKey = "requires_tools";
-    private const string RequiresSecretsKey = "requires_secrets";
 
     private const string IdKey = "id";
     private const string NameKey = "name";
@@ -35,7 +34,6 @@ public static class PackageManifestLoader
     private const string TemplateFileKey = "template_file";
     private const string DefaultKey = "default";
     private const string EntryPointKey = "entry_point";
-    private const string DevToolsEnabledKey = "webview_dev_tools";
     private const string BinaryKey = "binary";
     private const string ExternalContentKey = "external_content";
     private const string WordWrapKey = "word_wrap";
@@ -49,12 +47,19 @@ public static class PackageManifestLoader
     private const string PackageHostPrefix = "pkg-";
     private const string HostSuffix = ".celbridge";
 
+    private static readonly IReadOnlyDictionary<string, string> EmptySecrets = new Dictionary<string, string>();
+
     /// <summary>
     /// Loads a package from a package.toml file, including all referenced document editor contributions.
-    /// Callers must pass <paramref name="isBundled"/> to indicate whether this package ships
-    /// inside a module DLL (trusted) or was loaded from the project / remote registry (untrusted).
+    /// hostNameOverride, when non-null, replaces the default package-id-derived virtual host name.
+    /// secrets, when non-empty, populates PackageInfo.Secrets for WebView injection.
+    /// devToolsBlocked, when true, permanently disables DevTools on WebViews hosting this package.
     /// </summary>
-    public static Result<Package> LoadPackage(string packageTomlPath, bool isBundled = false)
+    public static Result<Package> LoadPackage(
+        string packageTomlPath,
+        string? hostNameOverride = null,
+        IReadOnlyDictionary<string, string>? secrets = null,
+        bool devToolsBlocked = false)
     {
         try
         {
@@ -82,20 +87,31 @@ public static class PackageManifestLoader
                 return Result.Fail($"Package missing required '{IdKey}' field: {packageTomlPath}");
             }
 
+            if (!PackageId.IsValid(packageId))
+            {
+                return Result.Fail($"Package has invalid '{IdKey}' value '{packageId}': {packageTomlPath}. Package ids must use only lowercase ASCII letters, digits, dots, and hyphens, with no leading, trailing, or consecutive dots.");
+            }
+
             var packageName = GetString(packageTable, NameKey);
             var featureFlag = GetStringOrNull(packageTable, FeatureFlagKey);
 
             var safeName = packageId.Replace('.', '-').ToLowerInvariant();
-            var hostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
+            var defaultHostName = $"{PackageHostPrefix}{safeName}{HostSuffix}";
+
+            // Bundled packages may pin the virtual host name via the C#-side
+            // BundledPackageDescriptor (e.g. SpreadJS licensing requires `spreadjs.celbridge`).
+            // The override is deliberately not surfaced in package.toml so that non-bundled
+            // packages cannot impersonate a bundled host.
+            var hostName = !string.IsNullOrEmpty(hostNameOverride) ? hostNameOverride : defaultHostName;
 
             var requiresTools = Array.Empty<string>() as IReadOnlyList<string>;
-            var requiresSecrets = Array.Empty<string>() as IReadOnlyList<string>;
             if (root.TryGetValue(ModSection, out var modObject) &&
                 modObject is TomlTable modTable)
             {
                 requiresTools = GetStringArray(modTable, RequiresToolsKey);
-                requiresSecrets = GetStringArray(modTable, RequiresSecretsKey);
             }
+
+            var packageSecrets = secrets ?? EmptySecrets;
 
             var packageInfo = new PackageInfo
             {
@@ -105,8 +121,8 @@ public static class PackageManifestLoader
                 PackageFolder = packageFolder,
                 HostName = hostName,
                 RequiresTools = requiresTools,
-                RequiresSecrets = requiresSecrets,
-                IsBundled = isBundled
+                Secrets = packageSecrets,
+                DevToolsBlocked = devToolsBlocked
             };
 
             var documentPaths = new List<string>();
@@ -291,7 +307,6 @@ public static class PackageManifestLoader
         TomlTable documentTable)
     {
         var entryPoint = GetStringOrNull(documentTable, EntryPointKey) ?? DefaultEntryPoint;
-        var devToolsEnabled = GetBoolOrNull(documentTable, DevToolsEnabledKey) ?? true;
         var binary = GetBoolOrNull(documentTable, BinaryKey) ?? false;
         var externalContent = GetBoolOrNull(documentTable, ExternalContentKey) ?? false;
 
@@ -306,7 +321,6 @@ public static class PackageManifestLoader
             Priority = priority,
             Templates = templates.AsReadOnly(),
             EntryPoint = entryPoint,
-            DevToolsEnabled = devToolsEnabled,
             Binary = binary,
             ExternalContent = externalContent,
             Options = options

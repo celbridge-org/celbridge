@@ -1,5 +1,6 @@
 using Celbridge.Activities;
 using Celbridge.Modules;
+using Celbridge.Packages;
 
 namespace Celbridge.DocumentEditors;
 
@@ -28,16 +29,16 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public IReadOnlyList<string> GetBundledPackageFolders()
+    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
     {
         var editorsRoot = Path.Combine(AppContext.BaseDirectory, "Celbridge.DocumentEditors", EditorsFolderName);
 
         return new[]
         {
-            Path.Combine(editorsRoot, "Notes"),
-            Path.Combine(editorsRoot, "FileViewer"),
-            Path.Combine(editorsRoot, "SceneViewer"),
-            Path.Combine(editorsRoot, "CodeEditor"),
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "Notes") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "FileViewer") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "SceneViewer") },
+            new BundledPackageDescriptor { Folder = Path.Combine(editorsRoot, "CodeEditor") },
         };
     }
 }

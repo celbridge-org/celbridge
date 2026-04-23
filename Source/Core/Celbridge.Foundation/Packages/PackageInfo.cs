@@ -7,7 +7,10 @@ namespace Celbridge.Packages;
 public partial record PackageInfo
 {
     /// <summary>
-    /// Unique identifier for the package (e.g., "celbridge.notes").
+    /// Unique identifier for the package (e.g., "celbridge.notes"). Ids that begin
+    /// with the "celbridge." prefix are reserved for first-party packages shipped
+    /// inside Celbridge module DLLs. third-party packages should choose a different
+    /// namespace.
     /// </summary>
     public string Id { get; init; } = string.Empty;
 
@@ -27,9 +30,18 @@ public partial record PackageInfo
     public IReadOnlyList<string> RequiresTools { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// Secret names declared under [mod].requires_secrets.
+    /// Named secrets supplied by the module that bundles this package. Populated
+    /// only via BundledPackageDescriptor. Always empty for non-bundled packages.
     /// </summary>
-    public IReadOnlyList<string> RequiresSecrets { get; init; } = Array.Empty<string>();
+    public IReadOnlyDictionary<string, string> Secrets { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// When true, DevTools are permanently disabled on any WebView hosting this
+    /// package, regardless of the user's feature flag or build configuration.
+    /// Populated only via BundledPackageDescriptor; always false for non-bundled
+    /// packages.
+    /// </summary>
+    public bool DevToolsBlocked { get; init; }
 
     /// <summary>
     /// The folder containing the package (set during loading, not from TOML).
@@ -40,12 +52,4 @@ public partial record PackageInfo
     /// A unique virtual host name for this package's assets (set during loading, not from TOML).
     /// </summary>
     public string HostName { get; init; } = string.Empty;
-
-    /// <summary>
-    /// True for packages that ship embedded in module DLLs (trusted, ride the module's
-    /// own trust boundary). False for packages loaded from the project's packages/
-    /// folder or installed from the remote registry. Downstream consumers gate
-    /// sensitive capabilities (secret injection, priority ceilings, etc.) on this flag.
-    /// </summary>
-    public bool IsBundled { get; init; } = false;
 }

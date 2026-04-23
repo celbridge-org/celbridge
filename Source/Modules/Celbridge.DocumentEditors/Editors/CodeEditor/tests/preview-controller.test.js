@@ -12,6 +12,8 @@ function makeFakeRendererUrl() {
         export function setBasePath(...args) { return globalThis.__fakePreviewModule.setBasePath(...args); }
         export function setScrollPercentage(...args) { return globalThis.__fakePreviewModule.setScrollPercentage(...args); }
         export function getScrollPercentage(...args) { return globalThis.__fakePreviewModule.getScrollPercentage(...args); }
+        export function scrollToSourceLine(...args) { return globalThis.__fakePreviewModule.scrollToSourceLine(...args); }
+        export function getTopSourceLine(...args) { return globalThis.__fakePreviewModule.getTopSourceLine(...args); }
     `;
     const encoded = Buffer.from(code).toString('base64');
     return `data:text/javascript;base64,${encoded}`;
@@ -23,7 +25,9 @@ function createFakeModule() {
         render: vi.fn(),
         setBasePath: vi.fn(),
         setScrollPercentage: vi.fn().mockReturnValue(true),
-        getScrollPercentage: vi.fn().mockReturnValue(0)
+        getScrollPercentage: vi.fn().mockReturnValue(0),
+        scrollToSourceLine: vi.fn().mockReturnValue(true),
+        getTopSourceLine: vi.fn().mockReturnValue(null)
     };
 }
 

@@ -61,8 +61,10 @@ export class Celbridge {
     tools;
 
     /**
-     * Map of secrets declared in `requires_secrets` and resolved by the host.
-     * Read once during construction, then scrubbed from `window.__celbridgeContext`.
+     * Map of secrets supplied by the bundled package's C# descriptor (e.g. SpreadJS
+     * license keys from `Celbridge.Spreadsheet.Module.GetBundledPackages()`). Read once
+     * during construction, then scrubbed from `window.__celbridgeContext`. Always empty
+     * for non-bundled packages.
      * @type {Readonly<Object<string, string>>}
      */
     secrets;
@@ -227,9 +229,8 @@ export class Celbridge {
  * Contract:
  * - `allowedTools` is an array of glob patterns from the package's `requires_tools`.
  *   A missing or empty value means the editor gets no tool access (default-deny).
- * - `secrets` is a map of secret name to resolved value, populated from the package's
- *   `requires_secrets`. Scrubbed from the global scope after this read so DevTools
- *   inspection has only a short window before the property is gone.
+ * - `secrets` is a map of secret name to resolved value, supplied by the bundled
+ *   package's C# descriptor.
  * - `options` is a map of opaque string values from the package's `[options]` table.
  *   Used by editors to configure themselves (e.g., which preview renderer to load).
  *

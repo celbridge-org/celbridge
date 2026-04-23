@@ -2,45 +2,70 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Documents.ViewModels;
+using Celbridge.Explorer;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Packages;
-using Celbridge.Secrets;
 using Celbridge.Server;
-using Celbridge.Settings;
 using Celbridge.UserInterface;
 using Celbridge.WebView;
+using Celbridge.WebView.Services;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
 namespace Celbridge.Documents.Views;
 
 /// <summary>
-/// Document view for custom WebView-based contribution editors.
-/// Configured from a DocumentEditorContribution, delegates RPC handling to handler classes.
+/// Document view for contribution-based editors, hosted via a WebView2.
 /// </summary>
-public sealed partial class ContributionDocumentView : WebViewDocumentView
+public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 {
     private const int SaveRequestTimeoutSeconds = 30;
-    private const int LoadContentTimeoutSeconds = 10;
+    private const int ReloadStateWaitSeconds = 5;
 
     private readonly ILogger<ContributionDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
+    private readonly IUserInterfaceService _userInterfaceService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IWebViewFactory _webViewFactory;
+    private readonly IWebViewService _webViewService;
 
     private readonly ContributionDocumentViewModel _viewModel;
 
     private ContributionDocumentHandler? _documentHandler;
     private ContributionToolsHandler? _toolsHandler;
 
+    // JSON-RPC infrastructure
+    private WebViewHostChannel? _hostChannel;
+
+    // Deferred editor state for views where the WebView initializes asynchronously.
+    // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
+    // and SetContentLoaded applies it once the JS client signals readiness.
+    private string? _pendingEditorStateJson;
+    private bool _isContentLoaded;
+
+    // Save tracking state for async save coordination with WebView
+    private bool _isSaveInProgress;
+    private bool _hasPendingSave;
+
     // Completed by InitContributionViewAsync with the init outcome. LoadContent
     // triggers the init on first call and awaits this TCS so the open-document
     // flow returns only when the WebView and host are ready for RPCs.
     private TaskCompletionSource<Result>? _initTcs;
+
+    /// <summary>
+    /// The WebView2 control acquired from the factory.
+    /// </summary>
+    private WebView2? WebView { get; set; }
+
+    /// <summary>
+    /// The Celbridge host for JSON-RPC communication with the WebView.
+    /// </summary>
+    private CelbridgeHost? Host { get; set; }
 
     protected override DocumentViewModel DocumentViewModel => _viewModel;
 
@@ -49,11 +74,6 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
     /// Must be set before LoadContent() is called.
     /// </summary>
     public CustomDocumentEditorContribution? Contribution { get; set; }
-
-    protected override bool GetDevToolsEnabled()
-    {
-        return base.GetDevToolsEnabled() && (Contribution?.DevToolsEnabled ?? true);
-    }
 
     public ContributionDocumentView(
         IServiceProvider serviceProvider,
@@ -64,23 +84,23 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
         IWebViewFactory webViewFactory,
-        IFeatureFlags featureFlags)
-        : base(messengerService, webViewFactory, featureFlags)
+        IWebViewService webViewService)
     {
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
+        _userInterfaceService = userInterfaceService;
         _serviceProvider = serviceProvider;
+        _webViewFactory = webViewFactory;
+        _webViewService = webViewService;
 
         _viewModel = serviceProvider.GetRequiredService<ContributionDocumentViewModel>();
 
         this.InitializeComponent();
 
-        WebViewContainer = ContributionWebViewContainer;
-
-        EnableThemeSyncing(userInterfaceService);
+        _messengerService.Register<ThemeChangedMessage>(this, OnThemeChangedMessage);
 
         _viewModel.ReloadRequested += ViewModel_ReloadRequested;
     }
@@ -134,6 +154,32 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         return result;
     }
 
+    private bool TryBeginSave()
+    {
+        if (_isSaveInProgress)
+        {
+            _hasPendingSave = true;
+            return false;
+        }
+
+        _isSaveInProgress = true;
+        _hasPendingSave = false;
+        return true;
+    }
+
+    private bool CompleteSave()
+    {
+        _isSaveInProgress = false;
+
+        if (_hasPendingSave)
+        {
+            _hasPendingSave = false;
+            return true;
+        }
+
+        return false;
+    }
+
     private async Task InitContributionViewAsync()
     {
         if (Contribution is null)
@@ -144,12 +190,22 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
             return;
         }
 
-        // Pass the contribution to the ViewModel for template content loading
         _viewModel.Contribution = Contribution;
 
         try
         {
-            await AcquireWebViewAsync();
+            // Acquire a WebView from the factory and add it to the container.
+            WebView = await _webViewFactory.AcquireAsync();
+            ContributionWebViewContainer.Children.Add(WebView);
+
+            // DevTools is off when the hosting package blocks it (sensitive material)
+            // or when the user has not enabled the WebViewDevTools feature flag.
+            var devToolsBlocked = Contribution.Package.DevToolsBlocked;
+            WebView.CoreWebView2.Settings.AreDevToolsEnabled =
+                !devToolsBlocked && _webViewService.IsDevToolsFeatureEnabled();
+
+            WebView.GotFocus -= WebView_GotFocus;
+            WebView.GotFocus += WebView_GotFocus;
 
             // Map the package's asset folder to a virtual host
             WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -195,19 +251,16 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
                 args.Handled = true;
             };
 
-            InitializeHost();
-
-            if (Host is null)
-            {
-                _logger.LogError("Failed to initialize host for contribution");
-                return;
-            }
+            // Wire up the JSON-RPC host channel for WebView communication.
+            _hostChannel = new WebViewHostChannel(WebView.CoreWebView2);
+            Host = new CelbridgeHost(_hostChannel);
+            Host.AddLocalRpcTarget<IHostInput>(this);
 
             _documentHandler = new ContributionDocumentHandler(
                 _viewModel,
                 _logger,
-                CreateDocumentMetadata,
-                CompleteSave);
+                CreateDocumentMetadata, // Callback to construct document metadata on demand
+                CompleteSave);          // Callback to update state when saving has completed 
 
             _documentHandler.ContentLoaded += SetContentLoaded;
 
@@ -226,9 +279,8 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
                 Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
             }
 
-            StartHostListener();
+            Host.StartListening();
 
-            // Navigate to the contribution's entry point
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
@@ -238,9 +290,188 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         catch (Exception ex)
         {
             _logger.LogError(ex, $"Failed to initialize contribution view: {Contribution.Package.Name}");
+            TeardownWebViewState();
             var failure = Result.Fail($"Failed to initialize contribution view: {Contribution.Package.Id}")
                 .WithException(ex);
             _initTcs!.TrySetResult(failure);
+        }
+    }
+
+    /// <summary>
+    /// Tears down the WebView, host channel, and associated handlers. Safe to call
+    /// multiple times and from partially initialized states.
+    /// </summary>
+    private void TeardownWebViewState()
+    {
+        if (_documentHandler is not null)
+        {
+            _documentHandler.ContentLoaded -= SetContentLoaded;
+        }
+
+        if (WebView is not null)
+        {
+            WebView.GotFocus -= WebView_GotFocus;
+            ContributionWebViewContainer.Children.Remove(WebView);
+            WebView.Close();
+            WebView = null;
+        }
+
+        Host?.Dispose();
+        _hostChannel?.Detach();
+
+        Host = null;
+        _hostChannel = null;
+    }
+
+    public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
+    {
+        var keyboardShortcutService = ServiceLocator.AcquireService<IKeyboardShortcutService>();
+        keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
+    }
+
+    private void OnThemeChangedMessage(object recipient, ThemeChangedMessage message)
+    {
+        if (WebView?.CoreWebView2 is not null)
+        {
+            ApplyThemeToWebView();
+        }
+    }
+
+    private void ApplyThemeToWebView()
+    {
+        if (WebView?.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        var theme = _userInterfaceService.UserInterfaceTheme;
+        WebView.CoreWebView2.Profile.PreferredColorScheme = theme == UserInterfaceTheme.Dark
+            ? CoreWebView2PreferredColorScheme.Dark
+            : CoreWebView2PreferredColorScheme.Light;
+    }
+
+    private DocumentMetadata CreateDocumentMetadata()
+    {
+        var locale = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+
+        var metaData = new DocumentMetadata(
+            DocumentViewModel.FilePath,
+            DocumentViewModel.FileResource.ToString(),
+            Path.GetFileName(DocumentViewModel.FilePath),
+            locale);
+
+        return metaData;
+    }
+
+    private async void SetContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
+    {
+        if (reason != ContentLoadedReason.Initial)
+        {
+            return;
+        }
+
+        _isContentLoaded = true;
+
+        if (_pendingEditorStateJson is null)
+        {
+            return;
+        }
+
+        var state = _pendingEditorStateJson;
+        _pendingEditorStateJson = null;
+
+        try
+        {
+            await RestoreEditorStateAsync(state);
+        }
+        catch (Exception ex)
+        {
+            // Editor state restoration is best-effort: a corrupt or incompatible state should
+            // never tear down the process. Log and swallow to preserve the async void safety contract.
+            _logger.LogError(ex, "Failed to restore editor state after content loaded");
+        }
+    }
+
+    private async Task ReloadWithStatePreservationAsync()
+    {
+        if (Host is null || _documentHandler is null)
+        {
+            return;
+        }
+
+        string? savedState = null;
+        try
+        {
+            savedState = await TrySaveEditorStateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to capture editor state before external reload; continuing without preservation");
+        }
+
+        var reloadComplete = new TaskCompletionSource();
+        void OnReloaded(ContentLoadedReason reason)
+        {
+            if (reason == ContentLoadedReason.ExternalReload)
+            {
+                reloadComplete.TrySetResult();
+            }
+        }
+        _documentHandler.ContentLoaded += OnReloaded;
+
+        try
+        {
+            await Host.NotifyExternalChangeAsync();
+
+            var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(ReloadStateWaitSeconds)));
+            if (completed != reloadComplete.Task)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(savedState))
+            {
+                await RestoreEditorStateAsync(savedState);
+            }
+        }
+        finally
+        {
+            _documentHandler.ContentLoaded -= OnReloaded;
+        }
+    }
+
+    public override async Task<string?> TrySaveEditorStateAsync()
+    {
+        if (Host is null || !_isContentLoaded)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Host.RequestStateAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public override async Task RestoreEditorStateAsync(string state)
+    {
+        if (!_isContentLoaded)
+        {
+            _pendingEditorStateJson = state;
+            return;
+        }
+
+        try
+        {
+            await Host!.RestoreStateAsync(state);
+        }
+        catch
+        {
+            // Editor doesn't implement state restoration
         }
     }
 
@@ -269,17 +500,28 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
         if (resourceKey.IsEmpty)
         {
-            // External URL
             OpenSystemBrowser(_commandService, href);
         }
         else
         {
-            // Internal resource
             _commandService.Execute<IOpenDocumentCommand>(command =>
             {
                 command.FileResource = resourceKey;
             });
         }
+    }
+
+    private static void OpenSystemBrowser(ICommandService commandService, string? uri)
+    {
+        if (string.IsNullOrEmpty(uri))
+        {
+            return;
+        }
+
+        commandService.Execute<IOpenBrowserCommand>(command =>
+        {
+            command.URL = uri;
+        });
     }
 
     private async Task ShowLinkErrorAsync(string href)
@@ -294,11 +536,11 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         // LoadContent drives WebView initialization directly — not via the
         // XAML Loaded event. DocumentsService.CreateDocumentView calls
         // LoadContent before the view is added to the visual tree, so a
-        // Loaded-driven init would not fire in time for LoadContent to
-        // observe the editor's ContentLoaded signal. LoadContent returns
-        // only once the editor is ready for RPCs, so callers that open a
-        // document and immediately send it an RPC (ApplyEditsCommand,
-        // NavigateToLocation, etc.) find the host ready to dispatch.
+        // Loaded-driven init would not fire in time to navigate the WebView.
+        // We wait for init (host ready, navigation started) but do not block
+        // on the editor's own notifyContentLoaded signal. Some heavyweight
+        // editors can take seconds to finish importingcontent. Forcing callers
+        // to wait for that would make document open feel slow.
         if (_initTcs is null)
         {
             _initTcs = new TaskCompletionSource<Result>();
@@ -311,46 +553,7 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
             return initResult;
         }
 
-        if (IsContentLoaded)
-        {
-            return Result.Ok();
-        }
-
-        var readyTcs = new TaskCompletionSource();
-        void OnContentLoadedHandler(ContentLoadedReason reason)
-        {
-            if (reason == ContentLoadedReason.Initial)
-            {
-                readyTcs.TrySetResult();
-            }
-        }
-
-        ContentLoaded += OnContentLoadedHandler;
-        try
-        {
-            // Double-check after subscribing to avoid a race where the load
-            // completes between the first check and the subscription.
-            if (IsContentLoaded)
-            {
-                return Result.Ok();
-            }
-
-            var timeout = TimeSpan.FromSeconds(LoadContentTimeoutSeconds);
-            var completed = await Task.WhenAny(readyTcs.Task, Task.Delay(timeout));
-            if (completed != readyTcs.Task)
-            {
-                var errorMessage = $"Contribution document failed to load within {LoadContentTimeoutSeconds} seconds. " +
-                                   $"Package: {Contribution?.Package.Id}. File: {_viewModel.FilePath}";
-                _logger.LogError(errorMessage);
-                return Result.Fail(errorMessage);
-            }
-
-            return Result.Ok();
-        }
-        finally
-        {
-            ContentLoaded -= OnContentLoadedHandler;
-        }
+        return Result.Ok();
     }
 
     public override async Task<Result> NavigateToLocation(string location)
@@ -417,18 +620,25 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
 
     public override async Task PrepareToClose()
     {
-        _messengerService.UnregisterAll(this);
+        _isContentLoaded = false;
+        _pendingEditorStateJson = null;
 
-        if (_documentHandler is not null)
-        {
-            _documentHandler.ContentLoaded -= SetContentLoaded;
-        }
+        _messengerService.UnregisterAll(this);
 
         _viewModel.ReloadRequested -= ViewModel_ReloadRequested;
 
         _viewModel.Cleanup();
 
+        TeardownWebViewState();
+
         await base.PrepareToClose();
+    }
+
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Set this document as the active document when the WebView2 receives focus
+        var message = new DocumentViewFocusedMessage(FileResource);
+        _messengerService.Send(message);
     }
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
@@ -450,7 +660,20 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         IReadOnlyDictionary<string, string> options)
     {
         var allowedTools = package.RequiresTools;
-        var secrets = ResolvePackageSecrets(package);
+        var secrets = package.Secrets;
+
+        // An empty secret value almost certainly indicates a missing private license
+        // file or a module that failed to populate its BundledPackageDescriptor. The
+        // editor at the other end will typically fail to activate so surface it loudly here.
+        foreach (var pair in secrets)
+        {
+            if (string.IsNullOrEmpty(pair.Value))
+            {
+                _logger.LogWarning(
+                    "Secret '{SecretName}' for package '{PackageId}' is empty; the editor will likely fail to activate.",
+                    pair.Key, package.Id);
+            }
+        }
 
         var contextJson = JsonSerializer.Serialize(
             new CelbridgeContext(allowedTools, secrets, options),
@@ -466,51 +689,6 @@ public sealed partial class ContributionDocumentView : WebViewDocumentView
         var script = $"window.__celbridgeContext = {contextJson};";
         await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
     }
-
-    private IReadOnlyDictionary<string, string> ResolvePackageSecrets(PackageInfo package)
-    {
-        if (package.RequiresSecrets.Count == 0)
-        {
-            return EmptySecrets;
-        }
-
-        // Gate: only bundled packages (shipped inside module DLLs) can request secrets.
-        // Project-contributed and registry-installed packages would otherwise be able to
-        // exfiltrate any secret whose name they know (e.g. `spreadjs_license` is visible
-        // in public source). When a legitimate third-party use case appears, replace this
-        // blanket block with a per-secret consent prompt persisted per package-id.
-        if (!package.IsBundled)
-        {
-            _logger.LogWarning(
-                "Non-bundled package '{PackageId}' declares {Count} required secret(s); " +
-                "secret injection is only permitted for bundled packages. Secrets: {Secrets}",
-                package.Id, package.RequiresSecrets.Count, string.Join(", ", package.RequiresSecrets));
-            return EmptySecrets;
-        }
-
-        var secretRegistry = _serviceProvider.GetService<ISecretRegistry>();
-        if (secretRegistry is null)
-        {
-            _logger.LogWarning(
-                "Package '{PackageId}' declares {Count} required secret(s) but no ISecretRegistry is registered",
-                package.Id, package.RequiresSecrets.Count);
-            return EmptySecrets;
-        }
-
-        var resolveResult = secretRegistry.ResolveAll(package.RequiresSecrets);
-        if (resolveResult.IsFailure)
-        {
-            _logger.LogError(
-                "Failed to resolve secrets for package '{PackageId}': {Error}",
-                package.Id, resolveResult.FirstErrorMessage);
-            return EmptySecrets;
-        }
-
-        return resolveResult.Value;
-    }
-
-    private static readonly IReadOnlyDictionary<string, string> EmptySecrets =
-        new Dictionary<string, string>();
 
     private static readonly JsonSerializerOptions ContextSerializerOptions = new()
     {

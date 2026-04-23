@@ -76,6 +76,9 @@ body {
     max-width: 900px;
     margin: 0 auto;
     padding: 32px;
+    /* Matches Monaco's scrollBeyondLastLine overscroll so the editor and
+       preview can scroll past end together. */
+    padding-bottom: calc(100vh - 4em);
     word-wrap: break-word;
     overflow-wrap: break-word;
     overflow-x: hidden;

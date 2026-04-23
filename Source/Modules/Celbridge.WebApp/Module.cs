@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
+using Celbridge.Packages;
 using Microsoft.Extensions.Localization;
 using Celbridge.WebApp.Services;
 using Celbridge.WebApp.ViewModels;
@@ -43,8 +44,8 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public IReadOnlyList<string> GetBundledPackageFolders()
+    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
     {
-        return Array.Empty<string>();
+        return Array.Empty<BundledPackageDescriptor>();
     }
 }

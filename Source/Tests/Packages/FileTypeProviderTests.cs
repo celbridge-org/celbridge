@@ -22,7 +22,9 @@ public class PackageServiceDocumentTypeTests
 
         _bundledPackagePaths = [];
         _moduleService = Substitute.For<IModuleService>();
-        _moduleService.GetBundledPackageFolders().Returns(_ => _bundledPackagePaths);
+        _moduleService.GetBundledPackages().Returns(_ => _bundledPackagePaths
+            .Select(folder => new BundledPackageDescriptor { Folder = folder })
+            .ToList());
 
         _featureFlags = Substitute.For<IFeatureFlags>();
         _featureFlags.IsEnabled(Arg.Any<string>()).Returns(true);

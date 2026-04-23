@@ -1,7 +1,8 @@
 // Owns the preview iframe and the dynamically-imported preview module.
 // The preview module contract is format-agnostic: initialize / render /
-// setBasePath / setScrollPercentage / getScrollPercentage. Any ES module
-// implementing the contract can be used — Markdown is just one consumer.
+// setBasePath / setScrollPercentage / getScrollPercentage /
+// scrollToSourceLine / getTopSourceLine. Any ES module implementing the
+// contract can be used — Markdown is just one consumer.
 
 import { log } from './logger.js';
 
@@ -13,6 +14,7 @@ export class PreviewController {
     #rendererUrl = null;
     #pendingBasePath = '';
     #pendingScrollPercentage = null;
+    #pendingScrollSourceLine = null;
     #pendingContent = null;
     #hasRendered = false;
 
@@ -78,12 +80,35 @@ export class PreviewController {
             log('preview: first render complete');
         }
 
-        if (this.#pendingScrollPercentage !== null) {
+        if (this.#pendingScrollSourceLine !== null) {
+            const pending = this.#pendingScrollSourceLine;
+            requestAnimationFrame(() => {
+                this.#applyScrollSourceLine(pending.line, pending.fraction);
+            });
+        } else if (this.#pendingScrollPercentage !== null) {
             const pending = this.#pendingScrollPercentage;
             requestAnimationFrame(() => {
                 this.#applyScrollPercentage(pending);
             });
         }
+    }
+
+    scrollToSourceLine(line, fraction = 0) {
+        if (!this.#module ||
+            !this.#hasRendered ||
+            typeof this.#module.scrollToSourceLine !== 'function') {
+            this.#pendingScrollSourceLine = { line, fraction };
+            return;
+        }
+
+        this.#applyScrollSourceLine(line, fraction);
+    }
+
+    getTopSourceLine() {
+        if (!this.#module || typeof this.#module.getTopSourceLine !== 'function') {
+            return null;
+        }
+        return this.#module.getTopSourceLine();
     }
 
     setScrollPercentage(percentage) {
@@ -110,6 +135,11 @@ export class PreviewController {
         // inactive tab first becomes visible on project reload.
         this.#module.setScrollPercentage(percentage);
         this.#pendingScrollPercentage = null;
+    }
+
+    #applyScrollSourceLine(line, fraction) {
+        this.#module.scrollToSourceLine(line, fraction);
+        this.#pendingScrollSourceLine = null;
     }
 
     async #ensureModuleLoaded() {

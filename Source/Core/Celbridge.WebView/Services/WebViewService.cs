@@ -1,8 +1,17 @@
+using Celbridge.Settings;
+
 namespace Celbridge.WebView.Services;
 
 public class WebViewService : IWebViewService
 {
     private const string LocalSchemePrefix = "local://";
+
+    private readonly IFeatureFlags _featureFlags;
+
+    public WebViewService(IFeatureFlags featureFlags)
+    {
+        _featureFlags = featureFlags;
+    }
 
     public UrlType ClassifyUrl(string url)
     {
@@ -58,5 +67,10 @@ public class WebViewService : IWebViewService
         }
 
         return url;
+    }
+
+    public bool IsDevToolsFeatureEnabled()
+    {
+        return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevTools);
     }
 }

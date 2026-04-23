@@ -18,6 +18,8 @@ export class EditorController {
     #currentLanguage = 'plaintext';
     #pendingNavigation = null;
     #onContentChanged = () => {};
+    #onScrollChanged = () => {};
+    #suppressScrollNotify = false;
 
     create(containerElement) {
         this.#containerElement = containerElement;
@@ -131,7 +133,113 @@ export class EditorController {
         const maxScroll = contentHeight - clientHeight;
         const scrollTop = maxScroll * Math.max(0, Math.min(1, percentage));
 
+        this.#suppressScrollNotify = true;
         this.#editor.setScrollTop(scrollTop);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this.#suppressScrollNotify = false;
+            });
+        });
+    }
+
+    /**
+     * Scrolls the editor so the given 1-based model line is at the top of the
+     * viewport. `fraction` (0-1) nudges the scroll further into the line.
+     *
+     * Word-wrap-aware: a model line that wraps to N view lines occupies
+     * N * lineHeight of scroll range. `getTopForLineNumber(n+1) - getTopForLineNumber(n)`
+     * gives that rendered height, so `fraction * renderedHeight` positions
+     * accurately inside the wrapped block.
+     */
+    scrollToSourceLine(line, fraction = 0) {
+        if (!this.#editor) {
+            return;
+        }
+
+        const model = this.#editor.getModel();
+        if (!model) {
+            return;
+        }
+
+        const lineCount = model.getLineCount();
+        const clampedLine = Math.max(1, Math.min(line | 0, lineCount));
+        const lineTop = this.#editor.getTopForLineNumber(clampedLine);
+        const renderedHeight = this.#modelLineRenderedHeight(clampedLine, lineCount);
+        const offset = Math.max(0, Math.min(1, fraction)) * renderedHeight;
+
+        this.#suppressScrollNotify = true;
+        this.#editor.setScrollTop(lineTop + offset);
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this.#suppressScrollNotify = false;
+            });
+        });
+    }
+
+    /**
+     * Returns {line, fraction} for the topmost visible *model* line, or null
+     * if the editor isn't laid out yet.
+     *
+     * Word-wrap-aware: locates the model line whose rendered extent brackets
+     * the current scrollTop via binary search over `getTopForLineNumber`. The
+     * previous implementation used `floor(scrollTop / lineHeight)` which
+     * returns a *view* line index - treating it as a model line overshoots
+     * into the preview's past-last-block region in any document with long
+     * wrapped paragraphs.
+     */
+    getTopSourceLine() {
+        if (!this.#editor) {
+            return null;
+        }
+
+        const model = this.#editor.getModel();
+        if (!model) {
+            return null;
+        }
+
+        const clientHeight = this.#editor.getLayoutInfo().height;
+        if (clientHeight === 0) {
+            return null;
+        }
+
+        const scrollTop = this.#editor.getScrollTop();
+        const lineCount = model.getLineCount();
+
+        // Binary search for the greatest line whose top <= scrollTop.
+        let lo = 1;
+        let hi = lineCount;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >>> 1;
+            const midTop = this.#editor.getTopForLineNumber(mid);
+            if (midTop <= scrollTop) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        const topLine = lo;
+
+        const lineTop = this.#editor.getTopForLineNumber(topLine);
+        const renderedHeight = this.#modelLineRenderedHeight(topLine, lineCount);
+        const fraction = Math.max(0, Math.min(1, (scrollTop - lineTop) / renderedHeight));
+
+        return { line: topLine, fraction };
+    }
+
+    /**
+     * Rendered height of a model line, accounting for word wrap. The last
+     * model line has no next line to subtract against; fall back to the
+     * editor's configured lineHeight (unwrapped last lines are the common
+     * case).
+     */
+    #modelLineRenderedHeight(lineNumber, lineCount) {
+        const lineHeight = this.#editor.getOption(monaco.editor.EditorOption.lineHeight);
+        if (lineNumber >= lineCount) {
+            return Math.max(1, lineHeight);
+        }
+        const top = this.#editor.getTopForLineNumber(lineNumber);
+        const nextTop = this.#editor.getTopForLineNumber(lineNumber + 1);
+        return Math.max(1, nextTop - top);
     }
 
     getScrollPercentage() {
@@ -233,6 +341,18 @@ export class EditorController {
 
     onContentChanged(callback) {
         this.#onContentChanged = callback ?? (() => {});
+    }
+
+    /**
+     * Registers a callback fired on editor scroll changes.
+     * Receives `{line, fraction}` for the topmost visible line, or null when
+     * the editor has no layout (collapsed preview mode). The callback is
+     * throttled to the browser's animation frame and suppressed while the
+     * editor is being programmatically scrolled (to avoid echoing scrolls
+     * back from the preview).
+     */
+    onScrollChanged(callback) {
+        this.#onScrollChanged = callback ?? (() => {});
     }
 
     async #handleExternalChange(onExternalReloadContent) {
@@ -382,41 +502,33 @@ export class EditorController {
     }
 
     #setupScrollListener() {
-        // Throttle scroll events to avoid flooding the host
-        let scrollThrottleTimeout = null;
+        // Dispatch scroll events on an rAF so fast scrolling coalesces into
+        // one sync per frame. Skip dispatch when Monaco is collapsed (Preview
+        // mode) because the layout reports scrollTop=0 while invisible.
+        let scrollFramePending = false;
 
         this.#editor.onDidScrollChange(() => {
-            if (!this.#shouldNotifyHost()) {
+            if (!this.#shouldNotifyHost() || this.#suppressScrollNotify) {
                 return;
             }
 
-            // Throttle to max ~30 updates per second
-            if (scrollThrottleTimeout) {
+            if (scrollFramePending) {
                 return;
             }
+            scrollFramePending = true;
 
-            scrollThrottleTimeout = setTimeout(() => {
-                scrollThrottleTimeout = null;
+            requestAnimationFrame(() => {
+                scrollFramePending = false;
 
-                // Skip scroll sync when the editor is collapsed (e.g., Preview
-                // mode). A collapsed editor always reports scrollTop=0, which
-                // would incorrectly scroll the preview to the top.
-                const clientHeight = this.#editor.getLayoutInfo().height;
-                if (clientHeight === 0) {
+                if (this.#suppressScrollNotify) {
                     return;
                 }
 
-                const scrollTop = this.#editor.getScrollTop();
-                const contentHeight = this.#editor.getContentHeight();
-                const maxScroll = contentHeight - clientHeight;
-
-                // Calculate scroll percentage (0.0 to 1.0)
-                const percentage = maxScroll > 0
-                    ? Math.min(1, Math.max(0, scrollTop / maxScroll))
-                    : 0;
-
-                celbridge.input.notifyScrollChanged(percentage);
-            }, 33);
+                const target = this.getTopSourceLine();
+                if (target !== null) {
+                    this.#onScrollChanged(target);
+                }
+            });
         });
     }
 

@@ -2,6 +2,7 @@ using Celbridge.Activities;
 using Celbridge.Core.Components;
 using Celbridge.Documents;
 using Celbridge.Modules;
+using Celbridge.Packages;
 
 namespace Celbridge.Core;
 
@@ -33,8 +34,8 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public IReadOnlyList<string> GetBundledPackageFolders()
+    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
     {
-        return Array.Empty<string>();
+        return Array.Empty<BundledPackageDescriptor>();
     }
 }

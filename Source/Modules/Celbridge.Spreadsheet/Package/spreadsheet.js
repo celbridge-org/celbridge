@@ -4,29 +4,32 @@
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
-// Only proceed if running in WebView
 if (!window.isWebView) {
     console.log('Not running in WebView, skipping client initialization');
 }
 
-// Get the client instance
 const client = celbridge;
 
-// SpreadJS designer instance (set in initializeSpreadsheet)
 let designer = null;
-
-// ---------------------------------------------------------------------------
-// Spreadsheet Import/Export Functions
-// ---------------------------------------------------------------------------
 
 async function deserializeExcelData(base64Data, viewState = null) {
     if (!base64Data) {
-        console.log('No data to import');
         client.document.notifyImportComplete(true);
         return;
     }
 
-    const spread = designer.getWorkbook();
+    let spread;
+    try {
+        spread = designer.getWorkbook();
+    } catch (err) {
+        // If SpreadJS rejected the license post-designer-construction, the
+        // workbook is in a broken state and getWorkbook() throws. Report the
+        // failure but do not propagate — the outer initializeDocument must
+        // still reach notifyContentLoaded so the host does not time out.
+        console.error('[Spreadsheet] getWorkbook threw (editor unavailable):', err);
+        client.document.notifyImportComplete(false, err?.message || 'Editor unavailable');
+        return;
+    }
 
     try {
         const binary = atob(base64Data);
@@ -40,8 +43,6 @@ async function deserializeExcelData(base64Data, viewState = null) {
         });
         const file = new File([blob], 'imported.xlsx', { type: blob.type });
 
-        // Suspend painting before import so SpreadJS does not flash the default
-        // (0, 0) position before view state is restored in the rAF callback.
         if (viewState) {
             spread.suspendPaint();
         }
@@ -109,10 +110,6 @@ function blobToBase64(blob) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// View State Capture and Restore
-// ---------------------------------------------------------------------------
-
 function captureViewState() {
     if (!designer) return null;
     try {
@@ -144,7 +141,6 @@ function restoreViewState(state) {
 
         const activeSheet = spread.getActiveSheet();
 
-        // Restore all selections. If none were saved, select the origin cell.
         if (state.selections && state.selections.length > 0) {
             const first = state.selections[0];
             activeSheet.setSelection(first.row, first.col, first.rowCount, first.colCount);
@@ -154,17 +150,12 @@ function restoreViewState(state) {
             }
         }
 
-        // Restore scroll position.
         activeSheet.showRow(state.scrollRow, GC.Spread.Sheets.VerticalPosition.top);
         activeSheet.showColumn(state.scrollColumn, GC.Spread.Sheets.HorizontalPosition.left);
     } catch (error) {
         console.warn('[Spreadsheet] Failed to restore view state:', error);
     }
 }
-
-// ---------------------------------------------------------------------------
-// Change Tracking
-// ---------------------------------------------------------------------------
 
 function listenForChanges() {
     const workbook = designer.getWorkbook();
@@ -178,37 +169,91 @@ function listenForChanges() {
     });
 }
 
-// ---------------------------------------------------------------------------
-// Initialization
-// ---------------------------------------------------------------------------
-
 function initializeSpreadsheet() {
-    // Apply license keys
-    GC.Spread.Sheets.LicenseKey = SPREAD_JS_LICENSE_KEY;
-    GC.Spread.Sheets.Designer.LicenseKey = SPREAD_JS_DESIGNER_LICENSE_KEY;
+    // Apply license keys from the host-injected secret map. celbridge.js reads
+    // window.__celbridgeContext once and deletes it before this runs, so the
+    // keys are only reachable via the frozen celbridge.secrets object.
+    const licenseKey = client.secrets.spreadjs_license_key;
+    const designerLicenseKey = client.secrets.spreadjs_designer_license_key;
 
-    const config = GC.Spread.Sheets.Designer.DefaultConfig;
-    delete config.fileMenu;
+    // Fast-fail when either key is missing so SpreadJS never runs on empty
+    // strings. End users never reach this path: when the SpreadJS library is
+    // absent (public GitHub builds) the celbridge.spreadsheet package is not
+    // registered and .xlsx is never advertised as a supported file type. Only
+    // internal devs with a broken license setup see a failure here, so we log
+    // for the console and let SpreadJS surface its own rejection dialog if
+    // construction reaches it — the Mescius-branded text is more informative
+    // for diagnosing a bad key than anything we could render ourselves.
+    if (!licenseKey || !designerLicenseKey) {
+        console.error('[Spreadsheet] SpreadJS license keys missing from injected secrets. ' +
+            'Expected `spreadjs_license_key` and `spreadjs_designer_license_key`. ' +
+            'Got: license=' + (licenseKey ? 'present' : 'missing') +
+            ', designer=' + (designerLicenseKey ? 'present' : 'missing') + '.');
+        return false;
+    }
 
-    designer = new GC.Spread.Sheets.Designer.Designer(
-        document.getElementById("gc-designer-container"), config
-    );
+    GC.Spread.Sheets.LicenseKey = licenseKey;
+    GC.Spread.Sheets.Designer.LicenseKey = designerLicenseKey;
 
-    window.designer = designer;
+    try {
+        const config = GC.Spread.Sheets.Designer.DefaultConfig;
+        delete config.fileMenu;
 
-    listenForChanges();
+        designer = new GC.Spread.Sheets.Designer.Designer(
+            document.getElementById("gc-designer-container"), config
+        );
+
+        window.designer = designer;
+
+        listenForChanges();
+        return true;
+    } catch (e) {
+        console.error('[Spreadsheet] Designer construction failed:', e);
+        return false;
+    }
 }
 
 async function initializeEditor() {
     try {
-        initializeSpreadsheet();
+        const ready = initializeSpreadsheet();
+        if (!ready) {
+            // Still complete the document handshake so the host's load flow
+            // doesn't hang waiting for onContent/notifyImportComplete. The
+            // WebView either shows an empty gc-designer-container or SpreadJS's
+            // own rejection dialog; either way we refuse to accept content
+            // or produce saves.
+            await client.initializeDocument({
+                onContent: async () => {
+                    client.document.notifyImportComplete(false, 'Spreadsheet editor unavailable');
+                },
+                onRequestSave: async () => {
+                    throw new Error('Spreadsheet editor unavailable');
+                },
+                onExternalChange: async () => {
+                    client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
+                },
+                onRequestState: () => null,
+                onRestoreState: () => {}
+            });
+            return;
+        }
 
         await client.initializeDocument({
             onContent: async (content) => {
-                if (content) {
-                    await deserializeExcelData(content);
-                } else {
-                    client.document.notifyImportComplete(true);
+                // Wrap the whole onContent body so a throw here cannot prevent
+                // initializeDocument from calling notifyContentLoaded. A timeout
+                // on the host side is strictly worse than a failed import —
+                // the host times out without ever showing the editor, while
+                // a failed import at least puts a visible editor on screen.
+                try {
+                    if (content) {
+                        await deserializeExcelData(content);
+                    } else {
+                        client.document.notifyImportComplete(true);
+                    }
+                } catch (err) {
+                    console.error('[Spreadsheet] onContent failed:', err);
+                    client.document.notifyImportComplete(false, err?.message || 'onContent failed');
                 }
             },
             onRequestSave: async () => {
@@ -222,7 +267,7 @@ async function initializeEditor() {
             onExternalChange: async () => {
                 // Editor state (zoom, active sheet, selection) is preserved by the framework via
                 // onRequestState / onRestoreState, orchestrated around this handler by
-                // SpreadsheetDocumentView. Just load the new content and signal completion.
+                // ContributionDocumentView. Just load the new content and signal completion.
                 try {
                     const result = await client.document.load();
                     await deserializeExcelData(result.content);
@@ -250,5 +295,4 @@ async function initializeEditor() {
     }
 }
 
-// Start initialization
 initializeEditor();

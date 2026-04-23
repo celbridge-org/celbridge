@@ -1,6 +1,7 @@
 using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
+using Celbridge.Packages;
 using Celbridge.Screenplay.Commands;
 using Celbridge.Screenplay.Components;
 using Celbridge.Screenplay.Services;
@@ -63,8 +64,8 @@ public class Module : IModule
         return Result<IActivity>.Fail();
     }
 
-    public IReadOnlyList<string> GetBundledPackageFolders()
+    public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()
     {
-        return Array.Empty<string>();
+        return Array.Empty<BundledPackageDescriptor>();
     }
 }

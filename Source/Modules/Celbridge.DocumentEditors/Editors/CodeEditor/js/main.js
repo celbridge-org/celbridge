@@ -53,16 +53,6 @@ async function initialize() {
     editorController = new EditorController();
     editorController.create(container);
 
-    // Pin scrollBeyondLastLine=false whenever a preview is active. The
-    // current percentage-based scroll sync drifts at end-of-document because
-    // the editor can scroll past EOF while the preview cannot. This is a
-    // stopgap; the design for content-aware (source-map-based) scroll sync
-    // lives in unified_document_editors.md. When that lands, remove this
-    // block and let Monaco use its default scrollBeyondLastLine=true.
-    if (options.previewRendererUrl) {
-        editorController.applyOptions({ scrollBeyondLastLine: false });
-    }
-
     viewModeController = new ViewModeController({
         splitRoot,
         editorPane,
@@ -80,13 +70,27 @@ async function initialize() {
                 celbridge.input.notifyLinkClicked(href);
             }
         },
-        onSyncToEditor: (percentage) => {
-            editorController.scrollToPercentage(percentage);
+        onSyncToEditor: (target) => {
+            // target: {line, fraction}. The preview reports the topmost visible
+            // source block and the editor reveals that exact line rather than a
+            // proportional guess, giving precise sync between rendered blocks
+            // and their source locations.
+            editorController.scrollToSourceLine(target.line, target.fraction);
         }
     });
 
     editorController.onContentChanged(() => {
         previewController.render(editorController.getValue());
+    });
+
+    // Editor-to-preview sync: on every editor scroll, report {line, fraction}
+    // for the topmost visible source line and have the preview scroll to the
+    // rendered block carrying that data-source-line. No-op when the preview
+    // is not active (plain code document with no renderer attached).
+    editorController.onScrollChanged((target) => {
+        if (previewController.isActive()) {
+            previewController.scrollToSourceLine(target.line, target.fraction);
+        }
     });
 
     attachDividerDrag(dividerElement, viewModeController);

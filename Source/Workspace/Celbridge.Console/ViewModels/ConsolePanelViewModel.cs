@@ -184,6 +184,11 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_ShortcutConfigErrorMessage", configFile);
                 break;
 
+            case ConsoleErrorType.PackageLoadError:
+                ErrorBannerTitle = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorTitle");
+                ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorMessage");
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }

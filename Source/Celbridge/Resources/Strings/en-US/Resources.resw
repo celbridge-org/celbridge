@@ -560,6 +560,12 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_MigrationErrorTitle" xml:space="preserve">
     <value>Project Migration Error</value>
   </data>
+  <data name="ConsolePanel_PackageLoadErrorTitle" xml:space="preserve">
+    <value>Package Load Error</value>
+  </data>
+  <data name="ConsolePanel_PackageLoadErrorMessage" xml:space="preserve">
+    <value>One or more packages failed to load. See the log for details.</value>
+  </data>
   <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
     <value>Split Editor</value>
   </data>

@@ -1,3 +1,4 @@
+using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
@@ -26,7 +27,17 @@ public class PackageService : IPackageService
 
     public void RegisterPackages(string projectFolderPath)
     {
-        _registry.DiscoverPackages(projectFolderPath);
+        var report = _registry.DiscoverPackages(projectFolderPath);
+
+        if (report.Failures.Count > 0)
+        {
+            // Surface the failures via the console panel error banner.
+            // Individual failures are already logged by the registry.
+            var projectName = Path.GetFileName(projectFolderPath) ?? string.Empty;
+            var message = new ConsoleErrorMessage(ConsoleErrorType.PackageLoadError, projectName);
+            _messengerService.Send(message);
+        }
+
         _messengerService.Send(new PackagesInitializedMessage());
     }
 
