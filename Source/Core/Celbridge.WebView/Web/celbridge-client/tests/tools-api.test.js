@@ -261,13 +261,13 @@ describe('InputAPI.notifyShortcut', () => {
     it('sends input/keyboardShortcut notification with modifier flags', () => {
         const { client, sentMessages } = createTestClient();
 
-        client.input.notifyShortcut('S', { ctrl: true, shift: false, alt: false });
+        client.input.notifyShortcut('W', { ctrl: true, shift: false, alt: false });
 
         const sent = JSON.parse(sentMessages[0]);
         expect(sent.jsonrpc).toBe('2.0');
         expect(sent.method).toBe('input/keyboardShortcut');
         expect(sent.params).toEqual({
-            key: 'S',
+            key: 'W',
             ctrlKey: true,
             shiftKey: false,
             altKey: false

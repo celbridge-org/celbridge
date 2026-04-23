@@ -9,8 +9,7 @@ public partial record PackageInfo
     /// <summary>
     /// Unique identifier for the package (e.g., "celbridge.notes"). Ids that begin
     /// with the "celbridge." prefix are reserved for first-party packages shipped
-    /// inside Celbridge module DLLs. third-party packages should choose a different
-    /// namespace.
+    /// inside Celbridge module DLLs.
     /// </summary>
     public string Id { get; init; } = string.Empty;
 

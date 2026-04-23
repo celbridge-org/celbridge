@@ -50,9 +50,9 @@ export class InputAPI {
 
     /**
      * Notifies the host that a global keyboard shortcut was pressed in the editor.
-     * Use this to forward Celbridge-level shortcuts (e.g. Ctrl+S, Ctrl+W) when focus
+     * Use this to forward Celbridge-level shortcuts (e.g. Ctrl+W) when focus
      * is inside the editor so the host can route them to IKeyboardShortcutService.
-     * @param {string} key - The key name (e.g. "S", "W", "F11").
+     * @param {string} key - The key name (e.g. "W", "F11").
      * @param {Object} [modifiers] - Modifier key state.
      * @param {boolean} [modifiers.ctrl] - Whether Ctrl (or Cmd on macOS) is pressed.
      * @param {boolean} [modifiers.shift] - Whether Shift is pressed.
