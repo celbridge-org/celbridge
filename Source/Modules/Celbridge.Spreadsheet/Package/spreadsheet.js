@@ -170,20 +170,11 @@ function listenForChanges() {
 }
 
 function initializeSpreadsheet() {
-    // Apply license keys from the host-injected secret map. celbridge.js reads
-    // window.__celbridgeContext once and deletes it before this runs, so the
-    // keys are only reachable via the frozen celbridge.secrets object.
+    // Apply license keys from the host-injected secret map.
     const licenseKey = client.secrets.spreadjs_license_key;
     const designerLicenseKey = client.secrets.spreadjs_designer_license_key;
 
-    // Fast-fail when either key is missing so SpreadJS never runs on empty
-    // strings. End users never reach this path: when the SpreadJS library is
-    // absent (public GitHub builds) the celbridge.spreadsheet package is not
-    // registered and .xlsx is never advertised as a supported file type. Only
-    // internal devs with a broken license setup see a failure here, so we log
-    // for the console and let SpreadJS surface its own rejection dialog if
-    // construction reaches it — the Mescius-branded text is more informative
-    // for diagnosing a bad key than anything we could render ourselves.
+    // Fast-fail when either key is missing so SpreadJS never runs on empty strings.
     if (!licenseKey || !designerLicenseKey) {
         console.error('[Spreadsheet] SpreadJS license keys missing from injected secrets. ' +
             'Expected `spreadjs_license_key` and `spreadjs_designer_license_key`. ' +
