@@ -28,6 +28,7 @@ public class McpToolBridge : IMcpToolBridge
     private readonly ILogger<McpToolBridge> _logger;
     private readonly HttpClient _httpClient;
     private readonly Dictionary<string, ToolMetadata> _toolMetadata;
+    private readonly Dictionary<string, string> _aliasToToolName;
 
     private int _nextRequestId;
     private string? _sessionId;
@@ -40,6 +41,27 @@ public class McpToolBridge : IMcpToolBridge
         _logger = logger;
         _httpClient = new HttpClient();
         _toolMetadata = BuildToolMetadata();
+        _aliasToToolName = new Dictionary<string, string>(_toolMetadata.Count, StringComparer.Ordinal);
+        foreach (var entry in _toolMetadata)
+        {
+            if (!string.IsNullOrEmpty(entry.Value.Alias))
+            {
+                _aliasToToolName[entry.Value.Alias] = entry.Key;
+            }
+        }
+    }
+
+    // The JS client addresses tools by alias (e.g. "document.open") while Python and the MCP
+    // server itself use the underscore MCP name ("document_open"). Callers forward whichever
+    // form they have; resolve to the MCP name before hitting the wire.
+    private string ResolveMcpToolName(string name)
+    {
+        if (_aliasToToolName.TryGetValue(name, out var mcpName))
+        {
+            return mcpName;
+        }
+
+        return name;
     }
 
     [JsonRpcMethod("tools/list")]
@@ -146,10 +168,11 @@ public class McpToolBridge : IMcpToolBridge
     public async Task<object> ToolsCall(string name, JObject? arguments)
     {
         var argumentsNode = ConvertJObjectToJsonObject(arguments);
+        var mcpToolName = ResolveMcpToolName(name);
 
         var callParams = new JsonObject
         {
-            ["name"] = name
+            ["name"] = mcpToolName
         };
         if (argumentsNode is not null)
         {
@@ -164,7 +187,7 @@ public class McpToolBridge : IMcpToolBridge
                 return new Dictionary<string, object?>
                 {
                     ["isSuccess"] = false,
-                    ["errorMessage"] = "No response from MCP server",
+                    ["errorMessage"] = "MCP HTTP server is not running",
                     ["value"] = null
                 };
             }
@@ -285,10 +308,11 @@ public class McpToolBridge : IMcpToolBridge
     public async Task<ToolCallResult> CallToolAsync(string name, object? arguments)
     {
         var argumentsObject = NormalizeArguments(arguments);
+        var mcpToolName = ResolveMcpToolName(name);
 
         var callParams = new JsonObject
         {
-            ["name"] = name
+            ["name"] = mcpToolName
         };
         if (argumentsObject is not null)
         {
@@ -300,7 +324,7 @@ public class McpToolBridge : IMcpToolBridge
             var response = await SendMcpRequestAsync("tools/call", callParams);
             if (response is null)
             {
-                return new ToolCallResult(false, "No response from MCP server", null);
+                return new ToolCallResult(false, "MCP HTTP server is not running", null);
             }
 
             var isError = response["isError"]?.GetValue<bool>() ?? false;
@@ -562,6 +586,29 @@ public class McpToolBridge : IMcpToolBridge
         }
 
         var responseNode = JsonNode.Parse(responseJson);
+
+        // JSON-RPC error envelope that includes the server-provided message.
+        if (responseNode?["error"] is JsonNode errorNode)
+        {
+            var errorMessage = errorNode["message"]?.GetValue<string>() ?? "MCP server returned an error";
+            var errorCodeNode = errorNode["code"];
+            int? errorCode = null;
+            if (errorCodeNode is not null)
+            {
+                try
+                {
+                    errorCode = errorCodeNode.GetValue<int>();
+                }
+                catch
+                {
+                    errorCode = null;
+                }
+            }
+            var formatted = errorCode.HasValue
+                ? $"MCP error {errorCode.Value}: {errorMessage}"
+                : $"MCP error: {errorMessage}";
+            throw new InvalidOperationException(formatted);
+        }
 
         return responseNode?["result"]?.AsObject();
     }

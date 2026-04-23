@@ -40,6 +40,16 @@ function createTestClient(options = {}) {
     return { client, sentMessages, simulateResponse, simulateError };
 }
 
+/**
+ * Convenience: build a descriptor with the given alias and parameter list.
+ * @param {string} alias
+ * @param {Array<{name: string, type?: string}>} [parameters]
+ * @returns {import('./api/tools-api.js').ToolDescriptor}
+ */
+function descriptor(alias, parameters = []) {
+    return { name: alias.replace(/\./g, '_'), alias, description: '', parameters };
+}
+
 describe('matchesToolPattern', () => {
     it('matches literal alias exactly', () => {
         expect(matchesToolPattern('app.get_version', 'app.get_version')).toBe(true);
@@ -77,24 +87,112 @@ describe('isToolAllowed', () => {
 });
 
 describe('buildCelProxy', () => {
-    it('builds nested namespaces from dotted aliases', () => {
+    it('builds nested namespaces from descriptor aliases with camelCase leaf names', () => {
         const calls = [];
         const invoke = (alias, args) => {
             calls.push({ alias, args });
             return Promise.resolve('ok');
         };
-        const proxy = buildCelProxy(['app.get_version', 'document.open'], invoke);
+        const proxy = buildCelProxy(
+            [
+                descriptor('app.get_version'),
+                descriptor('document.open', [{ name: 'fileResource', type: 'string' }])
+            ],
+            invoke
+        );
 
-        expect(typeof proxy.app.get_version).toBe('function');
+        expect(typeof proxy.app.getVersion).toBe('function');
         expect(typeof proxy.document.open).toBe('function');
 
-        return proxy.app.get_version({ foo: 1 }).then(() => {
-            expect(calls[0]).toEqual({ alias: 'app.get_version', args: { foo: 1 } });
+        return proxy.document.open('readme.md').then(() => {
+            expect(calls[0]).toEqual({ alias: 'document.open', args: { fileResource: 'readme.md' } });
         });
     });
 
-    it('ignores empty or non-string aliases', () => {
-        const proxy = buildCelProxy(['', null, undefined, 'valid.tool'], () => Promise.resolve());
+    it('maps positional arguments to parameter names in declaration order', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('document.apply_edits', [
+                { name: 'fileResource', type: 'string' },
+                { name: 'editsJson', type: 'string' },
+                { name: 'openDocument', type: 'boolean' }
+            ])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        return proxy.document.applyEdits('a.md', '[]', false).then(() => {
+            expect(calls[0].args).toEqual({
+                fileResource: 'a.md',
+                editsJson: '[]',
+                openDocument: false
+            });
+        });
+    });
+
+    it('throws CelToolError(InvalidArgs) on arity overflow', () => {
+        const proxy = buildCelProxy(
+            [descriptor('app.get_version', [])],
+            () => Promise.resolve('ok')
+        );
+
+        expect(() => proxy.app.getVersion('extra')).toThrow(CelToolError);
+        try {
+            proxy.app.getVersion('extra');
+        } catch (error) {
+            expect(error.code).toBe(CelToolErrorCode.InvalidArgs);
+            expect(error.message).toContain('cel.app.get_version');
+            expect(error.message).toContain('1 positional arguments');
+        }
+    });
+
+    it('JSON-stringifies arrays passed to string-typed parameters', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('document.apply_edits', [
+                { name: 'fileResource', type: 'string' },
+                { name: 'editsJson', type: 'string' }
+            ])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        const edits = [{ line: 1, endLine: 1, newText: 'hi' }];
+        return proxy.document.applyEdits('a.md', edits).then(() => {
+            expect(calls[0].args.editsJson).toBe(JSON.stringify(edits));
+        });
+    });
+
+    it('JSON-stringifies plain objects passed to string-typed parameters', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('app.custom', [{ name: 'payload', type: 'string' }])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        return proxy.app.custom({ a: 1 }).then(() => {
+            expect(calls[0].args).toEqual({ payload: '{"a":1}' });
+        });
+    });
+
+    it('does not stringify arguments for non-string parameters', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('document.open', [
+                { name: 'fileResource', type: 'string' },
+                { name: 'sectionIndex', type: 'integer' }
+            ])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        return proxy.document.open('a.md', 2).then(() => {
+            expect(calls[0].args).toEqual({ fileResource: 'a.md', sectionIndex: 2 });
+        });
+    });
+
+    it('ignores non-descriptor entries', () => {
+        const proxy = buildCelProxy(
+            [null, undefined, {}, { alias: '' }, descriptor('valid.tool')],
+            () => Promise.resolve()
+        );
         expect(typeof proxy.valid.tool).toBe('function');
     });
 });
@@ -102,8 +200,30 @@ describe('buildCelProxy', () => {
 describe('ToolsAPI', () => {
     it('exposes allowedPatterns as a readonly copy', () => {
         const patterns = ['app.*', 'document.open'];
-        const api = new ToolsAPI(/* transport */ { request: () => Promise.resolve([]) }, patterns);
+        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, patterns);
         expect(api.allowedPatterns).toEqual(patterns);
+    });
+
+    it('cel proxy throws synchronously before descriptors are loaded', () => {
+        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, ['*']);
+        expect(api.isReady).toBe(false);
+        expect(() => api.cel).toThrow(CelToolError);
+        try {
+            void api.cel;
+        } catch (error) {
+            expect(error.code).toBe(CelToolErrorCode.Failed);
+            expect(error.message).toContain('not initialized');
+        }
+    });
+
+    it('accepts initialDescriptors via constructor to skip fetch', () => {
+        const api = new ToolsAPI(
+            { request: () => Promise.reject(new Error('should not fetch')) },
+            ['*'],
+            [descriptor('app.get_version')]
+        );
+        expect(api.isReady).toBe(true);
+        expect(typeof api.cel.app.getVersion).toBe('function');
     });
 
     it('call() rejects tools not in the allowlist with CEL_TOOL_DENIED', async () => {
@@ -161,29 +281,40 @@ describe('ToolsAPI', () => {
         });
     });
 
-    it('cel proxy lazily exposes only literal aliases', () => {
-        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, ['app.get_version', 'document.*']);
-        const cel = api.cel;
-        expect(typeof cel.app.get_version).toBe('function');
-        // Wildcard entries don't populate the proxy until refreshProxy() runs.
-        expect(cel.document).toBeUndefined();
-    });
-
-    it('refreshProxy() expands wildcards from tools/list response', async () => {
+    it('loadDescriptors() fetches tools/list and filters by the allowlist', async () => {
         const transport = {
-            request: () => Promise.resolve([
-                { name: 'doc_open', alias: 'document.open' },
-                { name: 'doc_save', alias: 'document.save' },
-                { name: 'file_read', alias: 'file.read' }
-            ])
+            request: (method) => {
+                expect(method).toBe('tools/list');
+                return Promise.resolve([
+                    descriptor('document.open', [{ name: 'fileResource', type: 'string' }]),
+                    descriptor('document.save'),
+                    descriptor('file.read', [{ name: 'fileResource', type: 'string' }])
+                ]);
+            }
         };
         const api = new ToolsAPI(transport, ['document.*']);
 
-        await api.refreshProxy();
+        await api.loadDescriptors();
 
+        expect(api.isReady).toBe(true);
         expect(typeof api.cel.document.open).toBe('function');
         expect(typeof api.cel.document.save).toBe('function');
         expect(api.cel.file).toBeUndefined(); // filtered out by allowlist
+    });
+
+    it('loadDescriptors() tolerates transport failures with an empty descriptor list', async () => {
+        const transport = { request: () => Promise.reject(new Error('no tools/list')) };
+        const api = new ToolsAPI(transport, ['*']);
+
+        await api.loadDescriptors();
+
+        expect(api.isReady).toBe(true);
+        expect(api.list()).toEqual([]);
+    });
+
+    it('list() throws before descriptors are loaded', () => {
+        const api = new ToolsAPI({ request: () => Promise.resolve([]) }, ['*']);
+        expect(() => api.list()).toThrow(CelToolError);
     });
 });
 
@@ -209,20 +340,52 @@ describe('Celbridge.tools integration', () => {
         expect(client.secrets.spreadjs_license).toBe('abc123');
     });
 
-    it('cel proxy dispatches via tools/call', async () => {
+    it('cel accessor throws before initialize() completes', () => {
+        const { client } = createTestClient({
+            context: { allowedTools: ['*'], secrets: {} }
+        });
+        expect(() => client.cel).toThrow(/not initialized/);
+    });
+
+    it('cel proxy dispatches via tools/call with positional arguments after initialize()', async () => {
         const { client, sentMessages, simulateResponse } = createTestClient({
             context: { allowedTools: ['app.get_version'], secrets: {} }
         });
 
-        const promise = client.cel.app.get_version({});
+        // Kick off initialize() — it sends document/initialize, then tools/list,
+        // then (optionally) localization if metadata.locale is present.
+        const initPromise = client.initialize();
 
-        const sent = JSON.parse(sentMessages[0]);
-        expect(sent.method).toBe('tools/call');
-        expect(sent.params.name).toBe('app.get_version');
+        const docInitMessage = JSON.parse(sentMessages[0]);
+        expect(docInitMessage.method).toBe('document/initialize');
+        simulateResponse(docInitMessage.id, {
+            content: '',
+            metadata: { filePath: '', resourceKey: '', fileName: '', locale: '' }
+        });
 
-        simulateResponse(sent.id, { isSuccess: true, value: '0.2.5' });
+        // Allow the microtask queue to advance so tools/list is posted.
+        await Promise.resolve();
+        await Promise.resolve();
 
-        await expect(promise).resolves.toBe('0.2.5');
+        const listMessage = JSON.parse(sentMessages[1]);
+        expect(listMessage.method).toBe('tools/list');
+        simulateResponse(listMessage.id, [
+            descriptor('app.get_version', [])
+        ]);
+
+        await initPromise;
+
+        // Now the proxy is built. Call via positional shape.
+        const callPromise = client.cel.app.getVersion();
+
+        const callMessage = JSON.parse(sentMessages[2]);
+        expect(callMessage.method).toBe('tools/call');
+        expect(callMessage.params.name).toBe('app.get_version');
+        expect(callMessage.params.arguments).toEqual({});
+
+        simulateResponse(callMessage.id, { isSuccess: true, value: '0.2.5' });
+
+        await expect(callPromise).resolves.toBe('0.2.5');
     });
 
     it('denied tool calls reject without hitting the transport', async () => {
@@ -236,6 +399,77 @@ describe('Celbridge.tools integration', () => {
             tool: 'file.read'
         });
         expect(sentMessages).toHaveLength(0);
+    });
+});
+
+describe('cel globalThis exposure', () => {
+    it('assigns globalThis.cel after initialize() resolves', async () => {
+        delete globalThis.cel;
+
+        const { client, sentMessages, simulateResponse } = createTestClient({
+            context: { allowedTools: ['app.get_version'], secrets: {} }
+        });
+
+        const initPromise = client.initialize();
+
+        const docInit = JSON.parse(sentMessages[0]);
+        simulateResponse(docInit.id, {
+            content: '',
+            metadata: { filePath: '', resourceKey: '', fileName: '', locale: '' }
+        });
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const toolsList = JSON.parse(sentMessages[1]);
+        simulateResponse(toolsList.id, [
+            { name: 'app_get_version', alias: 'app.get_version', description: '', parameters: [] }
+        ]);
+
+        await initPromise;
+
+        expect(globalThis.cel).toBeDefined();
+        expect(typeof globalThis.cel.app.getVersion).toBe('function');
+
+        delete globalThis.cel;
+    });
+
+    it('accessing cel global before initialize() throws via client.cel', () => {
+        delete globalThis.cel;
+        const { client } = createTestClient({
+            context: { allowedTools: ['*'], secrets: {} }
+        });
+
+        expect(() => client.cel).toThrow(/not initialized/);
+        expect(globalThis.cel).toBeUndefined();
+    });
+
+    it('exposeCelGlobal: false keeps globalThis.cel untouched', async () => {
+        delete globalThis.cel;
+
+        const sentMessages = [];
+        let messageHandler = null;
+        const client = new Celbridge({
+            postMessage: (msg) => sentMessages.push(msg),
+            onMessage: (handler) => { messageHandler = handler; },
+            timeout: 1000,
+            exposeCelGlobal: false,
+            context: { allowedTools: [], secrets: {} }
+        });
+
+        const initPromise = client.initialize();
+        const docInit = JSON.parse(sentMessages[0]);
+        messageHandler(JSON.stringify({
+            jsonrpc: '2.0',
+            id: docInit.id,
+            result: { content: '', metadata: { filePath: '', resourceKey: '', fileName: '' } }
+        }));
+
+        await initPromise;
+
+        // With allowedTools=[], no tools/list is sent, so init completes with only the one message.
+        expect(globalThis.cel).toBeUndefined();
+        expect(client.tools.isReady).toBe(true);
     });
 });
 
