@@ -280,6 +280,18 @@ public static class PackageManifestLoader
                 }
             }
 
+            // An editor with external_content = true sources its content from outside the file bytes,
+            // so a starter template would never be written to disk. The combination is meaningless,
+            // and accepting it silently hides an authoring mistake.
+            if (documentType != CodeDocumentType &&
+                templates.Count > 0 &&
+                (GetBoolOrNull(documentTable, ExternalContentKey) ?? false))
+            {
+                return Result.Fail(
+                    $"Document manifest '{documentTomlPath}' declares both '{ExternalContentKey} = true' and '{DocumentTemplatesSection}'. " +
+                    $"Templates cannot be used with external content.");
+            }
+
             // Custom contributions have their editor id composed as "{packageId}.{documentId}" at
             // factory-construction time. Validate the composed id here so plugin authors fail fast
             // at manifest parse with a clear message, rather than hitting a DocumentEditorId
