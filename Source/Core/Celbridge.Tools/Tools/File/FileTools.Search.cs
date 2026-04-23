@@ -13,9 +13,12 @@ public partial class FileTools
 {
     /// <summary>
     /// Searches for resources by name using a glob pattern matched against the full resource path.
-    /// Supports ** for matching across path separators (e.g. "**/Commands/*.cs").
+    /// Patterns without a path separator match at any depth ("*.py" finds all .py files in the
+    /// project). Patterns containing a slash are anchored to their declared position
+    /// ("src/*.cs" matches only files directly under src). Use ** to match across path
+    /// separators within an anchored pattern (e.g. "**/Commands/*.cs").
     /// </summary>
-    /// <param name="pattern">Glob pattern to match resource paths (e.g. "*.py", "**/Commands/*.cs", "Services/**/I*.cs").</param>
+    /// <param name="pattern">Glob pattern to match resource paths. Examples: "*.py" (recursive), "src/*.cs" (anchored), "**/Commands/*.cs", "Services/**/I*.cs".</param>
     /// <param name="includeMetadata">When true, returns objects with resource, size, and modified fields instead of plain resource key strings.</param>
     /// <param name="type">Resource type to search: "file" (default) or "folder".</param>
     /// <returns>When includeMetadata is false: JSON array of matching resource key strings. When true: JSON array of objects with resource (string), size (long), modified (string, ISO 8601).</returns>

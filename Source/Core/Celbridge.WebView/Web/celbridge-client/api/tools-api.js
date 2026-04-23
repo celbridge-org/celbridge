@@ -8,6 +8,12 @@
 // The host re-enforces the same allowlist on every `tools/call` — the client-side proxy
 // is a convenience that keeps undeclared tools off the API surface, but the host gate is
 // authoritative.
+//
+// Calling convention:
+//   - Arguments are positional and camelCase, in parameter declaration order.
+//   - Extra positional arguments throw CelToolError(InvalidArgs).
+//   - Arrays and plain objects passed to `string`-typed parameters are JSON-stringified
+//     automatically (for editsJson, resources, files, etc.).
 
 /**
  * Error codes for tool proxy failures. Wire codes are JSON-RPC application error codes
@@ -94,22 +100,63 @@ export function isToolAllowed(alias, allowedPatterns) {
 }
 
 /**
- * Builds a nested object proxy from a flat list of tool aliases.
- * For an alias like "document.open", the proxy exposes `proxy.document.open(args)`,
- * which dispatches via `invoke(alias, args)`.
+ * Returns true if the value is a plain object literal (not null, not an array,
+ * not a class instance). Used by the positional-call shape to decide whether a
+ * trailing argument should be unpacked as keyword arguments.
+ * @param {*} value
+ * @returns {boolean}
+ */
+function isPlainObject(value) {
+    if (value === null || typeof value !== 'object') {
+        return false;
+    }
+    if (Array.isArray(value)) {
+        return false;
+    }
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Converts a snake_case identifier to camelCase. Used to translate server-side
+ * aliases (e.g. "get_version") into their JavaScript method names ("getVersion").
+ * @param {string} name
+ * @returns {string}
+ */
+function snakeToCamelCase(name) {
+    if (typeof name !== 'string' || name.length === 0) {
+        return '';
+    }
+    return name.replace(/_([a-z0-9])/g, (_, character) => character.toUpperCase());
+}
+
+/**
+ * Builds a nested object proxy from a list of tool descriptors.
  *
- * @param {ReadonlyArray<string>} aliases - The allowed tool aliases.
- * @param {(alias: string, args?: Object) => Promise<any>} invoke - Dispatch function.
+ * Each descriptor's alias becomes a method path: "document.apply_edits" exposes
+ * `proxy.document.applyEdits(...)`. Arguments are mapped to the descriptor's
+ * parameter list in declaration order. Arrays and plain objects passed to
+ * string-typed parameters are JSON-stringified automatically.
+ *
+ * @param {ReadonlyArray<ToolDescriptor>} descriptors - The tool descriptors to expose.
+ * @param {(alias: string, args: Object) => Promise<any>} invoke - Dispatch function.
  * @returns {Object} The root of the proxy tree.
  */
-export function buildCelProxy(aliases, invoke) {
+export function buildCelProxy(descriptors, invoke) {
     const root = {};
-    for (const alias of aliases) {
-        if (typeof alias !== 'string' || alias.length === 0) {
+    if (!Array.isArray(descriptors)) {
+        return root;
+    }
+
+    for (const descriptor of descriptors) {
+        if (!descriptor || typeof descriptor.alias !== 'string' || descriptor.alias.length === 0) {
             continue;
         }
+        const alias = descriptor.alias;
         const segments = alias.split('.');
-        const leafName = segments.pop();
+        const leafSegment = segments.pop();
+        const leafName = snakeToCamelCase(leafSegment);
+
         let node = root;
         for (const segment of segments) {
             if (!Object.prototype.hasOwnProperty.call(node, segment) || typeof node[segment] !== 'object') {
@@ -117,15 +164,61 @@ export function buildCelProxy(aliases, invoke) {
             }
             node = node[segment];
         }
-        node[leafName] = (args) => invoke(alias, args);
+        node[leafName] = buildLeafFunction(descriptor, invoke);
     }
+
     return root;
 }
 
+function buildLeafFunction(descriptor, invoke) {
+    const alias = descriptor.alias;
+    const rawParameters = Array.isArray(descriptor.parameters) ? descriptor.parameters : [];
+    const parameterNames = [];
+    const parameterTypes = {};
+
+    for (const parameter of rawParameters) {
+        if (parameter && typeof parameter.name === 'string') {
+            parameterNames.push(parameter.name);
+            parameterTypes[parameter.name] = typeof parameter.type === 'string' ? parameter.type : '';
+        }
+    }
+
+    const expectedCount = parameterNames.length;
+    const signature = `cel.${alias}(${parameterNames.join(', ')})`;
+
+    return (...args) => {
+        if (args.length > expectedCount) {
+            throw new CelToolError(
+                CelToolErrorCode.InvalidArgs,
+                alias,
+                `${signature} was called with ${args.length} positional arguments`
+            );
+        }
+
+        const argumentsObject = {};
+        for (let index = 0; index < args.length; index++) {
+            const parameterName = parameterNames[index];
+            if (typeof parameterName === 'string') {
+                argumentsObject[parameterName] = args[index];
+            }
+        }
+
+        // Auto-serialize arrays and plain objects when the tool parameter expects a string.
+        for (const [parameterName, value] of Object.entries(argumentsObject)) {
+            if (parameterTypes[parameterName] === 'string' && (Array.isArray(value) || isPlainObject(value))) {
+                argumentsObject[parameterName] = JSON.stringify(value);
+            }
+        }
+
+        return invoke(alias, argumentsObject);
+    };
+}
+
 /**
- * Client-side tools API. Builds a dynamic `cel.*` proxy from the allowlist and
- * dispatches tool calls through JSON-RPC to the host. The host re-enforces the
- * allowlist on every call — this proxy does not bypass that gate.
+ * Client-side tools API. Loads tool descriptors from the host during
+ * `celbridge.initialize()`, builds a positional `cel.*` proxy, and dispatches
+ * calls through JSON-RPC. The host re-enforces the allowlist on every call —
+ * this proxy does not bypass that gate.
  */
 export class ToolsAPI {
     /** @type {import('../core/rpc-transport.js').RpcTransport} */
@@ -134,19 +227,25 @@ export class ToolsAPI {
     /** @type {ReadonlyArray<string>} */
     #allowedPatterns;
 
+    /** @type {ReadonlyArray<ToolDescriptor>|null} */
+    #descriptors = null;
+
     /** @type {Object|null} */
     #celProxy = null;
-
-    /** @type {Promise<ReadonlyArray<ToolDescriptor>>|null} */
-    #toolListPromise = null;
 
     /**
      * @param {import('../core/rpc-transport.js').RpcTransport} transport
      * @param {ReadonlyArray<string>} [allowedPatterns] - Glob patterns for allowed tools.
+     * @param {ReadonlyArray<ToolDescriptor>} [initialDescriptors] - Pre-supplied descriptors
+     *   (tests can pass these to skip the tools/list fetch).
      */
-    constructor(transport, allowedPatterns = []) {
+    constructor(transport, allowedPatterns = [], initialDescriptors = null) {
         this.#transport = transport;
         this.#allowedPatterns = Array.isArray(allowedPatterns) ? [...allowedPatterns] : [];
+
+        if (Array.isArray(initialDescriptors)) {
+            this.setDescriptors(initialDescriptors);
+        }
     }
 
     /**
@@ -158,15 +257,75 @@ export class ToolsAPI {
     }
 
     /**
-     * Lists all tools reachable through this proxy (pre-filtered by the allowlist).
-     * Result is cached; subsequent calls return the same list without re-querying the host.
-     * @returns {Promise<ReadonlyArray<ToolDescriptor>>}
+     * Returns true once descriptors have been loaded (via loadDescriptors,
+     * setDescriptors, or the constructor's initialDescriptors argument).
+     * The `cel` proxy throws until this is true.
+     * @returns {boolean}
      */
-    async list() {
-        if (this.#toolListPromise === null) {
-            this.#toolListPromise = this.#fetchToolList();
+    get isReady() {
+        return this.#descriptors !== null;
+    }
+
+    /**
+     * Fetches tools/list from the host, filters by the allowlist, and stores
+     * the descriptors so `cel.*` becomes callable. Invoked by Celbridge.initialize().
+     * Safe to call multiple times; subsequent calls refresh the descriptor list.
+     *
+     * When the allowlist is empty the fetch is skipped — no tool can pass the
+     * gate, so there is nothing to discover. Packages that do not declare
+     * `requires_tools` therefore pay no startup round-trip.
+     *
+     * @returns {Promise<void>}
+     */
+    async loadDescriptors() {
+        if (this.#allowedPatterns.length === 0) {
+            this.setDescriptors([]);
+            return;
         }
-        return this.#toolListPromise;
+
+        let response;
+        try {
+            response = await this.#transport.request('tools/list', {});
+        } catch {
+            // If the host does not expose tools (older host or test environment),
+            // mark ready with an empty descriptor list rather than rejecting.
+            this.setDescriptors([]);
+            return;
+        }
+
+        const tools = Array.isArray(response) ? response : response?.tools;
+        const filtered = Array.isArray(tools)
+            ? tools.filter(tool => typeof tool?.alias === 'string' && isToolAllowed(tool.alias, this.#allowedPatterns))
+            : [];
+
+        this.setDescriptors(filtered);
+    }
+
+    /**
+     * Replaces the descriptor list and rebuilds the `cel.*` proxy. Primarily
+     * for tests that want to skip the `tools/list` round-trip.
+     * @param {ReadonlyArray<ToolDescriptor>} descriptors
+     */
+    setDescriptors(descriptors) {
+        const copy = Array.isArray(descriptors) ? [...descriptors] : [];
+        this.#descriptors = Object.freeze(copy);
+        this.#celProxy = buildCelProxy(copy, (alias, args) => this.call(alias, args));
+    }
+
+    /**
+     * Returns the cached descriptor list for tools reachable through this proxy.
+     * Throws if called before `loadDescriptors` / `setDescriptors` has run.
+     * @returns {ReadonlyArray<ToolDescriptor>}
+     */
+    list() {
+        if (this.#descriptors === null) {
+            throw new CelToolError(
+                CelToolErrorCode.Failed,
+                '',
+                'Tool descriptors not loaded. Call celbridge.initialize() first.'
+            );
+        }
+        return this.#descriptors;
     }
 
     /**
@@ -208,67 +367,21 @@ export class ToolsAPI {
     }
 
     /**
-     * Returns the `cel.*` proxy. Lazily constructed from the allowlist on first access.
+     * Returns the `cel.*` proxy. Throws `CelToolError` synchronously if accessed
+     * before `celbridge.initialize()` has loaded the tool descriptors.
      * The proxy tree mirrors the Python `cel` object layout: a tool alias like
-     * "document.open" is exposed as `cel.document.open(args)`.
+     * "document.apply_edits" is exposed as `cel.document.applyEdits(...)`.
      * @returns {Object}
      */
     get cel() {
         if (this.#celProxy === null) {
-            const reachableAliases = this.#enumerateLiteralAliases();
-            this.#celProxy = buildCelProxy(reachableAliases, (alias, args) => this.call(alias, args));
+            throw new CelToolError(
+                CelToolErrorCode.Failed,
+                '',
+                'cel proxy not initialized. Call celbridge.initialize() first.'
+            );
         }
         return this.#celProxy;
-    }
-
-    /**
-     * Rebuilds the proxy after the tool list has been fetched from the host,
-     * merging in any aliases matched by wildcard patterns.
-     * Call this after `await list()` if the package uses wildcard allowlist entries
-     * and you want them surfaced on `celbridge.cel`.
-     */
-    async refreshProxy() {
-        const tools = await this.list();
-        const aliases = tools
-            .map(tool => tool?.alias)
-            .filter(alias => typeof alias === 'string' && alias.length > 0);
-        this.#celProxy = buildCelProxy(aliases, (alias, args) => this.call(alias, args));
-    }
-
-    #enumerateLiteralAliases() {
-        const literals = [];
-        for (const pattern of this.#allowedPatterns) {
-            if (typeof pattern !== 'string') {
-                continue;
-            }
-            if (pattern === '*' || pattern.endsWith('.*')) {
-                // Wildcards expand only after list() has been called; skip here.
-                continue;
-            }
-            literals.push(pattern);
-        }
-        return literals;
-    }
-
-    async #fetchToolList() {
-        let response;
-        try {
-            response = await this.#transport.request('tools/list', {});
-        } catch (error) {
-            // If the host does not expose tools (older host or test environment),
-            // return an empty list rather than rejecting.
-            return [];
-        }
-
-        const tools = Array.isArray(response) ? response : response?.tools;
-        if (!Array.isArray(tools)) {
-            return [];
-        }
-
-        return tools.filter(tool => {
-            const alias = tool?.alias;
-            return typeof alias === 'string' && isToolAllowed(alias, this.#allowedPatterns);
-        });
     }
 }
 
@@ -290,10 +403,18 @@ export function jsonRpcCodeForCelCode(celCode) {
 }
 
 /**
+ * @typedef {Object} ToolParameter
+ * @property {string} name - Parameter name in camelCase.
+ * @property {string} type - JSON Schema type name (e.g. "string", "number", "boolean", "array").
+ * @property {boolean} [hasDefaultValue] - True if the parameter has a default.
+ * @property {*} [defaultValue] - The default value, if any.
+ */
+
+/**
  * @typedef {Object} ToolDescriptor
  * @property {string} name - The MCP tool name (e.g. "app_get_version").
  * @property {string} alias - The cel-proxy alias (e.g. "app.get_version").
  * @property {string} description - Human-readable description.
  * @property {string} [returnType] - JSON Schema type name for the return value.
- * @property {Array<Object>} [parameters] - Parameter metadata.
+ * @property {Array<ToolParameter>} [parameters] - Parameter metadata.
  */

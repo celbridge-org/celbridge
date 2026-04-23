@@ -134,7 +134,13 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                 var saveResult = await view.SaveDocument();
                 if (saveResult.IsFailure)
                 {
+                    // Propagate save failures so callers see "Contribution editor failed to
+                    // respond within N seconds" (or similar) instead of silent success. The
+                    // in-memory edit has been applied but the disk write failed, so the
+                    // caller's assumption that a follow-up file_read sees the new content
+                    // would be wrong without this signal.
                     _logger.LogWarning(saveResult, $"Failed to force-save document after applying edits: {resource}");
+                    failedResources.Add(resource);
                 }
             }
         }

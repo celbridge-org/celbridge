@@ -118,6 +118,18 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
                 .WithErrors(applyResult);
         }
 
+        // Flush the edits to disk so MCP callers' follow-up file_read sees the post-edit
+        // state. Do NOT gate on HasUnsavedChanges: ApplyEditsAsync is a fire-and-forget
+        // notification, and the document/changed round-trip that flips the flag often
+        // hasn't arrived by the time this line runs. Same pattern as ApplyEditsCommand's
+        // ForceSave branch.
+        var saveAfterEditsResult = await documentView.SaveDocument();
+        if (saveAfterEditsResult.IsFailure)
+        {
+            return Result.Fail($"Failed to save document after find/replace: '{FileResource}'")
+                .WithErrors(saveAfterEditsResult);
+        }
+
         ResultValue = edits.Count;
         return Result.Ok();
     }

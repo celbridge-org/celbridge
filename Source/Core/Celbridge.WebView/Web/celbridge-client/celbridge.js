@@ -78,6 +78,14 @@ export class Celbridge {
     options;
 
     /**
+     * Set to `false` to opt out of exposing the `cel` proxy on `globalThis` during
+     * `initialize()`. Useful for embedding scenarios where the host page already
+     * uses the name.
+     * @type {boolean}
+     */
+    #exposeCelGlobal;
+
+    /**
      * Creates a new Celbridge instance.
      * @param {Object} [options] - Configuration options.
      * @param {Function} [options.postMessage] - Custom postMessage function (for testing).
@@ -85,6 +93,9 @@ export class Celbridge {
      * @param {number} [options.timeout] - Request timeout in milliseconds.
      * @param {Object} [options.context] - Injected capability context (for testing).
      *   Normally read from `globalThis.__celbridgeContext`.
+     * @param {boolean} [options.exposeCelGlobal=true] - When `true` (the default),
+     *   `initialize()` assigns the `cel.*` proxy to `globalThis.cel` so extensions
+     *   can call `cel.namespace.method(...)` without importing the client.
      */
     constructor(options = {}) {
         this.#transport = new RpcTransport(options);
@@ -100,11 +111,13 @@ export class Celbridge {
         this.tools = new ToolsAPI(this.#transport, context.allowedTools);
         this.secrets = context.secrets;
         this.options = context.options;
+        this.#exposeCelGlobal = options.exposeCelGlobal !== false;
     }
 
     /**
-     * Convenience accessor for the `cel.*` tool proxy.
-     * Equivalent to `client.tools.cel`.
+     * Convenience accessor for the `cel.*` tool proxy. Equivalent to `client.tools.cel`.
+     * Throws synchronously with `CelToolError` if accessed before `initialize()` resolves —
+     * the proxy is built from descriptors fetched during initialization.
      * @returns {Object}
      */
     get cel() {
@@ -135,6 +148,16 @@ export class Celbridge {
         });
 
         this.#transport.markInitialized();
+
+        // Load tool descriptors so the `cel.*` proxy becomes callable.
+        // One round-trip to the host; before this resolves, accessing `cel.*` throws.
+        await this.tools.loadDescriptors();
+
+        // Expose `cel` on globalThis for the "just call cel.namespace.method(...)"
+        // agent experience. Opt out with `new Celbridge({ exposeCelGlobal: false })`.
+        if (this.#exposeCelGlobal && typeof globalThis !== 'undefined') {
+            globalThis.cel = this.tools.cel;
+        }
 
         // Auto-load localization if locale is provided in metadata
         if (result.metadata?.locale) {

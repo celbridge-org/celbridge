@@ -145,3 +145,59 @@ from celbridge import app, document
 document.open("readme.md")
 app.log("Processing complete")
 ```
+
+## Writing Package Extensions (JavaScript)
+
+Package extensions run inside a WebView hosted by a document editor
+contribution (declared in `package.toml` under `[contributes].document_editors`).
+There is currently no non-editor WebView surface, so JS tool calls happen
+from within an editor.
+
+**Before writing any JS that calls `cel.*`, declare the tools your package
+needs in `package.toml` under `[mod].requires_tools`.** The `cel.*` proxy
+is built from this allowlist at `initialize()` time, so namespaces you
+did not declare simply do not exist on the proxy. Glob patterns are
+supported (`document.*`, `file.*`).
+
+```toml
+[mod]
+requires_tools = ["document.*", "file.*", "app.get_status"]
+```
+
+**Use the alias form — `namespace.snake_case_method` — in the manifest.** This
+is the same form listed in the Python API reference, and it matches the MCP
+tool name after swapping the first underscore for a dot. The JS proxy converts
+to camelCase at the call site, but the manifest does NOT. Examples:
+
+- `"file.list_contents"` → call site `cel.file.listContents(...)`
+- `"file.read_binary"` → call site `cel.file.readBinary(...)`
+- `"document.apply_edits"` → call site `cel.document.applyEdits(...)`
+
+Do not use camelCase (`"file.listContents"`) or the MCP underscore form
+(`"file_list_contents"`) — neither matches.
+
+Then import the client from the `shared.celbridge` virtual host and call
+host tools through the `cel` global (populated after `initialize()`
+resolves):
+
+```javascript
+import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
+await celbridge.initialize();
+const tree = await cel.file.getTree("");
+```
+
+`initialize()` performs the `document/initialize` RPC handshake with the
+host and loads the tool descriptors.
+
+Failure modes:
+- Accessing `cel.*` before `initialize()` resolves throws `CelToolError`.
+- Calling a namespace that is not covered by `requires_tools` throws
+  `TypeError: Cannot read properties of undefined` — the namespace was
+  never added to the proxy. Fix the manifest, not the call site.
+- Calling a tool whose name is not covered by `requires_tools` but whose
+  namespace partially matches another entry throws `CEL_TOOL_DENIED` at
+  call time (the host re-checks the allowlist on every call).
+
+The celbridge-client source is served from the Celbridge install directory
+and is not readable via `file.read`. Call `query_get_javascript_api` for
+the full signature reference.

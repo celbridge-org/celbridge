@@ -40,6 +40,17 @@ public class QueryToolTests
     }
 
     [Test]
+    public void GetContext_ContainsJavaScriptExtensionSection()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetContext());
+
+        text.Should().Contain("Writing Package Extensions (JavaScript)");
+        text.Should().Contain("query_get_javascript_api");
+        text.Should().Contain("requires_tools");
+    }
+
+    [Test]
     public void GetPythonApi_ReturnsApiReference()
     {
         var tools = new QueryTools(_services);
@@ -93,6 +104,91 @@ public class QueryToolTests
         // Methods should be listed compactly with indent, not as ### headings
         text.Should().NotContain("### app.");
         text.Should().Contain("  app.get_status(");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_ReturnsApiReference()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().Contain("# Celbridge JavaScript API Reference");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_ContainsAllNamespaces()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().Contain("## app");
+        text.Should().Contain("## document");
+        text.Should().Contain("## explorer");
+        text.Should().Contain("## file");
+        text.Should().Contain("## package");
+        text.Should().Contain("## query");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_UsesCamelCaseParameters()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        // Parameters should be camelCase (e.g. fileResource), not snake_case (file_resource)
+        text.Should().Contain("fileResource: string");
+        text.Should().NotContain("file_resource: string");
+        text.Should().Contain("editsJson: string");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_UsesCamelCaseMethodNames()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        // Method names from snake_case aliases become camelCase (e.g. apply_edits -> applyEdits)
+        text.Should().Contain("cel.document.applyEdits(");
+        text.Should().Contain("cel.explorer.getContext()");
+        text.Should().NotContain("cel.document.apply_edits(");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_ContainsPromiseReturnTypes()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().Contain(": Promise<");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_DocumentsRequiresTools()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().Contain("requires_tools");
+        text.Should().Contain("CEL_TOOL_DENIED");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_DocumentsCelToolError()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().Contain("CelToolError");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_CompactFormat_NoMarkdownHeadingsPerMethod()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().NotContain("### cel.app.");
+        text.Should().Contain("  cel.app.getStatus(");
     }
 
     private static string GetResultText(CallToolResult result)

@@ -26,10 +26,18 @@ public static class GlobHelper
     /// against a full forward-slash-separated resource key.
     /// Supports * (any characters within a path segment), ? (any single character
     /// within a path segment), and ** (any characters including path separators).
+    /// Patterns without a path separator match at any depth — "*.py" behaves as
+    /// "**/*.py", matching git-ignore semantics. Explicit paths like "src/*.cs"
+    /// stay anchored to their declared position.
     /// Examples: "*.py", "src/*.cs", "**/Commands/*.cs", "Services/**/I*.cs"
     /// </summary>
     public static string PathGlobToRegex(string glob)
     {
+        if (!glob.Contains('/'))
+        {
+            glob = "**/" + glob;
+        }
+
         var escaped = Regex.Escape(glob);
         var result = escaped
             .Replace("\\*\\*/", "(?:[^/]*/)*")
