@@ -221,6 +221,13 @@ public static class PackageManifestLoader
                 foreach (var fileTypeTable in fileTypesArray)
                 {
                     var fileTypeDisplayName = GetString(fileTypeTable, DisplayNameKey);
+                    if (string.IsNullOrEmpty(fileTypeDisplayName))
+                    {
+                        return Result.Fail(
+                            $"File type missing required '{DisplayNameKey}' field in [[{DocumentFileTypesSection}]] entry: {documentTomlPath}. " +
+                            $"Supply a localization key or plain string naming the file type (e.g., the noun shown in the Reopen-with dialog).");
+                    }
+
                     var extensionLiteral = GetStringOrNull(fileTypeTable, ExtensionKey);
                     var extensionsFilePath = GetStringOrNull(fileTypeTable, ExtensionsFileKey);
 

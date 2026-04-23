@@ -378,6 +378,7 @@ public class PackageServiceTests
 
             [[document_file_types]]
             extension = "{fileExt}"
+            display_name = "TestFileType"
             """);
     }
 }

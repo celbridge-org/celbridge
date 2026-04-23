@@ -45,6 +45,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".myext"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -87,6 +88,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".cpv"
+            display_name = "TestFileType"
 
             [code_editor]
             customizations = "customize.js"
@@ -130,6 +132,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".myext"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(
@@ -212,6 +215,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".test"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -260,6 +264,36 @@ public class ManifestTests
     }
 
     [Test]
+    public void LoadPackage_FileTypeMissingDisplayName_SkipsDocument()
+    {
+        WritePackageToml("""
+            [package]
+            id = "test.no-file-type-display"
+            name = "NoFileTypeDisplay"
+            version = "1.0.0"
+
+            [contributes]
+            document_editors = ["doc.document.toml"]
+            """);
+
+        WriteDocumentToml("doc.document.toml", """
+            [document]
+            id = "nftd-doc"
+            type = "custom"
+            display_name = "TestEditor"
+
+            [[document_file_types]]
+            extension = ".nftd"
+            """);
+
+        var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
+
+        // Document with a file type missing display_name is skipped (invalid).
+        result.IsSuccess.Should().BeTrue();
+        result.Value.DocumentEditors.Should().BeEmpty();
+    }
+
+    [Test]
     public void LoadPackage_InvalidToml_ReturnsFailure()
     {
         var path = Path.Combine(_tempFolder, "package.toml");
@@ -301,6 +335,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".bas"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -331,6 +366,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".pri"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -361,6 +397,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".flag"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -391,6 +428,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".nf"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -421,6 +459,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".tmpl"
+            display_name = "TestFileType"
 
             [[document_templates]]
             id = "empty"
@@ -472,6 +511,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".nt"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -551,6 +591,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".aaa"
+            display_name = "TestFileType"
             """);
 
         WriteDocumentToml("b.document.toml", """
@@ -561,6 +602,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".bbb"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -594,6 +636,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".mon"
+            display_name = "TestFileType"
 
             [code_editor]
             word_wrap = true
@@ -655,6 +698,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".aaa"
+            display_name = "TestFileType"
             """);
 
         WriteDocumentToml("b.document.toml", """
@@ -665,6 +709,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".bbb"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -700,6 +745,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".ne"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -734,6 +780,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".ms"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -764,6 +811,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".sec"
+            display_name = "TestFileType"
             """);
 
         var suppliedSecrets = new Dictionary<string, string>
@@ -804,6 +852,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".ns"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -833,6 +882,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".nm"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -865,6 +915,7 @@ public class ManifestTests
 
             [[document_file_types]]
             extension = ".mx"
+            display_name = "TestFileType"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));

@@ -100,7 +100,17 @@ public class PackageRegistry
             }
 
             var localizationStrings = _localizationService.LoadStrings(contribution.Package.PackageFolder);
-            var displayName = ResolveDisplayName(contribution, localizationStrings);
+            var displayKey = contribution.FileTypes[0].DisplayName;
+            string displayName;
+            if (localizationStrings.TryGetValue(displayKey, out var localizedName))
+            {
+                displayName = localizedName;
+            }
+            else
+            {
+                displayName = displayKey;
+            }
+
             var fileExtensions = contribution.FileTypes.Select(ft => ft.FileExtension).ToList().AsReadOnly();
 
             var documentTypeInfo = new DocumentTypeInfo(displayName, fileExtensions);
@@ -401,36 +411,5 @@ public class PackageRegistry
 
         _logger.LogInformation(
             $"Discovered {source} package '{package.Info.Id}' ({editorCount} {editorLabel}: {editorList})");
-    }
-
-    /// <summary>
-    /// Resolves the display name for a contribution.
-    /// Uses the first file type's display name if available, looked up in the localization dictionary.
-    /// Falls back to the package name.
-    /// </summary>
-    private static string ResolveDisplayName(
-        DocumentEditorContribution contribution,
-        IReadOnlyDictionary<string, string> localizationStrings)
-    {
-        // Prefer the first file type's display name; fall back to the package
-        // name. Either can be a localization key, so run the chosen value
-        // through the package's localization dictionary before returning it.
-        string displayKey;
-        var firstFileType = contribution.FileTypes.FirstOrDefault();
-        if (firstFileType is not null && !string.IsNullOrEmpty(firstFileType.DisplayName))
-        {
-            displayKey = firstFileType.DisplayName;
-        }
-        else
-        {
-            displayKey = contribution.Package.Name;
-        }
-
-        if (localizationStrings.TryGetValue(displayKey, out var localizedName))
-        {
-            return localizedName;
-        }
-
-        return displayKey;
     }
 }

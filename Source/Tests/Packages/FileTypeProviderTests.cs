@@ -59,7 +59,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "test-editor",
             "TestEditor",
-            [(".test", "")],
+            [(".test", "TestEditor")],
             templates:
             [
                 ("empty", "Empty", "templates/empty.test", true)
@@ -75,7 +75,7 @@ public class PackageServiceDocumentTypeTests
     [Test]
     public void GetDocumentTypes_PackageWithoutTemplates_Excluded()
     {
-        CreateBundledPackage("no-templates", "NoTemplates", [(".notemplate", "")], templates: null);
+        CreateBundledPackage("no-templates", "NoTemplates", [(".notemplate", "NoTemplates")], templates: null);
 
         var documentTypes = _service.GetDocumentTypes();
 
@@ -110,7 +110,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "flagged-editor",
             "FlaggedEditor",
-            [(".flagged", "")],
+            [(".flagged", "FlaggedEditor")],
             featureFlag: "my-flag",
             templates:
             [
@@ -130,7 +130,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "flagged-editor",
             "FlaggedEditor",
-            [(".flagged", "")],
+            [(".flagged", "FlaggedEditor")],
             featureFlag: "my-flag",
             templates:
             [
@@ -150,7 +150,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "multi-ext",
             "MultiExt",
-            [(".md", ""), (".markdown", "")],
+            [(".md", "MultiExt"), (".markdown", "MultiExt")],
             templates:
             [
                 ("empty", "Empty", "templates/empty.md", true)
@@ -171,7 +171,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "note",
             "Note",
-            [(".note", "")],
+            [(".note", "Note")],
             templates:
             [
                 ("empty", "Empty", "templates/empty.note", true)
@@ -202,7 +202,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "non-default",
             "NonDefault",
-            [(".nd", "")],
+            [(".nd", "NonDefault")],
             templates:
             [
                 ("example", "Example", "templates/example.nd", false)
@@ -220,7 +220,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "case-test",
             "CaseTest",
-            [(".TEST", "")],
+            [(".TEST", "CaseTest")],
             templates:
             [
                 ("empty", "Empty", "templates/empty.test", true)
@@ -241,7 +241,7 @@ public class PackageServiceDocumentTypeTests
         CreateBundledPackage(
             "orphan",
             "Orphan",
-            [(".orphan", "")],
+            [(".orphan", "Orphan")],
             templates:
             [
                 ("empty", "Empty", "templates/empty.orphan", true)
@@ -286,17 +286,11 @@ public class PackageServiceDocumentTypeTests
             document_editors = ["editor.document.toml"]
             """);
 
-        // Build document TOML
-        var fileTypesToml = string.Join("\n", fileTypes.Select(ft =>
-        {
-            var displayNameLine = !string.IsNullOrEmpty(ft.DisplayName)
-                ? $"\ndisplay_name = \"{ft.DisplayName}\""
-                : "";
-            return $"""
-                [[document_file_types]]
-                extension = "{ft.Extension}"{displayNameLine}
-                """;
-        }));
+        var fileTypesToml = string.Join("\n", fileTypes.Select(ft => $"""
+            [[document_file_types]]
+            extension = "{ft.Extension}"
+            display_name = "{ft.DisplayName}"
+            """));
 
         var templatesToml = "";
         if (templates is not null)
