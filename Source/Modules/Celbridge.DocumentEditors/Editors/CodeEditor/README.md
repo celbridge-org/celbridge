@@ -31,6 +31,7 @@ id = "asciidoc-document"
 type = "custom"
 entry_point = "index.html"
 priority = "specialized"
+display_name = "CodeEditor_Editor_AsciiDoc"
 
 [options]
 preview_renderer_url = "https://pkg-celbridge-code-editor.celbridge/asciidoc-preview/preview-module.js"
@@ -42,6 +43,10 @@ snippet_set = "asciidoc"
 extension = ".adoc"
 display_name = "CodeEditor_FileType_AsciiDoc"
 ```
+
+`display_name` in `[document]` is required — it labels the editor in the
+Reopen-with dialog. Use a dedicated localization key per editor so adding a
+second editor to the package doesn't collide with the first.
 
 The preview module bundle would live alongside `markdown-preview/` and a matching
 `snippet_set` entry would need to be added to `js/snippets.js`.

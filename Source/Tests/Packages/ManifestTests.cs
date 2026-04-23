@@ -41,6 +41,7 @@ public class ManifestTests
             id = "my-editor-doc"
             type = "custom"
             entry_point = "index.html"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".myext"
@@ -82,6 +83,7 @@ public class ManifestTests
             [document]
             id = "cpv-doc"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".cpv"
@@ -124,6 +126,7 @@ public class ManifestTests
             id = "my-editor-doc"
             type = "custom"
             entry_point = "index.html"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".myext"
@@ -205,6 +208,7 @@ public class ManifestTests
             [document]
             id = "test-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".test"
@@ -245,6 +249,7 @@ public class ManifestTests
             [document]
             id = "empty-doc"
             type = "custom"
+            display_name = "TestEditor"
             """);
 
         var result = PackageManifestLoader.LoadPackage(Path.Combine(_tempFolder, "package.toml"));
@@ -292,6 +297,7 @@ public class ManifestTests
             [document]
             id = "basic-doc"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".bas"
@@ -321,6 +327,7 @@ public class ManifestTests
             id = "priority-doc"
             type = "code"
             priority = "general"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".pri"
@@ -350,6 +357,7 @@ public class ManifestTests
             [document]
             id = "flagged-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".flag"
@@ -379,6 +387,7 @@ public class ManifestTests
             [document]
             id = "noflag-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".nf"
@@ -408,6 +417,7 @@ public class ManifestTests
             [document]
             id = "templated-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".tmpl"
@@ -458,6 +468,7 @@ public class ManifestTests
             [document]
             id = "notemplates-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".nt"
@@ -489,6 +500,7 @@ public class ManifestTests
             type = "custom"
             entry_point = "index.html"
             priority = "default"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".full"
@@ -535,6 +547,7 @@ public class ManifestTests
             [document]
             id = "doc-a"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".aaa"
@@ -544,6 +557,7 @@ public class ManifestTests
             [document]
             id = "doc-b"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".bbb"
@@ -576,6 +590,7 @@ public class ManifestTests
             [document]
             id = "code-editor-doc"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".mon"
@@ -636,6 +651,7 @@ public class ManifestTests
             [document]
             id = "doc-a"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".aaa"
@@ -645,6 +661,7 @@ public class ManifestTests
             [document]
             id = "doc-b"
             type = "code"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".bbb"
@@ -679,6 +696,7 @@ public class ManifestTests
             [document]
             id = "no-entry-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".ne"
@@ -712,6 +730,7 @@ public class ManifestTests
             [document]
             id = "mod-section-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".ms"
@@ -741,6 +760,7 @@ public class ManifestTests
             [document]
             id = "secrets-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".sec"
@@ -780,6 +800,7 @@ public class ManifestTests
             [document]
             id = "no-secrets-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".ns"
@@ -808,6 +829,7 @@ public class ManifestTests
             [document]
             id = "no-mod-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".nm"
@@ -839,6 +861,7 @@ public class ManifestTests
             [document]
             id = "mixed-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".mx"
@@ -868,6 +891,7 @@ public class ManifestTests
             id = "code-doc"
             type = "custom"
             entry_point = "index.html"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extensions_file = "types.json"
@@ -904,6 +928,7 @@ public class ManifestTests
             [document]
             id = "missing-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extensions_file = "nonexistent.json"
@@ -935,6 +960,7 @@ public class ManifestTests
             [document]
             id = "conflict-doc"
             type = "custom"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = ".x"

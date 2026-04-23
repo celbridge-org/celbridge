@@ -374,6 +374,7 @@ public class PackageServiceTests
             [document]
             id = "{packageId}-doc"
             type = "{docType}"
+            display_name = "TestEditor"
 
             [[document_file_types]]
             extension = "{fileExt}"

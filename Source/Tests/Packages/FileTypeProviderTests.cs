@@ -315,6 +315,7 @@ public class PackageServiceDocumentTypeTests
             id = "{packageId}-doc"
             type = "custom"
             entry_point = "index.html"
+            display_name = "{packageName}"
 
             {fileTypesToml}
 

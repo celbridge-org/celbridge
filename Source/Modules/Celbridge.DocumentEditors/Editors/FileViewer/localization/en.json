@@ -1,5 +1,6 @@
 {
     "FileViewer_Package_Name": "File Viewer",
+    "FileViewer_Editor_Name": "File Viewer",
     "FileViewer_FileType_Image": "Image",
     "FileViewer_FileType_Audio": "Audio",
     "FileViewer_FileType_Video": "Video",

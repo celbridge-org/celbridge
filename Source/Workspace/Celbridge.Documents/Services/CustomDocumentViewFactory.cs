@@ -38,19 +38,12 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 
     private string ResolveDisplayName(IPackageLocalizationService localizationService)
     {
-        // Prefer the contribution's own display name when set; otherwise fall
-        // back to the package name. Both can be localization keys (e.g.
-        // "FileViewer_Package_Name"), so run the chosen value through the
-        // package's localization dictionary before returning it.
-        string displayKey;
-        if (!string.IsNullOrEmpty(_contribution.DisplayName))
-        {
-            displayKey = _contribution.DisplayName;
-        }
-        else
-        {
-            displayKey = _contribution.Package.Name;
-        }
+        // The manifest loader requires every document contribution to set
+        // display_name, so _contribution.DisplayName is guaranteed non-empty
+        // here. The value may be a localization key or a plain string; run it
+        // through the package's localization dictionary and return the raw
+        // value when the key is not present (which also handles plain strings).
+        var displayKey = _contribution.DisplayName;
 
         var localizationStrings = localizationService.LoadStrings(_contribution.Package.PackageFolder);
         if (localizationStrings.TryGetValue(displayKey, out var localizedName))

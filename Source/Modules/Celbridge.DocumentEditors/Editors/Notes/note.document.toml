@@ -3,6 +3,7 @@ id = "note-document"
 type = "custom"
 entry_point = "index.html"
 priority = "specialized"
+display_name = "Note_Editor_Name"
 
 [[document_file_types]]
 extension = ".note"

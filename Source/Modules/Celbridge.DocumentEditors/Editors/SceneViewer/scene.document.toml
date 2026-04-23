@@ -4,6 +4,7 @@ type = "custom"
 entry_point = "index.html"
 priority = "specialized"
 external_content = true
+display_name = "SceneViewer_Editor_Name"
 
 [[document_file_types]]
 extension = ".scene"

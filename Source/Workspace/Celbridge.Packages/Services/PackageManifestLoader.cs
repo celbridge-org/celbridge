@@ -206,6 +206,12 @@ public static class PackageManifestLoader
 
             var documentType = GetString(documentTable, TypeKey).ToLowerInvariant();
             var displayName = GetString(documentTable, DisplayNameKey);
+            if (string.IsNullOrEmpty(displayName))
+            {
+                return Result.Fail(
+                    $"Document missing required '{DisplayNameKey}' field in [{DocumentSection}] section: {documentTomlPath}. " +
+                    $"Supply a localization key or plain string for the editor's label in the Reopen-with dialog.");
+            }
             var priority = ParseEditorPriority(GetStringOrNull(documentTable, PriorityKey));
 
             var fileTypes = new List<DocumentFileType>();
