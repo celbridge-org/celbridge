@@ -3,6 +3,7 @@ id = "markdown-document"
 type = "custom"
 entry_point = "index.html"
 priority = "specialized"
+display_name = "CodeEditor_Editor_Markdown"
 
 # Package-defined options threaded into window.__celbridgeContext.options
 # and exposed to the editor JS via celbridge.options.

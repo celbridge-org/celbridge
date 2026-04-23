@@ -1,5 +1,6 @@
 {
     "CodeEditor_Package_Name": "Code Editor",
+    "CodeEditor_Editor_Markdown": "Markdown Editor",
     "CodeEditor_FileType_Code": "Code",
     "CodeEditor_FileType_Markdown": "Markdown Document",
     "CodeEditor_ViewMode_Preview": "Rendered preview",
