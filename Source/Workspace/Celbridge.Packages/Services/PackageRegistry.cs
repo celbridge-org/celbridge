@@ -1,4 +1,3 @@
-using System.Text;
 using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Settings;
@@ -152,8 +151,7 @@ public class PackageRegistry
 
             try
             {
-                var content = File.ReadAllText(templatePath, Encoding.UTF8);
-                return Encoding.UTF8.GetBytes(content);
+                return File.ReadAllBytes(templatePath);
             }
             catch (Exception exception)
             {
