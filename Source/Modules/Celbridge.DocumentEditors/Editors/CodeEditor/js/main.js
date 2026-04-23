@@ -1,22 +1,20 @@
 // Entry point for the Celbridge code-editor contribution package.
-// Configures Monaco, the optional preview pane, the view-mode switcher,
-// and the optional snippet toolbar based on the document's [options] table
-// exposed through celbridge.options. The same bundle serves both the code
-// and markdown document contributions; the options decide which parts to
-// activate at runtime.
+// Creates the Monaco editor, wires up the optional snippet toolbar, and —
+// when the document's options opt in — constructs a PreviewPipeline that
+// owns the preview pane, view-mode switcher, and source-to-preview sync.
+// The same bundle serves both the code and markdown document contributions;
+// the options decide which parts to activate at runtime.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
-import { ViewModeController, ViewMode } from './view-mode-controller.js';
-import { PreviewController } from './preview-controller.js';
-import { attachDividerDrag } from './divider-drag.js';
-import { initializeToolbar, updateViewModeButtons, syncSnippetButtonForViewMode } from './toolbar.js';
+import { ViewMode } from './view-mode-controller.js';
+import { PreviewPipeline } from './preview-pipeline.js';
+import { initializeToolbar } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
 import { log } from './logger.js';
 
 let editorController = null;
-let viewModeController = null;
-let previewController = null;
+let previewPipeline = null;
 
 const options = parseOptions();
 
@@ -43,63 +41,35 @@ function parseOptions() {
 async function initialize() {
     log('initialize: start', options);
 
-    const splitRoot = document.getElementById('split-root');
-    const editorPane = document.getElementById('editor-pane');
-    const dividerElement = document.getElementById('divider');
-    const previewPane = document.getElementById('preview-pane');
-    const previewIframe = document.getElementById('preview-iframe');
     const container = document.getElementById('container');
 
     editorController = new EditorController();
     editorController.create(container);
 
-    viewModeController = new ViewModeController({
-        splitRoot,
-        editorPane,
-        previewPane,
-        onLayoutChanged: () => editorController.layout(),
-        onModeChanged: (mode) => {
-            updateViewModeButtons(mode);
-            syncSnippetButtonForViewMode(mode);
-        }
-    });
-
-    previewController = new PreviewController(previewIframe, {
-        onLinkClicked: (href) => {
-            if (window.isWebView) {
-                celbridge.input.notifyLinkClicked(href);
+    if (options.previewRendererUrl) {
+        previewPipeline = new PreviewPipeline({
+            editorController,
+            initialViewMode: options.initialViewMode,
+            panes: {
+                splitRoot: document.getElementById('split-root'),
+                editorPane: document.getElementById('editor-pane'),
+                previewPane: document.getElementById('preview-pane'),
+                dividerElement: document.getElementById('divider'),
+                previewIframe: document.getElementById('preview-iframe')
+            },
+            onLinkClicked: (href) => {
+                if (window.isWebView) {
+                    celbridge.input.notifyLinkClicked(href);
+                }
             }
-        },
-        onSyncToEditor: (target) => {
-            // target: {line, fraction}. The preview reports the topmost visible
-            // source block and the editor reveals that exact line rather than a
-            // proportional guess, giving precise sync between rendered blocks
-            // and their source locations.
-            editorController.scrollToSourceLine(target.line, target.fraction);
-        }
-    });
-
-    editorController.onContentChanged(() => {
-        previewController.render(editorController.getValue());
-    });
-
-    // Editor-to-preview sync: on every editor scroll, report {line, fraction}
-    // for the topmost visible source line and have the preview scroll to the
-    // rendered block carrying that data-source-line. No-op when the preview
-    // is not active (plain code document with no renderer attached).
-    editorController.onScrollChanged((target) => {
-        if (previewController.isActive()) {
-            previewController.scrollToSourceLine(target.line, target.fraction);
-        }
-    });
-
-    attachDividerDrag(dividerElement, viewModeController);
+        });
+    }
 
     initializeToolbar({
-        showViewMode: !!options.previewRendererUrl,
+        showViewMode: previewPipeline !== null,
         showSnippets: options.enableSnippetToolbar,
         snippetSet: options.snippetSet,
-        viewModeController,
+        viewModeController: previewPipeline?.viewModeController ?? null,
         onInsertSnippet: (text) => editorController.insertText(text)
     });
 
@@ -129,10 +99,8 @@ async function initialize() {
         editorController.applyEdits((params ?? {}).edits);
     });
 
-    if (options.previewRendererUrl) {
-        // Fire-and-forget: the renderer loads in parallel with the rest of
-        // the initialize flow. render() catches up once the module resolves.
-        previewController.setRenderer(options.previewRendererUrl);
+    if (previewPipeline) {
+        previewPipeline.attachRenderer(options.previewRendererUrl);
     }
 
     try {
@@ -141,17 +109,12 @@ async function initialize() {
                 const language = getLanguageForFile(metadata?.fileName || '');
                 editorController.setLanguage(language);
 
-                if (options.previewRendererUrl) {
-                    const basePath = extractParentPath(metadata?.resourceKey || '');
-                    previewController.setBasePath(basePath);
-                    previewController.render(content || '');
-                    viewModeController.setMode(options.initialViewMode);
+                if (previewPipeline) {
+                    previewPipeline.handleInitialContent(content, metadata?.resourceKey);
                 }
             },
             onExternalReloadContent: (content) => {
-                if (options.previewRendererUrl) {
-                    previewController.render(content || '');
-                }
+                previewPipeline?.handleExternalReload(content);
             },
             onRequestState: () => captureState(),
             onRestoreState: (stateJson) => restoreState(stateJson)
@@ -161,27 +124,18 @@ async function initialize() {
     }
 }
 
-function extractParentPath(resourceKey) {
-    if (!resourceKey) {
-        return '';
-    }
-    const slashIndex = resourceKey.lastIndexOf('/');
-    return slashIndex >= 0 ? resourceKey.substring(0, slashIndex + 1) : '';
-}
-
 function captureState() {
     if (!editorController) {
         return null;
     }
 
     const state = {
-        editorScrollPercentage: editorController.getScrollPercentage(),
-        previewScrollPercentage: previewController && previewController.isActive()
-            ? previewController.getScrollPercentage()
-            : 0,
-        viewMode: viewModeController ? viewModeController.getMode() : ViewMode.Source,
-        editorFlexShare: viewModeController ? viewModeController.getFlexShare() : 0.5
+        editorScrollPercentage: editorController.getScrollPercentage()
     };
+
+    if (previewPipeline) {
+        Object.assign(state, previewPipeline.captureState());
+    }
 
     return JSON.stringify(state);
 }
@@ -194,32 +148,14 @@ function restoreState(stateJson) {
     try {
         const state = JSON.parse(stateJson);
 
-        // Apply the saved flex share before setMode so that when setMode transitions
-        // into Split mode it uses the persisted ratio rather than the 0.5 default.
-        if (options.previewRendererUrl &&
-            typeof state.editorFlexShare === 'number' &&
-            viewModeController) {
-            viewModeController.setFlexShare(state.editorFlexShare);
-        }
-
-        if (options.previewRendererUrl &&
-            typeof state.viewMode === 'string' &&
-            viewModeController) {
-            viewModeController.setMode(state.viewMode);
+        // Restore preview layout (flex share, view mode, preview scroll) first
+        // so the editor's scroll percentage is applied against the final layout.
+        if (previewPipeline) {
+            previewPipeline.restoreState(state);
         }
 
         if (typeof state.editorScrollPercentage === 'number') {
             editorController.scrollToPercentage(state.editorScrollPercentage);
-        }
-
-        // Don't guard on previewController.isActive() here: setRenderer() is
-        // fire-and-forget and the module may not be loaded yet at restore time.
-        // PreviewController buffers the scroll percentage in #pendingScrollPercentage
-        // and replays it after the first render completes.
-        if (options.previewRendererUrl &&
-            typeof state.previewScrollPercentage === 'number' &&
-            previewController) {
-            previewController.setScrollPercentage(state.previewScrollPercentage);
         }
     } catch (ex) {
         log('restoreState: ignoring corrupt state', ex);
