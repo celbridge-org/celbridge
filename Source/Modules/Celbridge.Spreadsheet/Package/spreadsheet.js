@@ -256,12 +256,15 @@ async function initializeEditor() {
                 }
             },
             onExternalChange: async () => {
-                // Editor state (zoom, active sheet, selection) is preserved by the framework via
-                // onRequestState / onRestoreState, orchestrated around this handler by
-                // ContributionDocumentView. Just load the new content and signal completion.
+                // Capture view state locally and pass it through deserializeExcelData so the
+                // suspendPaint + requestAnimationFrame + restoreViewState path preserves scroll
+                // and selection across the re-import. The host also sends onRestoreState after
+                // notifyContentLoaded fires, but that RPC arrives while the SpreadJS viewport
+                // is still settling and showRow/showColumn calls from it do not take effect.
+                const savedViewState = captureViewState();
                 try {
                     const result = await client.document.load();
-                    await deserializeExcelData(result.content);
+                    await deserializeExcelData(result.content, savedViewState);
                 } catch (e) {
                     console.error('[Spreadsheet] Failed to reload content:', e);
                 }
