@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Celbridge.Messaging;
 using Celbridge.Tools;
 using ModelContextProtocol.Server;
 using Newtonsoft.Json.Linq;
@@ -35,6 +36,7 @@ public class McpToolBridge : IMcpToolBridge
 
     public McpToolBridge(
         IServerService serverService,
+        IMessengerService messengerService,
         ILogger<McpToolBridge> logger)
     {
         _serverService = serverService;
@@ -49,6 +51,12 @@ public class McpToolBridge : IMcpToolBridge
                 _aliasToToolName[entry.Value.Alias] = entry.Key;
             }
         }
+
+        // The MCP session is bound to the lifetime of a specific server instance.
+        // When the server is restarted for a new workspace, the cached session id
+        // is invalid against the fresh instance, so clear it and re-handshake on
+        // the next request.
+        messengerService.Register<ServerStoppedMessage>(this, (_, _) => _sessionId = null);
     }
 
     // The JS client addresses tools by alias (e.g. "document.open") while Python and the MCP
@@ -447,8 +455,8 @@ public class McpToolBridge : IMcpToolBridge
             return JsonNode.Parse(jsonObject.ToJsonString())?.AsObject();
         }
 
-        // Fall back to System.Text.Json serialization for plain CLR objects.
-        var serialized = System.Text.Json.JsonSerializer.Serialize(arguments);
+        // Fall back to Json serialization for plain CLR objects.
+        var serialized = JsonSerializer.Serialize(arguments);
         return JsonNode.Parse(serialized)?.AsObject();
     }
 

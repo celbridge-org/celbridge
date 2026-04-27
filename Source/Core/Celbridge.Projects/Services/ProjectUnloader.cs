@@ -1,5 +1,6 @@
 using Celbridge.Logging;
 using Celbridge.Navigation;
+using Celbridge.Server;
 using Celbridge.Workspace;
 
 namespace Celbridge.Projects.Services;
@@ -16,17 +17,20 @@ public class ProjectUnloader
     private readonly IProjectService _projectService;
     private readonly INavigationService _navigationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IServerService _serverService;
 
     public ProjectUnloader(
         ILogger<ProjectUnloader> logger,
         IProjectService projectService,
         INavigationService navigationService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IServerService serverService)
     {
         _logger = logger;
         _projectService = projectService;
         _navigationService = navigationService;
         _workspaceWrapper = workspaceWrapper;
+        _serverService = serverService;
     }
 
     /// <summary>
@@ -57,6 +61,10 @@ public class ProjectUnloader
         // Clear the reference and dispose the project
         _projectService.ClearCurrentProject();
         (currentProject as IDisposable)?.Dispose();
+
+        // Stop the server. The assigned port is retained inside ServerService
+        // so the next StartAsync call binds to the same port.
+        await _serverService.StopAsync();
 
         _logger.LogInformation("Project '{ProjectName}' unloaded successfully", projectName);
         return Result.Ok();

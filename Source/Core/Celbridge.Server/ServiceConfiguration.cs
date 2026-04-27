@@ -9,14 +9,8 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IFileServer, FileServer>();
         services.AddSingleton<IMcpToolBridge, McpToolBridge>();
-        services.AddSingleton<IAgentServer, Services.AgentServer>();
+        services.AddSingleton<IAgentServer, AgentServer>();
         services.AddSingleton<IServerService, ServerService>();
         services.AddTransient<ITcpTransport, TcpTransport>();
-    }
-
-    public static void Initialize()
-    {
-        var serverService = ServiceLocator.AcquireService<IServerService>();
-        _ = serverService.InitializeAsync();
     }
 }
