@@ -1,5 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Resources;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -28,14 +30,14 @@ public class DeleteLinesCommand : CommandBase, IDeleteLinesCommand
             return Result.Fail($"Invalid line range: startLine={StartLine}, endLine={EndLine}");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-        return await DeleteLinesFromDisk(resourceRegistry);
+        return await DeleteLinesFromDisk(resourceService);
     }
 
-    private async Task<Result> DeleteLinesFromDisk(IResourceRegistry resourceRegistry)
+    private async Task<Result> DeleteLinesFromDisk(IResourceService resourceService)
     {
-        var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
+        var resolveResult = resourceService.Registry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{Resource}'")
@@ -48,7 +50,11 @@ public class DeleteLinesCommand : CommandBase, IDeleteLinesCommand
             return Result.Fail($"File not found: '{Resource}'");
         }
 
-        var lines = new List<string>(await File.ReadAllLinesAsync(resourcePath));
+        var originalContent = await File.ReadAllTextAsync(resourcePath);
+        var originalSeparator = LineEndingHelper.DetectSeparatorOrDefault(originalContent);
+        var originalEndsWithNewline = LineEndingHelper.EndsWithNewline(originalContent);
+
+        var lines = LineEndingHelper.SplitToContentLines(originalContent);
 
         var deleteResult = DeleteLinesHelper.DeleteLinesFromList(lines, StartLine, EndLine);
         if (deleteResult.IsFailure)
@@ -56,8 +62,12 @@ public class DeleteLinesCommand : CommandBase, IDeleteLinesCommand
             return deleteResult;
         }
 
-        await File.WriteAllLinesAsync(resourcePath, lines);
+        var output = string.Join(originalSeparator, lines);
+        if (originalEndsWithNewline && output.Length > 0)
+        {
+            output += originalSeparator;
+        }
 
-        return Result.Ok();
+        return await resourceService.FileWriter.WriteAllTextAsync(Resource, output);
     }
 }

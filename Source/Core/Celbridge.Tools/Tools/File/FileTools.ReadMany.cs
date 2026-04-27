@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -68,28 +69,30 @@ public partial class FileTools
                 continue;
             }
 
+            var fileText = await File.ReadAllTextAsync(resourcePath);
+            var totalLineCount = LineEndingHelper.CountLines(fileText);
+
             if (offset == 0 && limit == 0)
             {
-                var text = await File.ReadAllTextAsync(resourcePath);
-                var lineCount = text.Split('\n').Length;
-                entries.Add(new ReadManyFileEntry(resourceString, Content: text, TotalLineCount: lineCount));
+                // Preserve raw line endings as they exist on disk.
+                entries.Add(new ReadManyFileEntry(resourceString, Content: fileText, TotalLineCount: totalLineCount));
             }
             else
             {
-                var lines = await File.ReadAllLinesAsync(resourcePath);
-                var totalLineCount = lines.Length;
+                var allLines = LineEndingHelper.SplitToContentLines(fileText);
+                var fileSeparator = LineEndingHelper.DetectSeparatorOrDefault(fileText);
                 var startIndex = offset > 0 ? Math.Max(0, offset - 1) : 0;
-                var count = limit > 0 ? limit : lines.Length - startIndex;
-                count = Math.Min(count, lines.Length - startIndex);
+                var count = limit > 0 ? limit : allLines.Count - startIndex;
+                count = Math.Min(count, allLines.Count - startIndex);
 
-                if (startIndex >= lines.Length)
+                if (startIndex >= allLines.Count)
                 {
                     entries.Add(new ReadManyFileEntry(resourceString, Content: string.Empty, TotalLineCount: totalLineCount));
                 }
                 else
                 {
-                    var selectedLines = lines.Skip(startIndex).Take(count);
-                    var content = string.Join(Environment.NewLine, selectedLines);
+                    var selectedLines = allLines.Skip(startIndex).Take(count);
+                    var content = string.Join(fileSeparator, selectedLines);
                     entries.Add(new ReadManyFileEntry(resourceString, Content: content, TotalLineCount: totalLineCount));
                 }
             }

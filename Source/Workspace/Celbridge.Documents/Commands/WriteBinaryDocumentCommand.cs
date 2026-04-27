@@ -32,7 +32,8 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
             return Result.Fail("Invalid base64 content");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var resourceRegistry = resourceService.Registry;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
@@ -40,19 +41,13 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
             return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
                 .WithErrors(resolveResult);
         }
-        var resourcePath = resolveResult.Value;
+        var isNewFile = !File.Exists(resolveResult.Value);
 
-        var isNewFile = !File.Exists(resourcePath);
-        if (isNewFile)
+        var writeResult = await resourceService.FileWriter.WriteAllBytesAsync(FileResource, bytes);
+        if (writeResult.IsFailure)
         {
-            var parentFolder = Path.GetDirectoryName(resourcePath);
-            if (!string.IsNullOrEmpty(parentFolder))
-            {
-                Directory.CreateDirectory(parentFolder);
-            }
+            return writeResult;
         }
-
-        await File.WriteAllBytesAsync(resourcePath, bytes);
 
         if (isNewFile)
         {

@@ -27,6 +27,11 @@ public interface IResourceService
     IResourceOperationService OperationService { get; }
 
     /// <summary>
+    /// Returns the Resource File Writer used to write file content to the project folder.
+    /// </summary>
+    IResourceFileWriter FileWriter { get; }
+
+    /// <summary>
     /// Schedules a resource update. 
     /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
     /// </summary>

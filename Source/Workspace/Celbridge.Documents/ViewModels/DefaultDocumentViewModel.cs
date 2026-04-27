@@ -34,17 +34,7 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
         HasUnsavedChanges = false;
         SaveTimer = 0;
 
-        try
-        {
-            await File.WriteAllTextAsync(FilePath, Text);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save document file: '{FilePath}'")
-                .WithException(ex);
-        }
-
-        return Result.Ok();
+        return await SaveTextToFileAsync(Text);
     }
 
     private void TextDocumentViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

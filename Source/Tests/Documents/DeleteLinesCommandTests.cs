@@ -1,5 +1,6 @@
 using Celbridge.Documents.Commands;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -21,6 +22,7 @@ public class DeleteLinesCommandTests
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -30,6 +32,9 @@ public class DeleteLinesCommandTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var fileWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), _workspaceWrapper);
+        resourceService.FileWriter.Returns(fileWriter);
     }
 
     [TearDown]

@@ -48,10 +48,20 @@ public record DocumentEdit(
     List<TextEdit> Edits);
 
 /// <summary>
+/// The post-edit line range occupied by an applied edit, in 1-based inclusive
+/// line numbers. When an edit changes the line count, FromLine and ToLine
+/// reflect the lines the new content occupies after the edit lands and after
+/// any earlier edits in the same call have shifted line numbers.
+/// </summary>
+public record AppliedEdit(ResourceKey Resource, int FromLine, int ToLine);
+
+/// <summary>
 /// Applies batch text edits to documents by writing directly to disk.
 /// Any open document reloads its buffer from disk after the write completes.
+/// Returns the post-edit line range for each applied edit so callers can
+/// build a verification context without reapplying the edit math.
 /// </summary>
-public interface IApplyEditsCommand : IExecutableCommand
+public interface IApplyEditsCommand : IExecutableCommand<IReadOnlyList<AppliedEdit>>
 {
     /// <summary>
     /// The list of document edits to apply.

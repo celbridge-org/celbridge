@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
@@ -10,13 +12,6 @@ public abstract partial class DocumentViewModel : ObservableObject
 {
     // Delay before saving the document after the most recent change
     protected const double SaveDelay = 1.0; // Seconds
-
-    // Bounded retry for transient save failures (file briefly locked by AV,
-    // backup software, sync clients, etc.). Total worst-case wait across all
-    // attempts is SaveRetryBaseDelayMs * (1 + 2 + ... + (SaveMaxAttempts - 1))
-    // = 150 ms with the values below.
-    private const int SaveMaxAttempts = 3;
-    private const int SaveRetryBaseDelayMs = 50;
 
     private IMessengerService? _messengerService;
     private ILogger<DocumentViewModel>? _logger;
@@ -153,35 +148,19 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Saves text content to the file at FilePath. Updates file tracking info on success.
+    /// Saves text content as UTF-8 (no BOM) to the file at FilePath.
     /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
-    /// Aborts the save and raises ReloadRequested if a pre-write hash check shows
-    /// the disk has drifted since our last tracked save (an external writer ran
-    /// before us). Also raises ReloadRequested when the post-write disk hash
-    /// differs from the bytes we intended to write (an external writer interleaved
-    /// between our write and our hash read). Retries up to SaveMaxAttempts on
-    /// transient IO failures with a short linear backoff.
     /// </summary>
     protected async Task<Result> SaveTextToFileAsync(string text)
     {
         var intendedBytes = Encoding.UTF8.GetBytes(text);
-        var intendedHash = ComputeBytesHash(intendedBytes);
-
-        if (TryDetectPreWriteExternalChange())
-        {
-            return Result.Ok();
-        }
-
-        return await WriteWithRetryAsync(intendedBytes, intendedHash, "save");
+        return await SaveBytesToFileAsync(intendedBytes);
     }
 
     /// <summary>
-    /// Decodes base64 content and saves as binary to the file at FilePath.
-    /// Updates file tracking info on success. Callers are responsible for
-    /// managing HasUnsavedChanges and SaveTimer. Aborts the save and raises
-    /// ReloadRequested if a pre-write hash check detects external drift, and
-    /// also if the post-write disk hash differs from the bytes we intended to
-    /// write. Retries up to SaveMaxAttempts on transient IO failures.
+    /// Decodes base64 content and saves the raw bytes to the file at FilePath.
+    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Returns failure if the content is not valid base64.
     /// </summary>
     protected async Task<Result> SaveBinaryToFileAsync(string base64Content)
     {
@@ -195,6 +174,18 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result.Fail($"Invalid base64 content when saving binary file: '{FilePath}'");
         }
 
+        return await SaveBytesToFileAsync(bytes);
+    }
+
+    /// <summary>
+    /// Routes the save through IResourceFileWriter (atomic write + bounded retry
+    /// on transient IO) and raises ReloadRequested when external interleaving is
+    /// detected either before the write (pre-write hash check) or between the
+    /// write completing and our tracking-hash read (post-write check). Updates
+    /// file tracking info on a successful write.
+    /// </summary>
+    private async Task<Result> SaveBytesToFileAsync(byte[] bytes)
+    {
         var intendedHash = ComputeBytesHash(bytes);
 
         if (TryDetectPreWriteExternalChange())
@@ -202,7 +193,23 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result.Ok();
         }
 
-        return await WriteWithRetryAsync(bytes, intendedHash, "binary save");
+        var writer = GetFileWriter();
+        var writeResult = await writer.WriteAllBytesAsync(FileResource, bytes);
+        if (writeResult.IsFailure)
+        {
+            return writeResult;
+        }
+
+        UpdateFileTrackingInfo();
+
+        if (_lastSavedFileHash is not null
+            && _lastSavedFileHash != intendedHash)
+        {
+            _logger?.LogDebug($"External write interleaved with save for '{FileResource}', requesting reload");
+            RaiseReloadRequested();
+        }
+
+        return Result.Ok();
     }
 
     /// <summary>
@@ -246,45 +253,15 @@ public abstract partial class DocumentViewModel : ObservableObject
         }
     }
 
-    private async Task<Result> WriteWithRetryAsync(byte[] bytes, string intendedHash, string operationLabel)
+    /// <summary>
+    /// Acquires the resource file writer. Overridable so tests can substitute
+    /// a writer wired to a temp folder without going through the workspace
+    /// service hierarchy.
+    /// </summary>
+    protected virtual IResourceFileWriter GetFileWriter()
     {
-        IOException? lastException = null;
-
-        for (var attempt = 1; attempt <= SaveMaxAttempts; attempt++)
-        {
-            try
-            {
-                await File.WriteAllBytesAsync(FilePath, bytes);
-                UpdateFileTrackingInfo();
-
-                if (_lastSavedFileHash is not null
-                    && _lastSavedFileHash != intendedHash)
-                {
-                    _logger?.LogDebug($"External write interleaved with {operationLabel} for '{FileResource}', requesting reload");
-                    RaiseReloadRequested();
-                }
-
-                return Result.Ok();
-            }
-            catch (IOException ex)
-            {
-                lastException = ex;
-                if (attempt < SaveMaxAttempts)
-                {
-                    var delay = SaveRetryBaseDelayMs * attempt;
-                    _logger?.LogWarning(ex, $"{operationLabel} attempt {attempt} failed for '{FilePath}', retrying after {delay}ms");
-                    await Task.Delay(delay);
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to {operationLabel} file: '{FilePath}'")
-                    .WithException(ex);
-            }
-        }
-
-        return Result.Fail($"Failed to {operationLabel} file after {SaveMaxAttempts} attempts: '{FilePath}'")
-            .WithException(lastException!);
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        return workspaceWrapper.WorkspaceService.ResourceService.FileWriter;
     }
 
     /// <summary>

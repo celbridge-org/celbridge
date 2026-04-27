@@ -55,14 +55,14 @@ public partial class DocumentTools
 
         var documentEdit = new DocumentEdit(fileResourceKey, textEdits);
 
-        var applyResult = await ExecuteCommandAsync<IApplyEditsCommand>(command =>
+        var (callResult, appliedEdits) = await ExecuteCommandAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(command =>
         {
             command.Edits = new List<DocumentEdit> { documentEdit };
         });
 
-        if (applyResult.IsError == true)
+        if (callResult.IsError == true)
         {
-            return applyResult;
+            return callResult;
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -77,22 +77,30 @@ public partial class DocumentTools
             var fileLines = await File.ReadAllLinesAsync(resolveResult.Value);
             totalLineCount = fileLines.Length;
 
-            foreach (var edit in textEdits.OrderBy(e => e.Line))
+            // Use post-edit ranges from the command. The context window covers
+            // one line before through one line after the post-edit range, so
+            // multi-line insertions show all of the new content plus surrounding
+            // context.
+            var orderedRanges = (appliedEdits ?? Array.Empty<AppliedEdit>())
+                .OrderBy(r => r.FromLine)
+                .ToList();
+
+            foreach (var range in orderedRanges)
             {
-                var contextStartIndex = Math.Max(0, edit.Line - 2);
-                var contextEndIndex = Math.Min(fileLines.Length - 1, edit.EndLine);
+                var contextStartIndex = Math.Max(0, range.FromLine - 2);
+                var contextEndIndex = Math.Min(fileLines.Length - 1, range.ToLine);
                 var contextLines = fileLines
                     .Skip(contextStartIndex)
                     .Take(contextEndIndex - contextStartIndex + 1)
                     .ToList();
-                affectedLines.Add(new AffectedLineRange(edit.Line, edit.EndLine, contextLines));
+                affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine, contextLines));
             }
         }
-        else
+        else if (appliedEdits is not null)
         {
-            foreach (var edit in textEdits.OrderBy(e => e.Line))
+            foreach (var range in appliedEdits.OrderBy(r => r.FromLine))
             {
-                affectedLines.Add(new AffectedLineRange(edit.Line, edit.EndLine));
+                affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine));
             }
         }
 

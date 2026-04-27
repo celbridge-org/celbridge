@@ -16,6 +16,7 @@ Usage (IPython REPL):
 
 import json
 import base64
+import os
 import unittest
 
 from celbridge.cel_proxy import CelError
@@ -105,6 +106,15 @@ def _close_if_open(resource):
             document.close(resource, force_close=True)
     except Exception:
         pass
+
+
+def _write_with_line_endings(resource, text_with_lf, line_ending):
+    """Write a file with explicit line endings, bypassing document.write's
+    platform-default conversion. Used by the line-ending preservation tests
+    to set up a file with known endings regardless of host OS."""
+    text = text_with_lf.replace("\n", line_ending)
+    encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
+    document.write_binary(resource, encoded)
 
 
 # ---------------------------------------------------------------------------
@@ -550,6 +560,133 @@ class TestDocument(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Line-ending preservation
+# ---------------------------------------------------------------------------
+
+class TestDocumentLineEndings(unittest.TestCase):
+    """Verifies that document edit tools preserve the existing file's line
+    endings and trailing-newline state, and that document.write picks the
+    platform default when creating a new file."""
+
+    def setUp(self):
+        _delete_if_exists("TestLineEndings")
+        explorer.create_folder("TestLineEndings")
+
+    def tearDown(self):
+        _close_if_open("TestLineEndings/crlf.txt")
+        _close_if_open("TestLineEndings/lf.txt")
+        _close_if_open("TestLineEndings/no_trailing.txt")
+        _close_if_open("TestLineEndings/with_trailing.txt")
+        _close_if_open("TestLineEndings/new.txt")
+        _delete_if_exists("TestLineEndings")
+
+    def test_apply_edits_preserves_crlf(self):
+        _write_with_line_endings(
+            "TestLineEndings/crlf.txt",
+            "Line 1\nLine 2\nLine 3\n",
+            "\r\n",
+        )
+        edits = [{"line": 2, "endLine": 2, "newText": "Replaced"}]
+        document.apply_edits("TestLineEndings/crlf.txt", json.dumps(edits))
+
+        content = file.read("TestLineEndings/crlf.txt")["content"]
+        self.assertIn("\r\n", content)
+        # Regression for the historical \r\r\n bug \u2014 no doubled CR allowed.
+        self.assertNotIn("\r\r", content)
+        self.assertNotRegex(content, r"(?<!\r)\n")  # no lone \n alongside CRLF
+
+    def test_apply_edits_preserves_lf(self):
+        _write_with_line_endings(
+            "TestLineEndings/lf.txt",
+            "Line 1\nLine 2\nLine 3\n",
+            "\n",
+        )
+        edits = [{"line": 2, "endLine": 2, "newText": "Replaced"}]
+        document.apply_edits("TestLineEndings/lf.txt", json.dumps(edits))
+
+        content = file.read("TestLineEndings/lf.txt")["content"]
+        self.assertNotIn("\r", content)
+
+    def test_find_replace_preserves_crlf(self):
+        _write_with_line_endings(
+            "TestLineEndings/crlf.txt",
+            "alpha\nbeta\ngamma\n",
+            "\r\n",
+        )
+        document.find_replace(
+            "TestLineEndings/crlf.txt",
+            search_text="beta",
+            replace_text="BETA",
+        )
+
+        content = file.read("TestLineEndings/crlf.txt")["content"]
+        self.assertIn("BETA", content)
+        self.assertIn("\r\n", content)
+        self.assertNotIn("\r\r", content)
+
+    def test_delete_lines_preserves_crlf(self):
+        _write_with_line_endings(
+            "TestLineEndings/crlf.txt",
+            "one\ntwo\nthree\nfour\n",
+            "\r\n",
+        )
+        document.delete_lines(
+            "TestLineEndings/crlf.txt", start_line=2, end_line=3
+        )
+
+        content = file.read("TestLineEndings/crlf.txt")["content"]
+        self.assertNotIn("two", content)
+        self.assertNotIn("three", content)
+        self.assertIn("\r\n", content)
+        self.assertNotIn("\r\r", content)
+
+    def test_write_new_file_uses_platform_default(self):
+        # document.write with input that uses \n separators should write the
+        # host platform's line endings to a brand-new file.
+        document.write(
+            "TestLineEndings/new.txt", "first\nsecond\nthird\n"
+        )
+
+        content = file.read("TestLineEndings/new.txt")["content"]
+        self.assertIn(os.linesep, content)
+        if os.linesep == "\r\n":
+            self.assertNotRegex(content, r"(?<!\r)\n")
+        else:
+            self.assertNotIn("\r", content)
+
+    def test_apply_edits_preserves_no_trailing_newline(self):
+        _write_with_line_endings(
+            "TestLineEndings/no_trailing.txt",
+            "alpha\nbeta\ngamma",  # no trailing \n
+            "\r\n",
+        )
+        edits = [{"line": 2, "endLine": 2, "newText": "BETA"}]
+        document.apply_edits(
+            "TestLineEndings/no_trailing.txt", json.dumps(edits)
+        )
+
+        content = file.read("TestLineEndings/no_trailing.txt")["content"]
+        self.assertFalse(content.endswith("\n"))
+        self.assertFalse(content.endswith("\r"))
+        self.assertIn("BETA", content)
+
+    def test_apply_edits_preserves_trailing_newline(self):
+        _write_with_line_endings(
+            "TestLineEndings/with_trailing.txt",
+            "alpha\nbeta\ngamma\n",  # trailing \n
+            "\r\n",
+        )
+        edits = [{"line": 2, "endLine": 2, "newText": "BETA"}]
+        document.apply_edits(
+            "TestLineEndings/with_trailing.txt", json.dumps(edits)
+        )
+
+        content = file.read("TestLineEndings/with_trailing.txt")["content"]
+        self.assertTrue(content.endswith("\r\n"))
+        self.assertNotIn("\r\r", content)
+
+
+# ---------------------------------------------------------------------------
 # file module
 # ---------------------------------------------------------------------------
 
@@ -870,6 +1007,7 @@ def main():
         TestQuery,
         TestExplorer,
         TestDocument,
+        TestDocumentLineEndings,
         TestFile,
         TestPackage,
     ]

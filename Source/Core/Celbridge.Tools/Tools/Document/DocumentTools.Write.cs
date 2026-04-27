@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Celbridge.Documents;
+using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -40,7 +41,7 @@ public partial class DocumentTools
             return writeResult;
         }
 
-        var lineCount = content.Split('\n').Length;
+        var lineCount = LineEndingHelper.CountLines(content);
         var result = new WriteDocumentResult(lineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return SuccessResult(json);

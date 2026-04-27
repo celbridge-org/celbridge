@@ -147,12 +147,16 @@ public class DocumentToolTests
     {
         var resource = new ResourceKey("notes/edit.md");
         var path = Path.Combine(_tempFolder, "edit.md");
-        await File.WriteAllLinesAsync(path, new[] { "First", "Second", "Third" });
+        await File.WriteAllLinesAsync(path, new[] { "First", "Replaced", "Third" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         IApplyEditsCommand? capturedCommand = null;
+        IReadOnlyList<AppliedEdit> appliedRanges = new[]
+        {
+            new AppliedEdit(resource, 2, 2)
+        };
         _commandService
-            .ExecuteAsync<IApplyEditsCommand>(
+            .ExecuteAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(
                 Arg.Any<Action<IApplyEditsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -165,7 +169,7 @@ public class DocumentToolTests
                     capturedCommand.Edits = new List<DocumentEdit>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<IReadOnlyList<AppliedEdit>>.Ok(appliedRanges));
             });
 
         var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Replaced\"}]";
@@ -175,7 +179,50 @@ public class DocumentToolTests
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.Edits.Should().HaveCount(1);
-        root.GetProperty("affectedLines").GetArrayLength().Should().Be(1);
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("from").GetInt32().Should().Be(2);
+        affected[0].GetProperty("to").GetInt32().Should().Be(2);
+    }
+
+    [Test]
+    public async Task ApplyEdits_ContextWindowCoversFullPostEditRange_ForLineExpandingEdit()
+    {
+        var resource = new ResourceKey("notes/expand.md");
+        var path = Path.Combine(_tempFolder, "expand.md");
+        // Post-edit content: line 2 was replaced with three lines (Two, Inserted, Three).
+        await File.WriteAllLinesAsync(path, new[] { "First", "Two", "Inserted", "Three", "Last" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IReadOnlyList<AppliedEdit> appliedRanges = new[]
+        {
+            new AppliedEdit(resource, 2, 4)
+        };
+        _commandService
+            .ExecuteAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(
+                Arg.Any<Action<IApplyEditsCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<IReadOnlyList<AppliedEdit>>.Ok(appliedRanges)));
+
+        var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Two\\nInserted\\nThree\"}]";
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.ApplyEdits("notes/expand.md", editsJson));
+
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("from").GetInt32().Should().Be(2);
+        affected[0].GetProperty("to").GetInt32().Should().Be(4);
+
+        // Context window = 1 line before + the 3 post-edit lines + 1 line after.
+        var contextLines = affected[0].GetProperty("contextLines");
+        var lines = new List<string>();
+        for (var i = 0; i < contextLines.GetArrayLength(); i++)
+        {
+            lines.Add(contextLines[i].GetString()!);
+        }
+        lines.Should().Equal("First", "Two", "Inserted", "Three", "Last");
     }
 
     [Test]
@@ -205,7 +252,9 @@ public class DocumentToolTests
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
         capturedCommand.Content.Should().Be("line one\nline two\n");
-        root.GetProperty("lineCount").GetInt32().Should().Be(3);
+        // Canonical (ReadAllLines) semantics: a trailing newline does not add
+        // a phantom empty line, so "line one\nline two\n" is 2 lines.
+        root.GetProperty("lineCount").GetInt32().Should().Be(2);
     }
 
     [Test]

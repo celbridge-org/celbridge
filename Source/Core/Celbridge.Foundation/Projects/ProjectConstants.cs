@@ -36,6 +36,12 @@ public static class ProjectConstants
     public const string TrashFolder = ".trash";
 
     /// <summary>
+    /// Folder containing in-flight temp files for atomic writes.
+    /// Wiped on workspace load to clear orphans left by previous crashes.
+    /// </summary>
+    public const string TempFolder = ".temp";
+
+    /// <summary>
     /// File containing the workspace settings data.
     /// </summary>
     public const string WorkspaceSettingsFile = "workspace_settings.db";

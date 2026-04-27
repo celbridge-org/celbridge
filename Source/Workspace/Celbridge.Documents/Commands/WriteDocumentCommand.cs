@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -22,7 +23,8 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var resourceRegistry = resourceService.Registry;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
@@ -33,16 +35,27 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
         var resourcePath = resolveResult.Value;
 
         var isNewFile = !File.Exists(resourcePath);
+
+        // Preserve existing line endings when overwriting. Use the platform
+        // default for new files.
+        string targetSeparator;
         if (isNewFile)
         {
-            var parentFolder = Path.GetDirectoryName(resourcePath);
-            if (!string.IsNullOrEmpty(parentFolder))
-            {
-                Directory.CreateDirectory(parentFolder);
-            }
+            targetSeparator = LineEndingHelper.PlatformDefault;
+        }
+        else
+        {
+            var existingContent = await File.ReadAllTextAsync(resourcePath);
+            targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(existingContent);
         }
 
-        await File.WriteAllTextAsync(resourcePath, Content);
+        var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);
+
+        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, contentToWrite);
+        if (writeResult.IsFailure)
+        {
+            return writeResult;
+        }
 
         if (isNewFile)
         {

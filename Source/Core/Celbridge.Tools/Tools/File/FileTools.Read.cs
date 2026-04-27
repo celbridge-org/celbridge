@@ -1,3 +1,4 @@
+using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -44,47 +45,53 @@ public partial class FileTools
             return ErrorResult($"File not found: '{resource}'");
         }
 
+        var fileText = await File.ReadAllTextAsync(resourcePath);
+        var totalLineCount = LineEndingHelper.CountLines(fileText);
+        var fileSeparator = LineEndingHelper.DetectSeparatorOrDefault(fileText);
+
         if (offset == 0 && limit == 0)
         {
-            var text = await File.ReadAllTextAsync(resourcePath);
-            var lineCount = FileReadHelper.CountLines(text);
-
+            string content;
             if (lineNumbers)
             {
-                var splitLines = text.Split('\n');
-                text = FileReadHelper.AddLineNumbers(splitLines, 1);
+                var contentLines = LineEndingHelper.SplitToContentLines(fileText);
+                content = FileReadHelper.AddLineNumbers(contentLines, 1, fileSeparator);
+            }
+            else
+            {
+                // Preserve raw line endings as they exist on disk.
+                content = fileText;
             }
 
-            var wholeFileResult = new FileReadResult(text, lineCount);
+            var wholeFileResult = new FileReadResult(content, totalLineCount);
             return SuccessResult(SerializeJson(wholeFileResult));
         }
 
-        var lines = await File.ReadAllLinesAsync(resourcePath);
-        var totalLineCount = lines.Length;
+        var allLines = LineEndingHelper.SplitToContentLines(fileText);
         var startIndex = offset > 0 ? Math.Max(0, offset - 1) : 0;
-        var count = limit > 0 ? limit : lines.Length - startIndex;
-        count = Math.Min(count, lines.Length - startIndex);
+        var count = limit > 0 ? limit : allLines.Count - startIndex;
+        count = Math.Min(count, allLines.Count - startIndex);
 
-        if (startIndex >= lines.Length)
+        if (startIndex >= allLines.Count)
         {
             var emptyResult = new FileReadResult(string.Empty, totalLineCount);
             return SuccessResult(SerializeJson(emptyResult));
         }
 
-        var selectedLines = lines.Skip(startIndex).Take(count).ToArray();
-        string content;
+        var selectedLines = allLines.Skip(startIndex).Take(count).ToList();
+        string rangeContent;
 
         if (lineNumbers)
         {
             var firstLineNumber = startIndex + 1;
-            content = FileReadHelper.AddLineNumbers(selectedLines, firstLineNumber);
+            rangeContent = FileReadHelper.AddLineNumbers(selectedLines, firstLineNumber, fileSeparator);
         }
         else
         {
-            content = string.Join(Environment.NewLine, selectedLines);
+            rangeContent = string.Join(fileSeparator, selectedLines);
         }
 
-        var readResult = new FileReadResult(content, totalLineCount);
+        var readResult = new FileReadResult(rangeContent, totalLineCount);
         return SuccessResult(SerializeJson(readResult));
     }
 }

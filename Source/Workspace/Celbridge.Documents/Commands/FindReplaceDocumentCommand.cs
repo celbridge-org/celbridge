@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Resources;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;
@@ -34,9 +36,9 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
             return Result.Fail("Search text cannot be empty");
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
+        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
@@ -49,16 +51,16 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        return await FindReplaceOnDisk(resourcePath);
+        return await FindReplaceOnDisk(resourceService, resourcePath);
     }
 
-    private async Task<Result> FindReplaceOnDisk(string resourcePath)
+    private async Task<Result> FindReplaceOnDisk(IResourceService resourceService, string resourcePath)
     {
         var content = await File.ReadAllTextAsync(resourcePath);
 
         if (FromLine > 0 || ToLine > 0)
         {
-            return await FindReplaceOnDiskScoped(resourcePath, content);
+            return await FindReplaceOnDiskScoped(resourceService, content);
         }
 
         string newContent;
@@ -74,8 +76,9 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
         {
             // Normalise the search and replacement text to match the file's actual line
             // endings. Agents always construct strings with \n. Files on Windows use \r\n.
-            var searchText = NormaliseLineEndings(SearchText, content);
-            var replaceText = NormaliseLineEndings(ReplaceText, content);
+            var fileSeparator = LineEndingHelper.DetectSeparatorOrDefault(content);
+            var searchText = LineEndingHelper.ConvertLineEndings(SearchText, fileSeparator);
+            var replaceText = LineEndingHelper.ConvertLineEndings(ReplaceText, fileSeparator);
 
             var comparison = MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
             var replacementCount = 0;
@@ -103,39 +106,35 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
 
         if (ResultValue > 0)
         {
-            await File.WriteAllTextAsync(resourcePath, newContent);
+            return await resourceService.FileWriter.WriteAllTextAsync(FileResource, newContent);
         }
 
         return Result.Ok();
     }
 
-    private async Task<Result> FindReplaceOnDiskScoped(string resourcePath, string content)
+    private async Task<Result> FindReplaceOnDiskScoped(IResourceService resourceService, string content)
     {
         // Line-based replacement for scoped operations.
-        // Preserves the file's original line ending style.
-        var usesWindowsLineEndings = content.Contains("\r\n");
-        var lineSeparator = usesWindowsLineEndings ? "\r\n" : "\n";
-        var lines = content.Split('\n');
+        // Preserves the file's original line ending style and trailing-newline state.
+        var separator = LineEndingHelper.DetectSeparatorOrDefault(content);
+        var endsWithNewline = LineEndingHelper.EndsWithNewline(content);
+        var lines = LineEndingHelper.SplitToContentLines(content);
 
-        var searchText = NormaliseLineEndings(SearchText, content);
-        var replaceText = NormaliseLineEndings(ReplaceText, content);
+        var searchText = LineEndingHelper.ConvertLineEndings(SearchText, separator);
+        var replaceText = LineEndingHelper.ConvertLineEndings(ReplaceText, separator);
         var comparison = MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         var regexOptions = MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
         var regex = UseRegex ? new Regex(searchText, regexOptions) : null;
 
         var replacementCount = 0;
 
-        for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+        for (int lineIndex = 0; lineIndex < lines.Count; lineIndex++)
         {
             var lineNumber = lineIndex + 1;
             if (FromLine > 0 && lineNumber < FromLine) continue;
             if (ToLine > 0 && lineNumber > ToLine) break;
 
             var line = lines[lineIndex];
-            if (line.EndsWith('\r'))
-            {
-                line = line[..^1];
-            }
 
             string newLine;
             if (regex is not null)
@@ -168,28 +167,23 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
                 replacementCount += lineReplacements;
             }
 
-            lines[lineIndex] = usesWindowsLineEndings ? newLine + "\r" : newLine;
+            lines[lineIndex] = newLine;
         }
 
         ResultValue = replacementCount;
 
         if (ResultValue > 0)
         {
-            await File.WriteAllTextAsync(resourcePath, string.Join("\n", lines));
+            var output = string.Join(separator, lines);
+            if (endsWithNewline && output.Length > 0)
+            {
+                output += separator;
+            }
+
+            return await resourceService.FileWriter.WriteAllTextAsync(FileResource, output);
         }
 
         return Result.Ok();
-    }
-
-    private static string NormaliseLineEndings(string text, string fileContent)
-    {
-        if (!fileContent.Contains("\r\n"))
-        {
-            return text;
-        }
-
-        // File uses \r\n — adapt text from \n to \r\n, avoiding double-replacement of any existing \r\n
-        return text.Replace("\r\n", "\n").Replace("\n", "\r\n");
     }
 
     //
