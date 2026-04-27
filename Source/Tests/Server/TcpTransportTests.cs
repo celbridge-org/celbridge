@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Celbridge.Messaging;
 using Celbridge.Server;
 using Celbridge.Server.Services;
 using StreamJsonRpc;
@@ -23,9 +24,11 @@ public class TcpTransportTests
         var mockServerService = Substitute.For<IServerService>();
         mockServerService.Port.Returns(0);
 
+        var mockMessengerService = Substitute.For<IMessengerService>();
+
         var bridgeLogger = Substitute.For<ILogger<McpToolBridge>>();
         var transportLogger = Substitute.For<ILogger<TcpTransport>>();
-        _mcpToolBridge = new McpToolBridge(mockServerService, bridgeLogger);
+        _mcpToolBridge = new McpToolBridge(mockServerService, mockMessengerService, bridgeLogger);
         _transport = new TcpTransport(transportLogger, _mcpToolBridge);
 
         // Find a free port and start listening

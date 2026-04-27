@@ -137,6 +137,13 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         // Send granular notification for listeners (e.g., document editors)
         OnResourceCreated(e.FullPath);
 
+        // Also notify as changed because some save patterns (atomic temp-write
+        // followed by replace of an existing destination, used by the in-app
+        // file writer and many external editors) surface as a Created event on
+        // the destination rather than a Changed or Renamed event. Listeners
+        // that watch for content changes need to react in that case too.
+        OnResourceChanged(e.FullPath);
+
         ScheduleResourceUpdate();
     }
 

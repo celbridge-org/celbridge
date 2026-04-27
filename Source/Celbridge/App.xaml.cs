@@ -298,7 +298,6 @@ public partial class App : Application
 
     private void InitializeCoreServices()
     {
-        Server.ServiceConfiguration.Initialize();
         UserInterface.ServiceConfiguration.Initialize();
         WebView.ServiceConfiguration.Initialize();
         Workspace.ServiceConfiguration.Initialize();

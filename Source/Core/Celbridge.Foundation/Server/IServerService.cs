@@ -12,26 +12,35 @@ public enum ServerStatus
 }
 
 /// <summary>
-/// Coordinates the server infrastructure. Starts the HTTP server during
-/// application initialization and manages the lifecycle of the agent server,
-/// file server, and other server components in response to workspace events.
+/// Coordinates the server infrastructure. Starts a fresh HTTP server when a
+/// workspace is loaded and stops it when the workspace is unloaded. The same
+/// port is reused for the lifetime of the application so URLs remain stable
+/// across project switches.
 /// </summary>
 public interface IServerService
 {
     /// <summary>
     /// The current state of the server infrastructure.
-    /// Project loading should not proceed until this is Ready.
     /// </summary>
     ServerStatus Status { get; }
 
     /// <summary>
     /// The port the HTTP server is listening on, or 0 if not started.
+    /// Once assigned, the port is reused on subsequent starts within the
+    /// same application session.
     /// </summary>
     int Port { get; }
 
     /// <summary>
-    /// Starts the HTTP server and registers all endpoints.
+    /// Builds and starts a fresh HTTP server instance for the loaded workspace.
+    /// Reuses the port assigned on the first call within this application session.
     /// Sets Status to Ready on completion.
     /// </summary>
-    Task InitializeAsync();
+    Task StartAsync();
+
+    /// <summary>
+    /// Stops and disposes the HTTP server instance. The assigned port is retained
+    /// so the next StartAsync call binds to the same port.
+    /// </summary>
+    Task StopAsync();
 }

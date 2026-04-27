@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
 
@@ -14,19 +15,22 @@ public class WorkspaceLoader
     private readonly IUserInterfaceService _userInterfaceService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
+    private readonly IServerService _serverService;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
         IWorkspaceWrapper workspaceWrapper,
         IUserInterfaceService userInterfaceService,
         IFeatureFlags featureFlags,
-        IProjectService projectService)
+        IProjectService projectService,
+        IServerService serverService)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _userInterfaceService = userInterfaceService;
         _featureFlags = featureFlags;
         _projectService = projectService;
+        _serverService = serverService;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -45,6 +49,17 @@ public class WorkspaceLoader
         {
             var projectFeatures = currentProject.Config.Features;
             _featureFlags.ApplyProjectOverrides(projectFeatures);
+        }
+
+        //
+        // Start a fresh server instance for this workspace.
+        // The same port is reused for the lifetime of the application so URLs
+        // resolved by the file server remain stable across project switches.
+        //
+        await _serverService.StartAsync();
+        if (_serverService.Status == ServerStatus.Error)
+        {
+            return Result.Fail("Failed to start the server for the workspace");
         }
 
         //
