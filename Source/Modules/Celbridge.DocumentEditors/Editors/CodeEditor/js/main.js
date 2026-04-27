@@ -82,11 +82,9 @@ async function initialize() {
     log('initialize: notifying client ready');
     celbridge.document.notifyClientReady();
 
-    // Host-to-editor notifications for navigate-to-location and apply-edits.
-    // A dedicated `editor/*` namespace keeps them distinct from the generic
-    // `document/*` lifecycle (initialize, load, save, state). The plan to
-    // replace these with editor-registered MCP tools is tracked in
-    // unified_document_editors.md.
+    // Host-to-editor notification for navigate-to-location. A dedicated
+    // `editor/*` namespace keeps it distinct from the generic `document/*`
+    // lifecycle (initialize, load, save, state).
     celbridge.onNotification('editor/navigateToLocation', (params) => {
         const p = params ?? {};
         editorController.navigateToLocation(
@@ -94,9 +92,6 @@ async function initialize() {
             p.column ?? 1,
             p.endLineNumber ?? 0,
             p.endColumn ?? 0);
-    });
-    celbridge.onNotification('editor/applyEdits', (params) => {
-        editorController.applyEdits((params ?? {}).edits);
     });
 
     if (previewPipeline) {

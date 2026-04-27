@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -9,6 +10,13 @@ public abstract partial class DocumentViewModel : ObservableObject
 {
     // Delay before saving the document after the most recent change
     protected const double SaveDelay = 1.0; // Seconds
+
+    // Bounded retry for transient save failures (file briefly locked by AV,
+    // backup software, sync clients, etc.). Total worst-case wait across all
+    // attempts is SaveRetryBaseDelayMs * (1 + 2 + ... + (SaveMaxAttempts - 1))
+    // = 150 ms with the values below.
+    private const int SaveMaxAttempts = 3;
+    private const int SaveRetryBaseDelayMs = 50;
 
     private IMessengerService? _messengerService;
     private ILogger<DocumentViewModel>? _logger;
@@ -24,11 +32,6 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     [ObservableProperty]
     private double _saveTimer;
-
-    // Flag to suppress reload requests triggered by our own save operations.
-    // This prevents the file watcher race condition where the watcher fires
-    // before we can update our tracking info.
-    protected bool IsSavingFile { get; set; }
 
     // Event to notify the view that the document should be reloaded
     public event EventHandler? ReloadRequested;
@@ -108,15 +111,15 @@ public abstract partial class DocumentViewModel : ObservableObject
             return;
         }
 
-        // Ignore file watcher events triggered by our own save operation
-        if (IsSavingFile)
-        {
-            return;
-        }
-
-        // Check if this change is genuinely different from our last save
+        // Self-events from our own writes hash-match _lastSavedFileHash and are
+        // ignored. Genuine external changes have a different hash and proceed.
         if (IsFileChangedExternally())
         {
+            // External edits supersede any pending or in-flight buffer save.
+            // Discard the queued save so the buffer reload wins.
+            SaveTimer = 0;
+            HasUnsavedChanges = false;
+
             _logger?.LogDebug($"External change detected for '{FileResource}', requesting reload");
             RaiseReloadRequested();
         }
@@ -150,60 +153,138 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Saves text content to the file at FilePath.
-    /// Handles the IsSavingFile flag and updates file tracking info.
+    /// Saves text content to the file at FilePath. Updates file tracking info on success.
     /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Aborts the save and raises ReloadRequested if a pre-write hash check shows
+    /// the disk has drifted since our last tracked save (an external writer ran
+    /// before us). Also raises ReloadRequested when the post-write disk hash
+    /// differs from the bytes we intended to write (an external writer interleaved
+    /// between our write and our hash read). Retries up to SaveMaxAttempts on
+    /// transient IO failures with a short linear backoff.
     /// </summary>
     protected async Task<Result> SaveTextToFileAsync(string text)
     {
-        try
+        var intendedBytes = Encoding.UTF8.GetBytes(text);
+        var intendedHash = ComputeBytesHash(intendedBytes);
+
+        if (TryDetectPreWriteExternalChange())
         {
-            IsSavingFile = true;
-            await File.WriteAllTextAsync(FilePath, text);
-            UpdateFileTrackingInfo();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save file: '{FilePath}'")
-                .WithException(ex);
-        }
-        finally
-        {
-            IsSavingFile = false;
+            return Result.Ok();
         }
 
-        return Result.Ok();
+        return await WriteWithRetryAsync(intendedBytes, intendedHash, "save");
     }
 
     /// <summary>
     /// Decodes base64 content and saves as binary to the file at FilePath.
-    /// Handles the IsSavingFile flag and updates file tracking info.
-    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Updates file tracking info on success. Callers are responsible for
+    /// managing HasUnsavedChanges and SaveTimer. Aborts the save and raises
+    /// ReloadRequested if a pre-write hash check detects external drift, and
+    /// also if the post-write disk hash differs from the bytes we intended to
+    /// write. Retries up to SaveMaxAttempts on transient IO failures.
     /// </summary>
     protected async Task<Result> SaveBinaryToFileAsync(string base64Content)
     {
+        byte[] bytes;
         try
         {
-            IsSavingFile = true;
-            var bytes = Convert.FromBase64String(base64Content);
-            await File.WriteAllBytesAsync(FilePath, bytes);
-            UpdateFileTrackingInfo();
+            bytes = Convert.FromBase64String(base64Content);
         }
         catch (FormatException)
         {
             return Result.Fail($"Invalid base64 content when saving binary file: '{FilePath}'");
         }
-        catch (Exception ex)
+
+        var intendedHash = ComputeBytesHash(bytes);
+
+        if (TryDetectPreWriteExternalChange())
         {
-            return Result.Fail($"Failed to save binary file: '{FilePath}'")
-                .WithException(ex);
-        }
-        finally
-        {
-            IsSavingFile = false;
+            return Result.Ok();
         }
 
-        return Result.Ok();
+        return await WriteWithRetryAsync(bytes, intendedHash, "binary save");
+    }
+
+    /// <summary>
+    /// Reads the current disk hash and compares it to the last-tracked save hash.
+    /// If the disk has drifted, discards any buffered changes, aligns tracking
+    /// with the current disk state (so the upcoming watcher event filters as a
+    /// self-event), raises ReloadRequested, and returns true. Returns false if
+    /// no drift is detected, if there is no prior tracking info to compare
+    /// against, or if the disk read fails (the caller falls through to the
+    /// write attempt, whose retry loop handles transient IO errors).
+    /// </summary>
+    private bool TryDetectPreWriteExternalChange()
+    {
+        if (_lastSavedFileHash is null
+            || !File.Exists(FilePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var preWriteHash = ComputeFileHash(FilePath);
+            if (preWriteHash == _lastSavedFileHash)
+            {
+                return false;
+            }
+
+            SaveTimer = 0;
+            HasUnsavedChanges = false;
+            UpdateFileTrackingInfo();
+
+            _logger?.LogDebug($"External write detected before save for '{FileResource}', aborting save and requesting reload");
+            RaiseReloadRequested();
+
+            return true;
+        }
+        catch (IOException ex)
+        {
+            _logger?.LogDebug(ex, $"Pre-write hash check failed for '{FilePath}', proceeding to write attempt");
+            return false;
+        }
+    }
+
+    private async Task<Result> WriteWithRetryAsync(byte[] bytes, string intendedHash, string operationLabel)
+    {
+        IOException? lastException = null;
+
+        for (var attempt = 1; attempt <= SaveMaxAttempts; attempt++)
+        {
+            try
+            {
+                await File.WriteAllBytesAsync(FilePath, bytes);
+                UpdateFileTrackingInfo();
+
+                if (_lastSavedFileHash is not null
+                    && _lastSavedFileHash != intendedHash)
+                {
+                    _logger?.LogDebug($"External write interleaved with {operationLabel} for '{FileResource}', requesting reload");
+                    RaiseReloadRequested();
+                }
+
+                return Result.Ok();
+            }
+            catch (IOException ex)
+            {
+                lastException = ex;
+                if (attempt < SaveMaxAttempts)
+                {
+                    var delay = SaveRetryBaseDelayMs * attempt;
+                    _logger?.LogWarning(ex, $"{operationLabel} attempt {attempt} failed for '{FilePath}', retrying after {delay}ms");
+                    await Task.Delay(delay);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"Failed to {operationLabel} file: '{FilePath}'")
+                    .WithException(ex);
+            }
+        }
+
+        return Result.Fail($"Failed to {operationLabel} file after {SaveMaxAttempts} attempts: '{FilePath}'")
+            .WithException(lastException!);
     }
 
     /// <summary>
@@ -253,7 +334,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         }
     }
 
-    protected void UpdateFileTrackingInfo()
+    protected virtual void UpdateFileTrackingInfo()
     {
         try
         {
@@ -277,6 +358,13 @@ public abstract partial class DocumentViewModel : ObservableObject
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(stream);
+        return Convert.ToBase64String(hashBytes);
+    }
+
+    private static string ComputeBytesHash(byte[] bytes)
+    {
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hashBytes);
     }
 }

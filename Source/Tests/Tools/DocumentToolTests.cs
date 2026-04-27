@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Tools;
+using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tests.Tools;
@@ -14,6 +16,8 @@ public class DocumentToolTests
 {
     private IApplicationServiceProvider _services = null!;
     private ICommandService _commandService = null!;
+    private IResourceRegistry _resourceRegistry = null!;
+    private string _tempFolder = null!;
 
     [SetUp]
     public void SetUp()
@@ -22,6 +26,31 @@ public class DocumentToolTests
         _commandService = Substitute.For<ICommandService>();
 
         _services.GetRequiredService<ICommandService>().Returns(_commandService);
+
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(DocumentToolTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempFolder);
+
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+
+        var resourceService = Substitute.For<IResourceService>();
+        resourceService.Registry.Returns(_resourceRegistry);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.ResourceService.Returns(resourceService);
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_tempFolder))
+        {
+            Directory.Delete(_tempFolder, true);
+        }
     }
 
     /// <summary>
@@ -111,6 +140,169 @@ public class DocumentToolTests
 
         root.GetProperty("activeDocument").GetString().Should().BeEmpty();
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(0);
+    }
+
+    [Test]
+    public async Task ApplyEdits_DispatchesCommandAndReturnsAffectedLineRanges()
+    {
+        var resource = new ResourceKey("notes/edit.md");
+        var path = Path.Combine(_tempFolder, "edit.md");
+        await File.WriteAllLinesAsync(path, new[] { "First", "Second", "Third" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IApplyEditsCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IApplyEditsCommand>(
+                Arg.Any<Action<IApplyEditsCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IApplyEditsCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IApplyEditsCommand>();
+                    capturedCommand.Edits = new List<DocumentEdit>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Replaced\"}]";
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.ApplyEdits("notes/edit.md", editsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Edits.Should().HaveCount(1);
+        root.GetProperty("affectedLines").GetArrayLength().Should().Be(1);
+    }
+
+    [Test]
+    public async Task Write_DispatchesCommand_AndReturnsLineCount()
+    {
+        var resource = new ResourceKey("notes/new.md");
+        IWriteDocumentCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IWriteDocumentCommand>(
+                Arg.Any<Action<IWriteDocumentCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IWriteDocumentCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IWriteDocumentCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.Write("notes/new.md", "line one\nline two\n"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.Content.Should().Be("line one\nline two\n");
+        root.GetProperty("lineCount").GetInt32().Should().Be(3);
+    }
+
+    [Test]
+    public async Task FindReplace_DispatchesCommand_AndReturnsReplacementCount()
+    {
+        var resource = new ResourceKey("notes/find.md");
+        IFindReplaceDocumentCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IFindReplaceDocumentCommand, int>(
+                Arg.Any<Action<IFindReplaceDocumentCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IFindReplaceDocumentCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IFindReplaceDocumentCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<int>.Ok(7));
+            });
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.FindReplace("notes/find.md", "old", "new"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.SearchText.Should().Be("old");
+        capturedCommand.ReplaceText.Should().Be("new");
+        root.GetProperty("replacementCount").GetInt32().Should().Be(7);
+    }
+
+    [Test]
+    public async Task DeleteLines_DispatchesCommand_AndReturnsDeletedRange()
+    {
+        var resource = new ResourceKey("notes/lines.md");
+        var path = Path.Combine(_tempFolder, "lines.md");
+        await File.WriteAllLinesAsync(path, new[] { "Line one", "Line four" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IDeleteLinesCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IDeleteLinesCommand>(
+                Arg.Any<Action<IDeleteLinesCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IDeleteLinesCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IDeleteLinesCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.DeleteLines("notes/lines.md", 2, 3));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Resource.Should().Be(resource);
+        capturedCommand.StartLine.Should().Be(2);
+        capturedCommand.EndLine.Should().Be(3);
+        root.GetProperty("deletedFrom").GetInt32().Should().Be(2);
+        root.GetProperty("deletedTo").GetInt32().Should().Be(3);
+    }
+
+    [Test]
+    public async Task WriteBinary_DispatchesCommand_AndReturnsOk()
+    {
+        var resource = new ResourceKey("notes/data.bin");
+        IWriteBinaryDocumentCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IWriteBinaryDocumentCommand>(
+                Arg.Any<Action<IWriteBinaryDocumentCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IWriteBinaryDocumentCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IWriteBinaryDocumentCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new DocumentTools(_services);
+        var result = await tools.WriteBinary("notes/data.bin", Convert.ToBase64String(new byte[] { 1, 2, 3 }));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.Base64Content.Should().Be(Convert.ToBase64String(new byte[] { 1, 2, 3 }));
+        result.IsError.Should().NotBe(true);
     }
 
     private static JsonElement ParseResult(CallToolResult result)

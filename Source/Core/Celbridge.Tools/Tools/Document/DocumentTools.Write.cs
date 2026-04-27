@@ -14,15 +14,15 @@ public partial class DocumentTools
 {
     /// <summary>
     /// Writes text content to a document. Creates the file if it does not exist.
-    /// For existing files, replaces the entire content.
+    /// For existing files, replaces the entire content. Writes directly to disk.
+    /// Any open document reloads its buffer from disk after the write.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to write. The file is created automatically if it does not exist.</param>
     /// <param name="content">The new text content for the document.</param>
-    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, writes directly to disk.</param>
     /// <returns>JSON object with field: lineCount (int).</returns>
     [McpServerTool(Name = "document_write")]
     [ToolAlias("document.write")]
-    public async partial Task<CallToolResult> Write(string fileResource, string content, bool openDocument = true)
+    public async partial Task<CallToolResult> Write(string fileResource, string content)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
@@ -33,7 +33,6 @@ public partial class DocumentTools
         {
             command.FileResource = fileResourceKey;
             command.Content = content;
-            command.OpenDocument = openDocument;
         });
 
         if (writeResult.IsError == true)

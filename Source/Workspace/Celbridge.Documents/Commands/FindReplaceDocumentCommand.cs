@@ -15,7 +15,6 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
     public string ReplaceText { get; set; } = string.Empty;
     public bool MatchCase { get; set; }
     public bool UseRegex { get; set; }
-    public bool OpenDocument { get; set; } = true;
     public int FromLine { get; set; }
     public int ToLine { get; set; }
     public int ResultValue { get; private set; }
@@ -35,8 +34,6 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
             return Result.Fail("Search text cannot be empty");
         }
 
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-        var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
@@ -52,86 +49,7 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        // Check if document is already open
-        var documentView = documentsPanel.GetDocumentView(FileResource);
-
-        if (documentView is not null || OpenDocument)
-        {
-            // Route through the editor for undo support
-            return await FindReplaceThroughEditor(documentsService, documentsPanel, documentView, resourcePath);
-        }
-        else
-        {
-            // Apply replacements directly to the file on disk
-            return await FindReplaceOnDisk(resourcePath);
-        }
-    }
-
-    private async Task<Result> FindReplaceThroughEditor(
-        IDocumentsService documentsService,
-        IDocumentsPanel documentsPanel,
-        IDocumentView? documentView,
-        string resourcePath)
-    {
-        if (documentView is null)
-        {
-            var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(Activate: false));
-            if (openResult.IsFailure)
-            {
-                return Result.Fail($"Failed to open document: '{FileResource}'")
-                    .WithErrors(openResult);
-            }
-
-            documentView = documentsPanel.GetDocumentView(FileResource);
-            if (documentView is null)
-            {
-                return Result.Fail($"Document view not found after opening: '{FileResource}'");
-            }
-        }
-
-        // Ensure any unsaved editor changes are flushed to disk before reading
-        if (documentView.HasUnsavedChanges)
-        {
-            var saveResult = await documentView.SaveDocument();
-            if (saveResult.IsFailure)
-            {
-                return Result.Fail($"Failed to save document before find/replace: '{FileResource}'")
-                    .WithErrors(saveResult);
-            }
-        }
-
-        // Read the file to find match positions
-        var content = await File.ReadAllTextAsync(resourcePath);
-        var lines = content.Split('\n');
-        var edits = BuildTextEditsFromMatches(lines);
-
-        if (edits.Count == 0)
-        {
-            ResultValue = 0;
-            return Result.Ok();
-        }
-
-        var applyResult = await documentView.ApplyEditsAsync(edits);
-        if (applyResult.IsFailure)
-        {
-            return Result.Fail($"Failed to apply find/replace edits to document: '{FileResource}'")
-                .WithErrors(applyResult);
-        }
-
-        // Flush the edits to disk so MCP callers' follow-up file_read sees the post-edit
-        // state. Do NOT gate on HasUnsavedChanges: ApplyEditsAsync is a fire-and-forget
-        // notification, and the document/changed round-trip that flips the flag often
-        // hasn't arrived by the time this line runs. Same pattern as ApplyEditsCommand's
-        // ForceSave branch.
-        var saveAfterEditsResult = await documentView.SaveDocument();
-        if (saveAfterEditsResult.IsFailure)
-        {
-            return Result.Fail($"Failed to save document after find/replace: '{FileResource}'")
-                .WithErrors(saveAfterEditsResult);
-        }
-
-        ResultValue = edits.Count;
-        return Result.Ok();
+        return await FindReplaceOnDisk(resourcePath);
     }
 
     private async Task<Result> FindReplaceOnDisk(string resourcePath)
@@ -155,7 +73,7 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
         else
         {
             // Normalise the search and replacement text to match the file's actual line
-            // endings. Agents always construct strings with \n; files on Windows use \r\n.
+            // endings. Agents always construct strings with \n. Files on Windows use \r\n.
             var searchText = NormaliseLineEndings(SearchText, content);
             var replaceText = NormaliseLineEndings(ReplaceText, content);
 
@@ -272,83 +190,6 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
 
         // File uses \r\n — adapt text from \n to \r\n, avoiding double-replacement of any existing \r\n
         return text.Replace("\r\n", "\n").Replace("\n", "\r\n");
-    }
-
-    private List<TextEdit> BuildTextEditsFromMatches(string[] lines)
-    {
-        var edits = new List<TextEdit>();
-        var regexOptions = MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-
-        if (UseRegex)
-        {
-            var regex = new Regex(SearchText, regexOptions);
-            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-            {
-                var lineNumber = lineIndex + 1;
-                if (FromLine > 0 && lineNumber < FromLine) continue;
-                if (ToLine > 0 && lineNumber > ToLine) break;
-
-                var line = lines[lineIndex];
-                // Strip trailing \r if present (lines split on \n)
-                if (line.EndsWith('\r'))
-                {
-                    line = line[..^1];
-                }
-
-                var matches = regex.Matches(line);
-                // Process matches in reverse order to avoid position shifts
-                for (int matchIndex = matches.Count - 1; matchIndex >= 0; matchIndex--)
-                {
-                    var match = matches[matchIndex];
-                    var replacementText = match.Result(ReplaceText);
-                    var startColumn = match.Index + 1;
-                    var endColumn = match.Index + match.Length + 1;
-                    edits.Add(new TextEdit(lineIndex + 1, startColumn, lineIndex + 1, endColumn, replacementText));
-                }
-            }
-        }
-        else
-        {
-            var comparison = MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-            {
-                var lineNumber = lineIndex + 1;
-                if (FromLine > 0 && lineNumber < FromLine) continue;
-                if (ToLine > 0 && lineNumber > ToLine) break;
-
-                var line = lines[lineIndex];
-                if (line.EndsWith('\r'))
-                {
-                    line = line[..^1];
-                }
-
-                var searchOffset = 0;
-                var lineMatches = new List<(int Start, int Length)>();
-
-                while (searchOffset < line.Length)
-                {
-                    var matchPosition = line.IndexOf(SearchText, searchOffset, comparison);
-                    if (matchPosition < 0)
-                    {
-                        break;
-                    }
-
-                    lineMatches.Add((matchPosition, SearchText.Length));
-                    searchOffset = matchPosition + SearchText.Length;
-                }
-
-                // Add edits in reverse order for this line
-                for (int i = lineMatches.Count - 1; i >= 0; i--)
-                {
-                    var (start, length) = lineMatches[i];
-                    var startColumn = start + 1;
-                    var endColumn = start + length + 1;
-                    edits.Add(new TextEdit(lineIndex + 1, startColumn, lineIndex + 1, endColumn, ReplaceText));
-                }
-            }
-        }
-
-        return edits;
     }
 
     //

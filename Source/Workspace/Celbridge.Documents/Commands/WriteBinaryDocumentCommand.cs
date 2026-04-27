@@ -11,7 +11,6 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
 
     public ResourceKey FileResource { get; set; }
     public string Base64Content { get; set; } = string.Empty;
-    public bool OpenDocument { get; set; } = true;
 
     public WriteBinaryDocumentCommand(
         ILogger<WriteBinaryDocumentCommand> logger,
@@ -33,8 +32,6 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
             return Result.Fail("Invalid base64 content");
         }
 
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-        var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
@@ -45,47 +42,21 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
         }
         var resourcePath = resolveResult.Value;
 
-        // Check if document is already open
-        var documentView = documentsPanel.GetDocumentView(FileResource);
-
-        if (documentView is not null || OpenDocument)
+        var isNewFile = !File.Exists(resourcePath);
+        if (isNewFile)
         {
-            // Write the bytes to disk first, then open/reload the document so the
-            // specialized editor picks up the new content
-            await File.WriteAllBytesAsync(resourcePath, bytes);
-
-            if (documentView is not null)
-            {
-                // Document is already open, force reload to pick up new content
-                var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(ForceReload: true, Activate: false));
-                if (openResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to reload binary document: '{FileResource}'")
-                        .WithErrors(openResult);
-                }
-            }
-            else
-            {
-                // Open the document so the editor can manage it
-                var openResult = await documentsService.OpenDocument(FileResource, new OpenDocumentOptions(Activate: false));
-                if (openResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to open binary document: '{FileResource}'")
-                        .WithErrors(openResult);
-                }
-            }
-        }
-        else
-        {
-            // Write directly to disk without opening.
-            // Ensure the parent folder exists so new files can be created.
             var parentFolder = Path.GetDirectoryName(resourcePath);
-            if (!string.IsNullOrEmpty(parentFolder) && !Directory.Exists(parentFolder))
+            if (!string.IsNullOrEmpty(parentFolder))
             {
                 Directory.CreateDirectory(parentFolder);
             }
+        }
 
-            await File.WriteAllBytesAsync(resourcePath, bytes);
+        await File.WriteAllBytesAsync(resourcePath, bytes);
+
+        if (isNewFile)
+        {
+            resourceRegistry.UpdateResourceRegistry();
         }
 
         return Result.Ok();

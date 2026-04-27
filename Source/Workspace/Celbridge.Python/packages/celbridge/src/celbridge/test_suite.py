@@ -299,7 +299,6 @@ class TestDocument(unittest.TestCase):
         document.write(
             "TestDocument/hello.txt",
             "Hello, World!\nLine 2\nLine 3\nLine 4\nLine 5\n",
-            open_document=False,
         )
 
     def tearDown(self):
@@ -335,18 +334,31 @@ class TestDocument(unittest.TestCase):
                 "newText": "Celbridge",
             }
         ]
-        document.apply_edits(
-            "TestDocument/hello.txt", json.dumps(edits), open_document=False
-        )
+        document.apply_edits("TestDocument/hello.txt", json.dumps(edits))
         result = file.read("TestDocument/hello.txt")
         self.assertIn("Celbridge", result["content"])
 
-    def test_apply_edits_open_document_persists_and_reports_post_edit_state(self):
-        """Regression: when open_document=True the edit routes through the
-        editor. The response must describe the document AFTER the edit and
-        the file on disk must reflect it immediately (without waiting for
-        the save timer). Previously the response showed pre-edit line count
-        and the disk file was stale, forcing agents to retry or re-read."""
+    def test_apply_edits_on_closed_document_writes_to_disk(self):
+        """Edits to a closed document write straight to disk and the disk
+        immediately reflects the edit."""
+        edits = [
+            {
+                "line": 1,
+                "column": 8,
+                "endLine": 1,
+                "endColumn": 13,
+                "newText": "Celbridge",
+            }
+        ]
+        document.apply_edits("TestDocument/hello.txt", json.dumps(edits))
+        disk = file.read("TestDocument/hello.txt")
+        self.assertIn("Celbridge", disk["content"])
+
+    def test_apply_edits_open_document_persists_via_disk(self):
+        """When the document is open, edits land on disk and the open buffer
+        reloads from disk. The response describes the post-edit document and
+        the file on disk reflects it immediately."""
+        document.open("TestDocument/hello.txt")
         edits = [
             {
                 "line": 1,
@@ -357,19 +369,16 @@ class TestDocument(unittest.TestCase):
             }
         ]
         result = document.apply_edits(
-            "TestDocument/hello.txt", json.dumps(edits), open_document=True
+            "TestDocument/hello.txt", json.dumps(edits)
         )
 
-        # Disk reflects the edit immediately — ForceSave flushed it.
         disk = file.read("TestDocument/hello.txt")
         self.assertIn("Regression line 1", disk["content"])
         self.assertIn("Regression line 2", disk["content"])
 
-        # Response totalLineCount matches the actual post-edit line count.
         disk_line_count = len(disk["content"].splitlines())
         self.assertEqual(result["totalLineCount"], disk_line_count)
 
-        # contextLines describe the post-edit content around the affected region.
         affected = result["affectedLines"][0]
         context_text = "\n".join(affected["contextLines"])
         self.assertIn("Regression line 1", context_text)
@@ -379,15 +388,28 @@ class TestDocument(unittest.TestCase):
             "TestDocument/hello.txt",
             search_text="Line 2",
             replace_text="Second Line",
-            open_document=False,
         )
         self.assertGreaterEqual(result["replacementCount"], 1)
         result = file.read("TestDocument/hello.txt")
         self.assertIn("Second Line", result["content"])
 
+    def test_find_replace_open_document_followup_read_sees_replacement(self):
+        """When the document is open, find_replace writes to disk and a
+        follow-up file_read must see the replacement, not the pre-replace
+        editor buffer."""
+        document.open("TestDocument/hello.txt")
+        result = document.find_replace(
+            "TestDocument/hello.txt",
+            search_text="Line 2",
+            replace_text="Second Line",
+        )
+        self.assertGreaterEqual(result["replacementCount"], 1)
+        disk = file.read("TestDocument/hello.txt")
+        self.assertIn("Second Line", disk["content"])
+
     def test_delete_lines(self):
         result = document.delete_lines(
-            "TestDocument/hello.txt", start_line=2, end_line=3, open_document=False
+            "TestDocument/hello.txt", start_line=2, end_line=3
         )
         self.assertIn("deletedFrom", result)
         self.assertIn("totalLineCount", result)
@@ -397,10 +419,18 @@ class TestDocument(unittest.TestCase):
 
     def test_write_binary(self):
         content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
-        document.write_binary("TestDocument/test.bin", content, open_document=False)
+        document.write_binary("TestDocument/test.bin", content)
         result = file.read_binary("TestDocument/test.bin")
         decoded = base64.b64decode(result["base64"])
         self.assertIn(b"BINARY_TEST_DATA_12345", decoded)
+
+    def test_write_replaces_open_document_content(self):
+        """When the document is open, write replaces the disk content and
+        the open buffer reloads from disk."""
+        document.open("TestDocument/hello.txt")
+        document.write("TestDocument/hello.txt", "completely new content")
+        disk = file.read("TestDocument/hello.txt")
+        self.assertEqual(disk["content"].strip(), "completely new content")
 
     def test_close(self):
         document.open("TestDocument/hello.txt")
@@ -433,11 +463,11 @@ class TestDocument(unittest.TestCase):
 
     def test_apply_edits_empty_array(self):
         # Empty edits should succeed without error
-        document.apply_edits("TestDocument/hello.txt", "[]", open_document=False)
+        document.apply_edits("TestDocument/hello.txt", "[]")
 
     def test_apply_edits_auto_serialized_list(self):
         edits = [{"line": 1, "endLine": 1, "newText": "Replaced first line"}]
-        document.apply_edits("TestDocument/hello.txt", edits, open_document=False)
+        document.apply_edits("TestDocument/hello.txt", edits)
         result = file.read("TestDocument/hello.txt")
         self.assertIn("Replaced first line", result["content"])
 
@@ -462,7 +492,6 @@ class TestDocument(unittest.TestCase):
             "TestDocument/hello.txt",
             search_text="NONEXISTENT_STRING_XYZ",
             replace_text="replacement",
-            open_document=False,
         )
         self.assertEqual(result["replacementCount"], 0)
 
@@ -472,7 +501,6 @@ class TestDocument(unittest.TestCase):
             search_text=r"Line \d+",
             replace_text="Replaced",
             use_regex=True,
-            open_document=False,
         )
         self.assertGreaterEqual(result["replacementCount"], 1)
 
@@ -482,12 +510,11 @@ class TestDocument(unittest.TestCase):
             search_text="hello",
             replace_text="Goodbye",
             match_case=True,
-            open_document=False,
         )
         self.assertEqual(result["replacementCount"], 0)
 
     def test_close_multiple_documents(self):
-        document.write("TestDocument/new_file.txt", "temp", open_document=False)
+        document.write("TestDocument/new_file.txt", "temp")
         document.open("TestDocument/hello.txt")
         document.open("TestDocument/new_file.txt")
         document.close(
@@ -500,30 +527,24 @@ class TestDocument(unittest.TestCase):
         self.assertNotIn("TestDocument/new_file.txt", resources)
 
     def test_write_creates_new_file(self):
-        document.write(
-            "TestDocument/new_file.txt", "brand new content", open_document=False
-        )
+        document.write("TestDocument/new_file.txt", "brand new content")
         result = file.read("TestDocument/new_file.txt")
         self.assertIn("brand new content", result["content"])
 
     def test_write_overwrites_existing_file(self):
-        document.write(
-            "TestDocument/hello.txt", "overwritten", open_document=False
-        )
+        document.write("TestDocument/hello.txt", "overwritten")
         result = file.read("TestDocument/hello.txt")
         self.assertIn("overwritten", result["content"])
         self.assertNotIn("Hello, World!", result["content"])
 
     def test_write_empty_content(self):
-        document.write("TestDocument/hello.txt", "", open_document=False)
+        document.write("TestDocument/hello.txt", "")
         result = file.read("TestDocument/hello.txt")
         self.assertEqual(result["content"].strip(), "")
 
     def test_write_unicode_content(self):
         unicode_text = "Caf\u00e9 \u4e16\u754c \ud83d\ude80\n"
-        document.write(
-            "TestDocument/hello.txt", unicode_text, open_document=False
-        )
+        document.write("TestDocument/hello.txt", unicode_text)
         result = file.read("TestDocument/hello.txt")
         self.assertIn("Caf\u00e9", result["content"])
 
@@ -540,15 +561,13 @@ class TestFile(unittest.TestCase):
         document.write(
             "TestFile/hello.txt",
             "Hello, World!\nLine 2\nLine 3\n",
-            open_document=False,
         )
         document.write(
             "TestFile/other.txt",
             "Other file content\n",
-            open_document=False,
         )
         content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
-        document.write_binary("TestFile/test.bin", content, open_document=False)
+        document.write_binary("TestFile/test.bin", content)
 
     def tearDown(self):
         _delete_if_exists("TestFile")
@@ -733,9 +752,7 @@ class TestPackage(unittest.TestCase):
         _delete_if_exists("test_archive.zip")
         _delete_if_exists("test_archive_filtered.zip")
         explorer.create_folder("TestPackage")
-        document.write(
-            "TestPackage/file.txt", "archive content\n", open_document=False
-        )
+        document.write("TestPackage/file.txt", "archive content\n")
 
     def tearDown(self):
         _delete_if_exists("TestPackage")

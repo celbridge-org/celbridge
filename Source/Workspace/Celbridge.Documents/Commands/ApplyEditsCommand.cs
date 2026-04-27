@@ -12,24 +12,19 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ICommandService _commandService;
 
     public List<DocumentEdit> Edits { get; set; } = new();
-    public bool OpenDocument { get; set; } = true;
-    public bool ForceSave { get; set; }
 
     public ApplyEditsCommand(
         ILogger<ApplyEditsCommand> logger,
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
-        IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _stringLocalizer = stringLocalizer;
         _dialogService = dialogService;
         _workspaceWrapper = workspaceWrapper;
-        _commandService = commandService;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -39,8 +34,6 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             return Result.Ok();
         }
 
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-        var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var failedResources = new List<ResourceKey>();
@@ -49,99 +42,11 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         {
             var resource = documentEdit.Resource;
 
-            // Check if document is already open
-            var documentView = documentsPanel.GetDocumentView(resource);
-
-            if (documentView is not null)
+            var applyResult = await ApplyEditsToDisk(resourceRegistry, resource, documentEdit.Edits);
+            if (applyResult.IsFailure)
             {
-                // Document is already open, always route through the editor.
-                // Resolve any EndColumn == -1 sentinel to int.MaxValue: Monaco clamps
-                // out-of-range columns to the actual line end, so this reliably means
-                // "replace to end of line" without knowing the exact character count.
-                var resolvedEdits = ResolveEndOfLineColumns(documentEdit.Edits);
-                var applyResult = await documentView.ApplyEditsAsync(resolvedEdits);
-                if (applyResult.IsFailure)
-                {
-                    _logger.LogWarning($"Failed to apply edits to document: {resource}");
-                    failedResources.Add(resource);
-                }
-            }
-            else if (OpenDocument)
-            {
-                // Open the document and apply edits through the editor
-                var openResult = await documentsService.OpenDocument(resource, new OpenDocumentOptions(Activate: false));
-                if (openResult.IsFailure)
-                {
-                    _logger.LogWarning($"Failed to open document for applying edits: {resource}");
-                    failedResources.Add(resource);
-                    continue;
-                }
-
-                documentView = documentsPanel.GetDocumentView(resource);
-                if (documentView is null)
-                {
-                    _logger.LogWarning($"Document view not found after opening: {resource}");
-                    failedResources.Add(resource);
-                    continue;
-                }
-
-                var resolvedEditsForOpen = ResolveEndOfLineColumns(documentEdit.Edits);
-                var applyResult = await documentView.ApplyEditsAsync(resolvedEditsForOpen);
-                if (applyResult.IsFailure)
-                {
-                    _logger.LogWarning($"Failed to apply edits to document: {resource}");
-                    failedResources.Add(resource);
-                }
-            }
-            else
-            {
-                // Apply edits directly to the file on disk
-                var applyResult = await ApplyEditsToDisk(resourceRegistry, resource, documentEdit.Edits);
-                if (applyResult.IsFailure)
-                {
-                    _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
-                    failedResources.Add(resource);
-                }
-            }
-        }
-
-        if (ForceSave)
-        {
-            // Flush the edits to disk before the command returns so MCP callers'
-            // follow-up disk reads see the post-edit state. We do NOT gate on
-            // HasUnsavedChanges here: ApplyEditsAsync is a fire-and-forget
-            // notification, and the document/changed round-trip that flips the
-            // flag often hasn't arrived by the time this loop runs. Calling
-            // SaveDocument unconditionally is safe — StreamJsonRpc orders
-            // the outbound editor/applyEdits before document/requestSave,
-            // so JS always returns post-edit content. The worst case (the
-            // edit was a no-op, e.g. replacing text with identical text) is
-            // an identical disk rewrite.
-            foreach (var documentEdit in Edits)
-            {
-                var resource = documentEdit.Resource;
-                if (failedResources.Contains(resource))
-                {
-                    continue;
-                }
-
-                var view = documentsPanel.GetDocumentView(resource);
-                if (view is null)
-                {
-                    continue;
-                }
-
-                var saveResult = await view.SaveDocument();
-                if (saveResult.IsFailure)
-                {
-                    // Propagate save failures so callers see "Contribution editor failed to
-                    // respond within N seconds" (or similar) instead of silent success. The
-                    // in-memory edit has been applied but the disk write failed, so the
-                    // caller's assumption that a follow-up file_read sees the new content
-                    // would be wrong without this signal.
-                    _logger.LogWarning(saveResult, $"Failed to force-save document after applying edits: {resource}");
-                    failedResources.Add(resource);
-                }
+                _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
+                failedResources.Add(resource);
             }
         }
 
@@ -239,21 +144,6 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         await File.WriteAllLinesAsync(resourcePath, lines);
 
         return Result.Ok();
-    }
-
-    private static List<TextEdit> ResolveEndOfLineColumns(List<TextEdit> edits)
-    {
-        var hasEndOfLineSentinel = edits.Any(e => e.EndColumn == -1);
-        if (!hasEndOfLineSentinel)
-        {
-            return edits;
-        }
-
-        return edits
-            .Select(edit => edit.EndColumn == -1
-                ? edit with { EndColumn = int.MaxValue }
-                : edit)
-            .ToList();
     }
 
     //

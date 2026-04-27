@@ -48,9 +48,8 @@ public record DocumentEdit(
     List<TextEdit> Edits);
 
 /// <summary>
-/// Applies batch text edits to documents via Monaco editor.
-/// Opens documents if needed, applies edits as a single undo unit per document.
-/// This enables undo support for replace operations.
+/// Applies batch text edits to documents by writing directly to disk.
+/// Any open document reloads its buffer from disk after the write completes.
 /// </summary>
 public interface IApplyEditsCommand : IExecutableCommand
 {
@@ -59,20 +58,4 @@ public interface IApplyEditsCommand : IExecutableCommand
     /// Each DocumentEdit contains a resource key and a list of text edits.
     /// </summary>
     List<DocumentEdit> Edits { get; set; }
-
-    /// <summary>
-    /// When true (default), opens the document in the editor and applies edits with undo support.
-    /// When false and the document is not already open, applies edits directly to the file on disk.
-    /// When false but the document is already open, routes through the editor to avoid auto-save race conditions.
-    /// </summary>
-    bool OpenDocument { get; set; }
-
-    /// <summary>
-    /// When true, edits are saved to disk before the command returns. Only affects
-    /// edits routed through an open editor (OpenDocument=true, or the document was
-    /// already open). Without this flag the edit sits in the editor until the
-    /// save timer fires. The direct-to-disk path (OpenDocument=false on a
-    /// closed document) already writes synchronously and is unaffected by ForceSave.
-    /// </summary>
-    bool ForceSave { get; set; }
 }

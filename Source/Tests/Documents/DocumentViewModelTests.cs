@@ -132,20 +132,78 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public void MonitoredResourceChanged_SkipsReload_WhenIsSavingFile()
+    public void OnMonitoredResourceChanged_ResetsSaveTimer_WhenExternalChangeArrives()
     {
-        var savingVm = new TestDocumentViewModel();
-        savingVm.FileResource = new ResourceKey("saving.md");
+        _vm.HasUnsavedChanges = true;
+        _vm.SaveTimer = 0.5;
+
+        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        _messengerService.Send(message);
+
+        _vm.SaveTimer.Should().Be(0);
+    }
+
+    [Test]
+    public void OnMonitoredResourceChanged_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
+    {
+        _vm.HasUnsavedChanges = true;
+        _vm.SaveTimer = 0.5;
+
+        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        _messengerService.Send(message);
+
+        _vm.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Save_RaisesReloadRequested_WhenDiskChangedBeforeSave()
+    {
+        // Pre-write detection: if disk content has drifted since our last
+        // tracked save, an external writer ran before us. The save aborts
+        // (disk wins) and a reload is requested so the buffer realigns.
+        var initialContent = "initial content";
+        await File.WriteAllTextAsync(_tempFilePath, initialContent);
+
+        // Establish baseline tracking by loading the file.
+        var loadResult = await _vm.LoadDocument();
+        loadResult.IsSuccess.Should().BeTrue();
+
+        // External writer changes disk content.
+        var externalContent = "external override";
+        await File.WriteAllTextAsync(_tempFilePath, externalContent);
+
+        var reloadRequested = false;
+        _vm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        var saveResult = await _vm.SaveDocumentContent("our intended content");
+
+        saveResult.IsSuccess.Should().BeTrue();
+        reloadRequested.Should().BeTrue();
+
+        // Disk should still hold the external content — our save was aborted.
+        var diskContent = await File.ReadAllTextAsync(_tempFilePath);
+        diskContent.Should().Be(externalContent);
+    }
+
+    [Test]
+    public async Task Save_RaisesReloadRequested_WhenPostWriteDiskHashDiffersFromIntendedHash()
+    {
+        // Simulate an external write that interleaves with our save: the
+        // ExternalWriteDocumentViewModel rewrites the file with different content
+        // immediately after we call WriteAllBytesAsync but before
+        // UpdateFileTrackingInfo runs.
+        var externalContent = "external content that overrode our save";
+        var savingVm = new ExternalWriteDocumentViewModel(_tempFilePath, externalContent);
+        savingVm.FileResource = new ResourceKey("interleave.md");
         savingVm.FilePath = _tempFilePath;
-        savingVm.SetIsSavingFile(true);
 
         var reloadRequested = false;
         savingVm.ReloadRequested += (_, _) => reloadRequested = true;
 
-        var message = new MonitoredResourceChangedMessage(savingVm.FileResource);
-        _messengerService.Send(message);
+        var saveResult = await savingVm.SaveDocumentContent("our intended content");
 
-        reloadRequested.Should().BeFalse();
+        saveResult.IsSuccess.Should().BeTrue();
+        reloadRequested.Should().BeTrue();
 
         savingVm.Cleanup();
     }
@@ -178,7 +236,43 @@ public class DocumentViewModelTests
             HasUnsavedChanges = true;
             SaveTimer = SaveDelay;
         }
+    }
 
-        public void SetIsSavingFile(bool value) => IsSavingFile = value;
+    /// <summary>
+    /// Test subclass that simulates an external write interleaving between our
+    /// WriteAllBytesAsync call and the post-write disk hash read. The override
+    /// of UpdateFileTrackingInfo runs immediately before the base reads the disk
+    /// hash, so by writing different content here we make _lastSavedFileHash
+    /// reflect external content while our intendedHash reflects ours.
+    /// </summary>
+    private sealed class ExternalWriteDocumentViewModel : DocumentViewModel
+    {
+        private readonly string _injectedFilePath;
+        private readonly string _externalContent;
+        private bool _hasInjected;
+
+        public ExternalWriteDocumentViewModel(string filePath, string externalContent)
+        {
+            _injectedFilePath = filePath;
+            _externalContent = externalContent;
+            EnableFileChangeMonitoring();
+        }
+
+        public Task<Result> SaveDocumentContent(string text)
+        {
+            HasUnsavedChanges = false;
+            SaveTimer = 0;
+            return SaveTextToFileAsync(text);
+        }
+
+        protected override void UpdateFileTrackingInfo()
+        {
+            if (!_hasInjected)
+            {
+                _hasInjected = true;
+                File.WriteAllText(_injectedFilePath, _externalContent);
+            }
+            base.UpdateFileTrackingInfo();
+        }
     }
 }
