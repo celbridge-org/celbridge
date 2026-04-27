@@ -22,11 +22,4 @@ public interface IDeleteLinesCommand : IExecutableCommand
     /// Last line to delete (1-based, inclusive).
     /// </summary>
     int EndLine { get; set; }
-
-    /// <summary>
-    /// When true (default), opens the document in the editor and applies the deletion with undo support.
-    /// When false and the document is not already open, deletes lines directly from the file on disk.
-    /// When false but the document is already open, routes through the editor to avoid auto-save race conditions.
-    /// </summary>
-    bool OpenDocument { get; set; }
 }

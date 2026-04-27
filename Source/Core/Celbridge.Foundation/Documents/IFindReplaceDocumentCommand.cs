@@ -3,10 +3,8 @@ using Celbridge.Commands;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Find and replace text within a document.
-/// When OpenDocument is true (default) or the document is already open, replacements are applied
-/// through the editor with full undo support. When OpenDocument is false and the document is
-/// not open, replacements are applied directly to the file on disk.
+/// Find and replace text within a document. Replacements are written directly
+/// to disk. Any open document reloads its buffer from disk after the write.
 /// </summary>
 public interface IFindReplaceDocumentCommand : IExecutableCommand<int>
 {
@@ -34,13 +32,6 @@ public interface IFindReplaceDocumentCommand : IExecutableCommand<int>
     /// If true, the search text is treated as a regular expression.
     /// </summary>
     bool UseRegex { get; set; }
-
-    /// <summary>
-    /// When true (default), opens the document in the editor and applies replacements with undo support.
-    /// When false and the document is not already open, applies replacements directly to the file on disk.
-    /// When false but the document is already open, routes through the editor to avoid auto-save race conditions.
-    /// </summary>
-    bool OpenDocument { get; set; }
 
     /// <summary>
     /// First line number (1-based, inclusive) to include in the replacement scope.

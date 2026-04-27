@@ -21,6 +21,7 @@ public class ResourceService : IResourceService, IDisposable
     public IResourceMonitor Monitor { get; }
     public IResourceTransferService TransferService { get; }
     public IResourceOperationService OperationService { get; }
+    public IResourceFileWriter FileWriter { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
@@ -31,7 +32,8 @@ public class ResourceService : IResourceService, IDisposable
         IResourceRegistry resourceRegistry,
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
-        IResourceOperationService resourceOperationService)
+        IResourceOperationService resourceOperationService,
+        IResourceFileWriter resourceFileWriter)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -45,6 +47,7 @@ public class ResourceService : IResourceService, IDisposable
         Monitor = resourceMonitor;
         TransferService = resourceTransferService;
         OperationService = resourceOperationService;
+        FileWriter = resourceFileWriter;
 
         // Set the project folder path on the registry
         Registry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
@@ -58,6 +61,21 @@ public class ResourceService : IResourceService, IDisposable
             try
             {
                 Directory.Delete(trashFolderPath, true);
+            }
+            catch
+            {
+                // Best effort cleanup - ignore errors
+            }
+        }
+
+        // Clean up the temp folder from previous sessions.
+        // The temp folder stages in-flight atomic writes; orphans here are from a prior crash.
+        var tempFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TempFolder);
+        if (Directory.Exists(tempFolderPath))
+        {
+            try
+            {
+                Directory.Delete(tempFolderPath, true);
             }
             catch
             {

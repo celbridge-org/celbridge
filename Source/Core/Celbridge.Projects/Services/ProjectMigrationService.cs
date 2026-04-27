@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Logging;
+using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -261,8 +262,7 @@ public class ProjectMigrationService : IProjectMigrationService
             try
             {
                 // Normalize line endings to platform standard before writing
-                var normalizedContent = content.Replace("\r\n", "\n").Replace("\r", "\n");
-                normalizedContent = normalizedContent.Replace("\n", Environment.NewLine);
+                var normalizedContent = LineEndingHelper.ConvertLineEndings(content, LineEndingHelper.PlatformDefault);
 
                 await File.WriteAllTextAsync(projectFilePath, normalizedContent);
                 return Result.Ok();
@@ -503,7 +503,7 @@ public class ProjectMigrationService : IProjectMigrationService
             if (updatedText != normalizedText)
             {
                 // Normalize line endings to platform standard before writing
-                updatedText = updatedText.Replace("\n", Environment.NewLine);
+                updatedText = LineEndingHelper.ConvertLineEndings(updatedText, LineEndingHelper.PlatformDefault);
 
                 await File.WriteAllTextAsync(projectFilePath, updatedText);
                 _logger.LogInformation("Updated project file with application version {ApplicationVersion}", applicationVersion);

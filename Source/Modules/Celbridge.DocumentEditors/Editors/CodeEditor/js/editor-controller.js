@@ -1,7 +1,7 @@
 // Owns the Monaco editor instance and its direct behaviour: lifecycle,
 // theming, line-endings, content/scroll change listeners, navigation buffering,
-// host-driven editor operations (insertText, applyEdits, navigate, scroll),
-// and the external-reload state capture/restore flow.
+// host-driven editor operations (insertText, navigate, scroll), and the
+// external-reload state capture/restore flow.
 //
 // The module expects the global `monaco` AMD namespace to be loaded before
 // create() is called.
@@ -97,29 +97,6 @@ export class EditorController {
         };
 
         this.#editor.executeEdits('insert', [{ range: range, text: text }]);
-        this.#editor.focus();
-    }
-
-    applyEdits(edits) {
-        if (!this.#editor ||
-            !edits ||
-            !Array.isArray(edits)) {
-            return;
-        }
-
-        // Convert edits to Monaco format and apply as a single undo unit
-        const monacoEdits = edits.map(edit => ({
-            range: {
-                startLineNumber: edit.line,
-                startColumn: edit.column,
-                endLineNumber: edit.endLine,
-                endColumn: edit.endColumn
-            },
-            text: edit.newText
-        }));
-
-        // executeEdits groups all edits as a single undo operation
-        this.#editor.executeEdits('applyEdits', monacoEdits);
         this.#editor.focus();
     }
 
@@ -368,6 +345,9 @@ export class EditorController {
 
         const result = await celbridge.document.load();
         if (result.content !== undefined) {
+            // setValue replaces the buffer and clears Monaco's undo history,
+            // so Ctrl+Z after an external reload cannot replay a prior edit
+            // against the new baseline.
             this.#editor.setValue(result.content);
         }
 

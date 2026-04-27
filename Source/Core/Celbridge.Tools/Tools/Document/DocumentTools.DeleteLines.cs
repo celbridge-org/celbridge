@@ -17,15 +17,16 @@ public partial class DocumentTools
     /// Deletes complete lines from a document, removing them entirely including their
     /// line terminators. Unlike document_apply_edits with empty newText (which always
     /// leaves a residual empty line), this tool cleanly removes the specified lines.
+    /// Writes directly to disk. Any open document reloads its buffer from disk after
+    /// the write.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to delete lines from.</param>
     /// <param name="startLine">First line to delete (1-based, inclusive).</param>
     /// <param name="endLine">Last line to delete (1-based, inclusive).</param>
-    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, deletes lines directly from the file on disk.</param>
     /// <returns>JSON with fields: deletedFrom (int), deletedTo (int), totalLineCount (int), contextLines (array of strings around the deletion point).</returns>
     [McpServerTool(Name = "document_delete_lines")]
     [ToolAlias("document.delete_lines")]
-    public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine, bool openDocument = true)
+    public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
@@ -47,7 +48,6 @@ public partial class DocumentTools
             command.Resource = fileResourceKey;
             command.StartLine = startLine;
             command.EndLine = endLine;
-            command.OpenDocument = openDocument;
         });
 
         if (deleteResult.IsError == true)

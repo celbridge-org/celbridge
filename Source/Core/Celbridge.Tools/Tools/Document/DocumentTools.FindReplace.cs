@@ -15,14 +15,15 @@ public partial class DocumentTools
     /// <summary>
     /// Finds and replaces text within a document. Supports plain text and regex patterns.
     /// Multi-line search and replace text may use \n line endings regardless of the file's
-    /// actual line endings — the tool normalises them automatically.
+    /// actual line endings — the tool normalises them automatically. Replacements are
+    /// written directly to disk. Any open document reloads its buffer from disk after
+    /// the write.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to perform find and replace on.</param>
     /// <param name="searchText">The text to search for.</param>
     /// <param name="replaceText">The replacement text.</param>
     /// <param name="matchCase">If true, the search is case-sensitive.</param>
     /// <param name="useRegex">If true, the search text is treated as a regular expression.</param>
-    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, applies replacements directly to the file on disk.</param>
     /// <param name="fromLine">First line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no lower bound.</param>
     /// <param name="toLine">Last line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no upper bound.</param>
     /// <returns>JSON object with field: replacementCount (int).</returns>
@@ -34,7 +35,6 @@ public partial class DocumentTools
         string replaceText,
         bool matchCase = false,
         bool useRegex = false,
-        bool openDocument = true,
         int fromLine = 0,
         int toLine = 0)
     {
@@ -50,7 +50,6 @@ public partial class DocumentTools
             command.ReplaceText = replaceText;
             command.MatchCase = matchCase;
             command.UseRegex = useRegex;
-            command.OpenDocument = openDocument;
             command.FromLine = fromLine;
             command.ToLine = toLine;
         });

@@ -23,15 +23,15 @@ public partial class DocumentTools
     /// <summary>
     /// Applies targeted text edits to a document at specific line and column positions.
     /// Each edit specifies a range and replacement text, using 1-based line and column numbers.
-    /// Edits are applied as a single undo unit when routed through the editor.
+    /// Edits are written directly to disk. Any open document reloads its buffer from disk
+    /// after the write.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to edit.</param>
     /// <param name="editsJson">JSON array of edit objects, each with fields: line (int), column (int, optional, default 1), endLine (int), endColumn (int, optional, default -1), newText (string). Line and column numbers are 1-based. column defaults to 1 and endColumn defaults to -1 (end of line), so whole-line replacements only require line, endLine, and newText.</param>
-    /// <param name="openDocument">When true (default), opens the document in the editor with undo support. When false and document is not already open, applies edits directly to the file on disk.</param>
     /// <returns>JSON object describing the document state after the edits are applied, with fields: affectedLines (array of objects with from (int), to (int), and contextLines (array of strings showing the post-edit content of the affected lines with one line of surrounding context on each side)), totalLineCount (int, post-edit line count). Use these fields to verify the edit landed without issuing a follow-up file_read.</returns>
     [McpServerTool(Name = "document_apply_edits")]
     [ToolAlias("document.apply_edits")]
-    public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson, bool openDocument = true)
+    public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
@@ -55,17 +55,14 @@ public partial class DocumentTools
 
         var documentEdit = new DocumentEdit(fileResourceKey, textEdits);
 
-        // ForceSave so the follow-up disk read below sees the post-edit state.
-        var applyResult = await ExecuteCommandAsync<IApplyEditsCommand>(command =>
+        var (callResult, appliedEdits) = await ExecuteCommandAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(command =>
         {
             command.Edits = new List<DocumentEdit> { documentEdit };
-            command.OpenDocument = openDocument;
-            command.ForceSave = true;
         });
 
-        if (applyResult.IsError == true)
+        if (callResult.IsError == true)
         {
-            return applyResult;
+            return callResult;
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -80,22 +77,30 @@ public partial class DocumentTools
             var fileLines = await File.ReadAllLinesAsync(resolveResult.Value);
             totalLineCount = fileLines.Length;
 
-            foreach (var edit in textEdits.OrderBy(e => e.Line))
+            // Use post-edit ranges from the command. The context window covers
+            // one line before through one line after the post-edit range, so
+            // multi-line insertions show all of the new content plus surrounding
+            // context.
+            var orderedRanges = (appliedEdits ?? Array.Empty<AppliedEdit>())
+                .OrderBy(r => r.FromLine)
+                .ToList();
+
+            foreach (var range in orderedRanges)
             {
-                var contextStartIndex = Math.Max(0, edit.Line - 2);
-                var contextEndIndex = Math.Min(fileLines.Length - 1, edit.EndLine);
+                var contextStartIndex = Math.Max(0, range.FromLine - 2);
+                var contextEndIndex = Math.Min(fileLines.Length - 1, range.ToLine);
                 var contextLines = fileLines
                     .Skip(contextStartIndex)
                     .Take(contextEndIndex - contextStartIndex + 1)
                     .ToList();
-                affectedLines.Add(new AffectedLineRange(edit.Line, edit.EndLine, contextLines));
+                affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine, contextLines));
             }
         }
-        else
+        else if (appliedEdits is not null)
         {
-            foreach (var edit in textEdits.OrderBy(e => e.Line))
+            foreach (var range in appliedEdits.OrderBy(r => r.FromLine))
             {
-                affectedLines.Add(new AffectedLineRange(edit.Line, edit.EndLine));
+                affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine));
             }
         }
 

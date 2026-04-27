@@ -112,19 +112,19 @@ describe('buildCelProxy', () => {
     it('maps positional arguments to parameter names in declaration order', () => {
         const calls = [];
         const proxy = buildCelProxy(
-            [descriptor('document.apply_edits', [
+            [descriptor('document.find_replace', [
                 { name: 'fileResource', type: 'string' },
-                { name: 'editsJson', type: 'string' },
-                { name: 'openDocument', type: 'boolean' }
+                { name: 'searchText', type: 'string' },
+                { name: 'matchCase', type: 'boolean' }
             ])],
             (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
         );
 
-        return proxy.document.applyEdits('a.md', '[]', false).then(() => {
+        return proxy.document.findReplace('a.md', 'foo', false).then(() => {
             expect(calls[0].args).toEqual({
                 fileResource: 'a.md',
-                editsJson: '[]',
-                openDocument: false
+                searchText: 'foo',
+                matchCase: false
             });
         });
     });

@@ -587,37 +587,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         }
     }
 
-    public override async Task<Result> ApplyEditsAsync(IEnumerable<TextEdit> edits)
-    {
-        if (Host is null)
-        {
-            return Result.Fail("Host not initialized");
-        }
-
-        try
-        {
-            var wireEdits = edits.Select(edit => new
-            {
-                line = edit.Line,
-                column = edit.Column,
-                endLine = edit.EndLine,
-                endColumn = edit.EndColumn,
-                newText = edit.NewText
-            });
-
-            await Host.Rpc.NotifyWithParameterObjectAsync(
-                "editor/applyEdits",
-                new { edits = wireEdits });
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail("Failed to apply edits to document")
-                .WithException(ex);
-        }
-    }
-
     public override async Task PrepareToClose()
     {
         _isContentLoaded = false;

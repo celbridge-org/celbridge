@@ -1,6 +1,9 @@
 using System.Security.Cryptography;
+using System.Text;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Resources;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.Documents.ViewModels;
@@ -24,11 +27,6 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     [ObservableProperty]
     private double _saveTimer;
-
-    // Flag to suppress reload requests triggered by our own save operations.
-    // This prevents the file watcher race condition where the watcher fires
-    // before we can update our tracking info.
-    protected bool IsSavingFile { get; set; }
 
     // Event to notify the view that the document should be reloaded
     public event EventHandler? ReloadRequested;
@@ -108,15 +106,15 @@ public abstract partial class DocumentViewModel : ObservableObject
             return;
         }
 
-        // Ignore file watcher events triggered by our own save operation
-        if (IsSavingFile)
-        {
-            return;
-        }
-
-        // Check if this change is genuinely different from our last save
+        // Self-events from our own writes hash-match _lastSavedFileHash and are
+        // ignored. Genuine external changes have a different hash and proceed.
         if (IsFileChangedExternally())
         {
+            // External edits supersede any pending or in-flight buffer save.
+            // Discard the queued save so the buffer reload wins.
+            SaveTimer = 0;
+            HasUnsavedChanges = false;
+
             _logger?.LogDebug($"External change detected for '{FileResource}', requesting reload");
             RaiseReloadRequested();
         }
@@ -150,60 +148,120 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Saves text content to the file at FilePath.
-    /// Handles the IsSavingFile flag and updates file tracking info.
+    /// Saves text content as UTF-8 (no BOM) to the file at FilePath.
     /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
     /// </summary>
     protected async Task<Result> SaveTextToFileAsync(string text)
     {
+        var intendedBytes = Encoding.UTF8.GetBytes(text);
+        return await SaveBytesToFileAsync(intendedBytes);
+    }
+
+    /// <summary>
+    /// Decodes base64 content and saves the raw bytes to the file at FilePath.
+    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Returns failure if the content is not valid base64.
+    /// </summary>
+    protected async Task<Result> SaveBinaryToFileAsync(string base64Content)
+    {
+        byte[] bytes;
         try
         {
-            IsSavingFile = true;
-            await File.WriteAllTextAsync(FilePath, text);
-            UpdateFileTrackingInfo();
+            bytes = Convert.FromBase64String(base64Content);
         }
-        catch (Exception ex)
+        catch (FormatException)
         {
-            return Result.Fail($"Failed to save file: '{FilePath}'")
-                .WithException(ex);
+            return Result.Fail($"Invalid base64 content when saving binary file: '{FilePath}'");
         }
-        finally
+
+        return await SaveBytesToFileAsync(bytes);
+    }
+
+    /// <summary>
+    /// Routes the save through IResourceFileWriter (atomic write + bounded retry
+    /// on transient IO) and raises ReloadRequested when external interleaving is
+    /// detected either before the write (pre-write hash check) or between the
+    /// write completing and our tracking-hash read (post-write check). Updates
+    /// file tracking info on a successful write.
+    /// </summary>
+    private async Task<Result> SaveBytesToFileAsync(byte[] bytes)
+    {
+        var intendedHash = ComputeBytesHash(bytes);
+
+        if (TryDetectPreWriteExternalChange())
         {
-            IsSavingFile = false;
+            return Result.Ok();
+        }
+
+        var writer = GetFileWriter();
+        var writeResult = await writer.WriteAllBytesAsync(FileResource, bytes);
+        if (writeResult.IsFailure)
+        {
+            return writeResult;
+        }
+
+        UpdateFileTrackingInfo();
+
+        if (_lastSavedFileHash is not null
+            && _lastSavedFileHash != intendedHash)
+        {
+            _logger?.LogDebug($"External write interleaved with save for '{FileResource}', requesting reload");
+            RaiseReloadRequested();
         }
 
         return Result.Ok();
     }
 
     /// <summary>
-    /// Decodes base64 content and saves as binary to the file at FilePath.
-    /// Handles the IsSavingFile flag and updates file tracking info.
-    /// Callers are responsible for managing HasUnsavedChanges and SaveTimer.
+    /// Reads the current disk hash and compares it to the last-tracked save hash.
+    /// If the disk has drifted, discards any buffered changes, aligns tracking
+    /// with the current disk state (so the upcoming watcher event filters as a
+    /// self-event), raises ReloadRequested, and returns true. Returns false if
+    /// no drift is detected, if there is no prior tracking info to compare
+    /// against, or if the disk read fails (the caller falls through to the
+    /// write attempt, whose retry loop handles transient IO errors).
     /// </summary>
-    protected async Task<Result> SaveBinaryToFileAsync(string base64Content)
+    private bool TryDetectPreWriteExternalChange()
     {
-        try
+        if (_lastSavedFileHash is null
+            || !File.Exists(FilePath))
         {
-            IsSavingFile = true;
-            var bytes = Convert.FromBase64String(base64Content);
-            await File.WriteAllBytesAsync(FilePath, bytes);
-            UpdateFileTrackingInfo();
-        }
-        catch (FormatException)
-        {
-            return Result.Fail($"Invalid base64 content when saving binary file: '{FilePath}'");
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to save binary file: '{FilePath}'")
-                .WithException(ex);
-        }
-        finally
-        {
-            IsSavingFile = false;
+            return false;
         }
 
-        return Result.Ok();
+        try
+        {
+            var preWriteHash = ComputeFileHash(FilePath);
+            if (preWriteHash == _lastSavedFileHash)
+            {
+                return false;
+            }
+
+            SaveTimer = 0;
+            HasUnsavedChanges = false;
+            UpdateFileTrackingInfo();
+
+            _logger?.LogDebug($"External write detected before save for '{FileResource}', aborting save and requesting reload");
+            RaiseReloadRequested();
+
+            return true;
+        }
+        catch (IOException ex)
+        {
+            _logger?.LogDebug(ex, $"Pre-write hash check failed for '{FilePath}', proceeding to write attempt");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Acquires the resource file writer. Overridable so tests can substitute
+    /// a writer wired to a temp folder without going through the workspace
+    /// service hierarchy.
+    /// </summary>
+    protected virtual IResourceFileWriter GetFileWriter()
+    {
+        var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+        return workspaceWrapper.WorkspaceService.ResourceService.FileWriter;
     }
 
     /// <summary>
@@ -253,7 +311,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         }
     }
 
-    protected void UpdateFileTrackingInfo()
+    protected virtual void UpdateFileTrackingInfo()
     {
         try
         {
@@ -277,6 +335,13 @@ public abstract partial class DocumentViewModel : ObservableObject
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(stream);
+        return Convert.ToBase64String(hashBytes);
+    }
+
+    private static string ComputeBytesHash(byte[] bytes)
+    {
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hashBytes);
     }
 }

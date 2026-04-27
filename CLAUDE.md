@@ -96,10 +96,11 @@ python run_tests.py
 
 Documents auto-save via `DocumentViewModel.OnDataChanged()` → per-view save timer (~1s). There is no user-facing Save command and no "unsaved changes" state; users recover via undo/redo.
 
-- Do not add save commands, shortcuts, or UI affordances. If on-demand flushing is needed, route through `IDocumentView.SaveDocument()` (precedent: `ApplyEditsCommand.ForceSave`).
+- Do not add save commands, shortcuts, or UI affordances. If on-demand flushing is needed, route through `IDocumentView.SaveDocument()` (used by file-close and panel-close paths).
 - Do not add "discard unsaved changes?" prompts on close — closing always saves.
-- Route programmatic edits through `IDocumentView.ApplyEditsAsync` so they join the editor's undo stack. `ApplyEditsCommand` with `OpenDocument=false` is the explicit exception for background edits where an undo entry has no meaning.
-- `MonitoredResourceChangedMessage` fires on every save; `DocumentViewModel` filters self-triggered events via `IsSavingFile` + hash. New consumers should expect high-frequency events.
+- Programmatic edits (MCP edit tools, `ApplyEditsCommand`, `WriteDocumentCommand`, `FindReplaceDocumentCommand`, `DeleteLinesCommand`, `WriteBinaryDocumentCommand`) write straight to disk. If the document is open, the buffer reloads from disk via `editor.setValue`, which wipes Monaco's undo history. The agent's edit cannot be reverted with Ctrl+Z; users who need pre-edit content rely on source control or copies. There is no editor-routed code path for programmatic edits.
+- External edits always win: if a watcher event arrives while a save is queued or in flight, the save is discarded and the buffer reloads from disk. `DocumentViewModel.SaveTextToFileAsync` also raises `ReloadRequested` when the post-write disk hash differs from what we intended to write (i.e. an external write interleaved).
+- `MonitoredResourceChangedMessage` fires on every save; `DocumentViewModel` filters self-triggered events by hash. New consumers should expect high-frequency events.
 
 ## MCP Tools
 

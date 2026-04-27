@@ -1,3 +1,5 @@
+using Celbridge.Utilities;
+
 namespace Celbridge.Tools;
 
 /// <summary>
@@ -6,36 +8,36 @@ namespace Celbridge.Tools;
 public static class FileReadHelper
 {
     /// <summary>
-    /// Prefixes each line with its 1-based line number and a separator.
+    /// Prefixes each line with its 1-based line number and a separator. Lines
+    /// are joined using the supplied lineSeparator so the output preserves the
+    /// source file's line-ending style. Callers should pass content lines that
+    /// have already been stripped of trailing CR.
     /// </summary>
-    public static string AddLineNumbers(string[] lines, int startLineNumber)
+    public static string AddLineNumbers(IReadOnlyList<string> lines, int startLineNumber, string lineSeparator)
     {
-        if (lines.Length == 0)
+        if (lines.Count == 0)
         {
             return string.Empty;
         }
 
-        var numberedLines = new string[lines.Length];
-        for (int index = 0; index < lines.Length; index++)
+        var numberedLines = new string[lines.Count];
+        for (int index = 0; index < lines.Count; index++)
         {
             var lineNumber = startLineNumber + index;
             numberedLines[index] = $"{lineNumber}: {lines[index]}";
         }
 
-        return string.Join(Environment.NewLine, numberedLines);
+        return string.Join(lineSeparator, numberedLines);
     }
 
     /// <summary>
-    /// Counts the number of lines in a text string.
-    /// Uses newline splitting consistent with File.ReadAllLines behavior.
+    /// Returns the canonical line count for content. Empty content is 0 lines.
+    /// A trailing terminating newline does not add a phantom empty line. Matches
+    /// File.ReadAllLines and LineEndingHelper.CountLines semantics so all line-
+    /// aware tools agree on what "N lines" means.
     /// </summary>
     public static int CountLines(string text)
     {
-        if (text.Length == 0)
-        {
-            return 0;
-        }
-
-        return text.Split('\n').Length;
+        return LineEndingHelper.CountLines(text);
     }
 }

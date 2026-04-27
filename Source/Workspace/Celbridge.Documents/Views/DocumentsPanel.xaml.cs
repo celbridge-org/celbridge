@@ -588,14 +588,18 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
     public Result ActivateDocument(ResourceKey fileResource)
     {
         var location = SectionContainer.FindDocumentTab(fileResource);
-        if (location is not null)
+        if (location is null)
         {
-            // Selecting a tab will trigger section selection, which will update container activation
-            location.Section.SelectTab(location.Tab);
-            return Result.Ok();
+            return Result.Fail($"No opened document found for file resource: '{fileResource}'");
         }
 
-        return Result.Fail($"No opened document found for file resource: '{fileResource}'");
+        // Section.SelectTab alone does not update the container's active-section
+        // / active-document tracking, so the new tab would be selected within
+        // its section but not surfaced as the workspace's active document.
+        // Route through SectionContainer.ActivateDocument, which performs both
+        // the tab selection and the container-level activation.
+        SectionContainer.ActivateDocument(fileResource, location.Section.SectionIndex);
+        return Result.Ok();
     }
 
     public IDocumentView? GetDocumentView(ResourceKey fileResource)
