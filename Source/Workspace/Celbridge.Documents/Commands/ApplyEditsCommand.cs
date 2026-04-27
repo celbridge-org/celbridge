@@ -180,7 +180,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         var writeResult = await resourceService.FileWriter.WriteAllTextAsync(resource, output);
         if (writeResult.IsFailure)
         {
-            return Result<IReadOnlyList<AppliedEdit>>.Fail(writeResult.FirstErrorMessage)
+            return Result<IReadOnlyList<AppliedEdit>>.Fail($"Failed to write edits to file: '{resource}'")
                 .WithErrors(writeResult);
         }
 
