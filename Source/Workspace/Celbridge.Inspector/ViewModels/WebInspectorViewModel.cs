@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using Celbridge.Server;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
@@ -17,7 +16,6 @@ public partial class WebInspectorViewModel : InspectorViewModel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IFileServer _fileServer;
     private readonly IWebViewService _webViewService;
 
     [ObservableProperty]
@@ -38,7 +36,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
     [ObservableProperty]
     private string _currentUrl = string.Empty;
 
-    public bool IsUrlValid => ValidateAndNormalizeUrl(SourceUrl, Resource, out _);
+    public bool IsUrlValid => ValidateAndNormalizeUrl(SourceUrl, out _);
 
     public bool HasUrlError => !string.IsNullOrWhiteSpace(SourceUrl) && !IsUrlValid;
 
@@ -68,14 +66,12 @@ public partial class WebInspectorViewModel : InspectorViewModel
         IStringLocalizer stringLocalizer,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileServer projectFileServer,
         IWebViewService webViewService)
     {
         _logger = logger;
         _stringLocalizer = stringLocalizer;
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _fileServer = projectFileServer;
         _webViewService = webViewService;
 
         _messengerService.Register<WebViewNavigationStateChangedMessage>(this, OnWebViewNavigationStateChanged);
@@ -96,7 +92,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
     public IRelayCommand HomeCommand => new RelayCommand(Home_Executed);
     private void Home_Executed()
     {
-        if (!ValidateAndNormalizeUrl(SourceUrl, Resource, out var navigateUrl))
+        if (!ValidateAndNormalizeUrl(SourceUrl, out var navigateUrl))
         {
             return;
         }
@@ -127,7 +123,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
         _messengerService.Send(new WebViewGoForwardMessage(Resource));
     }
 
-    private bool ValidateAndNormalizeUrl(string url, ResourceKey contextResource, out string navigateUrl)
+    private bool ValidateAndNormalizeUrl(string url, out string navigateUrl)
     {
         navigateUrl = string.Empty;
 
@@ -137,77 +133,20 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
 
         var trimmedUrl = url.Trim();
-        var urlKind = _webViewService.ClassifyUrl(trimmedUrl);
 
-        switch (urlKind)
-        {
-            case UrlType.WebUrl:
-                if (Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) &&
-                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
-                {
-                    navigateUrl = trimmedUrl;
-                    return true;
-                }
-                return false;
-
-            case UrlType.LocalAbsolute:
-                var resourcePath = _webViewService.StripLocalScheme(trimmedUrl);
-                var absoluteUrl = _fileServer.ResolveLocalFileUrl(resourcePath, contextResource);
-                if (!string.IsNullOrEmpty(absoluteUrl))
-                {
-                    navigateUrl = absoluteUrl;
-                    return true;
-                }
-                // Fall back to resource registry check in case the file
-                // server is not ready yet (e.g. during initial load).
-                return ResolveResourceKey(resourcePath, contextResource);
-
-            case UrlType.LocalPath:
-                var relativeUrl = _fileServer.ResolveLocalFileUrl(trimmedUrl, contextResource);
-                if (!string.IsNullOrEmpty(relativeUrl))
-                {
-                    navigateUrl = relativeUrl;
-                    return true;
-                }
-                return ResolveResourceKey(trimmedUrl, contextResource);
-
-            default:
-                return false;
-        }
-    }
-
-    /// <summary>
-    /// Checks whether a path resolves to an existing resource, trying
-    /// relative to the context resource's folder first, then as an
-    /// absolute resource key.
-    /// </summary>
-    private bool ResolveResourceKey(string path, ResourceKey contextResource)
-    {
-        if (string.IsNullOrWhiteSpace(path))
+        if (!_webViewService.IsExternalUrl(trimmedUrl))
         {
             return false;
         }
 
-        if (!contextResource.IsEmpty)
-        {
-            var contextFolder = contextResource.GetParent();
-            var candidateKeyString = contextFolder.IsEmpty ? path : $"{contextFolder}/{path}";
-            if (ResourceKey.TryCreate(candidateKeyString, out var candidateKey))
-            {
-                var getResult = _resourceRegistry.GetResource(candidateKey);
-                if (getResult.IsSuccess)
-                {
-                    return true;
-                }
-            }
-        }
-
-        if (!ResourceKey.TryCreate(path, out var absoluteKey))
+        if (!Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             return false;
         }
-        var absoluteResult = _resourceRegistry.GetResource(absoluteKey);
-        return absoluteResult.IsSuccess;
+
+        navigateUrl = trimmedUrl;
+        return true;
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

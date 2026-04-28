@@ -103,8 +103,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             return Result.Ok();
         }
 
-        var urlKind = _webViewService.ClassifyUrl(sourceUrl);
-        if (urlKind != UrlType.WebUrl)
+        if (!_webViewService.IsExternalUrl(sourceUrl))
         {
             return Result.Fail($".webview documents only support external http/https URLs. Configured URL: '{sourceUrl}'");
         }
