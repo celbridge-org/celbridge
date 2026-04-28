@@ -13,7 +13,6 @@ public class WebViewDocumentViewModelTests
     private string _tempFilePath = null!;
     private ICommandService _commandService = null!;
     private IWebViewService _webViewService = null!;
-    private ILogger<WebViewDocumentViewModel> _logger = null!;
 
     [SetUp]
     public void SetUp()
@@ -26,7 +25,6 @@ public class WebViewDocumentViewModelTests
         _commandService = Substitute.For<ICommandService>();
         var featureFlags = Substitute.For<IFeatureFlags>();
         _webViewService = new WebViewService(featureFlags);
-        _logger = Substitute.For<ILogger<WebViewDocumentViewModel>>();
     }
 
     [TearDown]
@@ -86,7 +84,7 @@ public class WebViewDocumentViewModelTests
 
     private WebViewDocumentViewModel CreateViewModel()
     {
-        return new WebViewDocumentViewModel(_commandService, _webViewService, _logger)
+        return new WebViewDocumentViewModel(_commandService, _webViewService)
         {
             FilePath = _tempFilePath,
             FileResource = new ResourceKey("test.webview")

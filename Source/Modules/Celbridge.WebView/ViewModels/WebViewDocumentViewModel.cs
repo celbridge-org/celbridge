@@ -2,7 +2,6 @@ using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.Logging;
 using Celbridge.WebHost;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -12,7 +11,6 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private readonly ICommandService _commandService;
     private readonly IWebViewService _webViewService;
-    private readonly ILogger<WebViewDocumentViewModel> _logger;
 
     [ObservableProperty]
     private string _sourceUrl = string.Empty;
@@ -31,12 +29,10 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public WebViewDocumentViewModel(
         ICommandService commandService,
-        IWebViewService webViewService,
-        ILogger<WebViewDocumentViewModel> logger)
+        IWebViewService webViewService)
     {
         _commandService = commandService;
         _webViewService = webViewService;
-        _logger = logger;
     }
 
     public async Task<Result> LoadContent()
