@@ -37,6 +37,6 @@
   "author": "Celbridge Contributors",
   "devDependencies": {
     "eslint": "^10.0.2",
-    "vitest": "^2.0.0"
+    "vitest": "^4.0.0"
   }
 }

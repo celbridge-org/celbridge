@@ -113,7 +113,7 @@ export class ViewModeController {
         if (!this.#editorPane || !this.#previewPane) {
             return;
         }
-        this.#editorPane.style.flex = `${this.#editorFlexShare} 1 0`;
-        this.#previewPane.style.flex = `${1 - this.#editorFlexShare} 1 0`;
+        this.#editorPane.style.flex = `${this.#editorFlexShare} 1 0px`;
+        this.#previewPane.style.flex = `${1 - this.#editorFlexShare} 1 0px`;
     }
 }
