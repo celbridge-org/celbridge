@@ -7,7 +7,7 @@ namespace Celbridge.WebView.Services;
 /// navigation. The policy helper itself is responsible for translating the decision
 /// into a side effect (cancelling the WebView's navigation, opening the system browser).
 /// </summary>
-internal enum NavigationDecision
+public enum NavigationDecision
 {
     /// <summary>
     /// Pass the navigation through to the WebView unchanged.
@@ -31,14 +31,14 @@ internal enum NavigationDecision
 /// Implementations are expected to be pure UI - showing a dialog, returning a choice -
 /// without dispatching the resulting action themselves; the policy helper handles dispatch.
 /// </summary>
-internal delegate Task<NavigationDecision> NavigationDestinationHandler(Uri destination);
+public delegate Task<NavigationDecision> NavigationDestinationHandler(Uri destination);
 
 /// <summary>
 /// Wraps WebView2 NavigationStarting interception so the .webview view and the HTML
 /// viewer share a single navigation-policy code path. Each role attaches with its own
 /// handler; the helper translates the handler's decision into the matching side effect.
 /// </summary>
-internal interface IWebViewNavigationPolicy
+public interface IWebViewNavigationPolicy
 {
     /// <summary>
     /// Subscribes the supplied handler to NavigationStarting on the given WebView. The
