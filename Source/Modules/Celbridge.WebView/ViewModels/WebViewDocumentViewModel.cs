@@ -3,12 +3,15 @@ using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.WebHost;
+using Celbridge.WebView.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.WebView.ViewModels;
 
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
+    private const string ProjectVirtualHost = "project.celbridge";
+
     private readonly ICommandService _commandService;
     private readonly IWebViewService _webViewService;
 
@@ -16,10 +19,34 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     private string _sourceUrl = string.Empty;
 
     /// <summary>
-    /// The URL to navigate to. .webview documents host external URLs only,
-    /// so this is the configured source URL verbatim.
+    /// Selects how LoadContent and NavigateUrl interpret the backing resource. Set
+    /// by the view before the first LoadContent call. Defaults to ExternalUrl, which
+    /// matches the .webview document behaviour assumed by the parameterless code-gen flow.
     /// </summary>
-    public string NavigateUrl => SourceUrl;
+    public WebViewDocumentRole Role { get; set; }
+
+    /// <summary>
+    /// The URL the view should navigate to. For .webview documents this is the configured
+    /// source URL verbatim; for the HTML viewer it is the project virtual-host URL derived
+    /// from FileResource.
+    /// </summary>
+    public string NavigateUrl
+    {
+        get
+        {
+            if (Role == WebViewDocumentRole.HtmlViewer)
+            {
+                if (FileResource.IsEmpty)
+                {
+                    return string.Empty;
+                }
+
+                return $"https://{ProjectVirtualHost}/{FileResource}";
+            }
+
+            return SourceUrl;
+        }
+    }
 
     // Code gen requires a parameterless constructor
     public WebViewDocumentViewModel()
@@ -37,6 +64,14 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public async Task<Result> LoadContent()
     {
+        if (Role == WebViewDocumentRole.HtmlViewer)
+        {
+            // HTML viewer reads the file directly via the project virtual host.
+            // Nothing to parse; succeeding here is enough to allow TryNavigate to run.
+            await Task.CompletedTask;
+            return Result.Ok();
+        }
+
         string sourceUrl;
         try
         {

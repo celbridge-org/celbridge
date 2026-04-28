@@ -26,6 +26,12 @@ public class Module : IModule
         //
 
         services.AddTransient<WebViewDocumentViewModel>();
+
+        //
+        // Register navigation policy helper
+        //
+
+        services.AddTransient<IWebViewNavigationPolicy, WebViewNavigationPolicy>();
     }
 
     public Result Initialize()
@@ -36,7 +42,11 @@ public class Module : IModule
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
         var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        return [new WebViewEditorFactory(serviceProvider, stringLocalizer)];
+        return
+        [
+            new WebViewEditorFactory(serviceProvider, stringLocalizer),
+            new HtmlViewerEditorFactory(serviceProvider, stringLocalizer),
+        ];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

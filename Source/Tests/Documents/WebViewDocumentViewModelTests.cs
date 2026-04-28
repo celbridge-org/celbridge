@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Settings;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
+using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 
 namespace Celbridge.Tests.Documents;
@@ -80,6 +81,48 @@ public class WebViewDocumentViewModelTests
         var result = await viewModel.LoadContent();
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task LoadContent_HtmlViewer_IgnoresFileContents_AndSucceeds()
+    {
+        var htmlPath = Path.Combine(_tempFolder, "page.html");
+        await File.WriteAllTextAsync(htmlPath, "<html><body>not JSON</body></html>");
+
+        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService)
+        {
+            FilePath = htmlPath,
+            FileResource = new ResourceKey("page.html"),
+            Role = WebViewDocumentRole.HtmlViewer
+        };
+
+        var result = await viewModel.LoadContent();
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public void NavigateUrl_HtmlViewer_BuildsProjectVirtualHostUrlFromResourceKey()
+    {
+        var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService)
+        {
+            FilePath = _tempFilePath,
+            FileResource = new ResourceKey("Pages/welcome.html"),
+            Role = WebViewDocumentRole.HtmlViewer
+        };
+
+        viewModel.NavigateUrl.Should().Be("https://project.celbridge/Pages/welcome.html");
+    }
+
+    [Test]
+    public async Task NavigateUrl_ExternalUrl_ReturnsSourceUrl()
+    {
+        await File.WriteAllTextAsync(_tempFilePath, """{"sourceUrl": "https://example.com/x"}""");
+
+        var viewModel = CreateViewModel();
+        await viewModel.LoadContent();
+
+        viewModel.NavigateUrl.Should().Be("https://example.com/x");
     }
 
     private WebViewDocumentViewModel CreateViewModel()

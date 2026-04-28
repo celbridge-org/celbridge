@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
