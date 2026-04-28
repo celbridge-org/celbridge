@@ -1,5 +1,4 @@
 using Celbridge.Dialog;
-using Celbridge.Documents;
 using Celbridge.Documents.Commands;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;

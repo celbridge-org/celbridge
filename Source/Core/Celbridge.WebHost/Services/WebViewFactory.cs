@@ -1,13 +1,13 @@
 using Celbridge.Logging;
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.WebView.Services;
+namespace Celbridge.WebHost.Services;
 
 public class WebViewFactory : IWebViewFactory, IDisposable
 {
     private const int DefaultPoolSize = 3;
     private const string SharedAssetsHostName = "shared.celbridge";
-    private const string SharedAssetsFolderPath = "Celbridge.WebView/Web";
+    private const string SharedAssetsFolderPath = "Celbridge.WebHost/Web";
 
     private const string KeyboardShortcutScript = """
         (function() {

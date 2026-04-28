@@ -3,7 +3,7 @@
 This project contains example folders that demonstrate the key features of Celbridge, including:
 
 - Markdown documentation editing (example folder `01_markdown`)
-- Embedded web applications (example folder `02_webapps`)
+- Embedded web views (example folder `02_webapps`)
 - Python scripting (example folder `03_hello_world`)
 - Spreadsheet editing, including importing data to a spreadsheet (example folder `04_data_import`), generating fake data for user test purposes (example folder `05_fake_data`), and data cleaning (example folder `06_data_cleaning`)
 

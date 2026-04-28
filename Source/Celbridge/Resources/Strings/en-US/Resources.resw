@@ -650,8 +650,8 @@ Do you wish to continue?</value>
   <data name="AddFileDialog_FileType_Markdown" xml:space="preserve">
     <value>Markdown (.md)</value>
   </data>
-  <data name="AddFileDialog_FileType_WebApp" xml:space="preserve">
-    <value>Web Application File (.webapp)</value>
+  <data name="AddFileDialog_FileType_WebView" xml:space="preserve">
+    <value>Web View File (.webview)</value>
   </data>
   <data name="AddFileDialog_FileType_Text" xml:space="preserve">
     <value>Text File (.txt)</value>
@@ -956,8 +956,22 @@ Do you wish to continue?</value>
   <data name="DocumentEditor_SceneEditor" xml:space="preserve">
     <value>Scene Editor</value>
   </data>
-  <data name="DocumentEditor_WebAppEditor" xml:space="preserve">
-    <value>Web App Editor</value>
+  <data name="DocumentEditor_WebViewEditor" xml:space="preserve">
+    <value>Web View Editor</value>
+  </data>
+  <data name="DocumentEditor_HtmlViewer" xml:space="preserve">
+    <value>HTML Viewer</value>
+  </data>
+  <data name="WebView_NavigationPrompt_Title" xml:space="preserve">
+    <value>Open external link</value>
+  </data>
+  <data name="WebView_NavigationPrompt_Message" xml:space="preserve">
+    <value>This page is trying to navigate to:
+
+{0}</value>
+  </data>
+  <data name="WebView_NavigationPrompt_OpenInBrowser" xml:space="preserve">
+    <value>Open in system browser</value>
   </data>
   <data name="Explorer_OpenWith" xml:space="preserve">
     <value>Open with...</value>

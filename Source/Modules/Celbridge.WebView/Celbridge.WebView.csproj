@@ -26,8 +26,12 @@
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
-    <ProjectReference Include="..\..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
+    <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
     <ProjectReference Include="..\..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>

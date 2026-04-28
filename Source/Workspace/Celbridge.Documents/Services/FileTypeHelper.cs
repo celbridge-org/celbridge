@@ -46,9 +46,9 @@ public class FileTypeHelper
     /// </summary>
     public DocumentViewType GetDocumentViewType(string fileExtension)
     {
-        if (fileExtension == ExplorerConstants.WebAppExtension)
+        if (fileExtension == ExplorerConstants.WebViewExtension)
         {
-            return DocumentViewType.WebAppDocument;
+            return DocumentViewType.WebViewDocument;
         }
 
         if (fileExtension == ExplorerConstants.MarkdownExtension)
@@ -106,8 +106,8 @@ public class FileTypeHelper
             return false;
         }
 
-        // Check for web app extension
-        if (fileExtension == ExplorerConstants.WebAppExtension)
+        // Check for web view extension
+        if (fileExtension == ExplorerConstants.WebViewExtension)
         {
             return true;
         }

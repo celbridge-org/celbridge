@@ -1,7 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
-using Celbridge.Resources;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Commands;

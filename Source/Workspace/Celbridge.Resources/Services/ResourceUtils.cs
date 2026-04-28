@@ -157,46 +157,46 @@ public class ResourceUtils
         return Result.Ok();
     }
 
-    public static Result<string> ExtractUrlFromWebAppFile(string webAppPath)
+    public static Result<string> ExtractUrlFromWebViewFile(string webViewPath)
     {
         try
         {
-            if (string.IsNullOrEmpty(webAppPath))
+            if (string.IsNullOrEmpty(webViewPath))
             {
-                return Result<string>.Fail($"Failed to get path for file resource: {webAppPath}");
+                return Result<string>.Fail($"Failed to get path for file resource: {webViewPath}");
             }
 
-            if (!File.Exists(webAppPath))
+            if (!File.Exists(webViewPath))
             {
-                return Result<string>.Fail($"File does not exist: {webAppPath}");
+                return Result<string>.Fail($"File does not exist: {webViewPath}");
             }
 
-            var fileExtension = Path.GetExtension(webAppPath);
+            var fileExtension = Path.GetExtension(webViewPath);
 
-            if (fileExtension == ExplorerConstants.WebAppExtension)
+            if (fileExtension == ExplorerConstants.WebViewExtension)
             {
-                return Result<string>.Fail($"File does not have the .webapp extension: {webAppPath}");
+                return Result<string>.Fail($"File does not have the .webview extension: {webViewPath}");
             }
 
-            var json = File.ReadAllText(webAppPath);
+            var json = File.ReadAllText(webViewPath);
             using var jsonDoc = JsonDocument.Parse(json);
             var root = jsonDoc.RootElement;
 
             if (!root.TryGetProperty("sourceUrl", out var urlElement))
             {
-                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webapp JSON data: {webAppPath}");
+                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webview JSON data: {webViewPath}");
             }
 
             var urlValue = urlElement.GetString();
             if (urlValue is null)
             {
-                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webapp JSON data: {webAppPath}");
+                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webview JSON data: {webViewPath}");
             }
 
             // Todo: This logic is repeated in multiple places, move it to the utility service
             string targetUrl = urlValue.Trim();
             if (!string.IsNullOrWhiteSpace(targetUrl) &&
-                !targetUrl.StartsWith("http") && 
+                !targetUrl.StartsWith("http") &&
                 !targetUrl.StartsWith("file"))
             {
                 targetUrl = $"https://{targetUrl}";
@@ -211,7 +211,7 @@ public class ResourceUtils
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"An exception occurred when extracting the url from a .webapp file")
+            return Result<string>.Fail($"An exception occurred when extracting the url from a .webview file")
                 .WithException(ex); ;
         }
     }

@@ -1,27 +1,31 @@
 using Celbridge.Commands;
+using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Server;
 using Celbridge.UserInterface;
-using Celbridge.WebApp.ViewModels;
-using Celbridge.WebView;
+using Celbridge.WebHost;
+using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
+using Celbridge.WebView.ViewModels;
+using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.WebApp.Views;
+namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// Hosts an arbitrary user URL from a .webapp document. Does not load a fixed
-/// editor bundle and does not fit the contribution package model, so it inherits
-/// DocumentView directly and owns its own WebView2 lifecycle.
+/// Hosts an arbitrary user URL from a .webview document, or a project-served HTML
+/// page from a .html / .htm document. The role is selected per-instance via Options
+/// before LoadContent runs; the two paths share a single WebView2 lifecycle and
+/// differ only in URL source and navigation policy.
 /// </summary>
-public sealed partial class WebAppDocumentView : DocumentView, IHostInput
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 {
-    private readonly ILogger<WebAppDocumentView> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<WebViewDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
@@ -30,40 +34,48 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
     private WebView2? _webView;
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
+    private IWebViewNavigationPolicy? _navigationPolicy;
 
-    private bool _isFileServerReady;
+    private static readonly WebViewDocumentOptions DefaultOptions = new(
+        WebViewDocumentRole.ExternalUrl,
+        InterceptTopFrameNavigation: false);
 
-    public WebAppDocumentViewModel ViewModel { get; }
+    /// <summary>
+    /// Per-instance options supplied by the editor factory. Defaults to the .webview
+    /// external-URL behaviour; the HTML viewer factory overrides this before LoadContent
+    /// runs so the view's first init applies HtmlViewer options from the start.
+    /// </summary>
+    internal WebViewDocumentOptions Options { get; set; } = DefaultOptions;
+
+    public WebViewDocumentViewModel ViewModel { get; }
 
     protected override DocumentViewModel DocumentViewModel => ViewModel;
 
-    public WebAppDocumentView(
+    public WebViewDocumentView(
         IServiceProvider serviceProvider,
-        ILogger<WebAppDocumentView> logger,
+        ILogger<WebViewDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
         IWebViewFactory webViewFactory,
-        IFileServer projectFileServer,
         IWebViewService webViewService)
     {
         this.InitializeComponent();
 
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _commandService = commandService;
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
-        _isFileServerReady = projectFileServer.IsReady;
 
-        ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
-        Loaded += WebAppDocumentView_Loaded;
+        Loaded += WebViewDocumentView_Loaded;
 
-        _messengerService.Register<WebAppNavigateMessage>(this, OnWebAppNavigate);
-        _messengerService.Register<WebAppRefreshMessage>(this, OnWebAppRefresh);
-        _messengerService.Register<WebAppGoBackMessage>(this, OnWebAppGoBack);
-        _messengerService.Register<WebAppGoForwardMessage>(this, OnWebAppGoForward);
-        _messengerService.Register<ProjectFileServerReadyMessage>(this, OnProjectFileServerReady);
+        _messengerService.Register<WebViewNavigateMessage>(this, OnWebViewNavigate);
+        _messengerService.Register<WebViewRefreshMessage>(this, OnWebViewRefresh);
+        _messengerService.Register<WebViewGoBackMessage>(this, OnWebViewGoBack);
+        _messengerService.Register<WebViewGoForwardMessage>(this, OnWebViewGoForward);
     }
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
@@ -72,32 +84,23 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
 
-    private void OnProjectFileServerReady(object recipient, ProjectFileServerReadyMessage message)
-    {
-        _isFileServerReady = true;
-        TryNavigate();
-    }
-
     private void TryNavigate()
     {
-        if (_webView?.CoreWebView2 is null || string.IsNullOrEmpty(ViewModel.SourceUrl))
-        {
-            return;
-        }
-
-        if (ViewModel.NeedsFileServer && !_isFileServerReady)
+        if (_webView?.CoreWebView2 is null)
         {
             return;
         }
 
         var navigateUrl = ViewModel.NavigateUrl;
-        if (!string.IsNullOrEmpty(navigateUrl))
+        if (string.IsNullOrEmpty(navigateUrl))
         {
-            _webView.CoreWebView2.Navigate(navigateUrl);
+            return;
         }
+
+        _webView.CoreWebView2.Navigate(navigateUrl);
     }
 
-    private async void OnWebAppNavigate(object recipient, WebAppNavigateMessage message)
+    private async void OnWebViewNavigate(object recipient, WebViewNavigateMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -120,7 +123,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppRefresh(object recipient, WebAppRefreshMessage message)
+    private async void OnWebViewRefresh(object recipient, WebViewRefreshMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -147,7 +150,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppGoBack(object recipient, WebAppGoBackMessage message)
+    private async void OnWebViewGoBack(object recipient, WebViewGoBackMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -173,7 +176,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppGoForward(object recipient, WebAppGoForwardMessage message)
+    private async void OnWebViewGoForward(object recipient, WebViewGoForwardMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -199,9 +202,9 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void WebAppDocumentView_Loaded(object sender, RoutedEventArgs e)
+    private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= WebAppDocumentView_Loaded;
+        Loaded -= WebViewDocumentView_Loaded;
 
         // async void is required for a Loaded handler. Any exception in init
         // must be caught here so a faulty load cannot crash the process.
@@ -211,6 +214,11 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
             AppWebViewContainer.Children.Add(_webView);
 
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
+
+            if (Options.Role == WebViewDocumentRole.HtmlViewer)
+            {
+                MapProjectVirtualHost(_webView.CoreWebView2);
+            }
 
             _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
             _host = new CelbridgeHost(_hostChannel);
@@ -229,12 +237,111 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
 
+            AttachNavigationPolicy(_webView.CoreWebView2);
+
             TryNavigate();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize WebApp document view");
+            _logger.LogError(ex, "Failed to initialize WebView document view");
             TeardownWebViewState();
+        }
+    }
+
+    private void MapProjectVirtualHost(CoreWebView2 coreWebView)
+    {
+        var projectFolder = ResourceRegistry.ProjectFolderPath;
+        if (string.IsNullOrEmpty(projectFolder))
+        {
+            _logger.LogWarning("Cannot map project virtual host: project folder path is empty");
+            return;
+        }
+
+        coreWebView.SetVirtualHostNameToFolderMapping(
+            "project.celbridge",
+            projectFolder,
+            CoreWebView2HostResourceAccessKind.Allow);
+    }
+
+    private void AttachNavigationPolicy(CoreWebView2 coreWebView)
+    {
+        _navigationPolicy = _serviceProvider.GetRequiredService<IWebViewNavigationPolicy>();
+
+        NavigationDestinationHandler handler;
+        if (Options.InterceptTopFrameNavigation)
+        {
+            handler = CreateInterceptingHandler();
+        }
+        else
+        {
+            handler = (_) => Task.FromResult(NavigationDecision.Allow);
+        }
+
+        _navigationPolicy.Attach(coreWebView, handler);
+    }
+
+    private NavigationDestinationHandler CreateInterceptingHandler()
+    {
+        return async (destination) =>
+        {
+            // The HTML viewer is pinned to the project virtual-host URL; allow the
+            // initial navigation, reloads, and any same-document scrolling, but prompt
+            // the user for any other top-frame destination so the page cannot redirect
+            // out from under them.
+            var pinnedUrl = ViewModel.NavigateUrl;
+            if (!string.IsNullOrEmpty(pinnedUrl) && IsSameDocument(destination, pinnedUrl))
+            {
+                return NavigationDecision.Allow;
+            }
+
+            return await PromptForNavigationDestinationAsync(destination);
+        };
+    }
+
+    private static bool IsSameDocument(Uri destination, string pinnedUrl)
+    {
+        if (!Uri.TryCreate(pinnedUrl, UriKind.Absolute, out var pinned))
+        {
+            return false;
+        }
+
+        return string.Equals(destination.Scheme, pinned.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(destination.Host, pinned.Host, StringComparison.OrdinalIgnoreCase)
+            && destination.Port == pinned.Port
+            && string.Equals(destination.AbsolutePath, pinned.AbsolutePath, StringComparison.Ordinal);
+    }
+
+    private async Task<NavigationDecision> PromptForNavigationDestinationAsync(Uri destination)
+    {
+        try
+        {
+            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+            var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+
+            var title = stringLocalizer.GetString("WebView_NavigationPrompt_Title");
+            var message = stringLocalizer.GetString("WebView_NavigationPrompt_Message", destination.ToString());
+            var openInBrowserOption = stringLocalizer.GetString("WebView_NavigationPrompt_OpenInBrowser");
+
+            var options = new List<string> { openInBrowserOption };
+
+            var dialogResult = await dialogService.ShowChoiceDialogAsync(title, message, options, defaultIndex: 0);
+            if (dialogResult.IsFailure)
+            {
+                return NavigationDecision.Cancel;
+            }
+
+            var choice = dialogResult.Value;
+            if (choice.SelectedIndex == 0)
+            {
+                return NavigationDecision.OpenInSystemBrowser;
+            }
+
+            return NavigationDecision.Cancel;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to prompt for navigation destination");
+            return NavigationDecision.Cancel;
         }
     }
 
@@ -251,6 +358,11 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+
+            if (_navigationPolicy is not null)
+            {
+                _navigationPolicy.Detach(_webView.CoreWebView2);
+            }
         }
 
         if (_webView is not null)
@@ -259,6 +371,8 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
             _webView.Close();
             _webView = null;
         }
+
+        _navigationPolicy = null;
 
         _host?.Dispose();
         _hostChannel?.Detach();
@@ -292,7 +406,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
 
         var currentUrl = coreWebView?.Source ?? string.Empty;
 
-        var message = new WebAppNavigationStateChangedMessage(
+        var message = new WebViewNavigationStateChangedMessage(
             ViewModel.FileResource,
             coreWebView?.CanGoBack ?? false,
             coreWebView?.CanGoForward ?? false,
@@ -360,6 +474,9 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
 
     public override async Task<Result> LoadContent()
     {
+        // Push the role onto the view model so NavigateUrl knows which URL to compute.
+        ViewModel.Role = Options.Role;
+
         var loadResult = await ViewModel.LoadContent();
         if (loadResult.IsFailure)
         {

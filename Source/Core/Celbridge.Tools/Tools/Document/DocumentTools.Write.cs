@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Celbridge.Documents;
-using Celbridge.Utilities;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 

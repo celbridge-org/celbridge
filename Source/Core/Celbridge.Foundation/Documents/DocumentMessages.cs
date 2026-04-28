@@ -39,26 +39,26 @@ public record DocumentSaveCompletedMessage(ResourceKey DocumentResource);
 public record DocumentViewFocusedMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent to request a web app document to navigate to a URL.
+/// A message sent to request a web view document to navigate to a URL.
 /// </summary>
-public record WebAppNavigateMessage(ResourceKey DocumentResource, string Url);
+public record WebViewNavigateMessage(ResourceKey DocumentResource, string Url);
 
 /// <summary>
-/// A message sent to request a web app document to refresh with cache clearing.
+/// A message sent to request a web view document to refresh with cache clearing.
 /// </summary>
-public record WebAppRefreshMessage(ResourceKey DocumentResource);
+public record WebViewRefreshMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent to request a web app document to navigate back in history.
+/// A message sent to request a web view document to navigate back in history.
 /// </summary>
-public record WebAppGoBackMessage(ResourceKey DocumentResource);
+public record WebViewGoBackMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent to request a web app document to navigate forward in history.
+/// A message sent to request a web view document to navigate forward in history.
 /// </summary>
-public record WebAppGoForwardMessage(ResourceKey DocumentResource);
+public record WebViewGoForwardMessage(ResourceKey DocumentResource);
 
 /// <summary>
-/// A message sent when the web app document's navigation state changes.
+/// A message sent when the web view document's navigation state changes.
 /// </summary>
-public record WebAppNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh, string CurrentUrl);
+public record WebViewNavigationStateChangedMessage(ResourceKey DocumentResource, bool CanGoBack, bool CanGoForward, bool CanRefresh, string CurrentUrl);

@@ -62,7 +62,7 @@ public partial class AddFileDialogViewModel : ObservableObject
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Python"), ResourceFormat.Python, ExplorerConstants.PythonExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Excel"), ResourceFormat.Excel, ExplorerConstants.ExcelExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Markdown"), ResourceFormat.Markdown, ExplorerConstants.MarkdownExtension),
-            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_WebApp"), ResourceFormat.WebApp, ExplorerConstants.WebAppExtension),
+            new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_WebView"), ResourceFormat.WebView, ExplorerConstants.WebViewExtension),
             new FileTypeItem(_stringLocalizer.GetString("AddFileDialog_FileType_Text"), ResourceFormat.Text, ExplorerConstants.TextExtension),
         ];
 

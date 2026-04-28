@@ -88,7 +88,7 @@ public class InspectorFactory : IInspectorFactory
         var fileExtension = Path.GetExtension(resource);
 
         IInspector? inspector = null;
-        if (fileExtension == ExplorerConstants.WebAppExtension)
+        if (fileExtension == ExplorerConstants.WebViewExtension)
         {
             // WebInspector uses XAML with a parameterless constructor
             inspector = new WebInspector
