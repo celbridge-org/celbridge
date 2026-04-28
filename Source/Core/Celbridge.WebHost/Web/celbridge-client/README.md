@@ -7,7 +7,7 @@ JavaScript client for communicating with the Celbridge .NET host via JSON-RPC.
 To run the unit tests for the celbridge-client:
 
 ```bash
-cd Core/Celbridge.WebView/Web/celbridge-client
+cd Core/Celbridge.WebHost/Web/celbridge-client
 npm install
 npm test
 ```

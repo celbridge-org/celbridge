@@ -5,23 +5,22 @@ using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Server;
 using Celbridge.UserInterface;
-using Celbridge.WebApp.ViewModels;
-using Celbridge.WebView;
-using Celbridge.WebView.Services;
+using Celbridge.WebHost;
+using Celbridge.WebHost.Services;
+using Celbridge.WebView.ViewModels;
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.WebApp.Views;
+namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// Hosts an arbitrary user URL from a .webapp document. Does not load a fixed
+/// Hosts an arbitrary user URL from a .webview document. Does not load a fixed
 /// editor bundle and does not fit the contribution package model, so it inherits
 /// DocumentView directly and owns its own WebView2 lifecycle.
 /// </summary>
-public sealed partial class WebAppDocumentView : DocumentView, IHostInput
+public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 {
-    private readonly ILogger<WebAppDocumentView> _logger;
+    private readonly ILogger<WebViewDocumentView> _logger;
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IWebViewFactory _webViewFactory;
@@ -31,19 +30,16 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
     private WebViewHostChannel? _hostChannel;
     private CelbridgeHost? _host;
 
-    private bool _isFileServerReady;
-
-    public WebAppDocumentViewModel ViewModel { get; }
+    public WebViewDocumentViewModel ViewModel { get; }
 
     protected override DocumentViewModel DocumentViewModel => ViewModel;
 
-    public WebAppDocumentView(
+    public WebViewDocumentView(
         IServiceProvider serviceProvider,
-        ILogger<WebAppDocumentView> logger,
+        ILogger<WebViewDocumentView> logger,
         ICommandService commandService,
         IMessengerService messengerService,
         IWebViewFactory webViewFactory,
-        IFileServer projectFileServer,
         IWebViewService webViewService)
     {
         this.InitializeComponent();
@@ -53,17 +49,15 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         _messengerService = messengerService;
         _webViewFactory = webViewFactory;
         _webViewService = webViewService;
-        _isFileServerReady = projectFileServer.IsReady;
 
-        ViewModel = serviceProvider.GetRequiredService<WebAppDocumentViewModel>();
+        ViewModel = serviceProvider.GetRequiredService<WebViewDocumentViewModel>();
 
-        Loaded += WebAppDocumentView_Loaded;
+        Loaded += WebViewDocumentView_Loaded;
 
-        _messengerService.Register<WebAppNavigateMessage>(this, OnWebAppNavigate);
-        _messengerService.Register<WebAppRefreshMessage>(this, OnWebAppRefresh);
-        _messengerService.Register<WebAppGoBackMessage>(this, OnWebAppGoBack);
-        _messengerService.Register<WebAppGoForwardMessage>(this, OnWebAppGoForward);
-        _messengerService.Register<ProjectFileServerReadyMessage>(this, OnProjectFileServerReady);
+        _messengerService.Register<WebViewNavigateMessage>(this, OnWebViewNavigate);
+        _messengerService.Register<WebViewRefreshMessage>(this, OnWebViewRefresh);
+        _messengerService.Register<WebViewGoBackMessage>(this, OnWebViewGoBack);
+        _messengerService.Register<WebViewGoForwardMessage>(this, OnWebViewGoForward);
     }
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)
@@ -72,20 +66,9 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         keyboardShortcutService.HandleShortcut(key, ctrlKey, shiftKey, altKey);
     }
 
-    private void OnProjectFileServerReady(object recipient, ProjectFileServerReadyMessage message)
-    {
-        _isFileServerReady = true;
-        TryNavigate();
-    }
-
     private void TryNavigate()
     {
         if (_webView?.CoreWebView2 is null || string.IsNullOrEmpty(ViewModel.SourceUrl))
-        {
-            return;
-        }
-
-        if (ViewModel.NeedsFileServer && !_isFileServerReady)
         {
             return;
         }
@@ -97,7 +80,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppNavigate(object recipient, WebAppNavigateMessage message)
+    private async void OnWebViewNavigate(object recipient, WebViewNavigateMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -120,7 +103,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppRefresh(object recipient, WebAppRefreshMessage message)
+    private async void OnWebViewRefresh(object recipient, WebViewRefreshMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -147,7 +130,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppGoBack(object recipient, WebAppGoBackMessage message)
+    private async void OnWebViewGoBack(object recipient, WebViewGoBackMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -173,7 +156,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void OnWebAppGoForward(object recipient, WebAppGoForwardMessage message)
+    private async void OnWebViewGoForward(object recipient, WebViewGoForwardMessage message)
     {
         if (message.DocumentResource != ViewModel.FileResource)
         {
@@ -199,9 +182,9 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
     }
 
-    private async void WebAppDocumentView_Loaded(object sender, RoutedEventArgs e)
+    private async void WebViewDocumentView_Loaded(object sender, RoutedEventArgs e)
     {
-        Loaded -= WebAppDocumentView_Loaded;
+        Loaded -= WebViewDocumentView_Loaded;
 
         // async void is required for a Loaded handler. Any exception in init
         // must be caught here so a faulty load cannot crash the process.
@@ -233,7 +216,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize WebApp document view");
+            _logger.LogError(ex, "Failed to initialize WebView document view");
             TeardownWebViewState();
         }
     }
@@ -292,7 +275,7 @@ public sealed partial class WebAppDocumentView : DocumentView, IHostInput
 
         var currentUrl = coreWebView?.Source ?? string.Empty;
 
-        var message = new WebAppNavigationStateChangedMessage(
+        var message = new WebViewNavigationStateChangedMessage(
             ViewModel.FileResource,
             coreWebView?.CanGoBack ?? false,
             coreWebView?.CanGoForward ?? false,

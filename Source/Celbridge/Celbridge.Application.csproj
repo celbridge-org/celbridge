@@ -70,7 +70,7 @@
     <ProjectReference Include="..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
-    <ProjectReference Include="..\Core\Celbridge.WebView\Celbridge.WebView.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
 
@@ -80,7 +80,7 @@
     <ProjectReference Include="..\Modules\Celbridge.DocumentEditors\Celbridge.DocumentEditors.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Screenplay\Celbridge.Screenplay.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
-    <ProjectReference Include="..\Modules\Celbridge.WebApp\Celbridge.WebApp.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.WebView\Celbridge.WebView.csproj" />
   </ItemGroup>
 
 </Project>

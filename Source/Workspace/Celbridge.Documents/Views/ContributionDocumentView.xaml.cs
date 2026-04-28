@@ -9,8 +9,8 @@ using Celbridge.Messaging;
 using Celbridge.Packages;
 using Celbridge.Server;
 using Celbridge.UserInterface;
-using Celbridge.WebView;
-using Celbridge.WebView.Services;
+using Celbridge.WebHost;
+using Celbridge.WebHost.Services;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 

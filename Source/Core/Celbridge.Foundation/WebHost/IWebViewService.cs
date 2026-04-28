@@ -1,4 +1,4 @@
-namespace Celbridge.WebView;
+namespace Celbridge.WebHost;
 
 /// <summary>
 /// Classifies how a webview URL should be interpreted and resolved.
@@ -17,7 +17,7 @@ public enum UrlType
     LocalAbsolute,
 
     /// <summary>
-    /// A local path, either relative to the .webapp document's location
+    /// A local path, either relative to a hosting document's location
     /// (e.g. "../index.html") or an absolute resource key (e.g. "Sites/index.html").
     /// Resolution tries relative first, then absolute.
     /// </summary>
@@ -30,16 +30,15 @@ public enum UrlType
 }
 
 /// <summary>
-/// Provides WebView-related services including URL classification
-/// for .webapp documents.
+/// Provides WebView-related services including URL classification.
 /// </summary>
 public interface IWebViewService
 {
     /// <summary>
-    /// Classifies a .webapp Home URL string to determine how it should
-    /// be resolved. Returns WebUrl for http/https URLs, LocalAbsolute
-    /// for local:// URLs, LocalPath for relative paths or resource keys
-    /// ending in .html/.htm, or Invalid otherwise.
+    /// Classifies a URL string to determine how it should be resolved.
+    /// Returns WebUrl for http/https URLs, LocalAbsolute for local://
+    /// URLs, LocalPath for relative paths or resource keys ending in
+    /// .html/.htm, or Invalid otherwise.
     /// </summary>
     UrlType ClassifyUrl(string url);
 

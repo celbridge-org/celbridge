@@ -1,4 +1,4 @@
-namespace Celbridge.WebView;
+namespace Celbridge.WebHost;
 
 /// <summary>
 /// Factory for acquiring WebView2 instances.

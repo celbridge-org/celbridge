@@ -1,6 +1,6 @@
 using Celbridge.Settings;
 
-namespace Celbridge.WebView.Services;
+namespace Celbridge.WebHost.Services;
 
 public class WebViewService : IWebViewService
 {

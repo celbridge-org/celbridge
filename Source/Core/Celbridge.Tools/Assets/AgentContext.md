@@ -49,20 +49,18 @@ content rely on source control.
 
 ## Special File Formats
 
-### `.webapp` — embedded web view
+### `.webview` — embedded external URL
 
-A `.webapp` file is a JSON file with a single `sourceUrl` property that specifies
-the web page or local HTML file to display in an embedded browser panel.
+A `.webview` file is a JSON file with a single `sourceUrl` property that specifies
+an external web page to display in an embedded browser panel.
 
 ```json
 { "sourceUrl": "https://example.com" }
 ```
 
-The `sourceUrl` value can be:
-- A full URL: `https://example.com`
-- A relative path to a local HTML file: `my_app.html` (resolved relative to the `.webapp` file)
-
-Use `document_write` to create a `.webapp` file in one step.
+The `sourceUrl` must be an external `http://` or `https://` URL. Local paths
+and resource keys are not supported. Use `document_write` to create a
+`.webview` file in one step.
 
 ## Packages
 

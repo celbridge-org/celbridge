@@ -2,12 +2,12 @@ using Celbridge.Activities;
 using Celbridge.Documents;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.WebView.Services;
+using Celbridge.WebView.ViewModels;
+using Celbridge.WebView.Views;
 using Microsoft.Extensions.Localization;
-using Celbridge.WebApp.Services;
-using Celbridge.WebApp.ViewModels;
-using Celbridge.WebApp.Views;
 
-namespace Celbridge.WebApp;
+namespace Celbridge.WebView;
 
 public class Module : IModule
 {
@@ -19,13 +19,13 @@ public class Module : IModule
         // Register views
         //
 
-        services.AddTransient<WebAppDocumentView>();
+        services.AddTransient<WebViewDocumentView>();
 
         //
         // Register view models
         //
 
-        services.AddTransient<WebAppDocumentViewModel>();
+        services.AddTransient<WebViewDocumentViewModel>();
     }
 
     public Result Initialize()
@@ -36,7 +36,7 @@ public class Module : IModule
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
         var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
-        return [new WebAppEditorFactory(serviceProvider, stringLocalizer)];
+        return [new WebViewEditorFactory(serviceProvider, stringLocalizer)];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

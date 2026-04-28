@@ -3,7 +3,7 @@ using Celbridge.Server;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.WebView;
+using Celbridge.WebHost;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -78,11 +78,11 @@ public partial class WebInspectorViewModel : InspectorViewModel
         _fileServer = projectFileServer;
         _webViewService = webViewService;
 
-        _messengerService.Register<WebAppNavigationStateChangedMessage>(this, OnWebAppNavigationStateChanged);
+        _messengerService.Register<WebViewNavigationStateChangedMessage>(this, OnWebViewNavigationStateChanged);
         PropertyChanged += ViewModel_PropertyChanged;
     }
 
-    private void OnWebAppNavigationStateChanged(object recipient, WebAppNavigationStateChangedMessage message)
+    private void OnWebViewNavigationStateChanged(object recipient, WebViewNavigationStateChangedMessage message)
     {
         if (message.DocumentResource == Resource)
         {
@@ -106,25 +106,25 @@ public partial class WebInspectorViewModel : InspectorViewModel
             return;
         }
 
-        _messengerService.Send(new WebAppNavigateMessage(Resource, navigateUrl));
+        _messengerService.Send(new WebViewNavigateMessage(Resource, navigateUrl));
     }
 
     public IRelayCommand RefreshCommand => new RelayCommand(Refresh_Executed);
     private void Refresh_Executed()
     {
-        _messengerService.Send(new WebAppRefreshMessage(Resource));
+        _messengerService.Send(new WebViewRefreshMessage(Resource));
     }
 
     public IRelayCommand GoBackCommand => new RelayCommand(GoBack_Executed);
     private void GoBack_Executed()
     {
-        _messengerService.Send(new WebAppGoBackMessage(Resource));
+        _messengerService.Send(new WebViewGoBackMessage(Resource));
     }
 
     public IRelayCommand GoForwardCommand => new RelayCommand(GoForward_Executed);
     private void GoForward_Executed()
     {
-        _messengerService.Send(new WebAppGoForwardMessage(Resource));
+        _messengerService.Send(new WebViewGoForwardMessage(Resource));
     }
 
     private bool ValidateAndNormalizeUrl(string url, ResourceKey contextResource, out string navigateUrl)
@@ -220,10 +220,10 @@ public partial class WebInspectorViewModel : InspectorViewModel
                 _logger.LogError(resolveLoadResult, $"Failed to resolve path for resource: '{Resource}'");
                 return;
             }
-            var loadResult = LoadWebApp(resolveLoadResult.Value);
+            var loadResult = LoadWebView(resolveLoadResult.Value);
             if (loadResult.IsFailure)
             {
-                _logger.LogError(loadResult, $"Failed to load .webapp file: {resolveLoadResult.Value}");
+                _logger.LogError(loadResult, $"Failed to load .webview file: {resolveLoadResult.Value}");
                 return;
             }
 
@@ -239,16 +239,16 @@ public partial class WebInspectorViewModel : InspectorViewModel
                 _logger.LogError(resolveSaveResult, $"Failed to resolve path for resource: '{Resource}'");
                 return;
             }
-            var saveResult = SaveWebApp(resolveSaveResult.Value, SourceUrl);
+            var saveResult = SaveWebView(resolveSaveResult.Value, SourceUrl);
             if (saveResult.IsFailure)
             {
-                _logger.LogError(saveResult, $"Failed to save .webapp file: {resolveSaveResult.Value}");
+                _logger.LogError(saveResult, $"Failed to save .webview file: {resolveSaveResult.Value}");
                 return;
             }
         }
     }
 
-    private Result<string> LoadWebApp(string webFilePath)
+    private Result<string> LoadWebView(string webFilePath)
     {
         if (!File.Exists(webFilePath))
         {
@@ -276,12 +276,12 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"An exception occurred when loading .webapp file: {webFilePath}")
+            return Result<string>.Fail($"An exception occurred when loading .webview file: {webFilePath}")
                 .WithException(ex);
         }
     }
 
-    private Result SaveWebApp(string webFilePath, string sourceUrl)
+    private Result SaveWebView(string webFilePath, string sourceUrl)
     {
         try
         {
@@ -296,7 +296,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when saving .webapp file: {webFilePath}")
+            return Result.Fail($"An exception occurred when saving .webview file: {webFilePath}")
                 .WithException(ex);
         }
     }

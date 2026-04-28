@@ -53,10 +53,10 @@ public class FileFilterTests
     }
 
     [Test]
-    public void ShouldSearchFile_WebappExtension_ReturnsFalse()
+    public void ShouldSearchFile_WebviewExtension_ReturnsFalse()
     {
-        var filePath = Path.Combine(_testDir, "test.webapp");
-        File.WriteAllText(filePath, "webapp data");
+        var filePath = Path.Combine(_testDir, "test.webview");
+        File.WriteAllText(filePath, "webview data");
 
         _filter.ShouldSearchFile(filePath).Should().BeFalse();
     }

@@ -1,7 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.Web.WebView2.Core;
 
-namespace Celbridge.WebView.Services;
+namespace Celbridge.WebHost.Services;
 
 /// <summary>
 /// Implementation of IHostChannel that wraps CoreWebView2.

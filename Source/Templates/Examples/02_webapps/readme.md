@@ -1,18 +1,18 @@
 # Web App Examples
 
-**.webapp** files are a quick and easy way to embed web applications in your Celbridge project. You can use the Explorer window to navigate to your web applications exactly as you would with a text file, Python script or a spreadsheet file.
+**.webview** files are a quick and easy way to embed web applications in your Celbridge project. You can use the Explorer window to navigate to your web applications exactly as you would with a text file, Python script or a spreadsheet file.
 
 This powerful feature allows you to embed all the web-based productivity applications, dashboards, online documentation, ticketing systems, etc. that you already work with right alongside your project data. 
 
-**.webapp** files help to reduce the cognitive load associated with using web applications in a traditional browser in a couple ways. 
+**.webview** files help to reduce the cognitive load associated with using web applications in a traditional browser in a couple ways. 
 
-Firstly, the file-based structure is much faster to navigate than a long row of browser tabs. Secondly, unlike browser bookmarks, all opened **.webapp** documents retain their previous state. When you open an already active **.webapp** file, the page is still in the same state that you left it, so you can pick up right where you left off.
+Firstly, the file-based structure is much faster to navigate than a long row of browser tabs. Secondly, unlike browser bookmarks, all opened **.webview** documents retain their previous state. When you open an already active **.webview** file, the page is still in the same state that you left it, so you can pick up right where you left off.
 
 These small conveniences soon add up if you use web applications heavily!
 
-Note: While **.webapp** files can be used to display any webpage, they are not intended as a general replacement for a dedicated web browser. They work best for web applications & documentation sites that you visit frequently.
+Note: While **.webview** files can be used to display any webpage, they are not intended as a general replacement for a dedicated web browser. They work best for web applications & documentation sites that you visit frequently.
 
-This folder contains several example **.webapp** files for some great free & open source web applications.
+This folder contains several example **.webview** files for some great free & open source web applications.
 
 # 30 Days of Python
 

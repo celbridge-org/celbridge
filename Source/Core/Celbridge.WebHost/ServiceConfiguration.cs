@@ -1,7 +1,7 @@
-using Celbridge.WebView.Services;
+using Celbridge.WebHost.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.WebView;
+namespace Celbridge.WebHost;
 
 public static class ServiceConfiguration
 {

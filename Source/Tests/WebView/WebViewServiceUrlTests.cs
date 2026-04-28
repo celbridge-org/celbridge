@@ -1,6 +1,6 @@
 using Celbridge.Settings;
-using Celbridge.WebView;
-using Celbridge.WebView.Services;
+using Celbridge.WebHost;
+using Celbridge.WebHost.Services;
 
 namespace Celbridge.Tests.WebView;
 

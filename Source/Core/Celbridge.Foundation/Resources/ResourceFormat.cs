@@ -36,7 +36,7 @@ public enum ResourceFormat
     IPython,
 
     /// <summary>
-    /// A web app document with the .webapp extension
+    /// A web view document with the .webview extension
     /// </summary>
-    WebApp
+    WebView
 }
