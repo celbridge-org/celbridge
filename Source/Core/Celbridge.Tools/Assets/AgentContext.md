@@ -2,7 +2,9 @@
 
 ## Getting Started
 
-Call `app_get_status` before using workspace tools — most require a loaded project.
+Call `app_get_status` before using workspace tools — most require a loaded project. The
+response also includes a `featureFlags` map you can consult before calling a feature-gated
+tool (e.g. check `webview-dev-tools-eval` before `webview_eval`).
 
 ## Resource Keys
 
@@ -126,8 +128,28 @@ needing the user to reload and paste back errors.
    HTTP cache is cleared first so newly-edited JS/CSS/image sub-resources are
    refetched. Pass `clearCache: false` to skip the cache clear when you know
    no sub-resources have changed and want a slightly faster reload.
-3. Use `webview_eval(resource, expression)` to evaluate JavaScript inside the
-   WebView for ad-hoc inspection.
+3. Call `webview_get_console(resource)` immediately after a reload to read any
+   parse errors, runtime exceptions, or warnings the editor logged. The console
+   buffer is preserved across reloads so errors logged before the reload remain
+   readable after.
+4. Inspect the rendered DOM with `webview_get_html(resource, selector?)`,
+   `webview_query(resource, ...)`, and `webview_inspect(resource, selector)`
+   to confirm the markup, find specific elements, and read computed styles.
+5. Exercise the editor with `webview_eval(resource, expression)` for ad-hoc
+   JavaScript probing.
+
+**Readiness contract.** Every inspection and eval tool waits up to 5 seconds
+for the editor's content-ready signal before dispatching. For contribution
+editors that means `celbridge.notifyContentLoaded()`; for the HTML viewer it
+means the WebView's NavigationCompleted. If a tool times out with a
+`content-ready` message, the editor never signalled readiness — check the
+console for an unhandled exception during init.
+
+**`webview_query` modes.** Pass exactly one of `role` (with optional `name`),
+`text`, or `selector`. Role queries combine the explicit `role` attribute and
+the implicit role for the element's tag (button → button, h2 → heading,
+nav → navigation). Returned `selector` strings are stable enough to pass
+straight to `webview_inspect`.
 
 **Eligible targets.** Works on any open document editor — text, markdown,
 HTML viewers, and custom contribution editors. Excluded: external-URL

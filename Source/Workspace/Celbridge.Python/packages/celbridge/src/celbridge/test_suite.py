@@ -7,6 +7,7 @@ Tests all available tools across all celbridge modules:
   - celbridge.explorer
   - celbridge.document
   - celbridge.package
+  - celbridge.webview
 
 Includes both happy-path tests and adversarial error-handling tests.
 
@@ -17,6 +18,7 @@ Usage (IPython REPL):
 import json
 import base64
 import os
+import time
 import unittest
 
 from celbridge.cel_proxy import CelError
@@ -29,6 +31,7 @@ query = None
 explorer = None
 document = None
 package = None
+webview = None
 
 
 # ---------------------------------------------------------------------------
@@ -981,11 +984,296 @@ class TestPackage(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# webview module
+# ---------------------------------------------------------------------------
+
+# HTML content used by every TestWebView case. Self-contained so the test
+# does not depend on any project-shipped page; the inline <script> emits
+# entries at every console level so get_console can be exercised.
+_WEBVIEW_TEST_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WebView Tools Test</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .warn { color: #b15500; }
+  #status { padding: 0.5rem; border: 1px solid #999; }
+</style>
+</head>
+<body>
+  <h1>WebView Tools Test</h1>
+  <p>Self-contained page used by the cel.test() webview suite.</p>
+  <section id="controls">
+    <button id="run-btn" aria-label="Run task">Run</button>
+    <button class="warn" aria-label="Cancel task">Cancel</button>
+    <input id="name-input" type="text" placeholder="Your name" />
+    <select id="size-select" aria-label="Choose size">
+      <option value="s">Small</option>
+      <option value="m" selected>Medium</option>
+      <option value="l">Large</option>
+    </select>
+  </section>
+  <section id="messages">
+    <p>hello world</p>
+    <p>goodbye world</p>
+    <p class="warn">a warning paragraph</p>
+  </section>
+  <div id="status">idle</div>
+  <script>
+    console.log('boot: webview test page loaded');
+    console.info('info-level message');
+    console.warn('warn-level message');
+    console.debug('debug-level message');
+    try {
+      JSON.parse('{not valid json');
+    } catch (e) {
+      console.error('caught parse error:', e.message);
+    }
+  </script>
+</body>
+</html>
+"""
+
+
+class TestWebView(unittest.TestCase):
+    """End-to-end tests for the webview_* tools.
+
+    Writes a self-contained HTML page, opens it, and exercises every tool.
+    Eval-dependent cases are skipped automatically when the
+    webview-dev-tools-eval feature flag is off.
+    """
+
+    test_resource = "TestWebView/page.html"
+    unopened_resource = "TestWebView/unopened.html"
+    eval_enabled = False
+
+    @classmethod
+    def setUpClass(cls):
+        flags = app.get_status().get("featureFlags", {})
+        cls.eval_enabled = flags.get("webview-dev-tools-eval", False)
+
+    def setUp(self):
+        _delete_if_exists("TestWebView")
+        explorer.create_folder("TestWebView")
+        document.write(self.test_resource, _WEBVIEW_TEST_HTML)
+        document.write(
+            self.unopened_resource,
+            "<!doctype html><html><body>unopened</body></html>",
+        )
+        document.open(self.test_resource, activate=True)
+        # The bridge's content-ready gate covers most of the navigation wait,
+        # but a small grace period lets the inline <script> run so console
+        # messages are present when the first get_console call fires.
+        time.sleep(0.5)
+
+    def tearDown(self):
+        _close_if_open(self.test_resource)
+        _delete_if_exists("TestWebView")
+
+    # -- webview.reload --
+
+    def test_reload_returns_ok(self):
+        result = webview.reload(self.test_resource)
+        self.assertEqual(result, "ok")
+        # Reload resets the readiness gate. Wait for the next NavigationCompleted
+        # so the next test in the class does not race the reload.
+        time.sleep(0.5)
+
+    def test_reload_unopened_resource_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)no tool-bridge-eligible"):
+            webview.reload("does/not/exist.html")
+
+    def test_reload_path_traversal_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)invalid resource key"):
+            webview.reload("../escape.html")
+
+    def test_reload_real_unopened_file_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)no tool-bridge-eligible"):
+            webview.reload(self.unopened_resource)
+
+    def test_reload_empty_resource_key_fails_with_eligibility_error(self):
+        # Empty string passes IsValidKey (it represents the project root) but
+        # the project root has no WebView registered, so the call falls through
+        # to the same eligibility error as any other unregistered key.
+        with self.assertRaisesRegex(CelError, "(?i)no tool-bridge-eligible"):
+            webview.reload("")
+
+    # -- webview.eval (gated by webview-dev-tools-eval) --
+
+    def test_eval_arithmetic(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        self.assertEqual(webview.eval(self.test_resource, "1 + 1"), 2)
+
+    def test_eval_reads_document_title(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        title = webview.eval(self.test_resource, "document.title")
+        self.assertEqual(title, "WebView Tools Test")
+
+    def test_eval_unparseable_returns_none(self):
+        # ExecuteScriptAsync returns null silently when the script throws or
+        # fails to parse — the host does not surface JS errors. Lock that
+        # contract in so a future change is caught.
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        self.assertIsNone(
+            webview.eval(self.test_resource, "this is not valid javascript")
+        )
+
+    def test_eval_empty_expression_rejected(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        with self.assertRaisesRegex(CelError, "must not be empty"):
+            webview.eval(self.test_resource, "")
+
+    # -- webview.get_html --
+
+    def test_get_html_returns_outer_html(self):
+        result = webview.get_html(self.test_resource)
+        self.assertIn("<h1>", result["html"])
+
+    def test_get_html_scopes_to_selector(self):
+        result = webview.get_html(self.test_resource, selector="#controls")
+        self.assertIn("run-btn", result["html"])
+        self.assertNotIn("<h1>", result["html"])
+
+    def test_get_html_redacts_script_bodies(self):
+        result = webview.get_html(self.test_resource)
+        self.assertNotIn("console.log", result["html"])
+        self.assertIn("omitted", result["html"])
+
+    def test_get_html_redacts_style_bodies(self):
+        result = webview.get_html(self.test_resource)
+        self.assertNotIn("font-family", result["html"])
+
+    def test_get_html_missing_selector_fails(self):
+        with self.assertRaisesRegex(CelError, "no element matches"):
+            webview.get_html(self.test_resource, selector="#no-such-thing")
+
+    # -- webview.query --
+
+    def test_query_by_role_returns_all_matches(self):
+        result = webview.query(self.test_resource, role="button")
+        self.assertEqual(result["mode"], "role")
+        self.assertEqual(result["totalMatches"], 2)
+
+    def test_query_role_plus_name_filters_to_one(self):
+        result = webview.query(self.test_resource, role="button", name="Run")
+        self.assertEqual(result["totalMatches"], 1)
+        self.assertIn("run", result["elements"][0]["accessibleName"].lower())
+
+    def test_query_by_visible_text(self):
+        result = webview.query(self.test_resource, text="hello")
+        self.assertEqual(result["mode"], "text")
+        self.assertEqual(result["totalMatches"], 1)
+
+    def test_query_by_selector(self):
+        result = webview.query(self.test_resource, selector="p")
+        self.assertGreaterEqual(result["totalMatches"], 3)
+
+    def test_query_role_heading_finds_h1(self):
+        result = webview.query(self.test_resource, role="heading")
+        self.assertEqual(result["totalMatches"], 1)
+        self.assertEqual(result["elements"][0]["tag"], "h1")
+
+    def test_query_no_mode_rejected(self):
+        with self.assertRaisesRegex(CelError, "exactly one"):
+            webview.query(self.test_resource)
+
+    def test_query_ambiguous_mode_rejected(self):
+        with self.assertRaisesRegex(CelError, "exactly one"):
+            webview.query(self.test_resource, role="button", selector="button")
+
+    def test_query_bad_selector_syntax_rejected(self):
+        with self.assertRaisesRegex(CelError, "invalid selector"):
+            webview.query(self.test_resource, selector="<<<")
+
+    # -- webview.inspect --
+
+    def test_inspect_returns_metadata(self):
+        result = webview.inspect(self.test_resource, "#run-btn")
+        self.assertEqual(result["tag"], "button")
+        self.assertEqual(result["role"], "button")
+        self.assertEqual(result["accessibleName"], "Run task")
+        self.assertIn("computedStyles", result)
+        self.assertIn("children", result)
+
+    def test_inspect_returns_unique_selector(self):
+        result = webview.inspect(self.test_resource, "#size-select")
+        self.assertEqual(result["selector"], "#size-select")
+
+    def test_inspect_missing_selector_fails(self):
+        with self.assertRaisesRegex(CelError, "no element matches"):
+            webview.inspect(self.test_resource, "#nope")
+
+    def test_inspect_bad_selector_syntax_rejected(self):
+        with self.assertRaisesRegex(CelError, "invalid selector"):
+            webview.inspect(self.test_resource, "<<<")
+
+    # -- webview.get_console --
+
+    def test_get_console_captures_boot_messages(self):
+        result = webview.get_console(self.test_resource, tail=200)
+        self.assertTrue(
+            any("boot:" in " ".join(e["args"]) for e in result["entries"])
+        )
+
+    def test_get_console_suppresses_debug_by_default(self):
+        result = webview.get_console(self.test_resource, tail=200)
+        self.assertFalse(
+            any(e["level"] == "debug" for e in result["entries"])
+        )
+
+    def test_get_console_includes_debug_when_requested(self):
+        result = webview.get_console(
+            self.test_resource, tail=200, include_debug=True
+        )
+        self.assertTrue(
+            any(e["level"] == "debug" for e in result["entries"])
+        )
+
+    def test_get_console_surfaces_caught_errors(self):
+        result = webview.get_console(self.test_resource, tail=200)
+        self.assertTrue(
+            any(
+                e["level"] == "error"
+                and "parse" in " ".join(e["args"]).lower()
+                for e in result["entries"]
+            )
+        )
+
+    def test_get_console_since_filters_older_entries(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        baseline = webview.get_console(self.test_resource, tail=200)
+        if not baseline["entries"]:
+            self.skipTest("no console entries to take a checkpoint from")
+        checkpoint = max(e["timestampMs"] for e in baseline["entries"])
+        webview.eval(
+            self.test_resource, "console.log('after-checkpoint marker')"
+        )
+        result = webview.get_console(
+            self.test_resource, tail=200, since_timestamp_ms=checkpoint
+        )
+        self.assertTrue(
+            all(e["timestampMs"] > checkpoint for e in result["entries"])
+        )
+        self.assertTrue(
+            any(
+                "after-checkpoint" in " ".join(e["args"])
+                for e in result["entries"]
+            )
+        )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
-    global app, file, query, explorer, document, package
+    global app, file, query, explorer, document, package, webview
 
     import celbridge
     app = celbridge.app
@@ -994,6 +1282,7 @@ def main():
     explorer = celbridge.explorer
     document = celbridge.document
     package = celbridge.package
+    webview = celbridge.webview
 
     print("\n" + "=" * 60)
     print("Celbridge MCP Integration Test")
@@ -1010,6 +1299,7 @@ def main():
         TestDocumentLineEndings,
         TestFile,
         TestPackage,
+        TestWebView,
     ]
     for cls in test_classes:
         suite.addTests(loader.loadTestsFromTestCase(cls))

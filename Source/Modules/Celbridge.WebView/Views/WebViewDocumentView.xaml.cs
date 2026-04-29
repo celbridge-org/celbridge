@@ -253,6 +253,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
 
+            _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
+            _webView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
+
             AttachNavigationPolicy(_webView.CoreWebView2);
 
             TryNavigate();
@@ -381,6 +384,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+            _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
 
             if (_navigationPolicy is not null)
             {
@@ -462,7 +466,28 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        // The HTML viewer renders static project-served content, so the WebView's
+        // own NavigationCompleted is a sufficient content-ready signal — there is no
+        // editor-side notifyContentLoaded handshake. External-URL .webview documents
+        // never register so this no-ops on the .webview path.
+        if (_toolBridge is not null && !_toolBridgeRegisteredResource.IsEmpty)
+        {
+            _toolBridge.NotifyContentReady(_toolBridgeRegisteredResource);
+        }
+
         SendNavigationStateChanged();
+    }
+
+    private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    {
+        // Reset the tool bridge's content-ready gate so webview_* tool calls block
+        // until the new navigation completes. Cross-origin navigations (e.g. an
+        // attacker-controlled redirect from project content) also reset eligibility
+        // here; tool calls remain blocked until a matching NavigationCompleted fires.
+        if (_toolBridge is not null && !_toolBridgeRegisteredResource.IsEmpty)
+        {
+            _toolBridge.NotifyContentLoading(_toolBridgeRegisteredResource);
+        }
     }
 
     private void SendNavigationStateChanged()

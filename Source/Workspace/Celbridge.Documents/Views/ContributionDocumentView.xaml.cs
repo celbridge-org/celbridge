@@ -241,7 +241,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
                 await TryInjectToolBridgeShimAsync();
             }
 
-            // Block all navigations except the package's own host name
+            // Block all navigations except the package's own host name. Each allowed
+            // navigation also resets the tool bridge's content-ready gate so webview_*
+            // tool calls block until the editor signals readiness post-navigation.
             var allowedHostPrefix = $"https://{Contribution.Package.HostName}/";
             WebView.NavigationStarting += (s, args) =>
             {
@@ -253,6 +255,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
                 if (uri.StartsWith(allowedHostPrefix))
                 {
+                    _toolBridge?.NotifyContentLoading(_toolBridgeRegisteredResource);
                     return;
                 }
 
@@ -444,6 +447,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
     private async void SetContentLoaded(ContentLoadedReason reason = ContentLoadedReason.Initial)
     {
+        // Tool bridge readiness fires for every reason — initial load, external reload,
+        // and programmatic webview_reload — so gated webview_* calls unblock as soon
+        // as the editor signals it has reinitialised post-navigation.
+        _toolBridge?.NotifyContentReady(_toolBridgeRegisteredResource);
+
         if (reason != ContentLoadedReason.Initial)
         {
             return;

@@ -33,4 +33,8 @@
     <PackageReference Include="StreamJsonRpc" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>
