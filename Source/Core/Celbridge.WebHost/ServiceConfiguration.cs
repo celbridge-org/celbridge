@@ -9,6 +9,7 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IWebViewService, WebViewService>();
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
+        services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
     }
 
     /// <summary>

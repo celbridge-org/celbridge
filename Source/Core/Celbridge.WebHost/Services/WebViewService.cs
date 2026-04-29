@@ -28,4 +28,9 @@ public class WebViewService : IWebViewService
     {
         return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevTools);
     }
+
+    public bool IsDevToolsEvalFeatureEnabled()
+    {
+        return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval);
+    }
 }

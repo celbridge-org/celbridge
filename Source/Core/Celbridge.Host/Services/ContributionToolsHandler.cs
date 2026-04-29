@@ -46,6 +46,11 @@ public sealed class ContributionToolsHandler
 
         foreach (var tool in allTools)
         {
+            if (IsContributionRestricted(tool.Alias))
+            {
+                continue;
+            }
+
             if (ToolAllowlist.IsAllowed(tool.Alias, _allowedPatterns))
             {
                 filtered.Add(tool);
@@ -63,6 +68,18 @@ public sealed class ContributionToolsHandler
             throw new LocalRpcException("Tool name must not be empty")
             {
                 ErrorCode = ToolRpcErrorCodes.ToolInvalidArgs
+            };
+        }
+
+        // The webview_* namespace is reserved for the MCP path. Blocking it here
+        // (regardless of the package's requires_tools entries) closes the
+        // cross-document attack vector where a contribution editor's JS could
+        // call webview.eval against another open document.
+        if (IsContributionRestricted(name))
+        {
+            throw new LocalRpcException($"Tool '{name}' is not accessible from contribution editors")
+            {
+                ErrorCode = ToolRpcErrorCodes.ToolDenied
             };
         }
 
@@ -89,5 +106,17 @@ public sealed class ContributionToolsHandler
                 ErrorCode = ToolRpcErrorCodes.ToolFailed
             };
         }
+    }
+
+    /// <summary>
+    /// Returns true if the tool name belongs to a namespace that is forbidden inside
+    /// contribution WebViews. Currently this is the webview_* namespace, which is
+    /// available on the MCP path only. Both MCP-style names (webview_eval) and alias
+    /// dotted names (webview.eval) are matched.
+    /// </summary>
+    private static bool IsContributionRestricted(string name)
+    {
+        return name.StartsWith("webview.", StringComparison.Ordinal)
+            || name.StartsWith("webview_", StringComparison.Ordinal);
     }
 }

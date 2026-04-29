@@ -18,4 +18,11 @@ public interface IWebViewService
     /// sensitive material) should combine this with their own check.
     /// </summary>
     bool IsDevToolsFeatureEnabled();
+
+    /// <summary>
+    /// Returns true if the WebViewDevToolsEval feature flag is enabled. This is a
+    /// separate flag from IsDevToolsFeatureEnabled because webview_eval is an
+    /// arbitrary code execution primitive and is gated independently.
+    /// </summary>
+    bool IsDevToolsEvalFeatureEnabled();
 }

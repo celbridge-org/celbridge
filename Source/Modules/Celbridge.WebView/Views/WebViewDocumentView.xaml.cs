@@ -36,6 +36,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
 
+    // WebView tool bridge registration tracking. Only set for the HtmlViewer role;
+    // .webview (external URL) documents are not eligible for the webview_* tool
+    // namespace.
+    private IDocumentWebViewToolBridge? _toolBridge;
+    private ResourceKey _toolBridgeRegisteredResource;
+
     private static readonly WebViewDocumentOptions DefaultOptions = new(
         WebViewDocumentRole.ExternalUrl,
         InterceptTopFrameNavigation: false);
@@ -218,12 +224,22 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {
                 MapProjectVirtualHost(_webView.CoreWebView2);
+
+                // The HTML viewer renders project-served content and is shim-eligible
+                // for the webview_* MCP tool namespace. External-URL .webview documents
+                // intentionally skip both the shim and the tool bridge registration.
+                await TryInjectToolBridgeShimAsync();
             }
 
             _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
             _host = new CelbridgeHost(_hostChannel);
             _host.AddLocalRpcTarget<IHostInput>(this);
             _host.StartListening();
+
+            if (Options.Role == WebViewDocumentRole.HtmlViewer)
+            {
+                TryRegisterWithToolBridge();
+            }
 
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
@@ -352,6 +368,13 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     /// </summary>
     private void TeardownWebViewState()
     {
+        if (_toolBridge is not null)
+        {
+            _toolBridge.Unregister(_toolBridgeRegisteredResource);
+            _toolBridge = null;
+            _toolBridgeRegisteredResource = ResourceKey.Empty;
+        }
+
         if (_webView?.CoreWebView2 is not null)
         {
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
@@ -379,6 +402,57 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
         _host = null;
         _hostChannel = null;
+    }
+
+    private async Task TryInjectToolBridgeShimAsync()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return;
+        }
+
+        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        if (toolBridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = toolBridge.GetShimScript();
+            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into HTML viewer WebView");
+        }
+    }
+
+    private void TryRegisterWithToolBridge()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return;
+        }
+
+        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        if (toolBridge is null)
+        {
+            return;
+        }
+
+        var resource = FileResource;
+        if (resource.IsEmpty)
+        {
+            return;
+        }
+
+        toolBridge.RegisterCoreWebView2(resource, coreWebView2);
+
+        _toolBridge = toolBridge;
+        _toolBridgeRegisteredResource = resource;
     }
 
     private void CoreWebView2_HistoryChanged(object? sender, object e)

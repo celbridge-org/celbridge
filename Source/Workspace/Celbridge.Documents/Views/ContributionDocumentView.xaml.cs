@@ -42,6 +42,12 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
     // JSON-RPC infrastructure
     private WebViewHostChannel? _hostChannel;
 
+    // WebView tool bridge registration tracking. Only set when the package allows the
+    // webview_* tools and the registration has succeeded; the field doubles as a guard
+    // for unregistration.
+    private IDocumentWebViewToolBridge? _toolBridge;
+    private ResourceKey _toolBridgeRegisteredResource;
+
     // Deferred editor state for views where the WebView initializes asynchronously.
     // RestoreEditorStateAsync stores state here when the editor isn't ready yet,
     // and SetContentLoaded applies it once the JS client signals readiness.
@@ -227,6 +233,14 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
             await InjectCelbridgeContextAsync(Contribution.Package, Contribution.Options);
 
+            // Inject the in-page tool bridge shim for the webview_* MCP tool namespace.
+            // Skipped when the package opts out via DevToolsBlocked (sensitive material)
+            // so that no tool surface is exposed for those packages.
+            if (!devToolsBlocked)
+            {
+                await TryInjectToolBridgeShimAsync();
+            }
+
             // Block all navigations except the package's own host name
             var allowedHostPrefix = $"https://{Contribution.Package.HostName}/";
             WebView.NavigationStarting += (s, args) =>
@@ -272,14 +286,21 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             Host.AddLocalRpcTarget<IHostDocument>(_documentHandler);
             Host.AddLocalRpcTarget<IHostDialog>(dialogHandler);
 
-            var toolBridge = _serviceProvider.GetService<IMcpToolBridge>();
-            if (toolBridge is not null)
+            var mcpToolBridge = _serviceProvider.GetService<IMcpToolBridge>();
+            if (mcpToolBridge is not null)
             {
-                _toolsHandler = new ContributionToolsHandler(toolBridge, Contribution.Package.RequiresTools);
+                _toolsHandler = new ContributionToolsHandler(mcpToolBridge, Contribution.Package.RequiresTools);
                 Host.AddLocalRpcTarget<ContributionToolsHandler>(_toolsHandler);
             }
 
             Host.StartListening();
+
+            // Register with the WebView tool bridge so the webview_* MCP tools can
+            // target this WebView by resource key. Mirrors the shim injection guard.
+            if (!devToolsBlocked)
+            {
+                TryRegisterWithToolBridge();
+            }
 
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
@@ -303,6 +324,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
     /// </summary>
     private void TeardownWebViewState()
     {
+        if (_toolBridge is not null)
+        {
+            _toolBridge.Unregister(_toolBridgeRegisteredResource);
+            _toolBridge = null;
+            _toolBridgeRegisteredResource = ResourceKey.Empty;
+        }
+
         if (_documentHandler is not null)
         {
             _documentHandler.ContentLoaded -= SetContentLoaded;
@@ -321,6 +349,57 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
         Host = null;
         _hostChannel = null;
+    }
+
+    private async Task TryInjectToolBridgeShimAsync()
+    {
+        var coreWebView2 = WebView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return;
+        }
+
+        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        if (toolBridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = toolBridge.GetShimScript();
+            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into contribution WebView");
+        }
+    }
+
+    private void TryRegisterWithToolBridge()
+    {
+        var coreWebView2 = WebView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return;
+        }
+
+        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        if (toolBridge is null)
+        {
+            return;
+        }
+
+        var resource = FileResource;
+        if (resource.IsEmpty)
+        {
+            return;
+        }
+
+        toolBridge.RegisterCoreWebView2(resource, coreWebView2);
+
+        _toolBridge = toolBridge;
+        _toolBridgeRegisteredResource = resource;
     }
 
     public void OnKeyboardShortcut(string key, bool ctrlKey, bool shiftKey, bool altKey)

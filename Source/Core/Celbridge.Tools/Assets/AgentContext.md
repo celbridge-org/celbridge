@@ -111,6 +111,45 @@ confirmation dialog in the application before proceeding. Always pass `true`
 (or omit the parameter) unless the user has explicitly asked for unattended
 operation (e.g. in an install script).
 
+## WebView DevTools
+
+The `webview_*` tools give you a feedback loop into a running contribution editor
+or project HTML viewer WebView. Use them to iterate on package code without
+needing the user to reload and paste back errors.
+
+**Edit-reload-inspect workflow:**
+
+1. Edit the package's HTML/CSS/JS files with `document_*` or `file_*` tools.
+2. Call `webview_reload(resource)` to reload the WebView for the open document.
+   The package code reinitialises from scratch and Monaco's undo history (if
+   any) is wiped — the reload is destructive by design. By default the WebView
+   HTTP cache is cleared first so newly-edited JS/CSS/image sub-resources are
+   refetched. Pass `clearCache: false` to skip the cache clear when you know
+   no sub-resources have changed and want a slightly faster reload.
+3. Use `webview_eval(resource, expression)` to evaluate JavaScript inside the
+   WebView for ad-hoc inspection.
+
+**Eligible targets.** Works on any open document editor — text, markdown,
+HTML viewers, and custom contribution editors. Excluded: external-URL
+`.webview` documents and editors whose package opts out of devtools. If you
+are unsure whether a given document qualifies, just call the tool — the error
+message will tell you. The resource key must match an open document tab.
+
+**`webview_eval` is gated by an extra feature flag.** It is an arbitrary code
+execution primitive, so it requires both `webview-dev-tools` and
+`webview-dev-tools-eval`. If it is unavailable, the other webview_* tools may
+still be usable; tell the user the flag is off and why it is gated separately.
+
+**These tools are available from the Python `cel.*` proxy and the MCP path,
+but not from the JavaScript `cel.*` proxy inside contribution editor
+packages.** The Python proxy runs on behalf of the user (the trust root) so
+`cel.webview.eval(...)` works there. The JavaScript proxy runs inside
+third-party package code, so the host denies any `webview.*` call arriving
+from a contribution editor — regardless of what the package's
+`requires_tools` declares. This blocks the cross-document attack vector
+where one editor's JavaScript could eval against another open document. Do
+not declare `webview.*` in a package's `requires_tools`.
+
 ## Regular Expressions
 
 Tools that accept regex patterns (e.g. `file_grep` with `useRegex: true`) use

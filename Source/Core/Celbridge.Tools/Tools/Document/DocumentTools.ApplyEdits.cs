@@ -38,16 +38,22 @@ public partial class DocumentTools
             return ErrorResult($"Invalid resource key: '{fileResource}'");
         }
 
-        List<TextEdit> textEdits;
+        Result<List<TextEdit>> parseResult;
         try
         {
-            textEdits = ParseEditsJson(editsJson);
+            parseResult = ParseEditsJson(editsJson);
         }
         catch (JsonException ex)
         {
             return ErrorResult($"Invalid edits JSON: {ex.Message}");
         }
 
+        if (parseResult.IsFailure)
+        {
+            return ErrorResult(parseResult.FirstErrorMessage);
+        }
+
+        var textEdits = parseResult.Value;
         if (textEdits.Count == 0)
         {
             return SuccessResult("ok");
