@@ -8,8 +8,8 @@ namespace Celbridge.Tools;
 public partial class WebViewTools
 {
     /// <summary>
-    /// Reloads the WebView hosting the document. Page state is discarded by design;
-    /// the editor's package code reinitialises from scratch. Use this after writing
+    /// Reloads the WebView hosting the document. Page state is discarded by design.
+    /// The editor's package code reinitialises from scratch. Use this after writing
     /// new package files (HTML, CSS, JS, manifest) so the WebView picks up the edits.
     /// Requires the webview-dev-tools feature flag. Works on any open document editor
     /// (text, markdown, HTML viewer, custom editors). Not available for external-URL

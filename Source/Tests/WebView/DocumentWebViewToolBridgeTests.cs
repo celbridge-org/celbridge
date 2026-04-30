@@ -307,6 +307,45 @@ public partial class DocumentWebViewToolBridgeTests
     }
 
     [Test]
+    public async Task GetNetworkAsync_BufferSurvivesReload()
+    {
+        // Dispatch by expression so the flushNetwork counter is not
+        // perturbed by ReloadAsync's flushConsole drain.
+        var networkCalls = 0;
+        _bridge.Register(
+            _resource,
+            evalAsync: expression =>
+            {
+                if (expression.Contains("flushNetwork"))
+                {
+                    networkCalls++;
+                    if (networkCalls == 1)
+                    {
+                        return Task.FromResult(BuildFlushEnvelope(
+                            "[{\"id\":1,\"type\":\"fetch\",\"method\":\"GET\",\"url\":\"https://example.com/pre-reload\",\"status\":200,\"startTimeMs\":1}]"));
+                    }
+                    return Task.FromResult(BuildFlushEnvelope(
+                        "[{\"id\":2,\"type\":\"fetch\",\"method\":\"GET\",\"url\":\"https://example.com/post-reload\",\"status\":200,\"startTimeMs\":2}]"));
+                }
+                return Task.FromResult(BuildFlushEnvelope("[]"));
+            },
+            reloadAsync: _ => Task.CompletedTask);
+        _bridge.NotifyContentReady(_resource);
+
+        await _bridge.ReloadAsync(_resource, clearCache: false);
+        _bridge.NotifyContentReady(_resource);
+
+        var result = await _bridge.GetNetworkAsync(_resource, new NetworkQueryOptions());
+
+        result.IsSuccess.Should().BeTrue();
+        using var snapshot = JsonDocument.Parse(result.Value);
+        var entries = snapshot.RootElement.GetProperty("entries");
+        entries.GetArrayLength().Should().Be(2);
+        entries[0].GetProperty("url").GetString().Should().Be("https://example.com/pre-reload");
+        entries[1].GetProperty("url").GetString().Should().Be("https://example.com/post-reload");
+    }
+
+    [Test]
     public async Task GetHtmlAsync_PropagatesShimError()
     {
         _bridge.Register(

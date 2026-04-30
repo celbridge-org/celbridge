@@ -435,8 +435,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
     private void TryRegisterWithToolBridge()
     {
-        var coreWebView2 = _webView?.CoreWebView2;
-        if (coreWebView2 is null)
+        var webView = _webView;
+        if (webView?.CoreWebView2 is null)
         {
             return;
         }
@@ -453,7 +453,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             return;
         }
 
-        toolBridge.RegisterCoreWebView2(resource, coreWebView2);
+        toolBridge.RegisterWebView2(resource, webView);
 
         _toolBridge = toolBridge;
         _toolBridgeRegisteredResource = resource;

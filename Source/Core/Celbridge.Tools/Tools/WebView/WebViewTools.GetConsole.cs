@@ -12,7 +12,7 @@ public partial class WebViewTools
     /// rejections from the WebView. The host accumulates entries across reloads,
     /// so errors logged before a reload remain readable after it. Entries are
     /// returned as JSON. The default tail is the most recent 100 entries with
-    /// debug-level messages suppressed; pass tail or includeDebug to widen.
+    /// debug-level messages suppressed. Pass tail or includeDebug to widen.
     /// Waits up to 5 seconds for the editor's content-ready signal before
     /// dispatching. Requires the webview-dev-tools feature flag. Works on any
     /// open document editor whose package has not opted out of devtools.

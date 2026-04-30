@@ -15,7 +15,7 @@ public partial class DocumentTools
     /// <summary>
     /// Closes one or more documents in the editor.
     /// Pass a single resource key or a JSON array of resource keys (e.g. ["foo.txt","scripts/bar.txt"]).
-    /// Documents are closed sequentially; if any close fails (e.g. user cancels a save prompt), the remaining documents are still attempted.
+    /// Documents are closed sequentially. If any close fails (e.g. user cancels a save prompt), the remaining documents are still attempted.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to close, or a JSON array of resource keys.</param>
     /// <param name="forceClose">Force close without save confirmation.</param>

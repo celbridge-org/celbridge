@@ -9,7 +9,7 @@ namespace Celbridge.WebHost.Services;
 /// to the registered WebView via the delegates supplied at registration time. The
 /// delegates are responsible for marshalling onto the UI thread.
 /// </summary>
-public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
+public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 {
     private const string ShimRelativePath = "Celbridge.WebHost/Web/celbridge-client/core/webview-tools-shim.js";
 
@@ -30,9 +30,13 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     }
 
     // Cap accumulated console history per resource. Older entries are evicted FIFO
-    // when the cap is hit. The shim has its own bounded ring; this cap protects the
+    // when the cap is hit. The shim has its own bounded ring. This cap protects the
     // host from a runaway editor that logs forever.
     private const int ConsoleHistoryCap = 2000;
+
+    // Same cap, applied to fetch/XHR activity so a chatty page cannot grow the
+    // host accumulator without bound between drains.
+    private const int NetworkHistoryCap = 2000;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -63,9 +67,13 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    public void Register(ResourceKey resource, Func<string, Task<string>> evalAsync, Func<bool, Task> reloadAsync)
+    public void Register(
+        ResourceKey resource,
+        Func<string, Task<string>> evalAsync,
+        Func<bool, Task> reloadAsync,
+        Func<ScreenshotRequest, Task<ScreenshotData>>? screenshotAsync = null)
     {
-        var entry = new WebViewToolBridgeEntry(evalAsync, reloadAsync);
+        var entry = new WebViewToolBridgeEntry(evalAsync, reloadAsync, screenshotAsync);
         _entries[resource] = entry;
     }
 
@@ -122,10 +130,10 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             return Result.Fail(NoRegistrationMessage(resource));
         }
 
-        // Drain the in-page console buffer into the host's accumulator before the
-        // reload tears it down. Any errors logged before the reload remain readable
-        // through GetConsoleAsync.
+        // Flush in-page buffers into the host accumulator so entries captured
+        // before the reload survive it.
         await TryDrainConsoleAsync(entry);
+        await TryDrainNetworkAsync(entry);
 
         try
         {
@@ -212,6 +220,243 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         };
 
         return await InvokeShimHandlerAsync(resource, "inspect", args);
+    }
+
+    public async Task<Result<string>> ClickAsync(ResourceKey resource, ClickOptions options)
+    {
+        var args = new
+        {
+            selector = options.Selector
+        };
+
+        return await InvokeShimHandlerAsync(resource, "click", args);
+    }
+
+    public async Task<Result<string>> FillAsync(ResourceKey resource, FillOptions options)
+    {
+        var args = new
+        {
+            selector = options.Selector,
+            value = options.Value
+        };
+
+        return await InvokeShimHandlerAsync(resource, "fill", args);
+    }
+
+    public async Task<Result<string>> GetNetworkAsync(ResourceKey resource, NetworkQueryOptions options)
+    {
+        if (!_entries.TryGetValue(resource, out var entry))
+        {
+            return Result.Fail(NoRegistrationMessage(resource));
+        }
+
+        var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
+        if (waitResult.IsFailure)
+        {
+            return Result.Fail(waitResult.FirstErrorMessage);
+        }
+
+        await TryDrainNetworkAsync(entry);
+
+        var snapshot = entry.SnapshotNetwork(options);
+        return JsonSerializer.Serialize(snapshot, JsonOptions);
+    }
+
+    public async Task<Result<ScreenshotData>> ScreenshotAsync(ResourceKey resource, ScreenshotOptions options)
+    {
+        if (!_entries.TryGetValue(resource, out var entry))
+        {
+            return Result.Fail(NoRegistrationMessage(resource));
+        }
+
+        if (!entry.HasScreenshotDelegate)
+        {
+            return Result.Fail($"Screenshot is not supported for the WebView registered for resource '{resource}'. The hosting platform did not provide a native screenshot API.");
+        }
+
+        var format = string.IsNullOrEmpty(options.Format) ? "jpeg" : options.Format.ToLowerInvariant();
+        if (format != "jpeg" && format != "png")
+        {
+            return Result.Fail($"Unsupported screenshot format '{options.Format}'. Use 'jpeg' or 'png'.");
+        }
+
+        var quality = Math.Clamp(options.Quality, 1, 100);
+
+        var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
+        if (waitResult.IsFailure)
+        {
+            return Result.Fail(waitResult.FirstErrorMessage);
+        }
+
+        Result<ScreenshotClip> clipResult = string.IsNullOrEmpty(options.Selector)
+            ? await ResolveViewportClipAsync(entry, resource, options.MaxEdge)
+            : await ResolveSelectorRectAsync(entry, resource, options.Selector!, options.MaxEdge);
+        if (clipResult.IsFailure)
+        {
+            return Result.Fail(clipResult.FirstErrorMessage);
+        }
+        var clip = clipResult.Value;
+
+        var settleMs = options.SettleMs < 0 ? 0 : options.SettleMs;
+        var request = new ScreenshotRequest(format, quality, clip, settleMs);
+
+        try
+        {
+            var data = await entry.ScreenshotAsync(request);
+            return data;
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"WebView screenshot failed for resource '{resource}': {ex.Message}")
+                .WithException(ex);
+        }
+    }
+
+    private static async Task<Result<ScreenshotClip>> ResolveSelectorRectAsync(
+        WebViewToolBridgeEntry entry,
+        ResourceKey resource,
+        string selector,
+        int maxEdge)
+    {
+        var argsJson = JsonSerializer.Serialize(new { selector }, JsonOptions);
+        var expression = BuildInvokeExpression("getRect", argsJson);
+        string evalResultJson;
+        try
+        {
+            evalResultJson = await entry.EvalAsync(expression);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to resolve selector rectangle for screenshot on resource '{resource}': {ex.Message}")
+                .WithException(ex);
+        }
+
+        var unwrap = UnwrapShimResult(evalResultJson, "getRect", resource);
+        if (unwrap.IsFailure)
+        {
+            return Result.Fail(unwrap.FirstErrorMessage);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(unwrap.Value);
+            var root = doc.RootElement;
+            var x = root.GetProperty("x").GetDouble();
+            var y = root.GetProperty("y").GetDouble();
+            var width = root.GetProperty("width").GetDouble();
+            var height = root.GetProperty("height").GetDouble();
+            if (width <= 0 || height <= 0)
+            {
+                return Result.Fail($"Element matched by selector '{selector}' has zero size; nothing to capture.");
+            }
+            var scale = ComputeScale(width, height, maxEdge);
+            return new ScreenshotClip(x, y, width, height, scale);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to parse selector rectangle for screenshot on resource '{resource}': {ex.Message}")
+                .WithException(ex);
+        }
+    }
+
+    private static async Task<Result<ScreenshotClip>> ResolveViewportClipAsync(
+        WebViewToolBridgeEntry entry,
+        ResourceKey resource,
+        int maxEdge)
+    {
+        var argsJson = "{}";
+        var expression = BuildInvokeExpression("getViewport", argsJson);
+        string evalResultJson;
+        try
+        {
+            evalResultJson = await entry.EvalAsync(expression);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to resolve viewport size for screenshot on resource '{resource}': {ex.Message}")
+                .WithException(ex);
+        }
+
+        var unwrap = UnwrapShimResult(evalResultJson, "getViewport", resource);
+        if (unwrap.IsFailure)
+        {
+            return Result.Fail(unwrap.FirstErrorMessage);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(unwrap.Value);
+            var root = doc.RootElement;
+            var width = root.GetProperty("width").GetDouble();
+            var height = root.GetProperty("height").GetDouble();
+            if (width <= 0 || height <= 0)
+            {
+                return Result.Fail($"WebView reported a non-positive viewport size ({width}x{height}); cannot compute a screenshot clip.");
+            }
+            var scale = ComputeScale(width, height, maxEdge);
+            return new ScreenshotClip(0, 0, width, height, scale);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to parse viewport size for screenshot on resource '{resource}': {ex.Message}")
+                .WithException(ex);
+        }
+    }
+
+    private static double ComputeScale(double width, double height, int maxEdge)
+    {
+        if (maxEdge <= 0)
+        {
+            return 1.0;
+        }
+
+        var longer = Math.Max(width, height);
+        if (longer <= maxEdge)
+        {
+            return 1.0;
+        }
+
+        return maxEdge / longer;
+    }
+
+    private async Task TryDrainNetworkAsync(WebViewToolBridgeEntry entry)
+    {
+        try
+        {
+            var argsJson = "{}";
+            var expression = BuildInvokeExpression("flushNetwork", argsJson);
+            var raw = await entry.EvalAsync(expression);
+
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Null)
+            {
+                return;
+            }
+
+            if (!root.TryGetProperty("ok", out var okElement) || !okElement.GetBoolean())
+            {
+                return;
+            }
+
+            if (!root.TryGetProperty("value", out var valueElement) || valueElement.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            foreach (var item in valueElement.EnumerateArray())
+            {
+                var networkEntry = NetworkEntry.FromJson(item);
+                if (networkEntry is not null)
+                {
+                    entry.AppendNetworkEntry(networkEntry, NetworkHistoryCap);
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort: a missing shim or a failed eval should not surface as a tool error.
+        }
     }
 
     private async Task<Result<string>> InvokeShimHandlerAsync(ResourceKey resource, string handlerName, object args)
@@ -346,19 +591,36 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         private readonly object _gate = new();
         private readonly Func<string, Task<string>> _evalAsync;
         private readonly Func<bool, Task> _reloadAsync;
+        private readonly Func<ScreenshotRequest, Task<ScreenshotData>>? _screenshotAsync;
         private readonly List<ConsoleEntry> _consoleHistory = new();
+        private readonly List<NetworkEntry> _networkHistory = new();
         private TaskCompletionSource _readyTcs;
 
-        public WebViewToolBridgeEntry(Func<string, Task<string>> evalAsync, Func<bool, Task> reloadAsync)
+        public WebViewToolBridgeEntry(
+            Func<string, Task<string>> evalAsync,
+            Func<bool, Task> reloadAsync,
+            Func<ScreenshotRequest, Task<ScreenshotData>>? screenshotAsync)
         {
             _evalAsync = evalAsync;
             _reloadAsync = reloadAsync;
+            _screenshotAsync = screenshotAsync;
             _readyTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
         public Task<string> EvalAsync(string expression) => _evalAsync(expression);
 
         public Task ReloadAsync(bool clearCache) => _reloadAsync(clearCache);
+
+        public bool HasScreenshotDelegate => _screenshotAsync is not null;
+
+        public Task<ScreenshotData> ScreenshotAsync(ScreenshotRequest request)
+        {
+            if (_screenshotAsync is null)
+            {
+                throw new InvalidOperationException("No screenshot delegate registered for this WebView entry.");
+            }
+            return _screenshotAsync(request);
+        }
 
         public void NotifyContentReady()
         {
@@ -451,6 +713,65 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
             return new ConsoleSnapshot(taken, taken.Count, totalCount);
         }
+
+        public void AppendNetworkEntry(NetworkEntry networkEntry, int historyCap)
+        {
+            lock (_gate)
+            {
+                _networkHistory.Add(networkEntry);
+                if (_networkHistory.Count > historyCap)
+                {
+                    var overflow = _networkHistory.Count - historyCap;
+                    _networkHistory.RemoveRange(0, overflow);
+                }
+            }
+        }
+
+        public NetworkSnapshot SnapshotNetwork(NetworkQueryOptions options)
+        {
+            List<NetworkEntry> filtered;
+            int totalCount;
+            lock (_gate)
+            {
+                totalCount = _networkHistory.Count;
+                IEnumerable<NetworkEntry> source = _networkHistory;
+
+                if (options.SinceTimestampMs.HasValue)
+                {
+                    var since = options.SinceTimestampMs.Value;
+                    source = source.Where(entry => entry.StartTimeMs > since);
+                }
+
+                filtered = source.ToList();
+            }
+
+            var tail = options.Tail > 0 ? options.Tail : 100;
+            var taken = filtered.Count > tail
+                ? filtered.GetRange(filtered.Count - tail, tail)
+                : filtered;
+
+            var projected = new List<NetworkEntryView>(taken.Count);
+            foreach (var entry in taken)
+            {
+                projected.Add(new NetworkEntryView(
+                    entry.Id,
+                    entry.Type,
+                    entry.Method,
+                    entry.Url,
+                    entry.Status,
+                    entry.StartTimeMs,
+                    entry.DurationMs,
+                    entry.RequestSize,
+                    entry.ResponseSize,
+                    options.IncludeHeaders ? entry.RequestHeaders : null,
+                    options.IncludeHeaders ? entry.ResponseHeaders : null,
+                    options.IncludeBodies ? entry.RequestBodyDescription : null,
+                    options.IncludeBodies ? entry.ResponseBody : null,
+                    entry.Error));
+            }
+
+            return new NetworkSnapshot(projected, projected.Count, totalCount);
+        }
     }
 
     internal sealed record ConsoleEntry(
@@ -505,6 +826,143 @@ public class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
 
     internal sealed record ConsoleSnapshot(
         IReadOnlyList<ConsoleEntry> Entries,
+        int Returned,
+        int TotalAccumulated);
+
+    internal sealed partial record NetworkBody(string Text, int TruncatedBytes);
+
+    internal sealed partial record NetworkEntry(
+        long Id,
+        string Type,
+        string Method,
+        string Url,
+        int Status,
+        long StartTimeMs,
+        long DurationMs,
+        long RequestSize,
+        long ResponseSize,
+        IReadOnlyDictionary<string, string>? RequestHeaders,
+        IReadOnlyDictionary<string, string>? ResponseHeaders,
+        string? RequestBodyDescription,
+        NetworkBody? ResponseBody,
+        string? Error)
+    {
+        public static NetworkEntry? FromJson(JsonElement element)
+        {
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+
+            long id = element.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.Number
+                ? (idElement.TryGetInt64(out var idLong) ? idLong : 0)
+                : 0;
+
+            string type = element.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String
+                ? typeElement.GetString() ?? "fetch"
+                : "fetch";
+
+            string method = element.TryGetProperty("method", out var methodElement) && methodElement.ValueKind == JsonValueKind.String
+                ? methodElement.GetString() ?? "GET"
+                : "GET";
+
+            string url = element.TryGetProperty("url", out var urlElement) && urlElement.ValueKind == JsonValueKind.String
+                ? urlElement.GetString() ?? string.Empty
+                : string.Empty;
+
+            int status = 0;
+            if (element.TryGetProperty("status", out var statusElement) && statusElement.ValueKind == JsonValueKind.Number)
+            {
+                statusElement.TryGetInt32(out status);
+            }
+
+            long startTimeMs = ReadInt64(element, "startTimeMs");
+            long durationMs = ReadInt64(element, "durationMs");
+            long requestSize = ReadInt64(element, "requestSize");
+            long responseSize = ReadInt64(element, "responseSize");
+
+            var requestHeaders = ReadStringDictionary(element, "requestHeaders");
+            var responseHeaders = ReadStringDictionary(element, "responseHeaders");
+
+            string? requestBodyDescription = element.TryGetProperty("requestBodyDescription", out var requestBodyElement) && requestBodyElement.ValueKind == JsonValueKind.String
+                ? requestBodyElement.GetString()
+                : null;
+
+            NetworkBody? responseBody = null;
+            if (element.TryGetProperty("responseBody", out var responseBodyElement) && responseBodyElement.ValueKind == JsonValueKind.Object)
+            {
+                var text = responseBodyElement.TryGetProperty("text", out var textElement) && textElement.ValueKind == JsonValueKind.String
+                    ? textElement.GetString() ?? string.Empty
+                    : string.Empty;
+                int truncated = 0;
+                if (responseBodyElement.TryGetProperty("truncatedBytes", out var truncElement) && truncElement.ValueKind == JsonValueKind.Number)
+                {
+                    truncElement.TryGetInt32(out truncated);
+                }
+                responseBody = new NetworkBody(text, truncated);
+            }
+
+            string? error = element.TryGetProperty("error", out var errorElement) && errorElement.ValueKind == JsonValueKind.String
+                ? errorElement.GetString()
+                : null;
+
+            return new NetworkEntry(id, type, method, url, status, startTimeMs, durationMs,
+                requestSize, responseSize, requestHeaders, responseHeaders,
+                requestBodyDescription, responseBody, error);
+        }
+
+        private static long ReadInt64(JsonElement parent, string name)
+        {
+            if (!parent.TryGetProperty(name, out var element) || element.ValueKind != JsonValueKind.Number)
+            {
+                return 0;
+            }
+            if (element.TryGetInt64(out var asLong)) return asLong;
+            if (element.TryGetDouble(out var asDouble)) return (long)asDouble;
+            return 0;
+        }
+
+        private static IReadOnlyDictionary<string, string>? ReadStringDictionary(JsonElement parent, string name)
+        {
+            if (!parent.TryGetProperty(name, out var element) || element.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var prop in element.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.String)
+                {
+                    result[prop.Name] = prop.Value.GetString() ?? string.Empty;
+                }
+                else
+                {
+                    result[prop.Name] = prop.Value.GetRawText();
+                }
+            }
+            return result;
+        }
+    }
+
+    internal sealed partial record NetworkEntryView(
+        long Id,
+        string Type,
+        string Method,
+        string Url,
+        int Status,
+        long StartTimeMs,
+        long DurationMs,
+        long RequestSize,
+        long ResponseSize,
+        IReadOnlyDictionary<string, string>? RequestHeaders,
+        IReadOnlyDictionary<string, string>? ResponseHeaders,
+        string? RequestBodyDescription,
+        NetworkBody? ResponseBody,
+        string? Error);
+
+    internal sealed record NetworkSnapshot(
+        IReadOnlyList<NetworkEntryView> Entries,
         int Returned,
         int TotalAccumulated);
 }

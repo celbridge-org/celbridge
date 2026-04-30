@@ -19,7 +19,7 @@ public partial class WebViewTools
     /// <param name="resource">Resource key of the open document whose WebView to query.</param>
     /// <param name="selector">Optional CSS selector that scopes the output to a single subtree. Pass an empty string (the default) to return the entire document element.</param>
     /// <param name="maxDepth">Maximum tree depth to include. Children beyond this depth are replaced with a `truncated children` placeholder. Default 8.</param>
-    /// <returns>JSON object with `selector` (the scope; null when full document) and `html` (the redacted, depth-bounded outerHTML string).</returns>
+    /// <returns>JSON object with `selector` (the scope, null when full document) and `html` (the redacted, depth-bounded outerHTML string).</returns>
     [McpServerTool(Name = "webview_get_html")]
     [ToolAlias("webview.get_html")]
     public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8)

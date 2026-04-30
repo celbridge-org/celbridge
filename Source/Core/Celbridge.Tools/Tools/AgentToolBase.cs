@@ -105,4 +105,25 @@ public abstract class AgentToolBase
             ]
         };
     }
+
+    /// <summary>
+    /// Creates a successful CallToolResult that carries both an image and a
+    /// JSON metadata text block. The image is delivered as a typed MCP image
+    /// content block so the multimodal client decodes it into the model's
+    /// vision context directly. The text block lets the agent reference
+    /// metadata (size, format, saved location, etc.) alongside the image.
+    /// </summary>
+    protected static CallToolResult SuccessResultWithImage(byte[] imageBytes, string mimeType, string metadataJson)
+    {
+        return new CallToolResult
+        {
+            Content = [
+                ImageContentBlock.FromBytes(imageBytes, mimeType),
+                new TextContentBlock
+                {
+                    Text = metadataJson
+                }
+            ]
+        };
+    }
 }
