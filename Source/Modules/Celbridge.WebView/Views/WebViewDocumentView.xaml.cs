@@ -36,6 +36,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
 
+    // Set on successful registration with the bridge. Only populated for the
+    // HtmlViewer role. .webview (external URL) documents do not register and the
+    // webview_* tool namespace is not supported for them.
+    private IDocumentWebViewToolBridge? _toolBridge;
+
     private static readonly WebViewDocumentOptions DefaultOptions = new(
         WebViewDocumentRole.ExternalUrl,
         InterceptTopFrameNavigation: false);
@@ -218,12 +223,22 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
             {
                 MapProjectVirtualHost(_webView.CoreWebView2);
+
+                // The HTML viewer renders project-served content and supports the
+                // webview_* MCP tool namespace. External-URL .webview documents
+                // intentionally skip both the shim and the tool bridge registration.
+                await TryInjectToolBridgeShimAsync();
             }
 
             _hostChannel = new WebViewHostChannel(_webView.CoreWebView2);
             _host = new CelbridgeHost(_hostChannel);
             _host.AddLocalRpcTarget<IHostInput>(this);
             _host.StartListening();
+
+            if (Options.Role == WebViewDocumentRole.HtmlViewer)
+            {
+                TryRegisterWithToolBridge();
+            }
 
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
@@ -236,6 +251,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             _webView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
+
+            _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
+            _webView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
 
             AttachNavigationPolicy(_webView.CoreWebView2);
 
@@ -352,12 +370,19 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     /// </summary>
     private void TeardownWebViewState()
     {
+        if (_toolBridge is not null)
+        {
+            _toolBridge.Unregister(FileResource);
+            _toolBridge = null;
+        }
+
         if (_webView?.CoreWebView2 is not null)
         {
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
             _webView.CoreWebView2.HistoryChanged -= CoreWebView2_HistoryChanged;
             _webView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+            _webView.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
 
             if (_navigationPolicy is not null)
             {
@@ -381,6 +406,56 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _hostChannel = null;
     }
 
+    private async Task TryInjectToolBridgeShimAsync()
+    {
+        var coreWebView2 = _webView?.CoreWebView2;
+        if (coreWebView2 is null)
+        {
+            return;
+        }
+
+        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        if (toolBridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var script = toolBridge.GetShimScript();
+            await coreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to inject WebView tool bridge shim into HTML viewer WebView");
+        }
+    }
+
+    private void TryRegisterWithToolBridge()
+    {
+        var webView = _webView;
+        if (webView?.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        var toolBridge = _serviceProvider.GetService<IDocumentWebViewToolBridge>();
+        if (toolBridge is null)
+        {
+            return;
+        }
+
+        var resource = FileResource;
+        if (resource.IsEmpty)
+        {
+            return;
+        }
+
+        toolBridge.RegisterWebView2(resource, webView);
+
+        _toolBridge = toolBridge;
+    }
+
     private void CoreWebView2_HistoryChanged(object? sender, object e)
     {
         SendNavigationStateChanged();
@@ -388,7 +463,36 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
     private void CoreWebView2_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        // The HTML viewer renders static project-served content, so the WebView's
+        // own NavigationCompleted is a sufficient content-ready signal — there is no
+        // editor-side notifyContentLoaded handshake. External-URL .webview documents
+        // never register so this no-ops on the .webview path.
+        if (Options.Role == WebViewDocumentRole.HtmlViewer)
+        {
+            if (e.IsSuccess)
+            {
+                _toolBridge?.NotifyContentReady(FileResource);
+            }
+            else
+            {
+                var reason = $"The WebView navigation failed with status '{e.WebErrorStatus}'.";
+                _toolBridge?.NotifyContentFailed(FileResource, reason);
+            }
+        }
+
         SendNavigationStateChanged();
+    }
+
+    private void CoreWebView2_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    {
+        // Reset the tool bridge's content-ready gate so webview_* tool calls block
+        // until the new navigation completes. Cross-origin navigations (e.g. an
+        // attacker-controlled redirect from project content) reset support here too.
+        // Tool calls remain blocked until a matching NavigationCompleted fires.
+        if (Options.Role == WebViewDocumentRole.HtmlViewer)
+        {
+            _toolBridge?.NotifyContentLoading(FileResource);
+        }
     }
 
     private void SendNavigationStateChanged()

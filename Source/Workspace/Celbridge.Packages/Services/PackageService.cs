@@ -1,4 +1,5 @@
 using Celbridge.Console;
+using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
@@ -49,6 +50,11 @@ public class PackageService : IPackageService
     public IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors()
     {
         return _registry.GetAllDocumentEditors();
+    }
+
+    public Package? GetContributingPackage(DocumentEditorId editorId)
+    {
+        return _registry.GetContributingPackage(editorId);
     }
 
     public IReadOnlyList<DocumentTypeInfo> GetDocumentTypes()

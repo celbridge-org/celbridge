@@ -150,7 +150,7 @@ export class Celbridge {
         this.#transport.markInitialized();
 
         // Load tool descriptors so the `cel.*` proxy becomes callable.
-        // One round-trip to the host; before this resolves, accessing `cel.*` throws.
+        // One round-trip to the host. Before this resolves, accessing `cel.*` throws.
         await this.tools.loadDescriptors();
 
         // Expose `cel` on globalThis for the "just call cel.namespace.method(...)"

@@ -399,7 +399,7 @@ public class McpToolBridge : IMcpToolBridge
         {
             var parameterName = property.Key;
             var parameterSchema = property.Value?.AsObject();
-            var parameterType = parameterSchema?["type"]?.GetValue<string>() ?? "string";
+            var parameterType = ReadSchemaType(parameterSchema?["type"]) ?? "string";
             var parameterDescription = parameterSchema?["description"]?.GetValue<string>() ?? string.Empty;
             var hasDefaultValue = !requiredNames.Contains(parameterName);
 
@@ -412,7 +412,7 @@ public class McpToolBridge : IMcpToolBridge
             string? itemType = null;
             if (parameterType == "array")
             {
-                itemType = parameterSchema?["items"]?["type"]?.GetValue<string>();
+                itemType = ReadSchemaType(parameterSchema?["items"]?["type"]);
             }
 
             parameters.Add(new ToolParameter(
@@ -425,6 +425,34 @@ public class McpToolBridge : IMcpToolBridge
         }
 
         return parameters;
+    }
+
+    // System.Text.Json emits JSON Schema `"type"` as either a string ("integer")
+    // or an array ("[\"integer\", \"null\"]") for nullable value or reference types.
+    // Pick the first non-"null" entry from an array; fall back to null on a missing
+    // or null-only schema so the caller can apply its own default.
+    internal static string? ReadSchemaType(JsonNode? typeNode)
+    {
+        if (typeNode is null)
+        {
+            return null;
+        }
+
+        if (typeNode is JsonArray typeArray)
+        {
+            foreach (var entry in typeArray)
+            {
+                var entryValue = entry?.GetValue<string>();
+                if (!string.IsNullOrEmpty(entryValue) && entryValue != "null")
+                {
+                    return entryValue;
+                }
+            }
+
+            return null;
+        }
+
+        return typeNode.GetValue<string>();
     }
 
     private static JsonObject? NormalizeArguments(object? arguments)

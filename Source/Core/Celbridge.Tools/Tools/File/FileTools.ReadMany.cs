@@ -17,7 +17,7 @@ public record class ReadManyFileEntry(string Resource, string? Content = null, i
 public partial class FileTools
 {
     /// <summary>
-    /// Reads multiple files in a single call. Each file is read independently; per-entry errors do not fail the whole call.
+    /// Reads multiple files in a single call. Each file is read independently. Per-entry errors do not fail the whole call.
     /// </summary>
     /// <param name="resources">JSON array of resource key strings to read (e.g. ["src/foo.cs", "src/bar.cs"]).</param>
     /// <param name="offset">Starting line number (1-based) applied to all files. Use 0 to read from the beginning.</param>

@@ -191,6 +191,26 @@ public class QueryToolTests
         text.Should().Contain("  cel.app.getStatus(");
     }
 
+    [Test]
+    public void GetPythonApi_ExposesReadImageAlongsideReadBinary()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetPythonApi());
+
+        text.Should().Contain("file.read_image(");
+        text.Should().Contain("file.read_binary(");
+    }
+
+    [Test]
+    public void GetJavaScriptApi_ExposesReadImageAlongsideReadBinary()
+    {
+        var tools = new QueryTools(_services);
+        var text = GetResultText(tools.GetJavaScriptApi());
+
+        text.Should().Contain("cel.file.readImage(");
+        text.Should().Contain("cel.file.readBinary(");
+    }
+
     private static string GetResultText(CallToolResult result)
     {
         return result.Content.OfType<TextContentBlock>().Single().Text;

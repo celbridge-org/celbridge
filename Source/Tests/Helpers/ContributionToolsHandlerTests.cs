@@ -28,6 +28,57 @@ public class ContributionToolsHandlerTests
     }
 
     [Test]
+    public async Task ListToolsAsync_HidesWebViewNamespaceEvenWhenAllowlistMatches()
+    {
+        var bridge = new StubToolBridge
+        {
+            Tools = new[]
+            {
+                Descriptor("app_get_version", "app.get_version"),
+                Descriptor("webview_eval",    "webview.eval"),
+                Descriptor("webview_reload",  "webview.reload")
+            }
+        };
+        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+
+        var result = await handler.ListToolsAsync();
+
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_version");
+    }
+
+    [Test]
+    public void CallToolAsync_WebViewNamespace_ThrowsDeniedRegardlessOfAllowlist()
+    {
+        var bridge = new StubToolBridge();
+        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+
+        Func<Task> act = () => handler.CallToolAsync("webview.eval", (JsonElement?)null);
+
+        act.Should()
+            .ThrowAsync<LocalRpcException>()
+            .Result
+            .Which
+            .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
+
+        bridge.LastCallName.Should().BeNull();
+    }
+
+    [Test]
+    public void CallToolAsync_WebViewMcpStyleName_ThrowsDenied()
+    {
+        var bridge = new StubToolBridge();
+        var handler = new ContributionToolsHandler(bridge, new[] { "*" });
+
+        Func<Task> act = () => handler.CallToolAsync("webview_eval", (JsonElement?)null);
+
+        act.Should()
+            .ThrowAsync<LocalRpcException>()
+            .Result
+            .Which
+            .ErrorCode.Should().Be(ToolRpcErrorCodes.ToolDenied);
+    }
+
+    [Test]
     public async Task CallToolAsync_AllowedTool_ReturnsBridgeResult()
     {
         var bridge = new StubToolBridge

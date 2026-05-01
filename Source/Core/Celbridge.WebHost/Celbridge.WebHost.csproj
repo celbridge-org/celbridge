@@ -32,4 +32,8 @@
     <Content Include="Web\**" Exclude="Web\**\node_modules\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
+  </ItemGroup>
+
 </Project>

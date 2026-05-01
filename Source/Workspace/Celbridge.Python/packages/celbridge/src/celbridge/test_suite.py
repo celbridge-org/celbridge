@@ -7,6 +7,7 @@ Tests all available tools across all celbridge modules:
   - celbridge.explorer
   - celbridge.document
   - celbridge.package
+  - celbridge.webview
 
 Includes both happy-path tests and adversarial error-handling tests.
 
@@ -17,6 +18,7 @@ Usage (IPython REPL):
 import json
 import base64
 import os
+import time
 import unittest
 
 from celbridge.cel_proxy import CelError
@@ -29,6 +31,7 @@ query = None
 explorer = None
 document = None
 package = None
+webview = None
 
 
 # ---------------------------------------------------------------------------
@@ -690,6 +693,14 @@ class TestDocumentLineEndings(unittest.TestCase):
 # file module
 # ---------------------------------------------------------------------------
 
+# Minimal JPEG (SOI + JFIF header + EOI) used by file.read_image tests.
+_MINIMAL_JPEG_BYTES = bytes([
+    0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00,
+    0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+    0xFF, 0xD9,
+])
+
+
 class TestFile(unittest.TestCase):
 
     def setUp(self):
@@ -705,6 +716,9 @@ class TestFile(unittest.TestCase):
         )
         content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
         document.write_binary("TestFile/test.bin", content)
+        # A minimal JPEG used by the file.read_image tests below.
+        jpeg_b64 = base64.b64encode(_MINIMAL_JPEG_BYTES).decode("ascii")
+        document.write_binary("TestFile/sample.jpg", jpeg_b64)
 
     def tearDown(self):
         _delete_if_exists("TestFile")
@@ -755,6 +769,25 @@ class TestFile(unittest.TestCase):
         self.assertGreater(result["size"], 0)
         decoded = base64.b64decode(result["base64"])
         self.assertIn(b"BINARY_TEST_DATA_12345", decoded)
+
+    def test_read_image_returns_metadata(self):
+        # The proxy drops the typed image block; only metadata reaches Python.
+        result = file.read_image("TestFile/sample.jpg")
+        self.assertEqual(result["resource"], "TestFile/sample.jpg")
+        self.assertEqual(result["mimeType"], "image/jpeg")
+        self.assertEqual(result["sizeBytes"], len(_MINIMAL_JPEG_BYTES))
+
+    def test_read_image_unsupported_extension_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)does not support extension"):
+            file.read_image("TestFile/hello.txt")
+
+    def test_read_image_missing_file_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)file not found"):
+            file.read_image("TestFile/no_such_image.png")
+
+    def test_read_image_invalid_resource_key_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)invalid resource key"):
+            file.read_image("\\invalid")
 
     def test_read_many(self):
         result = file.read_many(["TestFile/hello.txt", "TestFile/other.txt"])
@@ -981,11 +1014,515 @@ class TestPackage(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# webview module
+# ---------------------------------------------------------------------------
+
+# HTML content used by every TestWebView case. Self-contained so the test
+# does not depend on any project-shipped page; the inline <script> emits
+# entries at every console level so get_console can be exercised.
+_WEBVIEW_TEST_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WebView Tools Test</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .warn { color: #b15500; }
+  #status { padding: 0.5rem; border: 1px solid #999; }
+</style>
+</head>
+<body>
+  <h1>WebView Tools Test</h1>
+  <p>Self-contained page used by the cel.test() webview suite.</p>
+  <section id="controls">
+    <button id="run-btn" aria-label="Run task">Run</button>
+    <button class="warn" aria-label="Cancel task">Cancel</button>
+    <input id="name-input" type="text" placeholder="Your name" />
+    <textarea id="notes-textarea"></textarea>
+    <select id="size-select" aria-label="Choose size">
+      <option value="s">Small</option>
+      <option value="m" selected>Medium</option>
+      <option value="l">Large</option>
+    </select>
+  </section>
+  <section id="messages">
+    <p>hello world</p>
+    <p>goodbye world</p>
+    <p class="warn">a warning paragraph</p>
+  </section>
+  <div id="status">idle</div>
+  <script>
+    console.log('boot: webview test page loaded');
+    console.info('info-level message');
+    console.warn('warn-level message');
+    console.debug('debug-level message');
+    try {
+      JSON.parse('{not valid json');
+    } catch (e) {
+      console.error('caught parse error:', e.message);
+    }
+    // Click handler used by webview_click test (asserts data-clicked flips).
+    document.getElementById('run-btn').addEventListener('click', function () {
+      this.setAttribute('data-clicked', 'true');
+      document.getElementById('status').textContent = 'ran';
+    });
+    // Same-origin fetch so webview_get_network has an entry to capture.
+    fetch('webview-test-network-fixture.json').catch(function () { /* ignored */ });
+  </script>
+</body>
+</html>
+"""
+
+
+class TestWebView(unittest.TestCase):
+    """End-to-end tests for the webview_* tools.
+
+    Writes a self-contained HTML page, opens it, and exercises every tool.
+    Eval-dependent cases are skipped automatically when the
+    webview-dev-tools-eval feature flag is off.
+    """
+
+    test_resource = "TestWebView/page.html"
+    unopened_resource = "TestWebView/unopened.html"
+    eval_enabled = False
+
+    @classmethod
+    def setUpClass(cls):
+        flags = app.get_status().get("featureFlags", {})
+        cls.eval_enabled = flags.get("webview-dev-tools-eval", False)
+
+    def setUp(self):
+        _delete_if_exists("TestWebView")
+        explorer.create_folder("TestWebView")
+        document.write(self.test_resource, _WEBVIEW_TEST_HTML)
+        document.write(
+            self.unopened_resource,
+            "<!doctype html><html><body>unopened</body></html>",
+        )
+        document.open(self.test_resource, activate=True)
+        # The bridge's content-ready gate covers most of the navigation wait,
+        # but a small grace period lets the inline <script> run so console
+        # messages are present when the first get_console call fires.
+        time.sleep(0.5)
+
+    def tearDown(self):
+        _close_if_open(self.test_resource)
+        _delete_if_exists("TestWebView")
+
+    # -- webview.reload --
+
+    def test_reload_returns_ok(self):
+        result = webview.reload(self.test_resource)
+        self.assertEqual(result, "ok")
+        # Reload resets the readiness gate. Wait for the next NavigationCompleted
+        # so the next test in the class does not race the reload.
+        time.sleep(0.5)
+
+    def test_reload_unopened_resource_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)not open in the editor"):
+            webview.reload("does/not/exist.html")
+
+    def test_reload_path_traversal_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)invalid resource key"):
+            webview.reload("../escape.html")
+
+    def test_reload_real_unopened_file_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)not open in the editor"):
+            webview.reload(self.unopened_resource)
+
+    def test_reload_empty_resource_key_fails_with_unsupported_error(self):
+        # Empty string passes IsValidKey (it represents the project root) but
+        # the project root has no WebView registered, so the call falls through
+        # to the same unsupported error as any other unopened key.
+        with self.assertRaisesRegex(CelError, "(?i)not open in the editor"):
+            webview.reload("")
+
+    # -- webview.eval (gated by webview-dev-tools-eval) --
+
+    def test_eval_arithmetic(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        self.assertEqual(webview.eval(self.test_resource, "1 + 1"), 2)
+
+    def test_eval_reads_document_title(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        title = webview.eval(self.test_resource, "document.title")
+        self.assertEqual(title, "WebView Tools Test")
+
+    def test_eval_unparseable_returns_none(self):
+        # ExecuteScriptAsync returns null silently when the script throws or
+        # fails to parse — the host does not surface JS errors. Lock that
+        # contract in so a future change is caught.
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        self.assertIsNone(
+            webview.eval(self.test_resource, "this is not valid javascript")
+        )
+
+    def test_eval_empty_expression_rejected(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        with self.assertRaisesRegex(CelError, "must not be empty"):
+            webview.eval(self.test_resource, "")
+
+    # -- webview.get_html --
+
+    def test_get_html_returns_outer_html(self):
+        result = webview.get_html(self.test_resource)
+        self.assertIn("<h1>", result["html"])
+
+    def test_get_html_scopes_to_selector(self):
+        result = webview.get_html(self.test_resource, selector="#controls")
+        self.assertIn("run-btn", result["html"])
+        self.assertNotIn("<h1>", result["html"])
+
+    def test_get_html_redacts_script_bodies(self):
+        result = webview.get_html(self.test_resource)
+        self.assertNotIn("console.log", result["html"])
+        self.assertIn("omitted", result["html"])
+
+    def test_get_html_redacts_style_bodies(self):
+        result = webview.get_html(self.test_resource)
+        self.assertNotIn("font-family", result["html"])
+
+    def test_get_html_missing_selector_fails(self):
+        with self.assertRaisesRegex(CelError, "no element matches"):
+            webview.get_html(self.test_resource, selector="#no-such-thing")
+
+    # -- webview.query --
+
+    def test_query_by_role_returns_all_matches(self):
+        result = webview.query(self.test_resource, role="button")
+        self.assertEqual(result["mode"], "role")
+        self.assertEqual(result["totalMatches"], 2)
+
+    def test_query_role_plus_name_filters_to_one(self):
+        result = webview.query(self.test_resource, role="button", name="Run")
+        self.assertEqual(result["totalMatches"], 1)
+        self.assertIn("run", result["elements"][0]["accessibleName"].lower())
+
+    def test_query_by_visible_text(self):
+        result = webview.query(self.test_resource, text="hello")
+        self.assertEqual(result["mode"], "text")
+        self.assertEqual(result["totalMatches"], 1)
+
+    def test_query_by_selector(self):
+        result = webview.query(self.test_resource, selector="p")
+        self.assertGreaterEqual(result["totalMatches"], 3)
+
+    def test_query_role_heading_finds_h1(self):
+        result = webview.query(self.test_resource, role="heading")
+        self.assertEqual(result["totalMatches"], 1)
+        self.assertEqual(result["elements"][0]["tag"], "h1")
+
+    def test_query_no_mode_rejected(self):
+        with self.assertRaisesRegex(CelError, "exactly one"):
+            webview.query(self.test_resource)
+
+    def test_query_ambiguous_mode_rejected(self):
+        with self.assertRaisesRegex(CelError, "exactly one"):
+            webview.query(self.test_resource, role="button", selector="button")
+
+    def test_query_bad_selector_syntax_rejected(self):
+        with self.assertRaisesRegex(CelError, "invalid selector"):
+            webview.query(self.test_resource, selector="<<<")
+
+    # -- webview.inspect --
+
+    def test_inspect_returns_metadata(self):
+        result = webview.inspect(self.test_resource, "#run-btn")
+        self.assertEqual(result["tag"], "button")
+        self.assertEqual(result["role"], "button")
+        self.assertEqual(result["accessibleName"], "Run task")
+        self.assertIn("computedStyles", result)
+        self.assertIn("children", result)
+
+    def test_inspect_returns_unique_selector(self):
+        result = webview.inspect(self.test_resource, "#size-select")
+        self.assertEqual(result["selector"], "#size-select")
+
+    def test_inspect_missing_selector_fails(self):
+        with self.assertRaisesRegex(CelError, "no element matches"):
+            webview.inspect(self.test_resource, "#nope")
+
+    def test_inspect_bad_selector_syntax_rejected(self):
+        with self.assertRaisesRegex(CelError, "invalid selector"):
+            webview.inspect(self.test_resource, "<<<")
+
+    # -- webview.get_console --
+
+    def test_get_console_captures_boot_messages(self):
+        result = webview.get_console(self.test_resource, tail=200)
+        self.assertTrue(
+            any("boot:" in " ".join(e["args"]) for e in result["entries"])
+        )
+
+    def test_get_console_suppresses_debug_by_default(self):
+        result = webview.get_console(self.test_resource, tail=200)
+        self.assertFalse(
+            any(e["level"] == "debug" for e in result["entries"])
+        )
+
+    def test_get_console_includes_debug_when_requested(self):
+        result = webview.get_console(
+            self.test_resource, tail=200, include_debug=True
+        )
+        self.assertTrue(
+            any(e["level"] == "debug" for e in result["entries"])
+        )
+
+    def test_get_console_surfaces_caught_errors(self):
+        result = webview.get_console(self.test_resource, tail=200)
+        self.assertTrue(
+            any(
+                e["level"] == "error"
+                and "parse" in " ".join(e["args"]).lower()
+                for e in result["entries"]
+            )
+        )
+
+    def test_get_console_since_filters_older_entries(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+        baseline = webview.get_console(self.test_resource, tail=200)
+        if not baseline["entries"]:
+            self.skipTest("no console entries to take a checkpoint from")
+        checkpoint = max(e["timestampMs"] for e in baseline["entries"])
+        webview.eval(
+            self.test_resource, "console.log('after-checkpoint marker')"
+        )
+        result = webview.get_console(
+            self.test_resource, tail=200, since_timestamp_ms=checkpoint
+        )
+        self.assertTrue(
+            all(e["timestampMs"] > checkpoint for e in result["entries"])
+        )
+        self.assertTrue(
+            any(
+                "after-checkpoint" in " ".join(e["args"])
+                for e in result["entries"]
+            )
+        )
+
+    def test_get_console_buffer_survives_reload(self):
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+
+        webview.eval(
+            self.test_resource,
+            "console.log('cel-test-pre-reload-marker')",
+        )
+
+        webview.reload(self.test_resource)
+        time.sleep(0.5)  # wait for the navigation to complete
+
+        webview.eval(
+            self.test_resource,
+            "console.log('cel-test-post-reload-marker')",
+        )
+
+        result = webview.get_console(self.test_resource, tail=500)
+        joined_args = " ".join(
+            " ".join(e["args"]) for e in result["entries"]
+        )
+        self.assertIn(
+            "cel-test-pre-reload-marker",
+            joined_args,
+            f"pre-reload marker missing after reload. entries: {result['entries']}",
+        )
+        self.assertIn(
+            "cel-test-post-reload-marker",
+            joined_args,
+            f"post-reload marker missing after reload. entries: {result['entries']}",
+        )
+
+    def test_get_network_buffer_survives_reload(self):
+        # The shim records network entries on fetch resolution, not on call,
+        # so the test sleeps briefly after each fetch.
+        if not self.eval_enabled:
+            self.skipTest("webview-dev-tools-eval flag is off")
+
+        webview.eval(
+            self.test_resource,
+            "fetch('cel-test-pre-reload-fetch.json').catch(function(){})",
+        )
+        time.sleep(0.3)
+
+        webview.reload(self.test_resource)
+        time.sleep(0.5)
+
+        webview.eval(
+            self.test_resource,
+            "fetch('cel-test-post-reload-fetch.json').catch(function(){})",
+        )
+        time.sleep(0.3)
+
+        result = webview.get_network(self.test_resource, tail=200)
+        urls = [entry["url"] for entry in result["entries"]]
+        self.assertTrue(
+            any("cel-test-pre-reload-fetch" in url for url in urls),
+            f"pre-reload fetch missing from network buffer after reload. URLs: {urls}",
+        )
+        self.assertTrue(
+            any("cel-test-post-reload-fetch" in url for url in urls),
+            f"post-reload fetch missing from network buffer after reload. URLs: {urls}",
+        )
+
+    # -- webview.click --
+
+    def test_click_runs_handler_and_returns_metadata(self):
+        result = webview.click(self.test_resource, "#run-btn")
+        self.assertEqual(result["selector"], "#run-btn")
+        self.assertEqual(result["tag"], "button")
+        # Programmatic events are always isTrusted = false.
+        self.assertFalse(result["isTrusted"])
+
+        # The page's click handler flips data-clicked to "true".
+        post = webview.inspect(self.test_resource, "#run-btn")
+        self.assertEqual(post["attributes"].get("data-clicked"), "true")
+
+    def test_click_missing_selector_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)no element matches"):
+            webview.click(self.test_resource, "#no-such-element")
+
+    def test_click_empty_selector_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)non-empty selector"):
+            webview.click(self.test_resource, "")
+
+    def test_click_bad_selector_syntax_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)invalid selector"):
+            webview.click(self.test_resource, "<<<")
+
+    # -- webview.fill --
+
+    def test_fill_sets_input_value(self):
+        # `value` attribute does not reflect property writes, so check the
+        # response's read-back value rather than inspecting the attribute.
+        result = webview.fill(self.test_resource, "#name-input", "Alice")
+        self.assertEqual(result["tag"], "input")
+        self.assertEqual(result["value"], "Alice")
+
+    def test_fill_sets_textarea_value(self):
+        result = webview.fill(
+            self.test_resource, "#notes-textarea", "line one\nline two"
+        )
+        self.assertEqual(result["tag"], "textarea")
+        self.assertEqual(result["value"], "line one\nline two")
+
+    def test_fill_sets_select_value(self):
+        result = webview.fill(self.test_resource, "#size-select", "l")
+        self.assertEqual(result["tag"], "select")
+        self.assertEqual(result["value"], "l")
+
+    def test_fill_missing_selector_fails(self):
+        with self.assertRaisesRegex(CelError, "(?i)no element matches"):
+            webview.fill(self.test_resource, "#no-such-element", "value")
+
+    def test_fill_empty_selector_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)non-empty selector"):
+            webview.fill(self.test_resource, "", "value")
+
+    # -- webview.get_network --
+
+    def test_get_network_captures_test_page_fetch(self):
+        # The inline <script> issues a fetch on load; capture records it
+        # regardless of response status.
+        result = webview.get_network(self.test_resource, tail=50)
+        self.assertIn("entries", result)
+        self.assertIn("returned", result)
+        self.assertIn("totalAccumulated", result)
+
+        urls = [entry["url"] for entry in result["entries"]]
+        self.assertTrue(
+            any("webview-test-network-fixture.json" in url for url in urls),
+            f"expected fetch URL not captured. URLs seen: {urls}",
+        )
+
+    def test_get_network_entry_has_required_fields(self):
+        result = webview.get_network(self.test_resource, tail=50)
+        if not result["entries"]:
+            self.skipTest("no captured entries to inspect")
+        entry = result["entries"][0]
+        for field in ("id", "type", "method", "url", "startTimeMs"):
+            self.assertIn(field, entry)
+        # Headers/bodies keys are emitted with null values when not opted in.
+        self.assertIsNone(entry.get("requestHeaders"))
+        self.assertIsNone(entry.get("responseBody"))
+
+    def test_get_network_include_headers_opts_in(self):
+        opted_out = webview.get_network(self.test_resource, tail=50)
+        opted_out_populated = any(
+            entry.get("requestHeaders") is not None
+            or entry.get("responseHeaders") is not None
+            for entry in opted_out["entries"]
+        )
+        self.assertFalse(
+            opted_out_populated,
+            "headers should be null when include_headers=False",
+        )
+
+        opted_in = webview.get_network(
+            self.test_resource, tail=50, include_headers=True
+        )
+        if not opted_in["entries"]:
+            self.skipTest("no captured entries to inspect")
+        # Early-failure rows may legitimately omit headers, so accept any.
+        self.assertTrue(
+            any(
+                entry.get("requestHeaders") is not None
+                or entry.get("responseHeaders") is not None
+                for entry in opted_in["entries"]
+            )
+        )
+
+    # -- webview.screenshot --
+
+    def test_screenshot_default_returns_metadata_only(self):
+        # The proxy strips the typed image block; only metadata reaches Python.
+        result = webview.screenshot(self.test_resource)
+        self.assertEqual(result["format"], "jpeg")
+        self.assertGreater(result["sizeBytes"], 0)
+        # `resource` is omitted from the JSON when null (WhenWritingNull).
+        self.assertIsNone(result.get("resource"))
+        self.assertTrue(result["imageReturned"])
+
+    def test_screenshot_save_to_resource_writes_file(self):
+        save_resource = "TestWebView/captured.png"
+        result = webview.screenshot(
+            self.test_resource,
+            save_to=save_resource,
+            return_image=False,
+            format="png",
+        )
+        self.assertEqual(result["format"], "png")
+        self.assertEqual(result["resource"], save_resource)
+        self.assertFalse(result["imageReturned"])
+
+        info = file.get_info(save_resource)
+        self.assertEqual(info["type"], "file")
+        self.assertGreater(info["size"], 0)
+
+    def test_screenshot_no_output_combination_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)discard the captured image"):
+            webview.screenshot(self.test_resource, return_image=False)
+
+    def test_screenshot_format_extension_mismatch_rejected(self):
+        with self.assertRaisesRegex(CelError, "(?i)does not match format"):
+            webview.screenshot(
+                self.test_resource,
+                save_to="TestWebView/mismatch.jpg",
+                return_image=False,
+                format="png",
+            )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
-    global app, file, query, explorer, document, package
+    global app, file, query, explorer, document, package, webview
 
     import celbridge
     app = celbridge.app
@@ -994,6 +1531,7 @@ def main():
     explorer = celbridge.explorer
     document = celbridge.document
     package = celbridge.package
+    webview = celbridge.webview
 
     print("\n" + "=" * 60)
     print("Celbridge MCP Integration Test")
@@ -1010,6 +1548,7 @@ def main():
         TestDocumentLineEndings,
         TestFile,
         TestPackage,
+        TestWebView,
     ]
     for cls in test_classes:
         suite.addTests(loader.loadTestsFromTestCase(cls))

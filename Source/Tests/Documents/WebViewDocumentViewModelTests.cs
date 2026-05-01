@@ -4,6 +4,7 @@ using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
 
@@ -25,7 +26,8 @@ public class WebViewDocumentViewModelTests
 
         _commandService = Substitute.For<ICommandService>();
         var featureFlags = Substitute.For<IFeatureFlags>();
-        _webViewService = new WebViewService(featureFlags);
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _webViewService = new WebViewService(featureFlags, workspaceWrapper);
     }
 
     [TearDown]

@@ -23,4 +23,10 @@ public static class FeatureFlagConstants
     /// </summary>
     public const string WebViewDevTools = "webview-dev-tools";
 
+    /// <summary>
+    /// Enables the webview_eval MCP tool. This is a separate flag because eval is an
+    /// arbitrary code execution primitive, agents without it can use the rest of the
+    /// webview_* namespace.
+    /// </summary>
+    public const string WebViewDevToolsEval = "webview-dev-tools-eval";
 }

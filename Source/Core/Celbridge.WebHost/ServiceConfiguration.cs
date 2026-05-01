@@ -1,3 +1,4 @@
+using Celbridge.WebHost.Commands;
 using Celbridge.WebHost.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +10,8 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IWebViewService, WebViewService>();
         services.AddSingleton<IWebViewFactory, WebViewFactory>();
+        services.AddSingleton<IDocumentWebViewToolBridge, DocumentWebViewToolBridge>();
+        services.AddTransient<IGetWebViewToolSupportCommand, GetWebViewToolSupportCommand>();
     }
 
     /// <summary>

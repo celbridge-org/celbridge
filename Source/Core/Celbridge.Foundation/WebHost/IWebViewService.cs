@@ -1,4 +1,25 @@
+using Celbridge.Commands;
+
 namespace Celbridge.WebHost;
+
+/// <summary>
+/// Whether the webview_* tools support a particular resource. When IsSupported
+/// is false, Reason carries a human-readable explanation (e.g. document not
+/// open, opened with the wrong editor, external-URL .webview, or the
+/// contributing package opts out via DevToolsBlocked). Reason is null when
+/// IsSupported is true.
+/// </summary>
+public sealed record WebViewToolSupport(bool IsSupported, string? Reason);
+
+/// <summary>
+/// Read-only query that resolves the WebView tool support state for a resource.
+/// Routed through the command queue so the underlying check (which inspects the
+/// documents panel) executes on the UI thread.
+/// </summary>
+public interface IGetWebViewToolSupportCommand : IExecutableCommand<WebViewToolSupport>
+{
+    ResourceKey Resource { get; set; }
+}
 
 /// <summary>
 /// Provides WebView-related services including URL classification.
@@ -18,4 +39,18 @@ public interface IWebViewService
     /// sensitive material) should combine this with their own check.
     /// </summary>
     bool IsDevToolsFeatureEnabled();
+
+    /// <summary>
+    /// Returns true if the WebViewDevToolsEval feature flag is enabled. This is a
+    /// separate flag from IsDevToolsFeatureEnabled because webview_eval is an
+    /// arbitrary code execution primitive and is gated independently.
+    /// </summary>
+    bool IsDevToolsEvalFeatureEnabled();
+
+    /// <summary>
+    /// Determines whether the webview_* tools support the specified resource
+    /// and, when not, returns a human-readable reason. The check inspects the
+    /// open documents list and the package registry.
+    /// </summary>
+    WebViewToolSupport GetWebViewToolSupport(ResourceKey resource);
 }

@@ -1,3 +1,5 @@
+using Celbridge.Documents;
+
 namespace Celbridge.Packages;
 
 /// <summary>
@@ -33,6 +35,14 @@ public interface IPackageService
     /// Returns all document editor contributions from all discovered packages.
     /// </summary>
     IReadOnlyList<DocumentEditorContribution> GetAllDocumentEditors();
+
+    /// <summary>
+    /// Returns the package that contributes the document editor with the
+    /// specified editor ID, or null if no contributing package is registered.
+    /// Editor IDs follow the "{packageId}.{contributionId}" format assigned by
+    /// CustomDocumentViewFactory.
+    /// </summary>
+    Package? GetContributingPackage(DocumentEditorId editorId);
 
     /// <summary>
     /// Gets the default template content for a file extension, if provided by a package.
