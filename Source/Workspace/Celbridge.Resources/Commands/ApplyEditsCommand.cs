@@ -4,7 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Documents.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 {
@@ -13,7 +13,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public List<DocumentEdit> Edits { get; set; } = new();
+    public List<FileEdit> Edits { get; set; } = new();
 
     public IReadOnlyList<AppliedEdit> ResultValue { get; private set; } = Array.Empty<AppliedEdit>();
 
@@ -41,11 +41,11 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         var failedResources = new List<ResourceKey>();
         var appliedRanges = new List<AppliedEdit>();
 
-        foreach (var documentEdit in Edits)
+        foreach (var fileEdit in Edits)
         {
-            var resource = documentEdit.Resource;
+            var resource = fileEdit.Resource;
 
-            var applyResult = await ApplyEditsToDisk(resourceService, resource, documentEdit.Edits);
+            var applyResult = await ApplyEditsToDisk(resourceService, resource, fileEdit.Edits);
             if (applyResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
@@ -59,7 +59,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
         if (failedResources.Count > 0)
         {
-            var errorMessage = $"Failed to apply edits to the following documents: {string.Join(", ", failedResources)}";
+            var errorMessage = $"Failed to apply edits to the following files: {string.Join(", ", failedResources)}";
             _logger.LogError(errorMessage);
 
             var alertTitle = _stringLocalizer.GetString("Documents_ApplyEditsFailedTitle");
@@ -202,7 +202,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
     // Static methods for scripting support.
     //
 
-    public static void ApplyEdits(List<DocumentEdit> edits)
+    public static void ApplyEdits(List<FileEdit> edits)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 

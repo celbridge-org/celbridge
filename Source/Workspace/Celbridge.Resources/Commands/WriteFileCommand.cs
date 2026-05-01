@@ -2,18 +2,18 @@ using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
-namespace Celbridge.Documents.Commands;
+namespace Celbridge.Resources.Commands;
 
-public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
+public class WriteFileCommand : CommandBase, IWriteFileCommand
 {
-    private readonly ILogger<WriteDocumentCommand> _logger;
+    private readonly ILogger<WriteFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
     public string Content { get; set; } = string.Empty;
 
-    public WriteDocumentCommand(
-        ILogger<WriteDocumentCommand> logger,
+    public WriteFileCommand(
+        ILogger<WriteFileCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -69,11 +69,11 @@ public class WriteDocumentCommand : CommandBase, IWriteDocumentCommand
     // Static methods for scripting support.
     //
 
-    public static void WriteDocument(ResourceKey fileResource, string content)
+    public static void WriteFile(ResourceKey fileResource, string content)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IWriteDocumentCommand>(command =>
+        commandService.Execute<IWriteFileCommand>(command =>
         {
             command.FileResource = fileResource;
             command.Content = content;

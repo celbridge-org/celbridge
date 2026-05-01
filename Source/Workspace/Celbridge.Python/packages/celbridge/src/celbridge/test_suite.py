@@ -112,12 +112,12 @@ def _close_if_open(resource):
 
 
 def _write_with_line_endings(resource, text_with_lf, line_ending):
-    """Write a file with explicit line endings, bypassing document.write's
+    """Write a file with explicit line endings, bypassing file.write's
     platform-default conversion. Used by the line-ending preservation tests
     to set up a file with known endings regardless of host OS."""
     text = text_with_lf.replace("\n", line_ending)
     encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
-    document.write_binary(resource, encoded)
+    file.write_binary(resource, encoded)
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +301,7 @@ class TestExplorer(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# document module
+# document module (editor-tab tools only)
 # ---------------------------------------------------------------------------
 
 class TestDocument(unittest.TestCase):
@@ -309,20 +309,15 @@ class TestDocument(unittest.TestCase):
     def setUp(self):
         _delete_if_exists("TestDocument")
         explorer.create_folder("TestDocument")
-        document.write(
+        file.write(
             "TestDocument/hello.txt",
             "Hello, World!\nLine 2\nLine 3\nLine 4\nLine 5\n",
         )
 
     def tearDown(self):
         _close_if_open("TestDocument/hello.txt")
-        _close_if_open("TestDocument/test.bin")
         _close_if_open("TestDocument/new_file.txt")
         _delete_if_exists("TestDocument")
-
-    def test_write_and_read(self):
-        result = file.read("TestDocument/hello.txt")
-        self.assertIn("Hello, World!", result["content"])
 
     def test_open_and_activate(self):
         document.open("TestDocument/hello.txt")
@@ -337,120 +332,25 @@ class TestDocument(unittest.TestCase):
         resources = [d["resource"] for d in ctx["openDocuments"]]
         self.assertIn("TestDocument/hello.txt", resources)
 
-    def test_apply_edits(self):
-        edits = [
-            {
-                "line": 1,
-                "column": 8,
-                "endLine": 1,
-                "endColumn": 13,
-                "newText": "Celbridge",
-            }
-        ]
-        document.apply_edits("TestDocument/hello.txt", json.dumps(edits))
-        result = file.read("TestDocument/hello.txt")
-        self.assertIn("Celbridge", result["content"])
-
-    def test_apply_edits_on_closed_document_writes_to_disk(self):
-        """Edits to a closed document write straight to disk and the disk
-        immediately reflects the edit."""
-        edits = [
-            {
-                "line": 1,
-                "column": 8,
-                "endLine": 1,
-                "endColumn": 13,
-                "newText": "Celbridge",
-            }
-        ]
-        document.apply_edits("TestDocument/hello.txt", json.dumps(edits))
-        disk = file.read("TestDocument/hello.txt")
-        self.assertIn("Celbridge", disk["content"])
-
-    def test_apply_edits_open_document_persists_via_disk(self):
-        """When the document is open, edits land on disk and the open buffer
-        reloads from disk. The response describes the post-edit document and
-        the file on disk reflects it immediately."""
-        document.open("TestDocument/hello.txt")
-        edits = [
-            {
-                "line": 1,
-                "column": 1,
-                "endLine": 1,
-                "endColumn": -1,
-                "newText": "Regression line 1\nRegression line 2",
-            }
-        ]
-        result = document.apply_edits(
-            "TestDocument/hello.txt", json.dumps(edits)
-        )
-
-        disk = file.read("TestDocument/hello.txt")
-        self.assertIn("Regression line 1", disk["content"])
-        self.assertIn("Regression line 2", disk["content"])
-
-        disk_line_count = len(disk["content"].splitlines())
-        self.assertEqual(result["totalLineCount"], disk_line_count)
-
-        affected = result["affectedLines"][0]
-        context_text = "\n".join(affected["contextLines"])
-        self.assertIn("Regression line 1", context_text)
-
-    def test_find_replace(self):
-        result = document.find_replace(
-            "TestDocument/hello.txt",
-            search_text="Line 2",
-            replace_text="Second Line",
-        )
-        self.assertGreaterEqual(result["replacementCount"], 1)
-        result = file.read("TestDocument/hello.txt")
-        self.assertIn("Second Line", result["content"])
-
-    def test_find_replace_open_document_followup_read_sees_replacement(self):
-        """When the document is open, find_replace writes to disk and a
-        follow-up file_read must see the replacement, not the pre-replace
-        editor buffer."""
-        document.open("TestDocument/hello.txt")
-        result = document.find_replace(
-            "TestDocument/hello.txt",
-            search_text="Line 2",
-            replace_text="Second Line",
-        )
-        self.assertGreaterEqual(result["replacementCount"], 1)
-        disk = file.read("TestDocument/hello.txt")
-        self.assertIn("Second Line", disk["content"])
-
-    def test_delete_lines(self):
-        result = document.delete_lines(
-            "TestDocument/hello.txt", start_line=2, end_line=3
-        )
-        self.assertIn("deletedFrom", result)
-        self.assertIn("totalLineCount", result)
-        result = file.read("TestDocument/hello.txt")
-        self.assertNotIn("Line 2", result["content"])
-        self.assertNotIn("Line 3", result["content"])
-
-    def test_write_binary(self):
-        content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
-        document.write_binary("TestDocument/test.bin", content)
-        result = file.read_binary("TestDocument/test.bin")
-        decoded = base64.b64decode(result["base64"])
-        self.assertIn(b"BINARY_TEST_DATA_12345", decoded)
-
-    def test_write_replaces_open_document_content(self):
-        """When the document is open, write replaces the disk content and
-        the open buffer reloads from disk."""
-        document.open("TestDocument/hello.txt")
-        document.write("TestDocument/hello.txt", "completely new content")
-        disk = file.read("TestDocument/hello.txt")
-        self.assertEqual(disk["content"].strip(), "completely new content")
-
     def test_close(self):
         document.open("TestDocument/hello.txt")
         document.close("TestDocument/hello.txt", force_close=True)
         ctx = document.get_context()
         resources = [d["resource"] for d in ctx["openDocuments"]]
         self.assertNotIn("TestDocument/hello.txt", resources)
+
+    def test_close_multiple_documents(self):
+        file.write("TestDocument/new_file.txt", "temp")
+        document.open("TestDocument/hello.txt")
+        document.open("TestDocument/new_file.txt")
+        document.close(
+            ["TestDocument/hello.txt", "TestDocument/new_file.txt"],
+            force_close=True,
+        )
+        ctx = document.get_context()
+        resources = [d["resource"] for d in ctx["openDocuments"]]
+        self.assertNotIn("TestDocument/hello.txt", resources)
+        self.assertNotIn("TestDocument/new_file.txt", resources)
 
     # -- Error cases --
 
@@ -466,51 +366,188 @@ class TestDocument(unittest.TestCase):
         with self.assertRaises(CelError):
             document.activate("\\invalid")
 
+
+# ---------------------------------------------------------------------------
+# file edit tools (write, write_binary, apply_edits, find_replace, delete_lines)
+# ---------------------------------------------------------------------------
+
+class TestFileEdit(unittest.TestCase):
+    """File-content edit tools. These write straight to disk; if a document
+    is open, its buffer reloads from disk as a side effect."""
+
+    def setUp(self):
+        _delete_if_exists("TestFileEdit")
+        explorer.create_folder("TestFileEdit")
+        file.write(
+            "TestFileEdit/hello.txt",
+            "Hello, World!\nLine 2\nLine 3\nLine 4\nLine 5\n",
+        )
+
+    def tearDown(self):
+        _close_if_open("TestFileEdit/hello.txt")
+        _close_if_open("TestFileEdit/test.bin")
+        _close_if_open("TestFileEdit/new_file.txt")
+        _delete_if_exists("TestFileEdit")
+
+    def test_write_and_read(self):
+        result = file.read("TestFileEdit/hello.txt")
+        self.assertIn("Hello, World!", result["content"])
+
+    def test_apply_edits(self):
+        edits = [
+            {
+                "line": 1,
+                "column": 8,
+                "endLine": 1,
+                "endColumn": 13,
+                "newText": "Celbridge",
+            }
+        ]
+        file.apply_edits("TestFileEdit/hello.txt", json.dumps(edits))
+        result = file.read("TestFileEdit/hello.txt")
+        self.assertIn("Celbridge", result["content"])
+
+    def test_apply_edits_on_closed_document_writes_to_disk(self):
+        """Edits to a closed document write straight to disk and the disk
+        immediately reflects the edit."""
+        edits = [
+            {
+                "line": 1,
+                "column": 8,
+                "endLine": 1,
+                "endColumn": 13,
+                "newText": "Celbridge",
+            }
+        ]
+        file.apply_edits("TestFileEdit/hello.txt", json.dumps(edits))
+        disk = file.read("TestFileEdit/hello.txt")
+        self.assertIn("Celbridge", disk["content"])
+
+    def test_apply_edits_open_document_persists_via_disk(self):
+        """When the document is open, edits land on disk and the open buffer
+        reloads from disk. The response describes the post-edit document and
+        the file on disk reflects it immediately."""
+        document.open("TestFileEdit/hello.txt")
+        edits = [
+            {
+                "line": 1,
+                "column": 1,
+                "endLine": 1,
+                "endColumn": -1,
+                "newText": "Regression line 1\nRegression line 2",
+            }
+        ]
+        result = file.apply_edits(
+            "TestFileEdit/hello.txt", json.dumps(edits)
+        )
+
+        disk = file.read("TestFileEdit/hello.txt")
+        self.assertIn("Regression line 1", disk["content"])
+        self.assertIn("Regression line 2", disk["content"])
+
+        disk_line_count = len(disk["content"].splitlines())
+        self.assertEqual(result["totalLineCount"], disk_line_count)
+
+        affected = result["affectedLines"][0]
+        context_text = "\n".join(affected["contextLines"])
+        self.assertIn("Regression line 1", context_text)
+
+    def test_find_replace(self):
+        result = file.find_replace(
+            "TestFileEdit/hello.txt",
+            search_text="Line 2",
+            replace_text="Second Line",
+        )
+        self.assertGreaterEqual(result["replacementCount"], 1)
+        result = file.read("TestFileEdit/hello.txt")
+        self.assertIn("Second Line", result["content"])
+
+    def test_find_replace_open_document_followup_read_sees_replacement(self):
+        """When the document is open, find_replace writes to disk and a
+        follow-up file_read must see the replacement, not the pre-replace
+        editor buffer."""
+        document.open("TestFileEdit/hello.txt")
+        result = file.find_replace(
+            "TestFileEdit/hello.txt",
+            search_text="Line 2",
+            replace_text="Second Line",
+        )
+        self.assertGreaterEqual(result["replacementCount"], 1)
+        disk = file.read("TestFileEdit/hello.txt")
+        self.assertIn("Second Line", disk["content"])
+
+    def test_delete_lines(self):
+        result = file.delete_lines(
+            "TestFileEdit/hello.txt", start_line=2, end_line=3
+        )
+        self.assertIn("deletedFrom", result)
+        self.assertIn("totalLineCount", result)
+        result = file.read("TestFileEdit/hello.txt")
+        self.assertNotIn("Line 2", result["content"])
+        self.assertNotIn("Line 3", result["content"])
+
+    def test_write_binary(self):
+        content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
+        file.write_binary("TestFileEdit/test.bin", content)
+        result = file.read_binary("TestFileEdit/test.bin")
+        decoded = base64.b64decode(result["base64"])
+        self.assertIn(b"BINARY_TEST_DATA_12345", decoded)
+
+    def test_write_replaces_open_document_content(self):
+        """When the document is open, write replaces the disk content and
+        the open buffer reloads from disk."""
+        document.open("TestFileEdit/hello.txt")
+        file.write("TestFileEdit/hello.txt", "completely new content")
+        disk = file.read("TestFileEdit/hello.txt")
+        self.assertEqual(disk["content"].strip(), "completely new content")
+
+    # -- Error cases --
+
     def test_apply_edits_invalid_resource_key(self):
         with self.assertRaises(CelError):
-            document.apply_edits("\\invalid", "[]")
+            file.apply_edits("\\invalid", "[]")
 
     def test_apply_edits_invalid_json(self):
         with self.assertRaises(CelError):
-            document.apply_edits("TestDocument/hello.txt", "not json")
+            file.apply_edits("TestFileEdit/hello.txt", "not json")
 
     def test_apply_edits_empty_array(self):
         # Empty edits should succeed without error
-        document.apply_edits("TestDocument/hello.txt", "[]")
+        file.apply_edits("TestFileEdit/hello.txt", "[]")
 
     def test_apply_edits_auto_serialized_list(self):
         edits = [{"line": 1, "endLine": 1, "newText": "Replaced first line"}]
-        document.apply_edits("TestDocument/hello.txt", edits)
-        result = file.read("TestDocument/hello.txt")
+        file.apply_edits("TestFileEdit/hello.txt", edits)
+        result = file.read("TestFileEdit/hello.txt")
         self.assertIn("Replaced first line", result["content"])
 
     def test_delete_lines_invalid_resource_key(self):
         with self.assertRaises(CelError):
-            document.delete_lines("\\invalid", start_line=1, end_line=1)
+            file.delete_lines("\\invalid", start_line=1, end_line=1)
 
     def test_delete_lines_start_less_than_one(self):
         with self.assertRaises(CelError):
-            document.delete_lines(
-                "TestDocument/hello.txt", start_line=0, end_line=1
+            file.delete_lines(
+                "TestFileEdit/hello.txt", start_line=0, end_line=1
             )
 
     def test_delete_lines_end_before_start(self):
         with self.assertRaises(CelError):
-            document.delete_lines(
-                "TestDocument/hello.txt", start_line=3, end_line=1
+            file.delete_lines(
+                "TestFileEdit/hello.txt", start_line=3, end_line=1
             )
 
     def test_find_replace_no_matches(self):
-        result = document.find_replace(
-            "TestDocument/hello.txt",
+        result = file.find_replace(
+            "TestFileEdit/hello.txt",
             search_text="NONEXISTENT_STRING_XYZ",
             replace_text="replacement",
         )
         self.assertEqual(result["replacementCount"], 0)
 
     def test_find_replace_regex(self):
-        result = document.find_replace(
-            "TestDocument/hello.txt",
+        result = file.find_replace(
+            "TestFileEdit/hello.txt",
             search_text=r"Line \d+",
             replace_text="Replaced",
             use_regex=True,
@@ -518,47 +555,34 @@ class TestDocument(unittest.TestCase):
         self.assertGreaterEqual(result["replacementCount"], 1)
 
     def test_find_replace_case_sensitive(self):
-        result = document.find_replace(
-            "TestDocument/hello.txt",
+        result = file.find_replace(
+            "TestFileEdit/hello.txt",
             search_text="hello",
             replace_text="Goodbye",
             match_case=True,
         )
         self.assertEqual(result["replacementCount"], 0)
 
-    def test_close_multiple_documents(self):
-        document.write("TestDocument/new_file.txt", "temp")
-        document.open("TestDocument/hello.txt")
-        document.open("TestDocument/new_file.txt")
-        document.close(
-            ["TestDocument/hello.txt", "TestDocument/new_file.txt"],
-            force_close=True,
-        )
-        ctx = document.get_context()
-        resources = [d["resource"] for d in ctx["openDocuments"]]
-        self.assertNotIn("TestDocument/hello.txt", resources)
-        self.assertNotIn("TestDocument/new_file.txt", resources)
-
     def test_write_creates_new_file(self):
-        document.write("TestDocument/new_file.txt", "brand new content")
-        result = file.read("TestDocument/new_file.txt")
+        file.write("TestFileEdit/new_file.txt", "brand new content")
+        result = file.read("TestFileEdit/new_file.txt")
         self.assertIn("brand new content", result["content"])
 
     def test_write_overwrites_existing_file(self):
-        document.write("TestDocument/hello.txt", "overwritten")
-        result = file.read("TestDocument/hello.txt")
+        file.write("TestFileEdit/hello.txt", "overwritten")
+        result = file.read("TestFileEdit/hello.txt")
         self.assertIn("overwritten", result["content"])
         self.assertNotIn("Hello, World!", result["content"])
 
     def test_write_empty_content(self):
-        document.write("TestDocument/hello.txt", "")
-        result = file.read("TestDocument/hello.txt")
+        file.write("TestFileEdit/hello.txt", "")
+        result = file.read("TestFileEdit/hello.txt")
         self.assertEqual(result["content"].strip(), "")
 
     def test_write_unicode_content(self):
         unicode_text = "Caf\u00e9 \u4e16\u754c \ud83d\ude80\n"
-        document.write("TestDocument/hello.txt", unicode_text)
-        result = file.read("TestDocument/hello.txt")
+        file.write("TestFileEdit/hello.txt", unicode_text)
+        result = file.read("TestFileEdit/hello.txt")
         self.assertIn("Caf\u00e9", result["content"])
 
 
@@ -566,10 +590,10 @@ class TestDocument(unittest.TestCase):
 # Line-ending preservation
 # ---------------------------------------------------------------------------
 
-class TestDocumentLineEndings(unittest.TestCase):
-    """Verifies that document edit tools preserve the existing file's line
-    endings and trailing-newline state, and that document.write picks the
-    platform default when creating a new file."""
+class TestFileLineEndings(unittest.TestCase):
+    """Verifies that file edit tools preserve the existing file's line endings
+    and trailing-newline state, and that file.write picks the platform default
+    when creating a new file."""
 
     def setUp(self):
         _delete_if_exists("TestLineEndings")
@@ -590,7 +614,7 @@ class TestDocumentLineEndings(unittest.TestCase):
             "\r\n",
         )
         edits = [{"line": 2, "endLine": 2, "newText": "Replaced"}]
-        document.apply_edits("TestLineEndings/crlf.txt", json.dumps(edits))
+        file.apply_edits("TestLineEndings/crlf.txt", json.dumps(edits))
 
         content = file.read("TestLineEndings/crlf.txt")["content"]
         self.assertIn("\r\n", content)
@@ -605,7 +629,7 @@ class TestDocumentLineEndings(unittest.TestCase):
             "\n",
         )
         edits = [{"line": 2, "endLine": 2, "newText": "Replaced"}]
-        document.apply_edits("TestLineEndings/lf.txt", json.dumps(edits))
+        file.apply_edits("TestLineEndings/lf.txt", json.dumps(edits))
 
         content = file.read("TestLineEndings/lf.txt")["content"]
         self.assertNotIn("\r", content)
@@ -616,7 +640,7 @@ class TestDocumentLineEndings(unittest.TestCase):
             "alpha\nbeta\ngamma\n",
             "\r\n",
         )
-        document.find_replace(
+        file.find_replace(
             "TestLineEndings/crlf.txt",
             search_text="beta",
             replace_text="BETA",
@@ -633,7 +657,7 @@ class TestDocumentLineEndings(unittest.TestCase):
             "one\ntwo\nthree\nfour\n",
             "\r\n",
         )
-        document.delete_lines(
+        file.delete_lines(
             "TestLineEndings/crlf.txt", start_line=2, end_line=3
         )
 
@@ -644,9 +668,9 @@ class TestDocumentLineEndings(unittest.TestCase):
         self.assertNotIn("\r\r", content)
 
     def test_write_new_file_uses_platform_default(self):
-        # document.write with input that uses \n separators should write the
+        # file.write with input that uses \n separators should write the
         # host platform's line endings to a brand-new file.
-        document.write(
+        file.write(
             "TestLineEndings/new.txt", "first\nsecond\nthird\n"
         )
 
@@ -664,7 +688,7 @@ class TestDocumentLineEndings(unittest.TestCase):
             "\r\n",
         )
         edits = [{"line": 2, "endLine": 2, "newText": "BETA"}]
-        document.apply_edits(
+        file.apply_edits(
             "TestLineEndings/no_trailing.txt", json.dumps(edits)
         )
 
@@ -680,7 +704,7 @@ class TestDocumentLineEndings(unittest.TestCase):
             "\r\n",
         )
         edits = [{"line": 2, "endLine": 2, "newText": "BETA"}]
-        document.apply_edits(
+        file.apply_edits(
             "TestLineEndings/with_trailing.txt", json.dumps(edits)
         )
 
@@ -706,19 +730,19 @@ class TestFile(unittest.TestCase):
     def setUp(self):
         _delete_if_exists("TestFile")
         explorer.create_folder("TestFile")
-        document.write(
+        file.write(
             "TestFile/hello.txt",
             "Hello, World!\nLine 2\nLine 3\n",
         )
-        document.write(
+        file.write(
             "TestFile/other.txt",
             "Other file content\n",
         )
         content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
-        document.write_binary("TestFile/test.bin", content)
+        file.write_binary("TestFile/test.bin", content)
         # A minimal JPEG used by the file.read_image tests below.
         jpeg_b64 = base64.b64encode(_MINIMAL_JPEG_BYTES).decode("ascii")
-        document.write_binary("TestFile/sample.jpg", jpeg_b64)
+        file.write_binary("TestFile/sample.jpg", jpeg_b64)
 
     def tearDown(self):
         _delete_if_exists("TestFile")
@@ -922,7 +946,7 @@ class TestPackage(unittest.TestCase):
         _delete_if_exists("test_archive.zip")
         _delete_if_exists("test_archive_filtered.zip")
         explorer.create_folder("TestPackage")
-        document.write("TestPackage/file.txt", "archive content\n")
+        file.write("TestPackage/file.txt", "archive content\n")
 
     def tearDown(self):
         _delete_if_exists("TestPackage")
@@ -1094,8 +1118,8 @@ class TestWebView(unittest.TestCase):
     def setUp(self):
         _delete_if_exists("TestWebView")
         explorer.create_folder("TestWebView")
-        document.write(self.test_resource, _WEBVIEW_TEST_HTML)
-        document.write(
+        file.write(self.test_resource, _WEBVIEW_TEST_HTML)
+        file.write(
             self.unopened_resource,
             "<!doctype html><html><body>unopened</body></html>",
         )
@@ -1545,7 +1569,8 @@ def main():
         TestQuery,
         TestExplorer,
         TestDocument,
-        TestDocumentLineEndings,
+        TestFileEdit,
+        TestFileLineEndings,
         TestFile,
         TestPackage,
         TestWebView,

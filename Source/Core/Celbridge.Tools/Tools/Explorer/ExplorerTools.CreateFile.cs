@@ -7,7 +7,7 @@ public partial class ExplorerTools
 {
     /// <summary>
     /// Creates an empty file in the project. Pass show_dialog=true for interactive mode where the user can choose the name and location.
-    /// Tip: document_write can create and write files in a single step, so you only need this tool
+    /// Tip: file_write can create and write files in a single step, so you only need this tool
     /// when you want an empty file or want the interactive dialog.
     /// </summary>
     /// <param name="resource">Resource key for the new file, or the parent folder when using the dialog.</param>

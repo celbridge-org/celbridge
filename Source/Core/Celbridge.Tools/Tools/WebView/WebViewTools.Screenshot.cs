@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Documents;
 using Celbridge.Settings;
 using Celbridge.WebHost;
 using ModelContextProtocol.Protocol;
@@ -96,13 +95,13 @@ public partial class WebViewTools
 
         if (fileResource is not null)
         {
-            // Route the write through IWriteBinaryDocumentCommand so capability
+            // Route the write through IWriteBinaryFileCommand so capability
             // gating, registry refresh, and PathValidator containment all run.
             // The base64 round-trip is a one-time in-process cost. No network
             // or JSON envelope sees the encoded form, so the JSON-escape
             // corruption that drove the original on-disk redesign cannot recur.
             var base64 = Convert.ToBase64String(data.Bytes);
-            var commandResult = await CommandService.ExecuteAsync<IWriteBinaryDocumentCommand>(command =>
+            var commandResult = await CommandService.ExecuteAsync<IWriteBinaryFileCommand>(command =>
             {
                 command.FileResource = fileResource.Value;
                 command.Base64Content = base64;

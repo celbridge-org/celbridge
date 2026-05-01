@@ -3,11 +3,11 @@ using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
-namespace Celbridge.Documents.Commands;
+namespace Celbridge.Resources.Commands;
 
-public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentCommand
+public class FindReplaceFileCommand : CommandBase, IFindReplaceFileCommand
 {
-    private readonly ILogger<FindReplaceDocumentCommand> _logger;
+    private readonly ILogger<FindReplaceFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
@@ -19,8 +19,8 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
     public int ToLine { get; set; }
     public int ResultValue { get; private set; }
 
-    public FindReplaceDocumentCommand(
-        ILogger<FindReplaceDocumentCommand> logger,
+    public FindReplaceFileCommand(
+        ILogger<FindReplaceFileCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -192,7 +192,7 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IFindReplaceDocumentCommand>(command =>
+        commandService.Execute<IFindReplaceFileCommand>(command =>
         {
             command.FileResource = fileResource;
             command.SearchText = searchText;
@@ -204,7 +204,7 @@ public class FindReplaceDocumentCommand : CommandBase, IFindReplaceDocumentComma
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IFindReplaceDocumentCommand>(command =>
+        commandService.Execute<IFindReplaceFileCommand>(command =>
         {
             command.FileResource = fileResource;
             command.SearchText = searchText;

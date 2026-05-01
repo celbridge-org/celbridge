@@ -1,9 +1,9 @@
-using Celbridge.Documents.Commands;
 using Celbridge.Resources;
+using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Verifies that DeleteLinesCommand removes the requested line range from disk.

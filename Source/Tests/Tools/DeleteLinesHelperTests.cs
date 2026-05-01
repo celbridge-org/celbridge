@@ -1,10 +1,11 @@
-using Celbridge.Documents.Commands;
+using Celbridge.Resources;
+using Celbridge.Resources.Commands;
 
 namespace Celbridge.Tests.Tools;
 
 /// <summary>
 /// Tests for DeleteLinesHelper — the pure logic helpers for the
-/// document_delete_lines MCP tool.
+/// file_delete_lines MCP tool.
 /// </summary>
 [TestFixture]
 public class DeleteLinesHelperTests

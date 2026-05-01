@@ -31,20 +31,20 @@ the current workspace context before searching the whole project:
 Only fall back to a broad project search (`file_grep`, `file_get_tree`) when these
 sources do not resolve the reference.
 
-## Document Changes and Saving
+## File Changes and Saving
 
 Celbridge saves automatically — there is no save tool. Editing tools
-(`document_apply_edits`, `document_write`, `document_find_replace`,
-`document_delete_lines`, `document_write_binary`) write straight to disk, so a
-follow-up `file_read` sees the result. If a document is open in the editor, its
-buffer reloads from disk automatically and the editor's undo history is wiped —
-Ctrl+Z cannot revert your edit. Users who care about recovering the prior
-content rely on source control.
+(`file_apply_edits`, `file_write`, `file_find_replace`, `file_delete_lines`,
+`file_write_binary`) write straight to disk, so a follow-up `file_read` sees
+the result. If a document is open in the editor, its buffer reloads from disk
+automatically and the editor's undo history is wiped — Ctrl+Z cannot revert
+your edit. Users who care about recovering the prior content rely on source
+control.
 
 ## Workspace Panels
 
 - **Explorer** — the project file tree. Use `explorer_*` tools to create, move, and delete resources. `explorer_undo` / `explorer_redo` only affect file system operations (create, delete, move, rename, copy) — they cannot undo document text edits.
-- **Documents** — the editor area. Files open as tabs across up to 3 sections (sectionIndex 0, 1, 2 from left to right). Use `document_*` tools to open, edit, and manage documents. To undo a text edit, apply a reverse edit with `document_apply_edits` or `document_delete_lines`.
+- **Documents** — the editor area. Files open as tabs across up to 3 sections (sectionIndex 0, 1, 2 from left to right). Use `document_*` tools to open, close, activate, and query open tabs; use `file_*` tools (`file_apply_edits`, `file_write`, `file_find_replace`, `file_delete_lines`, `file_write_binary`) to edit file content. To undo a text edit, apply a reverse edit with `file_apply_edits` or `file_delete_lines`.
 - **Inspector** — shows contextual properties for the selected resource.
 - **Search** — full-text search across project files. Use `file_grep` from the agent.
 - **Console** — the built-in Python REPL for running and testing scripts interactively.
@@ -61,7 +61,7 @@ an external web page to display in an embedded browser panel.
 ```
 
 The `sourceUrl` must be an external `http://` or `https://` URL. Local paths
-and resource keys are not supported. Use `document_write` to create a
+and resource keys are not supported. Use `file_write` to create a
 `.webview` file in one step.
 
 ## Packages
@@ -324,7 +324,7 @@ to camelCase at the call site, but the manifest does NOT. Examples:
 
 - `"file.list_contents"` → call site `cel.file.listContents(...)`
 - `"file.read_binary"` → call site `cel.file.readBinary(...)`
-- `"document.apply_edits"` → call site `cel.document.applyEdits(...)`
+- `"file.apply_edits"` → call site `cel.file.applyEdits(...)`
 
 Do not use camelCase (`"file.listContents"`) or the MCP underscore form
 (`"file_list_contents"`) — neither matches.

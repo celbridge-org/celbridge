@@ -30,7 +30,7 @@ Matching pairs (always declare the left form, always call the right form):
   requires_tools entry       →  JS call site
   "file.list_contents"       →  cel.file.listContents(...)
   "file.read_binary"         →  cel.file.readBinary(...)
-  "document.apply_edits"     →  cel.document.applyEdits(...)
+  "file.apply_edits"         →  cel.file.applyEdits(...)
   "explorer.create_folder"   →  cel.explorer.createFolder(...)
 
 Do NOT use `"file.listContents"` (camelCase in the manifest) or underscore MCP

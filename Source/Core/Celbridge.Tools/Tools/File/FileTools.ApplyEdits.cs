@@ -1,36 +1,35 @@
 using System.Text.Json;
-using Celbridge.Documents;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by document_apply_edits with the affected line ranges and resulting line count.
+/// Result returned by file_apply_edits with the affected line ranges and resulting line count.
 /// </summary>
 public record class ApplyEditsResult(List<AffectedLineRange> AffectedLines, int? TotalLineCount = null);
 
 /// <summary>
-/// A line range affected by a document edit, using 1-based line numbers.
+/// A line range affected by a file edit, using 1-based line numbers.
 /// ContextLines contains the post-edit content of the affected lines plus one
 /// surrounding line on each side, allowing immediate verification without a
 /// follow-up file_read call.
 /// </summary>
 public record class AffectedLineRange(int From, int To, List<string>? ContextLines = null);
 
-public partial class DocumentTools
+public partial class FileTools
 {
     /// <summary>
-    /// Applies targeted text edits to a document at specific line and column positions.
+    /// Applies targeted text edits to a file at specific line and column positions.
     /// Each edit specifies a range and replacement text, using 1-based line and column numbers.
     /// Edits are written directly to disk. Any open document reloads its buffer from disk
     /// after the write.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to edit.</param>
     /// <param name="editsJson">JSON array of edit objects, each with fields: line (int), column (int, optional, default 1), endLine (int), endColumn (int, optional, default -1), newText (string). Line and column numbers are 1-based. column defaults to 1 and endColumn defaults to -1 (end of line), so whole-line replacements only require line, endLine, and newText.</param>
-    /// <returns>JSON object describing the document state after the edits are applied, with fields: affectedLines (array of objects with from (int), to (int), and contextLines (array of strings showing the post-edit content of the affected lines with one line of surrounding context on each side)), totalLineCount (int, post-edit line count). Use these fields to verify the edit landed without issuing a follow-up file_read.</returns>
-    [McpServerTool(Name = "document_apply_edits")]
-    [ToolAlias("document.apply_edits")]
+    /// <returns>JSON object describing the file state after the edits are applied, with fields: affectedLines (array of objects with from (int), to (int), and contextLines (array of strings showing the post-edit content of the affected lines with one line of surrounding context on each side)), totalLineCount (int, post-edit line count). Use these fields to verify the edit landed without issuing a follow-up file_read.</returns>
+    [McpServerTool(Name = "file_apply_edits")]
+    [ToolAlias("file.apply_edits")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
@@ -59,11 +58,11 @@ public partial class DocumentTools
             return SuccessResult("ok");
         }
 
-        var documentEdit = new DocumentEdit(fileResourceKey, textEdits);
+        var fileEdit = new FileEdit(fileResourceKey, textEdits);
 
         var (callResult, appliedEdits) = await ExecuteCommandAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(command =>
         {
-            command.Edits = new List<DocumentEdit> { documentEdit };
+            command.Edits = new List<FileEdit> { fileEdit };
         });
 
         if (callResult.IsError == true)

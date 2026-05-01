@@ -44,11 +44,6 @@ public static class ServiceConfiguration
         services.AddTransient<ICloseDocumentCommand, CloseDocumentCommand>();
         services.AddTransient<IActivateDocumentCommand, ActivateDocumentCommand>();
         services.AddTransient<IResetSectionsCommand, ResetSectionsCommand>();
-        services.AddTransient<IApplyEditsCommand, ApplyEditsCommand>();
-        services.AddTransient<IWriteDocumentCommand, WriteDocumentCommand>();
-        services.AddTransient<IWriteBinaryDocumentCommand, WriteBinaryDocumentCommand>();
-        services.AddTransient<IDeleteLinesCommand, DeleteLinesCommand>();
-        services.AddTransient<IFindReplaceDocumentCommand, FindReplaceDocumentCommand>();
         services.AddTransient<IGetDocumentContextCommand, GetDocumentContextCommand>();
         services.AddTransient<ISetEditorPreferenceCommand, SetEditorPreferenceCommand>();
     }

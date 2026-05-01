@@ -1,16 +1,16 @@
-using Celbridge.Documents.Commands;
 using Celbridge.Resources;
+using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies WriteDocumentCommand writes content directly to disk and refreshes
+/// Verifies WriteFileCommand writes content directly to disk and refreshes
 /// the resource registry when a new file is created.
 /// </summary>
 [TestFixture]
-public class WriteDocumentCommandTests
+public class WriteFileCommandTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
@@ -19,7 +19,7 @@ public class WriteDocumentCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(WriteDocumentCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(WriteFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -47,9 +47,9 @@ public class WriteDocumentCommandTests
         }
     }
 
-    private WriteDocumentCommand CreateCommand()
+    private WriteFileCommand CreateCommand()
     {
-        return new WriteDocumentCommand(Substitute.For<ILogger<WriteDocumentCommand>>(), _workspaceWrapper);
+        return new WriteFileCommand(Substitute.For<ILogger<WriteFileCommand>>(), _workspaceWrapper);
     }
 
     [Test]

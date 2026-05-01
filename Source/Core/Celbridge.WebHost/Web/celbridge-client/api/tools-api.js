@@ -133,8 +133,8 @@ function snakeToCamelCase(name) {
 /**
  * Builds a nested object proxy from a list of tool descriptors.
  *
- * Each descriptor's alias becomes a method path: "document.apply_edits" exposes
- * `proxy.document.applyEdits(...)`. Arguments are mapped to the descriptor's
+ * Each descriptor's alias becomes a method path: "file.apply_edits" exposes
+ * `proxy.file.applyEdits(...)`. Arguments are mapped to the descriptor's
  * parameter list in declaration order. Arrays and plain objects passed to
  * string-typed parameters are JSON-stringified automatically.
  *
@@ -370,7 +370,7 @@ export class ToolsAPI {
      * Returns the `cel.*` proxy. Throws `CelToolError` synchronously if accessed
      * before `celbridge.initialize()` has loaded the tool descriptors.
      * The proxy tree mirrors the Python `cel` object layout: a tool alias like
-     * "document.apply_edits" is exposed as `cel.document.applyEdits(...)`.
+     * "file.apply_edits" is exposed as `cel.file.applyEdits(...)`.
      * @returns {Object}
      */
     get cel() {
