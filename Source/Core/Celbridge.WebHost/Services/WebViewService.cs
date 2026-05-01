@@ -39,6 +39,14 @@ public class WebViewService : IWebViewService
 
     public WebViewToolSupport GetWebViewToolSupport(ResourceKey resource)
     {
+        // No workspace means no documents can be open and therefore no resource
+        // can be supported by the webview_* tools.
+        if (!_workspaceWrapper.IsWorkspacePageLoaded)
+        {
+            return NotSupported(
+                "No project is loaded. Open a project before calling any webview_* tool.");
+        }
+
         var workspaceService = _workspaceWrapper.WorkspaceService;
 
         var match = workspaceService.DocumentsService

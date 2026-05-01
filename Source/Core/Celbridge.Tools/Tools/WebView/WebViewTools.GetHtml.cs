@@ -35,12 +35,17 @@ public partial class WebViewTools
             return ErrorResult($"Invalid resource key: '{resource}'");
         }
 
+        // Clamp maxDepth so a callsite passing int.MaxValue cannot trigger an
+        // unbounded recursion through the live DOM in the shim's pruneDepth.
+        const int MaxAllowedDepth = 50;
+        var clampedDepth = maxDepth < 0 ? 0 : Math.Min(maxDepth, MaxAllowedDepth);
+
         Logger.LogInformation("webview_get_html resource={Resource} selector={Selector} maxDepth={MaxDepth}",
-            resourceKey, selector, maxDepth);
+            resourceKey, selector, clampedDepth);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
         var scopedSelector = string.IsNullOrEmpty(selector) ? null : selector;
-        var options = new GetHtmlOptions(scopedSelector, maxDepth);
+        var options = new GetHtmlOptions(scopedSelector, clampedDepth);
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);
         if (htmlResult.IsFailure)
         {

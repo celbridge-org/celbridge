@@ -151,9 +151,10 @@ calling any `webview_*` tool.
 **Programmatic clicks have `isTrusted: false`.** `webview_click` dispatches a
 real `MouseEvent` sequence (`mousedown`, `mouseup`, `click`) that bubbles, but
 because the events are synthetic, handlers that gate on `event.isTrusted` will
-not fire. If a click appears to do nothing, use `webview_eval` to verify the
-listener is registered (e.g. `getEventListeners(document.querySelector('#btn'))`
-in DevTools-style probes) before assuming the click failed.
+not fire. If a click appears to do nothing, use `webview_eval` to confirm the
+expected effect ran (e.g. read a counter the handler increments, or check a
+class the handler toggles). The DevTools-only `getEventListeners()` helper is
+not available to `webview_eval` — calling it raises a `ReferenceError`.
 
 **`webview_fill` works for most framework input bindings.** It assigns the
 value through the native `HTMLInputElement` / `HTMLTextAreaElement` /
@@ -251,7 +252,7 @@ the implicit role for the element's tag (button → button, h2 → heading,
 nav → navigation). Returned `selector` strings are stable enough to pass
 straight to `webview_inspect`.
 
-**Eligible targets.** Works on any open document editor — text, markdown,
+**Supported targets.** Works on any open document editor — text, markdown,
 HTML viewers, and custom contribution editors. Excluded: external-URL
 `.webview` documents and editors whose package opts out of devtools. If you
 are unsure whether a given document qualifies, just call the tool — the error

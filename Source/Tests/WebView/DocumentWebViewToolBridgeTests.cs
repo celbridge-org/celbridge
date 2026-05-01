@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Commands;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 
@@ -7,26 +8,38 @@ namespace Celbridge.Tests.WebView;
 [TestFixture]
 public partial class DocumentWebViewToolBridgeTests
 {
-    private IWebViewService _webViewService = null!;
+    private ICommandService _commandService = null!;
+    private ILogger<DocumentWebViewToolBridge> _logger = null!;
     private DocumentWebViewToolBridge _bridge = null!;
     private ResourceKey _resource;
 
     [SetUp]
     public void SetUp()
     {
-        // The bridge only calls into IWebViewService to build the diagnostic
-        // on a missing-registration error. Stub the call to return a recognizable
-        // sentinel so we can verify the bridge surfaces the reason verbatim.
-        // The diagnostic text itself is tested in WebViewServiceSupportTests.
-        _webViewService = Substitute.For<IWebViewService>();
-        _webViewService
-            .GetWebViewToolSupport(Arg.Any<ResourceKey>())
-            .Returns(call => new WebViewToolSupport(
-                IsSupported: false,
-                Reason: $"UNSUPPORTED:{call.Arg<ResourceKey>()}"));
+        _commandService = Substitute.For<ICommandService>();
+        _logger = Substitute.For<ILogger<DocumentWebViewToolBridge>>();
 
-        _bridge = new DocumentWebViewToolBridge(_webViewService);
         ResourceKey.TryCreate("docs/readme.md", out _resource).Should().BeTrue();
+
+        // The bridge calls IGetWebViewToolSupportCommand through the command queue
+        // to build the diagnostic on a missing-registration error. Stub it to return
+        // a recognizable sentinel so we can verify the bridge surfaces the reason
+        // verbatim. The diagnostic text itself is tested in WebViewServiceSupportTests.
+        StubSupport(new WebViewToolSupport(
+            IsSupported: false,
+            Reason: $"UNSUPPORTED:{_resource}"));
+
+        _bridge = new DocumentWebViewToolBridge(_commandService, _logger);
+    }
+
+    private void StubSupport(WebViewToolSupport support)
+    {
+        _commandService
+            .ExecuteAsync<IGetWebViewToolSupportCommand, WebViewToolSupport>(
+                Arg.Any<Action<IGetWebViewToolSupportCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Result<WebViewToolSupport>.Ok(support));
     }
 
     [Test]
@@ -53,9 +66,7 @@ public partial class DocumentWebViewToolBridgeTests
         // When the service reports the resource is supported, the failure is
         // purely that no WebView is registered, so the bridge surfaces its
         // own message.
-        _webViewService
-            .GetWebViewToolSupport(Arg.Any<ResourceKey>())
-            .Returns(new WebViewToolSupport(IsSupported: true, Reason: null));
+        StubSupport(new WebViewToolSupport(IsSupported: true, Reason: null));
 
         var result = await _bridge.EvalAsync(_resource, "1 + 1");
 
@@ -103,7 +114,7 @@ public partial class DocumentWebViewToolBridgeTests
     {
         // Use a short content-ready timeout so the test does not wait through the
         // production default (5 seconds) on every run.
-        var fastBridge = new DocumentWebViewToolBridge(_webViewService, TimeSpan.FromMilliseconds(100));
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, TimeSpan.FromMilliseconds(100));
         fastBridge.Register(
             _resource,
             evalAsync: _ => Task.FromResult("\"ok\""),
@@ -134,6 +145,47 @@ public partial class DocumentWebViewToolBridgeTests
 
         result.IsSuccess.Should().BeTrue();
         observedClearCache.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task ReloadAsync_DelegateThrows_FailsAndUnsticksGateWithFailureReason()
+    {
+        // Use a short content-ready timeout so the test does not hang on the
+        // 5-second production default if the gate is not properly opened.
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, TimeSpan.FromMilliseconds(100));
+        fastBridge.Register(
+            _resource,
+            evalAsync: _ => Task.FromResult("\"ok\""),
+            reloadAsync: _ => throw new InvalidOperationException("boom"));
+        fastBridge.NotifyContentReady(_resource);
+
+        var reloadResult = await fastBridge.ReloadAsync(_resource, clearCache: false);
+        reloadResult.IsFailure.Should().BeTrue();
+
+        // Subsequent tool calls return the failure reason immediately rather
+        // than waiting through the content-ready timeout.
+        var evalResult = await fastBridge.EvalAsync(_resource, "x");
+        evalResult.IsFailure.Should().BeTrue();
+        evalResult.FirstErrorMessage.Should().Contain("last WebView reload failed");
+        evalResult.FirstErrorMessage.Should().Contain("boom");
+    }
+
+    [Test]
+    public async Task NotifyContentLoading_AfterFailure_ClearsTheFailureReason()
+    {
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, TimeSpan.FromMilliseconds(100));
+        fastBridge.Register(
+            _resource,
+            evalAsync: _ => Task.FromResult("\"ok\""),
+            reloadAsync: _ => Task.CompletedTask);
+        fastBridge.NotifyContentFailed(_resource, "previous failure");
+
+        // The next navigation cycle starts loading and clears the sticky reason.
+        fastBridge.NotifyContentLoading(_resource);
+        fastBridge.NotifyContentReady(_resource);
+
+        var evalResult = await fastBridge.EvalAsync(_resource, "x");
+        evalResult.IsSuccess.Should().BeTrue();
     }
 
     [Test]

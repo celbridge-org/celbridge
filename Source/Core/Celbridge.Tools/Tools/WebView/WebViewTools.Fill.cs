@@ -42,10 +42,10 @@ public partial class WebViewTools
         }
 
         Logger.LogInformation("webview_fill resource={Resource} selector={Selector} valueLength={ValueLength}",
-            resourceKey, selector, value?.Length ?? 0);
+            resourceKey, selector, value.Length);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
-        var options = new FillOptions(selector, value ?? string.Empty);
+        var options = new FillOptions(selector, value);
         var fillResult = await toolBridge.FillAsync(resourceKey, options);
         if (fillResult.IsFailure)
         {

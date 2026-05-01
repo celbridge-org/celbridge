@@ -12,7 +12,7 @@ public partial class WebViewTools
     /// The editor's package code reinitialises from scratch. Use this after writing
     /// new package files (HTML, CSS, JS, manifest) so the WebView picks up the edits.
     /// Requires the webview-dev-tools feature flag. If the target document is not
-    /// eligible (wrong editor, external URL, or package opts out) the error message
+    /// supported (wrong editor, external URL, or package opts out) the error message
     /// names the specific reason.
     /// </summary>
     /// <param name="resource">Resource key of the open document whose WebView to reload.</param>

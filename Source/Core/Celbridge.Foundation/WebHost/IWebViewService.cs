@@ -1,3 +1,5 @@
+using Celbridge.Commands;
+
 namespace Celbridge.WebHost;
 
 /// <summary>
@@ -8,6 +10,16 @@ namespace Celbridge.WebHost;
 /// IsSupported is true.
 /// </summary>
 public sealed record WebViewToolSupport(bool IsSupported, string? Reason);
+
+/// <summary>
+/// Read-only query that resolves the WebView tool support state for a resource.
+/// Routed through the command queue so the underlying check (which inspects the
+/// documents panel) executes on the UI thread.
+/// </summary>
+public interface IGetWebViewToolSupportCommand : IExecutableCommand<WebViewToolSupport>
+{
+    ResourceKey Resource { get; set; }
+}
 
 /// <summary>
 /// Provides WebView-related services including URL classification.
@@ -38,9 +50,7 @@ public interface IWebViewService
     /// <summary>
     /// Determines whether the webview_* tools support the specified resource
     /// and, when not, returns a human-readable reason. The check inspects the
-    /// open documents list and the package registry. When eligibility cannot
-    /// be determined (e.g. no workspace is loaded) the result is treated as
-    /// supported and the caller falls back to its own generic message.
+    /// open documents list and the package registry.
     /// </summary>
     WebViewToolSupport GetWebViewToolSupport(ResourceKey resource);
 }

@@ -139,7 +139,7 @@ public interface IDocumentWebViewToolBridge
     string GetShimScript();
 
     /// <summary>
-    /// Registers an eligible WebView with the tool bridge. Called by document views
+    /// Registers a supported WebView with the tool bridge. Called by document views
     /// (contribution editors and HTML viewers) once their WebView is initialized.
     /// The screenshot delegate is optional. Pass null on platforms or surfaces that
     /// do not support a native snapshot API.
@@ -173,6 +173,15 @@ public interface IDocumentWebViewToolBridge
     /// resource is not registered.
     /// </summary>
     void NotifyContentLoading(ResourceKey resource);
+
+    /// <summary>
+    /// Notifies the bridge that loading has failed and tool calls cannot dispatch
+    /// against this WebView until the next navigation cycle. Opens the gate so
+    /// pending and future calls fail fast with the supplied reason rather than
+    /// waiting for the content-ready timeout. Cleared by the next
+    /// NotifyContentLoading. No effect if the resource is not registered.
+    /// </summary>
+    void NotifyContentFailed(ResourceKey resource, string reason);
 
     /// <summary>
     /// Evaluates a JavaScript expression in the WebView registered for the resource.

@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Celbridge.Commands;
+using Celbridge.Logging;
 
 namespace Celbridge.WebHost.Services;
 
 /// <summary>
-/// Maintains a registry of WebViews eligible for the webview_* MCP tool namespace,
+/// Maintains a registry of WebViews registered with the webview_* MCP tool namespace,
 /// keyed by their document resource. Routes eval and reload calls from those tools
 /// to the registered WebView via the delegates supplied at registration time. The
 /// delegates are responsible for marshalling onto the UI thread.
@@ -19,17 +21,19 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     private static readonly TimeSpan DefaultContentReadyTimeout = TimeSpan.FromSeconds(5);
 
     private readonly TimeSpan _contentReadyTimeout;
-    private readonly IWebViewService _webViewService;
+    private readonly ICommandService _commandService;
+    private readonly ILogger<DocumentWebViewToolBridge> _logger;
 
-    public DocumentWebViewToolBridge(IWebViewService webViewService)
-        : this(webViewService, DefaultContentReadyTimeout) { }
+    public DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger)
+        : this(commandService, logger, DefaultContentReadyTimeout) { }
 
     // Test-friendly constructor so unit tests can use a short timeout without
     // waiting through the 5-second default for every gated-but-never-ready case.
-    internal DocumentWebViewToolBridge(IWebViewService webViewService, TimeSpan contentReadyTimeout)
+    internal DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, TimeSpan contentReadyTimeout)
     {
         _contentReadyTimeout = contentReadyTimeout;
-        _webViewService = webViewService;
+        _commandService = commandService;
+        _logger = logger;
     }
 
     // Cap accumulated console history per resource. Older entries are evicted FIFO
@@ -65,7 +69,17 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             }
 
             var fullPath = System.IO.Path.Combine(AppContext.BaseDirectory, ShimRelativePath);
-            _cachedShimScript = File.ReadAllText(fullPath);
+            try
+            {
+                _cachedShimScript = File.ReadAllText(fullPath);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to load the WebView tool bridge shim from '{fullPath}'. The file is expected to ship with the host build output.",
+                    ex);
+            }
+
             return _cachedShimScript;
         }
     }
@@ -101,11 +115,19 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
+    public void NotifyContentFailed(ResourceKey resource, string reason)
+    {
+        if (_entries.TryGetValue(resource, out var entry))
+        {
+            entry.NotifyContentFailed(reason);
+        }
+    }
+
     public async Task<Result<string>> EvalAsync(ResourceKey resource, string expression)
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
-            return Result.Fail(NoRegistrationMessage(resource));
+            return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
 
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
@@ -130,7 +152,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
-            return Result.Fail(NoRegistrationMessage(resource));
+            return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
 
         // Flush in-page buffers into the host accumulator so entries captured
@@ -138,14 +160,21 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         await TryDrainConsoleAsync(entry);
         await TryDrainNetworkAsync(entry);
 
+        entry.NotifyContentLoading();
         try
         {
-            entry.NotifyContentLoading();
             await entry.ReloadAsync(clearCache);
             return Result.Ok();
         }
         catch (Exception ex)
         {
+            // The reload delegate failed before NavigationCompleted could fire,
+            // so the gate would otherwise stay closed and every later tool call
+            // would block until the 5-second timeout. Mark the entry as failed
+            // so subsequent tool calls fail fast with the reload error rather
+            // than dispatching against a broken page state.
+            var reason = $"The last WebView reload failed: {ex.Message}";
+            entry.NotifyContentFailed(reason);
             return Result.Fail($"WebView reload failed for resource '{resource}': {ex.Message}")
                 .WithException(ex);
         }
@@ -155,7 +184,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
-            return Result.Fail(NoRegistrationMessage(resource));
+            return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
 
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
@@ -250,7 +279,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
-            return Result.Fail(NoRegistrationMessage(resource));
+            return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
 
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
@@ -269,7 +298,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
-            return Result.Fail(NoRegistrationMessage(resource));
+            return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
 
         if (!entry.HasScreenshotDelegate)
@@ -456,9 +485,11 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort: a missing shim or a failed eval should not surface as a tool error.
+            // Best-effort: a missing shim or a failed eval should not surface as
+            // a tool error. Log at Debug so unexpected failures are still traceable.
+            _logger.LogDebug(ex, "Network drain failed");
         }
     }
 
@@ -466,7 +497,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     {
         if (!_entries.TryGetValue(resource, out var entry))
         {
-            return Result.Fail(NoRegistrationMessage(resource));
+            return Result.Fail(await GetUnavailableReasonAsync(resource));
         }
 
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
@@ -526,11 +557,12 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
             // The shim may not be installed (cross-origin frame, or the page hasn't
-            // navigated yet). Drain is best-effort: silently swallow rather than
-            // propagating an error to the caller.
+            // navigated yet). Drain is best-effort: log at Debug rather than
+            // surfacing the failure to the caller.
+            _logger.LogDebug(ex, "Console drain failed");
         }
     }
 
@@ -584,16 +616,27 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    private string NoRegistrationMessage(ResourceKey resource)
+    private async Task<string> GetUnavailableReasonAsync(ResourceKey resource)
     {
         // When the service reports the resource is unsupported, it carries a
         // specific reason (document not open, wrong editor, .webview, DevToolsBlocked).
         // Otherwise the failure is purely that no WebView is currently registered
         // (likely a timing issue), so fall back to the bridge's generic message.
-        var support = _webViewService.GetWebViewToolSupport(resource);
-        if (!support.IsSupported && support.Reason is not null)
+        // Routed through the command queue so the underlying check (which reads
+        // the documents panel) executes on the UI thread.
+        var supportResult = await _commandService.ExecuteAsync<IGetWebViewToolSupportCommand, WebViewToolSupport>(
+            cmd => cmd.Resource = resource);
+        if (supportResult.IsSuccess)
         {
-            return support.Reason;
+            var support = supportResult.Value;
+            if (!support.IsSupported && support.Reason is not null)
+            {
+                return support.Reason;
+            }
+        }
+        else
+        {
+            _logger.LogDebug("GetWebViewToolSupport command failed: {Error}", supportResult.FirstErrorMessage);
         }
 
         return $"No WebView is registered for resource '{resource}' on the webview_* tool bridge.";
@@ -608,6 +651,11 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         private readonly List<ConsoleEntry> _consoleHistory = new();
         private readonly List<NetworkEntry> _networkHistory = new();
         private TaskCompletionSource _readyTcs;
+        // Sticky failure reason set by NotifyContentFailed and cleared by the
+        // next NotifyContentLoading. While set, WaitForContentReadyAsync returns
+        // it directly so tool callers see a real diagnostic rather than waiting
+        // through the content-ready timeout.
+        private string? _failureReason;
 
         public WebViewToolBridgeEntry(
             Func<string, Task<string>> evalAsync,
@@ -640,6 +688,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             TaskCompletionSource toComplete;
             lock (_gate)
             {
+                _failureReason = null;
                 toComplete = _readyTcs;
             }
 
@@ -650,12 +699,27 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         {
             lock (_gate)
             {
+                _failureReason = null;
                 if (!_readyTcs.Task.IsCompleted)
                 {
                     return;
                 }
                 _readyTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             }
+        }
+
+        public void NotifyContentFailed(string reason)
+        {
+            TaskCompletionSource toComplete;
+            lock (_gate)
+            {
+                _failureReason = reason;
+                toComplete = _readyTcs;
+            }
+
+            // Open the gate so any pending WaitForContentReadyAsync returns
+            // immediately and observes the failure reason.
+            toComplete.TrySetResult();
         }
 
         public async Task<Result> WaitForContentReadyAsync(TimeSpan timeout)
@@ -666,20 +730,33 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
                 readyTask = _readyTcs.Task;
             }
 
-            if (readyTask.IsCompleted)
+            if (!readyTask.IsCompleted)
             {
-                return Result.Ok();
+                // Run the delay against an infinite timeout that we cancel manually
+                // on the success path, so the delay task does not linger after the
+                // ready signal arrives.
+                using var cts = new CancellationTokenSource();
+                var delayTask = Task.Delay(timeout, cts.Token);
+                var completed = await Task.WhenAny(readyTask, delayTask);
+                if (completed != readyTask)
+                {
+                    return Result.Fail($"Timed out after {timeout.TotalSeconds:0.#}s waiting for the editor's content-ready signal. The editor must call celbridge.notifyContentLoaded() (contribution editors) or finish navigation (HTML viewer) before WebView tools can dispatch.");
+                }
+
+                cts.Cancel();
             }
 
-            using var cts = new CancellationTokenSource(timeout);
-            var delayTask = Task.Delay(timeout, cts.Token);
-            var completed = await Task.WhenAny(readyTask, delayTask);
-            if (completed != readyTask)
+            string? failureReason;
+            lock (_gate)
             {
-                return Result.Fail($"Timed out after {timeout.TotalSeconds:0.#}s waiting for the editor's content-ready signal. The editor must call celbridge.notifyContentLoaded() (contribution editors) or finish navigation (HTML viewer) before WebView tools can dispatch.");
+                failureReason = _failureReason;
             }
 
-            cts.Cancel();
+            if (failureReason is not null)
+            {
+                return Result.Fail(failureReason);
+            }
+
             return Result.Ok();
         }
 

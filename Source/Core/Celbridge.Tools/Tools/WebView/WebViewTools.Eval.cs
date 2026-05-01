@@ -12,7 +12,7 @@ public partial class WebViewTools
     /// The expression must produce a JSON-serialisable value. The result is
     /// returned as a JSON string. Requires the webview-dev-tools and
     /// webview-dev-tools-eval feature flags. If the target document is not
-    /// eligible (wrong editor, external URL, or package opts out) the error
+    /// supported (wrong editor, external URL, or package opts out) the error
     /// message names the specific reason.
     /// </summary>
     /// <param name="resource">Resource key of the open document whose WebView to target.</param>
@@ -43,7 +43,11 @@ public partial class WebViewTools
             return ErrorResult("Expression must not be empty");
         }
 
-        Logger.LogInformation("webview_eval resource={Resource} expression={Expression}", resourceKey, expression);
+        // The expression body may contain sensitive output (e.g. document.cookie,
+        // values fetched from storage). Log the resource and length only. The body
+        // is logged at Debug for opt-in diagnostics.
+        Logger.LogInformation("webview_eval resource={Resource} expressionLength={Length}", resourceKey, expression.Length);
+        Logger.LogDebug("webview_eval expression={Expression}", expression);
 
         var toolBridge = GetRequiredService<IDocumentWebViewToolBridge>();
         var evalResult = await toolBridge.EvalAsync(resourceKey, expression);

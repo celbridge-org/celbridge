@@ -1119,7 +1119,7 @@ class TestWebView(unittest.TestCase):
         time.sleep(0.5)
 
     def test_reload_unopened_resource_fails(self):
-        with self.assertRaisesRegex(CelError, "(?i)no tool-bridge-eligible"):
+        with self.assertRaisesRegex(CelError, "(?i)not open in the editor"):
             webview.reload("does/not/exist.html")
 
     def test_reload_path_traversal_rejected(self):
@@ -1127,14 +1127,14 @@ class TestWebView(unittest.TestCase):
             webview.reload("../escape.html")
 
     def test_reload_real_unopened_file_fails(self):
-        with self.assertRaisesRegex(CelError, "(?i)no tool-bridge-eligible"):
+        with self.assertRaisesRegex(CelError, "(?i)not open in the editor"):
             webview.reload(self.unopened_resource)
 
-    def test_reload_empty_resource_key_fails_with_eligibility_error(self):
+    def test_reload_empty_resource_key_fails_with_unsupported_error(self):
         # Empty string passes IsValidKey (it represents the project root) but
         # the project root has no WebView registered, so the call falls through
-        # to the same eligibility error as any other unregistered key.
-        with self.assertRaisesRegex(CelError, "(?i)no tool-bridge-eligible"):
+        # to the same unsupported error as any other unopened key.
+        with self.assertRaisesRegex(CelError, "(?i)not open in the editor"):
             webview.reload("")
 
     # -- webview.eval (gated by webview-dev-tools-eval) --

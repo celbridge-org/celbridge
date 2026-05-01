@@ -26,6 +26,7 @@ public class WebViewServiceSupportTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(_workspaceService);
+        _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
 
         _documentsService.GetOpenDocuments().Returns(Array.Empty<OpenDocumentInfo>());
         _packageService.GetContributingPackage(Arg.Any<DocumentEditorId>()).Returns((Package?)null);
@@ -67,6 +68,20 @@ public class WebViewServiceSupportTests
         support.Reason.Should().Contain("celbridge.spreadsheet");
         support.Reason.Should().Contain("DevToolsBlocked");
         support.Reason.Should().Contain("policy");
+    }
+
+    [Test]
+    public void GetWebViewToolSupport_NoWorkspaceLoaded_ReportsNoProjectLoaded()
+    {
+        // Without a workspace there can be no open documents, so the resource
+        // cannot be supported. The reason names the missing project so callers
+        // surface a useful message rather than a generic "not registered" one.
+        _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+
+        var support = _webViewService.GetWebViewToolSupport(new ResourceKey("any.html"));
+
+        support.IsSupported.Should().BeFalse();
+        support.Reason.Should().Contain("No project is loaded");
     }
 
     [Test]

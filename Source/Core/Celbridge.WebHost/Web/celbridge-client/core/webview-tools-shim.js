@@ -1,5 +1,5 @@
 // In-page bridge for the webview_* MCP tool namespace. Injected by the
-// Celbridge host into eligible WebViews. Unrelated to WebView2's built-in
+// Celbridge host into supported WebViews. Unrelated to WebView2's built-in
 // browser DevTools.
 (function () {
     'use strict';

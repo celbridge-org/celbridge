@@ -36,11 +36,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     private CelbridgeHost? _host;
     private IWebViewNavigationPolicy? _navigationPolicy;
 
-    // WebView tool bridge registration tracking. Only set for the HtmlViewer role;
-    // .webview (external URL) documents are not eligible for the webview_* tool
-    // namespace.
+    // Set on successful registration with the bridge. Only populated for the
+    // HtmlViewer role. .webview (external URL) documents do not register and the
+    // webview_* tool namespace is not supported for them.
     private IDocumentWebViewToolBridge? _toolBridge;
-    private ResourceKey _toolBridgeRegisteredResource;
 
     private static readonly WebViewDocumentOptions DefaultOptions = new(
         WebViewDocumentRole.ExternalUrl,
@@ -225,8 +224,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             {
                 MapProjectVirtualHost(_webView.CoreWebView2);
 
-                // The HTML viewer renders project-served content and is shim-eligible
-                // for the webview_* MCP tool namespace. External-URL .webview documents
+                // The HTML viewer renders project-served content and supports the
+                // webview_* MCP tool namespace. External-URL .webview documents
                 // intentionally skip both the shim and the tool bridge registration.
                 await TryInjectToolBridgeShimAsync();
             }
@@ -373,9 +372,8 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         if (_toolBridge is not null)
         {
-            _toolBridge.Unregister(_toolBridgeRegisteredResource);
+            _toolBridge.Unregister(FileResource);
             _toolBridge = null;
-            _toolBridgeRegisteredResource = ResourceKey.Empty;
         }
 
         if (_webView?.CoreWebView2 is not null)
@@ -456,7 +454,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         toolBridge.RegisterWebView2(resource, webView);
 
         _toolBridge = toolBridge;
-        _toolBridgeRegisteredResource = resource;
     }
 
     private void CoreWebView2_HistoryChanged(object? sender, object e)
@@ -470,9 +467,17 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         // own NavigationCompleted is a sufficient content-ready signal — there is no
         // editor-side notifyContentLoaded handshake. External-URL .webview documents
         // never register so this no-ops on the .webview path.
-        if (_toolBridge is not null && !_toolBridgeRegisteredResource.IsEmpty)
+        if (Options.Role == WebViewDocumentRole.HtmlViewer)
         {
-            _toolBridge.NotifyContentReady(_toolBridgeRegisteredResource);
+            if (e.IsSuccess)
+            {
+                _toolBridge?.NotifyContentReady(FileResource);
+            }
+            else
+            {
+                var reason = $"The WebView navigation failed with status '{e.WebErrorStatus}'.";
+                _toolBridge?.NotifyContentFailed(FileResource, reason);
+            }
         }
 
         SendNavigationStateChanged();
@@ -482,11 +487,11 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     {
         // Reset the tool bridge's content-ready gate so webview_* tool calls block
         // until the new navigation completes. Cross-origin navigations (e.g. an
-        // attacker-controlled redirect from project content) also reset eligibility
-        // here; tool calls remain blocked until a matching NavigationCompleted fires.
-        if (_toolBridge is not null && !_toolBridgeRegisteredResource.IsEmpty)
+        // attacker-controlled redirect from project content) reset support here too.
+        // Tool calls remain blocked until a matching NavigationCompleted fires.
+        if (Options.Role == WebViewDocumentRole.HtmlViewer)
         {
-            _toolBridge.NotifyContentLoading(_toolBridgeRegisteredResource);
+            _toolBridge?.NotifyContentLoading(FileResource);
         }
     }
 
