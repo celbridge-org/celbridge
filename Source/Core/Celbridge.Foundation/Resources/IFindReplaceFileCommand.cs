@@ -1,12 +1,12 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Documents;
+namespace Celbridge.Resources;
 
 /// <summary>
-/// Find and replace text within a document. Replacements are written directly
+/// Find and replace text within a file. Replacements are written directly
 /// to disk. Any open document reloads its buffer from disk after the write.
 /// </summary>
-public interface IFindReplaceDocumentCommand : IExecutableCommand<int>
+public interface IFindReplaceFileCommand : IExecutableCommand<int>
 {
     /// <summary>
     /// The resource key of the file to perform find and replace on.

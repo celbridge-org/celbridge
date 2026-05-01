@@ -1,27 +1,26 @@
 using System.Text.Json;
-using Celbridge.Documents;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by document_write with the line count of the written content.
+/// Result returned by file_write with the line count of the written content.
 /// </summary>
-public record class WriteDocumentResult(int LineCount);
+public record class WriteFileResult(int LineCount);
 
-public partial class DocumentTools
+public partial class FileTools
 {
     /// <summary>
-    /// Writes text content to a document. Creates the file if it does not exist.
+    /// Writes text content to a file. Creates the file if it does not exist.
     /// For existing files, replaces the entire content. Writes directly to disk.
     /// Any open document reloads its buffer from disk after the write.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to write. The file is created automatically if it does not exist.</param>
-    /// <param name="content">The new text content for the document.</param>
+    /// <param name="content">The new text content for the file.</param>
     /// <returns>JSON object with field: lineCount (int).</returns>
-    [McpServerTool(Name = "document_write")]
-    [ToolAlias("document.write")]
+    [McpServerTool(Name = "file_write")]
+    [ToolAlias("file.write")]
     public async partial Task<CallToolResult> Write(string fileResource, string content)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
@@ -29,7 +28,7 @@ public partial class DocumentTools
             return ErrorResult($"Invalid resource key: '{fileResource}'");
         }
 
-        var writeResult = await ExecuteCommandAsync<IWriteDocumentCommand>(command =>
+        var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Content = content;
@@ -41,7 +40,7 @@ public partial class DocumentTools
         }
 
         var lineCount = LineEndingHelper.CountLines(content);
-        var result = new WriteDocumentResult(lineCount);
+        var result = new WriteFileResult(lineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return SuccessResult(json);
     }

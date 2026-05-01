@@ -1,4 +1,4 @@
-using Celbridge.Documents;
+using Celbridge.Resources;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Search.ViewModels;
@@ -21,10 +21,10 @@ public partial class SearchPanelViewModel
         {
             var textEdits = BuildTextEditsForMatches(fileResult.Matches);
 
-            var documentEdit = new DocumentEdit(fileResult.Resource, textEdits);
-            var documentEdits = new List<DocumentEdit> { documentEdit };
+            var fileEdit = new FileEdit(fileResult.Resource, textEdits);
+            var fileEdits = new List<FileEdit> { fileEdit };
 
-            await ApplyEditsAsync(documentEdits);
+            await ApplyEditsAsync(fileEdits);
 
             _ = SaveReplaceTermToHistoryAsync();
 
@@ -61,10 +61,10 @@ public partial class SearchPanelViewModel
 
             var textEdit = CreateTextEditForMatch(matchLine);
 
-            var documentEdit = new DocumentEdit(fileResult.Resource, new List<TextEdit> { textEdit });
-            var documentEdits = new List<DocumentEdit> { documentEdit };
+            var fileEdit = new FileEdit(fileResult.Resource, new List<TextEdit> { textEdit });
+            var fileEdits = new List<FileEdit> { fileEdit };
 
-            await ApplyEditsAsync(documentEdits);
+            await ApplyEditsAsync(fileEdits);
 
             fileResult.RemoveMatch(matchLine);
 
@@ -96,16 +96,16 @@ public partial class SearchPanelViewModel
                 .GroupBy(m => m.Parent.Resource)
                 .ToList();
 
-            var documentEdits = new List<DocumentEdit>();
+            var fileEdits = new List<FileEdit>();
 
             foreach (var fileGroup in matchesByFile)
             {
                 var textEdits = BuildTextEditsForMatches(fileGroup);
-                var documentEdit = new DocumentEdit(fileGroup.Key, textEdits);
-                documentEdits.Add(documentEdit);
+                var fileEdit = new FileEdit(fileGroup.Key, textEdits);
+                fileEdits.Add(fileEdit);
             }
 
-            await ApplyEditsAsync(documentEdits);
+            await ApplyEditsAsync(fileEdits);
 
             foreach (var match in selectedMatches)
             {
@@ -170,9 +170,9 @@ public partial class SearchPanelViewModel
 
             progressToken = _dialogService.AcquireProgressDialog(progressTitle);
 
-            var documentEdits = BuildDocumentEditsForResults(allResults);
+            var fileEdits = BuildFileEditsForResults(allResults);
 
-            await ApplyEditsAsync(documentEdits);
+            await ApplyEditsAsync(fileEdits);
 
             _ = SaveReplaceTermToHistoryAsync();
 
@@ -195,9 +195,9 @@ public partial class SearchPanelViewModel
             .ToList();
     }
 
-    private List<DocumentEdit> BuildDocumentEditsForResults(SearchResults results)
+    private List<FileEdit> BuildFileEditsForResults(SearchResults results)
     {
-        var documentEdits = new List<DocumentEdit>();
+        var fileEdits = new List<FileEdit>();
 
         foreach (var fileResult in results.FileResults)
         {
@@ -212,11 +212,11 @@ public partial class SearchPanelViewModel
                     NewText: ReplaceText))
                 .ToList();
 
-            var documentEdit = new DocumentEdit(fileResult.Resource, textEdits);
-            documentEdits.Add(documentEdit);
+            var fileEdit = new FileEdit(fileResult.Resource, textEdits);
+            fileEdits.Add(fileEdit);
         }
 
-        return documentEdits;
+        return fileEdits;
     }
 
     private TextEdit CreateTextEditForMatch(SearchMatchLineViewModel match)
@@ -229,11 +229,11 @@ public partial class SearchPanelViewModel
             NewText: ReplaceText);
     }
 
-    private async Task ApplyEditsAsync(List<DocumentEdit> documentEdits)
+    private async Task ApplyEditsAsync(List<FileEdit> fileEdits)
     {
         await _commandService.ExecuteAsync<IApplyEditsCommand>(command =>
         {
-            command.Edits = documentEdits;
+            command.Edits = fileEdits;
         });
     }
 }

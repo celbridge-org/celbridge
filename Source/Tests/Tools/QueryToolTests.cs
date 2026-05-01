@@ -79,7 +79,7 @@ public class QueryToolTests
         var tools = new QueryTools(_services);
         var text = GetResultText(tools.GetPythonApi());
 
-        text.Should().Contain("document.apply_edits(");
+        text.Should().Contain("file.apply_edits(");
         text.Should().Contain("file_resource: str");
         text.Should().Contain("file.read(");
         text.Should().Contain("explorer.get_context()");
@@ -148,9 +148,9 @@ public class QueryToolTests
         var text = GetResultText(tools.GetJavaScriptApi());
 
         // Method names from snake_case aliases become camelCase (e.g. apply_edits -> applyEdits)
-        text.Should().Contain("cel.document.applyEdits(");
+        text.Should().Contain("cel.file.applyEdits(");
         text.Should().Contain("cel.explorer.getContext()");
-        text.Should().NotContain("cel.document.apply_edits(");
+        text.Should().NotContain("cel.file.apply_edits(");
     }
 
     [Test]

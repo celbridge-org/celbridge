@@ -1,21 +1,20 @@
 using System.Text.Json;
-using Celbridge.Documents;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by document_delete_lines with the deleted range, new line count,
+/// Result returned by file_delete_lines with the deleted range, new line count,
 /// and context lines around the deletion point for verification.
 /// </summary>
 public record class DeleteLinesResult(int DeletedFrom, int DeletedTo, int TotalLineCount, List<string>? ContextLines = null);
 
-public partial class DocumentTools
+public partial class FileTools
 {
     /// <summary>
-    /// Deletes complete lines from a document, removing them entirely including their
-    /// line terminators. Unlike document_apply_edits with empty newText (which always
+    /// Deletes complete lines from a file, removing them entirely including their
+    /// line terminators. Unlike file_apply_edits with empty newText (which always
     /// leaves a residual empty line), this tool cleanly removes the specified lines.
     /// Writes directly to disk. Any open document reloads its buffer from disk after
     /// the write.
@@ -24,8 +23,8 @@ public partial class DocumentTools
     /// <param name="startLine">First line to delete (1-based, inclusive).</param>
     /// <param name="endLine">Last line to delete (1-based, inclusive).</param>
     /// <returns>JSON with fields: deletedFrom (int), deletedTo (int), totalLineCount (int), contextLines (array of strings around the deletion point).</returns>
-    [McpServerTool(Name = "document_delete_lines")]
-    [ToolAlias("document.delete_lines")]
+    [McpServerTool(Name = "file_delete_lines")]
+    [ToolAlias("file.delete_lines")]
     public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))

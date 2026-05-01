@@ -2,18 +2,18 @@ using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
-namespace Celbridge.Documents.Commands;
+namespace Celbridge.Resources.Commands;
 
-public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentCommand
+public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
 {
-    private readonly ILogger<WriteBinaryDocumentCommand> _logger;
+    private readonly ILogger<WriteBinaryFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
     public string Base64Content { get; set; } = string.Empty;
 
-    public WriteBinaryDocumentCommand(
-        ILogger<WriteBinaryDocumentCommand> logger,
+    public WriteBinaryFileCommand(
+        ILogger<WriteBinaryFileCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -61,11 +61,11 @@ public class WriteBinaryDocumentCommand : CommandBase, IWriteBinaryDocumentComma
     // Static methods for scripting support.
     //
 
-    public static void WriteBinaryDocument(ResourceKey fileResource, string base64Content)
+    public static void WriteBinaryFile(ResourceKey fileResource, string base64Content)
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IWriteBinaryDocumentCommand>(command =>
+        commandService.Execute<IWriteBinaryFileCommand>(command =>
         {
             command.FileResource = fileResource;
             command.Base64Content = base64Content;

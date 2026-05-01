@@ -1,11 +1,11 @@
 using Celbridge.Dialog;
-using Celbridge.Documents.Commands;
 using Celbridge.Resources;
+using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Verifies that ApplyEditsCommand writes edits directly to disk and never
@@ -68,7 +68,7 @@ public class ApplyEditsCommandTests
 
         var edit = new TextEdit(2, 1, 2, -1, "Replaced");
         var command = CreateCommand();
-        command.Edits = new List<DocumentEdit>
+        command.Edits = new List<FileEdit>
         {
             new(resource, new List<TextEdit> { edit })
         };
@@ -84,7 +84,7 @@ public class ApplyEditsCommandTests
     public async Task ExecuteAsync_ReturnsOk_WhenNoEdits()
     {
         var command = CreateCommand();
-        command.Edits = new List<DocumentEdit>();
+        command.Edits = new List<FileEdit>();
 
         var result = await command.ExecuteAsync();
 
@@ -103,7 +103,7 @@ public class ApplyEditsCommandTests
 
         var edit = new TextEdit(2, 1, 2, -1, "Two\nInserted\nThree");
         var command = CreateCommand();
-        command.Edits = new List<DocumentEdit>
+        command.Edits = new List<FileEdit>
         {
             new(resource, new List<TextEdit> { edit })
         };
@@ -131,7 +131,7 @@ public class ApplyEditsCommandTests
         var edit1 = new TextEdit(2, 1, 2, -1, "B1\nB2\nB3");
         var edit2 = new TextEdit(4, 1, 4, -1, "DD");
         var command = CreateCommand();
-        command.Edits = new List<DocumentEdit>
+        command.Edits = new List<FileEdit>
         {
             new(resource, new List<TextEdit> { edit1, edit2 })
         };
@@ -156,7 +156,7 @@ public class ApplyEditsCommandTests
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(missingPath));
 
         var command = CreateCommand();
-        command.Edits = new List<DocumentEdit>
+        command.Edits = new List<FileEdit>
         {
             new(resource, new List<TextEdit> { new(1, 1, 1, -1, "x") })
         };

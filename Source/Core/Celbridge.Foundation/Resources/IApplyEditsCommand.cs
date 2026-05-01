@@ -1,9 +1,9 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Documents;
+namespace Celbridge.Resources;
 
 /// <summary>
-/// A single text edit to apply to a document.
+/// A single text edit to apply to a file.
 /// Uses 1-based line and column numbers (Monaco editor convention).
 ///
 /// Edit operations:
@@ -41,9 +41,9 @@ public record TextEdit(
 }
 
 /// <summary>
-/// A batch of text edits to apply to a single document.
+/// A batch of text edits to apply to a single file.
 /// </summary>
-public record DocumentEdit(
+public record FileEdit(
     ResourceKey Resource,
     List<TextEdit> Edits);
 
@@ -56,7 +56,7 @@ public record DocumentEdit(
 public record AppliedEdit(ResourceKey Resource, int FromLine, int ToLine);
 
 /// <summary>
-/// Applies batch text edits to documents by writing directly to disk.
+/// Applies batch text edits to files by writing directly to disk.
 /// Any open document reloads its buffer from disk after the write completes.
 /// Returns the post-edit line range for each applied edit so callers can
 /// build a verification context without reapplying the edit math.
@@ -64,8 +64,8 @@ public record AppliedEdit(ResourceKey Resource, int FromLine, int ToLine);
 public interface IApplyEditsCommand : IExecutableCommand<IReadOnlyList<AppliedEdit>>
 {
     /// <summary>
-    /// The list of document edits to apply.
-    /// Each DocumentEdit contains a resource key and a list of text edits.
+    /// The list of file edits to apply.
+    /// Each FileEdit contains a resource key and a list of text edits.
     /// </summary>
-    List<DocumentEdit> Edits { get; set; }
+    List<FileEdit> Edits { get; set; }
 }

@@ -1,15 +1,15 @@
 using Celbridge.Commands;
 
-namespace Celbridge.Documents;
+namespace Celbridge.Resources;
 
 /// <summary>
-/// Deletes complete lines from a document, removing them entirely including their line terminators.
+/// Deletes complete lines from a file, removing them entirely including their line terminators.
 /// Uses 1-based line numbers. Both StartLine and EndLine are inclusive.
 /// </summary>
 public interface IDeleteLinesCommand : IExecutableCommand
 {
     /// <summary>
-    /// The resource key of the document to delete lines from.
+    /// The resource key of the file to delete lines from.
     /// </summary>
     ResourceKey Resource { get; set; }
 

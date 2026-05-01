@@ -1,3 +1,5 @@
+using Celbridge.Resources;
+
 namespace Celbridge.Tests.Documents;
 
 [TestFixture]
@@ -52,7 +54,7 @@ public class TextEditTests
     }
 
     [Test]
-    public void DocumentEdit_ContainsResourceAndEdits()
+    public void FileEdit_ContainsResourceAndEdits()
     {
         var resource = new ResourceKey("test/file.txt");
         var edits = new List<TextEdit>
@@ -61,10 +63,10 @@ public class TextEditTests
             TextEdit.Replace(2, 1, 2, 10, "second")
         };
 
-        var documentEdit = new DocumentEdit(resource, edits);
+        var fileEdit = new FileEdit(resource, edits);
 
-        documentEdit.Resource.Should().Be(resource);
-        documentEdit.Edits.Should().HaveCount(2);
+        fileEdit.Resource.Should().Be(resource);
+        fileEdit.Edits.Should().HaveCount(2);
     }
 
     [Test]

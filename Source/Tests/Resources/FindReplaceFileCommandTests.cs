@@ -1,16 +1,16 @@
-using Celbridge.Documents.Commands;
 using Celbridge.Resources;
+using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies that FindReplaceDocumentCommand applies replacements directly to
+/// Verifies that FindReplaceFileCommand applies replacements directly to
 /// the file on disk and reports the replacement count.
 /// </summary>
 [TestFixture]
-public class FindReplaceDocumentCommandTests
+public class FindReplaceFileCommandTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
@@ -19,7 +19,7 @@ public class FindReplaceDocumentCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FindReplaceDocumentCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FindReplaceFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -47,10 +47,10 @@ public class FindReplaceDocumentCommandTests
         }
     }
 
-    private FindReplaceDocumentCommand CreateCommand()
+    private FindReplaceFileCommand CreateCommand()
     {
-        return new FindReplaceDocumentCommand(
-            Substitute.For<ILogger<FindReplaceDocumentCommand>>(),
+        return new FindReplaceFileCommand(
+            Substitute.For<ILogger<FindReplaceFileCommand>>(),
             _workspaceWrapper);
     }
 

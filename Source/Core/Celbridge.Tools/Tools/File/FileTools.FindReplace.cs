@@ -1,19 +1,18 @@
 using System.Text.Json;
-using Celbridge.Documents;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by document_find_replace with the number of replacements made.
+/// Result returned by file_find_replace with the number of replacements made.
 /// </summary>
 public record class FindReplaceResult(int ReplacementCount);
 
-public partial class DocumentTools
+public partial class FileTools
 {
     /// <summary>
-    /// Finds and replaces text within a document. Supports plain text and regex patterns.
+    /// Finds and replaces text within a file. Supports plain text and regex patterns.
     /// Multi-line search and replace text may use \n line endings regardless of the file's
     /// actual line endings — the tool normalises them automatically. Replacements are
     /// written directly to disk. Any open document reloads its buffer from disk after
@@ -27,8 +26,8 @@ public partial class DocumentTools
     /// <param name="fromLine">First line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no lower bound.</param>
     /// <param name="toLine">Last line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no upper bound.</param>
     /// <returns>JSON object with field: replacementCount (int).</returns>
-    [McpServerTool(Name = "document_find_replace")]
-    [ToolAlias("document.find_replace")]
+    [McpServerTool(Name = "file_find_replace")]
+    [ToolAlias("file.find_replace")]
     public async partial Task<CallToolResult> FindReplace(
         string fileResource,
         string searchText,
@@ -43,7 +42,7 @@ public partial class DocumentTools
             return ErrorResult($"Invalid resource key: '{fileResource}'");
         }
 
-        var (callResult, replacementCount) = await ExecuteCommandAsync<IFindReplaceDocumentCommand, int>(command =>
+        var (callResult, replacementCount) = await ExecuteCommandAsync<IFindReplaceFileCommand, int>(command =>
         {
             command.FileResource = fileResourceKey;
             command.SearchText = searchText;

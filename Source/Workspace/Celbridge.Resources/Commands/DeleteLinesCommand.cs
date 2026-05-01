@@ -2,7 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
-namespace Celbridge.Documents.Commands;
+namespace Celbridge.Resources.Commands;
 
 public class DeleteLinesCommand : CommandBase, IDeleteLinesCommand
 {

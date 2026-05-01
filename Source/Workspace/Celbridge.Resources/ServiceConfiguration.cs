@@ -42,5 +42,11 @@ public static class ServiceConfiguration
         services.AddTransient<IListFolderContentsCommand, ListFolderContentsCommand>();
         services.AddTransient<IGetFileTreeCommand, GetFileTreeCommand>();
         services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
+
+        services.AddTransient<IApplyEditsCommand, ApplyEditsCommand>();
+        services.AddTransient<IDeleteLinesCommand, DeleteLinesCommand>();
+        services.AddTransient<IFindReplaceFileCommand, FindReplaceFileCommand>();
+        services.AddTransient<IWriteFileCommand, WriteFileCommand>();
+        services.AddTransient<IWriteBinaryFileCommand, WriteBinaryFileCommand>();
     }
 }

@@ -1,4 +1,4 @@
-namespace Celbridge.Documents.Commands;
+namespace Celbridge.Resources.Commands;
 
 /// <summary>
 /// Helper methods for line deletion operations, extracted for testability.
