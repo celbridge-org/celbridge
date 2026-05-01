@@ -11,10 +11,9 @@ public partial class WebViewTools
     /// Evaluates a JavaScript expression in the WebView hosting the document.
     /// The expression must produce a JSON-serialisable value. The result is
     /// returned as a JSON string. Requires the webview-dev-tools and
-    /// webview-dev-tools-eval feature flags. Works on any open document editor
-    /// (text, markdown, HTML viewer, custom editors). Not available for
-    /// external-URL `.webview` documents or for editors whose package opts out
-    /// of devtools — call the tool and read the error if uncertain.
+    /// webview-dev-tools-eval feature flags. If the target document is not
+    /// eligible (wrong editor, external URL, or package opts out) the error
+    /// message names the specific reason.
     /// </summary>
     /// <param name="resource">Resource key of the open document whose WebView to target.</param>
     /// <param name="expression">JavaScript expression to evaluate. Must be a single expression — the returned value is the expression's JSON-serialised result. Multi-statement code (const/let declarations, if/else blocks, several statements in sequence) returns null because statements have no value. Wrap such code in an IIFE with an explicit return, for example: (function() { const x = f(); return x + 1; })()</param>

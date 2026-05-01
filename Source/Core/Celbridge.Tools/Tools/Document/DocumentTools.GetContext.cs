@@ -16,7 +16,7 @@ public record class DocumentContextResult(
 /// <summary>
 /// An open document entry within the document_get_context result.
 /// </summary>
-public record class OpenDocumentEntry(string Resource, int SectionIndex, int TabOrder, bool IsActive);
+public record class OpenDocumentEntry(string Resource, int SectionIndex, int TabOrder, bool IsActive, string EditorId);
 
 public partial class DocumentTools
 {
@@ -25,7 +25,7 @@ public partial class DocumentTools
     /// section layout, and all open documents with their positions. Use this to
     /// understand what the user is currently looking at in the editor.
     /// </summary>
-    /// <returns>JSON object with fields: activeDocument (string, resource key of the active document or empty), sectionCount (int, number of visible editor sections 1-3), openDocuments (array of objects with resource (string), sectionIndex (int), tabOrder (int), isActive (bool)).</returns>
+    /// <returns>JSON object with fields: activeDocument (string, resource key of the active document or empty), sectionCount (int, number of visible editor sections 1-3), openDocuments (array of objects with resource (string), sectionIndex (int), tabOrder (int), isActive (bool), editorId (string, e.g. "celbridge.code-editor"; empty when no editor is bound)).</returns>
     [McpServerTool(Name = "document_get_context", ReadOnly = true)]
     [ToolAlias("document.get_context")]
     public async partial Task<CallToolResult> GetContext()
@@ -48,7 +48,8 @@ public partial class DocumentTools
                 document.FileResource.ToString(),
                 document.Address.SectionIndex,
                 document.Address.TabOrder,
-                document.FileResource == activeDocument));
+                document.FileResource == activeDocument,
+                document.EditorId.ToString()));
         }
 
         var result = new DocumentContextResult(

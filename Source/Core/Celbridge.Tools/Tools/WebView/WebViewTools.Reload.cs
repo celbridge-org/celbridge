@@ -11,10 +11,9 @@ public partial class WebViewTools
     /// Reloads the WebView hosting the document. Page state is discarded by design.
     /// The editor's package code reinitialises from scratch. Use this after writing
     /// new package files (HTML, CSS, JS, manifest) so the WebView picks up the edits.
-    /// Requires the webview-dev-tools feature flag. Works on any open document editor
-    /// (text, markdown, HTML viewer, custom editors). Not available for external-URL
-    /// `.webview` documents or for editors whose package opts out of devtools —
-    /// call the tool and read the error if uncertain.
+    /// Requires the webview-dev-tools feature flag. If the target document is not
+    /// eligible (wrong editor, external URL, or package opts out) the error message
+    /// names the specific reason.
     /// </summary>
     /// <param name="resource">Resource key of the open document whose WebView to reload.</param>
     /// <param name="clearCache">When true (default), clears the WebView's HTTP cache (in-memory and on-disk) before reloading so newly-edited package sub-resources (JS, CSS, images) are refetched instead of served stale. The cache clear evicts data for every document hosted in the same WebView profile, not just this one — pass false to skip the clear when you know no sub-resources have changed and want a slightly faster reload.</param>

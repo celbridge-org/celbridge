@@ -336,6 +336,53 @@ public class PackageServiceTests
         }
     }
 
+    [Test]
+    public void GetContributingPackage_KnownEditorId_ReturnsThePackage()
+    {
+        var bundledDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", "custom", ".note");
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
+
+        _service.RegisterPackages(_tempProjectFolder);
+
+        // CustomDocumentViewFactory builds editor IDs as "{packageId}.{contributionId}".
+        // The contributionId comes from the [document] table key in package.toml,
+        // which CreateBundledPackage sets to the docType argument.
+        var editorId = new DocumentEditorId("celbridge.notes.custom");
+
+        var package = _service.GetContributingPackage(editorId);
+
+        package.Should().NotBeNull();
+        package!.Info.Id.Should().Be("celbridge.notes");
+    }
+
+    [Test]
+    public void GetContributingPackage_UnknownEditorId_ReturnsNull()
+    {
+        CreateProjectPackage("known", "known", "Known", "custom", ".known");
+        _service.RegisterPackages(_tempProjectFolder);
+
+        var package = _service.GetContributingPackage(new DocumentEditorId("thirdparty.binary-editor"));
+
+        package.Should().BeNull();
+    }
+
+    [Test]
+    public void GetContributingPackage_DistinguishesPackagesWithDottedIdPrefixes()
+    {
+        // A naive split-on-first-dot would mismatch "celbridge.notes.custom" against
+        // a package whose id is just "celbridge". The lookup must match the longest
+        // package-id prefix, not split heuristically.
+        var notesDir = CreateBundledPackage("notes-pkg", "celbridge.notes", "Notes", "custom", ".note");
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = notesDir } });
+
+        _service.RegisterPackages(_tempProjectFolder);
+
+        var package = _service.GetContributingPackage(new DocumentEditorId("celbridge.notes.custom"));
+
+        package.Should().NotBeNull();
+        package!.Info.Id.Should().Be("celbridge.notes");
+    }
+
     /// <summary>
     /// Creates a package in the project's packages/ folder with a standard structure.
     /// </summary>

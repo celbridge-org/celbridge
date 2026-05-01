@@ -1,3 +1,4 @@
+using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Settings;
@@ -78,6 +79,32 @@ public class PackageRegistry
             .SelectMany(package => package.DocumentEditors)
             .ToList()
             .AsReadOnly();
+    }
+
+    public Package? GetContributingPackage(DocumentEditorId editorId)
+    {
+        // Custom contribution editor IDs are formatted as "{packageId}.{contributionId}"
+        // by CustomDocumentViewFactory. Package IDs themselves contain dots
+        // (e.g. "celbridge.notes"), so match by full-id prefix rather than
+        // splitting on the first separator.
+        var editorIdString = editorId.ToString();
+        foreach (var package in GetAllPackages())
+        {
+            var packageId = package.Info.Id;
+            if (packageId.Length == 0)
+            {
+                continue;
+            }
+
+            if (editorIdString.Length > packageId.Length
+                && editorIdString.StartsWith(packageId, StringComparison.Ordinal)
+                && editorIdString[packageId.Length] == '.')
+            {
+                return package;
+            }
+        }
+
+        return null;
     }
 
     public IReadOnlyList<DocumentTypeInfo> GetDocumentTypes()

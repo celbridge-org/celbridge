@@ -409,8 +409,19 @@ describe('Celbridge', () => {
                 onMessage: (handler) => { messageHandler = handler; }
             });
 
-            // Should not throw
-            expect(() => messageHandler('{ invalid json')).not.toThrow();
+            // The transport is expected to log the parse failure rather than throw.
+            // Silence console.error so the expected diagnostic does not pollute the
+            // test log, and assert the diagnostic actually fired.
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+            try {
+                expect(() => messageHandler('{ invalid json')).not.toThrow();
+                expect(errorSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('Error parsing message'),
+                    expect.any(SyntaxError)
+                );
+            } finally {
+                errorSpy.mockRestore();
+            }
         });
     });
 });

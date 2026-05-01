@@ -141,6 +141,13 @@ needing the user to reload and paste back errors.
    rendered output matters. Observe network activity with
    `webview_get_network(resource)`.
 
+**Confirm the right editor opened the document.** `document_get_context`
+returns an `editorId` for each open document (e.g. `celbridge.html-viewer`
+or `celbridge.code-editor`). If you opened a `.html` file expecting the
+HTML viewer but `editorId` is the code editor, the WebView devtools will
+not work against it — check the resource's file association before
+calling any `webview_*` tool.
+
 **Programmatic clicks have `isTrusted: false`.** `webview_click` dispatches a
 real `MouseEvent` sequence (`mousedown`, `mouseup`, `click`) that bubbles, but
 because the events are synthetic, handlers that gate on `event.isTrusted` will

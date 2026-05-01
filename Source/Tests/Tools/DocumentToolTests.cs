@@ -127,6 +127,46 @@ public class DocumentToolTests
     }
 
     [Test]
+    public async Task GetContext_IncludesEditorIdForEachOpenDocument()
+    {
+        var resource = new ResourceKey("packages/widget/index.html");
+        var snapshot = new DocumentContextSnapshot(
+            resource,
+            1,
+            new List<OpenDocumentInfo>
+            {
+                new(resource, new DocumentAddress(0, 0, 0), new DocumentEditorId("celbridge.html-viewer"))
+            });
+        StubGetContextSnapshot(snapshot);
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.GetContext());
+
+        var firstDocument = root.GetProperty("openDocuments")[0];
+        firstDocument.GetProperty("editorId").GetString().Should().Be("celbridge.html-viewer");
+    }
+
+    [Test]
+    public async Task GetContext_EmitsEmptyEditorIdWhenUnbound()
+    {
+        var resource = new ResourceKey("notes/readme.md");
+        var snapshot = new DocumentContextSnapshot(
+            resource,
+            1,
+            new List<OpenDocumentInfo>
+            {
+                new(resource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
+            });
+        StubGetContextSnapshot(snapshot);
+
+        var tools = new DocumentTools(_services);
+        var root = ParseResult(await tools.GetContext());
+
+        var firstDocument = root.GetProperty("openDocuments")[0];
+        firstDocument.GetProperty("editorId").GetString().Should().BeEmpty();
+    }
+
+    [Test]
     public async Task GetContext_NoDocumentsOpen()
     {
         var snapshot = new DocumentContextSnapshot(

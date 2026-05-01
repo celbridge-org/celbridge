@@ -1,6 +1,15 @@
 namespace Celbridge.WebHost;
 
 /// <summary>
+/// Whether the webview_* tools support a particular resource. When IsSupported
+/// is false, Reason carries a human-readable explanation (e.g. document not
+/// open, opened with the wrong editor, external-URL .webview, or the
+/// contributing package opts out via DevToolsBlocked). Reason is null when
+/// IsSupported is true.
+/// </summary>
+public sealed record WebViewToolSupport(bool IsSupported, string? Reason);
+
+/// <summary>
 /// Provides WebView-related services including URL classification.
 /// </summary>
 public interface IWebViewService
@@ -25,4 +34,13 @@ public interface IWebViewService
     /// arbitrary code execution primitive and is gated independently.
     /// </summary>
     bool IsDevToolsEvalFeatureEnabled();
+
+    /// <summary>
+    /// Determines whether the webview_* tools support the specified resource
+    /// and, when not, returns a human-readable reason. The check inspects the
+    /// open documents list and the package registry. When eligibility cannot
+    /// be determined (e.g. no workspace is loaded) the result is treated as
+    /// supported and the caller falls back to its own generic message.
+    /// </summary>
+    WebViewToolSupport GetWebViewToolSupport(ResourceKey resource);
 }

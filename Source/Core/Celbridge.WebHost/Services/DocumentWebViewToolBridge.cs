@@ -19,14 +19,17 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     private static readonly TimeSpan DefaultContentReadyTimeout = TimeSpan.FromSeconds(5);
 
     private readonly TimeSpan _contentReadyTimeout;
+    private readonly IWebViewService _webViewService;
 
-    public DocumentWebViewToolBridge() : this(DefaultContentReadyTimeout) { }
+    public DocumentWebViewToolBridge(IWebViewService webViewService)
+        : this(webViewService, DefaultContentReadyTimeout) { }
 
     // Test-friendly constructor so unit tests can use a short timeout without
     // waiting through the 5-second default for every gated-but-never-ready case.
-    internal DocumentWebViewToolBridge(TimeSpan contentReadyTimeout)
+    internal DocumentWebViewToolBridge(IWebViewService webViewService, TimeSpan contentReadyTimeout)
     {
         _contentReadyTimeout = contentReadyTimeout;
+        _webViewService = webViewService;
     }
 
     // Cap accumulated console history per resource. Older entries are evicted FIFO
@@ -581,9 +584,19 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         }
     }
 
-    private static string NoRegistrationMessage(ResourceKey resource)
+    private string NoRegistrationMessage(ResourceKey resource)
     {
-        return $"No tool-bridge-eligible WebView is registered for resource '{resource}'. The target must be an open document editor that permits the webview_* tools. They do not target external-URL .webview documents or packages that opt out.";
+        // When the service reports the resource is unsupported, it carries a
+        // specific reason (document not open, wrong editor, .webview, DevToolsBlocked).
+        // Otherwise the failure is purely that no WebView is currently registered
+        // (likely a timing issue), so fall back to the bridge's generic message.
+        var support = _webViewService.GetWebViewToolSupport(resource);
+        if (!support.IsSupported && support.Reason is not null)
+        {
+            return support.Reason;
+        }
+
+        return $"No WebView is registered for resource '{resource}' on the webview_* tool bridge.";
     }
 
     private sealed class WebViewToolBridgeEntry

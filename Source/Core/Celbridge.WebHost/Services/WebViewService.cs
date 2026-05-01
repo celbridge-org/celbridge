@@ -1,14 +1,17 @@
 using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.WebHost.Services;
 
 public class WebViewService : IWebViewService
 {
     private readonly IFeatureFlags _featureFlags;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public WebViewService(IFeatureFlags featureFlags)
+    public WebViewService(IFeatureFlags featureFlags, IWorkspaceWrapper workspaceWrapper)
     {
         _featureFlags = featureFlags;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public bool IsExternalUrl(string url)
@@ -33,4 +36,30 @@ public class WebViewService : IWebViewService
     {
         return _featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval);
     }
+
+    public WebViewToolSupport GetWebViewToolSupport(ResourceKey resource)
+    {
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+
+        var match = workspaceService.DocumentsService
+            .GetOpenDocuments()
+            .FirstOrDefault(document => document.FileResource == resource);
+        if (match is null)
+        {
+            return NotSupported(
+                $"Resource '{resource}' is not open in the editor. Open it with document_open before calling any webview_* tool.");
+        }
+
+        var contributingPackage = workspaceService.PackageService.GetContributingPackage(match.EditorId);
+        if (contributingPackage is not null && contributingPackage.Info.DevToolsBlocked)
+        {
+            return NotSupported(
+                $"Resource '{resource}' is open with the '{match.EditorId}' editor, but the contributing package '{contributingPackage.Info.Id}' has set DevToolsBlocked = true. The webview_* tools are not available for this editor by package policy.");
+        }
+
+        return Supported;
+    }
+
+    private static readonly WebViewToolSupport Supported = new(IsSupported: true, Reason: null);
+    private static WebViewToolSupport NotSupported(string reason) => new(IsSupported: false, Reason: reason);
 }

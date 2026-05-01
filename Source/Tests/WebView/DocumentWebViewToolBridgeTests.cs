@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 
@@ -8,33 +7,61 @@ namespace Celbridge.Tests.WebView;
 [TestFixture]
 public partial class DocumentWebViewToolBridgeTests
 {
+    private IWebViewService _webViewService = null!;
     private DocumentWebViewToolBridge _bridge = null!;
     private ResourceKey _resource;
 
     [SetUp]
     public void SetUp()
     {
-        _bridge = new DocumentWebViewToolBridge();
+        // The bridge only calls into IWebViewService to build the diagnostic
+        // on a missing-registration error. Stub the call to return a recognizable
+        // sentinel so we can verify the bridge surfaces the reason verbatim.
+        // The diagnostic text itself is tested in WebViewServiceSupportTests.
+        _webViewService = Substitute.For<IWebViewService>();
+        _webViewService
+            .GetWebViewToolSupport(Arg.Any<ResourceKey>())
+            .Returns(call => new WebViewToolSupport(
+                IsSupported: false,
+                Reason: $"UNSUPPORTED:{call.Arg<ResourceKey>()}"));
+
+        _bridge = new DocumentWebViewToolBridge(_webViewService);
         ResourceKey.TryCreate("docs/readme.md", out _resource).Should().BeTrue();
     }
 
     [Test]
-    public async Task EvalAsync_NoRegistration_ReturnsFailureWithMessage()
+    public async Task EvalAsync_NoRegistration_SurfacesUnsupportedReason()
     {
         var result = await _bridge.EvalAsync(_resource, "1 + 1");
 
         result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain(_resource.ToString());
-        result.FirstErrorMessage.Should().Contain("webview_*");
+        result.FirstErrorMessage.Should().Be($"UNSUPPORTED:{_resource}");
     }
 
     [Test]
-    public async Task ReloadAsync_NoRegistration_ReturnsFailureWithMessage()
+    public async Task ReloadAsync_NoRegistration_SurfacesUnsupportedReason()
     {
         var result = await _bridge.ReloadAsync(_resource, clearCache: false);
 
         result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Be($"UNSUPPORTED:{_resource}");
+    }
+
+    [Test]
+    public async Task EvalAsync_NoRegistration_SupportedResource_FallsBackToGenericMessage()
+    {
+        // When the service reports the resource is supported, the failure is
+        // purely that no WebView is registered, so the bridge surfaces its
+        // own message.
+        _webViewService
+            .GetWebViewToolSupport(Arg.Any<ResourceKey>())
+            .Returns(new WebViewToolSupport(IsSupported: true, Reason: null));
+
+        var result = await _bridge.EvalAsync(_resource, "1 + 1");
+
+        result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain(_resource.ToString());
+        result.FirstErrorMessage.Should().Contain("No WebView is registered");
     }
 
     [Test]
@@ -76,7 +103,7 @@ public partial class DocumentWebViewToolBridgeTests
     {
         // Use a short content-ready timeout so the test does not wait through the
         // production default (5 seconds) on every run.
-        var fastBridge = new DocumentWebViewToolBridge(TimeSpan.FromMilliseconds(100));
+        var fastBridge = new DocumentWebViewToolBridge(_webViewService, TimeSpan.FromMilliseconds(100));
         fastBridge.Register(
             _resource,
             evalAsync: _ => Task.FromResult("\"ok\""),
@@ -101,8 +128,8 @@ public partial class DocumentWebViewToolBridgeTests
                 return Task.CompletedTask;
             });
 
-        // Reload deliberately does not block on content-ready; it would deadlock the
-        // very signal an editor reload is supposed to refresh.
+        // Reload deliberately does not block on content-ready. Doing so would deadlock
+        // the very signal an editor reload is supposed to refresh.
         var result = await _bridge.ReloadAsync(_resource, clearCache: true);
 
         result.IsSuccess.Should().BeTrue();
@@ -122,7 +149,7 @@ public partial class DocumentWebViewToolBridgeTests
         var firstEval = await _bridge.EvalAsync(_resource, "x");
         firstEval.IsSuccess.Should().BeTrue();
 
-        // Reload resets the gate; the next eval should block until ready fires again.
+        // Reload resets the gate, so the next eval should block until ready fires again.
         await _bridge.ReloadAsync(_resource, clearCache: false);
 
         var secondEvalTask = _bridge.EvalAsync(_resource, "x");

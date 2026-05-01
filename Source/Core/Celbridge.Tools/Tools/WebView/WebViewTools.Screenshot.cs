@@ -2,7 +2,6 @@ using System.Text.Json;
 using Celbridge.Documents;
 using Celbridge.Settings;
 using Celbridge.WebHost;
-using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
