@@ -184,6 +184,14 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _consoleWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("console.celbridge",
             "Celbridge.Console/Web/Terminal",
             CoreWebView2HostResourceAccessKind.Allow);
+
+        // Expose host environment details to the terminal page before any document scripts run.
+        // The Windows build number lets xterm.js select the optimal ConPTY pass-through behaviour
+        // on builds 21376 and later.
+        var windowsBuildNumber = Environment.OSVersion.Version.Build;
+        var configScript = $"window.celbridgeConsoleConfig = {{ windowsBuildNumber: {windowsBuildNumber} }};";
+        await _consoleWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(configScript);
+
         _consoleWebView.CoreWebView2.Navigate("http://console.celbridge/index.html");
 
         // Wait for navigation to complete
