@@ -9,18 +9,9 @@ const lightTheme = window.VSCodeTerminalThemes.light;
 // Default to dark theme, will be updated by host
 const initialTheme = darkTheme;
 
-// The host page injects window.celbridgeConsoleConfig before any scripts run.
-// Falls back to undefined on non-Windows hosts, which xterm.js tolerates.
-const windowsBuildNumber = window.celbridgeConsoleConfig?.windowsBuildNumber;
-
 const term = new Terminal({
     theme: initialTheme,
-    fontFamily: "'Cascadia Mono', monospace",
-    scrollback: 10000,
-    windowsPty: {
-        backend: 'conpty',
-        buildNumber: windowsBuildNumber
-    }
+    fontFamily: "'Cascadia Mono', monospace"
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -92,26 +83,8 @@ terminalElement.addEventListener('wheel', (ev) => {
     term.scrollLines(lines);
 }, { capture: true, passive: false });
 
-// Debounce window resize so we only refit the terminal once the user stops
-// dragging the panel edge. Each fit triggers a SetSize RPC to ConPTY which
-// triggers a SIGWINCH redraw in the hosted TUI, and those redraws accumulate
-// in scrollback. Coalescing to a single fit at the end of the gesture keeps
-// scrollback clean while preserving full history.
-const RESIZE_DEBOUNCE_MS = 250;
-let resizeDebounceTimer = null;
-
 window.addEventListener('resize', () => {
-    if (resizeDebounceTimer !== null) {
-        clearTimeout(resizeDebounceTimer);
-    }
-    resizeDebounceTimer = setTimeout(() => {
-        resizeDebounceTimer = null;
-        // Reflow naturally — xterm.js will push viewport rows into scrollback
-        // on shrink and pull them back on grow. That is the Windows Terminal
-        // behaviour: TUI redraws accumulate as scrollback rather than being
-        // erased, so the user can scroll back through earlier renders.
-        fitAddon.fit();
-    }, RESIZE_DEBOUNCE_MS);
+    fitAddon.fit();
 });
 
 // Supress context menu if user clicks in shim area at the bottom of the console window
