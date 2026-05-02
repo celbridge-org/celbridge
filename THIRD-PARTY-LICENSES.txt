@@ -2814,7 +2814,7 @@ Licensed under Apache-2.0
 Available at https://licenses.nuget.org/Apache-2.0
 
 
-License notice for @xterm/xterm (v5.5.0)
+License notice for @xterm/xterm (v6.0.0)
 ------------------------------------
 
 https://github.com/xtermjs/xterm.js
@@ -2824,7 +2824,7 @@ Copyright (c) 2017-2019, The xterm.js authors. Copyright (c) 2014-2016, SourceLa
 Licensed under MIT
 
 
-License notice for @xterm/addon-fit (v0.10.0)
+License notice for @xterm/addon-fit (v0.11.0)
 ------------------------------------
 
 https://github.com/xtermjs/xterm.js
@@ -2834,7 +2834,7 @@ Copyright (c) 2017-2019, The xterm.js authors
 Licensed under MIT
 
 
-License notice for @xterm/addon-clipboard (v0.1.0)
+License notice for @xterm/addon-clipboard (v0.2.0)
 ------------------------------------
 
 https://github.com/xtermjs/xterm.js
@@ -2844,7 +2844,7 @@ Copyright (c) 2017-2019, The xterm.js authors
 Licensed under MIT
 
 
-License notice for @xterm/addon-web-links (v0.11.0)
+License notice for @xterm/addon-web-links (v0.12.0)
 ------------------------------------
 
 https://github.com/xtermjs/xterm.js
