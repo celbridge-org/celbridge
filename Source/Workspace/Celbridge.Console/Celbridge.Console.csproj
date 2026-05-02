@@ -28,6 +28,10 @@
 
   <ItemGroup>
     <Content Include="Web\**" />
+    <!-- Vendored libraries live in `Web/**/lib/` and ship with the app.
+         The `build/` subfolder holds the npm tooling used to refresh them
+         and is not a runtime asset. -->
+    <Content Remove="Web\**\lib\build\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,16 @@
+{
+  "name": "celbridge-console-xterm-vendor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vendored xterm.js dist files for the Celbridge Console panel",
+  "type": "module",
+  "scripts": {
+    "vendor": "node vendor.mjs"
+  },
+  "dependencies": {
+    "@xterm/xterm": "5.5.0",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/addon-clipboard": "0.1.0",
+    "@xterm/addon-web-links": "0.11.0"
+  }
+}
