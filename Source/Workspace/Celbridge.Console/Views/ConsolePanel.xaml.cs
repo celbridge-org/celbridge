@@ -184,6 +184,7 @@ public sealed partial class ConsolePanel : UserControl, IConsolePanel, IConsoleN
         _consoleWebView.CoreWebView2.SetVirtualHostNameToFolderMapping("console.celbridge",
             "Celbridge.Console/Web/Terminal",
             CoreWebView2HostResourceAccessKind.Allow);
+
         _consoleWebView.CoreWebView2.Navigate("http://console.celbridge/index.html");
 
         // Wait for navigation to complete

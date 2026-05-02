@@ -11,9 +11,7 @@ const initialTheme = darkTheme;
 
 const term = new Terminal({
     theme: initialTheme,
-    windowsPty: {
-        backend: 'conpty'
-    }
+    fontFamily: "'Cascadia Mono', monospace"
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -42,7 +40,19 @@ term.options.linkHandler = {
 const webLinksAddon = new WebLinksAddon.WebLinksAddon(handleLink);
 term.loadAddon(webLinksAddon);
 
-term.open(document.getElementById('terminal'));
+// Wait for the bundled monospace font to load before opening the terminal.
+// xterm.js measures cell dimensions when the terminal is opened, so the font
+// must be available by then. Otherwise FitAddon measures against the fallback
+// font and reports an inflated column count, which causes TUI content to be
+// drawn wider than the viewport.
+await document.fonts.load('1em "Cascadia Mono"');
+
+const terminalElement = document.getElementById('terminal');
+term.open(terminalElement);
+
+// Xterm.js creates a hidden textarea for input but does not give it an id or
+// name. DevTools flags this as an a11y warning, so set a name after open.
+terminalElement.querySelector('.xterm-helper-textarea')?.setAttribute('name', 'terminal-input');
 
 // Function to apply theme based on host application
 function applyTheme(isDark) {
@@ -54,6 +64,24 @@ function applyTheme(isDark) {
         // ignore if term.options isn't available yet
     }
 }
+
+// Force the wheel to always scroll the xterm.js viewport, even when the TUI
+// has enabled application cursor mode (DECCKM) — without this, xterm.js
+// converts wheel events into arrow-key sequences that go to the TUI, and
+// Claude Code in particular notices and complains that "Scroll wheel is
+// sending arrow keys". We attach the handler at the DOM capture phase on
+// the terminal container so it runs before xterm.js's own wheel listener.
+// Holding Shift bypasses our handler and lets xterm.js handle the event
+// normally (which then either scrolls or sends to TUI per its default).
+terminalElement.addEventListener('wheel', (ev) => {
+    if (ev.shiftKey) {
+        return;
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    const lines = Math.sign(ev.deltaY) * Math.max(1, Math.round(Math.abs(ev.deltaY) / 40));
+    term.scrollLines(lines);
+}, { capture: true, passive: false });
 
 window.addEventListener('resize', () => {
     fitAddon.fit();
@@ -67,8 +95,6 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 term.onResize(({ cols, rows }) => {
-    console.log(`Terminal now ${cols} cols by ${rows} rows`);
-
     // Notify console host that the terminal has resized
     consoleClient.sendResize(cols, rows);
 });
