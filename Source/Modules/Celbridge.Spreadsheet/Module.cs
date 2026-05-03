@@ -4,6 +4,7 @@ using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Services;
+using Celbridge.Spreadsheet.Tools;
 
 namespace Celbridge.Spreadsheet;
 
@@ -27,6 +28,7 @@ public class Module : IModule
     {
         services.AddTransient<SpreadsheetActivity>();
         services.AddTransient<SpreadsheetEditor>();
+        services.AddSingleton<ISpreadsheetReader, SpreadsheetReader>();
     }
 
     public Result Initialize()

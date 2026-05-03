@@ -1,0 +1,293 @@
+using Celbridge.Spreadsheet;
+using Celbridge.Spreadsheet.Tools;
+using ClosedXML.Excel;
+
+namespace Celbridge.Tests.Tools;
+
+/// <summary>
+/// Tests for SpreadsheetReader against fixture .xlsx workbooks generated in
+/// SetUp via ClosedXML. Covers the happy path and the most common failure
+/// modes for each read entry point.
+/// </summary>
+[TestFixture]
+public class SpreadsheetReaderTests
+{
+    private string _tempFolder = null!;
+    private SpreadsheetReader _reader = null!;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(SpreadsheetReaderTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempFolder);
+        _reader = new SpreadsheetReader();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_tempFolder))
+        {
+            Directory.Delete(_tempFolder, true);
+        }
+    }
+
+    [Test]
+    public void GetInfo_ReturnsSheetsAndUsedRange()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "month";
+            sheet.Cell("B1").Value = "total";
+            sheet.Cell("A2").Value = "Jan";
+            sheet.Cell("B2").Value = 100;
+            sheet.Cell("A3").Value = "Feb";
+            sheet.Cell("B3").Value = 200;
+
+            workbook.Worksheets.Add("Empty");
+        });
+
+        var result = _reader.GetInfo(workbookPath);
+
+        result.IsSuccess.Should().BeTrue();
+        var info = result.Value;
+        info.Sheets.Should().HaveCount(2);
+
+        var q1 = info.Sheets[0];
+        q1.Name.Should().Be("Q1");
+        q1.UsedRange.Should().Be("A1:B3");
+        q1.RowCount.Should().Be(3);
+        q1.ColumnCount.Should().Be(2);
+
+        var empty = info.Sheets[1];
+        empty.Name.Should().Be("Empty");
+        empty.UsedRange.Should().BeNull();
+        empty.RowCount.Should().Be(0);
+        empty.ColumnCount.Should().Be(0);
+    }
+
+    [Test]
+    public void ReadSheet_ReturnsRowArrays()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "month";
+            sheet.Cell("B1").Value = "total";
+            sheet.Cell("A2").Value = "Jan";
+            sheet.Cell("B2").Value = 100;
+        });
+
+        var result = _reader.ReadSheet(workbookPath, "Q1", new SpreadsheetReadOptions());
+
+        result.IsSuccess.Should().BeTrue();
+        var read = result.Value;
+        read.TotalRowCount.Should().Be(2);
+        read.Rows.Should().HaveCount(2);
+
+        var headerRow = (object?[])read.Rows[0]!;
+        headerRow[0].Should().Be("month");
+        headerRow[1].Should().Be("total");
+
+        var firstDataRow = (object?[])read.Rows[1]!;
+        firstDataRow[0].Should().Be("Jan");
+        firstDataRow[1].Should().Be(100.0);
+    }
+
+    [Test]
+    public void ReadSheet_HeadersMode_ReturnsRowDictionaries()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "month";
+            sheet.Cell("B1").Value = "total";
+            sheet.Cell("A2").Value = "Jan";
+            sheet.Cell("B2").Value = 100;
+            sheet.Cell("A3").Value = "Feb";
+            sheet.Cell("B3").Value = 200;
+        });
+
+        var options = new SpreadsheetReadOptions(Headers: true);
+        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+
+        result.IsSuccess.Should().BeTrue();
+        var read = result.Value;
+        read.Headers.Should().Equal("month", "total");
+        read.TotalRowCount.Should().Be(2);
+        read.Rows.Should().HaveCount(2);
+
+        var firstRow = (Dictionary<string, object?>)read.Rows[0]!;
+        firstRow["month"].Should().Be("Jan");
+        firstRow["total"].Should().Be(100.0);
+    }
+
+    [Test]
+    public void ReadSheet_HeadersMode_DisambiguatesDuplicatesAndEmptyHeaders()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Sheet1");
+            sheet.Cell("A1").Value = "name";
+            // B1 left blank
+            sheet.Cell("C1").Value = "name";
+            sheet.Cell("A2").Value = "x";
+            sheet.Cell("B2").Value = "y";
+            sheet.Cell("C2").Value = "z";
+        });
+
+        var options = new SpreadsheetReadOptions(Headers: true);
+        var result = _reader.ReadSheet(workbookPath, "Sheet1", options);
+
+        result.IsSuccess.Should().BeTrue();
+        var read = result.Value;
+        read.Headers.Should().Equal("name", "column_B", "name_2");
+
+        var row = (Dictionary<string, object?>)read.Rows[0]!;
+        row["name"].Should().Be("x");
+        row["column_B"].Should().Be("y");
+        row["name_2"].Should().Be("z");
+    }
+
+    [Test]
+    public void ReadSheet_FormulasMode_ReturnsFormulaText()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 10;
+            sheet.Cell("A2").Value = 20;
+            sheet.Cell("A3").FormulaA1 = "SUM(A1:A2)";
+        });
+
+        var options = new SpreadsheetReadOptions(Mode: SpreadsheetReadMode.Formulas);
+        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+
+        result.IsSuccess.Should().BeTrue();
+        var read = result.Value;
+        var thirdRow = (object?[])read.Rows[2]!;
+        thirdRow[0].Should().Be("=SUM(A1:A2)");
+    }
+
+    [Test]
+    public void ReadSheet_EmptySheet_ReturnsEmptyRowsAndZeroTotal()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Empty");
+        });
+
+        var result = _reader.ReadSheet(workbookPath, "Empty", new SpreadsheetReadOptions());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Rows.Should().BeEmpty();
+        result.Value.TotalRowCount.Should().Be(0);
+    }
+
+    [Test]
+    public void ReadSheet_MissingSheet_ReturnsFailure()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Sheet1");
+        });
+
+        var result = _reader.ReadSheet(workbookPath, "Missing", new SpreadsheetReadOptions());
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Missing");
+    }
+
+    [Test]
+    public void ReadSheet_RangeWithSheetQualifier_ReturnsFailure()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 1;
+        });
+
+        var options = new SpreadsheetReadOptions(Range: "Q1!A1:B2");
+        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("sheet qualifier");
+    }
+
+    [Test]
+    public void ReadSheet_OffsetAndLimitPageThroughRows()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            for (int i = 1; i <= 10; i++)
+            {
+                sheet.Cell($"A{i}").Value = i;
+            }
+        });
+
+        var options = new SpreadsheetReadOptions(Offset: 3, Limit: 4);
+        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+
+        result.IsSuccess.Should().BeTrue();
+        var read = result.Value;
+        read.TotalRowCount.Should().Be(10);
+        read.Rows.Should().HaveCount(4);
+        var firstRow = (object?[])read.Rows[0]!;
+        firstRow[0].Should().Be(4.0);
+    }
+
+    [Test]
+    public void ToCsv_RoundTripsValuesAndQuotesSpecialFields()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "name";
+            sheet.Cell("B1").Value = "note";
+            sheet.Cell("A2").Value = "Smith, John";
+            sheet.Cell("B2").Value = "He said \"hi\"";
+            sheet.Cell("A3").Value = "Multi";
+            sheet.Cell("B3").Value = "line1\nline2";
+        });
+
+        var result = _reader.ToCsv(workbookPath, "Q1", null);
+
+        result.IsSuccess.Should().BeTrue();
+        var csvResult = result.Value;
+        csvResult.RowCount.Should().Be(3);
+        csvResult.ColumnCount.Should().Be(2);
+        var csv = csvResult.Csv;
+        csv.Should().Contain("\"Smith, John\"");
+        csv.Should().Contain("\"He said \"\"hi\"\"\"");
+        csv.Should().Contain("\"line1\nline2\"");
+        csv.Should().EndWith("\r\n");
+    }
+
+    [Test]
+    public void ToCsv_EmptySheet_ReturnsEmptyResult()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Empty");
+        });
+
+        var result = _reader.ToCsv(workbookPath, "Empty", null);
+
+        result.IsSuccess.Should().BeTrue();
+        var csvResult = result.Value;
+        csvResult.Csv.Should().BeEmpty();
+        csvResult.RowCount.Should().Be(0);
+        csvResult.ColumnCount.Should().Be(0);
+    }
+
+    private string CreateWorkbook(Action<XLWorkbook> populate)
+    {
+        var workbookPath = Path.Combine(_tempFolder, $"{Guid.NewGuid():N}.xlsx");
+        using var workbook = new XLWorkbook();
+        populate(workbook);
+        workbook.SaveAs(workbookPath);
+        return workbookPath;
+    }
+}

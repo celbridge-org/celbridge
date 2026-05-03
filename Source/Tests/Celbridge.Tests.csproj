@@ -31,6 +31,7 @@
     <ProjectReference Include="..\Core\Celbridge.UserInterface\Celbridge.UserInterface.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Utilities\Celbridge.Utilities.csproj" />
     <ProjectReference Include="..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
+    <ProjectReference Include="..\Modules\Celbridge.Spreadsheet\Celbridge.Spreadsheet.csproj" />
     <ProjectReference Include="..\Modules\Celbridge.WebView\Celbridge.WebView.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Documents\Celbridge.Documents.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Packages\Celbridge.Packages.csproj" />

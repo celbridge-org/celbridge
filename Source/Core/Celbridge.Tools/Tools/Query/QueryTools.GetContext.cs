@@ -15,16 +15,4 @@ public partial class QueryTools
     {
         return SuccessResult(LoadEmbeddedResource("Celbridge.Tools.Assets.AgentContext.md"));
     }
-
-    private static string LoadEmbeddedResource(string resourceName)
-    {
-        var assembly = typeof(QueryTools).Assembly;
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
-        {
-            return $"Resource '{resourceName}' not found.";
-        }
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
-    }
 }
