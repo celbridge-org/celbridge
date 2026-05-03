@@ -188,7 +188,7 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public async Task ToCsv_WithDestination_DispatchesWriteCommandAndReturnsSummary()
+    public async Task ToCsv_WithDestination_DispatchesWriteCommandAndReturnsJsonMetadata()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         var csv = "month,total\r\nJan,100\r\nFeb,200\r\n";
@@ -220,9 +220,11 @@ public class SpreadsheetToolTests
         capturedCommand!.FileResource.Should().Be(new ResourceKey("exports/sales_q1.csv"));
         capturedCommand.Content.Should().Be(csv);
 
-        var summary = GetResultText(result);
-        summary.Should().Contain("3 rows");
-        summary.Should().Contain("exports/sales_q1.csv");
+        var root = ParseResult(result);
+        root.GetProperty("rowCount").GetInt32().Should().Be(3);
+        root.GetProperty("columnCount").GetInt32().Should().Be(2);
+        root.GetProperty("byteCount").GetInt32().Should().Be(System.Text.Encoding.UTF8.GetByteCount(csv));
+        root.GetProperty("destination").GetString().Should().Be("exports/sales_q1.csv");
     }
 
     [Test]

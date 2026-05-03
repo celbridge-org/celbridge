@@ -97,10 +97,11 @@ default) when you want positional row arrays.
 text. By default it returns the CSV inline so you can grep, summarise, or
 feed it to another tool that takes inline text. If the export is large, set
 `destination` to a resource key (e.g. `"data/sales_export.csv"`) and the tool
-writes the file directly and returns a one-line summary instead of the body.
-Prefer the `destination` form when the CSV will be the input to a follow-up
-file operation, when it exceeds a few hundred rows, or when you do not need
-to read the contents in the same turn.
+writes the file directly and returns a JSON metadata object — `{rowCount,
+columnCount, byteCount, destination}` — instead of the body. Prefer the
+`destination` form when the CSV will be the input to a follow-up file
+operation, when it exceeds a few hundred rows, or when you do not need to
+read the contents in the same turn.
 
 `spreadsheet_from_csv` replaces the contents of a named sheet with CSV data.
 The sheet is created if it does not yet exist. Other sheets in the workbook
