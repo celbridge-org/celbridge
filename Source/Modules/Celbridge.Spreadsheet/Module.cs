@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Screenplay.Components;
+using Celbridge.Spreadsheet.Commands;
 using Celbridge.Spreadsheet.Services;
 using Celbridge.Spreadsheet.Tools;
 
@@ -29,6 +30,13 @@ public class Module : IModule
         services.AddTransient<SpreadsheetActivity>();
         services.AddTransient<SpreadsheetEditor>();
         services.AddSingleton<ISpreadsheetReader, SpreadsheetReader>();
+
+        services.AddTransient<ISpreadsheetWriteCellsCommand, WriteCellsCommand>();
+        services.AddTransient<ISpreadsheetAppendRowsCommand, AppendRowsCommand>();
+        services.AddTransient<ISpreadsheetImportCsvCommand, ImportCsvCommand>();
+        services.AddTransient<ISpreadsheetAddSheetCommand, AddSheetCommand>();
+        services.AddTransient<ISpreadsheetRemoveSheetCommand, RemoveSheetCommand>();
+        services.AddTransient<ISpreadsheetRenameSheetCommand, RenameSheetCommand>();
     }
 
     public Result Initialize()

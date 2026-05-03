@@ -65,7 +65,6 @@ public class SpreadsheetToolTests
 
         text.Should().Contain("# Celbridge Spreadsheet Tools");
         text.Should().Contain("A1 notation");
-        text.Should().Contain("spreadsheet_recalculate");
     }
 
     [Test]
@@ -239,6 +238,231 @@ public class SpreadsheetToolTests
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("destination");
+    }
+
+    [Test]
+    public async Task WriteCells_DispatchesCommandWithParsedEdits()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetWriteCellsCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetWriteCellsCommand>(
+                Arg.Any<Action<ISpreadsheetWriteCellsCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetWriteCellsCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetWriteCellsCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var editsJson = "[{\"cell\": \"A1\", \"value\": 42}, {\"cell\": \"B2\", \"value\": \"hi\"}, {\"cell\": \"C3\", \"value\": \"=SUM(A1:A2)\", \"isFormula\": true}]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.WriteCells("data/sales.xlsx", "Q1", editsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q1");
+        capturedCommand.Edits.Should().HaveCount(3);
+        capturedCommand.Edits[0].Cell.Should().Be("A1");
+        capturedCommand.Edits[0].Value.Should().Be(42.0);
+        capturedCommand.Edits[2].IsFormula.Should().BeTrue();
+
+        root.GetProperty("cellCount").GetInt32().Should().Be(3);
+    }
+
+    [Test]
+    public async Task WriteCells_InvalidJson_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.WriteCells("data/sales.xlsx", "Q1", "not json");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("Invalid edits JSON");
+    }
+
+    [Test]
+    public async Task WriteCells_NonArrayEditsJson_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.WriteCells("data/sales.xlsx", "Q1", "{\"cell\": \"A1\"}");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("array");
+    }
+
+    [Test]
+    public async Task AppendRows_DispatchesCommandAndReturnsAckMetadata()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetAppendRowsCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetAppendRowsCommand, SpreadsheetAppendRowsResult>(
+                Arg.Any<Action<ISpreadsheetAppendRowsCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetAppendRowsCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetAppendRowsCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetAppendRowsResult>.Ok(
+                    new SpreadsheetAppendRowsResult(2, 5, 6)));
+            });
+
+        var rowsJson = "[[\"Mar\", 1200], [\"Apr\", 1450]]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.AppendRows("data/sales.xlsx", "Q1", rowsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Rows.Should().HaveCount(2);
+        capturedCommand.Rows[0].Should().Equal("Mar", 1200.0);
+
+        root.GetProperty("appendedRowCount").GetInt32().Should().Be(2);
+        root.GetProperty("firstRow").GetInt32().Should().Be(5);
+        root.GetProperty("lastRow").GetInt32().Should().Be(6);
+    }
+
+    [Test]
+    public async Task FromCsv_DispatchesCommandWithCsvText()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetImportCsvCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetImportCsvCommand, SpreadsheetImportCsvResult>(
+                Arg.Any<Action<ISpreadsheetImportCsvCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetImportCsvCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetImportCsvCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetImportCsvResult>.Ok(
+                    new SpreadsheetImportCsvResult(3, 2, true)));
+            });
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.FromCsv("data/sales.xlsx", "Q2", "a,b\r\n1,2\r\n", createIfMissing: true));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q2");
+        capturedCommand.CsvText.Should().Be("a,b\r\n1,2\r\n");
+        capturedCommand.CreateIfMissing.Should().BeTrue();
+
+        root.GetProperty("rowCount").GetInt32().Should().Be(3);
+        root.GetProperty("sheetCreated").GetBoolean().Should().BeTrue();
+    }
+
+    [Test]
+    public async Task AddSheet_DispatchesCommandAndReturnsSheetName()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetAddSheetCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetAddSheetCommand>(
+                Arg.Any<Action<ISpreadsheetAddSheetCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetAddSheetCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetAddSheetCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.AddSheet("data/sales.xlsx", "Q3"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q3");
+        root.GetProperty("sheet").GetString().Should().Be("Q3");
+    }
+
+    [Test]
+    public async Task RemoveSheet_DispatchesCommandAndReturnsSheetName()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetRemoveSheetCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetRemoveSheetCommand>(
+                Arg.Any<Action<ISpreadsheetRemoveSheetCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetRemoveSheetCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetRemoveSheetCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.RemoveSheet("data/sales.xlsx", "Q3"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q3");
+        root.GetProperty("sheet").GetString().Should().Be("Q3");
+    }
+
+    [Test]
+    public async Task RenameSheet_DispatchesCommandAndReturnsBothNames()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetRenameSheetCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetRenameSheetCommand>(
+                Arg.Any<Action<ISpreadsheetRenameSheetCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetRenameSheetCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetRenameSheetCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.RenameSheet("data/sales.xlsx", "Old", "New"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Old");
+        capturedCommand.NewName.Should().Be("New");
+        root.GetProperty("previousName").GetString().Should().Be("Old");
+        root.GetProperty("newName").GetString().Should().Be("New");
     }
 
     private string CreatePlaceholderFile(string resourceKey)

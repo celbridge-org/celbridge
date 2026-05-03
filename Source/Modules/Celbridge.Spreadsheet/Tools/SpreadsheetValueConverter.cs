@@ -3,12 +3,65 @@ using ClosedXML.Excel;
 namespace Celbridge.Spreadsheet.Tools;
 
 /// <summary>
-/// Converts ClosedXML cell values into JSON-friendly objects (numbers, ISO 8601
-/// date strings, booleans, strings, error strings, or null) and renders cells
-/// as RFC 4180 CSV fields.
+/// Converts between ClosedXML cell values and JSON-friendly objects (numbers,
+/// ISO 8601 date strings, booleans, strings, error strings, or null), and
+/// renders cells as RFC 4180 CSV fields.
 /// </summary>
 internal static class SpreadsheetValueConverter
 {
+    /// <summary>
+    /// Writes a JSON-typed value into a cell. Null clears the cell. Booleans,
+    /// numbers (double, int, long, decimal), and strings round-trip directly.
+    /// Anything else falls back to its string form. Strings are written as
+    /// text even when they begin with '='; formula writes go through
+    /// SetCellFormula instead.
+    /// </summary>
+    public static void SetCellValue(IXLCell cell, object? value)
+    {
+        switch (value)
+        {
+            case null:
+                cell.Clear(XLClearOptions.Contents);
+                break;
+            case bool boolean:
+                cell.Value = boolean;
+                break;
+            case double doubleValue:
+                cell.Value = doubleValue;
+                break;
+            case int intValue:
+                cell.Value = intValue;
+                break;
+            case long longValue:
+                cell.Value = longValue;
+                break;
+            case decimal decimalValue:
+                cell.Value = (double)decimalValue;
+                break;
+            case string text:
+                cell.Value = text;
+                break;
+            default:
+                cell.Value = value.ToString() ?? string.Empty;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Writes a formula into a cell. The leading '=' on the formula text is
+    /// stripped if present so the caller can pass either form.
+    /// </summary>
+    public static void SetCellFormula(IXLCell cell, string formula)
+    {
+        var stripped = formula;
+        if (stripped.StartsWith('='))
+        {
+            stripped = stripped.Substring(1);
+        }
+        cell.FormulaA1 = stripped;
+    }
+
+
     /// <summary>
     /// Maps an XLCellValue to a JSON-friendly object: number, ISO 8601 string
     /// for dates and time spans, bool, string, error code with leading '#', or

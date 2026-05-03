@@ -51,4 +51,24 @@ public partial class SpreadsheetTools : AgentToolBase
     {
         return JsonSerializer.Serialize(value, JsonOptions);
     }
+
+    /// <summary>
+    /// Unwraps a JsonElement into a JSON-typed CLR object: null, bool, double,
+    /// or string. Nested objects and arrays fall back to their JSON text
+    /// representation; the spreadsheet write surface only accepts scalars in
+    /// cell positions.
+    /// </summary>
+    private static object? JsonElementToObject(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Null => null,
+            JsonValueKind.Undefined => null,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.String => element.GetString(),
+            _ => element.GetRawText()
+        };
+    }
 }

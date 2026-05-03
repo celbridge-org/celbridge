@@ -39,21 +39,9 @@ Cells round-trip with their Excel type preserved:
 with `=` are written as **text** by default. To write a formula, set
 `isFormula: true` on the edit. Explicit beats sniffing.
 
-## Formula writes require an explicit recalculate
-
-ClosedXML does not recompute formulas on save; it marks affected cells dirty
-and the next consumer (Excel, the SpreadJS editor) recalculates. That means a
-`spreadsheet_read_sheet` issued immediately after a formula write returns
-**stale or missing computed values**.
-
-After every formula write, call `spreadsheet_recalculate` before reading
-computed values back. This applies to `spreadsheet_write_cells` (when
-`isFormula: true`), `spreadsheet_append_rows` (when a row contains a formula),
-and `spreadsheet_from_csv` (CSVs typically do not contain formulas, but
-recalculate if you imported one that does).
-
-`spreadsheet_recalculate` is `O(workbook)` and runs across the whole file;
-skip it when you only need the literal values you just wrote.
+Every write tool recalculates the workbook's formulas as part of the save, so
+a `spreadsheet_read_sheet` issued after a formula write returns the up-to-date
+computed value.
 
 ## Reading sheets
 
@@ -154,7 +142,6 @@ spreadsheet_write_cells(
   resource: "data/sales.xlsx",
   sheet: "Q1",
   edits: [{cell: "C3", value: "=SUM(A1:A10)", isFormula: true}])
-spreadsheet_recalculate(resource: "data/sales.xlsx")
 spreadsheet_read_sheet(resource: "data/sales.xlsx", sheet: "Q1", range: "C3")
 ```
 
