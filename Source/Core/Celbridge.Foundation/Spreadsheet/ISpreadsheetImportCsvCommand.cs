@@ -3,22 +3,34 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Result populated by ISpreadsheetImportCsvCommand on success. RowCount and
-/// ColumnCount are the dimensions of the imported block, starting at A1.
-/// SheetCreated is true when a new worksheet was added by this call.
+/// One CSV import in an ISpreadsheetImportCsvCommand batch. Each entry
+/// targets one sheet; CreateIfMissing is per-import so some entries can
+/// require an existing sheet while others create new ones.
 /// </summary>
-public record SpreadsheetImportCsvResult(
-    int RowCount,
-    int ColumnCount,
-    bool SheetCreated);
+public record SpreadsheetCsvImport(
+    string Sheet,
+    string CsvText,
+    bool CreateIfMissing = false);
 
 /// <summary>
-/// Replaces the contents of a named sheet with parsed CSV data. The CSV is
-/// parsed per RFC 4180 (comma delimiter, double-quote quoting, embedded quotes
-/// doubled, CRLF or LF line endings). When the sheet does not exist and
-/// CreateIfMissing is true, the sheet is created; otherwise the call fails.
-/// Existing cells in the sheet are cleared before the CSV block is written.
-/// Other sheets in the workbook are untouched.
+/// Result populated by ISpreadsheetImportCsvCommand on success. ImportsApplied
+/// is the number of CSV imports processed. TotalRowCount sums the row counts
+/// across all imports. SheetsCreated is the count of imports that added a new
+/// worksheet.
+/// </summary>
+public record SpreadsheetImportCsvResult(
+    int ImportsApplied,
+    int TotalRowCount,
+    int SheetsCreated);
+
+/// <summary>
+/// Replaces the contents of one or more named sheets with parsed CSV data in a
+/// single open/save cycle. The CSV is parsed per RFC 4180 (comma delimiter,
+/// double-quote quoting, embedded quotes doubled, CRLF or LF line endings).
+/// All rows in each CSV must have the same field count as that CSV's row 1.
+/// Existing cells in each target sheet are cleared before the CSV block is
+/// written. Other sheets in the workbook are untouched. Imports run in order;
+/// if any import fails the whole batch fails and nothing is saved.
 /// </summary>
 public interface ISpreadsheetImportCsvCommand : IExecutableCommand<SpreadsheetImportCsvResult>
 {
@@ -28,18 +40,7 @@ public interface ISpreadsheetImportCsvCommand : IExecutableCommand<SpreadsheetIm
     ResourceKey FileResource { get; set; }
 
     /// <summary>
-    /// Name of the worksheet to populate.
+    /// CSV imports to apply, in order.
     /// </summary>
-    string Sheet { get; set; }
-
-    /// <summary>
-    /// CSV text to parse and write into the sheet.
-    /// </summary>
-    string CsvText { get; set; }
-
-    /// <summary>
-    /// When true, create the sheet if it does not exist. When false, the
-    /// command fails on a missing sheet.
-    /// </summary>
-    bool CreateIfMissing { get; set; }
+    IReadOnlyList<SpreadsheetCsvImport> Imports { get; set; }
 }

@@ -55,7 +55,7 @@ public partial class SpreadsheetTools : AgentToolBase
     /// <summary>
     /// Unwraps a JsonElement into a JSON-typed CLR object: null, bool, double,
     /// or string. Nested objects and arrays fall back to their JSON text
-    /// representation; the spreadsheet write surface only accepts scalars in
+    /// representation. The spreadsheet write surface only accepts scalars in
     /// cell positions.
     /// </summary>
     private static object? JsonElementToObject(JsonElement element)

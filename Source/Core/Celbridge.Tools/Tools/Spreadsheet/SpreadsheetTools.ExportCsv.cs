@@ -6,12 +6,12 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by spreadsheet_to_csv when a destination is supplied. Reports
-/// the dimensions of the source range and the byte size of the CSV that was
-/// written so callers (including cel proxy clients) can act on the metadata
-/// without parsing a free-form summary.
+/// Result returned by spreadsheet_export_csv when a destination is supplied.
+/// Reports the dimensions of the source range and the byte size of the CSV
+/// that was written so callers (including cel proxy clients) can act on the
+/// metadata without parsing a free-form summary.
 /// </summary>
-public record class WriteCsvResult(int RowCount, int ColumnCount, int ByteCount, string Destination);
+public record class ExportCsvResult(int RowCount, int ColumnCount, int ByteCount, string Destination);
 
 public partial class SpreadsheetTools
 {
@@ -27,9 +27,9 @@ public partial class SpreadsheetTools
     /// <param name="range">A1-notation range to export (e.g. "B2:D10"). Empty string exports the sheet's used range.</param>
     /// <param name="destination">Optional resource key of a file to write the CSV to. Empty string returns the CSV inline. When set, the file is created or overwritten and the response is a JSON object with rowCount, columnCount, byteCount, and destination fields.</param>
     /// <returns>The CSV text when destination is empty, otherwise a JSON object with fields: rowCount (int), columnCount (int), byteCount (int), destination (string). Empty CSV when the sheet (or requested range) is empty.</returns>
-    [McpServerTool(Name = "spreadsheet_to_csv")]
-    [ToolAlias("spreadsheet.to_csv")]
-    public async partial Task<CallToolResult> ToCsv(string resource, string sheet, string range = "", string destination = "")
+    [McpServerTool(Name = "spreadsheet_export_csv")]
+    [ToolAlias("spreadsheet.export_csv")]
+    public async partial Task<CallToolResult> ExportCsv(string resource, string sheet, string range = "", string destination = "")
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
@@ -46,7 +46,7 @@ public partial class SpreadsheetTools
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
 
         var reader = GetRequiredService<ISpreadsheetReader>();
-        var csvResult = reader.ToCsv(workbookPath, sheet, rangeArgument);
+        var csvResult = reader.ExportCsv(workbookPath, sheet, rangeArgument);
         if (csvResult.IsFailure)
         {
             return ErrorResult(csvResult.FirstErrorMessage);
@@ -74,7 +74,7 @@ public partial class SpreadsheetTools
         }
 
         var byteCount = Encoding.UTF8.GetByteCount(csv.Csv);
-        var metadata = new WriteCsvResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
+        var metadata = new ExportCsvResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
         return SuccessResult(SerializeJson(metadata));
     }
 }

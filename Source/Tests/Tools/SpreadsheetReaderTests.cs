@@ -56,12 +56,14 @@ public class SpreadsheetReaderTests
 
         var q1 = info.Sheets[0];
         q1.Name.Should().Be("Q1");
+        q1.Position.Should().Be(1);
         q1.UsedRange.Should().Be("A1:B3");
         q1.RowCount.Should().Be(3);
         q1.ColumnCount.Should().Be(2);
 
         var empty = info.Sheets[1];
         empty.Name.Should().Be("Empty");
+        empty.Position.Should().Be(2);
         empty.UsedRange.Should().BeNull();
         empty.RowCount.Should().Be(0);
         empty.ColumnCount.Should().Be(0);
@@ -239,7 +241,7 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ToCsv_RoundTripsValuesAndQuotesSpecialFields()
+    public void ExportCsv_RoundTripsValuesAndQuotesSpecialFields()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
@@ -252,7 +254,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("B3").Value = "line1\nline2";
         });
 
-        var result = _reader.ToCsv(workbookPath, "Q1", null);
+        var result = _reader.ExportCsv(workbookPath, "Q1", null);
 
         result.IsSuccess.Should().BeTrue();
         var csvResult = result.Value;
@@ -266,20 +268,145 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ToCsv_EmptySheet_ReturnsEmptyResult()
+    public void ExportCsv_EmptySheet_ReturnsEmptyResult()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
             workbook.Worksheets.Add("Empty");
         });
 
-        var result = _reader.ToCsv(workbookPath, "Empty", null);
+        var result = _reader.ExportCsv(workbookPath, "Empty", null);
 
         result.IsSuccess.Should().BeTrue();
         var csvResult = result.Value;
         csvResult.Csv.Should().BeEmpty();
         csvResult.RowCount.Should().Be(0);
         csvResult.ColumnCount.Should().Be(0);
+    }
+
+    [Test]
+    public void ReadStyles_ReturnsStylesForFormattedCell()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Data");
+            sheet.Cell("A1").Style.Font.Bold = true;
+            sheet.Cell("A1").Style.Fill.PatternType = XLFillPatternValues.Solid;
+            sheet.Cell("A1").Style.Fill.BackgroundColor = XLColor.FromHtml("#D3D3D3");
+            sheet.Cell("A1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        });
+
+        var result = _reader.ReadStyles(workbookPath, "Data", "A1");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Range.Should().Be("Data!A1:A1");
+        result.Value.Rows.Should().HaveCount(1);
+
+        var spec = result.Value.Rows[0][0];
+        spec.TextFormat!.Bold.Should().BeTrue();
+        spec.BackgroundColor.Should().Be("#D3D3D3");
+        spec.HorizontalAlignment.Should().Be("CENTER");
+    }
+
+    [Test]
+    public void ReadStyles_UnformattedCell_EmitsClearSentinelsForRoundTrip()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Data");
+            sheet.Cell("A1").Value = "plain";
+        });
+
+        var result = _reader.ReadStyles(workbookPath, "Data", "A1");
+
+        result.IsSuccess.Should().BeTrue();
+        var spec = result.Value.Rows[0][0];
+        spec.TextFormat!.Bold.Should().BeNull();
+        // No fill emits the clear-fill sentinel "" so the round-trip writes
+        // "no fill" onto the destination rather than leaving its previous fill.
+        spec.BackgroundColor.Should().Be(string.Empty);
+        spec.Borders.Should().BeNull();
+        spec.HorizontalAlignment.Should().BeNull();
+        spec.WrapText.Should().BeNull();
+    }
+
+    [Test]
+    public void ReadStyles_MultiCellRange_ReturnsMappedGrid()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Data");
+            sheet.Cell("A1").Style.Font.Bold = true;
+            sheet.Cell("B1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            sheet.Cell("A2").Style.Fill.PatternType = XLFillPatternValues.Solid;
+            sheet.Cell("A2").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFFF00");
+        });
+
+        var result = _reader.ReadStyles(workbookPath, "Data", "A1:B2");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Rows.Should().HaveCount(2);
+        result.Value.Rows[0].Should().HaveCount(2);
+        result.Value.Rows[0][0].TextFormat!.Bold.Should().BeTrue();
+        result.Value.Rows[0][1].HorizontalAlignment.Should().Be("CENTER");
+        result.Value.Rows[1][0].BackgroundColor.Should().Be("#FFFF00");
+        result.Value.Rows[1][1].BackgroundColor.Should().Be(string.Empty);
+    }
+
+    [Test]
+    public void ReadStyles_Borders_RoundTripsStyleAndColor()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Data");
+            sheet.Cell("A1").Style.Border.TopBorder = XLBorderStyleValues.Thin;
+            sheet.Cell("A1").Style.Border.TopBorderColor = XLColor.FromHtml("#FF0000");
+            sheet.Cell("A1").Style.Border.BottomBorder = XLBorderStyleValues.Dashed;
+        });
+
+        var result = _reader.ReadStyles(workbookPath, "Data", "A1");
+
+        result.IsSuccess.Should().BeTrue();
+        var spec = result.Value.Rows[0][0];
+        spec.Borders!.Top!.Style.Should().Be("SOLID");
+        spec.Borders.Top.Color.Should().Be("#FF0000");
+        spec.Borders.Bottom!.Style.Should().Be("DASHED");
+        spec.Borders.Left.Should().BeNull();
+        spec.Borders.Right.Should().BeNull();
+    }
+
+    [Test]
+    public void ReadStyles_EmptyRange_ReadsUsedRange()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Data");
+            sheet.Cell("A1").Value = "header";
+            sheet.Cell("A1").Style.Font.Bold = true;
+            sheet.Cell("B2").Value = 42;
+            sheet.Cell("B2").Style.Fill.PatternType = XLFillPatternValues.Solid;
+            sheet.Cell("B2").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFFF00");
+        });
+
+        var result = _reader.ReadStyles(workbookPath, "Data", null);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Rows.Should().HaveCount(2);
+        result.Value.Rows[0].Should().HaveCount(2);
+    }
+
+    [Test]
+    public void ReadStyles_MissingSheet_ReturnsFailure()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var result = _reader.ReadStyles(workbookPath, "Missing", null);
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Missing");
     }
 
     private string CreateWorkbook(Action<XLWorkbook> populate)

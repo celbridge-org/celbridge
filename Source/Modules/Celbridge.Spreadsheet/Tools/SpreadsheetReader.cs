@@ -35,6 +35,7 @@ public class SpreadsheetReader : ISpreadsheetReader
 
                 sheets.Add(new SpreadsheetSheetInfo(
                     worksheet.Name,
+                    worksheet.Position,
                     usedRangeAddress,
                     rowCount,
                     columnCount));
@@ -107,7 +108,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    public Result<SpreadsheetCsvResult> ToCsv(string workbookPath, string sheetName, string? range)
+    public Result<SpreadsheetExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range)
     {
         try
         {
@@ -116,21 +117,21 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result<SpreadsheetCsvResult>.Fail(worksheetResult.FirstErrorMessage);
+                return Result<SpreadsheetExportCsvResult>.Fail(worksheetResult.FirstErrorMessage);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, range);
             if (rangeResult.IsFailure)
             {
-                return Result<SpreadsheetCsvResult>.Fail(rangeResult.FirstErrorMessage);
+                return Result<SpreadsheetExportCsvResult>.Fail(rangeResult.FirstErrorMessage);
             }
             var resolvedRange = rangeResult.Value.Range;
 
             if (resolvedRange is null)
             {
-                var emptyResult = new SpreadsheetCsvResult(string.Empty, 0, 0);
-                return Result<SpreadsheetCsvResult>.Ok(emptyResult);
+                var emptyResult = new SpreadsheetExportCsvResult(string.Empty, 0, 0);
+                return Result<SpreadsheetExportCsvResult>.Ok(emptyResult);
             }
 
             var builder = new StringBuilder();
@@ -153,12 +154,67 @@ public class SpreadsheetReader : ISpreadsheetReader
                 builder.Append("\r\n");
             }
 
-            var csvResult = new SpreadsheetCsvResult(builder.ToString(), rowCount, columnCount);
-            return Result<SpreadsheetCsvResult>.Ok(csvResult);
+            var csvResult = new SpreadsheetExportCsvResult(builder.ToString(), rowCount, columnCount);
+            return Result<SpreadsheetExportCsvResult>.Ok(csvResult);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetCsvResult>.Fail($"Failed to export sheet '{sheetName}' as CSV from '{workbookPath}'")
+            return Result<SpreadsheetExportCsvResult>.Fail($"Failed to export sheet '{sheetName}' as CSV from '{workbookPath}'")
+                .WithException(ex);
+        }
+    }
+
+    public Result<SpreadsheetReadStylesResult> ReadStyles(string workbookPath, string sheetName, string? range)
+    {
+        try
+        {
+            using var workbook = new XLWorkbook(workbookPath);
+
+            var worksheetResult = GetWorksheet(workbook, sheetName);
+            if (worksheetResult.IsFailure)
+            {
+                return Result<SpreadsheetReadStylesResult>.Fail(worksheetResult.FirstErrorMessage);
+            }
+            var worksheet = worksheetResult.Value;
+
+            var rangeResult = ResolveRange(worksheet, range);
+            if (rangeResult.IsFailure)
+            {
+                return Result<SpreadsheetReadStylesResult>.Fail(rangeResult.FirstErrorMessage);
+            }
+            var resolvedRange = rangeResult.Value.Range;
+
+            if (resolvedRange is null)
+            {
+                var emptyResult = new SpreadsheetReadStylesResult(sheetName, new List<List<SpreadsheetFormatSpec>>());
+                return Result<SpreadsheetReadStylesResult>.Ok(emptyResult);
+            }
+
+            var address = resolvedRange.RangeAddress;
+            var rangeString = $"{sheetName}!{FormatA1Range(address)}";
+            var rowCount = address.RowSpan;
+            var columnCount = address.ColumnSpan;
+
+            var rows = new List<List<SpreadsheetFormatSpec>>(rowCount);
+            for (int rowOffset = 1; rowOffset <= rowCount; rowOffset++)
+            {
+                var rowSpecs = new List<SpreadsheetFormatSpec>(columnCount);
+                for (int columnOffset = 1; columnOffset <= columnCount; columnOffset++)
+                {
+                    var cell = resolvedRange.Cell(rowOffset, columnOffset);
+                    var spec = SpreadsheetStyleReader.ReadFormatFromCell(cell);
+                    rowSpecs.Add(spec);
+                }
+                rows.Add(rowSpecs);
+            }
+
+            var result = new SpreadsheetReadStylesResult(rangeString, rows);
+            return Result<SpreadsheetReadStylesResult>.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return Result<SpreadsheetReadStylesResult>.Fail(
+                $"Failed to read styles from sheet '{sheetName}' in '{workbookPath}'")
                 .WithException(ex);
         }
     }

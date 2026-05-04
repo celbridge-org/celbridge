@@ -10,11 +10,10 @@ public class ImportCsvCommand : CommandBase, ISpreadsheetImportCsvCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public string Sheet { get; set; } = string.Empty;
-    public string CsvText { get; set; } = string.Empty;
-    public bool CreateIfMissing { get; set; }
+    public IReadOnlyList<SpreadsheetCsvImport> Imports { get; set; } = Array.Empty<SpreadsheetCsvImport>();
 
-    public SpreadsheetImportCsvResult ResultValue { get; private set; } = new SpreadsheetImportCsvResult(0, 0, false);
+    public SpreadsheetImportCsvResult ResultValue { get; private set; } =
+        new SpreadsheetImportCsvResult(0, 0, 0);
 
     public ImportCsvCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -32,61 +31,92 @@ public class ImportCsvCommand : CommandBase, ISpreadsheetImportCsvCommand
         }
         var workbookPath = resolveResult.Value;
 
-        if (string.IsNullOrEmpty(Sheet))
+        if (Imports.Count == 0)
         {
-            return Result.Fail("Sheet name is required.");
+            return Result.Fail("At least one CSV import is required.");
         }
 
-        IReadOnlyList<IReadOnlyList<string>> parsedRows;
-        try
+        var parsedImports = new List<(SpreadsheetCsvImport Import, IReadOnlyList<IReadOnlyList<string>> Rows)>(Imports.Count);
+        for (int importIndex = 0; importIndex < Imports.Count; importIndex++)
         {
-            parsedRows = SpreadsheetCsvParser.Parse(CsvText);
+            var import = Imports[importIndex];
+            if (string.IsNullOrEmpty(import.Sheet))
+            {
+                return Result.Fail($"Import {importIndex + 1}: sheet name is required.");
+            }
+
+            IReadOnlyList<IReadOnlyList<string>> parsedRows;
+            try
+            {
+                parsedRows = SpreadsheetCsvParser.Parse(import.CsvText);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail($"Import {importIndex + 1} ('{import.Sheet}'): failed to parse CSV text: {ex.Message}");
+            }
+
+            if (parsedRows.Count > 1)
+            {
+                var expectedColumnCount = parsedRows[0].Count;
+                for (int rowIndex = 1; rowIndex < parsedRows.Count; rowIndex++)
+                {
+                    if (parsedRows[rowIndex].Count != expectedColumnCount)
+                    {
+                        return Result.Fail(
+                            $"Import {importIndex + 1} ('{import.Sheet}'): CSV row {rowIndex + 1} has {parsedRows[rowIndex].Count} fields, expected {expectedColumnCount} (matching row 1).");
+                    }
+                }
+            }
+
+            parsedImports.Add((import, parsedRows));
         }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to parse CSV text: {ex.Message}");
-        }
+
+        int totalRowCount = 0;
+        int sheetsCreated = 0;
 
         try
         {
             using var workbook = new XLWorkbook(workbookPath);
 
-            var sheetExists = workbook.Worksheets.Contains(Sheet);
-            if (!sheetExists && !CreateIfMissing)
+            for (int importIndex = 0; importIndex < parsedImports.Count; importIndex++)
             {
-                return Result.Fail(
-                    $"Sheet not found: '{Sheet}'. Pass createIfMissing: true to create it, or call spreadsheet_add_sheet first.");
-            }
+                var (import, parsedRows) = parsedImports[importIndex];
 
-            IXLWorksheet worksheet;
-            if (sheetExists)
-            {
-                worksheet = workbook.Worksheet(Sheet);
-                worksheet.Clear(XLClearOptions.Contents);
-            }
-            else
-            {
-                worksheet = workbook.Worksheets.Add(Sheet);
-            }
+                var sheetExists = workbook.Worksheets.Contains(import.Sheet);
+                if (!sheetExists && !import.CreateIfMissing)
+                {
+                    return Result.Fail(
+                        $"Import {importIndex + 1}: sheet not found: '{import.Sheet}'. Pass createIfMissing: true to create it, or call spreadsheet_add_sheets first.");
+                }
 
-            int columnCount = 0;
-            for (int rowIndex = 0; rowIndex < parsedRows.Count; rowIndex++)
-            {
-                var fields = parsedRows[rowIndex];
-                if (fields.Count > columnCount)
+                IXLWorksheet worksheet;
+                if (sheetExists)
                 {
-                    columnCount = fields.Count;
+                    worksheet = workbook.Worksheet(import.Sheet);
+                    worksheet.Clear(XLClearOptions.Contents);
                 }
-                for (int columnIndex = 0; columnIndex < fields.Count; columnIndex++)
+                else
                 {
-                    var cell = worksheet.Cell(rowIndex + 1, columnIndex + 1);
-                    cell.Value = fields[columnIndex];
+                    worksheet = workbook.Worksheets.Add(import.Sheet);
+                    sheetsCreated++;
                 }
+
+                for (int rowIndex = 0; rowIndex < parsedRows.Count; rowIndex++)
+                {
+                    var fields = parsedRows[rowIndex];
+                    for (int columnIndex = 0; columnIndex < fields.Count; columnIndex++)
+                    {
+                        var cell = worksheet.Cell(rowIndex + 1, columnIndex + 1);
+                        cell.Value = fields[columnIndex];
+                    }
+                }
+
+                totalRowCount += parsedRows.Count;
             }
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetImportCsvResult(parsedRows.Count, columnCount, !sheetExists);
+            ResultValue = new SpreadsheetImportCsvResult(parsedImports.Count, totalRowCount, sheetsCreated);
         }
         catch (Exception ex)
         {

@@ -1,6 +1,14 @@
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
+/// Holds the sheet-qualified range address and the per-cell style specs
+/// returned by ISpreadsheetReader.ReadStyles.
+/// </summary>
+public record SpreadsheetReadStylesResult(
+    string Range,
+    List<List<SpreadsheetFormatSpec>> Rows);
+
+/// <summary>
 /// Reads .xlsx workbooks from disk for the spreadsheet_* MCP tools. The reader
 /// is stateless and opens the workbook fresh on every call. Callers pass the
 /// absolute filesystem path resolved from a resource key. All methods report
@@ -27,5 +35,12 @@ public interface ISpreadsheetReader
     /// Null exports the sheet's used range. An empty range returns an empty Csv
     /// string and zero dimensions.
     /// </summary>
-    Result<SpreadsheetCsvResult> ToCsv(string workbookPath, string sheetName, string? range);
+    Result<SpreadsheetExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range);
+
+    /// <summary>
+    /// Reads cell styles from a sheet as SpreadsheetFormatSpec objects in the
+    /// same shape accepted by spreadsheet_format_ranges. When range is null the
+    /// sheet's used range is read. An empty sheet returns Rows = [].
+    /// </summary>
+    Result<SpreadsheetReadStylesResult> ReadStyles(string workbookPath, string sheetName, string? range);
 }

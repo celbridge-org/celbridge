@@ -4,14 +4,19 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class AddSheetCommand : CommandBase, ISpreadsheetAddSheetCommand
+public class FreezePanesCommand : CommandBase, ISpreadsheetFreezePanesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
     public string Sheet { get; set; } = string.Empty;
+    public int Rows { get; set; }
+    public int Columns { get; set; }
 
-    public AddSheetCommand(IWorkspaceWrapper workspaceWrapper)
+    public SpreadsheetFreezePanesResult ResultValue { get; private set; } =
+        new SpreadsheetFreezePanesResult(string.Empty, 0, 0);
+
+    public FreezePanesCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -32,21 +37,31 @@ public class AddSheetCommand : CommandBase, ISpreadsheetAddSheetCommand
             return Result.Fail("Sheet name is required.");
         }
 
+        if (Rows < 0 || Columns < 0)
+        {
+            return Result.Fail("Rows and Columns must be non-negative.");
+        }
+
         try
         {
             using var workbook = new XLWorkbook(workbookPath);
 
-            if (workbook.Worksheets.Contains(Sheet))
+            if (!workbook.Worksheets.Contains(Sheet))
             {
-                return Result.Fail($"Sheet already exists: '{Sheet}'.");
+                return Result.Fail($"Sheet not found: '{Sheet}'.");
             }
+            var worksheet = workbook.Worksheet(Sheet);
 
-            workbook.Worksheets.Add(Sheet);
+            worksheet.SheetView.FreezeRows(Rows);
+            worksheet.SheetView.FreezeColumns(Columns);
+
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+
+            ResultValue = new SpreadsheetFreezePanesResult(Sheet, Rows, Columns);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to add sheet '{Sheet}' to '{FileResource}'").WithException(ex);
+            return Result.Fail($"Failed to freeze panes for '{Sheet}' in '{FileResource}'").WithException(ex);
         }
 
         return Result.Ok();

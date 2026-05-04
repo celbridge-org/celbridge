@@ -34,9 +34,13 @@ public class Module : IModule
         services.AddTransient<ISpreadsheetWriteCellsCommand, WriteCellsCommand>();
         services.AddTransient<ISpreadsheetAppendRowsCommand, AppendRowsCommand>();
         services.AddTransient<ISpreadsheetImportCsvCommand, ImportCsvCommand>();
-        services.AddTransient<ISpreadsheetAddSheetCommand, AddSheetCommand>();
+        services.AddTransient<ISpreadsheetAddSheetsCommand, AddSheetsCommand>();
         services.AddTransient<ISpreadsheetRemoveSheetCommand, RemoveSheetCommand>();
         services.AddTransient<ISpreadsheetRenameSheetCommand, RenameSheetCommand>();
+        services.AddTransient<ISpreadsheetMoveSheetCommand, MoveSheetCommand>();
+        services.AddTransient<ISpreadsheetSetActiveViewCommand, SetActiveViewCommand>();
+        services.AddTransient<ISpreadsheetFormatRangesCommand, FormatRangesCommand>();
+        services.AddTransient<ISpreadsheetFreezePanesCommand, FreezePanesCommand>();
     }
 
     public Result Initialize()

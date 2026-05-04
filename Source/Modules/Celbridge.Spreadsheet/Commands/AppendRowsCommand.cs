@@ -48,7 +48,7 @@ public class AppendRowsCommand : CommandBase, ISpreadsheetAppendRowsCommand
 
             if (!workbook.Worksheets.Contains(Sheet))
             {
-                return Result.Fail($"Sheet not found: '{Sheet}'. Add it via spreadsheet_add_sheet first.");
+                return Result.Fail($"Sheet not found: '{Sheet}'. Add it via spreadsheet_add_sheets first.");
             }
             var worksheet = workbook.Worksheet(Sheet);
 
