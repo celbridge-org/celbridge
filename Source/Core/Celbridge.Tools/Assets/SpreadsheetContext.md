@@ -145,7 +145,7 @@ spreadsheet_move_sheet(resource: "data/sales.xlsx", sheet: "Summary", position: 
 
 ## Formatting
 
-`spreadsheet_format_rangess` applies a batch of format edits to one workbook in
+`spreadsheet_format_ranges` applies a batch of format edits to one workbook in
 a single open/save cycle. Each edit specifies a target `sheet`, `range`, and
 `format` spec. Edits may target different sheets in the same workbook. Only
 the fields present in each edit's `format` are applied. Existing formatting
@@ -257,7 +257,7 @@ place.
 A single batch can mix several common patterns across one or more sheets:
 
 ```
-spreadsheet_format_rangess(
+spreadsheet_format_ranges(
   resource: "data/sales.xlsx",
   edits: [
     # Bold header row with grey background on Q1

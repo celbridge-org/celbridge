@@ -119,6 +119,7 @@ class CelProxy:
         "file": "Read files, search, and query project structure",
         "package": "Archive, publish, and install packages",
         "query": "Agent context and Python API reference",
+        "spreadsheet": "Read, modify, and format .xlsx workbooks",
     }
 
     def _build_help_doc(self) -> str:

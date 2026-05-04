@@ -8,6 +8,7 @@ Tests all available tools across all celbridge modules:
   - celbridge.document
   - celbridge.package
   - celbridge.webview
+  - celbridge.spreadsheet
 
 Includes both happy-path tests and adversarial error-handling tests.
 
@@ -32,6 +33,7 @@ explorer = None
 document = None
 package = None
 webview = None
+spreadsheet = None
 
 
 # ---------------------------------------------------------------------------
@@ -1542,11 +1544,296 @@ class TestWebView(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# spreadsheet module
+# ---------------------------------------------------------------------------
+
+class TestSpreadsheet(unittest.TestCase):
+
+    _WORKBOOK = "TestSpreadsheet/sheet.xlsx"
+
+    def setUp(self):
+        _delete_if_exists("TestSpreadsheet")
+        explorer.create_folder("TestSpreadsheet")
+        explorer.create_file(self._WORKBOOK)
+
+    def tearDown(self):
+        _close_if_open(self._WORKBOOK)
+        _delete_if_exists("TestSpreadsheet")
+
+    # -- spreadsheet_get_context --
+
+    def test_get_context(self):
+        result = spreadsheet.get_context()
+        self.assertIn("A1 notation", result)
+
+    # -- spreadsheet_get_info --
+
+    def test_get_info_empty_workbook(self):
+        info = spreadsheet.get_info(self._WORKBOOK)
+        self.assertEqual(len(info["sheets"]), 1)
+        sheet = info["sheets"][0]
+        self.assertEqual(sheet["name"], "Sheet1")
+        self.assertEqual(sheet["position"], 1)
+        self.assertEqual(sheet["rowCount"], 0)
+        self.assertIsNone(sheet.get("usedRange"))
+
+    # -- spreadsheet_read_sheet --
+
+    def test_read_sheet_empty(self):
+        result = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")
+        self.assertEqual(result["totalRowCount"], 0)
+        self.assertEqual(result["rows"], [])
+
+    def test_read_sheet_with_data(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "month,sales\nJan,100\nFeb,200\n"}],
+        )
+        result = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1", headers=True)
+        self.assertEqual(result["totalRowCount"], 2)
+        first_row = result["rows"][0]
+        self.assertEqual(first_row["month"], "Jan")
+        self.assertEqual(first_row["sales"], "100")
+
+    # -- spreadsheet_export_csv --
+
+    def test_export_csv_inline_empty(self):
+        result = spreadsheet.export_csv(self._WORKBOOK, "Sheet1")
+        self.assertEqual(result, "")
+
+    def test_export_csv_inline_with_data(self):
+        spreadsheet.append_rows(self._WORKBOOK, "Sheet1", [["A", "B"], ["C", "D"]])
+        result = spreadsheet.export_csv(self._WORKBOOK, "Sheet1")
+        self.assertIsInstance(result, str)
+        self.assertTrue(result.endswith("\r\n"))
+        self.assertIn("A", result)
+
+    def test_export_csv_destination(self):
+        spreadsheet.append_rows(self._WORKBOOK, "Sheet1", [["x", "y"], ["1", "2"]])
+        dest = "TestSpreadsheet/export.csv"
+        result = spreadsheet.export_csv(self._WORKBOOK, "Sheet1", destination=dest)
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["rowCount"], 2)
+        self.assertEqual(result["columnCount"], 2)
+        self.assertGreater(result["byteCount"], 0)
+        self.assertEqual(result["destination"], dest)
+        info = file.get_info(dest)
+        self.assertEqual(info["type"], "file")
+
+    def test_export_csv_invalid_destination(self):
+        with self.assertRaises(CelError):
+            spreadsheet.export_csv(
+                self._WORKBOOK, "Sheet1", destination="\\invalid\\path"
+            )
+
+    # -- spreadsheet_write_cells --
+
+    def test_write_cells(self):
+        result = spreadsheet.write_cells(
+            self._WORKBOOK, "Sheet1", [{"cell": "B2", "value": 99}]
+        )
+        self.assertEqual(result["cellCount"], 1)
+        read_result = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1", range="B2")
+        self.assertEqual(read_result["rows"][0][0], 99.0)
+
+    # -- spreadsheet_append_rows --
+
+    def test_append_rows(self):
+        result = spreadsheet.append_rows(
+            self._WORKBOOK, "Sheet1", [["Jan", 100], ["Feb", 200]]
+        )
+        self.assertEqual(result["appendedRowCount"], 2)
+        self.assertEqual(result["firstRow"], 1)
+        self.assertEqual(result["lastRow"], 2)
+
+    # -- spreadsheet_import_csv --
+
+    def test_import_csv_multi_sheet(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Q1", "Q2"])
+        result = spreadsheet.import_csv(
+            self._WORKBOOK,
+            [
+                {"sheet": "Q1", "csvText": "month,total\nJan,100\n"},
+                {"sheet": "Q2", "csvText": "month,total\nApr,200\n"},
+            ],
+        )
+        self.assertEqual(result["importsApplied"], 2)
+        self.assertEqual(result["totalRowCount"], 4)  # header + 1 data row per sheet
+        self.assertEqual(result["sheetsCreated"], 0)
+
+    # -- spreadsheet_add_sheets --
+
+    def test_add_sheets(self):
+        result = spreadsheet.add_sheets(self._WORKBOOK, ["Data", "Summary"])
+        self.assertIn("Data", result["sheets"])
+        self.assertIn("Summary", result["sheets"])
+
+    def test_add_sheets_duplicate_in_batch_fails(self):
+        with self.assertRaises(CelError):
+            spreadsheet.add_sheets(self._WORKBOOK, ["NewSheet", "NewSheet"])
+
+    def test_add_sheets_collision_with_existing_fails(self):
+        with self.assertRaises(CelError):
+            spreadsheet.add_sheets(self._WORKBOOK, ["Sheet1"])
+
+    # -- spreadsheet_remove_sheet --
+
+    def test_remove_sheet(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Extra"])
+        result = spreadsheet.remove_sheet(self._WORKBOOK, "Extra")
+        self.assertEqual(result["sheet"], "Extra")
+        info = spreadsheet.get_info(self._WORKBOOK)
+        names = [s["name"] for s in info["sheets"]]
+        self.assertNotIn("Extra", names)
+
+    def test_remove_last_sheet_fails(self):
+        with self.assertRaises(CelError):
+            spreadsheet.remove_sheet(self._WORKBOOK, "Sheet1")
+
+    # -- spreadsheet_rename_sheet --
+
+    def test_rename_sheet(self):
+        result = spreadsheet.rename_sheet(self._WORKBOOK, "Sheet1", "Sales")
+        self.assertEqual(result["previousName"], "Sheet1")
+        self.assertEqual(result["newName"], "Sales")
+        info = spreadsheet.get_info(self._WORKBOOK)
+        names = [s["name"] for s in info["sheets"]]
+        self.assertIn("Sales", names)
+        self.assertNotIn("Sheet1", names)
+
+    # -- spreadsheet_move_sheet --
+
+    def test_move_sheet(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["A", "B", "C"])
+        result = spreadsheet.move_sheet(self._WORKBOOK, "C", 1)
+        self.assertEqual(result["position"], 1)
+        info = spreadsheet.get_info(self._WORKBOOK)
+        self.assertEqual(info["sheets"][0]["name"], "C")
+
+    # -- formula recalculation --
+
+    def test_formula_recalculates_on_save(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK, "Sheet1",
+            [{"cell": "A1", "value": 10}, {"cell": "A2", "value": 20}],
+        )
+        spreadsheet.write_cells(
+            self._WORKBOOK, "Sheet1",
+            [{"cell": "A3", "value": "=SUM(A1:A2)", "isFormula": True}],
+        )
+        result = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1", range="A3")
+        self.assertEqual(result["rows"][0][0], 30.0)
+
+    # -- spreadsheet_format_ranges --
+
+    def test_format_ranges_text_and_background(self):
+        edits = [
+            {
+                "sheet": "Sheet1",
+                "range": "A1",
+                "format": {
+                    "textFormat": {"bold": True},
+                    "backgroundColor": "#FF0000",
+                },
+            }
+        ]
+        result = spreadsheet.format_ranges(self._WORKBOOK, edits)
+        self.assertEqual(result["editsApplied"], 1)
+        self.assertGreater(result["propertiesApplied"], 0)
+
+    def test_format_ranges_borders(self):
+        edits = [
+            {
+                "sheet": "Sheet1",
+                "range": "A1",
+                "format": {
+                    "borders": {
+                        "top": {"style": "SOLID", "color": "#000000"},
+                        "bottom": {"style": "DASHED", "color": "#888888"},
+                    }
+                },
+            }
+        ]
+        result = spreadsheet.format_ranges(self._WORKBOOK, edits)
+        self.assertEqual(result["editsApplied"], 1)
+
+    def test_format_ranges_column_width_and_autofit(self):
+        edits = [
+            {
+                "sheet": "Sheet1",
+                "range": "A",
+                "format": {"columnWidth": 20, "autoFitColumns": True},
+            }
+        ]
+        result = spreadsheet.format_ranges(self._WORKBOOK, edits)
+        self.assertTrue(result["autoFitApplied"])
+
+    def test_format_ranges_unknown_color_raises(self):
+        with self.assertRaises(CelError):
+            spreadsheet.format_ranges(
+                self._WORKBOOK,
+                [
+                    {
+                        "sheet": "Sheet1",
+                        "range": "A1",
+                        "format": {"backgroundColor": "not-a-color"},
+                    }
+                ],
+            )
+
+    # -- spreadsheet_read_styles --
+
+    def test_read_styles_round_trips_through_format_ranges(self):
+        spreadsheet.format_ranges(
+            self._WORKBOOK,
+            [
+                {
+                    "sheet": "Sheet1",
+                    "range": "A1",
+                    "format": {"textFormat": {"bold": True}, "backgroundColor": "#FFFF00"},
+                }
+            ],
+        )
+        styles = spreadsheet.read_styles(self._WORKBOOK, "Sheet1", "A1")
+        self.assertIn("rows", styles)
+        cell_spec = styles["rows"][0][0]
+        self.assertTrue(cell_spec.get("textFormat", {}).get("bold", False))
+        result = spreadsheet.format_ranges(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "range": "B1", "format": cell_spec}],
+        )
+        self.assertEqual(result["editsApplied"], 1)
+
+    # -- spreadsheet_freeze_panes --
+
+    def test_freeze_panes_rows_columns_and_clear(self):
+        result = spreadsheet.freeze_panes(self._WORKBOOK, "Sheet1", rows=1)
+        self.assertEqual(result["rows"], 1)
+        self.assertEqual(result["columns"], 0)
+
+        result = spreadsheet.freeze_panes(self._WORKBOOK, "Sheet1", rows=1, columns=2)
+        self.assertEqual(result["rows"], 1)
+        self.assertEqual(result["columns"], 2)
+
+        result = spreadsheet.freeze_panes(self._WORKBOOK, "Sheet1", rows=0, columns=0)
+        self.assertEqual(result["rows"], 0)
+        self.assertEqual(result["columns"], 0)
+
+    # -- spreadsheet_set_active_view --
+
+    def test_set_active_view_persists_sheet_and_selection(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Summary"])
+        result = spreadsheet.set_active_view(self._WORKBOOK, "Summary", range="A1")
+        self.assertEqual(result["sheet"], "Summary")
+        self.assertEqual(result["range"], "A1")
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 def main():
-    global app, file, query, explorer, document, package, webview
+    global app, file, query, explorer, document, package, webview, spreadsheet
 
     import celbridge
     app = celbridge.app
@@ -1556,6 +1843,7 @@ def main():
     document = celbridge.document
     package = celbridge.package
     webview = celbridge.webview
+    spreadsheet = celbridge.spreadsheet
 
     print("\n" + "=" * 60)
     print("Celbridge MCP Integration Test")
@@ -1574,6 +1862,7 @@ def main():
         TestFile,
         TestPackage,
         TestWebView,
+        TestSpreadsheet,
     ]
     for cls in test_classes:
         suite.addTests(loader.loadTestsFromTestCase(cls))
