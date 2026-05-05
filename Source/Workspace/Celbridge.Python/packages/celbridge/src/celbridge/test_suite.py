@@ -13,7 +13,9 @@ Tests all available tools across all celbridge modules:
 Includes both happy-path tests and adversarial error-handling tests.
 
 Usage (IPython REPL):
-    cel.test()
+    cel.test()                  # run every test class
+    cel.test("TestSpreadsheet") # run only the named class(es)
+    cel.test("Spreadsheet")     # substring match against class names
 """
 
 import json
@@ -149,9 +151,6 @@ class TestApp(unittest.TestCase):
 
     def test_refresh_files(self):
         app.refresh_files()
-
-    def test_show_alert(self):
-        app.show_alert("Integration test alert", title="Test")
 
     def test_log_empty_message(self):
         app.log("")
@@ -1836,6 +1835,73 @@ class TestSpreadsheet(unittest.TestCase):
         self.assertEqual(result["sheet"], "Summary")
         self.assertEqual(result["range"], "A1")
 
+    # -- spreadsheet_delete --
+
+    def test_delete_rows_shifts_remaining_rows_up(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "a\nb\nc\nd\ne\n"}],
+        )
+        result = spreadsheet.delete(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "range": "2:3"}],
+        )
+        self.assertEqual(result["deletedRowCount"], 2)
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        self.assertEqual([row[0] for row in rows], ["a", "d", "e"])
+
+    def test_delete_uses_original_coordinates_across_operations(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "\n".join(f"row{i}" for i in range(1, 13)) + "\n"}],
+        )
+        result = spreadsheet.delete(
+            self._WORKBOOK,
+            [
+                {"sheet": "Sheet1", "range": "3:5"},
+                {"sheet": "Sheet1", "range": "10"},
+            ],
+        )
+        self.assertEqual(result["deletedRowCount"], 4)
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        self.assertEqual(
+            [row[0] for row in rows],
+            ["row1", "row2", "row6", "row7", "row8", "row9", "row11", "row12"],
+        )
+
+    # -- spreadsheet_clear --
+
+    def test_clear_range_leaves_other_cells_alone(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "a,b,c\n1,2,3\n4,5,6\n"}],
+        )
+        result = spreadsheet.clear(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "range": "B2:C2"}],
+        )
+        self.assertEqual(result["cellCount"], 2)
+
+        # import_csv stores fields as text, so the round-tripped values are strings.
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        self.assertEqual(rows[0], ["a", "b", "c"])
+        self.assertEqual(rows[1][0], "1")
+        self.assertIsNone(rows[1][1])
+        self.assertIsNone(rows[1][2])
+        self.assertEqual(rows[2], ["4", "5", "6"])
+
+    def test_clear_empty_range_clears_entire_sheet(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "a,b\n1,2\n"}],
+        )
+        spreadsheet.clear(self._WORKBOOK, [{"sheet": "Sheet1", "range": ""}])
+
+        result = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")
+        self.assertEqual(result["totalRowCount"], 0)
+
     # -- spreadsheet_get_active_view --
 
     def test_get_active_view_round_trips_through_set_active_view(self):
@@ -1872,7 +1938,7 @@ class TestSpreadsheet(unittest.TestCase):
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
+def main(class_filter=None):
     global app, file, query, explorer, document, package, webview, spreadsheet
 
     import celbridge
@@ -1885,14 +1951,7 @@ def main():
     webview = celbridge.webview
     spreadsheet = celbridge.spreadsheet
 
-    print("\n" + "=" * 60)
-    print("Celbridge MCP Integration Test")
-    print("=" * 60)
-
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-
-    test_classes = [
+    all_test_classes = [
         TestApp,
         TestQuery,
         TestExplorer,
@@ -1904,6 +1963,23 @@ def main():
         TestWebView,
         TestSpreadsheet,
     ]
+
+    test_classes = _select_test_classes(all_test_classes, class_filter)
+    if not test_classes:
+        names = ", ".join(cls.__name__ for cls in all_test_classes)
+        raise ValueError(
+            f"No test classes match {class_filter!r}. Available classes: {names}"
+        )
+
+    print("\n" + "=" * 60)
+    print("Celbridge MCP Integration Test")
+    if class_filter is not None:
+        running = ", ".join(cls.__name__ for cls in test_classes)
+        print(f"Filter: {class_filter!r} -> {running}")
+    print("=" * 60)
+
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
     for cls in test_classes:
         suite.addTests(loader.loadTestsFromTestCase(cls))
 
@@ -1926,13 +2002,48 @@ def main():
         print("\n\033[91mFailures:\033[0m")
         for test, traceback_str in result.failures:
             print(f"  \033[91m{test}\033[0m")
-            print(f"    {traceback_str.strip().splitlines()[-1]}")
+            _print_failure_detail(traceback_str)
 
     if result.errors:
         print("\n\033[91mErrors:\033[0m")
         for test, traceback_str in result.errors:
             print(f"  \033[91m{test}\033[0m")
-            print(f"    {traceback_str.strip().splitlines()[-1]}")
+            _print_failure_detail(traceback_str)
 
     print("=" * 60)
+
+
+def _select_test_classes(all_test_classes, class_filter):
+    if class_filter is None:
+        return list(all_test_classes)
+
+    if isinstance(class_filter, str):
+        names = [class_filter]
+    else:
+        names = list(class_filter)
+
+    selected = []
+    seen = set()
+    for name in names:
+        for cls in all_test_classes:
+            if cls.__name__ == name or name.lower() in cls.__name__.lower():
+                if cls.__name__ not in seen:
+                    selected.append(cls)
+                    seen.add(cls.__name__)
+    return selected
+
+
+def _print_failure_detail(traceback_str):
+    # The full traceback is verbose, but the AssertionError block (and the
+    # surrounding diff that unittest writes for dict/list/string mismatches)
+    # is what's actually informative. Print every line from the first
+    # AssertionError to the end so we don't truncate diagnostic context.
+    lines = traceback_str.rstrip().splitlines()
+    start_index = 0
+    for index, line in enumerate(lines):
+        if "AssertionError" in line:
+            start_index = index
+            break
+    for line in lines[start_index:]:
+        print(f"    {line}")
 

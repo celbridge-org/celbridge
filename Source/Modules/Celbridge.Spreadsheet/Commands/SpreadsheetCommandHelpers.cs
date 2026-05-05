@@ -28,6 +28,16 @@ internal static class SpreadsheetCommandHelpers
         workbook.Save(saveOptions);
     }
 
+    public static bool IsColumnRange(string range)
+    {
+        return range.Split(':').All(part => !string.IsNullOrEmpty(part) && part.All(char.IsLetter));
+    }
+
+    public static bool IsRowRange(string range)
+    {
+        return range.Split(':').All(part => !string.IsNullOrEmpty(part) && part.All(char.IsDigit));
+    }
+
     public static Result<string> ResolveWorkbookPath(IWorkspaceWrapper workspaceWrapper, ResourceKey fileResource)
     {
         if (fileResource.IsEmpty)

@@ -217,9 +217,15 @@ public class SpreadsheetReader : ISpreadsheetReader
                 activeCellString = "A1";
             }
 
+            // ClosedXML omits the topLeftCell attribute from OOXML when the value
+            // equals the A1 default, then on reload returns a zeroed address whose
+            // ToStringRelative() is "#REF!". Treat any address with non-positive
+            // row or column as "scrolled to A1" so the round trip is stable.
             string topLeftCellString;
             var topLeftAddress = activeWorksheet.SheetView.TopLeftCellAddress;
-            if (topLeftAddress is not null)
+            if (topLeftAddress is not null
+                && topLeftAddress.RowNumber > 0
+                && topLeftAddress.ColumnNumber > 0)
             {
                 topLeftCellString = topLeftAddress.ToStringRelative();
             }

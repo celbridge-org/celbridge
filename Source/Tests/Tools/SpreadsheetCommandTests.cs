@@ -1508,6 +1508,42 @@ public class SpreadsheetCommandTests
     }
 
     [Test]
+    public async Task SetActiveView_TopLeftCellA1_RoundTripsThroughGet()
+    {
+        // Mirrors the integration test:
+        //   add_sheets(["Summary"])
+        //   set_active_view("Summary", range="B2:D4", activeCell="C3", topLeftCell="A1")
+        //   get_active_view -> {sheet:"Summary", range:"B2:D4", activeCell:"C3", topLeftCell:"A1"}
+        // ClosedXML omits topLeftCell from OOXML when it equals the A1 default and
+        // returns a zeroed address on reload; the reader treats that as "A1".
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Sheet1");
+            workbook.Worksheets.Add("Summary");
+        });
+
+        var setCommand = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Summary",
+            Range = "B2:D4",
+            ActiveCell = "C3",
+            TopLeftCell = "A1"
+        };
+        var setResult = await setCommand.ExecuteAsync();
+        setResult.IsSuccess.Should().BeTrue();
+
+        var reader = new Celbridge.Spreadsheet.Services.SpreadsheetReader();
+        var viewResult = reader.GetActiveView(_workbookPath);
+        viewResult.IsSuccess.Should().BeTrue();
+        var view = viewResult.Value;
+        view.Sheet.Should().Be("Summary");
+        view.Range.Should().Be("B2:D4");
+        view.ActiveCell.Should().Be("C3");
+        view.TopLeftCell.Should().Be("A1");
+    }
+
+    [Test]
     public async Task SetActiveView_AppliesTopLeftCell()
     {
         CreateWorkbook(workbook =>
@@ -1859,6 +1895,384 @@ public class SpreadsheetCommandTests
         using var workbook = new XLWorkbook(_workbookPath);
         workbook.Worksheet("Q1").Cell("A1").GetString().Should().Be("month");
         workbook.Worksheet("Q2").Cell("A2").GetString().Should().Be("Alpha");
+    }
+
+    [Test]
+    public async Task Delete_RemovesRowsAndShiftsBelowUp()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "row1";
+            sheet.Cell("A2").Value = "row2";
+            sheet.Cell("A3").Value = "row3";
+            sheet.Cell("A4").Value = "row4";
+            sheet.Cell("A5").Value = "row5";
+        });
+
+        var command = new DeleteCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetDeleteOperation("Q1", "2:3")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.DeletedRowCount.Should().Be(2);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("row1");
+        sheet.Cell("A2").GetString().Should().Be("row4");
+        sheet.Cell("A3").GetString().Should().Be("row5");
+    }
+
+    [Test]
+    public async Task Delete_RemovesColumnsAndShiftsRightLeft()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "colA";
+            sheet.Cell("B1").Value = "colB";
+            sheet.Cell("C1").Value = "colC";
+            sheet.Cell("D1").Value = "colD";
+        });
+
+        var command = new DeleteCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetDeleteOperation("Q1", "B:C")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.DeletedColumnCount.Should().Be(2);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("colA");
+        sheet.Cell("B1").GetString().Should().Be("colD");
+    }
+
+    [Test]
+    public async Task Delete_OriginalCoordinateSemantics_AcrossMultipleOperations()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            for (int rowNumber = 1; rowNumber <= 12; rowNumber++)
+            {
+                sheet.Cell($"A{rowNumber}").Value = $"row{rowNumber}";
+            }
+        });
+
+        // Two ops referring to the original coordinate space:
+        // delete rows 3:5 AND row 10. After applying, the remaining rows should be
+        // 1, 2, 6, 7, 8, 9, 11, 12 — original row 10 is gone, not "row 10 after the
+        // earlier delete shifted it" (which would have been original row 13).
+        var command = new DeleteCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetDeleteOperation("Q1", "3:5"),
+                new SpreadsheetDeleteOperation("Q1", "10")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.DeletedRowCount.Should().Be(4);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("row1");
+        sheet.Cell("A2").GetString().Should().Be("row2");
+        sheet.Cell("A3").GetString().Should().Be("row6");
+        sheet.Cell("A4").GetString().Should().Be("row7");
+        sheet.Cell("A5").GetString().Should().Be("row8");
+        sheet.Cell("A6").GetString().Should().Be("row9");
+        sheet.Cell("A7").GetString().Should().Be("row11");
+        sheet.Cell("A8").GetString().Should().Be("row12");
+    }
+
+    [Test]
+    public async Task Delete_OverlappingRanges_AreDeduped()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            for (int rowNumber = 1; rowNumber <= 10; rowNumber++)
+            {
+                sheet.Cell($"A{rowNumber}").Value = $"row{rowNumber}";
+            }
+        });
+
+        // Overlapping row ranges 3:5 and 4:6 should expand to {3,4,5,6}.
+        var command = new DeleteCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetDeleteOperation("Q1", "3:5"),
+                new SpreadsheetDeleteOperation("Q1", "4:6")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.DeletedRowCount.Should().Be(4);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("row1");
+        sheet.Cell("A2").GetString().Should().Be("row2");
+        sheet.Cell("A3").GetString().Should().Be("row7");
+    }
+
+    [Test]
+    public async Task Delete_RejectsCellRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var command = new DeleteCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetDeleteOperation("Q1", "A1:C3")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("not a row or column range");
+    }
+
+    [Test]
+    public async Task Delete_MissingSheet_ReturnsFailure_AtomicNoSave()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "before";
+        });
+
+        var command = new DeleteCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetDeleteOperation("Q1", "1"),
+                new SpreadsheetDeleteOperation("Missing", "1")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Missing");
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").Cell("A1").GetString().Should().Be("before");
+    }
+
+    [Test]
+    public async Task Clear_ClearsCellRange_LeavesOtherCellsAlone()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "keep";
+            sheet.Cell("B2").Value = "wipe";
+            sheet.Cell("C2").Value = "wipe";
+            sheet.Cell("D5").Value = "keep";
+        });
+
+        var command = new ClearCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetClearOperation("Q1", "B2:C2")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.CellCount.Should().Be(2);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("keep");
+        sheet.Cell("B2").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("C2").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("D5").GetString().Should().Be("keep");
+    }
+
+    [Test]
+    public async Task Clear_EmptyRange_ClearsEntireSheet_PreservesIdentity()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "wipe";
+            sheet.Cell("B2").Value = "wipe";
+            sheet.SheetView.FreezeRows(1);
+            workbook.DefinedNames.Add("MyRange", "Q1!A1:A1");
+        });
+
+        var command = new ClearCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetClearOperation("Q1", "")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheets.Contains("Q1").Should().BeTrue();
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("B2").Value.IsBlank.Should().BeTrue();
+        sheet.SheetView.SplitRow.Should().Be(1);
+        workbook.DefinedNames.Any(n => n.Name == "MyRange").Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Clear_DoesNotShiftCells()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "row1";
+            sheet.Cell("A2").Value = "row2";
+            sheet.Cell("A3").Value = "row3";
+        });
+
+        var command = new ClearCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetClearOperation("Q1", "2")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("row1");
+        sheet.Cell("A2").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("A3").GetString().Should().Be("row3");
+    }
+
+    [Test]
+    public async Task Clear_CountsFormattingOnlyCells()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            // B2 has a value, C3 has only a background colour, D4 is fully default.
+            sheet.Cell("B2").Value = "value";
+            sheet.Cell("C3").Style.Fill.BackgroundColor = XLColor.Yellow;
+        });
+
+        var command = new ClearCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetClearOperation("Q1", "B2:D4")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        // B2 (value) and C3 (formatting-only) both count; D4 was already default.
+        command.ResultValue.CellCount.Should().Be(2);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("B2").Value.IsBlank.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Clear_EmptyRange_CountsFormattingOnlyCells()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Style.Fill.BackgroundColor = XLColor.Yellow;
+            sheet.Cell("B2").Style.Font.Bold = true;
+        });
+
+        var command = new ClearCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetClearOperation("Q1", string.Empty)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.CellCount.Should().Be(2);
+    }
+
+    [Test]
+    public async Task Clear_MissingSheet_ReturnsFailure_AtomicNoSave()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "before";
+        });
+
+        var command = new ClearCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetClearOperation("Q1", "A1"),
+                new SpreadsheetClearOperation("Missing", "A1")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Missing");
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").Cell("A1").GetString().Should().Be("before");
     }
 
     private void CreateWorkbook(Action<XLWorkbook> populate)

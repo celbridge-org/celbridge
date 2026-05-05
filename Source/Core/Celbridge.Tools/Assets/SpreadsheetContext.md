@@ -318,6 +318,74 @@ spreadsheet_freeze_panes(resource: "data/sales.xlsx", sheet: "Q1", rows: 0, colu
 `rows` and `columns` default to 0. Either may be omitted to leave that axis
 unfrozen.
 
+## Removing data
+
+Two tools cover removal: `spreadsheet_delete` for structural row/column
+removal (with shift), and `spreadsheet_clear` for in-place erasure of
+content and formatting (no shift). Both take an `operations` array and run
+in a single open/save cycle; if any operation fails, the whole batch fails
+and nothing is saved.
+
+### Delete rows and columns
+
+`spreadsheet_delete` removes contiguous ranges of rows or columns.
+Remaining rows shift up; remaining columns shift left. Cell ranges
+(e.g. `"A1:C3"`) are not accepted — Excel's "shift cells up/left" is
+intentionally not exposed.
+
+```
+spreadsheet_delete(resource: "data/sales.xlsx", operations: [
+  {sheet: "Q1", range: "3:5"},   # delete rows 3 through 5
+  {sheet: "Q1", range: "B:D"},   # delete columns B through D
+  {sheet: "Notes", range: "10"}  # delete row 10 on a different sheet
+])
+```
+
+**Indices reference the original workbook state.** An agent can specify
+"rows 3:5 and 10" without mentally shifting indices after earlier deletes
+in the same batch. Internally the tool collects the union of indices per
+sheet and per axis, then deletes in descending order so earlier deletes
+do not shift later ones. Overlapping ranges are deduped — `[{range: "3:5"},
+{range: "4:6"}]` deletes rows 3, 4, 5, 6.
+
+Returns `{operationsApplied, deletedRowCount, deletedColumnCount}`.
+
+### Clear cell content and formatting
+
+`spreadsheet_clear` wipes content, formatting, comments, merged ranges, and
+data validation from a range, in place. No cells shift. Sheet identity (tab
+name, position, color, frozen panes, named ranges, column widths, row
+heights) is preserved when the entire sheet is cleared.
+
+`range` accepts any A1 form: cell range, single cell, column letter or
+range, row number or range, or **empty string to clear the entire sheet**.
+
+```
+spreadsheet_clear(resource: "data/sales.xlsx", operations: [
+  {sheet: "Q1", range: "A1:C3"},   # clear a cell block
+  {sheet: "Q1", range: "E"},       # clear an entire column
+  {sheet: "Summary", range: ""}    # clear the entire Summary sheet
+])
+```
+
+Returns `{operationsApplied, cellCount}`. `cellCount` reports the number of
+cells whose state was actually reset — a cell with only a background colour
+or border counts the same as a cell with a value. Already-default cells
+inside the targeted range do not count, so `cellCount: 0` means the range
+was already empty.
+
+### Choosing between delete and clear
+
+Use **delete** when you want structural removal — the row or column should
+go away and everything below or to the right of it should fill the gap.
+Common cases: removing a header row, dropping an unused column, compacting
+a sheet by removing empty rows.
+
+Use **clear** when you want the cells to remain at their current addresses
+but be empty. Common cases: wiping a results table to be repopulated,
+clearing a template's example data, resetting a sheet's contents without
+removing the sheet itself.
+
 ## Reading and setting the active view
 
 `spreadsheet_get_active_view` returns the workbook's current view state:

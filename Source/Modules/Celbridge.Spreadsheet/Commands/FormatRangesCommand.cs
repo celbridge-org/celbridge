@@ -104,17 +104,17 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
         autoFitApplied = false;
 
         if (format.MergeRange.HasValue
-            && (IsColumnRange(range) || IsRowRange(range)))
+            && (SpreadsheetCommandHelpers.IsColumnRange(range) || SpreadsheetCommandHelpers.IsRowRange(range)))
         {
             return Result.Fail("mergeRange cannot be applied to a column or row range; use an A1 cell range like 'A1:C3'.");
         }
 
-        if (IsColumnRange(range))
+        if (SpreadsheetCommandHelpers.IsColumnRange(range))
         {
             return ApplyFormatToColumns(worksheet, range, format, out propertiesApplied, out autoFitApplied);
         }
 
-        if (IsRowRange(range))
+        if (SpreadsheetCommandHelpers.IsRowRange(range))
         {
             return ApplyFormatToRows(worksheet, range, format, out propertiesApplied, out autoFitApplied);
         }
@@ -600,13 +600,4 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
         return count;
     }
 
-    private static bool IsColumnRange(string range)
-    {
-        return range.Split(':').All(part => !string.IsNullOrEmpty(part) && part.All(char.IsLetter));
-    }
-
-    private static bool IsRowRange(string range)
-    {
-        return range.Split(':').All(part => !string.IsNullOrEmpty(part) && part.All(char.IsDigit));
-    }
 }

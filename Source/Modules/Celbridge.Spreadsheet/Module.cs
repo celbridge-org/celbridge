@@ -40,6 +40,8 @@ public class Module : IModule
         services.AddTransient<ISpreadsheetSetActiveViewCommand, SetActiveViewCommand>();
         services.AddTransient<ISpreadsheetFormatRangesCommand, FormatRangesCommand>();
         services.AddTransient<ISpreadsheetFreezePanesCommand, FreezePanesCommand>();
+        services.AddTransient<ISpreadsheetDeleteCommand, DeleteCommand>();
+        services.AddTransient<ISpreadsheetClearCommand, ClearCommand>();
     }
 
     public Result Initialize()
