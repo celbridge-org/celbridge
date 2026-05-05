@@ -386,6 +386,114 @@ but be empty. Common cases: wiping a results table to be repopulated,
 clearing a template's example data, resetting a sheet's contents without
 removing the sheet itself.
 
+## Inserting rows and columns
+
+`spreadsheet_insert` adds empty rows or columns into one or more sheets. It
+mirrors `spreadsheet_delete`: existing rows at or below the insert position
+shift down, existing columns at or to the right shift right. The width of
+the range determines how many empty rows or columns are inserted —
+`"3:5"` inserts 3 contiguous rows starting at row 3.
+
+```
+spreadsheet_insert(resource: "data/sales.xlsx", operations: [
+  {sheet: "Q1", range: "1"},     # insert one empty row at the top
+  {sheet: "Q1", range: "3:5"},   # insert three empty rows starting at row 3
+  {sheet: "Q1", range: "B:C"}    # insert two empty columns starting at column B
+])
+```
+
+**Indices reference the original workbook state**, just like delete. The
+implementation applies operations in descending order of their start
+position so earlier inserts do not shift later ones. Use `spreadsheet_insert`
+to make a structural gap, then follow with `spreadsheet_write_cells` if you
+want to populate the new rows or columns.
+
+Returns `{operationsApplied, insertedRowCount, insertedColumnCount}`.
+
+## Searching for cells
+
+`spreadsheet_find` returns every cell whose text or formula expression
+contains a search string. It is read-only — use it to locate cells before
+acting on them with `spreadsheet_write_cells`. Numeric, boolean and date
+cells are skipped; only text cells and formula cells are searched. For
+formula cells, the match runs against the formula expression text, so
+searching for `"A1:A10"` or `"SUM"` will surface formulas referencing them.
+
+```
+# Whole-workbook search
+spreadsheet_find(resource: "data/sales.xlsx", find: "TODO")
+
+# Restrict to a sheet
+spreadsheet_find(resource: "data/sales.xlsx", sheet: "Q1", find: "Old Name")
+
+# Restrict to a range on a sheet
+spreadsheet_find(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "A1:F1000",
+  find: "Stale")
+
+# Exact-match search
+spreadsheet_find(
+  resource: "data/sales.xlsx",
+  find: "Active",
+  matchEntireCellContents: true)
+```
+
+Returns `{matches: [{sheet, cell, text, isFormula}], matchCount}`. `range`
+can only be used together with a specific `sheet`. Search behaviour is
+case-insensitive by default; pass `matchCase: true` for case-sensitive
+matching.
+
+The typical workflow is **find → decide → write**: agents call
+`spreadsheet_find` to identify cells, inspect the matches, then submit
+targeted edits via `spreadsheet_write_cells`. This keeps the substring-match
+risk under the agent's review rather than executing it atomically.
+
+## Sorting a range
+
+`spreadsheet_sort` re-orders the rows of a cell range by one or more
+columns. Multiple sort keys are applied in order — earlier keys are
+primary, later keys break ties. Columns in `sortBy` are absolute
+references (sheet column letters or 1-based numbers) and must lie inside
+the sort range.
+
+```
+# Sort A1:A100 ascending by column A
+spreadsheet_sort(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "A1:A100",
+  sortBy: [{column: "A", ascending: true}])
+
+# Sort with a header row preserved at row 1
+spreadsheet_sort(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "A1:F500",
+  sortBy: [{column: "B", ascending: false}],
+  hasHeaderRow: true)
+
+# Multi-column: by region (asc) then revenue (desc)
+spreadsheet_sort(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "A2:F500",
+  sortBy: [
+    {column: "A", ascending: true},
+    {column: "D", ascending: false}
+  ])
+```
+
+`range` is optional — empty sorts the worksheet's entire used range.
+`hasHeaderRow: true` keeps the first row of the range in place and sorts
+only the rows below it. Formulas inside sorted rows have their cell
+references shifted by Excel's own sort logic, so a formula like `=A2*B2`
+follows its row when that row moves.
+
+Returns `{rowCount}`, the number of rows actually re-ordered (excludes the
+header row when `hasHeaderRow` is true).
+
 ## Reading and setting the active view
 
 `spreadsheet_get_active_view` returns the workbook's current view state:

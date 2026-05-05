@@ -42,6 +42,8 @@ public class Module : IModule
         services.AddTransient<ISpreadsheetFreezePanesCommand, FreezePanesCommand>();
         services.AddTransient<ISpreadsheetDeleteCommand, DeleteCommand>();
         services.AddTransient<ISpreadsheetClearCommand, ClearCommand>();
+        services.AddTransient<ISpreadsheetInsertCommand, InsertCommand>();
+        services.AddTransient<ISpreadsheetSortCommand, SortCommand>();
     }
 
     public Result Initialize()

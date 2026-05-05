@@ -475,6 +475,119 @@ public class SpreadsheetReaderTests
         result.Value.ActiveCell.Should().Be("D5");
     }
 
+    [Test]
+    public void Find_FindsTextSubstringsAcrossSheets()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheetA = workbook.Worksheets.Add("Q1");
+            sheetA.Cell("A1").Value = "Hello World";
+            sheetA.Cell("A2").Value = "no match";
+            var sheetB = workbook.Worksheets.Add("Q2");
+            sheetB.Cell("B5").Value = "Hello Friend";
+        });
+
+        var options = new SpreadsheetFindOptions(Find: "Hello", Sheet: "", Range: "", MatchCase: false, MatchEntireCellContents: false);
+        var result = _reader.Find(workbookPath, options);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MatchCount.Should().Be(2);
+        result.Value.Matches.Should().Contain(m => m.Sheet == "Q1" && m.Cell == "A1");
+        result.Value.Matches.Should().Contain(m => m.Sheet == "Q2" && m.Cell == "B5");
+    }
+
+    [Test]
+    public void Find_MatchesFormulaExpressionText()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 1;
+            sheet.Cell("A2").Value = 2;
+            sheet.Cell("B1").FormulaA1 = "=SUM(A1:A2)";
+        });
+
+        var options = new SpreadsheetFindOptions(Find: "SUM", Sheet: "Q1", Range: "", MatchCase: false, MatchEntireCellContents: false);
+        var result = _reader.Find(workbookPath, options);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MatchCount.Should().Be(1);
+        var match = result.Value.Matches[0];
+        match.Cell.Should().Be("B1");
+        match.IsFormula.Should().BeTrue();
+        match.Text.Should().Contain("SUM");
+    }
+
+    [Test]
+    public void Find_MatchEntireCellContents_OnlyExactMatches()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "foo";
+            sheet.Cell("A2").Value = "foobar";
+            sheet.Cell("A3").Value = "foo bar";
+        });
+
+        var options = new SpreadsheetFindOptions(Find: "foo", Sheet: "Q1", Range: "", MatchCase: false, MatchEntireCellContents: true);
+        var result = _reader.Find(workbookPath, options);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MatchCount.Should().Be(1);
+        result.Value.Matches[0].Cell.Should().Be("A1");
+    }
+
+    [Test]
+    public void Find_RangeLimitsScope()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "needle";
+            sheet.Cell("B2").Value = "needle";
+            sheet.Cell("D5").Value = "needle";
+        });
+
+        var options = new SpreadsheetFindOptions(Find: "needle", Sheet: "Q1", Range: "A1:C3", MatchCase: false, MatchEntireCellContents: false);
+        var result = _reader.Find(workbookPath, options);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MatchCount.Should().Be(2);
+        result.Value.Matches.Should().NotContain(m => m.Cell == "D5");
+    }
+
+    [Test]
+    public void Find_RangeWithoutSheet_Fails()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var options = new SpreadsheetFindOptions(Find: "x", Sheet: "", Range: "A1:C3", MatchCase: false, MatchEntireCellContents: false);
+        var result = _reader.Find(workbookPath, options);
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Range can only be used together with a specific sheet");
+    }
+
+    [Test]
+    public void Find_NoMatches_ReturnsEmpty()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "alpha";
+        });
+
+        var options = new SpreadsheetFindOptions(Find: "missing", Sheet: "", Range: "", MatchCase: false, MatchEntireCellContents: false);
+        var result = _reader.Find(workbookPath, options);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.MatchCount.Should().Be(0);
+        result.Value.Matches.Should().BeEmpty();
+    }
+
     private string CreateWorkbook(Action<XLWorkbook> populate)
     {
         var workbookPath = Path.Combine(_tempFolder, $"{Guid.NewGuid():N}.xlsx");

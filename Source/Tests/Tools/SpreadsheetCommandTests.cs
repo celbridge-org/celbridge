@@ -2275,6 +2275,335 @@ public class SpreadsheetCommandTests
         workbook.Worksheet("Q1").Cell("A1").GetString().Should().Be("before");
     }
 
+    [Test]
+    public async Task Insert_AddsRowsAndShiftsExistingDown()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "row1";
+            sheet.Cell("A2").Value = "row2";
+            sheet.Cell("A3").Value = "row3";
+        });
+
+        var command = new InsertCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetInsertOperation("Q1", "2:3")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.InsertedRowCount.Should().Be(2);
+        command.ResultValue.InsertedColumnCount.Should().Be(0);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("row1");
+        sheet.Cell("A2").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("A3").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("A4").GetString().Should().Be("row2");
+        sheet.Cell("A5").GetString().Should().Be("row3");
+    }
+
+    [Test]
+    public async Task Insert_AddsColumnsAndShiftsExistingRight()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "col1";
+            sheet.Cell("B1").Value = "col2";
+            sheet.Cell("C1").Value = "col3";
+        });
+
+        var command = new InsertCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetInsertOperation("Q1", "B")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.InsertedColumnCount.Should().Be(1);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("col1");
+        sheet.Cell("B1").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("C1").GetString().Should().Be("col2");
+        sheet.Cell("D1").GetString().Should().Be("col3");
+    }
+
+    [Test]
+    public async Task Insert_OriginalCoordinateSemantics_AcrossMultipleOperations()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            for (int rowIndex = 1; rowIndex <= 5; rowIndex++)
+            {
+                sheet.Cell(rowIndex, 1).Value = $"row{rowIndex}";
+            }
+        });
+
+        var command = new InsertCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetInsertOperation("Q1", "2"),
+                new SpreadsheetInsertOperation("Q1", "5")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.InsertedRowCount.Should().Be(2);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        // Original rows 1, 2, 3, 4, 5 land at 1, 3, 4, 6, 7 respectively
+        // because we inserted before original rows 2 and 5.
+        sheet.Cell("A1").GetString().Should().Be("row1");
+        sheet.Cell("A2").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("A3").GetString().Should().Be("row2");
+        sheet.Cell("A4").GetString().Should().Be("row3");
+        sheet.Cell("A5").GetString().Should().Be("row4");
+        sheet.Cell("A6").Value.IsBlank.Should().BeTrue();
+        sheet.Cell("A7").GetString().Should().Be("row5");
+    }
+
+    [Test]
+    public async Task Insert_RejectsCellRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var command = new InsertCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetInsertOperation("Q1", "A1:C3")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("not a row or column range");
+    }
+
+    [Test]
+    public async Task Insert_MissingSheet_ReturnsFailure_AtomicNoSave()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "before";
+        });
+
+        var command = new InsertCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Operations = new[]
+            {
+                new SpreadsheetInsertOperation("Q1", "1"),
+                new SpreadsheetInsertOperation("Missing", "1")
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Missing");
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").Cell("A1").GetString().Should().Be("before");
+    }
+
+    [Test]
+    public async Task Sort_SortsByColumnAscending()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "Charlie";
+            sheet.Cell("A2").Value = "Alpha";
+            sheet.Cell("A3").Value = "Bravo";
+        });
+
+        var command = new SortCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A3",
+            SortKeys = new[]
+            {
+                new SpreadsheetSortKey("A", Ascending: true)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.RowCount.Should().Be(3);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("Alpha");
+        sheet.Cell("A2").GetString().Should().Be("Bravo");
+        sheet.Cell("A3").GetString().Should().Be("Charlie");
+    }
+
+    [Test]
+    public async Task Sort_HasHeaderRow_LeavesHeaderInPlace()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "Name";
+            sheet.Cell("A2").Value = "Charlie";
+            sheet.Cell("A3").Value = "Alpha";
+            sheet.Cell("A4").Value = "Bravo";
+        });
+
+        var command = new SortCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A4",
+            SortKeys = new[]
+            {
+                new SpreadsheetSortKey("A", Ascending: true)
+            },
+            HasHeaderRow = true
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.RowCount.Should().Be(3);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("Name");
+        sheet.Cell("A2").GetString().Should().Be("Alpha");
+        sheet.Cell("A3").GetString().Should().Be("Bravo");
+        sheet.Cell("A4").GetString().Should().Be("Charlie");
+    }
+
+    [Test]
+    public async Task Sort_MultiColumn_PrimaryThenSecondary()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "B";
+            sheet.Cell("B1").Value = 2;
+            sheet.Cell("A2").Value = "A";
+            sheet.Cell("B2").Value = 2;
+            sheet.Cell("A3").Value = "A";
+            sheet.Cell("B3").Value = 1;
+            sheet.Cell("A4").Value = "B";
+            sheet.Cell("B4").Value = 1;
+        });
+
+        var command = new SortCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:B4",
+            SortKeys = new[]
+            {
+                new SpreadsheetSortKey("A", Ascending: true),
+                new SpreadsheetSortKey("B", Ascending: false)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Q1");
+        sheet.Cell("A1").GetString().Should().Be("A");
+        sheet.Cell("B1").GetDouble().Should().Be(2);
+        sheet.Cell("A2").GetString().Should().Be("A");
+        sheet.Cell("B2").GetDouble().Should().Be(1);
+        sheet.Cell("A3").GetString().Should().Be("B");
+        sheet.Cell("B3").GetDouble().Should().Be(2);
+        sheet.Cell("A4").GetString().Should().Be("B");
+        sheet.Cell("B4").GetDouble().Should().Be(1);
+    }
+
+    [Test]
+    public async Task Sort_ColumnOutsideRange_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "Charlie";
+            sheet.Cell("A2").Value = "Alpha";
+        });
+
+        var command = new SortCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A2",
+            SortKeys = new[]
+            {
+                new SpreadsheetSortKey("B", Ascending: true)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("outside the sort range");
+    }
+
+    [Test]
+    public async Task Sort_EmptyRange_DefaultsToUsedRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "Charlie";
+            sheet.Cell("A2").Value = "Alpha";
+            sheet.Cell("A3").Value = "Bravo";
+        });
+
+        var command = new SortCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = string.Empty,
+            SortKeys = new[]
+            {
+                new SpreadsheetSortKey("A", Ascending: true)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.RowCount.Should().Be(3);
+    }
+
     private void CreateWorkbook(Action<XLWorkbook> populate)
     {
         using var workbook = new XLWorkbook();

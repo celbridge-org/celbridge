@@ -1,4 +1,5 @@
 using System.Text;
+using Celbridge.Spreadsheet.Commands;
 using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Services;
@@ -247,6 +248,132 @@ public class SpreadsheetReader : ISpreadsheetReader
             return Result<SpreadsheetActiveView>.Fail($"Failed to read active view from '{workbookPath}'")
                 .WithException(ex);
         }
+    }
+
+    public Result<SpreadsheetFindResult> Find(string workbookPath, SpreadsheetFindOptions options)
+    {
+        if (string.IsNullOrEmpty(options.Find))
+        {
+            return Result<SpreadsheetFindResult>.Fail("Find text is required and must be non-empty.");
+        }
+        if (!string.IsNullOrEmpty(options.Range)
+            && options.Range.Contains('!'))
+        {
+            return Result<SpreadsheetFindResult>.Fail($"Range '{options.Range}' must not include a sheet qualifier.");
+        }
+        if (!string.IsNullOrEmpty(options.Range)
+            && string.IsNullOrEmpty(options.Sheet))
+        {
+            return Result<SpreadsheetFindResult>.Fail("Range can only be used together with a specific sheet.");
+        }
+
+        try
+        {
+            using var workbook = new XLWorkbook(workbookPath);
+
+            IEnumerable<IXLWorksheet> targetSheets;
+            if (string.IsNullOrEmpty(options.Sheet))
+            {
+                targetSheets = workbook.Worksheets;
+            }
+            else
+            {
+                if (!workbook.Worksheets.Contains(options.Sheet))
+                {
+                    return Result<SpreadsheetFindResult>.Fail($"Sheet not found: '{options.Sheet}'.");
+                }
+                targetSheets = new[] { workbook.Worksheet(options.Sheet) };
+            }
+
+            var matches = new List<SpreadsheetFindMatch>();
+            var comparison = options.MatchCase
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+
+            foreach (var worksheet in targetSheets)
+            {
+                var cellsResult = ResolveSearchCells(worksheet, options.Range);
+                if (cellsResult.IsFailure)
+                {
+                    return Result<SpreadsheetFindResult>.Fail(cellsResult.FirstErrorMessage);
+                }
+
+                foreach (var cell in cellsResult.Value)
+                {
+                    string cellText;
+                    bool isFormula;
+                    if (cell.HasFormula)
+                    {
+                        cellText = cell.FormulaA1;
+                        isFormula = true;
+                    }
+                    else if (cell.Value.IsText)
+                    {
+                        cellText = cell.GetString();
+                        isFormula = false;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    if (!IsMatch(cellText, options, comparison))
+                    {
+                        continue;
+                    }
+
+                    matches.Add(new SpreadsheetFindMatch(
+                        worksheet.Name,
+                        cell.Address.ToStringRelative(),
+                        cellText,
+                        isFormula));
+                }
+            }
+
+            return Result<SpreadsheetFindResult>.Ok(new SpreadsheetFindResult(matches, matches.Count));
+        }
+        catch (Exception ex)
+        {
+            return Result<SpreadsheetFindResult>.Fail($"Failed to search workbook '{workbookPath}'")
+                .WithException(ex);
+        }
+    }
+
+    private static Result<IEnumerable<IXLCell>> ResolveSearchCells(IXLWorksheet worksheet, string range)
+    {
+        if (string.IsNullOrEmpty(range))
+        {
+            return Result<IEnumerable<IXLCell>>.Ok(worksheet.CellsUsed(XLCellsUsedOptions.Contents));
+        }
+
+        try
+        {
+            if (SpreadsheetCommandHelpers.IsRowRange(range))
+            {
+                var rows = worksheet.Rows(range);
+                return Result<IEnumerable<IXLCell>>.Ok(rows.SelectMany(r => r.CellsUsed(XLCellsUsedOptions.Contents)));
+            }
+            if (SpreadsheetCommandHelpers.IsColumnRange(range))
+            {
+                var columns = worksheet.Columns(range);
+                return Result<IEnumerable<IXLCell>>.Ok(columns.SelectMany(c => c.CellsUsed(XLCellsUsedOptions.Contents)));
+            }
+            var xlRange = worksheet.Range(range);
+            return Result<IEnumerable<IXLCell>>.Ok(xlRange.CellsUsed(XLCellsUsedOptions.Contents));
+        }
+        catch (Exception ex)
+        {
+            return Result<IEnumerable<IXLCell>>.Fail($"Invalid range '{range}': {ex.Message}");
+        }
+    }
+
+    private static bool IsMatch(string source, SpreadsheetFindOptions options, StringComparison comparison)
+    {
+        if (options.MatchEntireCellContents)
+        {
+            return string.Equals(source, options.Find, comparison);
+        }
+        return source.IndexOf(options.Find, comparison) >= 0;
     }
 
     public Result<SpreadsheetReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range)

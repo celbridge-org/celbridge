@@ -1933,6 +1933,119 @@ class TestSpreadsheet(unittest.TestCase):
         view_again = spreadsheet.get_active_view(self._WORKBOOK)
         self.assertEqual(view_again, view)
 
+    # -- spreadsheet_insert --
+
+    def test_insert_rows_shifts_existing_rows_down(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "row1\nrow2\nrow3\n"}],
+        )
+        result = spreadsheet.insert(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "range": "2:3"}],
+        )
+        self.assertEqual(result["insertedRowCount"], 2)
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        self.assertEqual(rows[0], ["row1"])
+        self.assertEqual(rows[3], ["row2"])
+        self.assertEqual(rows[4], ["row3"])
+
+    def test_insert_columns_shifts_existing_columns_right(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [
+                {"cell": "A1", "value": "col1"},
+                {"cell": "B1", "value": "col2"},
+                {"cell": "C1", "value": "col3"},
+            ],
+        )
+        result = spreadsheet.insert(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "range": "B"}],
+        )
+        self.assertEqual(result["insertedColumnCount"], 1)
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        # B1 is now blank; the original col2 has shifted to C1.
+        self.assertEqual(rows[0][0], "col1")
+        self.assertIsNone(rows[0][1])
+        self.assertEqual(rows[0][2], "col2")
+
+    # -- spreadsheet_find --
+
+    def test_find_returns_matches_across_sheets(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Other"])
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [{"cell": "A1", "value": "Hello World"}],
+        )
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Other",
+            [{"cell": "B5", "value": "Hello, friend"}],
+        )
+
+        result = spreadsheet.find(self._WORKBOOK, "Hello")
+        self.assertEqual(result["matchCount"], 2)
+        cells = sorted((m["sheet"], m["cell"]) for m in result["matches"])
+        self.assertEqual(cells, [("Other", "B5"), ("Sheet1", "A1")])
+
+    def test_find_match_entire_cell_contents_only(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [
+                {"cell": "A1", "value": "foo"},
+                {"cell": "A2", "value": "foobar"},
+            ],
+        )
+        result = spreadsheet.find(
+            self._WORKBOOK,
+            "foo",
+            sheet="Sheet1",
+            match_entire_cell_contents=True,
+        )
+        self.assertEqual(result["matchCount"], 1)
+        self.assertEqual(result["matches"][0]["cell"], "A1")
+
+    # -- spreadsheet_sort --
+
+    def test_sort_orders_rows_by_column(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "Charlie\nAlpha\nBravo\n"}],
+        )
+        result = spreadsheet.sort(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A3",
+            [{"column": "A", "ascending": True}],
+        )
+        self.assertEqual(result["rowCount"], 3)
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        self.assertEqual([row[0] for row in rows], ["Alpha", "Bravo", "Charlie"])
+
+    def test_sort_with_header_row_keeps_header_in_place(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "Name\nCharlie\nAlpha\nBravo\n"}],
+        )
+        result = spreadsheet.sort(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A4",
+            [{"column": "A", "ascending": True}],
+            has_header_row=True,
+        )
+        self.assertEqual(result["rowCount"], 3)
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
+        self.assertEqual([row[0] for row in rows], ["Name", "Alpha", "Bravo", "Charlie"])
+
 
 # ---------------------------------------------------------------------------
 # Main

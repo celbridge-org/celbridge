@@ -98,6 +98,39 @@ public record SpreadsheetReadFormatResult(
     List<List<SpreadsheetFormatSpec>> Rows);
 
 /// <summary>
+/// Search options for ISpreadsheetReader.Find. Sheet may be empty to search
+/// every worksheet; Range may be empty to search the chosen sheet's entire
+/// used range. Find must be non-empty.
+/// </summary>
+public record SpreadsheetFindOptions(
+    string Find,
+    string Sheet,
+    string Range,
+    bool MatchCase,
+    bool MatchEntireCellContents);
+
+/// <summary>
+/// One match from ISpreadsheetReader.Find. Sheet is the worksheet name. Cell
+/// is the A1 cell address. Text is the cell's literal text or formula
+/// expression that contained the match. IsFormula is true when the match
+/// was found inside a formula cell's expression text.
+/// </summary>
+public record SpreadsheetFindMatch(
+    string Sheet,
+    string Cell,
+    string Text,
+    bool IsFormula);
+
+/// <summary>
+/// Result of ISpreadsheetReader.Find. Matches lists every cell whose text or
+/// formula expression contained the search string. MatchCount is the size of
+/// Matches (provided so a JSON consumer does not have to count the array).
+/// </summary>
+public record SpreadsheetFindResult(
+    IReadOnlyList<SpreadsheetFindMatch> Matches,
+    int MatchCount);
+
+/// <summary>
 /// Workbook view-state snapshot returned by ISpreadsheetReader.GetActiveView.
 /// Sheet is the active worksheet name. Range is the selection on that sheet
 /// in A1 notation (e.g. "A1" for a single cell, "B2:D4" for a multi-cell
@@ -154,4 +187,12 @@ public interface ISpreadsheetReader
     /// can round-trip the view state.
     /// </summary>
     Result<SpreadsheetActiveView> GetActiveView(string workbookPath);
+
+    /// <summary>
+    /// Searches the workbook for cells whose literal text or formula expression
+    /// contains the search string. Numeric, boolean and date cells are skipped.
+    /// Empty Sheet searches every worksheet; empty Range searches each chosen
+    /// sheet's entire used range.
+    /// </summary>
+    Result<SpreadsheetFindResult> Find(string workbookPath, SpreadsheetFindOptions options);
 }
