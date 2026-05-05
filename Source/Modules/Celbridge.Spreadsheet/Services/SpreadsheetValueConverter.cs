@@ -1,6 +1,6 @@
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Tools;
+namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
 /// Converts between ClosedXML cell values and JSON-friendly objects (numbers,

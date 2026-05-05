@@ -691,11 +691,11 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void ReadStyles_DispatchesToReaderAndReturnsGrid()
+    public void ReadFormat_DispatchesToReaderAndReturnsGrid()
     {
         CreatePlaceholderFile("data/styles.xlsx");
 
-        var styleResult = new SpreadsheetReadStylesResult(
+        var formatResult = new SpreadsheetReadFormatResult(
             "Data!A1:B1",
             new List<List<SpreadsheetFormatSpec>>
             {
@@ -706,11 +706,11 @@ public class SpreadsheetToolTests
                 }
             });
 
-        _reader.ReadStyles(Arg.Any<string>(), "Data", "A1:B1")
-            .Returns(Result<SpreadsheetReadStylesResult>.Ok(styleResult));
+        _reader.ReadFormat(Arg.Any<string>(), "Data", "A1:B1")
+            .Returns(Result<SpreadsheetReadFormatResult>.Ok(formatResult));
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(tools.ReadStyles("data/styles.xlsx", "Data", "A1:B1"));
+        var root = ParseResult(tools.ReadFormat("data/styles.xlsx", "Data", "A1:B1"));
 
         root.GetProperty("range").GetString().Should().Be("Data!A1:B1");
         var rows = root.GetProperty("rows");
@@ -722,12 +722,12 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void ReadStyles_EmptySheetName_ReturnsError()
+    public void ReadFormat_EmptySheetName_ReturnsError()
     {
         CreatePlaceholderFile("data/styles.xlsx");
 
         var tools = new SpreadsheetTools(_services);
-        var result = tools.ReadStyles("data/styles.xlsx", sheet: "", range: "");
+        var result = tools.ReadFormat("data/styles.xlsx", sheet: "", range: "");
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("Sheet");

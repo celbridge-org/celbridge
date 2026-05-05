@@ -1,13 +1,13 @@
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Tools;
+namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
 /// Converts SpreadsheetFormatSpec values to ClosedXML style types. Unknown
 /// color strings and unrecognised border-style names return failures so the
 /// command can report them to the caller without saving the workbook.
 /// </summary>
-internal static class SpreadsheetStyleConverter
+internal static class SpreadsheetFormatConverter
 {
     /// <summary>
     /// Parses a CSS hex color string (#RRGGBB) into an XLColor. Returns

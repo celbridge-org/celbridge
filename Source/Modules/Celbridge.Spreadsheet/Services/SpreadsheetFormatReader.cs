@@ -1,8 +1,8 @@
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Tools;
+namespace Celbridge.Spreadsheet.Services;
 
-internal static class SpreadsheetStyleReader
+internal static class SpreadsheetFormatReader
 {
     public static SpreadsheetFormatSpec ReadFormatFromCell(IXLCell cell)
     {

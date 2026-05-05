@@ -1,5 +1,5 @@
 using Celbridge.Spreadsheet;
-using Celbridge.Spreadsheet.Tools;
+using Celbridge.Spreadsheet.Services;
 using ClosedXML.Excel;
 
 namespace Celbridge.Tests.Tools;
@@ -285,7 +285,7 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ReadStyles_ReturnsStylesForFormattedCell()
+    public void ReadFormat_ReturnsFormatForFormattedCell()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
@@ -296,7 +296,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         });
 
-        var result = _reader.ReadStyles(workbookPath, "Data", "A1");
+        var result = _reader.ReadFormat(workbookPath, "Data", "A1");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Range.Should().Be("Data!A1:A1");
@@ -309,7 +309,7 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ReadStyles_UnformattedCell_EmitsClearSentinelsForRoundTrip()
+    public void ReadFormat_UnformattedCell_EmitsClearSentinelsForRoundTrip()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
@@ -317,7 +317,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A1").Value = "plain";
         });
 
-        var result = _reader.ReadStyles(workbookPath, "Data", "A1");
+        var result = _reader.ReadFormat(workbookPath, "Data", "A1");
 
         result.IsSuccess.Should().BeTrue();
         var spec = result.Value.Rows[0][0];
@@ -331,7 +331,7 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ReadStyles_MultiCellRange_ReturnsMappedGrid()
+    public void ReadFormat_MultiCellRange_ReturnsMappedGrid()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
@@ -342,7 +342,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A2").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFFF00");
         });
 
-        var result = _reader.ReadStyles(workbookPath, "Data", "A1:B2");
+        var result = _reader.ReadFormat(workbookPath, "Data", "A1:B2");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Rows.Should().HaveCount(2);
@@ -354,7 +354,7 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ReadStyles_Borders_RoundTripsStyleAndColor()
+    public void ReadFormat_Borders_RoundTripsStyleAndColor()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
@@ -364,7 +364,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A1").Style.Border.BottomBorder = XLBorderStyleValues.Dashed;
         });
 
-        var result = _reader.ReadStyles(workbookPath, "Data", "A1");
+        var result = _reader.ReadFormat(workbookPath, "Data", "A1");
 
         result.IsSuccess.Should().BeTrue();
         var spec = result.Value.Rows[0][0];
@@ -376,7 +376,7 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ReadStyles_EmptyRange_ReadsUsedRange()
+    public void ReadFormat_EmptyRange_ReadsUsedRange()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
@@ -388,7 +388,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("B2").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFFF00");
         });
 
-        var result = _reader.ReadStyles(workbookPath, "Data", null);
+        var result = _reader.ReadFormat(workbookPath, "Data", null);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Rows.Should().HaveCount(2);
@@ -396,14 +396,14 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
-    public void ReadStyles_MissingSheet_ReturnsFailure()
+    public void ReadFormat_MissingSheet_ReturnsFailure()
     {
         var workbookPath = CreateWorkbook(workbook =>
         {
             workbook.Worksheets.Add("Data");
         });
 
-        var result = _reader.ReadStyles(workbookPath, "Missing", null);
+        var result = _reader.ReadFormat(workbookPath, "Missing", null);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Missing");

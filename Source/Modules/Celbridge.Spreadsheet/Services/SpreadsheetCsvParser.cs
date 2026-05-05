@@ -1,4 +1,4 @@
-namespace Celbridge.Spreadsheet.Tools;
+namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
 /// RFC 4180 CSV parser used by ISpreadsheetImportCsvCommand. Comma delimiter,

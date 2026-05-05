@@ -1,7 +1,7 @@
 using System.Text;
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Tools;
+namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
 /// ClosedXML-backed implementation of ISpreadsheetReader. Each call opens the
@@ -164,7 +164,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    public Result<SpreadsheetReadStylesResult> ReadStyles(string workbookPath, string sheetName, string? range)
+    public Result<SpreadsheetReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range)
     {
         try
         {
@@ -173,21 +173,21 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result<SpreadsheetReadStylesResult>.Fail(worksheetResult.FirstErrorMessage);
+                return Result<SpreadsheetReadFormatResult>.Fail(worksheetResult.FirstErrorMessage);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, range);
             if (rangeResult.IsFailure)
             {
-                return Result<SpreadsheetReadStylesResult>.Fail(rangeResult.FirstErrorMessage);
+                return Result<SpreadsheetReadFormatResult>.Fail(rangeResult.FirstErrorMessage);
             }
             var resolvedRange = rangeResult.Value.Range;
 
             if (resolvedRange is null)
             {
-                var emptyResult = new SpreadsheetReadStylesResult(sheetName, new List<List<SpreadsheetFormatSpec>>());
-                return Result<SpreadsheetReadStylesResult>.Ok(emptyResult);
+                var emptyResult = new SpreadsheetReadFormatResult(sheetName, new List<List<SpreadsheetFormatSpec>>());
+                return Result<SpreadsheetReadFormatResult>.Ok(emptyResult);
             }
 
             var address = resolvedRange.RangeAddress;
@@ -202,19 +202,19 @@ public class SpreadsheetReader : ISpreadsheetReader
                 for (int columnOffset = 1; columnOffset <= columnCount; columnOffset++)
                 {
                     var cell = resolvedRange.Cell(rowOffset, columnOffset);
-                    var spec = SpreadsheetStyleReader.ReadFormatFromCell(cell);
+                    var spec = SpreadsheetFormatReader.ReadFormatFromCell(cell);
                     rowSpecs.Add(spec);
                 }
                 rows.Add(rowSpecs);
             }
 
-            var result = new SpreadsheetReadStylesResult(rangeString, rows);
-            return Result<SpreadsheetReadStylesResult>.Ok(result);
+            var result = new SpreadsheetReadFormatResult(rangeString, rows);
+            return Result<SpreadsheetReadFormatResult>.Ok(result);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetReadStylesResult>.Fail(
-                $"Failed to read styles from sheet '{sheetName}' in '{workbookPath}'")
+            return Result<SpreadsheetReadFormatResult>.Fail(
+                $"Failed to read format from sheet '{sheetName}' in '{workbookPath}'")
                 .WithException(ex);
         }
     }

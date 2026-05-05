@@ -246,9 +246,9 @@ sentinel value for that field:
 | `horizontalAlignment` | `"GENERAL"` | resets horizontal alignment |
 | `verticalAlignment` | `"BOTTOM"` | resets vertical alignment (Excel default) |
 
-`spreadsheet_read_styles` returns the same sentinels for the cells it reads,
-so feeding the output of `read_styles` back into `format_ranges` produces a
-faithful style copy: a "no fill" source cell pasted onto a coloured destination
+`spreadsheet_read_format` returns the same sentinels for the cells it reads,
+so feeding the output of `read_format` back into `format_ranges` produces a
+faithful format copy: a "no fill" source cell pasted onto a coloured destination
 correctly clears the destination, rather than leaving the previous colour in
 place.
 
@@ -361,16 +361,16 @@ reappear in the documents panel, and any in-editor undo history for the
 spreadsheet is cleared. If the workbook is not open, no close/reopen happens
 and the new view state is honoured the next time the user opens it.
 
-## Reading styles
+## Reading formatting
 
-`spreadsheet_read_styles` returns the format spec for each cell in a range as a
+`spreadsheet_read_format` returns the format spec for each cell in a range as a
 2D array of `SpreadsheetFormatSpec` objects — the same shape accepted by
 `spreadsheet_format_ranges`. Only non-default properties appear in each cell's
 spec. A completely unformatted cell includes only its effective font name and
 size.
 
 ```
-spreadsheet_read_styles(resource: "data/report.xlsx", sheet: "Template", range: "A1:E1")
+spreadsheet_read_format(resource: "data/report.xlsx", sheet: "Template", range: "A1:E1")
 ```
 
 Returns:
@@ -392,13 +392,13 @@ reads the used range. Column and row letter ranges (`"A:C"`, `"1:3"`) are not
 supported — use the used-range dimensions from `spreadsheet_get_info` to
 construct an explicit cell range if needed.
 
-### Copy-style workflow
+### Copy-format workflow
 
-To copy the header-row style from one sheet to another:
+To copy the header-row format from one sheet to another:
 
 ```
-# 1. Read source styles
-spreadsheet_read_styles(resource: "data/report.xlsx", sheet: "Template", range: "A1:E1")
+# 1. Read source formatting
+spreadsheet_read_format(resource: "data/report.xlsx", sheet: "Template", range: "A1:E1")
 # 2. Apply each distinct format spec to the target range as one batch
 spreadsheet_format_ranges(
   resource: "data/report.xlsx",

@@ -1781,9 +1781,9 @@ class TestSpreadsheet(unittest.TestCase):
                 ],
             )
 
-    # -- spreadsheet_read_styles --
+    # -- spreadsheet_read_format --
 
-    def test_read_styles_round_trips_through_format_ranges(self):
+    def test_read_format_round_trips_through_format_ranges(self):
         spreadsheet.format_ranges(
             self._WORKBOOK,
             [
@@ -1794,9 +1794,9 @@ class TestSpreadsheet(unittest.TestCase):
                 }
             ],
         )
-        styles = spreadsheet.read_styles(self._WORKBOOK, "Sheet1", "A1")
-        self.assertIn("rows", styles)
-        cell_spec = styles["rows"][0][0]
+        format_grid = spreadsheet.read_format(self._WORKBOOK, "Sheet1", "A1")
+        self.assertIn("rows", format_grid)
+        cell_spec = format_grid["rows"][0][0]
         self.assertTrue(cell_spec.get("textFormat", {}).get("bold", False))
         result = spreadsheet.format_ranges(
             self._WORKBOOK,

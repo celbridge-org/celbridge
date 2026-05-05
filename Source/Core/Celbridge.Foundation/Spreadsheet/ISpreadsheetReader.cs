@@ -1,10 +1,95 @@
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Holds the sheet-qualified range address and the per-cell style specs
-/// returned by ISpreadsheetReader.ReadStyles.
+/// Selects whether ISpreadsheetReader.ReadSheet returns computed cell values or
+/// the underlying formula text for cells that contain a formula.
 /// </summary>
-public record SpreadsheetReadStylesResult(
+public enum SpreadsheetReadMode
+{
+    /// <summary>
+    /// Return the cached computed value for each cell. Cells without a formula
+    /// return their literal value.
+    /// </summary>
+    Values,
+
+    /// <summary>
+    /// Return the formula text (with the leading '=') for cells that contain a
+    /// formula. Cells without a formula return their literal value.
+    /// </summary>
+    Formulas
+}
+
+/// <summary>
+/// Optional parameters for ISpreadsheetReader.ReadSheet. Range is A1 notation
+/// without a sheet qualifier (e.g. "B2:D10"). Null reads the sheet's used range.
+/// Headers true treats the first row in the range as column names and emits
+/// row objects keyed by header. Offset and Limit page large sheets. Limit zero
+/// applies the reader's default page size.
+/// </summary>
+public record SpreadsheetReadOptions(
+    string? Range = null,
+    SpreadsheetReadMode Mode = SpreadsheetReadMode.Values,
+    bool Headers = false,
+    int Offset = 0,
+    int Limit = 0);
+
+/// <summary>
+/// Result of ISpreadsheetReader.ReadSheet. Rows is either a list of row arrays
+/// (when Headers was false) or a list of row dictionaries keyed by header
+/// (when Headers was true). Both shapes are JSON-serialised via object?.
+/// TotalRowCount is the total number of data rows the requested range would
+/// produce ignoring offset and limit, so the caller can decide whether to page.
+/// Headers carries the resolved header names when Headers was requested,
+/// otherwise it is empty.
+/// </summary>
+public record SpreadsheetReadResult(
+    IReadOnlyList<object?> Rows,
+    int TotalRowCount,
+    IReadOnlyList<string> Headers);
+
+/// <summary>
+/// Summary metadata for a single worksheet inside an .xlsx workbook.
+/// Position is the 1-based tab position. UsedRange is the A1-notation range
+/// that bounds all non-empty cells, or null if the sheet has no used range.
+/// </summary>
+public record SpreadsheetSheetInfo(
+    string Name,
+    int Position,
+    string? UsedRange,
+    int RowCount,
+    int ColumnCount);
+
+/// <summary>
+/// A defined name in the workbook. Scope is either "workbook" or the name of
+/// the worksheet that owns the name.
+/// </summary>
+public record SpreadsheetNamedRange(
+    string Name,
+    string RefersTo,
+    string Scope);
+
+/// <summary>
+/// Workbook overview returned by ISpreadsheetReader.GetInfo. Lists every sheet
+/// with its used range and dimensions, plus any defined named ranges.
+/// </summary>
+public record SpreadsheetWorkbookInfo(
+    IReadOnlyList<SpreadsheetSheetInfo> Sheets,
+    IReadOnlyList<SpreadsheetNamedRange> NamedRanges);
+
+/// <summary>
+/// Result of ISpreadsheetReader.ExportCsv. Csv is the RFC 4180 encoded text
+/// and is empty when the requested range is empty. RowCount and ColumnCount
+/// are the dimensions of the source range so callers can report a summary
+/// without re-parsing the CSV (which would mis-count rows that contain
+/// embedded line breaks).
+/// </summary>
+public record SpreadsheetExportCsvResult(string Csv, int RowCount, int ColumnCount);
+
+/// <summary>
+/// Holds the sheet-qualified range address and the per-cell format specs
+/// returned by ISpreadsheetReader.ReadFormat.
+/// </summary>
+public record SpreadsheetReadFormatResult(
     string Range,
     List<List<SpreadsheetFormatSpec>> Rows);
 
@@ -38,9 +123,9 @@ public interface ISpreadsheetReader
     Result<SpreadsheetExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range);
 
     /// <summary>
-    /// Reads cell styles from a sheet as SpreadsheetFormatSpec objects in the
-    /// same shape accepted by spreadsheet_format_ranges. When range is null the
-    /// sheet's used range is read. An empty sheet returns Rows = [].
+    /// Reads cell formatting from a sheet as SpreadsheetFormatSpec objects in
+    /// the same shape accepted by spreadsheet_format_ranges. When range is null
+    /// the sheet's used range is read. An empty sheet returns Rows = [].
     /// </summary>
-    Result<SpreadsheetReadStylesResult> ReadStyles(string workbookPath, string sheetName, string? range);
+    Result<SpreadsheetReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range);
 }

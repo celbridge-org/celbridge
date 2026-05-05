@@ -1,5 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Tools;
+using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -329,7 +329,7 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
             }
             else
             {
-                var colorResult = SpreadsheetStyleConverter.ParseColor(format.BackgroundColor);
+                var colorResult = SpreadsheetFormatConverter.ParseColor(format.BackgroundColor);
                 if (colorResult.IsFailure)
                 {
                     return colorResult;
@@ -350,7 +350,7 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
 
         if (format.HorizontalAlignment is not null)
         {
-            var result = SpreadsheetStyleConverter.ParseHorizontalAlignment(format.HorizontalAlignment);
+            var result = SpreadsheetFormatConverter.ParseHorizontalAlignment(format.HorizontalAlignment);
             if (result.IsFailure)
             {
                 return result;
@@ -360,7 +360,7 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
 
         if (format.VerticalAlignment is not null)
         {
-            var result = SpreadsheetStyleConverter.ParseVerticalAlignment(format.VerticalAlignment);
+            var result = SpreadsheetFormatConverter.ParseVerticalAlignment(format.VerticalAlignment);
             if (result.IsFailure)
             {
                 return result;
@@ -440,7 +440,7 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
             }
             else
             {
-                var colorResult = SpreadsheetStyleConverter.ParseColor(textFormat.ForegroundColor);
+                var colorResult = SpreadsheetFormatConverter.ParseColor(textFormat.ForegroundColor);
                 if (colorResult.IsFailure)
                 {
                     return colorResult;
@@ -498,7 +498,7 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
         XLBorderStyleValues? borderStyle = null;
         if (side.Style is not null)
         {
-            var styleResult = SpreadsheetStyleConverter.ParseBorderStyle(side.Style);
+            var styleResult = SpreadsheetFormatConverter.ParseBorderStyle(side.Style);
             if (styleResult.IsFailure)
             {
                 return styleResult;
@@ -516,7 +516,7 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
             }
             else
             {
-                var colorResult = SpreadsheetStyleConverter.ParseColor(side.Color);
+                var colorResult = SpreadsheetFormatConverter.ParseColor(side.Color);
                 if (colorResult.IsFailure)
                 {
                     return colorResult;
