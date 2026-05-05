@@ -18,9 +18,8 @@ public partial class SpreadsheetTools
     /// cell auto-scrolls the viewport to it on open, so for "show this content" use a selection
     /// alone. topLeftCell is for cases where you want to control surrounding context (e.g. select
     /// row 50 but show rows 30-60). Frozen panes may clamp topLeftCell.
-    /// If the workbook is currently open in the spreadsheet editor, the document tab is closed
-    /// and reopened to apply the change, since the editor only reads view state from disk on
-    /// a fresh open. The tab will briefly disappear and reappear in the documents panel.
+    /// If the workbook is open in the spreadsheet editor, the new view state is applied via
+    /// the editor's normal external-reload path; the document tab does not close.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
     /// <param name="sheet">Name of the worksheet to make active. Required.</param>

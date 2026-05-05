@@ -20,6 +20,8 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
 
     public override async Task<Result> ExecuteAsync()
     {
+        await Task.CompletedTask;
+
         var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
@@ -50,47 +52,13 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
             return Result.Fail($"TopLeftCell must be a single cell address, was '{TopLeftCell}'.");
         }
 
-        // The spreadsheet editor reads view state from the .xlsx only on a fresh open.
-        // While the document is open it caches view state in memory and ignores file-level
-        // changes from external reloads, so writing new view state to disk has no visible
-        // effect. We close the document tab before applying the change and reopen it
-        // afterwards so the editor reads the new view state from disk.
-        var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
-        var documentsPanel = _workspaceWrapper.WorkspaceService.DocumentsPanel;
-
-        var openDocument = documentsService.GetOpenDocuments()
-            .FirstOrDefault(d => d.FileResource == FileResource);
-        var wasActive = openDocument is not null
-            && documentsService.ActiveDocument == FileResource;
-
-        if (openDocument is not null)
-        {
-            var closeResult = await documentsPanel.CloseDocument(FileResource, forceClose: true);
-            if (closeResult.IsFailure)
-            {
-                return Result.Fail($"Failed to close document for view-state update: {closeResult.FirstErrorMessage}");
-            }
-        }
-
-        var saveResult = ApplyViewStateToWorkbook(workbookPath);
-
-        if (openDocument is not null)
-        {
-            // Reopen even on save failure so the user does not lose the document tab.
-            var reopenOptions = new OpenDocumentOptions(
-                Address: openDocument.Address,
-                Activate: wasActive,
-                EditorId: openDocument.EditorId);
-
-            var reopenResult = await documentsPanel.OpenDocument(FileResource, reopenOptions);
-            if (reopenResult.IsFailure
-                && saveResult.IsSuccess)
-            {
-                return Result.Fail($"View state was saved but the document failed to reopen: {reopenResult.FirstErrorMessage}");
-            }
-        }
-
-        return saveResult;
+        // Write view state to disk and let the file-watcher reload path apply it
+        // to any open editor. The spreadsheet editor auto-saves selection and
+        // active sheet on every change, so its in-memory state and disk stay in
+        // sync; on reload, the imported workbook reflects whatever this command
+        // just wrote, and the JS-side restoreViewState yields to disk when the
+        // active sheet or selection has changed.
+        return ApplyViewStateToWorkbook(workbookPath);
     }
 
     private Result ApplyViewStateToWorkbook(string workbookPath)
@@ -105,7 +73,17 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
             }
             var worksheet = workbook.Worksheet(Sheet);
 
+            // SetTabActive only updates the workbook-level active-tab pointer;
+            // TabSelected is a per-sheet flag for the multi-tab selection group
+            // (the Shift/Ctrl-click behaviour). Clear it on every sheet so the
+            // result is a single selected tab rather than the target plus
+            // whatever was previously selected.
+            foreach (var otherSheet in workbook.Worksheets)
+            {
+                otherSheet.TabSelected = false;
+            }
             worksheet.SetTabActive();
+            worksheet.TabSelected = true;
 
             if (!string.IsNullOrEmpty(Range))
             {

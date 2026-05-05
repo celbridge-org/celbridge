@@ -1457,6 +1457,31 @@ public class SpreadsheetCommandTests
     }
 
     [Test]
+    public async Task SetActiveView_ClearsTabSelectionOnOtherSheets()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var first = workbook.Worksheets.Add("First");
+            workbook.Worksheets.Add("Summary");
+            first.TabSelected = true;
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Summary"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Summary").TabSelected.Should().BeTrue();
+        workbook.Worksheet("First").TabSelected.Should().BeFalse();
+    }
+
+    [Test]
     public async Task SetActiveView_AppliesRangeSelectionAndActiveCell()
     {
         CreateWorkbook(workbook =>

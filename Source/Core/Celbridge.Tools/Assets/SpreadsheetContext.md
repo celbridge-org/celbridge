@@ -358,17 +358,15 @@ context independently of the selection.
 columns, the scroll origin sits below or to the right of the freeze, so a
 `topLeftCell` address inside the frozen band is silently clamped.
 
-### Document tab is closed and reopened
+### Behaviour while the workbook is open
 
-The spreadsheet editor reads view state from the .xlsx file only on a fresh
-open. While the document is open it caches view state in memory and ignores
-file-level changes from external reloads, so writing new view state to disk
-would have no visible effect. To work around this, `set_active_view` closes
-the document tab before applying the change and reopens it afterwards when the
-workbook is currently open in the editor. The tab will briefly disappear and
-reappear in the documents panel, and any in-editor undo history for the
-spreadsheet is cleared. If the workbook is not open, no close/reopen happens
-and the new view state is honoured the next time the user opens it.
+If the workbook is open in the spreadsheet editor when this tool runs, the
+new view state is applied through the editor's normal external-reload path
+— the document tab stays open and the change is visible immediately. The
+editor's in-memory undo history is cleared by the reload (the workbook is
+re-imported from disk), but the document tab does not close. If the
+workbook is not open, the new view state is honoured the next time the user
+opens it.
 
 ## Reading formatting
 
