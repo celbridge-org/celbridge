@@ -248,7 +248,15 @@ public class ResourceRegistry : IResourceRegistry
     {
         try
         {
-            SynchronizeFolder(_rootFolder, ProjectFolderPath);
+            // Build a fresh tree off to the side, then atomically swap _rootFolder.
+            // Readers on other threads see either the old or the new tree, never a torn
+            // intermediate state. Once a tree has been observed it is immutable, so
+            // iterators on Children remain valid even if a swap happens during a read.
+            // Volatile.Write adds a release fence so the tree's construction writes are
+            // visible before the new reference (a no-op on x64, required on ARM64).
+            var newRoot = new FolderResource(string.Empty, null);
+            SynchronizeFolder(newRoot, ProjectFolderPath);
+            Volatile.Write(ref _rootFolder, newRoot);
 
             _pathValidator.InvalidateCache();
 
