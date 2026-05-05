@@ -1576,6 +1576,15 @@ class TestSpreadsheet(unittest.TestCase):
         self.assertEqual(sheet["position"], 1)
         self.assertEqual(sheet["rowCount"], 0)
         self.assertIsNone(sheet.get("usedRange"))
+        self.assertEqual(sheet["frozenRows"], 0)
+        self.assertEqual(sheet["frozenColumns"], 0)
+
+    def test_get_info_reports_frozen_panes(self):
+        spreadsheet.freeze_panes(self._WORKBOOK, "Sheet1", rows=2, columns=1)
+        info = spreadsheet.get_info(self._WORKBOOK)
+        sheet = info["sheets"][0]
+        self.assertEqual(sheet["frozenRows"], 2)
+        self.assertEqual(sheet["frozenColumns"], 1)
 
     # -- spreadsheet_read_sheet --
 
@@ -1826,6 +1835,37 @@ class TestSpreadsheet(unittest.TestCase):
         result = spreadsheet.set_active_view(self._WORKBOOK, "Summary", range="A1")
         self.assertEqual(result["sheet"], "Summary")
         self.assertEqual(result["range"], "A1")
+
+    # -- spreadsheet_get_active_view --
+
+    def test_get_active_view_round_trips_through_set_active_view(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Summary"])
+        spreadsheet.set_active_view(
+            self._WORKBOOK,
+            "Summary",
+            range="B2:D4",
+            active_cell="C3",
+            top_left_cell="A1",
+        )
+
+        view = spreadsheet.get_active_view(self._WORKBOOK)
+        self.assertEqual(view["sheet"], "Summary")
+        self.assertEqual(view["range"], "B2:D4")
+        self.assertEqual(view["activeCell"], "C3")
+        self.assertEqual(view["topLeftCell"], "A1")
+
+        # Round-trip the get response back through set_active_view; the workbook
+        # state should still match.
+        spreadsheet.set_active_view(
+            self._WORKBOOK,
+            view["sheet"],
+            range=view["range"],
+            active_cell=view["activeCell"],
+            top_left_cell=view["topLeftCell"],
+        )
+
+        view_again = spreadsheet.get_active_view(self._WORKBOOK)
+        self.assertEqual(view_again, view)
 
 
 # ---------------------------------------------------------------------------

@@ -409,6 +409,72 @@ public class SpreadsheetReaderTests
         result.FirstErrorMessage.Should().Contain("Missing");
     }
 
+    [Test]
+    public void GetInfo_ReturnsFrozenPaneCounts()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.SheetView.FreezeRows(2);
+            sheet.SheetView.FreezeColumns(3);
+            workbook.Worksheets.Add("Plain");
+        });
+
+        var result = _reader.GetInfo(workbookPath);
+
+        result.IsSuccess.Should().BeTrue();
+        var sheets = result.Value.Sheets;
+        sheets[0].FrozenRows.Should().Be(2);
+        sheets[0].FrozenColumns.Should().Be(3);
+        sheets[1].FrozenRows.Should().Be(0);
+        sheets[1].FrozenColumns.Should().Be(0);
+    }
+
+    [Test]
+    public void GetActiveView_ReturnsActiveSheetSelectionAndScroll()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("First");
+            var data = workbook.Worksheets.Add("Data");
+            data.SetTabActive();
+            data.TabSelected = true;
+            data.ActiveCell = data.Cell("C3");
+            data.SelectedRanges.RemoveAll(_ => true);
+            data.SelectedRanges.Add(data.Range("B2:D5"));
+            data.SheetView.TopLeftCellAddress = data.Cell("A10").Address;
+        });
+
+        var result = _reader.GetActiveView(workbookPath);
+
+        result.IsSuccess.Should().BeTrue();
+        var view = result.Value;
+        view.Sheet.Should().Be("Data");
+        view.Range.Should().Be("B2:D5");
+        view.ActiveCell.Should().Be("C3");
+        view.TopLeftCell.Should().Be("A10");
+    }
+
+    [Test]
+    public void GetActiveView_SingleCellSelection_CollapsesRange()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Sheet1");
+            sheet.SetTabActive();
+            sheet.TabSelected = true;
+            sheet.ActiveCell = sheet.Cell("D5");
+            sheet.SelectedRanges.RemoveAll(_ => true);
+            sheet.SelectedRanges.Add(sheet.Range("D5"));
+        });
+
+        var result = _reader.GetActiveView(workbookPath);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Range.Should().Be("D5");
+        result.Value.ActiveCell.Should().Be("D5");
+    }
+
     private string CreateWorkbook(Action<XLWorkbook> populate)
     {
         var workbookPath = Path.Combine(_tempFolder, $"{Guid.NewGuid():N}.xlsx");

@@ -1594,6 +1594,102 @@ public class SpreadsheetCommandTests
     }
 
     [Test]
+    public async Task SetActiveView_ActiveCellInsideRange_AppliesAnchorCell()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Range = "B2:D4",
+            ActiveCell = "C3"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Data");
+        sheet.ActiveCell.Should().NotBeNull();
+        sheet.ActiveCell!.Address.ToStringRelative().Should().Be("C3");
+        sheet.SelectedRanges.Should().Contain(r => r.RangeAddress.ToStringRelative() == "B2:D4");
+    }
+
+    [Test]
+    public async Task SetActiveView_ActiveCellOnly_BecomesSingleCellSelection()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            ActiveCell = "F8"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Data");
+        sheet.ActiveCell.Should().NotBeNull();
+        sheet.ActiveCell!.Address.ToStringRelative().Should().Be("F8");
+        sheet.SelectedRanges.Should().Contain(r => r.RangeAddress.ToStringRelative() == "F8:F8");
+    }
+
+    [Test]
+    public async Task SetActiveView_ActiveCellOutsideRange_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Range = "B2:D4",
+            ActiveCell = "Z99"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("inside Range");
+    }
+
+    [Test]
+    public async Task SetActiveView_ActiveCellAsRange_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            ActiveCell = "B2:C3"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("single cell");
+    }
+
+    [Test]
     public async Task ImportCsv_RowColumnCountMismatch_ReturnsFailure()
     {
         CreateWorkbook(workbook =>

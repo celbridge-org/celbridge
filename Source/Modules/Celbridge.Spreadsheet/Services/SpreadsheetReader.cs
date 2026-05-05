@@ -38,7 +38,9 @@ public class SpreadsheetReader : ISpreadsheetReader
                     worksheet.Position,
                     usedRangeAddress,
                     rowCount,
-                    columnCount));
+                    columnCount,
+                    worksheet.SheetView.SplitRow,
+                    worksheet.SheetView.SplitColumn));
             }
 
             var namedRanges = new List<SpreadsheetNamedRange>();
@@ -160,6 +162,83 @@ public class SpreadsheetReader : ISpreadsheetReader
         catch (Exception ex)
         {
             return Result<SpreadsheetExportCsvResult>.Fail($"Failed to export sheet '{sheetName}' as CSV from '{workbookPath}'")
+                .WithException(ex);
+        }
+    }
+
+    public Result<SpreadsheetActiveView> GetActiveView(string workbookPath)
+    {
+        try
+        {
+            using var workbook = new XLWorkbook(workbookPath);
+
+            IXLWorksheet? activeWorksheet = null;
+            foreach (var worksheet in workbook.Worksheets)
+            {
+                if (worksheet.TabActive)
+                {
+                    activeWorksheet = worksheet;
+                    break;
+                }
+            }
+            if (activeWorksheet is null)
+            {
+                activeWorksheet = workbook.Worksheets.FirstOrDefault();
+            }
+            if (activeWorksheet is null)
+            {
+                return Result<SpreadsheetActiveView>.Fail($"Workbook '{workbookPath}' has no worksheets.");
+            }
+
+            string rangeString;
+            var selectedRanges = activeWorksheet.SelectedRanges;
+            if (selectedRanges.Count > 0)
+            {
+                var firstSelected = selectedRanges.First();
+                rangeString = FormatA1RangeOrCell(firstSelected.RangeAddress);
+            }
+            else
+            {
+                rangeString = "A1";
+            }
+
+            string activeCellString;
+            var activeCell = activeWorksheet.ActiveCell;
+            if (activeCell is not null)
+            {
+                activeCellString = activeCell.Address.ToStringRelative();
+            }
+            else if (selectedRanges.Count > 0)
+            {
+                activeCellString = selectedRanges.First().RangeAddress.FirstAddress.ToStringRelative();
+            }
+            else
+            {
+                activeCellString = "A1";
+            }
+
+            string topLeftCellString;
+            var topLeftAddress = activeWorksheet.SheetView.TopLeftCellAddress;
+            if (topLeftAddress is not null)
+            {
+                topLeftCellString = topLeftAddress.ToStringRelative();
+            }
+            else
+            {
+                topLeftCellString = "A1";
+            }
+
+            var view = new SpreadsheetActiveView(
+                activeWorksheet.Name,
+                rangeString,
+                activeCellString,
+                topLeftCellString);
+
+            return Result<SpreadsheetActiveView>.Ok(view);
+        }
+        catch (Exception ex)
+        {
+            return Result<SpreadsheetActiveView>.Fail($"Failed to read active view from '{workbookPath}'")
                 .WithException(ex);
         }
     }
@@ -402,6 +481,20 @@ public class SpreadsheetReader : ISpreadsheetReader
         var firstRow = rangeAddress.FirstAddress.RowNumber;
         var lastColumn = XLHelper.GetColumnLetterFromNumber(rangeAddress.LastAddress.ColumnNumber, false);
         var lastRow = rangeAddress.LastAddress.RowNumber;
+        return $"{firstColumn}{firstRow}:{lastColumn}{lastRow}";
+    }
+
+    private static string FormatA1RangeOrCell(IXLRangeAddress rangeAddress)
+    {
+        var firstColumn = XLHelper.GetColumnLetterFromNumber(rangeAddress.FirstAddress.ColumnNumber, false);
+        var firstRow = rangeAddress.FirstAddress.RowNumber;
+        var lastColumn = XLHelper.GetColumnLetterFromNumber(rangeAddress.LastAddress.ColumnNumber, false);
+        var lastRow = rangeAddress.LastAddress.RowNumber;
+        if (firstColumn == lastColumn
+            && firstRow == lastRow)
+        {
+            return $"{firstColumn}{firstRow}";
+        }
         return $"{firstColumn}{firstRow}:{lastColumn}{lastRow}";
     }
 }

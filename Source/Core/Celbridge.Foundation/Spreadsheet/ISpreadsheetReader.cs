@@ -51,13 +51,17 @@ public record SpreadsheetReadResult(
 /// Summary metadata for a single worksheet inside an .xlsx workbook.
 /// Position is the 1-based tab position. UsedRange is the A1-notation range
 /// that bounds all non-empty cells, or null if the sheet has no used range.
+/// FrozenRows and FrozenColumns are the frozen-pane counts (zero when the
+/// sheet has no frozen rows or columns on that axis).
 /// </summary>
 public record SpreadsheetSheetInfo(
     string Name,
     int Position,
     string? UsedRange,
     int RowCount,
-    int ColumnCount);
+    int ColumnCount,
+    int FrozenRows,
+    int FrozenColumns);
 
 /// <summary>
 /// A defined name in the workbook. Scope is either "workbook" or the name of
@@ -94,6 +98,20 @@ public record SpreadsheetReadFormatResult(
     List<List<SpreadsheetFormatSpec>> Rows);
 
 /// <summary>
+/// Workbook view-state snapshot returned by ISpreadsheetReader.GetActiveView.
+/// Sheet is the active worksheet name. Range is the selection on that sheet
+/// in A1 notation (e.g. "A1" for a single cell, "B2:D4" for a multi-cell
+/// selection). ActiveCell is the anchor cell within the selection (always
+/// present, equal to Range when Range is a single cell). TopLeftCell is the
+/// scroll anchor, the cell pinned at the upper-left of the visible viewport.
+/// </summary>
+public record SpreadsheetActiveView(
+    string Sheet,
+    string Range,
+    string ActiveCell,
+    string TopLeftCell);
+
+/// <summary>
 /// Reads .xlsx workbooks from disk for the spreadsheet_* MCP tools. The reader
 /// is stateless and opens the workbook fresh on every call. Callers pass the
 /// absolute filesystem path resolved from a resource key. All methods report
@@ -128,4 +146,12 @@ public interface ISpreadsheetReader
     /// the sheet's used range is read. An empty sheet returns Rows = [].
     /// </summary>
     Result<SpreadsheetReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range);
+
+    /// <summary>
+    /// Returns the workbook's persisted view state: active sheet, selection on
+    /// that sheet, active cell within the selection, and scroll anchor. Mirrors
+    /// the parameters accepted by ISpreadsheetSetActiveViewCommand so callers
+    /// can round-trip the view state.
+    /// </summary>
+    Result<SpreadsheetActiveView> GetActiveView(string workbookPath);
 }

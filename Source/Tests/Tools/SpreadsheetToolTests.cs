@@ -72,7 +72,7 @@ public class SpreadsheetToolTests
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         var info = new SpreadsheetWorkbookInfo(
-            new[] { new SpreadsheetSheetInfo("Q1", 1, "A1:B2", 2, 2) },
+            new[] { new SpreadsheetSheetInfo("Q1", 1, "A1:B2", 2, 2, 0, 0) },
             Array.Empty<SpreadsheetNamedRange>());
         _reader.GetInfo(workbookPath).Returns(Result<SpreadsheetWorkbookInfo>.Ok(info));
 
@@ -542,14 +542,21 @@ public class SpreadsheetToolTests
             });
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(await tools.SetActiveView("data/sales.xlsx", "Summary", "B50", "A30"));
+        var root = ParseResult(await tools.SetActiveView(
+            "data/sales.xlsx",
+            "Summary",
+            range: "B50:F50",
+            activeCell: "D50",
+            topLeftCell: "A30"));
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.Sheet.Should().Be("Summary");
-        capturedCommand.Range.Should().Be("B50");
+        capturedCommand.Range.Should().Be("B50:F50");
+        capturedCommand.ActiveCell.Should().Be("D50");
         capturedCommand.TopLeftCell.Should().Be("A30");
         root.GetProperty("sheet").GetString().Should().Be("Summary");
-        root.GetProperty("range").GetString().Should().Be("B50");
+        root.GetProperty("range").GetString().Should().Be("B50:F50");
+        root.GetProperty("activeCell").GetString().Should().Be("D50");
         root.GetProperty("topLeftCell").GetString().Should().Be("A30");
     }
 

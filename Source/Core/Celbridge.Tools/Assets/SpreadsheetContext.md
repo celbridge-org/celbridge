@@ -46,8 +46,8 @@ computed value.
 ## Reading sheets
 
 `spreadsheet_get_info` is the cheap first step: it returns sheet names, used
-ranges, row and column counts, and any defined names. Use it before a large
-read to avoid pulling in more than you need.
+ranges, row and column counts, frozen-pane counts, and any defined names.
+Use it before a large read to avoid pulling in more than you need.
 
 `spreadsheet_read_sheet` returns cell values from a sheet. Default is the
 sheet's used range. Set `range` to read a sub-region (`"B2:D10"`). Set
@@ -318,13 +318,28 @@ spreadsheet_freeze_panes(resource: "data/sales.xlsx", sheet: "Q1", rows: 0, colu
 `rows` and `columns` default to 0. Either may be omitted to leave that axis
 unfrozen.
 
-## Setting the active view
+## Reading and setting the active view
+
+`spreadsheet_get_active_view` returns the workbook's current view state:
+the active sheet, the selection on that sheet, the active anchor cell within
+the selection, and the scroll anchor. Use this when you need to know what
+the user is currently looking at — for example, before applying an edit
+relative to the user's cursor.
+
+```
+spreadsheet_get_active_view(resource: "data/sales.xlsx")
+# -> {sheet: "Q1", range: "B5:D8", activeCell: "B5", topLeftCell: "A1"}
+```
 
 `spreadsheet_set_active_view` controls what a user sees when they open the
-workbook: which sheet is active, the cell selection on that sheet, and the
-scroll position. Useful at the end of an authoring workflow ("leave the user
-looking at the Summary sheet with cursor at A1") or when surfacing a result
-for review ("select the row I just changed").
+workbook: which sheet is active, the cell selection on that sheet, the
+active cell within the selection, and the scroll position. Useful at the end
+of an authoring workflow ("leave the user looking at the Summary sheet with
+cursor at A1") or when surfacing a result for review ("select the row I
+just changed").
+
+The two tools share the same field names, so the get response can be passed
+straight back to set to round-trip the view state.
 
 ```
 # Make Summary the active sheet, cursor on A1
@@ -339,6 +354,13 @@ spreadsheet_set_active_view(
   sheet: "Q1",
   range: "B50:F50")
 
+# Select B50:F50 with the active anchor cell on D50 (white cell mid-range)
+spreadsheet_set_active_view(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "B50:F50",
+  activeCell: "D50")
+
 # Show rows 30-60 with row 50 selected (scroll explicitly)
 spreadsheet_set_active_view(
   resource: "data/sales.xlsx",
@@ -347,12 +369,18 @@ spreadsheet_set_active_view(
   topLeftCell: "A30")
 ```
 
-The `sheet` parameter is required and is always made active. `range` and
-`topLeftCell` are optional. An empty value leaves that aspect of the sheet's
-view unchanged. For most "find this content" use cases, setting `range`
-alone is enough — Excel auto-scrolls the viewport to make the active cell
-visible on open. Use `topLeftCell` when you want to control the surrounding
-context independently of the selection.
+The `sheet` parameter is required and is always made active. `range`,
+`activeCell`, and `topLeftCell` are optional. An empty value leaves that
+aspect of the sheet's view unchanged. For most "find this content" use
+cases, setting `range` alone is enough — Excel auto-scrolls the viewport
+to make the active cell visible on open. Use `topLeftCell` when you want
+to control the surrounding context independently of the selection.
+
+`activeCell` is the white anchor cell that Excel highlights inside a
+multi-cell selection. When omitted it defaults to the first (top-left) cell
+of `range`. When set with `range` empty, the selection becomes that single
+cell. When set with `range` non-empty, `activeCell` must lie inside `range`
+or the call is rejected.
 
 `topLeftCell` interacts with frozen panes: if the sheet has frozen rows or
 columns, the scroll origin sits below or to the right of the freeze, so a

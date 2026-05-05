@@ -21,11 +21,20 @@ public interface ISpreadsheetSetActiveViewCommand : IExecutableCommand
     string Sheet { get; set; }
 
     /// <summary>
-    /// A1-notation cell or range to select on the target sheet. The active
-    /// cell becomes its top-left. Empty string leaves the sheet's selection
-    /// unchanged.
+    /// A1-notation cell or range to select on the target sheet. Empty string
+    /// leaves the sheet's selection unchanged. When ActiveCell is also empty,
+    /// the active cell defaults to the first cell of this range.
     /// </summary>
     string Range { get; set; }
+
+    /// <summary>
+    /// A1-notation single cell that becomes the active anchor cell within the
+    /// selection. Empty string defers to Range (active cell becomes Range's
+    /// first cell). When this is set and Range is empty, the selection becomes
+    /// just this single cell. When both are set, ActiveCell must lie inside
+    /// Range.
+    /// </summary>
+    string ActiveCell { get; set; }
 
     /// <summary>
     /// A1-notation single cell to anchor as the upper-left of the visible
