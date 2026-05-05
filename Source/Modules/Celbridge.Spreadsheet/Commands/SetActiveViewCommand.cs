@@ -11,6 +11,7 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
     public ResourceKey FileResource { get; set; }
     public string Sheet { get; set; } = string.Empty;
     public string Range { get; set; } = string.Empty;
+    public IReadOnlyList<string> Ranges { get; set; } = Array.Empty<string>();
     public string ActiveCell { get; set; } = string.Empty;
     public string TopLeftCell { get; set; } = string.Empty;
 
@@ -39,6 +40,19 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
             && Range.Contains('!'))
         {
             return Result.Fail("Range must not include a sheet qualifier; use the sheet parameter instead.");
+        }
+
+        for (int rangeIndex = 0; rangeIndex < Ranges.Count; rangeIndex++)
+        {
+            var rangeEntry = Ranges[rangeIndex];
+            if (string.IsNullOrEmpty(rangeEntry))
+            {
+                return Result.Fail($"Ranges[{rangeIndex}] is empty.");
+            }
+            if (rangeEntry.Contains('!'))
+            {
+                return Result.Fail($"Ranges[{rangeIndex}] must not include a sheet qualifier; use the sheet parameter instead.");
+            }
         }
 
         if (!string.IsNullOrEmpty(ActiveCell)
@@ -98,27 +112,20 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
             worksheet.SetTabActive();
             worksheet.TabSelected = true;
 
+            var hasRanges = Ranges.Count > 0;
             var hasRange = !string.IsNullOrEmpty(Range);
             var hasActiveCell = !string.IsNullOrEmpty(ActiveCell);
 
-            if (hasRange
+            if (hasRanges
+                || hasRange
                 || hasActiveCell)
             {
-                // ActiveCell-only inputs collapse to a single-cell selection.
-                // Range-only inputs default the active cell to the range's
-                // first cell. When both are provided the active cell must
-                // lie inside the range.
-                var selectionRangeAddress = hasRange ? Range : ActiveCell;
-                IXLRange selectionRange;
-                try
+                var selectionResult = ResolveSelectionRanges(worksheet, hasRanges, hasRange, hasActiveCell);
+                if (selectionResult.IsFailure)
                 {
-                    selectionRange = worksheet.Range(selectionRangeAddress);
+                    return Result.Fail(selectionResult.FirstErrorMessage);
                 }
-                catch (Exception ex)
-                {
-                    var label = hasRange ? "range" : "ActiveCell";
-                    return Result.Fail($"Invalid {label}: '{selectionRangeAddress}'.").WithException(ex);
-                }
+                var selectionRanges = selectionResult.Value;
 
                 IXLCell anchorCell;
                 if (hasActiveCell)
@@ -132,20 +139,24 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
                         return Result.Fail($"Invalid ActiveCell: '{ActiveCell}'.").WithException(ex);
                     }
 
-                    if (hasRange
-                        && !RangeContainsAddress(selectionRange.RangeAddress, anchorCell.Address))
+                    if ((hasRanges || hasRange)
+                        && !AddressIsInsideAnyRange(selectionRanges, anchorCell.Address))
                     {
-                        return Result.Fail($"ActiveCell '{ActiveCell}' must lie inside Range '{Range}'.");
+                        var rangeLabel = hasRanges ? string.Join(", ", Ranges) : Range;
+                        return Result.Fail($"ActiveCell '{ActiveCell}' must lie inside one of the selection ranges ({rangeLabel}).");
                     }
                 }
                 else
                 {
-                    anchorCell = selectionRange.FirstCell();
+                    anchorCell = selectionRanges[0].FirstCell();
                 }
 
                 worksheet.ActiveCell = anchorCell;
                 worksheet.SelectedRanges.RemoveAll(_ => true);
-                worksheet.SelectedRanges.Add(selectionRange);
+                foreach (var selectionRange in selectionRanges)
+                {
+                    worksheet.SelectedRanges.Add(selectionRange);
+                }
             }
 
             if (!string.IsNullOrEmpty(TopLeftCell))
@@ -171,6 +182,60 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
         {
             return Result.Fail($"Failed to set active view on '{FileResource}'").WithException(ex);
         }
+    }
+
+    private Result<List<IXLRange>> ResolveSelectionRanges(IXLWorksheet worksheet, bool hasRanges, bool hasRange, bool hasActiveCell)
+    {
+        var resolved = new List<IXLRange>();
+
+        if (hasRanges)
+        {
+            for (int rangeIndex = 0; rangeIndex < Ranges.Count; rangeIndex++)
+            {
+                var rangeEntry = Ranges[rangeIndex];
+                IXLRange xlRange;
+                try
+                {
+                    xlRange = worksheet.Range(rangeEntry);
+                }
+                catch (Exception ex)
+                {
+                    return Result<List<IXLRange>>.Fail($"Invalid range Ranges[{rangeIndex}]: '{rangeEntry}'.").WithException(ex);
+                }
+                resolved.Add(xlRange);
+            }
+            return resolved;
+        }
+
+        // Single-range path. ActiveCell-only inputs collapse to a single-cell
+        // selection; range-only inputs default the active cell to the range's
+        // first cell.
+        var selectionRangeAddress = hasRange ? Range : ActiveCell;
+        IXLRange selectionRange;
+        try
+        {
+            selectionRange = worksheet.Range(selectionRangeAddress);
+        }
+        catch (Exception ex)
+        {
+            var label = hasRange ? "range" : "ActiveCell";
+            return Result<List<IXLRange>>.Fail($"Invalid {label}: '{selectionRangeAddress}'.").WithException(ex);
+        }
+
+        resolved.Add(selectionRange);
+        return resolved;
+    }
+
+    private static bool AddressIsInsideAnyRange(List<IXLRange> ranges, IXLAddress cellAddress)
+    {
+        foreach (var range in ranges)
+        {
+            if (RangeContainsAddress(range.RangeAddress, cellAddress))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool RangeContainsAddress(IXLRangeAddress rangeAddress, IXLAddress cellAddress)

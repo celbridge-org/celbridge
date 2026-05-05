@@ -472,7 +472,53 @@ public class SpreadsheetReaderTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Range.Should().Be("D5");
+        result.Value.Ranges.Should().Equal("D5");
         result.Value.ActiveCell.Should().Be("D5");
+    }
+
+    [Test]
+    public void GetActiveView_MultiRangeSelection_ReturnsAllRanges()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Sheet1");
+            sheet.SetTabActive();
+            sheet.TabSelected = true;
+            sheet.ActiveCell = sheet.Cell("A7");
+            sheet.SelectedRanges.RemoveAll(_ => true);
+            sheet.SelectedRanges.Add(sheet.Range("A7:B8"));
+            sheet.SelectedRanges.Add(sheet.Range("A12:B13"));
+        });
+
+        var result = _reader.GetActiveView(workbookPath);
+
+        result.IsSuccess.Should().BeTrue();
+        var view = result.Value;
+        view.Range.Should().Be("A7:B8");
+        view.Ranges.Should().Equal("A7:B8", "A12:B13");
+        view.ActiveCell.Should().Be("A7");
+    }
+
+    [Test]
+    public void GetActiveView_MultiCellSelection_FiltersDegenerateActiveCellRange()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Sheet1");
+            sheet.SetTabActive();
+            sheet.TabSelected = true;
+            sheet.ActiveCell = sheet.Cell("C3");
+            sheet.SelectedRanges.RemoveAll(_ => true);
+            sheet.SelectedRanges.Add(sheet.Range("B2:D5"));
+        });
+
+        var result = _reader.GetActiveView(workbookPath);
+
+        result.IsSuccess.Should().BeTrue();
+        var view = result.Value;
+        view.Range.Should().Be("B2:D5");
+        view.Ranges.Should().Equal("B2:D5");
+        view.ActiveCell.Should().Be("C3");
     }
 
     [Test]

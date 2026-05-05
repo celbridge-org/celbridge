@@ -1,6 +1,7 @@
 using Celbridge.Resources;
 using Celbridge.Spreadsheet;
 using Celbridge.Spreadsheet.Commands;
+using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -1701,7 +1702,155 @@ public class SpreadsheetCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("inside Range");
+        result.FirstErrorMessage.Should().Contain("must lie inside");
+    }
+
+    [Test]
+    public async Task SetActiveView_AppliesMultiRangeSelection()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Ranges = new[] { "A7:B8", "A12:B13" }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Data");
+        var sheetActiveCell = sheet.ActiveCell;
+        sheetActiveCell.Should().NotBeNull();
+        sheetActiveCell!.Address.ToStringRelative().Should().Be("A7");
+    }
+
+    [Test]
+    public async Task SetActiveView_MultiRange_RoundTripsThroughGet()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var setCommand = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Ranges = new[] { "A7:B8", "A12:B13" },
+            ActiveCell = "A7"
+        };
+
+        var setResult = await setCommand.ExecuteAsync();
+        setResult.IsSuccess.Should().BeTrue();
+
+        var reader = new SpreadsheetReader();
+        var viewResult = reader.GetActiveView(_workbookPath);
+        viewResult.IsSuccess.Should().BeTrue();
+        var view = viewResult.Value;
+        view.Range.Should().Be("A7:B8");
+        view.Ranges.Should().Equal("A7:B8", "A12:B13");
+        view.ActiveCell.Should().Be("A7");
+    }
+
+    [Test]
+    public async Task SetActiveView_RangesPreferredOverSingleRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Range = "Z99",
+            Ranges = new[] { "A1:B2", "D5:E6" }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        var reader = new SpreadsheetReader();
+        var viewResult = reader.GetActiveView(_workbookPath);
+        viewResult.Value.Ranges.Should().Equal("A1:B2", "D5:E6");
+    }
+
+    [Test]
+    public async Task SetActiveView_ActiveCellInsideSecondRange_Succeeds()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Ranges = new[] { "A1:B2", "D5:E6" },
+            ActiveCell = "D5"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var anchorCell = workbook.Worksheet("Data").ActiveCell;
+        anchorCell.Should().NotBeNull();
+        anchorCell!.Address.ToStringRelative().Should().Be("D5");
+    }
+
+    [Test]
+    public async Task SetActiveView_ActiveCellOutsideAllRanges_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Ranges = new[] { "A1:B2", "D5:E6" },
+            ActiveCell = "Z99"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("must lie inside");
+    }
+
+    [Test]
+    public async Task SetActiveView_RangesEntryWithSheetQualifier_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Data");
+        });
+
+        var command = new SetActiveViewCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Ranges = new[] { "A1:B2", "Data!D5:E6" }
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("sheet qualifier");
     }
 
     [Test]
@@ -2602,6 +2751,370 @@ public class SpreadsheetCommandTests
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.RowCount.Should().Be(3);
+    }
+
+    [Test]
+    public async Task DuplicateSheet_CopiesValuesAndFormatting()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Source");
+            sheet.Cell("A1").Value = "header";
+            sheet.Cell("A1").Style.Font.Bold = true;
+            sheet.Cell("A2").Value = 42;
+            sheet.Cell("B2").FormulaA1 = "A2*2";
+        });
+
+        var command = new DuplicateSheetCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            SourceSheet = "Source",
+            NewSheet = "Copy"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.NewSheet.Should().Be("Copy");
+        command.ResultValue.Position.Should().Be(2);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheets.Count.Should().Be(2);
+        var copied = workbook.Worksheet("Copy");
+        copied.Cell("A1").GetString().Should().Be("header");
+        copied.Cell("A1").Style.Font.Bold.Should().BeTrue();
+        copied.Cell("A2").GetDouble().Should().Be(42);
+        copied.Cell("B2").HasFormula.Should().BeTrue();
+        copied.Cell("B2").FormulaA1.Should().Be("A2*2");
+    }
+
+    [Test]
+    public async Task DuplicateSheet_AtSpecificPosition_PlacesSheetAtPosition()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("First");
+            workbook.Worksheets.Add("Second");
+            workbook.Worksheets.Add("Third");
+        });
+
+        var command = new DuplicateSheetCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            SourceSheet = "Third",
+            NewSheet = "ThirdCopy",
+            Position = 1
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.Position.Should().Be(1);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet(1).Name.Should().Be("ThirdCopy");
+        workbook.Worksheet(2).Name.Should().Be("First");
+    }
+
+    [Test]
+    public async Task DuplicateSheet_NameCollision_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Source");
+            workbook.Worksheets.Add("Existing");
+        });
+
+        var command = new DuplicateSheetCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            SourceSheet = "Source",
+            NewSheet = "Existing"
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("already exists");
+    }
+
+    [Test]
+    public async Task SetAutoFilter_AppliesFilterToUsedRange_WhenRangeEmpty()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "name";
+            sheet.Cell("B1").Value = "total";
+            sheet.Cell("A2").Value = "Alpha";
+            sheet.Cell("B2").Value = 1;
+            sheet.Cell("A3").Value = "Bravo";
+            sheet.Cell("B3").Value = 2;
+        });
+
+        var command = new SetAutoFilterCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = string.Empty,
+            Enabled = true
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.Enabled.Should().BeTrue();
+        command.ResultValue.FilterRange.Should().Be("A1:B3");
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").AutoFilter.IsEnabled.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task SetAutoFilter_AppliesFilterToExplicitRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "name";
+            sheet.Cell("B1").Value = "total";
+            sheet.Cell("A2").Value = "Alpha";
+            sheet.Cell("B2").Value = 1;
+        });
+
+        var command = new SetAutoFilterCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:B2",
+            Enabled = true
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.FilterRange.Should().Be("A1:B2");
+    }
+
+    [Test]
+    public async Task SetAutoFilter_Disabled_ClearsExistingFilter()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "name";
+            sheet.Cell("A2").Value = "Alpha";
+            sheet.Range("A1:A2").SetAutoFilter();
+        });
+
+        var command = new SetAutoFilterCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = string.Empty,
+            Enabled = false
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.Enabled.Should().BeFalse();
+        command.ResultValue.FilterRange.Should().BeEmpty();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").AutoFilter.IsEnabled.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SetAutoFilter_RejectsColumnRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "x";
+        });
+
+        var command = new SetAutoFilterCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A:C",
+            Enabled = true
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("A1 cell range");
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_GreaterThanRule_AppliesToRange()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 50;
+            sheet.Cell("A2").Value = 150;
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "greaterThan",
+                Value: 100,
+                BackgroundColor: "#FF0000")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A2",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.RulesApplied.Should().Be(1);
+        command.ResultValue.RulesRemoved.Should().Be(0);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var formats = workbook.Worksheet("Q1").ConditionalFormats.ToList();
+        formats.Should().HaveCount(1);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_BetweenRequiresBothValues()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 50;
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "between",
+                Value: 10)
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("'value' and 'value2'");
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_ColorScale2_AppliesScale()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 1;
+            sheet.Cell("A2").Value = 50;
+            sheet.Cell("A3").Value = 100;
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "colorScale2",
+                LowColor: "#FFFFFF",
+                HighColor: "#FF0000")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A3",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").ConditionalFormats.Should().HaveCount(1);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_ClearExisting_RemovesOverlappingRules()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 50;
+            sheet.Range("A1:A10").AddConditionalFormat()
+                .WhenGreaterThan(0)
+                .Fill.SetBackgroundColor(XLColor.Red);
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "lessThan",
+                Value: 10,
+                BackgroundColor: "#00FF00")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A10",
+            Rules = rules,
+            ClearExisting = true
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.RulesApplied.Should().Be(1);
+        command.ResultValue.RulesRemoved.Should().Be(1);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").ConditionalFormats.Should().HaveCount(1);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_UnknownType_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 50;
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(Type: "isAwesome", Value: 1)
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("Unknown rule type");
     }
 
     private void CreateWorkbook(Action<XLWorkbook> populate)

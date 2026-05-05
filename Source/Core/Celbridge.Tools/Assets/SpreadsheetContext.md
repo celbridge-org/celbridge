@@ -127,6 +127,11 @@ saved.
 - `spreadsheet_move_sheet` — moves a sheet to a new 1-based tab position.
   Position 1 places the sheet first. The maximum is the current sheet count.
   Use `spreadsheet_get_info` to read each sheet's current `position` first.
+- `spreadsheet_duplicate_sheet` — copies an existing sheet (values, formulas,
+  formatting, conditional formatting, freeze panes, column widths, row
+  heights) to a new sheet name. Useful for templating workflows. The
+  duplicate is appended after the existing sheets by default; pass
+  `position` to place it at a specific 1-based tab index.
 
 ```
 spreadsheet_add_sheets(
@@ -141,6 +146,16 @@ first sheet:
 ```
 spreadsheet_add_sheets(resource: "data/sales.xlsx", sheets: ["Summary"])
 spreadsheet_move_sheet(resource: "data/sales.xlsx", sheet: "Summary", position: 1)
+```
+
+To create a new sheet seeded from an existing layout — e.g. one quarter
+template per region — use `spreadsheet_duplicate_sheet`:
+
+```
+spreadsheet_duplicate_sheet(
+  resource: "data/sales.xlsx",
+  sourceSheet: "Q1",
+  newSheet: "Q1_East")
 ```
 
 ## Formatting
@@ -494,6 +509,144 @@ follows its row when that row moves.
 Returns `{rowCount}`, the number of rows actually re-ordered (excludes the
 header row when `hasHeaderRow` is true).
 
+## Auto-filter
+
+`spreadsheet_set_auto_filter` configures a sheet's auto-filter — the dropdown
+arrows on the header row that let users filter and sort each column from the
+spreadsheet editor. Each sheet supports at most one auto-filter; setting a new
+one replaces any existing filter on the sheet.
+
+```
+# Apply auto-filter to the entire used range of Q1
+spreadsheet_set_auto_filter(resource: "data/sales.xlsx", sheet: "Q1")
+
+# Apply to an explicit range (header row plus data)
+spreadsheet_set_auto_filter(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "A1:F500")
+
+# Clear an existing auto-filter on the sheet
+spreadsheet_set_auto_filter(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  enabled: false)
+```
+
+`range` accepts only A1 cell ranges (`"A1:F500"`); column-letter and row-number
+ranges are rejected. Empty `range` covers the worksheet's entire used range.
+The filter UI is consumed in the spreadsheet editor — this tool only chooses
+which range carries the filter dropdowns. To reorder rows from the agent side,
+use `spreadsheet_sort` instead.
+
+Returns `{enabled, filterRange}`. `filterRange` is the A1 range the filter
+covers when `enabled` is true, or the empty string when the filter was cleared.
+
+## Conditional formatting
+
+`spreadsheet_set_conditional_formatting` adds rules that drive cell appearance
+based on cell values or a formula, so highlights stay correct as data changes.
+This is the live counterpart to `spreadsheet_format_ranges`, which sets static
+styles. Common cases: highlight cells over or under a threshold, colour scale
+across a column of numbers, formula-based highlight for a whole row.
+
+```
+# Highlight cells over 100 in red
+spreadsheet_set_conditional_formatting(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "B2:B100",
+  rules: [{type: "greaterThan", value: 100, backgroundColor: "#FFCCCC"}])
+
+# Two-tier banding: green band 50-100, red band over 100
+spreadsheet_set_conditional_formatting(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "B2:B100",
+  rules: [
+    {type: "between", value: 50, value2: 100, backgroundColor: "#CCFFCC"},
+    {type: "greaterThan", value: 100, backgroundColor: "#FFCCCC"}
+  ])
+
+# Three-stop colour scale across a numeric column
+spreadsheet_set_conditional_formatting(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "B2:B100",
+  rules: [{
+    type: "colorScale3",
+    lowColor: "#FF0000",
+    midColor: "#FFFFFF",
+    highColor: "#00FF00"
+  }])
+
+# Highlight whole rows where column D is "OVERDUE"
+spreadsheet_set_conditional_formatting(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "A2:F500",
+  rules: [{
+    type: "formula",
+    formula: "$D2=\"OVERDUE\"",
+    backgroundColor: "#FFCCCC",
+    bold: true
+  }])
+```
+
+### Rule types
+
+| Type | Inputs | Notes |
+|---|---|---|
+| `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`, `equal`, `notEqual` | `value` (number) | Numeric comparison vs. cell value |
+| `between`, `notBetween` | `value`, `value2` (numbers) | Inclusive range |
+| `containsText`, `doesNotContainText`, `beginsWith`, `endsWith` | `text` | Text substring match |
+| `isBlank`, `isNotBlank`, `isError`, `isNotError` | none | Cell state predicates |
+| `duplicateValues`, `uniqueValues` | none | Highlight duplicates or unique values within the range |
+| `formula` | `formula` (Excel formula string) | The leading `=` is optional. Use `$D2` style references to highlight whole rows from one column's value |
+| `colorScale2` | `lowColor`, `highColor` | Two-stop gradient across the range's min and max values |
+| `colorScale3` | `lowColor`, `midColor`, `highColor` | Three-stop gradient with the midpoint at the 50th percentile |
+
+### Rule formatting
+
+For all non-color-scale rules, set the format that matched cells receive:
+
+| Field | Value | Effect |
+|---|---|---|
+| `backgroundColor` | `#RRGGBB` | Solid cell fill |
+| `fontColor` | `#RRGGBB` | Font colour |
+| `bold`, `italic` | `true` / `false` | Toggle bold or italic |
+
+Color-scale rules use `lowColor` / `midColor` / `highColor` instead and ignore
+`backgroundColor` and friends.
+
+### Replacing existing rules
+
+By default, new rules are added alongside any existing conditional formatting
+rules on overlapping ranges. To replace, pass `clearExisting: true` — any
+pre-existing rule whose range intersects the input `range` is removed before
+the new rules are added.
+
+```
+# Replace whatever was there with a single new rule
+spreadsheet_set_conditional_formatting(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "B2:B100",
+  rules: [{type: "greaterThan", value: 100, backgroundColor: "#FFCCCC"}],
+  clearExisting: true)
+
+# Just clear: pass an empty rules array with clearExisting: true
+spreadsheet_set_conditional_formatting(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  range: "B2:B100",
+  rules: [],
+  clearExisting: true)
+```
+
+`range` must be an A1 cell range — column-letter and row-number ranges are
+rejected. Returns `{rulesApplied, rulesRemoved}`.
+
 ## Reading and setting the active view
 
 `spreadsheet_get_active_view` returns the workbook's current view state:
@@ -504,8 +657,24 @@ relative to the user's cursor.
 
 ```
 spreadsheet_get_active_view(resource: "data/sales.xlsx")
-# -> {sheet: "Q1", range: "B5:D8", activeCell: "B5", topLeftCell: "A1"}
+# -> {sheet: "Q1", range: "B5:D8", ranges: ["B5:D8"],
+#     activeCell: "B5", topLeftCell: "A1"}
 ```
+
+`ranges` carries the **full** selection. When the user Ctrl+clicks several
+disjoint ranges in the editor, that non-contiguous selection survives the
+round trip and shows up as multiple entries:
+
+```
+# User Ctrl+clicked A7:B8 and A12:B13 in the editor
+spreadsheet_get_active_view(resource: "data/sales.xlsx")
+# -> {sheet: "Q1", range: "A7:B8", ranges: ["A7:B8", "A12:B13"],
+#     activeCell: "A7", topLeftCell: "A1"}
+```
+
+`range` is a convenience equal to `ranges[0]`. Always read `ranges` when you
+care about what the user actually selected — otherwise you'll silently miss
+the non-contiguous part of the selection.
 
 `spreadsheet_set_active_view` controls what a user sees when they open the
 workbook: which sheet is active, the cell selection on that sheet, the
@@ -518,6 +687,13 @@ The two tools share the same field names, so the get response can be passed
 straight back to set to round-trip the view state.
 
 ```
+# Restore a non-contiguous selection (matches the get_active_view output)
+spreadsheet_set_active_view(
+  resource: "data/sales.xlsx",
+  sheet: "Q1",
+  rangesJson: "[\"A7:B8\", \"A12:B13\"]",
+  activeCell: "A7")
+
 # Make Summary the active sheet, cursor on A1
 spreadsheet_set_active_view(
   resource: "data/sales.xlsx",
@@ -546,17 +722,25 @@ spreadsheet_set_active_view(
 ```
 
 The `sheet` parameter is required and is always made active. `range`,
-`activeCell`, and `topLeftCell` are optional. An empty value leaves that
-aspect of the sheet's view unchanged. For most "find this content" use
-cases, setting `range` alone is enough — Excel auto-scrolls the viewport
-to make the active cell visible on open. Use `topLeftCell` when you want
-to control the surrounding context independently of the selection.
+`rangesJson`, `activeCell`, and `topLeftCell` are optional. An empty value
+leaves that aspect of the sheet's view unchanged. For most "find this
+content" use cases, setting `range` alone is enough — Excel auto-scrolls
+the viewport to make the active cell visible on open. Use `topLeftCell`
+when you want to control the surrounding context independently of the
+selection.
+
+`rangesJson` carries a non-contiguous selection (Ctrl+click in the
+editor). It is a JSON array of A1 ranges — pass it back exactly as
+returned by `spreadsheet_get_active_view`'s `ranges` field to round-trip
+a multi-range selection. When non-empty it takes precedence over
+`range`; the selection becomes the full list. Each entry must omit the
+sheet qualifier.
 
 `activeCell` is the white anchor cell that Excel highlights inside a
 multi-cell selection. When omitted it defaults to the first (top-left) cell
-of `range`. When set with `range` empty, the selection becomes that single
-cell. When set with `range` non-empty, `activeCell` must lie inside `range`
-or the call is rejected.
+of `range` or `ranges[0]`. When set with no selection, the selection
+becomes that single cell. When set together with a selection, `activeCell`
+must lie inside one of the ranges or the call is rejected.
 
 `topLeftCell` interacts with frozen panes: if the sheet has frozen rows or
 columns, the scroll origin sits below or to the right of the freeze, so a
@@ -624,19 +808,21 @@ batch, narrowing the range of each edit to just the cells that share it.
 
 The MCP formatting tool covers **common cell styling agents reach for**: font,
 fill, borders, alignment, number format, column width, and autofit. The
-SpreadJS editor covers **advanced presentation work**: conditional formatting,
-charts, pivot tables, data validation, named styles, and themes.
+SpreadJS editor covers **advanced presentation work**: charts, pivot tables,
+data validation, named styles, and themes. Conditional formatting is
+available from the agent side via `spreadsheet_set_conditional_formatting`.
 
 ## Division of labour with the SpreadJS editor
 
-The MCP tools cover **data, formulas, sheet lifecycle, CSV interchange, and
-common cell formatting**. The SpreadJS editor covers **conditional formatting,
-charts, pivot tables, data validation, named styles, and themes**. The MCP
-tools preserve any presentation that already exists on cells they do not touch
-— a `spreadsheet_write_cells` to `B3` does not strip styles on `A1`, and a
-`spreadsheet_format_ranges` on `A1:C1` does not touch `D1`.
+The MCP tools cover **data, formulas, sheet lifecycle, CSV interchange, common
+cell formatting, conditional formatting, and auto-filter**. The SpreadJS
+editor covers **charts, pivot tables, data validation, named styles, and
+themes**. The MCP tools preserve any presentation that already exists on
+cells they do not touch — a `spreadsheet_write_cells` to `B3` does not strip
+styles on `A1`, and a `spreadsheet_format_ranges` on `A1:C1` does not touch
+`D1`.
 
-For advanced styling not covered by `spreadsheet_format_ranges`, open the
+For advanced styling not covered by the MCP formatting tools, open the
 workbook in the SpreadJS editor.
 
 ## Common workflows

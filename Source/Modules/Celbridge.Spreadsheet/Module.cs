@@ -44,6 +44,9 @@ public class Module : IModule
         services.AddTransient<ISpreadsheetClearCommand, ClearCommand>();
         services.AddTransient<ISpreadsheetInsertCommand, InsertCommand>();
         services.AddTransient<ISpreadsheetSortCommand, SortCommand>();
+        services.AddTransient<ISpreadsheetDuplicateSheetCommand, DuplicateSheetCommand>();
+        services.AddTransient<ISpreadsheetSetAutoFilterCommand, SetAutoFilterCommand>();
+        services.AddTransient<ISpreadsheetSetConditionalFormattingCommand, SetConditionalFormattingCommand>();
     }
 
     public Result Initialize()

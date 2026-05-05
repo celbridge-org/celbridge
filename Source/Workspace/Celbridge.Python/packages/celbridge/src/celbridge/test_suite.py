@@ -1933,6 +1933,45 @@ class TestSpreadsheet(unittest.TestCase):
         view_again = spreadsheet.get_active_view(self._WORKBOOK)
         self.assertEqual(view_again, view)
 
+    def test_set_active_view_multi_range_round_trips(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Multi"])
+        spreadsheet.set_active_view(
+            self._WORKBOOK,
+            "Multi",
+            ranges_json=json.dumps(["A7:B8", "A12:B13"]),
+            active_cell="A7",
+        )
+
+        view = spreadsheet.get_active_view(self._WORKBOOK)
+        self.assertEqual(view["sheet"], "Multi")
+        self.assertEqual(view["range"], "A7:B8")
+        self.assertEqual(view["ranges"], ["A7:B8", "A12:B13"])
+        self.assertEqual(view["activeCell"], "A7")
+
+        # Round-trip the ranges back through set_active_view.
+        spreadsheet.set_active_view(
+            self._WORKBOOK,
+            view["sheet"],
+            ranges_json=json.dumps(view["ranges"]),
+            active_cell=view["activeCell"],
+        )
+
+        view_again = spreadsheet.get_active_view(self._WORKBOOK)
+        self.assertEqual(view_again["ranges"], ["A7:B8", "A12:B13"])
+        self.assertEqual(view_again["activeCell"], "A7")
+
+    def test_get_active_view_single_range_includes_ranges_array(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Solo"])
+        spreadsheet.set_active_view(
+            self._WORKBOOK,
+            "Solo",
+            range="C5:D7",
+        )
+
+        view = spreadsheet.get_active_view(self._WORKBOOK)
+        self.assertEqual(view["range"], "C5:D7")
+        self.assertEqual(view["ranges"], ["C5:D7"])
+
     # -- spreadsheet_insert --
 
     def test_insert_rows_shifts_existing_rows_down(self):
@@ -2045,6 +2084,105 @@ class TestSpreadsheet(unittest.TestCase):
 
         rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
         self.assertEqual([row[0] for row in rows], ["Name", "Alpha", "Bravo", "Charlie"])
+
+    # -- spreadsheet_duplicate_sheet --
+
+    def test_duplicate_sheet_copies_values_and_appends(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [{"cell": "A1", "value": "header"}, {"cell": "A2", "value": 42}],
+        )
+        result = spreadsheet.duplicate_sheet(
+            self._WORKBOOK,
+            "Sheet1",
+            "Sheet1Copy",
+        )
+        self.assertEqual(result["newSheet"], "Sheet1Copy")
+        self.assertEqual(result["position"], 2)
+
+        info = spreadsheet.get_info(self._WORKBOOK)
+        sheet_names = [s["name"] for s in info["sheets"]]
+        self.assertEqual(sheet_names, ["Sheet1", "Sheet1Copy"])
+
+        rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1Copy")["rows"]
+        self.assertEqual(rows[0][0], "header")
+        self.assertEqual(rows[1][0], 42)
+
+    def test_duplicate_sheet_collision_fails(self):
+        spreadsheet.add_sheets(self._WORKBOOK, ["Existing"])
+        with self.assertRaises(Exception):
+            spreadsheet.duplicate_sheet(
+                self._WORKBOOK,
+                "Sheet1",
+                "Existing",
+            )
+
+    # -- spreadsheet_set_auto_filter --
+
+    def test_set_auto_filter_applies_to_used_range(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "name,total\nAlpha,1\nBravo,2\n"}],
+        )
+        result = spreadsheet.set_auto_filter(self._WORKBOOK, "Sheet1")
+        self.assertTrue(result["enabled"])
+        self.assertEqual(result["filterRange"], "A1:B3")
+
+    def test_set_auto_filter_disabled_clears_existing(self):
+        spreadsheet.import_csv(
+            self._WORKBOOK,
+            [{"sheet": "Sheet1", "csvText": "name,total\nAlpha,1\n"}],
+        )
+        spreadsheet.set_auto_filter(self._WORKBOOK, "Sheet1")
+
+        result = spreadsheet.set_auto_filter(
+            self._WORKBOOK,
+            "Sheet1",
+            enabled=False,
+        )
+        self.assertFalse(result["enabled"])
+        self.assertEqual(result["filterRange"], "")
+
+    # -- spreadsheet_set_conditional_formatting --
+
+    def test_set_conditional_formatting_adds_greater_than_rule(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [{"cell": "A1", "value": 50}, {"cell": "A2", "value": 150}],
+        )
+        result = spreadsheet.set_conditional_formatting(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A2",
+            [{"type": "greaterThan", "value": 100, "backgroundColor": "#FFCCCC"}],
+        )
+        self.assertEqual(result["rulesApplied"], 1)
+        self.assertEqual(result["rulesRemoved"], 0)
+
+    def test_set_conditional_formatting_clear_existing_replaces_rules(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [{"cell": "A1", "value": 50}],
+        )
+        spreadsheet.set_conditional_formatting(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A10",
+            [{"type": "greaterThan", "value": 0, "backgroundColor": "#FFCCCC"}],
+        )
+
+        replace = spreadsheet.set_conditional_formatting(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A10",
+            [{"type": "lessThan", "value": 10, "backgroundColor": "#CCFFCC"}],
+            clear_existing=True,
+        )
+        self.assertEqual(replace["rulesApplied"], 1)
+        self.assertEqual(replace["rulesRemoved"], 1)
 
 
 # ---------------------------------------------------------------------------

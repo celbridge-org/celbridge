@@ -132,15 +132,19 @@ public record SpreadsheetFindResult(
 
 /// <summary>
 /// Workbook view-state snapshot returned by ISpreadsheetReader.GetActiveView.
-/// Sheet is the active worksheet name. Range is the selection on that sheet
-/// in A1 notation (e.g. "A1" for a single cell, "B2:D4" for a multi-cell
-/// selection). ActiveCell is the anchor cell within the selection (always
-/// present, equal to Range when Range is a single cell). TopLeftCell is the
-/// scroll anchor, the cell pinned at the upper-left of the visible viewport.
+/// Sheet is the active worksheet name. Ranges is the full selection in A1
+/// notation, with at least one entry; multiple entries represent the
+/// non-contiguous selection a user can make with Ctrl+click in the editor.
+/// Range is a convenience equal to Ranges[0]. ActiveCell is the anchor cell
+/// within the selection (Excel's white cell), present when there is a
+/// selection and equal to Range when Range is a single cell. TopLeftCell is
+/// the scroll anchor, the cell pinned at the upper-left of the visible
+/// viewport.
 /// </summary>
 public record SpreadsheetActiveView(
     string Sheet,
     string Range,
+    IReadOnlyList<string> Ranges,
     string ActiveCell,
     string TopLeftCell);
 

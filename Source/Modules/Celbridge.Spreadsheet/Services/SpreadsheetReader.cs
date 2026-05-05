@@ -191,20 +191,9 @@ public class SpreadsheetReader : ISpreadsheetReader
                 return Result<SpreadsheetActiveView>.Fail($"Workbook '{workbookPath}' has no worksheets.");
             }
 
-            string rangeString;
-            var selectedRanges = activeWorksheet.SelectedRanges;
-            if (selectedRanges.Count > 0)
-            {
-                var firstSelected = selectedRanges.First();
-                rangeString = FormatA1RangeOrCell(firstSelected.RangeAddress);
-            }
-            else
-            {
-                rangeString = "A1";
-            }
-
             string activeCellString;
             var activeCell = activeWorksheet.ActiveCell;
+            var selectedRanges = activeWorksheet.SelectedRanges;
             if (activeCell is not null)
             {
                 activeCellString = activeCell.Address.ToStringRelative();
@@ -217,6 +206,30 @@ public class SpreadsheetReader : ISpreadsheetReader
             {
                 activeCellString = "A1";
             }
+
+            // OOXML stores the selection as an active cell plus a list of ranges
+            // (the sqref attribute, space-separated). On reload ClosedXML inserts
+            // a degenerate single-cell range equal to the active cell whenever
+            // the selection has more than one cell or more than one range. Filter
+            // those out so the returned ranges match what the user (or a previous
+            // set call) actually specified. Keep at least one range so the
+            // returned list is never empty.
+            var rangeStrings = new List<string>();
+            foreach (var selected in selectedRanges)
+            {
+                var formatted = FormatA1RangeOrCell(selected.RangeAddress);
+                if (selectedRanges.Count > 1
+                    && IsSingleCellRangeMatchingAddress(selected.RangeAddress, activeCellString))
+                {
+                    continue;
+                }
+                rangeStrings.Add(formatted);
+            }
+            if (rangeStrings.Count == 0)
+            {
+                rangeStrings.Add("A1");
+            }
+            var rangeString = rangeStrings[0];
 
             // ClosedXML omits the topLeftCell attribute from OOXML when the value
             // equals the A1 default, then on reload returns a zeroed address whose
@@ -238,6 +251,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             var view = new SpreadsheetActiveView(
                 activeWorksheet.Name,
                 rangeString,
+                rangeStrings,
                 activeCellString,
                 topLeftCellString);
 
@@ -629,5 +643,19 @@ public class SpreadsheetReader : ISpreadsheetReader
             return $"{firstColumn}{firstRow}";
         }
         return $"{firstColumn}{firstRow}:{lastColumn}{lastRow}";
+    }
+
+    private static bool IsSingleCellRangeMatchingAddress(IXLRangeAddress rangeAddress, string activeCellAddress)
+    {
+        if (rangeAddress.FirstAddress.RowNumber != rangeAddress.LastAddress.RowNumber
+            || rangeAddress.FirstAddress.ColumnNumber != rangeAddress.LastAddress.ColumnNumber)
+        {
+            return false;
+        }
+
+        var firstColumn = XLHelper.GetColumnLetterFromNumber(rangeAddress.FirstAddress.ColumnNumber, false);
+        var firstRow = rangeAddress.FirstAddress.RowNumber;
+        var formatted = $"{firstColumn}{firstRow}";
+        return string.Equals(formatted, activeCellAddress, StringComparison.OrdinalIgnoreCase);
     }
 }
