@@ -210,13 +210,22 @@ accepted for finer control.
 
 **Vertical alignment:** `TOP`, `MIDDLE`, `BOTTOM`.
 
-**`columnWidth`** is in Excel character units (the same scale as the column
-width dialog in the editor). Applies to the columns covered by the target.
+**`columnWidth`** is in Excel character units, **not pixels**. The unit is
+roughly the width of digit `0` in the workbook's default font (about 7px on a
+standard zoom). The default column width is `8.43`. A typical text column is
+`10`–`30`; a wide column with long content is `30`–`60`. Values above `100`
+are almost always a mistake — if you find yourself reaching for `200`+, you
+are probably thinking in pixels. Prefer `autoFitColumns: true` when you want
+the column to fit its content. Applies to the columns covered by the target.
 
-**`rowHeight`** is in points. Applies to the rows covered by the target.
+**`rowHeight`** is in points (1 point ≈ 1.33px at 100% zoom). The default row
+height is `15`. A typical row is `12`–`30`. Applies to the rows covered by
+the target.
 
 **`autoFitColumns`** calls `AdjustToContents()` after any explicit
 `columnWidth` is applied, so the column expands to fit its current contents.
+This is usually the right answer for data tables — let Excel pick the width
+rather than guessing one.
 
 **`mergeRange`** when `true`, merges all cells in the target range into a
 single cell after styles are applied. The top-left cell's value is preserved;

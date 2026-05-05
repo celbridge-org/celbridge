@@ -47,12 +47,14 @@ public record SpreadsheetTextFormat(
 /// Colours are CSS hex strings (#RRGGBB), or the empty string to clear the
 /// fill / restore the colour to the workbook default. HorizontalAlignment
 /// values: LEFT, CENTER, RIGHT, GENERAL, JUSTIFY. VerticalAlignment values:
-/// TOP, MIDDLE, BOTTOM. ColumnWidth is in Excel character units and accepts
-/// a negative value as a reset sentinel; RowHeight is in points and accepts
-/// a negative value as a reset sentinel. AutoFitColumns calls
-/// AdjustToContents() after any explicit ColumnWidth. MergeRange = true
-/// merges the range; MergeRange = false unmerges any existing merge that
-/// covers the range.
+/// TOP, MIDDLE, BOTTOM. ColumnWidth is in Excel character units (NOT pixels):
+/// default is 8.43, typical column is 10 to 60, values above 100 are almost
+/// always a mistake; a negative value resets to the workbook default.
+/// RowHeight is in points: default is 15, typical row is 12 to 30; a negative
+/// value resets to the workbook default. AutoFitColumns calls
+/// AdjustToContents() after any explicit ColumnWidth and is usually preferable
+/// to guessing a width. MergeRange = true merges the range; MergeRange = false
+/// unmerges any existing merge that covers the range.
 /// </summary>
 public record SpreadsheetFormatSpec(
     SpreadsheetTextFormat? TextFormat = null,
