@@ -618,6 +618,31 @@ public class SpreadsheetReaderTests
     }
 
     [Test]
+    public void Find_MatchCase_DistinguishesCase()
+    {
+        var workbookPath = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = "Hello";
+            sheet.Cell("A2").Value = "hello";
+            sheet.Cell("A3").Value = "HELLO";
+        });
+
+        var caseSensitive = new SpreadsheetFindOptions(Find: "Hello", Sheet: "Q1", Range: "", MatchCase: true, MatchEntireCellContents: false);
+        var caseSensitiveResult = _reader.Find(workbookPath, caseSensitive);
+
+        caseSensitiveResult.IsSuccess.Should().BeTrue();
+        caseSensitiveResult.Value.MatchCount.Should().Be(1);
+        caseSensitiveResult.Value.Matches[0].Cell.Should().Be("A1");
+
+        var caseInsensitive = caseSensitive with { MatchCase = false };
+        var caseInsensitiveResult = _reader.Find(workbookPath, caseInsensitive);
+
+        caseInsensitiveResult.IsSuccess.Should().BeTrue();
+        caseInsensitiveResult.Value.MatchCount.Should().Be(3);
+    }
+
+    [Test]
     public void Find_NoMatches_ReturnsEmpty()
     {
         var workbookPath = CreateWorkbook(workbook =>

@@ -22,11 +22,11 @@ public partial class SpreadsheetTools
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
     /// <param name="sheet">Name of the worksheet to write into. The sheet must already exist.</param>
-    /// <param name="edits">JSON array of edit objects, each with fields: cell (A1 string, required), value (number, boolean, string, or null), isFormula (bool, optional, default false).</param>
+    /// <param name="editsJson">JSON array of edit objects, each with fields: cell (A1 string, required), value (number, boolean, string, or null), isFormula (bool, optional, default false).</param>
     /// <returns>JSON object with field: cellCount (int, the number of edits applied).</returns>
     [McpServerTool(Name = "spreadsheet_write_cells")]
     [ToolAlias("spreadsheet.write_cells")]
-    public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string edits)
+    public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string editsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
@@ -39,7 +39,7 @@ public partial class SpreadsheetTools
             return ToolError("Sheet name is required.");
         }
 
-        var parseResult = ParseCellEdits(edits);
+        var parseResult = ParseCellEdits(editsJson);
         if (parseResult.IsFailure)
         {
             return ToolError(parseResult);
@@ -66,7 +66,7 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(editsJson))
         {
-            return Result<List<SpreadsheetCellEdit>>.Fail("Edits JSON is required.");
+            return Result.Fail("Edits JSON is required.");
         }
 
         JsonElement root;
@@ -77,12 +77,12 @@ public partial class SpreadsheetTools
         }
         catch (JsonException ex)
         {
-            return Result<List<SpreadsheetCellEdit>>.Fail($"Invalid edits JSON: {ex.Message}");
+            return Result.Fail($"Invalid edits JSON: {ex.Message}");
         }
 
         if (root.ValueKind != JsonValueKind.Array)
         {
-            return Result<List<SpreadsheetCellEdit>>.Fail("Edits JSON must be an array.");
+            return Result.Fail("Edits JSON must be an array.");
         }
 
         var cellEdits = new List<SpreadsheetCellEdit>();
@@ -91,13 +91,13 @@ public partial class SpreadsheetTools
         {
             if (entry.ValueKind != JsonValueKind.Object)
             {
-                return Result<List<SpreadsheetCellEdit>>.Fail($"Edit at index {index} must be an object.");
+                return Result.Fail($"Edit at index {index} must be an object.");
             }
 
             if (!entry.TryGetProperty("cell", out var cellElement) ||
                 cellElement.ValueKind != JsonValueKind.String)
             {
-                return Result<List<SpreadsheetCellEdit>>.Fail($"Edit at index {index} requires a 'cell' string field.");
+                return Result.Fail($"Edit at index {index} requires a 'cell' string field.");
             }
             var cell = cellElement.GetString() ?? string.Empty;
 
@@ -116,7 +116,7 @@ public partial class SpreadsheetTools
                 }
                 else if (isFormulaElement.ValueKind != JsonValueKind.False)
                 {
-                    return Result<List<SpreadsheetCellEdit>>.Fail($"Edit at index {index} has a non-boolean 'isFormula' field.");
+                    return Result.Fail($"Edit at index {index} has a non-boolean 'isFormula' field.");
                 }
             }
 
@@ -124,6 +124,6 @@ public partial class SpreadsheetTools
             index++;
         }
 
-        return Result<List<SpreadsheetCellEdit>>.Ok(cellEdits);
+        return cellEdits;
     }
 }

@@ -105,7 +105,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             var usedRange = worksheet.RangeUsed();
             if (usedRange is null)
             {
-                return Result<ResolvedSortRange>.Ok(new ResolvedSortRange(true, worksheet.Range("A1")));
+                return new ResolvedSortRange(true, worksheet.Range("A1"));
             }
             baseRange = usedRange;
         }
@@ -117,13 +117,13 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             }
             catch (Exception ex)
             {
-                return Result<ResolvedSortRange>.Fail($"Invalid range '{Range}': {ex.Message}");
+                return Result.Fail($"Invalid range '{Range}': {ex.Message}");
             }
         }
 
         if (!HasHeaderRow)
         {
-            return Result<ResolvedSortRange>.Ok(new ResolvedSortRange(false, baseRange));
+            return new ResolvedSortRange(false, baseRange);
         }
 
         var firstAddress = baseRange.RangeAddress.FirstAddress;
@@ -132,7 +132,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
         {
             // Range is a single row; with hasHeaderRow=true there's nothing
             // below the header to sort.
-            return Result<ResolvedSortRange>.Ok(new ResolvedSortRange(true, baseRange));
+            return new ResolvedSortRange(true, baseRange);
         }
 
         var sortRange = worksheet.Range(
@@ -140,7 +140,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             firstAddress.ColumnNumber,
             lastAddress.RowNumber,
             lastAddress.ColumnNumber);
-        return Result<ResolvedSortRange>.Ok(new ResolvedSortRange(false, sortRange));
+        return new ResolvedSortRange(false, sortRange);
     }
 
     private Result<string> BuildSortString(IXLRange sortRange)
@@ -154,7 +154,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             var sortKey = SortKeys[keyIndex];
             if (string.IsNullOrEmpty(sortKey.Column))
             {
-                return Result<string>.Fail($"Sort key {keyIndex + 1}: column is required.");
+                return Result.Fail($"Sort key {keyIndex + 1}: column is required.");
             }
 
             int absoluteColumnNumber;
@@ -164,13 +164,13 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             }
             catch (Exception ex)
             {
-                return Result<string>.Fail($"Sort key {keyIndex + 1}: invalid column '{sortKey.Column}': {ex.Message}");
+                return Result.Fail($"Sort key {keyIndex + 1}: invalid column '{sortKey.Column}': {ex.Message}");
             }
 
             if (absoluteColumnNumber < firstColumn
                 || absoluteColumnNumber > lastColumn)
             {
-                return Result<string>.Fail($"Sort key {keyIndex + 1}: column '{sortKey.Column}' is outside the sort range.");
+                return Result.Fail($"Sort key {keyIndex + 1}: column '{sortKey.Column}' is outside the sort range.");
             }
 
             int relativeColumnNumber = absoluteColumnNumber - firstColumn + 1;
@@ -178,7 +178,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             parts.Add($"{relativeColumnNumber} {direction}");
         }
 
-        return Result<string>.Ok(string.Join(", ", parts));
+        return string.Join(", ", parts);
     }
 
     private static int ResolveColumnNumber(string column)

@@ -2111,7 +2111,7 @@ class TestSpreadsheet(unittest.TestCase):
 
     def test_duplicate_sheet_collision_fails(self):
         spreadsheet.add_sheets(self._WORKBOOK, ["Existing"])
-        with self.assertRaises(Exception):
+        with self.assertRaises(CelError):
             spreadsheet.duplicate_sheet(
                 self._WORKBOOK,
                 "Sheet1",

@@ -69,29 +69,25 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
-            return Result<IReadOnlyList<SpreadsheetInsertOperation>>.Fail("Operations JSON is required.");
+            return Result.Fail("Operations JSON is required.");
         }
 
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetInsertOperation>>(operationsJson, options);
+            var operations = JsonSerializer.Deserialize<List<SpreadsheetInsertOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
-                return Result<IReadOnlyList<SpreadsheetInsertOperation>>.Fail("Operations JSON must be a non-null array.");
+                return Result.Fail("Operations JSON must be a non-null array.");
             }
             if (operations.Count == 0)
             {
-                return Result<IReadOnlyList<SpreadsheetInsertOperation>>.Fail("Operations array must contain at least one operation.");
+                return Result.Fail("Operations array must contain at least one operation.");
             }
-            return Result<IReadOnlyList<SpreadsheetInsertOperation>>.Ok(operations);
+            return operations;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<SpreadsheetInsertOperation>>.Fail($"Invalid operations JSON: {ex.Message}");
+            return Result.Fail($"Invalid operations JSON: {ex.Message}");
         }
     }
 }

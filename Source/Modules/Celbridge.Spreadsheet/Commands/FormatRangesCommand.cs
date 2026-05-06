@@ -239,10 +239,8 @@ public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
             return Result.Fail($"Invalid cell range '{range}': {ex.Message}");
         }
 
-        // Apply style cell-by-cell using explicit coordinates so every cell in
-        // the range is covered regardless of whether it has been initialised in
-        // ClosedXML's in-memory model. IXLRange.Cells() only returns cells that
-        // have been accessed before, skipping uninitialized empty cells.
+        // Iterate by explicit coordinates because IXLRange.Cells() only returns
+        // already-accessed cells and would skip uninitialised empty cells.
         var firstRow = xlRange.RangeAddress.FirstAddress.RowNumber;
         var lastRow = xlRange.RangeAddress.LastAddress.RowNumber;
         var firstColumn = xlRange.RangeAddress.FirstAddress.ColumnNumber;

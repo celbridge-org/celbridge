@@ -92,7 +92,7 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(rangesJson))
         {
-            return Result<IReadOnlyList<string>>.Ok(Array.Empty<string>());
+            return Array.Empty<string>();
         }
 
         try
@@ -100,13 +100,13 @@ public partial class SpreadsheetTools
             var ranges = JsonSerializer.Deserialize<List<string>>(rangesJson);
             if (ranges is null)
             {
-                return Result<IReadOnlyList<string>>.Fail("rangesJson must be a non-null array.");
+                return Result.Fail("rangesJson must be a non-null array.");
             }
-            return Result<IReadOnlyList<string>>.Ok(ranges);
+            return ranges;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<string>>.Fail($"Invalid rangesJson: {ex.Message}");
+            return Result.Fail($"Invalid rangesJson: {ex.Message}");
         }
     }
 }

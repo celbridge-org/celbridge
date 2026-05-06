@@ -139,14 +139,14 @@ public class InsertCommand : CommandBase, ISpreadsheetInsertCommand
                 if (firstRow < 1
                     || lastRow < firstRow)
                 {
-                    return Result<AxisRange>.Fail($"Row range '{range}' is invalid.");
+                    return Result.Fail($"Row range '{range}' is invalid.");
                 }
                 int count = lastRow - firstRow + 1;
-                return Result<AxisRange>.Ok(new AxisRange(true, firstRow, count));
+                return new AxisRange(true, firstRow, count);
             }
             catch (Exception ex)
             {
-                return Result<AxisRange>.Fail($"Invalid row range '{range}': {ex.Message}");
+                return Result.Fail($"Invalid row range '{range}': {ex.Message}");
             }
         }
 
@@ -160,18 +160,18 @@ public class InsertCommand : CommandBase, ISpreadsheetInsertCommand
                 if (firstColumn < 1
                     || lastColumn < firstColumn)
                 {
-                    return Result<AxisRange>.Fail($"Column range '{range}' is invalid.");
+                    return Result.Fail($"Column range '{range}' is invalid.");
                 }
                 int count = lastColumn - firstColumn + 1;
-                return Result<AxisRange>.Ok(new AxisRange(false, firstColumn, count));
+                return new AxisRange(false, firstColumn, count);
             }
             catch (Exception ex)
             {
-                return Result<AxisRange>.Fail($"Invalid column range '{range}': {ex.Message}");
+                return Result.Fail($"Invalid column range '{range}': {ex.Message}");
             }
         }
 
-        return Result<AxisRange>.Fail(
+        return Result.Fail(
             $"Range '{range}' is not a row or column range. Use \"3\" or \"3:5\" for rows, \"B\" or \"B:D\" for columns. Cell ranges (e.g. \"A1:C3\") are not accepted by insert.");
     }
 }

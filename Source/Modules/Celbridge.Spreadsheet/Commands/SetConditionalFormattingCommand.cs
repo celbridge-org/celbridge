@@ -77,21 +77,16 @@ public class SetConditionalFormattingCommand : CommandBase, ISpreadsheetSetCondi
             int rulesRemoved = 0;
             if (ClearExisting)
             {
-                var addressesToRemove = new HashSet<string>();
+                var formatsToRemove = new HashSet<IXLConditionalFormat>();
                 foreach (var existing in worksheet.ConditionalFormats)
                 {
                     if (existing.Range.RangeAddress.Intersects(targetRange.RangeAddress))
                     {
-                        var existingAddress = existing.Range.RangeAddress.ToString() ?? string.Empty;
-                        addressesToRemove.Add(existingAddress);
+                        formatsToRemove.Add(existing);
                     }
                 }
-                rulesRemoved = addressesToRemove.Count;
-                worksheet.ConditionalFormats.Remove(format =>
-                {
-                    var formatAddress = format.Range.RangeAddress.ToString() ?? string.Empty;
-                    return addressesToRemove.Contains(formatAddress);
-                });
+                rulesRemoved = formatsToRemove.Count;
+                worksheet.ConditionalFormats.Remove(format => formatsToRemove.Contains(format));
             }
 
             for (int ruleIndex = 0; ruleIndex < Rules.Count; ruleIndex++)
@@ -157,53 +152,53 @@ public class SetConditionalFormattingCommand : CommandBase, ISpreadsheetSetCondi
         switch (typeKey)
         {
             case "greaterthan":
-                if (!rule.Value.HasValue) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires a numeric value.");
+                if (!rule.Value.HasValue) return Result.Fail($"'{rule.Type}' rule requires a numeric value.");
                 style = conditionalFormat.WhenGreaterThan(rule.Value.Value);
                 break;
             case "greaterthanorequal":
-                if (!rule.Value.HasValue) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires a numeric value.");
+                if (!rule.Value.HasValue) return Result.Fail($"'{rule.Type}' rule requires a numeric value.");
                 style = conditionalFormat.WhenEqualOrGreaterThan(rule.Value.Value);
                 break;
             case "lessthan":
-                if (!rule.Value.HasValue) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires a numeric value.");
+                if (!rule.Value.HasValue) return Result.Fail($"'{rule.Type}' rule requires a numeric value.");
                 style = conditionalFormat.WhenLessThan(rule.Value.Value);
                 break;
             case "lessthanorequal":
-                if (!rule.Value.HasValue) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires a numeric value.");
+                if (!rule.Value.HasValue) return Result.Fail($"'{rule.Type}' rule requires a numeric value.");
                 style = conditionalFormat.WhenEqualOrLessThan(rule.Value.Value);
                 break;
             case "equal":
-                if (!rule.Value.HasValue) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires a numeric value.");
+                if (!rule.Value.HasValue) return Result.Fail($"'{rule.Type}' rule requires a numeric value.");
                 style = conditionalFormat.WhenEquals(rule.Value.Value);
                 break;
             case "notequal":
-                if (!rule.Value.HasValue) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires a numeric value.");
+                if (!rule.Value.HasValue) return Result.Fail($"'{rule.Type}' rule requires a numeric value.");
                 style = conditionalFormat.WhenNotEquals(rule.Value.Value);
                 break;
             case "between":
                 if (!rule.Value.HasValue || !rule.Value2.HasValue)
-                    return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires both 'value' and 'value2'.");
+                    return Result.Fail($"'{rule.Type}' rule requires both 'value' and 'value2'.");
                 style = conditionalFormat.WhenBetween(rule.Value.Value, rule.Value2.Value);
                 break;
             case "notbetween":
                 if (!rule.Value.HasValue || !rule.Value2.HasValue)
-                    return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires both 'value' and 'value2'.");
+                    return Result.Fail($"'{rule.Type}' rule requires both 'value' and 'value2'.");
                 style = conditionalFormat.WhenNotBetween(rule.Value.Value, rule.Value2.Value);
                 break;
             case "containstext":
-                if (string.IsNullOrEmpty(rule.Text)) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires 'text'.");
+                if (string.IsNullOrEmpty(rule.Text)) return Result.Fail($"'{rule.Type}' rule requires 'text'.");
                 style = conditionalFormat.WhenContains(rule.Text);
                 break;
             case "doesnotcontaintext":
-                if (string.IsNullOrEmpty(rule.Text)) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires 'text'.");
+                if (string.IsNullOrEmpty(rule.Text)) return Result.Fail($"'{rule.Type}' rule requires 'text'.");
                 style = conditionalFormat.WhenNotContains(rule.Text);
                 break;
             case "beginswith":
-                if (string.IsNullOrEmpty(rule.Text)) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires 'text'.");
+                if (string.IsNullOrEmpty(rule.Text)) return Result.Fail($"'{rule.Type}' rule requires 'text'.");
                 style = conditionalFormat.WhenStartsWith(rule.Text);
                 break;
             case "endswith":
-                if (string.IsNullOrEmpty(rule.Text)) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires 'text'.");
+                if (string.IsNullOrEmpty(rule.Text)) return Result.Fail($"'{rule.Type}' rule requires 'text'.");
                 style = conditionalFormat.WhenEndsWith(rule.Text);
                 break;
             case "isblank":
@@ -225,12 +220,12 @@ public class SetConditionalFormattingCommand : CommandBase, ISpreadsheetSetCondi
                 style = conditionalFormat.WhenIsUnique();
                 break;
             case "formula":
-                if (string.IsNullOrEmpty(rule.Formula)) return Result<IXLStyle>.Fail($"'{rule.Type}' rule requires 'formula'.");
+                if (string.IsNullOrEmpty(rule.Formula)) return Result.Fail($"'{rule.Type}' rule requires 'formula'.");
                 var formula = rule.Formula.StartsWith('=') ? rule.Formula.Substring(1) : rule.Formula;
                 style = conditionalFormat.WhenIsTrue(formula);
                 break;
             default:
-                return Result<IXLStyle>.Fail($"Unknown rule type: '{rule.Type}'.");
+                return Result.Fail($"Unknown rule type: '{rule.Type}'.");
         }
 
         return style.OkResult();

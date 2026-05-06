@@ -64,29 +64,25 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(importsJson))
         {
-            return Result<IReadOnlyList<SpreadsheetCsvImport>>.Fail("Imports JSON is required.");
+            return Result.Fail("Imports JSON is required.");
         }
 
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            var imports = JsonSerializer.Deserialize<List<SpreadsheetCsvImport>>(importsJson, options);
+            var imports = JsonSerializer.Deserialize<List<SpreadsheetCsvImport>>(importsJson, JsonOptions);
             if (imports is null)
             {
-                return Result<IReadOnlyList<SpreadsheetCsvImport>>.Fail("Imports JSON must be a non-null array.");
+                return Result.Fail("Imports JSON must be a non-null array.");
             }
             if (imports.Count == 0)
             {
-                return Result<IReadOnlyList<SpreadsheetCsvImport>>.Fail("Imports array must contain at least one import.");
+                return Result.Fail("Imports array must contain at least one import.");
             }
-            return Result<IReadOnlyList<SpreadsheetCsvImport>>.Ok(imports);
+            return imports;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<SpreadsheetCsvImport>>.Fail($"Invalid imports JSON: {ex.Message}");
+            return Result.Fail($"Invalid imports JSON: {ex.Message}");
         }
     }
 }

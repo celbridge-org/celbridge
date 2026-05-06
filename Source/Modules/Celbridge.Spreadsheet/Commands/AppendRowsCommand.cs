@@ -38,8 +38,7 @@ public class AppendRowsCommand : CommandBase, ISpreadsheetAppendRowsCommand
 
         if (Rows.Count == 0)
         {
-            ResultValue = new SpreadsheetAppendRowsResult(0, 0, 0);
-            return Result.Ok();
+            return Result.Fail("At least one row is required.");
         }
 
         try

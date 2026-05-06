@@ -21,11 +21,11 @@ public partial class SpreadsheetTools
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
     /// <param name="sheet">Name of the worksheet to append to. The sheet must already exist.</param>
-    /// <param name="rows">JSON array of rows. Each row is an array of cell values (number, boolean, string, or null) in column order starting from A.</param>
+    /// <param name="rowsJson">JSON array of rows. Each row is an array of cell values (number, boolean, string, or null) in column order starting from A.</param>
     /// <returns>JSON object with fields: appendedRowCount (int), firstRow (int, 1-based), lastRow (int, 1-based).</returns>
     [McpServerTool(Name = "spreadsheet_append_rows")]
     [ToolAlias("spreadsheet.append_rows")]
-    public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rows)
+    public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rowsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
@@ -38,7 +38,7 @@ public partial class SpreadsheetTools
             return ToolError("Sheet name is required.");
         }
 
-        var parseResult = ParseRows(rows);
+        var parseResult = ParseRows(rowsJson);
         if (parseResult.IsFailure)
         {
             return ToolError(parseResult);
@@ -66,7 +66,7 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(rowsJson))
         {
-            return Result<List<IReadOnlyList<object?>>>.Fail("Rows JSON is required.");
+            return Result.Fail("Rows JSON is required.");
         }
 
         JsonElement root;
@@ -77,12 +77,12 @@ public partial class SpreadsheetTools
         }
         catch (JsonException ex)
         {
-            return Result<List<IReadOnlyList<object?>>>.Fail($"Invalid rows JSON: {ex.Message}");
+            return Result.Fail($"Invalid rows JSON: {ex.Message}");
         }
 
         if (root.ValueKind != JsonValueKind.Array)
         {
-            return Result<List<IReadOnlyList<object?>>>.Fail("Rows JSON must be an array of row arrays.");
+            return Result.Fail("Rows JSON must be an array of row arrays.");
         }
 
         var parsedRows = new List<IReadOnlyList<object?>>();
@@ -91,7 +91,7 @@ public partial class SpreadsheetTools
         {
             if (rowElement.ValueKind != JsonValueKind.Array)
             {
-                return Result<List<IReadOnlyList<object?>>>.Fail($"Row at index {rowIndex} must be an array of cell values.");
+                return Result.Fail($"Row at index {rowIndex} must be an array of cell values.");
             }
 
             var rowValues = new List<object?>();
@@ -103,6 +103,6 @@ public partial class SpreadsheetTools
             rowIndex++;
         }
 
-        return Result<List<IReadOnlyList<object?>>>.Ok(parsedRows);
+        return parsedRows;
     }
 }

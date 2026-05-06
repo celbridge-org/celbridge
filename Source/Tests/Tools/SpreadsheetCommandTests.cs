@@ -648,7 +648,7 @@ public class SpreadsheetCommandTests
     }
 
     [Test]
-    public async Task Commands_NonXlsxResource_ReturnFailure()
+    public async Task AddSheets_NonXlsxResource_ReturnsFailure()
     {
         var nonXlsxResource = new ResourceKey("notes/readme.md");
         var nonXlsxPath = Path.Combine(_tempFolder, "readme.md");
@@ -1588,8 +1588,9 @@ public class SpreadsheetCommandTests
         result.FirstErrorMessage.Should().Contain("not found");
     }
 
-    [Test]
-    public async Task SetActiveView_TopLeftCellAsRange_ReturnsFailure()
+    [TestCase("activeCell", "B2:C3")]
+    [TestCase("topLeftCell", "A1:B2")]
+    public async Task SetActiveView_SingleCellPropertyAsRange_ReturnsFailure(string property, string rangeValue)
     {
         CreateWorkbook(workbook =>
         {
@@ -1599,9 +1600,17 @@ public class SpreadsheetCommandTests
         var command = new SetActiveViewCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
-            Sheet = "Data",
-            TopLeftCell = "A1:B2"
+            Sheet = "Data"
         };
+        switch (property)
+        {
+            case "activeCell":
+                command.ActiveCell = rangeValue;
+                break;
+            case "topLeftCell":
+                command.TopLeftCell = rangeValue;
+                break;
+        }
 
         var result = await command.ExecuteAsync();
 
@@ -1609,8 +1618,9 @@ public class SpreadsheetCommandTests
         result.FirstErrorMessage.Should().Contain("single cell");
     }
 
-    [Test]
-    public async Task SetActiveView_RangeWithSheetQualifier_ReturnsFailure()
+    [TestCase("range", "Data!A1:B2")]
+    [TestCase("ranges", "Data!D5:E6")]
+    public async Task SetActiveView_PropertyWithSheetQualifier_ReturnsFailure(string property, string value)
     {
         CreateWorkbook(workbook =>
         {
@@ -1620,9 +1630,17 @@ public class SpreadsheetCommandTests
         var command = new SetActiveViewCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
-            Sheet = "Data",
-            Range = "Data!A1:B2"
+            Sheet = "Data"
         };
+        switch (property)
+        {
+            case "range":
+                command.Range = value;
+                break;
+            case "ranges":
+                command.Ranges = new[] { "A1:B2", value };
+                break;
+        }
 
         var result = await command.ExecuteAsync();
 
@@ -1830,48 +1848,6 @@ public class SpreadsheetCommandTests
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("must lie inside");
-    }
-
-    [Test]
-    public async Task SetActiveView_RangesEntryWithSheetQualifier_ReturnsFailure()
-    {
-        CreateWorkbook(workbook =>
-        {
-            workbook.Worksheets.Add("Data");
-        });
-
-        var command = new SetActiveViewCommand(_workspaceWrapper)
-        {
-            FileResource = _workbookResource,
-            Sheet = "Data",
-            Ranges = new[] { "A1:B2", "Data!D5:E6" }
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("sheet qualifier");
-    }
-
-    [Test]
-    public async Task SetActiveView_ActiveCellAsRange_ReturnsFailure()
-    {
-        CreateWorkbook(workbook =>
-        {
-            workbook.Worksheets.Add("Data");
-        });
-
-        var command = new SetActiveViewCommand(_workspaceWrapper)
-        {
-            FileResource = _workbookResource,
-            Sheet = "Data",
-            ActiveCell = "B2:C3"
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("single cell");
     }
 
     [Test]

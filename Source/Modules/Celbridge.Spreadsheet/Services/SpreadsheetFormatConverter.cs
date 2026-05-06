@@ -22,7 +22,7 @@ internal static class SpreadsheetFormatConverter
         }
         catch
         {
-            return Result<XLColor>.Fail($"Invalid color: '{colorHex}'. Use a CSS hex string such as '#FF0000'.");
+            return Result.Fail($"Invalid color: '{colorHex}'. Use a CSS hex string such as '#FF0000'.");
         }
     }
 
@@ -53,7 +53,7 @@ internal static class SpreadsheetFormatConverter
             return parsed;
         }
 
-        return Result<XLBorderStyleValues>.Fail(
+        return Result.Fail(
             $"Unknown border style: '{style}'. Use SOLID, DASHED, DOTTED, DOUBLE, NONE, or a ClosedXML XLBorderStyleValues name.");
     }
 
@@ -83,7 +83,7 @@ internal static class SpreadsheetFormatConverter
             return parsed;
         }
 
-        return Result<XLAlignmentHorizontalValues>.Fail(
+        return Result.Fail(
             $"Unknown horizontal alignment: '{alignment}'. Use LEFT, CENTER, RIGHT, GENERAL, or JUSTIFY.");
     }
 
@@ -111,7 +111,7 @@ internal static class SpreadsheetFormatConverter
             return parsed;
         }
 
-        return Result<XLAlignmentVerticalValues>.Fail(
+        return Result.Fail(
             $"Unknown vertical alignment: '{alignment}'. Use TOP, MIDDLE, or BOTTOM.");
     }
 }

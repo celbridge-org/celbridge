@@ -81,29 +81,25 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(sortByJson))
         {
-            return Result<IReadOnlyList<SpreadsheetSortKey>>.Fail("sortByJson is required.");
+            return Result.Fail("sortByJson is required.");
         }
 
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            var keys = JsonSerializer.Deserialize<List<SpreadsheetSortKey>>(sortByJson, options);
+            var keys = JsonSerializer.Deserialize<List<SpreadsheetSortKey>>(sortByJson, JsonOptions);
             if (keys is null)
             {
-                return Result<IReadOnlyList<SpreadsheetSortKey>>.Fail("sortByJson must be a non-null array.");
+                return Result.Fail("sortByJson must be a non-null array.");
             }
             if (keys.Count == 0)
             {
-                return Result<IReadOnlyList<SpreadsheetSortKey>>.Fail("sortByJson must contain at least one sort key.");
+                return Result.Fail("sortByJson must contain at least one sort key.");
             }
-            return Result<IReadOnlyList<SpreadsheetSortKey>>.Ok(keys);
+            return keys;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<SpreadsheetSortKey>>.Fail($"Invalid sortByJson: {ex.Message}");
+            return Result.Fail($"Invalid sortByJson: {ex.Message}");
         }
     }
 }

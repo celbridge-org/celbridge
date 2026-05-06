@@ -20,13 +20,13 @@ public partial class SpreadsheetTools : AgentToolBase
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return Result<string>.Fail($"Invalid resource key: '{resource}'");
+            return Result.Fail($"Invalid resource key: '{resource}'");
         }
 
         var extension = Path.GetExtension(resource);
         if (!string.Equals(extension, XlsxExtension, StringComparison.OrdinalIgnoreCase))
         {
-            return Result<string>.Fail($"Resource is not an .xlsx workbook: '{resource}'");
+            return Result.Fail($"Resource is not an .xlsx workbook: '{resource}'");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -35,16 +35,16 @@ public partial class SpreadsheetTools : AgentToolBase
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return Result<string>.Fail($"Failed to resolve path for resource: '{resource}'");
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'");
         }
         var workbookPath = resolveResult.Value;
 
         if (!File.Exists(workbookPath))
         {
-            return Result<string>.Fail($"File not found: '{resource}'");
+            return Result.Fail($"File not found: '{resource}'");
         }
 
-        return Result<string>.Ok(workbookPath);
+        return workbookPath;
     }
 
     private static string SerializeJson(object value)

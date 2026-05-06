@@ -59,7 +59,7 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(sheetsJson))
         {
-            return Result<IReadOnlyList<string>>.Fail("Sheets JSON is required.");
+            return Result.Fail("Sheets JSON is required.");
         }
 
         try
@@ -67,17 +67,17 @@ public partial class SpreadsheetTools
             var sheets = JsonSerializer.Deserialize<List<string>>(sheetsJson);
             if (sheets is null)
             {
-                return Result<IReadOnlyList<string>>.Fail("Sheets JSON must be a non-null array.");
+                return Result.Fail("Sheets JSON must be a non-null array.");
             }
             if (sheets.Count == 0)
             {
-                return Result<IReadOnlyList<string>>.Fail("Sheets array must contain at least one name.");
+                return Result.Fail("Sheets array must contain at least one name.");
             }
-            return Result<IReadOnlyList<string>>.Ok(sheets);
+            return sheets;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<string>>.Fail($"Invalid sheets JSON: {ex.Message}");
+            return Result.Fail($"Invalid sheets JSON: {ex.Message}");
         }
     }
 }

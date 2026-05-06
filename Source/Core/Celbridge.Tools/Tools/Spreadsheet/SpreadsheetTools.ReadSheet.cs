@@ -42,12 +42,10 @@ public partial class SpreadsheetTools
             return ToolError("Sheet name is required.");
         }
 
-        var modeResult = ParseReadMode(mode);
-        if (modeResult.IsFailure)
+        if (!Enum.TryParse<SpreadsheetReadMode>(mode, ignoreCase: true, out var readMode))
         {
-            return ToolError(modeResult);
+            return ToolError($"Invalid mode '{mode}'. Expected \"values\" or \"formulas\".");
         }
-        var readMode = modeResult.Value;
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
 
@@ -66,20 +64,5 @@ public partial class SpreadsheetTools
         }
 
         return ToolSuccess(SerializeJson(readResult.Value));
-    }
-
-    private static Result<SpreadsheetReadMode> ParseReadMode(string mode)
-    {
-        if (string.Equals(mode, "values", StringComparison.OrdinalIgnoreCase))
-        {
-            return Result<SpreadsheetReadMode>.Ok(SpreadsheetReadMode.Values);
-        }
-
-        if (string.Equals(mode, "formulas", StringComparison.OrdinalIgnoreCase))
-        {
-            return Result<SpreadsheetReadMode>.Ok(SpreadsheetReadMode.Formulas);
-        }
-
-        return Result<SpreadsheetReadMode>.Fail($"Invalid mode '{mode}'. Expected \"values\" or \"formulas\".");
     }
 }

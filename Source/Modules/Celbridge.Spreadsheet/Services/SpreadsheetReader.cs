@@ -63,12 +63,11 @@ public class SpreadsheetReader : ISpreadsheetReader
                 }
             }
 
-            var info = new SpreadsheetWorkbookInfo(sheets, namedRanges);
-            return Result<SpreadsheetWorkbookInfo>.Ok(info);
+            return new SpreadsheetWorkbookInfo(sheets, namedRanges);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetWorkbookInfo>.Fail($"Failed to read workbook info from '{workbookPath}'")
+            return Result.Fail($"Failed to read workbook info from '{workbookPath}'")
                 .WithException(ex);
         }
     }
@@ -82,31 +81,30 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result<SpreadsheetReadResult>.Fail(worksheetResult.FirstErrorMessage);
+                return Result.Fail(worksheetResult.FirstErrorMessage);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, options.Range);
             if (rangeResult.IsFailure)
             {
-                return Result<SpreadsheetReadResult>.Fail(rangeResult.FirstErrorMessage);
+                return Result.Fail(rangeResult.FirstErrorMessage);
             }
             var range = rangeResult.Value.Range;
 
             if (range is null)
             {
-                var emptyResult = new SpreadsheetReadResult(
+                return new SpreadsheetReadResult(
                     Array.Empty<object?>(),
                     0,
                     Array.Empty<string>());
-                return Result<SpreadsheetReadResult>.Ok(emptyResult);
             }
 
             return ReadRange(range, options);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetReadResult>.Fail($"Failed to read sheet '{sheetName}' from '{workbookPath}'")
+            return Result.Fail($"Failed to read sheet '{sheetName}' from '{workbookPath}'")
                 .WithException(ex);
         }
     }
@@ -120,21 +118,20 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result<SpreadsheetExportCsvResult>.Fail(worksheetResult.FirstErrorMessage);
+                return Result.Fail(worksheetResult.FirstErrorMessage);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, range);
             if (rangeResult.IsFailure)
             {
-                return Result<SpreadsheetExportCsvResult>.Fail(rangeResult.FirstErrorMessage);
+                return Result.Fail(rangeResult.FirstErrorMessage);
             }
             var resolvedRange = rangeResult.Value.Range;
 
             if (resolvedRange is null)
             {
-                var emptyResult = new SpreadsheetExportCsvResult(string.Empty, 0, 0);
-                return Result<SpreadsheetExportCsvResult>.Ok(emptyResult);
+                return new SpreadsheetExportCsvResult(string.Empty, 0, 0);
             }
 
             var builder = new StringBuilder();
@@ -157,12 +154,11 @@ public class SpreadsheetReader : ISpreadsheetReader
                 builder.Append("\r\n");
             }
 
-            var csvResult = new SpreadsheetExportCsvResult(builder.ToString(), rowCount, columnCount);
-            return Result<SpreadsheetExportCsvResult>.Ok(csvResult);
+            return new SpreadsheetExportCsvResult(builder.ToString(), rowCount, columnCount);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetExportCsvResult>.Fail($"Failed to export sheet '{sheetName}' as CSV from '{workbookPath}'")
+            return Result.Fail($"Failed to export sheet '{sheetName}' as CSV from '{workbookPath}'")
                 .WithException(ex);
         }
     }
@@ -188,7 +184,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             }
             if (activeWorksheet is null)
             {
-                return Result<SpreadsheetActiveView>.Fail($"Workbook '{workbookPath}' has no worksheets.");
+                return Result.Fail($"Workbook '{workbookPath}' has no worksheets.");
             }
 
             string activeCellString;
@@ -248,18 +244,16 @@ public class SpreadsheetReader : ISpreadsheetReader
                 topLeftCellString = "A1";
             }
 
-            var view = new SpreadsheetActiveView(
+            return new SpreadsheetActiveView(
                 activeWorksheet.Name,
                 rangeString,
                 rangeStrings,
                 activeCellString,
                 topLeftCellString);
-
-            return Result<SpreadsheetActiveView>.Ok(view);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetActiveView>.Fail($"Failed to read active view from '{workbookPath}'")
+            return Result.Fail($"Failed to read active view from '{workbookPath}'")
                 .WithException(ex);
         }
     }
@@ -268,17 +262,17 @@ public class SpreadsheetReader : ISpreadsheetReader
     {
         if (string.IsNullOrEmpty(options.Find))
         {
-            return Result<SpreadsheetFindResult>.Fail("Find text is required and must be non-empty.");
+            return Result.Fail("Find text is required and must be non-empty.");
         }
         if (!string.IsNullOrEmpty(options.Range)
             && options.Range.Contains('!'))
         {
-            return Result<SpreadsheetFindResult>.Fail($"Range '{options.Range}' must not include a sheet qualifier.");
+            return Result.Fail($"Range '{options.Range}' must not include a sheet qualifier.");
         }
         if (!string.IsNullOrEmpty(options.Range)
             && string.IsNullOrEmpty(options.Sheet))
         {
-            return Result<SpreadsheetFindResult>.Fail("Range can only be used together with a specific sheet.");
+            return Result.Fail("Range can only be used together with a specific sheet.");
         }
 
         try
@@ -294,7 +288,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             {
                 if (!workbook.Worksheets.Contains(options.Sheet))
                 {
-                    return Result<SpreadsheetFindResult>.Fail($"Sheet not found: '{options.Sheet}'.");
+                    return Result.Fail($"Sheet not found: '{options.Sheet}'.");
                 }
                 targetSheets = new[] { workbook.Worksheet(options.Sheet) };
             }
@@ -309,7 +303,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 var cellsResult = ResolveSearchCells(worksheet, options.Range);
                 if (cellsResult.IsFailure)
                 {
-                    return Result<SpreadsheetFindResult>.Fail(cellsResult.FirstErrorMessage);
+                    return Result.Fail(cellsResult.FirstErrorMessage);
                 }
 
                 foreach (var cell in cellsResult.Value)
@@ -344,11 +338,11 @@ public class SpreadsheetReader : ISpreadsheetReader
                 }
             }
 
-            return Result<SpreadsheetFindResult>.Ok(new SpreadsheetFindResult(matches, matches.Count));
+            return new SpreadsheetFindResult(matches, matches.Count);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetFindResult>.Fail($"Failed to search workbook '{workbookPath}'")
+            return Result.Fail($"Failed to search workbook '{workbookPath}'")
                 .WithException(ex);
         }
     }
@@ -377,7 +371,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result<IEnumerable<IXLCell>>.Fail($"Invalid range '{range}': {ex.Message}");
+            return Result.Fail($"Invalid range '{range}': {ex.Message}");
         }
     }
 
@@ -399,21 +393,20 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result<SpreadsheetReadFormatResult>.Fail(worksheetResult.FirstErrorMessage);
+                return Result.Fail(worksheetResult.FirstErrorMessage);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, range);
             if (rangeResult.IsFailure)
             {
-                return Result<SpreadsheetReadFormatResult>.Fail(rangeResult.FirstErrorMessage);
+                return Result.Fail(rangeResult.FirstErrorMessage);
             }
             var resolvedRange = rangeResult.Value.Range;
 
             if (resolvedRange is null)
             {
-                var emptyResult = new SpreadsheetReadFormatResult(sheetName, new List<List<SpreadsheetFormatSpec>>());
-                return Result<SpreadsheetReadFormatResult>.Ok(emptyResult);
+                return new SpreadsheetReadFormatResult(sheetName, new List<List<SpreadsheetFormatSpec>>());
             }
 
             var address = resolvedRange.RangeAddress;
@@ -434,12 +427,11 @@ public class SpreadsheetReader : ISpreadsheetReader
                 rows.Add(rowSpecs);
             }
 
-            var result = new SpreadsheetReadFormatResult(rangeString, rows);
-            return Result<SpreadsheetReadFormatResult>.Ok(result);
+            return new SpreadsheetReadFormatResult(rangeString, rows);
         }
         catch (Exception ex)
         {
-            return Result<SpreadsheetReadFormatResult>.Fail(
+            return Result.Fail(
                 $"Failed to read format from sheet '{sheetName}' in '{workbookPath}'")
                 .WithException(ex);
         }
@@ -451,11 +443,10 @@ public class SpreadsheetReader : ISpreadsheetReader
     {
         if (!workbook.Worksheets.Contains(sheetName))
         {
-            return Result<IXLWorksheet>.Fail($"Sheet not found: '{sheetName}'");
+            return Result.Fail($"Sheet not found: '{sheetName}'");
         }
 
-        var worksheet = workbook.Worksheet(sheetName);
-        return Result<IXLWorksheet>.Ok(worksheet);
+        return Result<IXLWorksheet>.Ok(workbook.Worksheet(sheetName));
     }
 
     private static Result<ResolvedRange> ResolveRange(IXLWorksheet worksheet, string? requestedRange)
@@ -463,12 +454,12 @@ public class SpreadsheetReader : ISpreadsheetReader
         if (string.IsNullOrEmpty(requestedRange))
         {
             var usedRange = worksheet.RangeUsed();
-            return Result<ResolvedRange>.Ok(new ResolvedRange(usedRange));
+            return new ResolvedRange(usedRange);
         }
 
         if (requestedRange.Contains('!'))
         {
-            return Result<ResolvedRange>.Fail(
+            return Result.Fail(
                 $"Range must not include a sheet qualifier: '{requestedRange}'. " +
                 "Pass the sheet name as a separate parameter and the range as plain A1 notation (e.g. 'B2:D10').");
         }
@@ -476,11 +467,11 @@ public class SpreadsheetReader : ISpreadsheetReader
         try
         {
             var range = worksheet.Range(requestedRange);
-            return Result<ResolvedRange>.Ok(new ResolvedRange(range));
+            return new ResolvedRange(range);
         }
         catch (Exception ex)
         {
-            return Result<ResolvedRange>.Fail($"Invalid range '{requestedRange}': {ex.Message}");
+            return Result.Fail($"Invalid range '{requestedRange}': {ex.Message}");
         }
     }
 
@@ -521,8 +512,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             rows.Add(rowValues);
         }
 
-        var result = new SpreadsheetReadResult(rows, dataRowCount, Array.Empty<string>());
-        return Result<SpreadsheetReadResult>.Ok(result);
+        return new SpreadsheetReadResult(rows, dataRowCount, Array.Empty<string>());
     }
 
     private static Result<SpreadsheetReadResult> ReadRangeWithHeaders(
@@ -533,11 +523,10 @@ public class SpreadsheetReader : ISpreadsheetReader
     {
         if (totalRows < 1)
         {
-            var empty = new SpreadsheetReadResult(
+            return new SpreadsheetReadResult(
                 Array.Empty<object?>(),
                 0,
                 Array.Empty<string>());
-            return Result<SpreadsheetReadResult>.Ok(empty);
         }
 
         var headerRow = range.Row(1);
@@ -562,8 +551,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             rows.Add(rowDictionary);
         }
 
-        var result = new SpreadsheetReadResult(rows, dataRowCount, headers);
-        return Result<SpreadsheetReadResult>.Ok(result);
+        return new SpreadsheetReadResult(rows, dataRowCount, headers);
     }
 
     private static IReadOnlyList<string> ResolveHeaders(IXLRangeRow headerRow, int columnCount)

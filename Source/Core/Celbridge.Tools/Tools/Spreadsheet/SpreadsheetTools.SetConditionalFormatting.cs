@@ -91,25 +91,21 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(rulesJson))
         {
-            return Result<IReadOnlyList<SpreadsheetConditionalFormatRule>>.Fail("Rules JSON is required.");
+            return Result.Fail("Rules JSON is required.");
         }
 
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            var rules = JsonSerializer.Deserialize<List<SpreadsheetConditionalFormatRule>>(rulesJson, options);
+            var rules = JsonSerializer.Deserialize<List<SpreadsheetConditionalFormatRule>>(rulesJson, JsonOptions);
             if (rules is null)
             {
-                return Result<IReadOnlyList<SpreadsheetConditionalFormatRule>>.Fail("Rules JSON must be a non-null array.");
+                return Result.Fail("Rules JSON must be a non-null array.");
             }
-            return Result<IReadOnlyList<SpreadsheetConditionalFormatRule>>.Ok(rules);
+            return rules;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<SpreadsheetConditionalFormatRule>>.Fail($"Invalid rules JSON: {ex.Message}");
+            return Result.Fail($"Invalid rules JSON: {ex.Message}");
         }
     }
 }

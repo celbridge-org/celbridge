@@ -740,6 +740,420 @@ public class SpreadsheetToolTests
         GetResultText(result).Should().Contain("Sheet");
     }
 
+    [Test]
+    public async Task Insert_DispatchesCommandWithParsedOperations()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetInsertCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetInsertCommand, SpreadsheetInsertResult>(
+                Arg.Any<Action<ISpreadsheetInsertCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetInsertCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetInsertCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetInsertResult>.Ok(
+                    new SpreadsheetInsertResult(2, 3, 0)));
+            });
+
+        var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"3:5\"}, {\"sheet\": \"Q2\", \"range\": \"10\"}]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.Insert("data/sales.xlsx", operationsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Operations.Should().HaveCount(2);
+        capturedCommand.Operations[0].Sheet.Should().Be("Q1");
+        capturedCommand.Operations[0].Range.Should().Be("3:5");
+        capturedCommand.Operations[1].Range.Should().Be("10");
+
+        root.GetProperty("operationsApplied").GetInt32().Should().Be(2);
+        root.GetProperty("insertedRowCount").GetInt32().Should().Be(3);
+        root.GetProperty("insertedColumnCount").GetInt32().Should().Be(0);
+    }
+
+    [Test]
+    public async Task Insert_InvalidJson_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.Insert("data/sales.xlsx", "not json");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("Invalid operations JSON");
+    }
+
+    [Test]
+    public async Task Delete_DispatchesCommandWithParsedOperations()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetDeleteCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetDeleteCommand, SpreadsheetDeleteResult>(
+                Arg.Any<Action<ISpreadsheetDeleteCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetDeleteCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetDeleteCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetDeleteResult>.Ok(
+                    new SpreadsheetDeleteResult(1, 0, 2)));
+            });
+
+        var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"B:C\"}]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.Delete("data/sales.xlsx", operationsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Operations.Should().HaveCount(1);
+        capturedCommand.Operations[0].Sheet.Should().Be("Q1");
+        capturedCommand.Operations[0].Range.Should().Be("B:C");
+
+        root.GetProperty("deletedColumnCount").GetInt32().Should().Be(2);
+    }
+
+    [Test]
+    public async Task Delete_EmptyArray_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.Delete("data/sales.xlsx", "[]");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("at least one");
+    }
+
+    [Test]
+    public async Task Clear_DispatchesCommandWithParsedOperations()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetClearCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetClearCommand, SpreadsheetClearResult>(
+                Arg.Any<Action<ISpreadsheetClearCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetClearCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetClearCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetClearResult>.Ok(
+                    new SpreadsheetClearResult(1, 6)));
+            });
+
+        var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"A1:C2\"}]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.Clear("data/sales.xlsx", operationsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Operations.Should().HaveCount(1);
+        capturedCommand.Operations[0].Range.Should().Be("A1:C2");
+
+        root.GetProperty("operationsApplied").GetInt32().Should().Be(1);
+        root.GetProperty("cellCount").GetInt32().Should().Be(6);
+    }
+
+    [Test]
+    public async Task Clear_InvalidJson_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.Clear("data/sales.xlsx", "not json");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("Invalid operations JSON");
+    }
+
+    [Test]
+    public void Find_DispatchesToReaderAndReturnsMatches()
+    {
+        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        SpreadsheetFindOptions? capturedOptions = null;
+        _reader.Find(workbookPath, Arg.Do<SpreadsheetFindOptions>(o => capturedOptions = o))
+            .Returns(Result<SpreadsheetFindResult>.Ok(new SpreadsheetFindResult(
+                new[]
+                {
+                    new SpreadsheetFindMatch("Q1", "A2", "Total", false),
+                    new SpreadsheetFindMatch("Q1", "B5", "=SUM(A1:A10)", true)
+                },
+                2)));
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(tools.Find("data/sales.xlsx", "Total", sheet: "Q1", matchCase: true));
+
+        capturedOptions.Should().NotBeNull();
+        capturedOptions!.Find.Should().Be("Total");
+        capturedOptions.Sheet.Should().Be("Q1");
+        capturedOptions.MatchCase.Should().BeTrue();
+
+        root.GetProperty("matchCount").GetInt32().Should().Be(2);
+        var matches = root.GetProperty("matches");
+        matches.GetArrayLength().Should().Be(2);
+        matches[1].GetProperty("isFormula").GetBoolean().Should().BeTrue();
+    }
+
+    [Test]
+    public void Find_EmptyFindString_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = tools.Find("data/sales.xlsx", string.Empty);
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("Find text");
+    }
+
+    [Test]
+    public async Task Sort_DispatchesCommandWithParsedSortKeys()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetSortCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetSortCommand, SpreadsheetSortResult>(
+                Arg.Any<Action<ISpreadsheetSortCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetSortCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetSortCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSortResult>.Ok(
+                    new SpreadsheetSortResult(8)));
+            });
+
+        var sortByJson = "[{\"column\": \"B\", \"ascending\": false}, {\"column\": \"A\", \"ascending\": true}]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.Sort(
+            "data/sales.xlsx",
+            "Q1",
+            "A1:C9",
+            sortByJson,
+            hasHeaderRow: true));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q1");
+        capturedCommand.Range.Should().Be("A1:C9");
+        capturedCommand.HasHeaderRow.Should().BeTrue();
+        capturedCommand.SortKeys.Should().HaveCount(2);
+        capturedCommand.SortKeys[0].Column.Should().Be("B");
+        capturedCommand.SortKeys[0].Ascending.Should().BeFalse();
+        capturedCommand.SortKeys[1].Column.Should().Be("A");
+
+        root.GetProperty("rowCount").GetInt32().Should().Be(8);
+    }
+
+    [Test]
+    public async Task Sort_EmptySortByJson_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.Sort("data/sales.xlsx", "Q1", "A1:B5", string.Empty);
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("sortByJson");
+    }
+
+    [Test]
+    public async Task DuplicateSheet_DispatchesCommandAndReturnsAckMetadata()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetDuplicateSheetCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(
+                Arg.Any<Action<ISpreadsheetDuplicateSheetCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetDuplicateSheetCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetDuplicateSheetCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetDuplicateSheetResult>.Ok(
+                    new SpreadsheetDuplicateSheetResult("Q1Copy", 2)));
+            });
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.DuplicateSheet("data/sales.xlsx", "Q1", "Q1Copy", position: 2));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.SourceSheet.Should().Be("Q1");
+        capturedCommand.NewSheet.Should().Be("Q1Copy");
+        capturedCommand.Position.Should().Be(2);
+
+        root.GetProperty("newSheet").GetString().Should().Be("Q1Copy");
+        root.GetProperty("position").GetInt32().Should().Be(2);
+    }
+
+    [Test]
+    public async Task DuplicateSheet_EmptySourceSheet_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.DuplicateSheet("data/sales.xlsx", string.Empty, "NewName");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("Source sheet");
+    }
+
+    [Test]
+    public async Task SetAutoFilter_DispatchesCommandAndReturnsAckMetadata()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetSetAutoFilterCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetSetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(
+                Arg.Any<Action<ISpreadsheetSetAutoFilterCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetSetAutoFilterCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetSetAutoFilterCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSetAutoFilterResult>.Ok(
+                    new SpreadsheetSetAutoFilterResult(true, "A1:C10")));
+            });
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.SetAutoFilter("data/sales.xlsx", "Q1", range: "A1:C10"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q1");
+        capturedCommand.Range.Should().Be("A1:C10");
+        capturedCommand.Enabled.Should().BeTrue();
+
+        root.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        root.GetProperty("filterRange").GetString().Should().Be("A1:C10");
+    }
+
+    [Test]
+    public async Task SetAutoFilter_EmptySheetName_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.SetAutoFilter("data/sales.xlsx", string.Empty);
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("Sheet");
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_DispatchesCommandWithParsedRules()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        ISpreadsheetSetConditionalFormattingCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<ISpreadsheetSetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(
+                Arg.Any<Action<ISpreadsheetSetConditionalFormattingCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<ISpreadsheetSetConditionalFormattingCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<ISpreadsheetSetConditionalFormattingCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSetConditionalFormattingResult>.Ok(
+                    new SpreadsheetSetConditionalFormattingResult(1, 0)));
+            });
+
+        var rulesJson = "[{\"type\": \"greaterThan\", \"value\": 100, \"backgroundColor\": \"#FFFF00\"}]";
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(await tools.SetConditionalFormatting("data/sales.xlsx", "Q1", "B2:B100", rulesJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Sheet.Should().Be("Q1");
+        capturedCommand.Range.Should().Be("B2:B100");
+        capturedCommand.Rules.Should().HaveCount(1);
+        capturedCommand.Rules[0].Type.Should().Be("greaterThan");
+        capturedCommand.Rules[0].Value.Should().Be(100);
+        capturedCommand.Rules[0].BackgroundColor.Should().Be("#FFFF00");
+
+        root.GetProperty("rulesApplied").GetInt32().Should().Be(1);
+        root.GetProperty("rulesRemoved").GetInt32().Should().Be(0);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_EmptyRulesWithoutClearExisting_ReturnsError()
+    {
+        CreatePlaceholderFile("data/sales.xlsx");
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.SetConditionalFormatting("data/sales.xlsx", "Q1", "B2:B100", "[]");
+
+        result.IsError.Should().BeTrue();
+        GetResultText(result).Should().Contain("at least one");
+    }
+
+    [Test]
+    public void GetActiveView_DispatchesToReaderAndReturnsViewState()
+    {
+        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        var view = new SpreadsheetActiveView(
+            "Summary",
+            "B2:D4",
+            new[] { "B2:D4", "F1:F10" },
+            "C3",
+            "A1");
+        _reader.GetActiveView(workbookPath).Returns(Result<SpreadsheetActiveView>.Ok(view));
+
+        var tools = new SpreadsheetTools(_services);
+        var root = ParseResult(tools.GetActiveView("data/sales.xlsx"));
+
+        root.GetProperty("sheet").GetString().Should().Be("Summary");
+        root.GetProperty("range").GetString().Should().Be("B2:D4");
+        root.GetProperty("activeCell").GetString().Should().Be("C3");
+        root.GetProperty("topLeftCell").GetString().Should().Be("A1");
+        var ranges = root.GetProperty("ranges");
+        ranges.GetArrayLength().Should().Be(2);
+        ranges[1].GetString().Should().Be("F1:F10");
+    }
+
     private string CreatePlaceholderFile(string resourceKey)
     {
         var resource = new ResourceKey(resourceKey);

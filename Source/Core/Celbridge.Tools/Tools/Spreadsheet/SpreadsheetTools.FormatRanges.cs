@@ -63,29 +63,25 @@ public partial class SpreadsheetTools
     {
         if (string.IsNullOrEmpty(editsJson))
         {
-            return Result<IReadOnlyList<SpreadsheetFormatEdit>>.Fail("Edits JSON is required.");
+            return Result.Fail("Edits JSON is required.");
         }
 
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            var edits = JsonSerializer.Deserialize<List<SpreadsheetFormatEdit>>(editsJson, options);
+            var edits = JsonSerializer.Deserialize<List<SpreadsheetFormatEdit>>(editsJson, JsonOptions);
             if (edits is null)
             {
-                return Result<IReadOnlyList<SpreadsheetFormatEdit>>.Fail("Edits JSON must be a non-null array.");
+                return Result.Fail("Edits JSON must be a non-null array.");
             }
             if (edits.Count == 0)
             {
-                return Result<IReadOnlyList<SpreadsheetFormatEdit>>.Fail("Edits array must contain at least one edit.");
+                return Result.Fail("Edits array must contain at least one edit.");
             }
-            return Result<IReadOnlyList<SpreadsheetFormatEdit>>.Ok(edits);
+            return edits;
         }
         catch (JsonException ex)
         {
-            return Result<IReadOnlyList<SpreadsheetFormatEdit>>.Fail($"Invalid edits JSON: {ex.Message}");
+            return Result.Fail($"Invalid edits JSON: {ex.Message}");
         }
     }
 }

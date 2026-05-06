@@ -36,7 +36,7 @@ public class WriteCellsCommand : CommandBase, ISpreadsheetWriteCellsCommand
 
         if (Edits.Count == 0)
         {
-            return Result.Ok();
+            return Result.Fail("At least one edit is required.");
         }
 
         try
@@ -55,7 +55,7 @@ public class WriteCellsCommand : CommandBase, ISpreadsheetWriteCellsCommand
 
                 if (string.IsNullOrEmpty(edit.Cell))
                 {
-                    return Result.Fail($"Edit at index {editIndex} has an empty cell address.");
+                    return Result.Fail($"Edit {editIndex + 1}: cell address is required.");
                 }
 
                 IXLCell cell;
@@ -65,7 +65,7 @@ public class WriteCellsCommand : CommandBase, ISpreadsheetWriteCellsCommand
                 }
                 catch (Exception ex)
                 {
-                    return Result.Fail($"Invalid cell address '{edit.Cell}' at edit index {editIndex}: {ex.Message}");
+                    return Result.Fail($"Edit {editIndex + 1}: invalid cell address '{edit.Cell}': {ex.Message}");
                 }
 
                 if (edit.IsFormula)
@@ -73,7 +73,7 @@ public class WriteCellsCommand : CommandBase, ISpreadsheetWriteCellsCommand
                     var formulaText = edit.Value as string;
                     if (formulaText is null)
                     {
-                        return Result.Fail($"Edit at index {editIndex} is marked isFormula but value is not a string.");
+                        return Result.Fail($"Edit {editIndex + 1}: marked isFormula but value is not a string.");
                     }
                     SpreadsheetValueConverter.SetCellFormula(cell, formulaText);
                 }

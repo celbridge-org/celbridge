@@ -14,7 +14,7 @@ public record SpreadsheetDuplicateSheetResult(string NewSheet, int Position);
 /// values, formulas, formatting, conditional formatting, freeze panes, column
 /// widths, row heights, and any other sheet-level state. Fails if the source
 /// sheet does not exist, the new name collides with an existing sheet, or the
-/// position is outside [1, sheetCount + 1].
+/// position is outside [0, sheetCount + 1] (0 appends after existing sheets).
 /// </summary>
 public interface ISpreadsheetDuplicateSheetCommand : IExecutableCommand<SpreadsheetDuplicateSheetResult>
 {

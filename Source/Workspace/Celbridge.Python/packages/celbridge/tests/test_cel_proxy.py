@@ -82,7 +82,7 @@ def test_build_signature_optional_param():
     assert build_signature(tool) == "(file_resource: str, force_reload: bool = False)"
 
 
-def testbuild_docstring():
+def test_build_docstring():
     """Test building a docstring from a tool descriptor."""
     tool = {
         "name": "app/log",

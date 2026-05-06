@@ -345,7 +345,8 @@ public class Result<T> : Result where T : notnull
 
     /// <summary>
     /// Implicitly convert a concrete FailureResult into a generic Result<T>, copying all errors.
-    /// This allows you to 
+    /// Lets call sites write `return Result.Fail("...")` from a method whose declared
+    /// return type is Result<T>, without restating the generic argument.
     /// </summary>
     public static implicit operator Result<T>(FailureResult failure)
     {

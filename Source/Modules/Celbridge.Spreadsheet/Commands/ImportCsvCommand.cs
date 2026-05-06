@@ -37,12 +37,17 @@ public class ImportCsvCommand : CommandBase, ISpreadsheetImportCsvCommand
         }
 
         var parsedImports = new List<(SpreadsheetCsvImport Import, IReadOnlyList<IReadOnlyList<string>> Rows)>(Imports.Count);
+        var seenSheets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int importIndex = 0; importIndex < Imports.Count; importIndex++)
         {
             var import = Imports[importIndex];
             if (string.IsNullOrEmpty(import.Sheet))
             {
                 return Result.Fail($"Import {importIndex + 1}: sheet name is required.");
+            }
+            if (!seenSheets.Add(import.Sheet))
+            {
+                return Result.Fail($"Import {importIndex + 1}: sheet '{import.Sheet}' appears more than once in the batch.");
             }
 
             IReadOnlyList<IReadOnlyList<string>> parsedRows;

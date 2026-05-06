@@ -64,10 +64,10 @@ public class Module : IModule
         if (activityName == nameof(SpreadsheetActivity))
         {
             var activity = ServiceLocator.AcquireService<SpreadsheetActivity>();
-            return Result<IActivity>.Ok(activity);
+            return activity;
         }
 
-        return Result<IActivity>.Fail();
+        return Result.Fail();
     }
 
     public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()

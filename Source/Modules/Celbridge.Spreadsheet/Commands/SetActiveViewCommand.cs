@@ -79,12 +79,9 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
             return Result.Fail($"TopLeftCell must be a single cell address, was '{TopLeftCell}'.");
         }
 
-        // Write view state to disk and let the file-watcher reload path apply it
-        // to any open editor. The spreadsheet editor auto-saves selection and
-        // active sheet on every change, so its in-memory state and disk stay in
-        // sync; on reload, the imported workbook reflects whatever this command
-        // just wrote, and the JS-side restoreViewState yields to disk when the
-        // active sheet or selection has changed.
+        // Write to disk and let the file-watcher reload path apply the view
+        // state to any open editor. The editor's restoreViewState yields to
+        // disk when the active sheet or selection has changed.
         return ApplyViewStateToWorkbook(workbookPath);
     }
 
@@ -100,11 +97,9 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
             }
             var worksheet = workbook.Worksheet(Sheet);
 
-            // SetTabActive only updates the workbook-level active-tab pointer;
-            // TabSelected is a per-sheet flag for the multi-tab selection group
-            // (the Shift/Ctrl-click behaviour). Clear it on every sheet so the
-            // result is a single selected tab rather than the target plus
-            // whatever was previously selected.
+            // SetTabActive sets the workbook-level pointer only; TabSelected is
+            // the per-sheet multi-tab selection flag. Clear it everywhere so
+            // the target ends up as the sole selected tab.
             foreach (var otherSheet in workbook.Worksheets)
             {
                 otherSheet.TabSelected = false;
@@ -152,7 +147,7 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
                 }
 
                 worksheet.ActiveCell = anchorCell;
-                worksheet.SelectedRanges.RemoveAll(_ => true);
+                worksheet.SelectedRanges.RemoveAll();
                 foreach (var selectionRange in selectionRanges)
                 {
                     worksheet.SelectedRanges.Add(selectionRange);
@@ -200,7 +195,7 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
                 }
                 catch (Exception ex)
                 {
-                    return Result<List<IXLRange>>.Fail($"Invalid range Ranges[{rangeIndex}]: '{rangeEntry}'.").WithException(ex);
+                    return Result.Fail($"Invalid range Ranges[{rangeIndex}]: '{rangeEntry}'.").WithException(ex);
                 }
                 resolved.Add(xlRange);
             }
@@ -219,7 +214,7 @@ public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewComman
         catch (Exception ex)
         {
             var label = hasRange ? "range" : "ActiveCell";
-            return Result<List<IXLRange>>.Fail($"Invalid {label}: '{selectionRangeAddress}'.").WithException(ex);
+            return Result.Fail($"Invalid {label}: '{selectionRangeAddress}'.").WithException(ex);
         }
 
         resolved.Add(selectionRange);

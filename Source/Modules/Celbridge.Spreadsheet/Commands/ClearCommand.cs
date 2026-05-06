@@ -90,15 +90,11 @@ public class ClearCommand : CommandBase, ISpreadsheetClearCommand
     {
         cellCount = 0;
 
-        // Cell count uses XLCellsUsedOptions.All so cells with only formatting,
-        // comments, merged ranges or data validation are counted alongside cells
-        // with values. The count must be captured before Clear runs, since the
-        // clear resets cell state to default.
+        // XLCellsUsedOptions.All counts cells with only formatting, comments,
+        // merged ranges or data validation alongside value cells. Capture the
+        // count before clearing because Clear resets state to default.
         if (string.IsNullOrEmpty(range))
         {
-            // Whole-sheet clear: nukes content + formatting + comments + merged
-            // ranges + data validation. Sheet identity (name, position, color,
-            // frozen panes, named ranges, column widths, row heights) survives.
             cellCount = worksheet.CellsUsed(XLCellsUsedOptions.All).Count();
             worksheet.Clear(XLClearOptions.All);
             return Result.Ok();

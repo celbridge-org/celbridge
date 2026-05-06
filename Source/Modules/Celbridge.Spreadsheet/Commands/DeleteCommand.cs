@@ -138,16 +138,16 @@ public class DeleteCommand : CommandBase, ISpreadsheetDeleteCommand
                 var rows = worksheet.Rows(range).ToList();
                 if (rows.Count == 0)
                 {
-                    return Result<AxisIndices>.Fail($"Row range '{range}' did not match any rows.");
+                    return Result.Fail($"Row range '{range}' did not match any rows.");
                 }
                 var firstRow = rows.Min(r => r.RowNumber());
                 var lastRow = rows.Max(r => r.RowNumber());
 
-                return Result<AxisIndices>.Ok(new AxisIndices(true, firstRow, lastRow));
+                return new AxisIndices(true, firstRow, lastRow);
             }
             catch (Exception ex)
             {
-                return Result<AxisIndices>.Fail($"Invalid row range '{range}': {ex.Message}");
+                return Result.Fail($"Invalid row range '{range}': {ex.Message}");
             }
         }
 
@@ -158,20 +158,20 @@ public class DeleteCommand : CommandBase, ISpreadsheetDeleteCommand
                 var columns = worksheet.Columns(range).ToList();
                 if (columns.Count == 0)
                 {
-                    return Result<AxisIndices>.Fail($"Column range '{range}' did not match any columns.");
+                    return Result.Fail($"Column range '{range}' did not match any columns.");
                 }
                 var firstColumn = columns.Min(c => c.ColumnNumber());
                 var lastColumn = columns.Max(c => c.ColumnNumber());
 
-                return Result<AxisIndices>.Ok(new AxisIndices(false, firstColumn, lastColumn));
+                return new AxisIndices(false, firstColumn, lastColumn);
             }
             catch (Exception ex)
             {
-                return Result<AxisIndices>.Fail($"Invalid column range '{range}': {ex.Message}");
+                return Result.Fail($"Invalid column range '{range}': {ex.Message}");
             }
         }
 
-        return Result<AxisIndices>.Fail(
+        return Result.Fail(
             $"Range '{range}' is not a row or column range. Use \"3\" or \"3:5\" for rows, \"B\" or \"B:D\" for columns. Cell ranges (e.g. \"A1:C3\") are not accepted by delete.");
     }
 }
