@@ -36,12 +36,12 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ErrorResult($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         var modeCount = 0;
@@ -50,7 +50,7 @@ public partial class WebViewTools
         if (!string.IsNullOrEmpty(selector)) modeCount++;
         if (modeCount != 1)
         {
-            return ErrorResult("webview_query requires exactly one of role, text, or selector.");
+            return ToolError("webview_query requires exactly one of role, text, or selector.");
         }
 
         Logger.LogInformation("webview_query resource={Resource} role={Role} name={Name} text={Text} selector={Selector} maxResults={MaxResults}",
@@ -76,9 +76,9 @@ public partial class WebViewTools
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)
         {
-            return ErrorResult(queryResult);
+            return ToolError(queryResult);
         }
 
-        return SuccessResult(queryResult.Value);
+        return ToolSuccess(queryResult.Value);
     }
 }

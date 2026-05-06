@@ -15,6 +15,6 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.get_context")]
     public partial CallToolResult GetContext()
     {
-        return SuccessResult(LoadEmbeddedResource("Celbridge.Tools.Assets.SpreadsheetContext.md"));
+        return ToolSuccess(LoadEmbeddedResource("Celbridge.Tools.Assets.SpreadsheetContext.md"));
     }
 }

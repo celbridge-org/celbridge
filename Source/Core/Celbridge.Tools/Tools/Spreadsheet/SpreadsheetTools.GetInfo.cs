@@ -20,7 +20,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -28,10 +28,10 @@ public partial class SpreadsheetTools
         var infoResult = reader.GetInfo(workbookPath);
         if (infoResult.IsFailure)
         {
-            return ErrorResult(infoResult);
+            return ToolError(infoResult);
         }
 
         var info = infoResult.Value;
-        return SuccessResult(SerializeJson(info));
+        return ToolSuccess(SerializeJson(info));
     }
 }

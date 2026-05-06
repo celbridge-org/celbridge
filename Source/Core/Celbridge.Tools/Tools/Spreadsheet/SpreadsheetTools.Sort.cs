@@ -41,23 +41,23 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var parseResult = ParseSortKeys(sortByJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var sortKeys = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetSortCommand, SpreadsheetSortResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetSortCommand, SpreadsheetSortResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -66,15 +66,15 @@ public partial class SpreadsheetTools
             command.HasHeaderRow = hasHeaderRow;
             command.MatchCase = matchCase;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetSortResult(0);
+        var commandValue = commandResult.Value;
         var result = new SortResult(commandValue.RowCount);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<SpreadsheetSortKey>> ParseSortKeys(string sortByJson)

@@ -33,19 +33,19 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var modeResult = ParseReadMode(mode);
         if (modeResult.IsFailure)
         {
-            return ErrorResult(modeResult);
+            return ToolError(modeResult);
         }
         var readMode = modeResult.Value;
 
@@ -62,10 +62,10 @@ public partial class SpreadsheetTools
         var readResult = reader.ReadSheet(workbookPath, sheet, options);
         if (readResult.IsFailure)
         {
-            return ErrorResult(readResult);
+            return ToolError(readResult);
         }
 
-        return SuccessResult(SerializeJson(readResult.Value));
+        return ToolSuccess(SerializeJson(readResult.Value));
     }
 
     private static Result<SpreadsheetReadMode> ParseReadMode(string mode)

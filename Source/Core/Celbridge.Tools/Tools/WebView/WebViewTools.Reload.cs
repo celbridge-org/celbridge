@@ -25,12 +25,12 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ErrorResult($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         Logger.LogInformation("webview_reload resource={Resource} clearCache={ClearCache}", resourceKey, clearCache);
@@ -39,9 +39,9 @@ public partial class WebViewTools
         var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache);
         if (reloadResult.IsFailure)
         {
-            return ErrorResult(reloadResult);
+            return ToolError(reloadResult);
         }
 
-        return SuccessResult("ok");
+        return ToolSuccess("ok");
     }
 }

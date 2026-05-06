@@ -18,10 +18,12 @@ public abstract class AgentToolBase
     };
 
     private readonly IApplicationServiceProvider _services;
+    private readonly ICommandService _commandService;
 
     protected AgentToolBase(IApplicationServiceProvider services)
     {
         _services = services;
+        _commandService = services.GetRequiredService<ICommandService>();
     }
 
     protected T GetRequiredService<T>() where T : class
@@ -29,7 +31,7 @@ public abstract class AgentToolBase
         return _services.GetRequiredService<T>();
     }
 
-    protected ICommandService CommandService => GetRequiredService<ICommandService>();
+    protected ICommandService CommandService => _commandService;
 
     /// <summary>
     /// Maximum length, in characters, of an agent-visible error message produced
@@ -40,44 +42,32 @@ public abstract class AgentToolBase
     private const int MaxErrorMessageLength = 1000;
 
     /// <summary>
-    /// Executes a command asynchronously, returning a CallToolResult so the MCP
-    /// framework can report errors to the client. On failure surfaces the
-    /// command's full message chain so the agent sees both the wrapper and
-    /// any underlying exception message.
+    /// Executes a command that produces no typed result, returning a Result so the
+    /// tool can branch on IsFailure and pass the failed Result to ToolError. Mirrors
+    /// the typed overload's shape so every command call site reads the same way.
     /// </summary>
-    protected async Task<CallToolResult> ExecuteCommandAsync<T>(Action<T>? configure = null) where T : IExecutableCommand
+    protected async Task<Result> ExecuteCommandAsync<T>(Action<T>? configure = null) where T : IExecutableCommand
     {
-        var result = await CommandService.ExecuteAsync(configure);
-        if (result.IsFailure)
-        {
-            return ErrorResult(result);
-        }
-
-        return SuccessResult("ok");
+        return await CommandService.ExecuteAsync(configure);
     }
 
     /// <summary>
-    /// Executes a command that produces a typed result, returning both a CallToolResult
-    /// and the result value for the MCP tool to include in its response.
+    /// Executes a command that produces a typed result and returns it as a <c>Result&lt;TResult&gt;</c>.
+    /// Tools should branch on IsFailure and pass the failed Result to ToolError so the
+    /// agent sees the full message chain. On success, Value is guaranteed non-null.
     /// </summary>
-    protected async Task<(CallToolResult, TResult?)> ExecuteCommandAsync<TCommand, TResult>(
+    protected async Task<Result<TResult>> ExecuteCommandAsync<TCommand, TResult>(
         Action<TCommand>? configure = null)
         where TCommand : IExecutableCommand<TResult>
         where TResult : notnull
     {
-        var result = await CommandService.ExecuteAsync<TCommand, TResult>(configure);
-        if (result.IsFailure)
-        {
-            return (ErrorResult(result), default);
-        }
-
-        return (new CallToolResult(), result.Value);
+        return await CommandService.ExecuteAsync<TCommand, TResult>(configure);
     }
 
     /// <summary>
     /// Creates a successful CallToolResult with a text message.
     /// </summary>
-    protected static CallToolResult SuccessResult(string text)
+    protected static CallToolResult ToolSuccess(string text)
     {
         return new CallToolResult
         {
@@ -93,7 +83,7 @@ public abstract class AgentToolBase
     /// <summary>
     /// Creates an error CallToolResult with a text message.
     /// </summary>
-    protected static CallToolResult ErrorResult(string text)
+    protected static CallToolResult ToolError(string text)
     {
         var capped = CapErrorMessage(text);
         return new CallToolResult
@@ -113,9 +103,9 @@ public abstract class AgentToolBase
     /// MessageChain so the agent sees the outer wrapper and any propagated
     /// inner causes.
     /// </summary>
-    protected static CallToolResult ErrorResult(Result result)
+    protected static CallToolResult ToolError(Result result)
     {
-        return ErrorResult(result.MessageChain);
+        return ToolError(result.MessageChain);
     }
 
     private static string CapErrorMessage(string text)
@@ -153,7 +143,7 @@ public abstract class AgentToolBase
     /// vision context directly. The text block lets the agent reference
     /// metadata (size, format, saved location, etc.) alongside the image.
     /// </summary>
-    protected static CallToolResult SuccessResultWithImage(byte[] imageBytes, string mimeType, string metadataJson)
+    protected static CallToolResult ToolSuccessWithImage(byte[] imageBytes, string mimeType, string metadataJson)
     {
         return new CallToolResult
         {

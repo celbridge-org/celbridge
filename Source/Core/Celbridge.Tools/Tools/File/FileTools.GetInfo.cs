@@ -27,23 +27,23 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         // Route through the command queue so the snapshot observes state after all
         // previously enqueued commands have run. The command resolves the registry
         // path and captures disk metadata on the command thread.
-        var (callResult, snapshot) = await ExecuteCommandAsync<IGetFileInfoCommand, FileInfoSnapshot>(
+        var getInfoResult = await ExecuteCommandAsync<IGetFileInfoCommand, FileInfoSnapshot>(
             command => command.Resource = resourceKey);
-
-        if (callResult.IsError == true || snapshot is null)
+        if (getInfoResult.IsFailure)
         {
-            return callResult;
+            return ToolError(getInfoResult);
         }
+        var snapshot = getInfoResult.Value;
 
         if (!snapshot.Exists)
         {
-            return ErrorResult($"Resource not found: '{resource}'");
+            return ToolError($"Resource not found: '{resource}'");
         }
 
         if (snapshot.IsFile)
@@ -55,10 +55,10 @@ public partial class FileTools
                 snapshot.Extension,
                 snapshot.IsText,
                 snapshot.LineCount);
-            return SuccessResult(SerializeJson(fileResult));
+            return ToolSuccess(SerializeJson(fileResult));
         }
 
         var folderResult = new FolderInfoResult("folder", snapshot.ModifiedUtc.ToString("o"));
-        return SuccessResult(SerializeJson(folderResult));
+        return ToolSuccess(SerializeJson(folderResult));
     }
 }

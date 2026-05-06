@@ -15,6 +15,12 @@ public partial class ExplorerTools
     [ToolAlias("explorer.undo")]
     public async partial Task<CallToolResult> Undo()
     {
-        return await ExecuteCommandAsync<IUndoResourceCommand>();
+        var undoResult = await ExecuteCommandAsync<IUndoResourceCommand>();
+        if (undoResult.IsFailure)
+        {
+            return ToolError(undoResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

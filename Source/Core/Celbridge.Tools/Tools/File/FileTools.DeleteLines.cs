@@ -29,17 +29,17 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{fileResource}'");
+            return ToolError($"Invalid resource key: '{fileResource}'");
         }
 
         if (startLine < 1)
         {
-            return ErrorResult($"startLine must be at least 1, got {startLine}");
+            return ToolError($"startLine must be at least 1, got {startLine}");
         }
 
         if (endLine < startLine)
         {
-            return ErrorResult($"endLine ({endLine}) must be greater than or equal to startLine ({startLine})");
+            return ToolError($"endLine ({endLine}) must be greater than or equal to startLine ({startLine})");
         }
 
         var deleteResult = await ExecuteCommandAsync<IDeleteLinesCommand>(command =>
@@ -49,9 +49,9 @@ public partial class FileTools
             command.EndLine = endLine;
         });
 
-        if (deleteResult.IsError == true)
+        if (deleteResult.IsFailure)
         {
-            return deleteResult;
+            return ToolError(deleteResult);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -82,6 +82,6 @@ public partial class FileTools
 
         var result = new DeleteLinesResult(startLine, endLine, totalLineCount, contextLines);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

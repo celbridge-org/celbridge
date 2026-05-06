@@ -16,12 +16,18 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
-        return await ExecuteCommandAsync<IRenameResourceDialogCommand>(command =>
+        var renameResult = await ExecuteCommandAsync<IRenameResourceDialogCommand>(command =>
         {
             command.Resource = resourceKey;
         });
+        if (renameResult.IsFailure)
+        {
+            return ToolError(renameResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

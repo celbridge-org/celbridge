@@ -32,31 +32,31 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         var parseResult = ParseFormatEdits(editsJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var edits = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetFormatRangesCommand, SpreadsheetFormatRangesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetFormatRangesCommand, SpreadsheetFormatRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Edits = edits;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetFormatRangesResult(0, 0, false);
+        var commandValue = commandResult.Value;
         var result = new FormatRangesResult(commandValue.EditsApplied, commandValue.PropertiesApplied, commandValue.AutoFitApplied);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<SpreadsheetFormatEdit>> ParseFormatEdits(string editsJson)

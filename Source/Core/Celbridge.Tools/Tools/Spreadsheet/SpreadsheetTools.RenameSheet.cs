@@ -26,17 +26,17 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         if (string.IsNullOrEmpty(newName))
         {
-            return ErrorResult("New sheet name is required.");
+            return ToolError("New sheet name is required.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -46,11 +46,11 @@ public partial class SpreadsheetTools
             command.Sheet = sheet;
             command.NewName = newName;
         });
-        if (commandResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return commandResult;
+            return ToolError(commandResult);
         }
 
-        return SuccessResult(SerializeJson(new RenameSheetResult(sheet, newName)));
+        return ToolSuccess(SerializeJson(new RenameSheetResult(sheet, newName)));
     }
 }

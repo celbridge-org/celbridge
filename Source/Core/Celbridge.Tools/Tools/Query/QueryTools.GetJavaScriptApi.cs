@@ -19,7 +19,7 @@ public partial class QueryTools
     public partial CallToolResult GetJavaScriptApi()
     {
         var reference = BuildJavaScriptApiReference();
-        return SuccessResult(reference);
+        return ToolSuccess(reference);
     }
 
     private static string BuildJavaScriptApiReference()

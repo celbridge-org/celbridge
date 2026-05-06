@@ -39,10 +39,10 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{fileResource}'");
+            return ToolError($"Invalid resource key: '{fileResource}'");
         }
 
-        var (callResult, replacementCount) = await ExecuteCommandAsync<IFindReplaceFileCommand, int>(command =>
+        var findReplaceResult = await ExecuteCommandAsync<IFindReplaceFileCommand, int>(command =>
         {
             command.FileResource = fileResourceKey;
             command.SearchText = searchText;
@@ -53,13 +53,14 @@ public partial class FileTools
             command.ToLine = toLine;
         });
 
-        if (callResult.IsError == true)
+        if (findReplaceResult.IsFailure)
         {
-            return callResult;
+            return ToolError(findReplaceResult);
         }
 
+        var replacementCount = findReplaceResult.Value;
         var result = new FindReplaceResult(replacementCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

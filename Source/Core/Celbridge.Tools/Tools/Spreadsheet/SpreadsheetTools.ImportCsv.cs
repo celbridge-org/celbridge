@@ -33,31 +33,31 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         var parseResult = ParseCsvImports(importsJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var imports = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetImportCsvCommand, SpreadsheetImportCsvResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetImportCsvCommand, SpreadsheetImportCsvResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Imports = imports;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetImportCsvResult(0, 0, 0);
+        var commandValue = commandResult.Value;
         var result = new ImportCsvResult(commandValue.ImportsApplied, commandValue.TotalRowCount, commandValue.SheetsCreated);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<SpreadsheetCsvImport>> ParseCsvImports(string importsJson)

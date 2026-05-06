@@ -53,18 +53,18 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var parseResult = ParseRangesJson(rangesJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var ranges = parseResult.Value;
 
@@ -78,14 +78,14 @@ public partial class SpreadsheetTools
             command.ActiveCell = activeCell;
             command.TopLeftCell = topLeftCell;
         });
-        if (commandResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return commandResult;
+            return ToolError(commandResult);
         }
 
         var appliedRange = ranges.Count > 0 ? ranges[0] : range;
         var result = new SetActiveViewResult(sheet, appliedRange, ranges, activeCell, topLeftCell);
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<string>> ParseRangesJson(string rangesJson)

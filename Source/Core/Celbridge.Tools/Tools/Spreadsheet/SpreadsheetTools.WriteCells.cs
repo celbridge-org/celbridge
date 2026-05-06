@@ -31,18 +31,18 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var parseResult = ParseCellEdits(edits);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var cellEdits = parseResult.Value;
 
@@ -53,13 +53,13 @@ public partial class SpreadsheetTools
             command.Sheet = sheet;
             command.Edits = cellEdits;
         });
-        if (commandResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return commandResult;
+            return ToolError(commandResult);
         }
 
         var result = new WriteCellsResult(cellEdits.Count);
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<List<SpreadsheetCellEdit>> ParseCellEdits(string editsJson)

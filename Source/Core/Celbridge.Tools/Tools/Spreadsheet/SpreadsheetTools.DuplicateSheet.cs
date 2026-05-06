@@ -34,35 +34,35 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sourceSheet))
         {
-            return ErrorResult("Source sheet name is required.");
+            return ToolError("Source sheet name is required.");
         }
 
         if (string.IsNullOrEmpty(newSheet))
         {
-            return ErrorResult("New sheet name is required.");
+            return ToolError("New sheet name is required.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.SourceSheet = sourceSheet;
             command.NewSheet = newSheet;
             command.Position = position;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetDuplicateSheetResult(newSheet, 0);
+        var commandValue = commandResult.Value;
         var result = new DuplicateSheetResult(commandValue.NewSheet, commandValue.Position);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 }

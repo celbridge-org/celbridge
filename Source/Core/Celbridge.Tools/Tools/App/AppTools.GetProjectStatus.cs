@@ -47,7 +47,7 @@ public partial class AppTools
         var result = new ProjectStatusResult(isLoaded, projectName, featureFlags);
         var json = JsonSerializer.Serialize(result, JsonOptions);
 
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 
     private static IReadOnlyList<string> ReadFeatureFlagNames()

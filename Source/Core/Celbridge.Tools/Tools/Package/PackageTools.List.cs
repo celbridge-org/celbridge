@@ -25,7 +25,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ErrorResult(listResult);
+            return ToolError(listResult);
         }
 
         var packages = new List<PackageListEntry>();
@@ -42,6 +42,6 @@ public partial class PackageTools
         }
 
         var json = JsonSerializer.Serialize(packages, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

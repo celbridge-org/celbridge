@@ -37,30 +37,30 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetSetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetSetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
             command.Range = range;
             command.Enabled = enabled;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetSetAutoFilterResult(false, string.Empty);
+        var commandValue = commandResult.Value;
         var result = new SetAutoFilterResult(commandValue.Enabled, commandValue.FilterRange);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 }

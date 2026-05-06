@@ -28,31 +28,31 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         var parseResult = ParseSheetNames(sheetsJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var sheetNames = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetAddSheetsCommand, SpreadsheetAddSheetsResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetAddSheetsCommand, SpreadsheetAddSheetsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheets = sheetNames;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetAddSheetsResult(sheetNames);
+        var commandValue = commandResult.Value;
         var result = new AddSheetsResult(commandValue.Sheets);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<string>> ParseSheetNames(string sheetsJson)

@@ -29,13 +29,13 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
@@ -44,9 +44,9 @@ public partial class SpreadsheetTools
         var readResult = reader.ReadFormat(workbookPath, sheet, rangeArgument);
         if (readResult.IsFailure)
         {
-            return ErrorResult(readResult);
+            return ToolError(readResult);
         }
 
-        return SuccessResult(SerializeJson(readResult.Value));
+        return ToolSuccess(SerializeJson(readResult.Value));
     }
 }

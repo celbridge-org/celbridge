@@ -32,13 +32,13 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         // Route through the command queue so the snapshot observes state after all
         // previously enqueued commands have run. The command reads the registry and
         // builds the filtered tree on the command thread.
-        var (callResult, snapshot) = await ExecuteCommandAsync<IGetFileTreeCommand, FileTreeSnapshot>(command =>
+        var getTreeResult = await ExecuteCommandAsync<IGetFileTreeCommand, FileTreeSnapshot>(command =>
         {
             command.Resource = resourceKey;
             command.Depth = depth;
@@ -46,16 +46,17 @@ public partial class FileTools
             command.TypeFilter = type;
         });
 
-        if (callResult.IsError == true || snapshot is null)
+        if (getTreeResult.IsFailure)
         {
-            return callResult;
+            return ToolError(getTreeResult);
         }
 
+        var snapshot = getTreeResult.Value;
         var rootNode = snapshot.Root is not null
             ? ConvertNode(snapshot.Root)
             : new TreeFolderNode(string.Empty, "folder", new List<object>());
 
-        return SuccessResult(SerializeJson(rootNode));
+        return ToolSuccess(SerializeJson(rootNode));
     }
 
     private static TreeFolderNode ConvertNode(FileTreeSnapshotNode node)

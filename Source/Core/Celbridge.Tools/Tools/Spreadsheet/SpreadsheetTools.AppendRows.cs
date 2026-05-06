@@ -30,36 +30,36 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         var parseResult = ParseRows(rows);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var parsedRows = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetAppendRowsCommand, SpreadsheetAppendRowsResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetAppendRowsCommand, SpreadsheetAppendRowsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
             command.Rows = parsedRows;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetAppendRowsResult(0, 0, 0);
+        var commandValue = commandResult.Value;
         var result = new AppendRowsResult(commandValue.AppendedRowCount, commandValue.FirstRow, commandValue.LastRow);
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<List<IReadOnlyList<object?>>> ParseRows(string rowsJson)

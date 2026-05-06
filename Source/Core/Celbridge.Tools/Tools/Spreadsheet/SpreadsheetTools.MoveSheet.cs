@@ -28,17 +28,17 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         if (position < 1)
         {
-            return ErrorResult($"Position must be 1 or greater, was {position}.");
+            return ToolError($"Position must be 1 or greater, was {position}.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -48,11 +48,11 @@ public partial class SpreadsheetTools
             command.Sheet = sheet;
             command.Position = position;
         });
-        if (commandResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return commandResult;
+            return ToolError(commandResult);
         }
 
-        return SuccessResult(SerializeJson(new MoveSheetResult(sheet, position)));
+        return ToolSuccess(SerializeJson(new MoveSheetResult(sheet, position)));
     }
 }

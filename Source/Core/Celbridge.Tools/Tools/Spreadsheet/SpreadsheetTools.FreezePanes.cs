@@ -30,35 +30,35 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         if (rows < 0 || columns < 0)
         {
-            return ErrorResult("rows and columns must be non-negative.");
+            return ToolError("rows and columns must be non-negative.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetFreezePanesCommand, SpreadsheetFreezePanesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetFreezePanesCommand, SpreadsheetFreezePanesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
             command.Rows = rows;
             command.Columns = columns;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetFreezePanesResult(sheet, rows, columns);
+        var commandValue = commandResult.Value;
         var result = new FreezePanesResult(commandValue.Sheet, commandValue.Rows, commandValue.Columns);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 }

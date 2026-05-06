@@ -35,31 +35,31 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         var parseResult = ParseDeleteOperations(operationsJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetDeleteCommand, SpreadsheetDeleteResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetDeleteCommand, SpreadsheetDeleteResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetDeleteResult(0, 0, 0);
+        var commandValue = commandResult.Value;
         var result = new DeleteResult(commandValue.OperationsApplied, commandValue.DeletedRowCount, commandValue.DeletedColumnCount);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<SpreadsheetDeleteOperation>> ParseDeleteOperations(string operationsJson)

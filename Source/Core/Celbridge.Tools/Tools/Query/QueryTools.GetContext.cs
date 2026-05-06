@@ -13,6 +13,6 @@ public partial class QueryTools
     [ToolAlias("query.get_context")]
     public partial CallToolResult GetContext()
     {
-        return SuccessResult(LoadEmbeddedResource("Celbridge.Tools.Assets.AgentContext.md"));
+        return ToolSuccess(LoadEmbeddedResource("Celbridge.Tools.Assets.AgentContext.md"));
     }
 }

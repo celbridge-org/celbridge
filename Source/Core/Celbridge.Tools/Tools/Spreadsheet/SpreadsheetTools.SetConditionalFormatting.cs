@@ -42,33 +42,33 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ErrorResult("Sheet name is required.");
+            return ToolError("Sheet name is required.");
         }
 
         if (string.IsNullOrEmpty(range))
         {
-            return ErrorResult("Range is required.");
+            return ToolError("Range is required.");
         }
 
         var parseResult = ParseConditionalFormatRules(rulesJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var rules = parseResult.Value;
 
         if (rules.Count == 0 && !clearExisting)
         {
-            return ErrorResult("Rules array must contain at least one rule when clearExisting is false.");
+            return ToolError("Rules array must contain at least one rule when clearExisting is false.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetSetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetSetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -76,15 +76,15 @@ public partial class SpreadsheetTools
             command.Rules = rules;
             command.ClearExisting = clearExisting;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetSetConditionalFormattingResult(0, 0);
+        var commandValue = commandResult.Value;
         var result = new SetConditionalFormattingResult(commandValue.RulesApplied, commandValue.RulesRemoved);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<SpreadsheetConditionalFormatRule>> ParseConditionalFormatRules(string rulesJson)

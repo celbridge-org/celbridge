@@ -37,7 +37,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -46,19 +46,19 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+            return ToolError($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ErrorResult($"File not found: '{resource}'");
+            return ToolError($"File not found: '{resource}'");
         }
 
         var extension = Path.GetExtension(resourcePath).ToLowerInvariant();
         if (!SupportedImageMimeTypes.TryGetValue(extension, out var mimeType))
         {
-            return ErrorResult(
+            return ToolError(
                 $"file_read_image does not support extension '{extension}'. " +
                 $"Supported formats: .jpg, .jpeg, .png, .gif, .webp. " +
                 $"For other binary content, use file_read_binary.");
@@ -67,7 +67,7 @@ public partial class FileTools
         var fileInfo = new FileInfo(resourcePath);
         if (fileInfo.Length > MaxInlineImageBytes)
         {
-            return ErrorResult(
+            return ToolError(
                 $"Image '{resource}' is {fileInfo.Length} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
                 $"Resize or recompress the image (or capture a smaller screenshot via webview_screenshot with maxEdge) " +
                 $"before calling file_read_image.");
@@ -78,6 +78,6 @@ public partial class FileTools
         var metadata = new FileReadImageResult(resourceKey.ToString(), mimeType, bytes.Length);
         var metadataJson = JsonSerializer.Serialize(metadata, JsonOptions);
 
-        return SuccessResultWithImage(bytes, mimeType, metadataJson);
+        return ToolSuccessWithImage(bytes, mimeType, metadataJson);
     }
 }

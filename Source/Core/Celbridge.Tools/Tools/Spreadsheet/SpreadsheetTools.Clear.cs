@@ -36,31 +36,31 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
 
         var parseResult = ParseClearOperations(operationsJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult);
+            return ToolError(parseResult);
         }
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var (callResult, commandResult) = await ExecuteCommandAsync<ISpreadsheetClearCommand, SpreadsheetClearResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISpreadsheetClearCommand, SpreadsheetClearResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
         });
-        if (callResult.IsError == true)
+        if (commandResult.IsFailure)
         {
-            return callResult;
+            return ToolError(commandResult);
         }
 
-        var commandValue = commandResult ?? new SpreadsheetClearResult(0, 0);
+        var commandValue = commandResult.Value;
         var result = new ClearResult(commandValue.OperationsApplied, commandValue.CellCount);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 
     private static Result<IReadOnlyList<SpreadsheetClearOperation>> ParseClearOperations(string operationsJson)

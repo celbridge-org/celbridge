@@ -14,6 +14,12 @@ public partial class ExplorerTools
     [ToolAlias("explorer.redo")]
     public async partial Task<CallToolResult> Redo()
     {
-        return await ExecuteCommandAsync<IRedoResourceCommand>();
+        var redoResult = await ExecuteCommandAsync<IRedoResourceCommand>();
+        if (redoResult.IsFailure)
+        {
+            return ToolError(redoResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

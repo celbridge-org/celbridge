@@ -13,6 +13,12 @@ public partial class ExplorerTools
     [ToolAlias("explorer.collapse_all")]
     public async partial Task<CallToolResult> CollapseAll()
     {
-        return await ExecuteCommandAsync<ICollapseAllCommand>();
+        var collapseResult = await ExecuteCommandAsync<ICollapseAllCommand>();
+        if (collapseResult.IsFailure)
+        {
+            return ToolError(collapseResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

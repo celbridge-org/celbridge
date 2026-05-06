@@ -50,13 +50,13 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult);
+            return ToolError(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(find))
         {
-            return ErrorResult("Find text is required and must be non-empty.");
+            return ToolError("Find text is required and must be non-empty.");
         }
 
         var reader = GetRequiredService<ISpreadsheetReader>();
@@ -64,7 +64,7 @@ public partial class SpreadsheetTools
         var findResult = reader.Find(workbookPath, options);
         if (findResult.IsFailure)
         {
-            return ErrorResult(findResult);
+            return ToolError(findResult);
         }
 
         var commandValue = findResult.Value;
@@ -73,6 +73,6 @@ public partial class SpreadsheetTools
             .ToList();
         var result = new SpreadsheetFindToolResult(matches, commandValue.MatchCount);
 
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 }

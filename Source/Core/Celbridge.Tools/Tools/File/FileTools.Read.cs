@@ -26,7 +26,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -35,13 +35,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult($"Failed to resolve path for resource: '{resource}'");
+            return ToolError($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ErrorResult($"File not found: '{resource}'");
+            return ToolError($"File not found: '{resource}'");
         }
 
         var fileText = await File.ReadAllTextAsync(resourcePath);
@@ -63,7 +63,7 @@ public partial class FileTools
             }
 
             var wholeFileResult = new FileReadResult(content, totalLineCount);
-            return SuccessResult(SerializeJson(wholeFileResult));
+            return ToolSuccess(SerializeJson(wholeFileResult));
         }
 
         var allLines = LineEndingHelper.SplitToContentLines(fileText);
@@ -74,7 +74,7 @@ public partial class FileTools
         if (startIndex >= allLines.Count)
         {
             var emptyResult = new FileReadResult(string.Empty, totalLineCount);
-            return SuccessResult(SerializeJson(emptyResult));
+            return ToolSuccess(SerializeJson(emptyResult));
         }
 
         var selectedLines = allLines.Skip(startIndex).Take(count).ToList();
@@ -91,6 +91,6 @@ public partial class FileTools
         }
 
         var readResult = new FileReadResult(rangeContent, totalLineCount);
-        return SuccessResult(SerializeJson(readResult));
+        return ToolSuccess(SerializeJson(readResult));
     }
 }
