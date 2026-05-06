@@ -88,15 +88,22 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
         var applyResult = ApplyViewStateToWorkbook(workbookPath);
         if (applyResult.IsFailure)
         {
-            return applyResult;
+            return Result.Fail(applyResult.FirstErrorMessage);
         }
+        var applied = applyResult.Value;
 
-        var appliedRange = Ranges.Count > 0 ? Ranges[0] : Range;
-        ResultValue = new SetActiveViewResult(Sheet, appliedRange, Ranges, ActiveCell, TopLeftCell);
+        var appliedRange = applied.Ranges.Count > 0 ? applied.Ranges[0] : string.Empty;
+        ResultValue = new SetActiveViewResult(Sheet, appliedRange, applied.Ranges, applied.ActiveCell, TopLeftCell);
         return Result.Ok();
     }
 
-    private Result ApplyViewStateToWorkbook(string workbookPath)
+    // Selection state actually applied to the workbook. Ranges echoes the
+    // input (either Ranges, or [Range], or empty). ActiveCell is the resolved
+    // anchor address: explicit when ActiveCell was supplied, otherwise the
+    // first cell of the first selection range.
+    private record AppliedViewState(IReadOnlyList<string> Ranges, string ActiveCell);
+
+    private Result<AppliedViewState> ApplyViewStateToWorkbook(string workbookPath)
     {
         try
         {
@@ -121,6 +128,9 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
             var hasRanges = Ranges.Count > 0;
             var hasRange = !string.IsNullOrEmpty(Range);
             var hasActiveCell = !string.IsNullOrEmpty(ActiveCell);
+
+            IReadOnlyList<string> appliedRanges = Array.Empty<string>();
+            var appliedActiveCell = string.Empty;
 
             if (hasRanges
                 || hasRange
@@ -163,6 +173,23 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
                 {
                     worksheet.SelectedRanges.Add(selectionRange);
                 }
+
+                // Echo the input addresses back. ActiveCell-only inputs become
+                // a single-cell selection equal to that cell.
+                if (hasRanges)
+                {
+                    appliedRanges = Ranges;
+                }
+                else if (hasRange)
+                {
+                    appliedRanges = new[] { Range };
+                }
+                else
+                {
+                    appliedRanges = new[] { ActiveCell };
+                }
+
+                appliedActiveCell = anchorCell.Address.ToStringRelative();
             }
 
             if (!string.IsNullOrEmpty(TopLeftCell))
@@ -182,7 +209,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            return Result.Ok();
+            return new AppliedViewState(appliedRanges, appliedActiveCell);
         }
         catch (Exception ex)
         {

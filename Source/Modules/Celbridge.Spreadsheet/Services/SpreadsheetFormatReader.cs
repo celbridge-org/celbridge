@@ -15,6 +15,7 @@ internal static class SpreadsheetFormatReader
         var verticalAlignment = ReadVerticalAlignment(style.Alignment.Vertical);
         bool? wrapText = style.Alignment.WrapText ? true : null;
         string? numberFormat = string.IsNullOrEmpty(style.NumberFormat.Format) ? null : style.NumberFormat.Format;
+        bool? mergeRange = cell.IsMerged() ? true : null;
 
         return new FormatSpec(
             TextFormat: textFormat,
@@ -23,7 +24,8 @@ internal static class SpreadsheetFormatReader
             HorizontalAlignment: horizontalAlignment,
             VerticalAlignment: verticalAlignment,
             WrapText: wrapText,
-            NumberFormat: numberFormat);
+            NumberFormat: numberFormat,
+            MergeRange: mergeRange);
     }
 
     private static TextFormat ReadTextFormat(IXLStyle style)

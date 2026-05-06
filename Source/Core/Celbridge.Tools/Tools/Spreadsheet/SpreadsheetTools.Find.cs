@@ -22,7 +22,7 @@ public partial class SpreadsheetTools
     /// <param name="range">Optional A1 range to limit the search ("A1:C100", "B", "B:D", "3", "3:10"). Empty string searches the entire used range of the chosen sheet. Only valid when sheet is also specified. Do not include a sheet qualifier.</param>
     /// <param name="matchCase">If true, the search is case-sensitive. Default false.</param>
     /// <param name="matchEntireCellContents">If true, find must equal the cell's full text. If false, find matches as a substring. Default false.</param>
-    /// <returns>JSON object with fields: matches (array of {sheet, cell, text, isFormula}), matchCount (int).</returns>
+    /// <returns>JSON object with fields: matches (array of {sheet, cell, text, isFormula}), matchCount (int). For formula cells, text is the formula expression without the leading '=' (e.g. "SUM(C2:F2)" for the cell =SUM(C2:F2)).</returns>
     [McpServerTool(Name = "spreadsheet_find", ReadOnly = true)]
     [ToolAlias("spreadsheet.find")]
     public partial CallToolResult Find(

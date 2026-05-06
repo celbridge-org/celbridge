@@ -54,7 +54,9 @@ public record TextFormat(
 /// value resets to the workbook default. AutoFitColumns calls
 /// AdjustToContents() after any explicit ColumnWidth and is usually preferable
 /// to guessing a width. MergeRange = true merges the range; MergeRange = false
-/// unmerges any existing merge that covers the range.
+/// unmerges any existing merge that covers the range. When read back via
+/// spreadsheet_read_format, MergeRange is true for cells that are part of a
+/// merged range and absent otherwise.
 /// </summary>
 public record FormatSpec(
     TextFormat? TextFormat = null,

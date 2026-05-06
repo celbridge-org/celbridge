@@ -13,8 +13,11 @@ public partial class SpreadsheetTools
     /// CRLF or LF line endings). All rows in each CSV must have the same field count as that CSV's
     /// row 1. Existing cells in each target sheet are cleared before the CSV block is written. Other
     /// sheets in the workbook are untouched. Imports run in order. If any import fails the whole batch
-    /// fails and nothing is saved. CSV imports do not produce formula cells, but formulas elsewhere in
-    /// the workbook are recalculated as part of the save.
+    /// fails and nothing is saved. All CSV values are written as strings, including ones that look
+    /// numeric. Use spreadsheet_write_cells or spreadsheet_append_rows when you need typed numeric
+    /// data, otherwise mixing CSV-imported and explicitly written rows can produce string-vs-number
+    /// heterogeneity in the same column. CSV imports do not produce formula cells, but formulas
+    /// elsewhere in the workbook are recalculated as part of the save.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
     /// <param name="importsJson">JSON array of imports. Each import is an object with sheet (string), csvText (string), and optional createIfMissing (bool, default false). When createIfMissing is true the sheet is created if it does not exist. Otherwise a missing sheet fails the batch.</param>

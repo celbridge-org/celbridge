@@ -568,14 +568,17 @@ public class SpreadsheetReader : ISpreadsheetReader
             var cell = headerRow.Cell(columnIndex + 1);
             string headerName;
 
-            if (cell.Value.IsBlank)
+            // Cells with an explicit empty string are not IsBlank, so check
+            // the resolved string too. Either case becomes column_<letter>.
+            var cellText = cell.Value.IsBlank ? string.Empty : cell.GetString();
+            if (string.IsNullOrEmpty(cellText))
             {
                 var columnLetter = XLHelper.GetColumnLetterFromNumber(cell.Address.ColumnNumber, false);
                 headerName = $"column_{columnLetter}";
             }
             else
             {
-                headerName = cell.GetString();
+                headerName = cellText;
             }
 
             if (seenNames.TryGetValue(headerName, out var occurrenceCount))

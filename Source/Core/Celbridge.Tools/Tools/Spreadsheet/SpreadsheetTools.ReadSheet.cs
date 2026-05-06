@@ -18,7 +18,7 @@ public partial class SpreadsheetTools
     /// <param name="headers">When true, the first row in the requested range becomes column names and each subsequent row is returned as an object keyed by header. Duplicate names get a numeric suffix. Empty headers become "column_&lt;letter&gt;".</param>
     /// <param name="offset">Number of data rows to skip before returning rows. Use 0 to start at the first data row.</param>
     /// <param name="limit">Maximum number of data rows to return. Use 0 to apply the default page size of 1000 rows.</param>
-    /// <returns>JSON object with: rows (array of row arrays, or row objects when headers is true), totalRowCount (int), headers (array of resolved header names, empty when headers is false).</returns>
+    /// <returns>JSON object with: rows (array of row arrays, or row objects when headers is true), totalRowCount (int, the row count in the read range; when headers is false this includes any header row, when headers is true the header row is excluded), headers (array of resolved header names, empty when headers is false).</returns>
     [McpServerTool(Name = "spreadsheet_read_sheet", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_sheet")]
     public partial CallToolResult ReadSheet(

@@ -2793,6 +2793,101 @@ public class SpreadsheetCommandTests
     }
 
     [Test]
+    public async Task DuplicateSheet_SourceHasColorScale3_Succeeds()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Source");
+            for (var row = 1; row <= 6; row++)
+            {
+                sheet.Cell($"A{row}").Value = row * 10;
+            }
+        });
+
+        var cfRules = new[]
+        {
+            new ConditionalFormatRule(
+                Type: "colorScale3",
+                LowColor: "#FF0000",
+                MidColor: "#FFFF00",
+                HighColor: "#00FF00")
+        };
+
+        var cfCommand = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Source",
+            Range = "A1:A6",
+            Rules = cfRules
+        };
+        var cfResult = await cfCommand.ExecuteAsync();
+        cfResult.IsSuccess.Should().BeTrue();
+
+        var duplicateCommand = new DuplicateSheetCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            SourceSheet = "Source",
+            NewSheet = "Copy"
+        };
+        var duplicateResult = await duplicateCommand.ExecuteAsync();
+        duplicateResult.IsSuccess.Should().BeTrue(duplicateResult.FirstErrorMessage);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sourceFormats = workbook.Worksheet("Source").ConditionalFormats.ToList();
+        sourceFormats.Should().HaveCount(1);
+        sourceFormats[0].ConditionalFormatType.Should().Be(XLConditionalFormatType.ColorScale);
+
+        var copyFormats = workbook.Worksheet("Copy").ConditionalFormats.ToList();
+        copyFormats.Should().HaveCount(1);
+        copyFormats[0].ConditionalFormatType.Should().Be(XLConditionalFormatType.ColorScale);
+    }
+
+    [Test]
+    public async Task DuplicateSheet_SourceHasColorScale2_Succeeds()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Source");
+            for (var row = 1; row <= 4; row++)
+            {
+                sheet.Cell($"A{row}").Value = row;
+            }
+        });
+
+        var cfRules = new[]
+        {
+            new ConditionalFormatRule(
+                Type: "colorScale2",
+                LowColor: "#FFFFFF",
+                HighColor: "#0070C0")
+        };
+
+        var cfCommand = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Source",
+            Range = "A1:A4",
+            Rules = cfRules
+        };
+        var cfResult = await cfCommand.ExecuteAsync();
+        cfResult.IsSuccess.Should().BeTrue();
+
+        var duplicateCommand = new DuplicateSheetCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            SourceSheet = "Source",
+            NewSheet = "Copy",
+            Position = 1
+        };
+        var duplicateResult = await duplicateCommand.ExecuteAsync();
+        duplicateResult.IsSuccess.Should().BeTrue(duplicateResult.FirstErrorMessage);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Source").ConditionalFormats.Should().HaveCount(1);
+        workbook.Worksheet("Copy").ConditionalFormats.Should().HaveCount(1);
+    }
+
+    [Test]
     public async Task DuplicateSheet_NameCollision_ReturnsFailure()
     {
         CreateWorkbook(workbook =>

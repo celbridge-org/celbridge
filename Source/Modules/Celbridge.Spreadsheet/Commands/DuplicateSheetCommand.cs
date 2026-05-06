@@ -65,6 +65,12 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
 
             var sourceWorksheet = workbook.Worksheet(SourceSheet);
 
+            // ClosedXML's IXLWorksheet.CopyTo throws a NullReferenceException
+            // when the source has color-scale conditional formatting. Snapshot
+            // and strip those rules first, then replay them onto both sheets
+            // after the copy succeeds.
+            var colorScaleSnapshots = ColorScaleCopyHelpers.ExtractAndRemove(sourceWorksheet);
+
             IXLWorksheet duplicate;
             if (Position == 0)
             {
@@ -73,6 +79,12 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
             else
             {
                 duplicate = sourceWorksheet.CopyTo(NewSheet, Position);
+            }
+
+            if (colorScaleSnapshots.Count > 0)
+            {
+                ColorScaleCopyHelpers.Reapply(sourceWorksheet, colorScaleSnapshots);
+                ColorScaleCopyHelpers.Reapply(duplicate, colorScaleSnapshots);
             }
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
