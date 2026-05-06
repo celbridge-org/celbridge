@@ -5,13 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_import_csv: how many imports were applied,
-/// the total row count summed across imports, and how many imports added a
-/// new worksheet to the workbook.
-/// </summary>
-public record class ImportCsvResult(int ImportsApplied, int TotalRowCount, int SheetsCreated);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -44,7 +37,7 @@ public partial class SpreadsheetTools
         var imports = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IImportCsvCommand, SpreadsheetImportCsvResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IImportCsvCommand, ImportCsvResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Imports = imports;
@@ -55,12 +48,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new ImportCsvResult(commandValue.ImportsApplied, commandValue.TotalRowCount, commandValue.SheetsCreated);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetCsvImport>> ParseCsvImports(string importsJson)
+    private static Result<IReadOnlyList<CsvImport>> ParseCsvImports(string importsJson)
     {
         if (string.IsNullOrEmpty(importsJson))
         {
@@ -69,7 +61,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var imports = JsonSerializer.Deserialize<List<SpreadsheetCsvImport>>(importsJson, JsonOptions);
+            var imports = JsonSerializer.Deserialize<List<CsvImport>>(importsJson, JsonOptions);
             if (imports is null)
             {
                 return Result.Fail("Imports JSON must be a non-null array.");

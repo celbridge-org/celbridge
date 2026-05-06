@@ -15,6 +15,9 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
     public string ActiveCell { get; set; } = string.Empty;
     public string TopLeftCell { get; set; } = string.Empty;
 
+    public SetActiveViewResult ResultValue { get; private set; } =
+        new SetActiveViewResult(string.Empty, string.Empty, Array.Empty<string>(), string.Empty, string.Empty);
+
     public SetActiveViewCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -82,7 +85,15 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
         // Write to disk and let the file-watcher reload path apply the view
         // state to any open editor. The editor's restoreViewState yields to
         // disk when the active sheet or selection has changed.
-        return ApplyViewStateToWorkbook(workbookPath);
+        var applyResult = ApplyViewStateToWorkbook(workbookPath);
+        if (applyResult.IsFailure)
+        {
+            return applyResult;
+        }
+
+        var appliedRange = Ranges.Count > 0 ? Ranges[0] : Range;
+        ResultValue = new SetActiveViewResult(Sheet, appliedRange, Ranges, ActiveCell, TopLeftCell);
+        return Result.Ok();
     }
 
     private Result ApplyViewStateToWorkbook(string workbookPath)

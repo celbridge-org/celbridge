@@ -11,12 +11,12 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
     public ResourceKey FileResource { get; set; }
     public string Sheet { get; set; } = string.Empty;
     public string Range { get; set; } = string.Empty;
-    public IReadOnlyList<SpreadsheetSortKey> SortKeys { get; set; } = Array.Empty<SpreadsheetSortKey>();
+    public IReadOnlyList<SortKey> SortKeys { get; set; } = Array.Empty<SortKey>();
     public bool HasHeaderRow { get; set; }
     public bool MatchCase { get; set; }
 
-    public SpreadsheetSortRangeResult ResultValue { get; private set; } =
-        new SpreadsheetSortRangeResult(0);
+    public SortRangeResult ResultValue { get; private set; } =
+        new SortRangeResult(0);
 
     public SortRangeCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -66,7 +66,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
             var resolvedRange = resolveRangeResult.Value;
             if (resolvedRange.IsEmpty)
             {
-                ResultValue = new SpreadsheetSortRangeResult(0);
+                ResultValue = new SortRangeResult(0);
                 return Result.Ok();
             }
             var sortRange = resolvedRange.Range;
@@ -82,7 +82,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetSortRangeResult(sortRange.RowCount());
+            ResultValue = new SortRangeResult(sortRange.RowCount());
         }
         catch (Exception ex)
         {

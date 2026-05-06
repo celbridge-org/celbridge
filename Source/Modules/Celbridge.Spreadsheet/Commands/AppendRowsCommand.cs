@@ -13,7 +13,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
     public string Sheet { get; set; } = string.Empty;
     public IReadOnlyList<IReadOnlyList<object?>> Rows { get; set; } = Array.Empty<IReadOnlyList<object?>>();
 
-    public SpreadsheetAppendRowsResult ResultValue { get; private set; } = new SpreadsheetAppendRowsResult(0, 0, 0);
+    public AppendRowsResult ResultValue { get; private set; } = new AppendRowsResult(0, 0, 0);
 
     public AppendRowsCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -76,7 +76,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
             var lastRow = firstRow + Rows.Count - 1;
-            ResultValue = new SpreadsheetAppendRowsResult(Rows.Count, firstRow, lastRow);
+            ResultValue = new AppendRowsResult(Rows.Count, firstRow, lastRow);
         }
         catch (Exception ex)
         {

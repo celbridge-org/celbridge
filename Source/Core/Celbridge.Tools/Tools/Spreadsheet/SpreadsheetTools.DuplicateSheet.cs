@@ -4,12 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_duplicate_sheet: the name of the duplicate
-/// sheet and its 1-based tab position in the workbook after the operation.
-/// </summary>
-public record class DuplicateSheetResult(string NewSheet, int Position);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -48,7 +42,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IDuplicateSheetCommand, DuplicateSheetResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.SourceSheet = sourceSheet;
@@ -61,8 +55,7 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new DuplicateSheetResult(commandValue.NewSheet, commandValue.Position);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 }

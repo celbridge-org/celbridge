@@ -9,10 +9,10 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetDeleteRangesOperation> Operations { get; set; } = Array.Empty<SpreadsheetDeleteRangesOperation>();
+    public IReadOnlyList<DeleteRangesOperation> Operations { get; set; } = Array.Empty<DeleteRangesOperation>();
 
-    public SpreadsheetDeleteRangesResult ResultValue { get; private set; } =
-        new SpreadsheetDeleteRangesResult(0, 0, 0);
+    public DeleteRangesResult ResultValue { get; private set; } =
+        new DeleteRangesResult(0, 0, 0);
 
     public DeleteRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -117,7 +117,7 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetDeleteRangesResult(Operations.Count, totalRowsDeleted, totalColumnsDeleted);
+            ResultValue = new DeleteRangesResult(Operations.Count, totalRowsDeleted, totalColumnsDeleted);
         }
         catch (Exception ex)
         {

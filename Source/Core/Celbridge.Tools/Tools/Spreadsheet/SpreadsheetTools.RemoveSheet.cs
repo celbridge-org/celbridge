@@ -4,11 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_remove_sheet: the name of the sheet that was removed.
-/// </summary>
-public record class RemoveSheetResult(string Sheet);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -34,7 +29,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IRemoveSheetCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IRemoveSheetCommand, RemoveSheetResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -44,6 +39,8 @@ public partial class SpreadsheetTools
             return ToolError(commandResult);
         }
 
-        return ToolSuccess(SerializeJson(new RemoveSheetResult(sheet)));
+        var commandValue = commandResult.Value;
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 }

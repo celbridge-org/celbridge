@@ -4,20 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// One match in spreadsheet_find's response. cell is the A1 address on the
-/// named sheet. text is the literal cell text or the formula expression that
-/// contained the match. isFormula is true when the match was inside a
-/// formula's expression text rather than a value cell.
-/// </summary>
-public record class SpreadsheetFindMatchDto(string Sheet, string Cell, string Text, bool IsFormula);
-
-/// <summary>
-/// Result returned by spreadsheet_find: every cell whose text or formula
-/// expression contained the search string, plus the count.
-/// </summary>
-public record class SpreadsheetFindToolResult(IReadOnlyList<SpreadsheetFindMatchDto> Matches, int MatchCount);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -60,19 +46,15 @@ public partial class SpreadsheetTools
         }
 
         var reader = GetRequiredService<ISpreadsheetReader>();
-        var options = new SpreadsheetFindOptions(find, sheet, range, matchCase, matchEntireCellContents);
+        var options = new FindOptions(find, sheet, range, matchCase, matchEntireCellContents);
         var findResult = reader.Find(workbookPath, options);
         if (findResult.IsFailure)
         {
             return ToolError(findResult);
         }
 
-        var commandValue = findResult.Value;
-        var matches = commandValue.Matches
-            .Select(match => new SpreadsheetFindMatchDto(match.Sheet, match.Cell, match.Text, match.IsFormula))
-            .ToList();
-        var result = new SpreadsheetFindToolResult(matches, commandValue.MatchCount);
-
-        return ToolSuccess(SerializeJson(result));
+        var findValue = findResult.Value;
+        var json = SerializeJson(findValue);
+        return ToolSuccess(json);
     }
 }

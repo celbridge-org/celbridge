@@ -35,7 +35,7 @@ namespace Celbridge.Spreadsheet;
 ///
 /// Colors are CSS hex strings (#RRGGBB).
 /// </summary>
-public record SpreadsheetConditionalFormatRule(
+public record ConditionalFormatRule(
     string Type,
     double? Value = null,
     double? Value2 = null,
@@ -61,7 +61,7 @@ public record SpreadsheetConditionalFormatRule(
 /// is the number of pre-existing rules that were removed before adding the new
 /// ones (always 0 unless ClearExisting was true).
 /// </summary>
-public record SpreadsheetSetConditionalFormattingResult(int RulesApplied, int RulesRemoved);
+public record SetConditionalFormattingResult(int RulesApplied, int RulesRemoved);
 
 /// <summary>
 /// Adds one or more conditional formatting rules to an A1 cell range on a
@@ -70,7 +70,7 @@ public record SpreadsheetSetConditionalFormattingResult(int RulesApplied, int Ru
 /// threshold, colour scale across a column of numbers, formula-based highlight
 /// for whole rows.
 /// </summary>
-public interface ISetConditionalFormattingCommand : IExecutableCommand<SpreadsheetSetConditionalFormattingResult>
+public interface ISetConditionalFormattingCommand : IExecutableCommand<SetConditionalFormattingResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -92,7 +92,7 @@ public interface ISetConditionalFormattingCommand : IExecutableCommand<Spreadshe
     /// Rules to add to the target range, in priority order (earlier rules win
     /// over later rules when stopIfTrue semantics differ across them).
     /// </summary>
-    IReadOnlyList<SpreadsheetConditionalFormatRule> Rules { get; set; }
+    IReadOnlyList<ConditionalFormatRule> Rules { get; set; }
 
     /// <summary>
     /// When true, removes any pre-existing conditional formatting rules whose

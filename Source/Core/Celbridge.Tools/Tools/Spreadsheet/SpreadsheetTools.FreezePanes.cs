@@ -4,12 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_freeze_panes: the sheet name and the number
-/// of rows and columns frozen.
-/// </summary>
-public record class FreezePanesResult(string Sheet, int Rows, int Columns);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -44,7 +38,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IFreezePanesCommand, SpreadsheetFreezePanesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IFreezePanesCommand, FreezePanesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -57,8 +51,7 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new FreezePanesResult(commandValue.Sheet, commandValue.Rows, commandValue.Columns);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 }

@@ -8,7 +8,7 @@ namespace Celbridge.Spreadsheet;
 /// FilterRange is the A1 range the filter covers when Enabled is true, or
 /// the empty string when the filter was cleared.
 /// </summary>
-public record SpreadsheetSetAutoFilterResult(bool Enabled, string FilterRange);
+public record SetAutoFilterResult(bool Enabled, string FilterRange);
 
 /// <summary>
 /// Sets or clears the auto-filter on a single worksheet in an .xlsx workbook.
@@ -18,7 +18,7 @@ public record SpreadsheetSetAutoFilterResult(bool Enabled, string FilterRange);
 /// worksheet supports at most one auto-filter; setting a new one replaces any
 /// existing filter on the sheet.
 /// </summary>
-public interface ISetAutoFilterCommand : IExecutableCommand<SpreadsheetSetAutoFilterResult>
+public interface ISetAutoFilterCommand : IExecutableCommand<SetAutoFilterResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

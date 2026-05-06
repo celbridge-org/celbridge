@@ -9,10 +9,10 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetClearRangesOperation> Operations { get; set; } = Array.Empty<SpreadsheetClearRangesOperation>();
+    public IReadOnlyList<ClearRangesOperation> Operations { get; set; } = Array.Empty<ClearRangesOperation>();
 
-    public SpreadsheetClearRangesResult ResultValue { get; private set; } =
-        new SpreadsheetClearRangesResult(0, 0);
+    public ClearRangesResult ResultValue { get; private set; } =
+        new ClearRangesResult(0, 0);
 
     public ClearRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -76,7 +76,7 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetClearRangesResult(Operations.Count, totalCellCount);
+            ResultValue = new ClearRangesResult(Operations.Count, totalCellCount);
         }
         catch (Exception ex)
         {

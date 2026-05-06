@@ -11,8 +11,8 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
     public ResourceKey FileResource { get; set; }
     public IReadOnlyList<string> Sheets { get; set; } = Array.Empty<string>();
 
-    public SpreadsheetAddSheetsResult ResultValue { get; private set; } =
-        new SpreadsheetAddSheetsResult(Array.Empty<string>());
+    public AddSheetsResult ResultValue { get; private set; } =
+        new AddSheetsResult(Array.Empty<string>());
 
     public AddSheetsCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -68,7 +68,7 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetAddSheetsResult(Sheets.ToList());
+            ResultValue = new AddSheetsResult(Sheets.ToList());
         }
         catch (Exception ex)
         {

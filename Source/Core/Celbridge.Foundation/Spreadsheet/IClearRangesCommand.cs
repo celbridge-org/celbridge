@@ -9,7 +9,7 @@ namespace Celbridge.Spreadsheet;
 /// row or row range ("3", "3:5"), or empty string to clear the entire
 /// sheet.
 /// </summary>
-public record SpreadsheetClearRangesOperation(
+public record ClearRangesOperation(
     string Sheet,
     string Range);
 
@@ -22,7 +22,7 @@ public record SpreadsheetClearRangesOperation(
 /// fully default do not. Overlap between operations is counted once per
 /// operation.
 /// </summary>
-public record SpreadsheetClearRangesResult(
+public record ClearRangesResult(
     int OperationsApplied,
     int CellCount);
 
@@ -36,7 +36,7 @@ public record SpreadsheetClearRangesResult(
 /// operation fails (bad range, missing sheet) the whole batch fails and
 /// nothing is saved.
 /// </summary>
-public interface IClearRangesCommand : IExecutableCommand<SpreadsheetClearRangesResult>
+public interface IClearRangesCommand : IExecutableCommand<ClearRangesResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -46,5 +46,5 @@ public interface IClearRangesCommand : IExecutableCommand<SpreadsheetClearRanges
     /// <summary>
     /// Clear operations to apply, in order.
     /// </summary>
-    IReadOnlyList<SpreadsheetClearRangesOperation> Operations { get; set; }
+    IReadOnlyList<ClearRangesOperation> Operations { get; set; }
 }

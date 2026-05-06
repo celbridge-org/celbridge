@@ -13,13 +13,13 @@ public class SpreadsheetReader : ISpreadsheetReader
 {
     private const int DefaultRowLimit = 1000;
 
-    public Result<SpreadsheetWorkbookInfo> GetInfo(string workbookPath)
+    public Result<WorkbookInfo> GetInfo(string workbookPath)
     {
         try
         {
             using var workbook = new XLWorkbook(workbookPath);
 
-            var sheets = new List<SpreadsheetSheetInfo>();
+            var sheets = new List<SheetInfo>();
             foreach (var worksheet in workbook.Worksheets)
             {
                 var usedRange = worksheet.RangeUsed();
@@ -34,36 +34,39 @@ public class SpreadsheetReader : ISpreadsheetReader
                     columnCount = rangeAddress.ColumnSpan;
                 }
 
-                sheets.Add(new SpreadsheetSheetInfo(
+                var sheetInfo = new SheetInfo(
                     worksheet.Name,
                     worksheet.Position,
                     usedRangeAddress,
                     rowCount,
                     columnCount,
                     worksheet.SheetView.SplitRow,
-                    worksheet.SheetView.SplitColumn));
+                    worksheet.SheetView.SplitColumn);
+                sheets.Add(sheetInfo);
             }
 
-            var namedRanges = new List<SpreadsheetNamedRange>();
+            var namedRanges = new List<NamedRange>();
             foreach (var definedName in workbook.DefinedNames)
             {
-                namedRanges.Add(new SpreadsheetNamedRange(
+                var namedRange = new NamedRange(
                     definedName.Name,
                     definedName.RefersTo,
-                    "workbook"));
+                    "workbook");
+                namedRanges.Add(namedRange);
             }
             foreach (var worksheet in workbook.Worksheets)
             {
                 foreach (var definedName in worksheet.DefinedNames)
                 {
-                    namedRanges.Add(new SpreadsheetNamedRange(
+                    var namedRange = new NamedRange(
                         definedName.Name,
                         definedName.RefersTo,
-                        worksheet.Name));
+                        worksheet.Name);
+                    namedRanges.Add(namedRange);
                 }
             }
 
-            return new SpreadsheetWorkbookInfo(sheets, namedRanges);
+            return new WorkbookInfo(sheets, namedRanges);
         }
         catch (Exception ex)
         {
@@ -72,7 +75,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    public Result<SpreadsheetReadResult> ReadSheet(string workbookPath, string sheetName, SpreadsheetReadOptions options)
+    public Result<ReadResult> ReadSheet(string workbookPath, string sheetName, ReadOptions options)
     {
         try
         {
@@ -94,7 +97,7 @@ public class SpreadsheetReader : ISpreadsheetReader
 
             if (range is null)
             {
-                return new SpreadsheetReadResult(
+                return new ReadResult(
                     Array.Empty<object?>(),
                     0,
                     Array.Empty<string>());
@@ -109,7 +112,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    public Result<SpreadsheetExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range)
+    public Result<ExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range)
     {
         try
         {
@@ -131,7 +134,7 @@ public class SpreadsheetReader : ISpreadsheetReader
 
             if (resolvedRange is null)
             {
-                return new SpreadsheetExportCsvResult(string.Empty, 0, 0);
+                return new ExportCsvResult(string.Empty, 0, 0);
             }
 
             var builder = new StringBuilder();
@@ -154,7 +157,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 builder.Append("\r\n");
             }
 
-            return new SpreadsheetExportCsvResult(builder.ToString(), rowCount, columnCount);
+            return new ExportCsvResult(builder.ToString(), rowCount, columnCount);
         }
         catch (Exception ex)
         {
@@ -163,7 +166,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    public Result<SpreadsheetActiveView> GetActiveView(string workbookPath)
+    public Result<ActiveView> GetActiveView(string workbookPath)
     {
         try
         {
@@ -244,7 +247,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 topLeftCellString = "A1";
             }
 
-            return new SpreadsheetActiveView(
+            return new ActiveView(
                 activeWorksheet.Name,
                 rangeString,
                 rangeStrings,
@@ -258,7 +261,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    public Result<SpreadsheetFindResult> Find(string workbookPath, SpreadsheetFindOptions options)
+    public Result<FindResult> Find(string workbookPath, FindOptions options)
     {
         if (string.IsNullOrEmpty(options.Find))
         {
@@ -293,7 +296,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 targetSheets = new[] { workbook.Worksheet(options.Sheet) };
             }
 
-            var matches = new List<SpreadsheetFindMatch>();
+            var matches = new List<FindMatch>();
             var comparison = options.MatchCase
                 ? StringComparison.Ordinal
                 : StringComparison.OrdinalIgnoreCase;
@@ -330,15 +333,16 @@ public class SpreadsheetReader : ISpreadsheetReader
                         continue;
                     }
 
-                    matches.Add(new SpreadsheetFindMatch(
+                    var match = new FindMatch(
                         worksheet.Name,
                         cell.Address.ToStringRelative(),
                         cellText,
-                        isFormula));
+                        isFormula);
+                    matches.Add(match);
                 }
             }
 
-            return new SpreadsheetFindResult(matches, matches.Count);
+            return new FindResult(matches, matches.Count);
         }
         catch (Exception ex)
         {
@@ -375,7 +379,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    private static bool IsMatch(string source, SpreadsheetFindOptions options, StringComparison comparison)
+    private static bool IsMatch(string source, FindOptions options, StringComparison comparison)
     {
         if (options.MatchEntireCellContents)
         {
@@ -384,7 +388,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         return source.IndexOf(options.Find, comparison) >= 0;
     }
 
-    public Result<SpreadsheetReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range)
+    public Result<ReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range)
     {
         try
         {
@@ -406,7 +410,7 @@ public class SpreadsheetReader : ISpreadsheetReader
 
             if (resolvedRange is null)
             {
-                return new SpreadsheetReadFormatResult(sheetName, new List<List<SpreadsheetFormatSpec>>());
+                return new ReadFormatResult(sheetName, new List<List<FormatSpec>>());
             }
 
             var address = resolvedRange.RangeAddress;
@@ -414,10 +418,10 @@ public class SpreadsheetReader : ISpreadsheetReader
             var rowCount = address.RowSpan;
             var columnCount = address.ColumnSpan;
 
-            var rows = new List<List<SpreadsheetFormatSpec>>(rowCount);
+            var rows = new List<List<FormatSpec>>(rowCount);
             for (int rowOffset = 1; rowOffset <= rowCount; rowOffset++)
             {
-                var rowSpecs = new List<SpreadsheetFormatSpec>(columnCount);
+                var rowSpecs = new List<FormatSpec>(columnCount);
                 for (int columnOffset = 1; columnOffset <= columnCount; columnOffset++)
                 {
                     var cell = resolvedRange.Cell(rowOffset, columnOffset);
@@ -427,7 +431,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 rows.Add(rowSpecs);
             }
 
-            return new SpreadsheetReadFormatResult(rangeString, rows);
+            return new ReadFormatResult(rangeString, rows);
         }
         catch (Exception ex)
         {
@@ -475,7 +479,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
     }
 
-    private static Result<SpreadsheetReadResult> ReadRange(IXLRange range, SpreadsheetReadOptions options)
+    private static Result<ReadResult> ReadRange(IXLRange range, ReadOptions options)
     {
         var totalRows = range.RangeAddress.RowSpan;
         var totalColumns = range.RangeAddress.ColumnSpan;
@@ -488,9 +492,9 @@ public class SpreadsheetReader : ISpreadsheetReader
         return ReadRangeAsArrays(range, options, totalRows, totalColumns);
     }
 
-    private static Result<SpreadsheetReadResult> ReadRangeAsArrays(
+    private static Result<ReadResult> ReadRangeAsArrays(
         IXLRange range,
-        SpreadsheetReadOptions options,
+        ReadOptions options,
         int totalRows,
         int totalColumns)
     {
@@ -512,18 +516,18 @@ public class SpreadsheetReader : ISpreadsheetReader
             rows.Add(rowValues);
         }
 
-        return new SpreadsheetReadResult(rows, dataRowCount, Array.Empty<string>());
+        return new ReadResult(rows, dataRowCount, Array.Empty<string>());
     }
 
-    private static Result<SpreadsheetReadResult> ReadRangeWithHeaders(
+    private static Result<ReadResult> ReadRangeWithHeaders(
         IXLRange range,
-        SpreadsheetReadOptions options,
+        ReadOptions options,
         int totalRows,
         int totalColumns)
     {
         if (totalRows < 1)
         {
-            return new SpreadsheetReadResult(
+            return new ReadResult(
                 Array.Empty<object?>(),
                 0,
                 Array.Empty<string>());
@@ -551,7 +555,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             rows.Add(rowDictionary);
         }
 
-        return new SpreadsheetReadResult(rows, dataRowCount, headers);
+        return new ReadResult(rows, dataRowCount, headers);
     }
 
     private static IReadOnlyList<string> ResolveHeaders(IXLRangeRow headerRow, int columnCount)

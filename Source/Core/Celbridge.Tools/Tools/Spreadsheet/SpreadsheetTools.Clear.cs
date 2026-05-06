@@ -5,15 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_clear: how many operations were applied
-/// and the total number of cells whose state was reset. A cell is counted
-/// when the clear actually changed something on it (value, formula,
-/// formatting, comment, merged-range membership, or data validation).
-/// Already-default cells inside the targeted range are not counted.
-/// </summary>
-public record class ClearResult(int OperationsApplied, int CellCount);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -47,7 +38,7 @@ public partial class SpreadsheetTools
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IClearRangesCommand, SpreadsheetClearRangesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IClearRangesCommand, ClearRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
@@ -58,12 +49,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new ClearResult(commandValue.OperationsApplied, commandValue.CellCount);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetClearRangesOperation>> ParseClearOperations(string operationsJson)
+    private static Result<IReadOnlyList<ClearRangesOperation>> ParseClearOperations(string operationsJson)
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
@@ -72,7 +62,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetClearRangesOperation>>(operationsJson, JsonOptions);
+            var operations = JsonSerializer.Deserialize<List<ClearRangesOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
                 return Result.Fail("Operations JSON must be a non-null array.");

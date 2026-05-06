@@ -71,10 +71,10 @@ public class SpreadsheetToolTests
     public void GetInfo_DispatchesToReaderAndReturnsJson()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        var info = new SpreadsheetWorkbookInfo(
-            new[] { new SpreadsheetSheetInfo("Q1", 1, "A1:B2", 2, 2, 0, 0) },
-            Array.Empty<SpreadsheetNamedRange>());
-        _reader.GetInfo(workbookPath).Returns(Result<SpreadsheetWorkbookInfo>.Ok(info));
+        var info = new WorkbookInfo(
+            new[] { new SheetInfo("Q1", 1, "A1:B2", 2, 2, 0, 0) },
+            Array.Empty<NamedRange>());
+        _reader.GetInfo(workbookPath).Returns(Result<WorkbookInfo>.Ok(info));
 
         var tools = new SpreadsheetTools(_services);
         var root = ParseResult(tools.GetInfo("data/sales.xlsx"));
@@ -114,10 +114,10 @@ public class SpreadsheetToolTests
     public void ReadSheet_DispatchesToReaderWithOptions()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        SpreadsheetReadOptions? capturedOptions = null;
-        _reader.ReadSheet(workbookPath, "Q1", Arg.Do<SpreadsheetReadOptions>(o => capturedOptions = o))
-            .Returns(Result<SpreadsheetReadResult>.Ok(
-                new SpreadsheetReadResult(
+        ReadOptions? capturedOptions = null;
+        _reader.ReadSheet(workbookPath, "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
+            .Returns(Result<ReadResult>.Ok(
+                new ReadResult(
                     new object?[] { new object?[] { "Jan", 100.0 } },
                     1,
                     Array.Empty<string>())));
@@ -137,10 +137,10 @@ public class SpreadsheetToolTests
     public void ReadSheet_FormulasMode_PassesFormulasModeThrough()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        SpreadsheetReadOptions? capturedOptions = null;
-        _reader.ReadSheet(workbookPath, "Q1", Arg.Do<SpreadsheetReadOptions>(o => capturedOptions = o))
-            .Returns(Result<SpreadsheetReadResult>.Ok(
-                new SpreadsheetReadResult(Array.Empty<object?>(), 0, Array.Empty<string>())));
+        ReadOptions? capturedOptions = null;
+        _reader.ReadSheet(workbookPath, "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
+            .Returns(Result<ReadResult>.Ok(
+                new ReadResult(Array.Empty<object?>(), 0, Array.Empty<string>())));
 
         var tools = new SpreadsheetTools(_services);
         tools.ReadSheet("data/sales.xlsx", "Q1", "", "formulas");
@@ -178,7 +178,7 @@ public class SpreadsheetToolTests
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         var csv = "month,total\r\nJan,100\r\n";
         _reader.ExportCsv(workbookPath, "Q1", null).Returns(
-            Result<SpreadsheetExportCsvResult>.Ok(new SpreadsheetExportCsvResult(csv, 2, 2)));
+            Result<ExportCsvResult>.Ok(new ExportCsvResult(csv, 2, 2)));
 
         var tools = new SpreadsheetTools(_services);
         var result = await tools.ExportCsv("data/sales.xlsx", "Q1");
@@ -193,7 +193,7 @@ public class SpreadsheetToolTests
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         var csv = "month,total\r\nJan,100\r\nFeb,200\r\n";
         _reader.ExportCsv(workbookPath, "Q1", null).Returns(
-            Result<SpreadsheetExportCsvResult>.Ok(new SpreadsheetExportCsvResult(csv, 3, 2)));
+            Result<ExportCsvResult>.Ok(new ExportCsvResult(csv, 3, 2)));
 
         IWriteFileCommand? capturedCommand = null;
         _commandService
@@ -232,7 +232,7 @@ public class SpreadsheetToolTests
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         _reader.ExportCsv(workbookPath, "Q1", null).Returns(
-            Result<SpreadsheetExportCsvResult>.Ok(new SpreadsheetExportCsvResult("a\r\n", 1, 1)));
+            Result<ExportCsvResult>.Ok(new ExportCsvResult("a\r\n", 1, 1)));
 
         var tools = new SpreadsheetTools(_services);
         var result = await tools.ExportCsv("data/sales.xlsx", "Q1", range: "", destination: "../escape.csv");
@@ -248,7 +248,7 @@ public class SpreadsheetToolTests
 
         IWriteCellsCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IWriteCellsCommand>(
+            .ExecuteAsync<IWriteCellsCommand, WriteCellsResult>(
                 Arg.Any<Action<IWriteCellsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -260,7 +260,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IWriteCellsCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<WriteCellsResult>.Ok(
+                    new WriteCellsResult(3)));
             });
 
         var editsJson = "[{\"cell\": \"A1\", \"value\": 42}, {\"cell\": \"B2\", \"value\": \"hi\"}, {\"cell\": \"C3\", \"value\": \"=SUM(A1:A2)\", \"isFormula\": true}]";
@@ -309,7 +310,7 @@ public class SpreadsheetToolTests
 
         IAppendRowsCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IAppendRowsCommand, SpreadsheetAppendRowsResult>(
+            .ExecuteAsync<IAppendRowsCommand, AppendRowsResult>(
                 Arg.Any<Action<IAppendRowsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -321,8 +322,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IAppendRowsCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetAppendRowsResult>.Ok(
-                    new SpreadsheetAppendRowsResult(2, 5, 6)));
+                return Task.FromResult(Celbridge.Core.Result<AppendRowsResult>.Ok(
+                    new AppendRowsResult(2, 5, 6)));
             });
 
         var rowsJson = "[[\"Mar\", 1200], [\"Apr\", 1450]]";
@@ -346,7 +347,7 @@ public class SpreadsheetToolTests
 
         IImportCsvCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IImportCsvCommand, SpreadsheetImportCsvResult>(
+            .ExecuteAsync<IImportCsvCommand, ImportCsvResult>(
                 Arg.Any<Action<IImportCsvCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -358,8 +359,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IImportCsvCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetImportCsvResult>.Ok(
-                    new SpreadsheetImportCsvResult(2, 5, 1)));
+                return Task.FromResult(Celbridge.Core.Result<ImportCsvResult>.Ok(
+                    new ImportCsvResult(2, 5, 1)));
             });
 
         var importsJson = "[{\"sheet\": \"Q2\", \"csvText\": \"a,b\\r\\n1,2\\r\\n\", \"createIfMissing\": true}, {\"sheet\": \"Q3\", \"csvText\": \"c,d\\r\\ne,f\\r\\ng,h\\r\\n\"}]";
@@ -386,7 +387,7 @@ public class SpreadsheetToolTests
 
         IAddSheetsCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IAddSheetsCommand, SpreadsheetAddSheetsResult>(
+            .ExecuteAsync<IAddSheetsCommand, AddSheetsResult>(
                 Arg.Any<Action<IAddSheetsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -398,8 +399,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IAddSheetsCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetAddSheetsResult>.Ok(
-                    new SpreadsheetAddSheetsResult(new[] { "Q2", "Q3", "Q4" })));
+                return Task.FromResult(Celbridge.Core.Result<AddSheetsResult>.Ok(
+                    new AddSheetsResult(new[] { "Q2", "Q3", "Q4" })));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -421,7 +422,7 @@ public class SpreadsheetToolTests
 
         IRemoveSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IRemoveSheetCommand>(
+            .ExecuteAsync<IRemoveSheetCommand, RemoveSheetResult>(
                 Arg.Any<Action<IRemoveSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -433,7 +434,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IRemoveSheetCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<RemoveSheetResult>.Ok(
+                    new RemoveSheetResult("Q3")));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -451,7 +453,7 @@ public class SpreadsheetToolTests
 
         IRenameSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IRenameSheetCommand>(
+            .ExecuteAsync<IRenameSheetCommand, RenameSheetResult>(
                 Arg.Any<Action<IRenameSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -463,7 +465,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IRenameSheetCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<RenameSheetResult>.Ok(
+                    new RenameSheetResult("Old", "New")));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -483,7 +486,7 @@ public class SpreadsheetToolTests
 
         IMoveSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IMoveSheetCommand>(
+            .ExecuteAsync<IMoveSheetCommand, MoveSheetResult>(
                 Arg.Any<Action<IMoveSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -495,7 +498,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IMoveSheetCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<MoveSheetResult>.Ok(
+                    new MoveSheetResult("Q3", 2)));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -526,7 +530,7 @@ public class SpreadsheetToolTests
 
         ISetActiveViewCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISetActiveViewCommand>(
+            .ExecuteAsync<ISetActiveViewCommand, SetActiveViewResult>(
                 Arg.Any<Action<ISetActiveViewCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -538,7 +542,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<ISetActiveViewCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<SetActiveViewResult>.Ok(
+                    new SetActiveViewResult("Summary", "B50:F50", Array.Empty<string>(), "D50", "A30")));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -578,7 +583,7 @@ public class SpreadsheetToolTests
 
         IFormatRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IFormatRangesCommand, SpreadsheetFormatRangesResult>(
+            .ExecuteAsync<IFormatRangesCommand, FormatRangesResult>(
                 Arg.Any<Action<IFormatRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -590,8 +595,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IFormatRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetFormatRangesResult>.Ok(
-                    new SpreadsheetFormatRangesResult(2, 5, false)));
+                return Task.FromResult(Celbridge.Core.Result<FormatRangesResult>.Ok(
+                    new FormatRangesResult(2, 5, false)));
             });
 
         var editsJson = "[{\"sheet\": \"Data\", \"range\": \"A1:C1\", \"format\": {\"textFormat\": {\"bold\": true}, \"backgroundColor\": \"#FFFF00\"}}, {\"sheet\": \"Other\", \"range\": \"B2\", \"format\": {\"horizontalAlignment\": \"CENTER\"}}]";
@@ -656,7 +661,7 @@ public class SpreadsheetToolTests
 
         IFreezePanesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IFreezePanesCommand, SpreadsheetFreezePanesResult>(
+            .ExecuteAsync<IFreezePanesCommand, FreezePanesResult>(
                 Arg.Any<Action<IFreezePanesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -668,8 +673,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IFreezePanesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetFreezePanesResult>.Ok(
-                    new SpreadsheetFreezePanesResult("Q1", 1, 2)));
+                return Task.FromResult(Celbridge.Core.Result<FreezePanesResult>.Ok(
+                    new FreezePanesResult("Q1", 1, 2)));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -702,19 +707,19 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/styles.xlsx");
 
-        var formatResult = new SpreadsheetReadFormatResult(
+        var formatResult = new ReadFormatResult(
             "Data!A1:B1",
-            new List<List<SpreadsheetFormatSpec>>
+            new List<List<FormatSpec>>
             {
-                new List<SpreadsheetFormatSpec>
+                new List<FormatSpec>
                 {
-                    new SpreadsheetFormatSpec(TextFormat: new SpreadsheetTextFormat(Bold: true)),
-                    new SpreadsheetFormatSpec(BackgroundColor: "#FFFF00")
+                    new FormatSpec(TextFormat: new TextFormat(Bold: true)),
+                    new FormatSpec(BackgroundColor: "#FFFF00")
                 }
             });
 
         _reader.ReadFormat(Arg.Any<string>(), "Data", "A1:B1")
-            .Returns(Result<SpreadsheetReadFormatResult>.Ok(formatResult));
+            .Returns(Result<ReadFormatResult>.Ok(formatResult));
 
         var tools = new SpreadsheetTools(_services);
         var root = ParseResult(tools.ReadFormat("data/styles.xlsx", "Data", "A1:B1"));
@@ -747,7 +752,7 @@ public class SpreadsheetToolTests
 
         IInsertRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IInsertRangesCommand, SpreadsheetInsertRangesResult>(
+            .ExecuteAsync<IInsertRangesCommand, InsertRangesResult>(
                 Arg.Any<Action<IInsertRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -759,8 +764,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IInsertRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetInsertRangesResult>.Ok(
-                    new SpreadsheetInsertRangesResult(2, 3, 0)));
+                return Task.FromResult(Celbridge.Core.Result<InsertRangesResult>.Ok(
+                    new InsertRangesResult(2, 3, 0)));
             });
 
         var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"3:5\"}, {\"sheet\": \"Q2\", \"range\": \"10\"}]";
@@ -798,7 +803,7 @@ public class SpreadsheetToolTests
 
         IDeleteRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IDeleteRangesCommand, SpreadsheetDeleteRangesResult>(
+            .ExecuteAsync<IDeleteRangesCommand, DeleteRangesResult>(
                 Arg.Any<Action<IDeleteRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -810,8 +815,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IDeleteRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetDeleteRangesResult>.Ok(
-                    new SpreadsheetDeleteRangesResult(1, 0, 2)));
+                return Task.FromResult(Celbridge.Core.Result<DeleteRangesResult>.Ok(
+                    new DeleteRangesResult(1, 0, 2)));
             });
 
         var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"B:C\"}]";
@@ -846,7 +851,7 @@ public class SpreadsheetToolTests
 
         IClearRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IClearRangesCommand, SpreadsheetClearRangesResult>(
+            .ExecuteAsync<IClearRangesCommand, ClearRangesResult>(
                 Arg.Any<Action<IClearRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -858,8 +863,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IClearRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetClearRangesResult>.Ok(
-                    new SpreadsheetClearRangesResult(1, 6)));
+                return Task.FromResult(Celbridge.Core.Result<ClearRangesResult>.Ok(
+                    new ClearRangesResult(1, 6)));
             });
 
         var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"A1:C2\"}]";
@@ -891,13 +896,13 @@ public class SpreadsheetToolTests
     public void Find_DispatchesToReaderAndReturnsMatches()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        SpreadsheetFindOptions? capturedOptions = null;
-        _reader.Find(workbookPath, Arg.Do<SpreadsheetFindOptions>(o => capturedOptions = o))
-            .Returns(Result<SpreadsheetFindResult>.Ok(new SpreadsheetFindResult(
+        FindOptions? capturedOptions = null;
+        _reader.Find(workbookPath, Arg.Do<FindOptions>(o => capturedOptions = o))
+            .Returns(Result<FindResult>.Ok(new FindResult(
                 new[]
                 {
-                    new SpreadsheetFindMatch("Q1", "A2", "Total", false),
-                    new SpreadsheetFindMatch("Q1", "B5", "=SUM(A1:A10)", true)
+                    new FindMatch("Q1", "A2", "Total", false),
+                    new FindMatch("Q1", "B5", "=SUM(A1:A10)", true)
                 },
                 2)));
 
@@ -934,7 +939,7 @@ public class SpreadsheetToolTests
 
         ISortRangeCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISortRangeCommand, SpreadsheetSortRangeResult>(
+            .ExecuteAsync<ISortRangeCommand, SortRangeResult>(
                 Arg.Any<Action<ISortRangeCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -946,8 +951,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<ISortRangeCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSortRangeResult>.Ok(
-                    new SpreadsheetSortRangeResult(8)));
+                return Task.FromResult(Celbridge.Core.Result<SortRangeResult>.Ok(
+                    new SortRangeResult(8)));
             });
 
         var sortByJson = "[{\"column\": \"B\", \"ascending\": false}, {\"column\": \"A\", \"ascending\": true}]";
@@ -991,7 +996,7 @@ public class SpreadsheetToolTests
 
         IDuplicateSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(
+            .ExecuteAsync<IDuplicateSheetCommand, DuplicateSheetResult>(
                 Arg.Any<Action<IDuplicateSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -1003,8 +1008,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<IDuplicateSheetCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetDuplicateSheetResult>.Ok(
-                    new SpreadsheetDuplicateSheetResult("Q1Copy", 2)));
+                return Task.FromResult(Celbridge.Core.Result<DuplicateSheetResult>.Ok(
+                    new DuplicateSheetResult("Q1Copy", 2)));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -1038,7 +1043,7 @@ public class SpreadsheetToolTests
 
         ISetAutoFilterCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(
+            .ExecuteAsync<ISetAutoFilterCommand, SetAutoFilterResult>(
                 Arg.Any<Action<ISetAutoFilterCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -1050,8 +1055,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<ISetAutoFilterCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSetAutoFilterResult>.Ok(
-                    new SpreadsheetSetAutoFilterResult(true, "A1:C10")));
+                return Task.FromResult(Celbridge.Core.Result<SetAutoFilterResult>.Ok(
+                    new SetAutoFilterResult(true, "A1:C10")));
             });
 
         var tools = new SpreadsheetTools(_services);
@@ -1085,7 +1090,7 @@ public class SpreadsheetToolTests
 
         ISetConditionalFormattingCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(
+            .ExecuteAsync<ISetConditionalFormattingCommand, SetConditionalFormattingResult>(
                 Arg.Any<Action<ISetConditionalFormattingCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
@@ -1097,8 +1102,8 @@ public class SpreadsheetToolTests
                     capturedCommand = Substitute.For<ISetConditionalFormattingCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSetConditionalFormattingResult>.Ok(
-                    new SpreadsheetSetConditionalFormattingResult(1, 0)));
+                return Task.FromResult(Celbridge.Core.Result<SetConditionalFormattingResult>.Ok(
+                    new SetConditionalFormattingResult(1, 0)));
             });
 
         var rulesJson = "[{\"type\": \"greaterThan\", \"value\": 100, \"backgroundColor\": \"#FFFF00\"}]";
@@ -1134,13 +1139,13 @@ public class SpreadsheetToolTests
     public void GetActiveView_DispatchesToReaderAndReturnsViewState()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        var view = new SpreadsheetActiveView(
+        var view = new ActiveView(
             "Summary",
             "B2:D4",
             new[] { "B2:D4", "F1:F10" },
             "C3",
             "A1");
-        _reader.GetActiveView(workbookPath).Returns(Result<SpreadsheetActiveView>.Ok(view));
+        _reader.GetActiveView(workbookPath).Returns(Result<ActiveView>.Ok(view));
 
         var tools = new SpreadsheetTools(_services);
         var root = ParseResult(tools.GetActiveView("data/sales.xlsx"));

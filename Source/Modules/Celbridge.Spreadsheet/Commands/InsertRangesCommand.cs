@@ -9,10 +9,10 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetInsertRangesOperation> Operations { get; set; } = Array.Empty<SpreadsheetInsertRangesOperation>();
+    public IReadOnlyList<InsertRangesOperation> Operations { get; set; } = Array.Empty<InsertRangesOperation>();
 
-    public SpreadsheetInsertRangesResult ResultValue { get; private set; } =
-        new SpreadsheetInsertRangesResult(0, 0, 0);
+    public InsertRangesResult ResultValue { get; private set; } =
+        new InsertRangesResult(0, 0, 0);
 
     public InsertRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -115,7 +115,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetInsertRangesResult(Operations.Count, totalRowsInserted, totalColumnsInserted);
+            ResultValue = new InsertRangesResult(Operations.Count, totalRowsInserted, totalColumnsInserted);
         }
         catch (Exception ex)
         {

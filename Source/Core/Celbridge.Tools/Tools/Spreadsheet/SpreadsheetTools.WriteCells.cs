@@ -5,11 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_write_cells: the number of cell edits applied.
-/// </summary>
-public record class WriteCellsResult(int CellCount);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -47,7 +42,7 @@ public partial class SpreadsheetTools
         var cellEdits = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IWriteCellsCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IWriteCellsCommand, WriteCellsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -58,11 +53,12 @@ public partial class SpreadsheetTools
             return ToolError(commandResult);
         }
 
-        var result = new WriteCellsResult(cellEdits.Count);
-        return ToolSuccess(SerializeJson(result));
+        var commandValue = commandResult.Value;
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<List<SpreadsheetCellEdit>> ParseCellEdits(string editsJson)
+    private static Result<List<CellEdit>> ParseCellEdits(string editsJson)
     {
         if (string.IsNullOrEmpty(editsJson))
         {
@@ -85,7 +81,7 @@ public partial class SpreadsheetTools
             return Result.Fail("Edits JSON must be an array.");
         }
 
-        var cellEdits = new List<SpreadsheetCellEdit>();
+        var cellEdits = new List<CellEdit>();
         var index = 0;
         foreach (var entry in root.EnumerateArray())
         {
@@ -120,7 +116,7 @@ public partial class SpreadsheetTools
                 }
             }
 
-            cellEdits.Add(new SpreadsheetCellEdit(cell, value, isFormula));
+            cellEdits.Add(new CellEdit(cell, value, isFormula));
             index++;
         }
 

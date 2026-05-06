@@ -759,7 +759,7 @@ opens it.
 ## Reading formatting
 
 `spreadsheet_read_format` returns the format spec for each cell in a range as a
-2D array of `SpreadsheetFormatSpec` objects — the same shape accepted by
+2D array of `FormatSpec` objects — the same shape accepted by
 `spreadsheet_format_ranges`. Only non-default properties appear in each cell's
 spec. A completely unformatted cell includes only its effective font name and
 size.

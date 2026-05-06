@@ -6,7 +6,7 @@ namespace Celbridge.Spreadsheet;
 /// Result populated by IAddSheetsCommand on success. Sheets is the
 /// list of sheet names that were added, in the order they were added.
 /// </summary>
-public record SpreadsheetAddSheetsResult(IReadOnlyList<string> Sheets);
+public record AddSheetsResult(IReadOnlyList<string> Sheets);
 
 /// <summary>
 /// Adds one or more empty worksheets to an .xlsx workbook in a single open/save
@@ -14,7 +14,7 @@ public record SpreadsheetAddSheetsResult(IReadOnlyList<string> Sheets);
 /// Fails if any requested name collides with an existing sheet or with another
 /// name in the same batch; in that case nothing is saved.
 /// </summary>
-public interface IAddSheetsCommand : IExecutableCommand<SpreadsheetAddSheetsResult>
+public interface IAddSheetsCommand : IExecutableCommand<AddSheetsResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

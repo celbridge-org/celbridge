@@ -10,10 +10,10 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetCsvImport> Imports { get; set; } = Array.Empty<SpreadsheetCsvImport>();
+    public IReadOnlyList<CsvImport> Imports { get; set; } = Array.Empty<CsvImport>();
 
-    public SpreadsheetImportCsvResult ResultValue { get; private set; } =
-        new SpreadsheetImportCsvResult(0, 0, 0);
+    public ImportCsvResult ResultValue { get; private set; } =
+        new ImportCsvResult(0, 0, 0);
 
     public ImportCsvCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -36,7 +36,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
             return Result.Fail("At least one CSV import is required.");
         }
 
-        var parsedImports = new List<(SpreadsheetCsvImport Import, IReadOnlyList<IReadOnlyList<string>> Rows)>(Imports.Count);
+        var parsedImports = new List<(CsvImport Import, IReadOnlyList<IReadOnlyList<string>> Rows)>(Imports.Count);
         var seenSheets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int importIndex = 0; importIndex < Imports.Count; importIndex++)
         {
@@ -121,7 +121,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetImportCsvResult(parsedImports.Count, totalRowCount, sheetsCreated);
+            ResultValue = new ImportCsvResult(parsedImports.Count, totalRowCount, sheetsCreated);
         }
         catch (Exception ex)
         {

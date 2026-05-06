@@ -11,7 +11,10 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
 
     public ResourceKey FileResource { get; set; }
     public string Sheet { get; set; } = string.Empty;
-    public IReadOnlyList<SpreadsheetCellEdit> Edits { get; set; } = Array.Empty<SpreadsheetCellEdit>();
+    public IReadOnlyList<CellEdit> Edits { get; set; } = Array.Empty<CellEdit>();
+
+    public WriteCellsResult ResultValue { get; private set; } =
+        new WriteCellsResult(0);
 
     public WriteCellsCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -84,6 +87,8 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
             }
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+
+            ResultValue = new WriteCellsResult(Edits.Count);
         }
         catch (Exception ex)
         {

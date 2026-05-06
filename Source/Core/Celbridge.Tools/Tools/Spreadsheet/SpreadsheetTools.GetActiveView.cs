@@ -36,6 +36,8 @@ public partial class SpreadsheetTools
             return ToolError(viewResult);
         }
 
-        return ToolSuccess(SerializeJson(viewResult.Value));
+        var viewValue = viewResult.Value;
+        var json = SerializeJson(viewValue);
+        return ToolSuccess(json);
     }
 }

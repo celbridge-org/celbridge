@@ -5,19 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_set_active_view: the sheet that was made
-/// active and the selection, active-cell, or scroll-position values that were
-/// applied. ranges echoes the full selection that was applied (one or more
-/// A1 ranges).
-/// </summary>
-public record class SetActiveViewResult(
-    string Sheet,
-    string Range,
-    IReadOnlyList<string> Ranges,
-    string ActiveCell,
-    string TopLeftCell);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -69,7 +56,7 @@ public partial class SpreadsheetTools
         var ranges = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISetActiveViewCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<ISetActiveViewCommand, SetActiveViewResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -83,9 +70,9 @@ public partial class SpreadsheetTools
             return ToolError(commandResult);
         }
 
-        var appliedRange = ranges.Count > 0 ? ranges[0] : range;
-        var result = new SetActiveViewResult(sheet, appliedRange, ranges, activeCell, topLeftCell);
-        return ToolSuccess(SerializeJson(result));
+        var commandValue = commandResult.Value;
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
     private static Result<IReadOnlyList<string>> ParseRangesJson(string rangesJson)

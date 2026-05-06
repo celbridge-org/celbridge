@@ -5,13 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_format_ranges: how many edits were applied,
-/// how many top-level format properties were applied across them, and whether
-/// any edit triggered AdjustToContents via autoFitColumns.
-/// </summary>
-public record class FormatRangesResult(int EditsApplied, int PropertiesApplied, bool AutoFitApplied);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -43,7 +36,7 @@ public partial class SpreadsheetTools
         var edits = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IFormatRangesCommand, SpreadsheetFormatRangesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IFormatRangesCommand, FormatRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Edits = edits;
@@ -54,12 +47,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new FormatRangesResult(commandValue.EditsApplied, commandValue.PropertiesApplied, commandValue.AutoFitApplied);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetFormatEdit>> ParseFormatEdits(string editsJson)
+    private static Result<IReadOnlyList<FormatEdit>> ParseFormatEdits(string editsJson)
     {
         if (string.IsNullOrEmpty(editsJson))
         {
@@ -68,7 +60,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var edits = JsonSerializer.Deserialize<List<SpreadsheetFormatEdit>>(editsJson, JsonOptions);
+            var edits = JsonSerializer.Deserialize<List<FormatEdit>>(editsJson, JsonOptions);
             if (edits is null)
             {
                 return Result.Fail("Edits JSON must be a non-null array.");

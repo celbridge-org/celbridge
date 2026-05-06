@@ -69,10 +69,10 @@ public class SpreadsheetCommandTests
             Sheet = "Q1",
             Edits = new[]
             {
-                new SpreadsheetCellEdit("A1", "month"),
-                new SpreadsheetCellEdit("B1", "total"),
-                new SpreadsheetCellEdit("A2", "Jan"),
-                new SpreadsheetCellEdit("B2", 100.0)
+                new CellEdit("A1", "month"),
+                new CellEdit("B1", "total"),
+                new CellEdit("A2", "Jan"),
+                new CellEdit("B2", 100.0)
             }
         };
 
@@ -102,7 +102,7 @@ public class SpreadsheetCommandTests
             Sheet = "Q1",
             Edits = new[]
             {
-                new SpreadsheetCellEdit("A3", "=SUM(A1:A2)", IsFormula: true)
+                new CellEdit("A3", "=SUM(A1:A2)", IsFormula: true)
             }
         };
 
@@ -130,7 +130,7 @@ public class SpreadsheetCommandTests
             Sheet = "Q1",
             Edits = new[]
             {
-                new SpreadsheetCellEdit("A1", "=SUM(A2:A3)")
+                new CellEdit("A1", "=SUM(A2:A3)")
             }
         };
 
@@ -159,7 +159,7 @@ public class SpreadsheetCommandTests
             Sheet = "Q1",
             Edits = new[]
             {
-                new SpreadsheetCellEdit("A1", null)
+                new CellEdit("A1", null)
             }
         };
 
@@ -183,7 +183,7 @@ public class SpreadsheetCommandTests
         {
             FileResource = _workbookResource,
             Sheet = "Missing",
-            Edits = new[] { new SpreadsheetCellEdit("A1", 1.0) }
+            Edits = new[] { new CellEdit("A1", 1.0) }
         };
 
         var result = await command.ExecuteAsync();
@@ -275,7 +275,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Imports = new[]
             {
-                new SpreadsheetCsvImport("Data", csvText)
+                new CsvImport("Data", csvText)
             }
         };
 
@@ -307,7 +307,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Imports = new[]
             {
-                new SpreadsheetCsvImport("Data", csvText)
+                new CsvImport("Data", csvText)
             }
         };
 
@@ -335,7 +335,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Imports = new[]
             {
-                new SpreadsheetCsvImport("Missing", "a,b\r\n1,2\r\n", CreateIfMissing: false)
+                new CsvImport("Missing", "a,b\r\n1,2\r\n", CreateIfMissing: false)
             }
         };
 
@@ -358,7 +358,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Imports = new[]
             {
-                new SpreadsheetCsvImport("New", "a,b\r\n1,2\r\n", CreateIfMissing: true)
+                new CsvImport("New", "a,b\r\n1,2\r\n", CreateIfMissing: true)
             }
         };
 
@@ -632,9 +632,9 @@ public class SpreadsheetCommandTests
             Sheet = "Q1",
             Edits = new[]
             {
-                new SpreadsheetCellEdit("A1", 10.0),
-                new SpreadsheetCellEdit("A2", 20.0),
-                new SpreadsheetCellEdit("A3", "=SUM(A1:A2)", IsFormula: true)
+                new CellEdit("A1", 10.0),
+                new CellEdit("A2", 20.0),
+                new CellEdit("A3", "=SUM(A1:A2)", IsFormula: true)
             }
         };
         var result = await writeCommand.ExecuteAsync();
@@ -677,15 +677,15 @@ public class SpreadsheetCommandTests
             sheet.Cell("B1").Value = "Value";
         });
 
-        var format = new SpreadsheetFormatSpec(
-            TextFormat: new SpreadsheetTextFormat(Bold: true, Italic: true, FontSize: 14));
+        var format = new FormatSpec(
+            TextFormat: new TextFormat(Bold: true, Italic: true, FontSize: 14));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1:B1", format)
+                new FormatEdit("Data", "A1:B1", format)
             }
         };
 
@@ -712,14 +712,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(BackgroundColor: "#FFFF00");
+        var format = new FormatSpec(BackgroundColor: "#FFFF00");
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1:C1", format)
+                new FormatEdit("Data", "A1:C1", format)
             }
         };
 
@@ -741,19 +741,19 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(
-            Borders: new SpreadsheetBordersSpec(
-                Top: new SpreadsheetBorderSide(Style: "SOLID", Color: "#000000"),
-                Bottom: new SpreadsheetBorderSide(Style: "DASHED"),
-                Left: new SpreadsheetBorderSide(Style: "NONE"),
-                Right: new SpreadsheetBorderSide(Style: "DOTTED")));
+        var format = new FormatSpec(
+            Borders: new BordersSpec(
+                Top: new BorderSide(Style: "SOLID", Color: "#000000"),
+                Bottom: new BorderSide(Style: "DASHED"),
+                Left: new BorderSide(Style: "NONE"),
+                Right: new BorderSide(Style: "DOTTED")));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "B2", format)
+                new FormatEdit("Data", "B2", format)
             }
         };
 
@@ -778,7 +778,7 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(
+        var format = new FormatSpec(
             HorizontalAlignment: "CENTER",
             VerticalAlignment: "MIDDLE",
             WrapText: true);
@@ -788,7 +788,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -813,14 +813,14 @@ public class SpreadsheetCommandTests
             sheet.Cell("B2").Value = 1234.5;
         });
 
-        var format = new SpreadsheetFormatSpec(NumberFormat: "#,##0.00");
+        var format = new FormatSpec(NumberFormat: "#,##0.00");
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "B2", format)
+                new FormatEdit("Data", "B2", format)
             }
         };
 
@@ -841,14 +841,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(ColumnWidth: 30);
+        var format = new FormatSpec(ColumnWidth: 30);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "B", format)
+                new FormatEdit("Data", "B", format)
             }
         };
 
@@ -871,14 +871,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(RowHeight: 36);
+        var format = new FormatSpec(RowHeight: 36);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "3", format)
+                new FormatEdit("Data", "3", format)
             }
         };
 
@@ -902,14 +902,14 @@ public class SpreadsheetCommandTests
         });
 
         // Set explicit width of 1 (very narrow), then autofit — should expand
-        var format = new SpreadsheetFormatSpec(ColumnWidth: 1, AutoFitColumns: true);
+        var format = new FormatSpec(ColumnWidth: 1, AutoFitColumns: true);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "B", format)
+                new FormatEdit("Data", "B", format)
             }
         };
 
@@ -932,14 +932,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(BackgroundColor: "not-a-color");
+        var format = new FormatSpec(BackgroundColor: "not-a-color");
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -957,16 +957,16 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(
-            Borders: new SpreadsheetBordersSpec(
-                Top: new SpreadsheetBorderSide(Style: "SQUIGGLY")));
+        var format = new FormatSpec(
+            Borders: new BordersSpec(
+                Top: new BorderSide(Style: "SQUIGGLY")));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -985,14 +985,14 @@ public class SpreadsheetCommandTests
             sheet.Cell("C1").Value = "untouched";
         });
 
-        var format = new SpreadsheetFormatSpec(BackgroundColor: "#FF0000");
+        var format = new FormatSpec(BackgroundColor: "#FF0000");
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1:B1", format)
+                new FormatEdit("Data", "A1:B1", format)
             }
         };
 
@@ -1019,14 +1019,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(TextFormat: new SpreadsheetTextFormat(Bold: true));
+        var format = new FormatSpec(TextFormat: new TextFormat(Bold: true));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Missing", "A1", format)
+                new FormatEdit("Missing", "A1", format)
             }
         };
 
@@ -1045,7 +1045,7 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Value = "Header";
         });
 
-        var format = new SpreadsheetFormatSpec(
+        var format = new FormatSpec(
             BackgroundColor: "#FFFF00",
             MergeRange: true);
 
@@ -1054,7 +1054,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1:C1", format)
+                new FormatEdit("Data", "A1:C1", format)
             }
         };
 
@@ -1078,14 +1078,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(MergeRange: true);
+        var format = new FormatSpec(MergeRange: true);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A:C", format)
+                new FormatEdit("Data", "A:C", format)
             }
         };
 
@@ -1105,14 +1105,14 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Style.Fill.BackgroundColor = XLColor.FromHtml("#FF0000");
         });
 
-        var format = new SpreadsheetFormatSpec(BackgroundColor: string.Empty);
+        var format = new FormatSpec(BackgroundColor: string.Empty);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -1135,15 +1135,15 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Style.Font.FontColor = XLColor.FromHtml("#FF0000");
         });
 
-        var format = new SpreadsheetFormatSpec(
-            TextFormat: new SpreadsheetTextFormat(ForegroundColor: string.Empty));
+        var format = new FormatSpec(
+            TextFormat: new TextFormat(ForegroundColor: string.Empty));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -1166,16 +1166,16 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Style.Border.TopBorderColor = XLColor.FromHtml("#FF0000");
         });
 
-        var format = new SpreadsheetFormatSpec(
-            Borders: new SpreadsheetBordersSpec(
-                Top: new SpreadsheetBorderSide(Color: string.Empty)));
+        var format = new FormatSpec(
+            Borders: new BordersSpec(
+                Top: new BorderSide(Color: string.Empty)));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -1197,15 +1197,15 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Style.Font.FontName = "Arial";
         });
 
-        var format = new SpreadsheetFormatSpec(
-            TextFormat: new SpreadsheetTextFormat(FontFamily: string.Empty));
+        var format = new FormatSpec(
+            TextFormat: new TextFormat(FontFamily: string.Empty));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -1227,15 +1227,15 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Style.Font.FontSize = 24;
         });
 
-        var format = new SpreadsheetFormatSpec(
-            TextFormat: new SpreadsheetTextFormat(FontSize: 0));
+        var format = new FormatSpec(
+            TextFormat: new TextFormat(FontSize: 0));
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1", format)
+                new FormatEdit("Data", "A1", format)
             }
         };
 
@@ -1257,14 +1257,14 @@ public class SpreadsheetCommandTests
             sheet.Column("A").Width = 50;
         });
 
-        var format = new SpreadsheetFormatSpec(ColumnWidth: -1);
+        var format = new FormatSpec(ColumnWidth: -1);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A:A", format)
+                new FormatEdit("Data", "A:A", format)
             }
         };
 
@@ -1286,14 +1286,14 @@ public class SpreadsheetCommandTests
             sheet.Row(1).Height = 80;
         });
 
-        var format = new SpreadsheetFormatSpec(RowHeight: -1);
+        var format = new FormatSpec(RowHeight: -1);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "1:1", format)
+                new FormatEdit("Data", "1:1", format)
             }
         };
 
@@ -1316,14 +1316,14 @@ public class SpreadsheetCommandTests
             sheet.Range("A1:C1").Merge();
         });
 
-        var format = new SpreadsheetFormatSpec(MergeRange: false);
+        var format = new FormatSpec(MergeRange: false);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1:C1", format)
+                new FormatEdit("Data", "A1:C1", format)
             }
         };
 
@@ -1345,14 +1345,14 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Data");
         });
 
-        var format = new SpreadsheetFormatSpec(MergeRange: false);
+        var format = new FormatSpec(MergeRange: false);
 
         var command = new FormatRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Data", "A1:C1", format)
+                new FormatEdit("Data", "A1:C1", format)
             }
         };
 
@@ -1865,7 +1865,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Imports = new[]
             {
-                new SpreadsheetCsvImport("Data", csvText)
+                new CsvImport("Data", csvText)
             }
         };
 
@@ -1889,11 +1889,11 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Q1", "A1:B1", new SpreadsheetFormatSpec(
-                    TextFormat: new SpreadsheetTextFormat(Bold: true))),
-                new SpreadsheetFormatEdit("Q2", "A1:B1", new SpreadsheetFormatSpec(
+                new FormatEdit("Q1", "A1:B1", new FormatSpec(
+                    TextFormat: new TextFormat(Bold: true))),
+                new FormatEdit("Q2", "A1:B1", new FormatSpec(
                     BackgroundColor: "#FFFF00")),
-                new SpreadsheetFormatEdit("Q1", "C1", new SpreadsheetFormatSpec(
+                new FormatEdit("Q1", "C1", new FormatSpec(
                     HorizontalAlignment: "CENTER"))
             }
         };
@@ -1927,9 +1927,9 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Edits = new[]
             {
-                new SpreadsheetFormatEdit("Q1", "A1", new SpreadsheetFormatSpec(
-                    TextFormat: new SpreadsheetTextFormat(Bold: true))),
-                new SpreadsheetFormatEdit("Q1", "B1", new SpreadsheetFormatSpec(
+                new FormatEdit("Q1", "A1", new FormatSpec(
+                    TextFormat: new TextFormat(Bold: true))),
+                new FormatEdit("Q1", "B1", new FormatSpec(
                     BackgroundColor: "not-a-color"))
             }
         };
@@ -2005,8 +2005,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Imports = new[]
             {
-                new SpreadsheetCsvImport("Q1", "month,total\r\nJan,100\r\n", CreateIfMissing: true),
-                new SpreadsheetCsvImport("Q2", "name\r\nAlpha\r\nBeta\r\n", CreateIfMissing: true)
+                new CsvImport("Q1", "month,total\r\nJan,100\r\n", CreateIfMissing: true),
+                new CsvImport("Q2", "name\r\nAlpha\r\nBeta\r\n", CreateIfMissing: true)
             }
         };
 
@@ -2040,7 +2040,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteRangesOperation("Q1", "2:3")
+                new DeleteRangesOperation("Q1", "2:3")
             }
         };
 
@@ -2073,7 +2073,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteRangesOperation("Q1", "B:C")
+                new DeleteRangesOperation("Q1", "B:C")
             }
         };
 
@@ -2109,8 +2109,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteRangesOperation("Q1", "3:5"),
-                new SpreadsheetDeleteRangesOperation("Q1", "10")
+                new DeleteRangesOperation("Q1", "3:5"),
+                new DeleteRangesOperation("Q1", "10")
             }
         };
 
@@ -2149,8 +2149,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteRangesOperation("Q1", "3:5"),
-                new SpreadsheetDeleteRangesOperation("Q1", "4:6")
+                new DeleteRangesOperation("Q1", "3:5"),
+                new DeleteRangesOperation("Q1", "4:6")
             }
         };
 
@@ -2179,7 +2179,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteRangesOperation("Q1", "A1:C3")
+                new DeleteRangesOperation("Q1", "A1:C3")
             }
         };
 
@@ -2203,8 +2203,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteRangesOperation("Q1", "1"),
-                new SpreadsheetDeleteRangesOperation("Missing", "1")
+                new DeleteRangesOperation("Q1", "1"),
+                new DeleteRangesOperation("Missing", "1")
             }
         };
 
@@ -2234,7 +2234,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearRangesOperation("Q1", "B2:C2")
+                new ClearRangesOperation("Q1", "B2:C2")
             }
         };
 
@@ -2268,7 +2268,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearRangesOperation("Q1", "")
+                new ClearRangesOperation("Q1", "")
             }
         };
 
@@ -2301,7 +2301,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearRangesOperation("Q1", "2")
+                new ClearRangesOperation("Q1", "2")
             }
         };
 
@@ -2332,7 +2332,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearRangesOperation("Q1", "B2:D4")
+                new ClearRangesOperation("Q1", "B2:D4")
             }
         };
 
@@ -2362,7 +2362,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearRangesOperation("Q1", string.Empty)
+                new ClearRangesOperation("Q1", string.Empty)
             }
         };
 
@@ -2386,8 +2386,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearRangesOperation("Q1", "A1"),
-                new SpreadsheetClearRangesOperation("Missing", "A1")
+                new ClearRangesOperation("Q1", "A1"),
+                new ClearRangesOperation("Missing", "A1")
             }
         };
 
@@ -2416,7 +2416,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertRangesOperation("Q1", "2:3")
+                new InsertRangesOperation("Q1", "2:3")
             }
         };
 
@@ -2451,7 +2451,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertRangesOperation("Q1", "B")
+                new InsertRangesOperation("Q1", "B")
             }
         };
 
@@ -2485,8 +2485,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertRangesOperation("Q1", "2"),
-                new SpreadsheetInsertRangesOperation("Q1", "5")
+                new InsertRangesOperation("Q1", "2"),
+                new InsertRangesOperation("Q1", "5")
             }
         };
 
@@ -2521,7 +2521,7 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertRangesOperation("Q1", "A1:C3")
+                new InsertRangesOperation("Q1", "A1:C3")
             }
         };
 
@@ -2545,8 +2545,8 @@ public class SpreadsheetCommandTests
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertRangesOperation("Q1", "1"),
-                new SpreadsheetInsertRangesOperation("Missing", "1")
+                new InsertRangesOperation("Q1", "1"),
+                new InsertRangesOperation("Missing", "1")
             }
         };
 
@@ -2577,7 +2577,7 @@ public class SpreadsheetCommandTests
             Range = "A1:A3",
             SortKeys = new[]
             {
-                new SpreadsheetSortKey("A", Ascending: true)
+                new SortKey("A", Ascending: true)
             }
         };
 
@@ -2612,7 +2612,7 @@ public class SpreadsheetCommandTests
             Range = "A1:A4",
             SortKeys = new[]
             {
-                new SpreadsheetSortKey("A", Ascending: true)
+                new SortKey("A", Ascending: true)
             },
             HasHeaderRow = true
         };
@@ -2653,8 +2653,8 @@ public class SpreadsheetCommandTests
             Range = "A1:B4",
             SortKeys = new[]
             {
-                new SpreadsheetSortKey("A", Ascending: true),
-                new SpreadsheetSortKey("B", Ascending: false)
+                new SortKey("A", Ascending: true),
+                new SortKey("B", Ascending: false)
             }
         };
 
@@ -2691,7 +2691,7 @@ public class SpreadsheetCommandTests
             Range = "A1:A2",
             SortKeys = new[]
             {
-                new SpreadsheetSortKey("B", Ascending: true)
+                new SortKey("B", Ascending: true)
             }
         };
 
@@ -2719,7 +2719,7 @@ public class SpreadsheetCommandTests
             Range = string.Empty,
             SortKeys = new[]
             {
-                new SpreadsheetSortKey("A", Ascending: true)
+                new SortKey("A", Ascending: true)
             }
         };
 
@@ -2936,7 +2936,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "greaterThan",
                 Value: 100,
                 BackgroundColor: "#FF0000")
@@ -2972,7 +2972,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "between",
                 Value: 10)
         };
@@ -3004,7 +3004,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "colorScale2",
                 LowColor: "#FFFFFF",
                 HighColor: "#FF0000")
@@ -3040,7 +3040,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "lessThan",
                 Value: 10,
                 BackgroundColor: "#00FF00")
@@ -3076,7 +3076,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(Type: "isAwesome", Value: 1)
+            new ConditionalFormatRule(Type: "isAwesome", Value: 1)
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3110,7 +3110,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: ruleType,
                 Value: 3,
                 BackgroundColor: "#FFCCCC")
@@ -3146,7 +3146,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(Type: "top", Value: value)
+            new ConditionalFormatRule(Type: "top", Value: value)
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3173,7 +3173,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(Type: "topPercent", Value: 150)
+            new ConditionalFormatRule(Type: "topPercent", Value: 150)
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3200,7 +3200,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(Type: "top")
+            new ConditionalFormatRule(Type: "top")
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3230,7 +3230,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "colorScale2",
                 LowColor: "#FF0000",
                 HighColor: "#00FF00",
@@ -3272,7 +3272,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "colorScale3",
                 LowColor: "#FF0000",
                 MidColor: "#FFFF00",
@@ -3309,7 +3309,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "colorScale2",
                 LowColor: "#FF0000",
                 HighColor: "#00FF00",
@@ -3341,7 +3341,7 @@ public class SpreadsheetCommandTests
 
         var rules = new[]
         {
-            new SpreadsheetConditionalFormatRule(
+            new ConditionalFormatRule(
                 Type: "colorScale2",
                 LowColor: "#FF0000",
                 HighColor: "#00FF00",

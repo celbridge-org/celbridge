@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet;
 /// is the name the duplicate was added under, Position is its 1-based tab
 /// position in the workbook after the operation.
 /// </summary>
-public record SpreadsheetDuplicateSheetResult(string NewSheet, int Position);
+public record DuplicateSheetResult(string NewSheet, int Position);
 
 /// <summary>
 /// Duplicates an existing worksheet in an .xlsx workbook. The copy preserves
@@ -16,7 +16,7 @@ public record SpreadsheetDuplicateSheetResult(string NewSheet, int Position);
 /// sheet does not exist, the new name collides with an existing sheet, or the
 /// position is outside [0, sheetCount + 1] (0 appends after existing sheets).
 /// </summary>
-public interface IDuplicateSheetCommand : IExecutableCommand<SpreadsheetDuplicateSheetResult>
+public interface IDuplicateSheetCommand : IExecutableCommand<DuplicateSheetResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

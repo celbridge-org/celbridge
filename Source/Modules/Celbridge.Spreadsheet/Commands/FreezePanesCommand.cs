@@ -13,8 +13,8 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
     public int Rows { get; set; }
     public int Columns { get; set; }
 
-    public SpreadsheetFreezePanesResult ResultValue { get; private set; } =
-        new SpreadsheetFreezePanesResult(string.Empty, 0, 0);
+    public FreezePanesResult ResultValue { get; private set; } =
+        new FreezePanesResult(string.Empty, 0, 0);
 
     public FreezePanesCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -57,7 +57,7 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetFreezePanesResult(Sheet, Rows, Columns);
+            ResultValue = new FreezePanesResult(Sheet, Rows, Columns);
         }
         catch (Exception ex)
         {

@@ -3,12 +3,27 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
+/// Result populated by ISetActiveViewCommand on success. Sheet is the active
+/// worksheet name. Range is the first range that was applied (or empty when
+/// no selection was set). Ranges is the full selection that was applied (one
+/// or more A1 ranges; empty when no selection was set). ActiveCell is the
+/// anchor cell within the selection (or empty). TopLeftCell is the scroll
+/// anchor that was applied (or empty).
+/// </summary>
+public record SetActiveViewResult(
+    string Sheet,
+    string Range,
+    IReadOnlyList<string> Ranges,
+    string ActiveCell,
+    string TopLeftCell);
+
+/// <summary>
 /// Sets the persisted view state of an .xlsx workbook: which sheet is active
 /// when the file is opened, plus optional cell selection and scroll position
 /// on that sheet. The sheet is always made active. Ranges, Range, ActiveCell,
 /// and TopLeftCell are optional; an empty value leaves that aspect unchanged.
 /// </summary>
-public interface ISetActiveViewCommand : IExecutableCommand
+public interface ISetActiveViewCommand : IExecutableCommand<SetActiveViewResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

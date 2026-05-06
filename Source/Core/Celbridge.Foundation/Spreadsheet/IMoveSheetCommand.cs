@@ -3,10 +3,16 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
+/// Result populated by IMoveSheetCommand on success. Sheet is the worksheet
+/// name and Position is its 1-based tab position after the move.
+/// </summary>
+public record MoveSheetResult(string Sheet, int Position);
+
+/// <summary>
 /// Moves an existing worksheet to a new 1-based tab position in an .xlsx workbook.
 /// Fails if the sheet is not found or the position is outside [1, sheetCount].
 /// </summary>
-public interface IMoveSheetCommand : IExecutableCommand
+public interface IMoveSheetCommand : IExecutableCommand<MoveSheetResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

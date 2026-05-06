@@ -6,12 +6,12 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by spreadsheet_export_csv when a destination is supplied.
-/// Reports the dimensions of the source range and the byte size of the CSV
-/// that was written so callers (including cel proxy clients) can act on the
-/// metadata without parsing a free-form summary.
+/// Metadata returned by spreadsheet_export_csv when a destination is
+/// supplied: source-range dimensions plus the byte size and resource key of
+/// the CSV file the tool wrote. Distinct from the reader's inline-CSV
+/// result — this describes the file, not the body.
 /// </summary>
-public record class ExportCsvResult(int RowCount, int ColumnCount, int ByteCount, string Destination);
+public record class ExportCsvFileResult(int RowCount, int ColumnCount, int ByteCount, string Destination);
 
 public partial class SpreadsheetTools
 {
@@ -74,7 +74,8 @@ public partial class SpreadsheetTools
         }
 
         var byteCount = Encoding.UTF8.GetByteCount(csv.Csv);
-        var metadata = new ExportCsvResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
-        return ToolSuccess(SerializeJson(metadata));
+        var metadata = new ExportCsvFileResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
+        var json = SerializeJson(metadata);
+        return ToolSuccess(json);
     }
 }

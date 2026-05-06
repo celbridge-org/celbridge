@@ -12,6 +12,9 @@ public class RenameSheetCommand : CommandBase, IRenameSheetCommand
     public string Sheet { get; set; } = string.Empty;
     public string NewName { get; set; } = string.Empty;
 
+    public RenameSheetResult ResultValue { get; private set; } =
+        new RenameSheetResult(string.Empty, string.Empty);
+
     public RenameSheetCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -40,6 +43,7 @@ public class RenameSheetCommand : CommandBase, IRenameSheetCommand
 
         if (string.Equals(Sheet, NewName, StringComparison.Ordinal))
         {
+            ResultValue = new RenameSheetResult(Sheet, NewName);
             return Result.Ok();
         }
 
@@ -60,6 +64,8 @@ public class RenameSheetCommand : CommandBase, IRenameSheetCommand
             var worksheet = workbook.Worksheet(Sheet);
             worksheet.Name = NewName;
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+
+            ResultValue = new RenameSheetResult(Sheet, NewName);
         }
         catch (Exception ex)
         {

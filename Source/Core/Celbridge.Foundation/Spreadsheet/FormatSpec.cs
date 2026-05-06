@@ -1,35 +1,35 @@
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Per-side border specification for SpreadsheetBordersSpec. Style is a
+/// Per-side border specification for BordersSpec. Style is a
 /// border-style key (SOLID, DASHED, DOTTED, DOUBLE, NONE, or a ClosedXML
 /// XLBorderStyleValues name). Color is a CSS hex string (#RRGGBB), or
 /// the empty string to reset the border colour to the workbook default.
 /// Null fields are left unchanged.
 /// </summary>
-public record SpreadsheetBorderSide(
+public record BorderSide(
     string? Style = null,
     string? Color = null);
 
 /// <summary>
-/// Per-side border configuration for SpreadsheetFormatSpec. Null sides are
+/// Per-side border configuration for FormatSpec. Null sides are
 /// left unchanged.
 /// </summary>
-public record SpreadsheetBordersSpec(
-    SpreadsheetBorderSide? Top = null,
-    SpreadsheetBorderSide? Bottom = null,
-    SpreadsheetBorderSide? Left = null,
-    SpreadsheetBorderSide? Right = null);
+public record BordersSpec(
+    BorderSide? Top = null,
+    BorderSide? Bottom = null,
+    BorderSide? Left = null,
+    BorderSide? Right = null);
 
 /// <summary>
-/// Font and text styling for SpreadsheetFormatSpec. Null fields are left
+/// Font and text styling for FormatSpec. Null fields are left
 /// unchanged. ForegroundColor and FontFamily accept the empty string as a
 /// reset sentinel (font colour or family is restored to the workbook
 /// default). FontSize accepts a non-positive value (zero or negative) as a
 /// reset sentinel; otherwise the value is applied verbatim and is in points.
 /// ForegroundColor is a CSS hex string (#RRGGBB).
 /// </summary>
-public record SpreadsheetTextFormat(
+public record TextFormat(
     bool? Bold = null,
     bool? Italic = null,
     bool? Underline = null,
@@ -56,10 +56,10 @@ public record SpreadsheetTextFormat(
 /// to guessing a width. MergeRange = true merges the range; MergeRange = false
 /// unmerges any existing merge that covers the range.
 /// </summary>
-public record SpreadsheetFormatSpec(
-    SpreadsheetTextFormat? TextFormat = null,
+public record FormatSpec(
+    TextFormat? TextFormat = null,
     string? BackgroundColor = null,
-    SpreadsheetBordersSpec? Borders = null,
+    BordersSpec? Borders = null,
     string? HorizontalAlignment = null,
     string? VerticalAlignment = null,
     bool? WrapText = null,

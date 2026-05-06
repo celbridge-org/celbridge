@@ -13,11 +13,11 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
     public ResourceKey FileResource { get; set; }
     public string Sheet { get; set; } = string.Empty;
     public string Range { get; set; } = string.Empty;
-    public IReadOnlyList<SpreadsheetConditionalFormatRule> Rules { get; set; } = Array.Empty<SpreadsheetConditionalFormatRule>();
+    public IReadOnlyList<ConditionalFormatRule> Rules { get; set; } = Array.Empty<ConditionalFormatRule>();
     public bool ClearExisting { get; set; }
 
-    public SpreadsheetSetConditionalFormattingResult ResultValue { get; private set; } =
-        new SpreadsheetSetConditionalFormattingResult(0, 0);
+    public SetConditionalFormattingResult ResultValue { get; private set; } =
+        new SetConditionalFormattingResult(0, 0);
 
     public SetConditionalFormattingCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -102,7 +102,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetSetConditionalFormattingResult(Rules.Count, rulesRemoved);
+            ResultValue = new SetConditionalFormattingResult(Rules.Count, rulesRemoved);
         }
         catch (Exception ex)
         {
@@ -112,7 +112,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return Result.Ok();
     }
 
-    private static Result ApplyRule(IXLRange targetRange, SpreadsheetConditionalFormatRule rule)
+    private static Result ApplyRule(IXLRange targetRange, ConditionalFormatRule rule)
     {
         if (string.IsNullOrEmpty(rule.Type))
         {
@@ -147,7 +147,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return Result.Ok();
     }
 
-    private static Result<IXLStyle> ApplyComparisonRule(IXLConditionalFormat conditionalFormat, string typeKey, SpreadsheetConditionalFormatRule rule)
+    private static Result<IXLStyle> ApplyComparisonRule(IXLConditionalFormat conditionalFormat, string typeKey, ConditionalFormatRule rule)
     {
         IXLStyle style;
         switch (typeKey)
@@ -240,7 +240,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return style.OkResult();
     }
 
-    private static Result ApplyRuleFormatting(IXLStyle style, SpreadsheetConditionalFormatRule rule)
+    private static Result ApplyRuleFormatting(IXLStyle style, ConditionalFormatRule rule)
     {
         if (rule.BackgroundColor is not null)
         {
@@ -276,7 +276,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return Result.Ok();
     }
 
-    private static Result<IXLStyle> ApplyTopBottomRule(IXLConditionalFormat conditionalFormat, string typeKey, SpreadsheetConditionalFormatRule rule)
+    private static Result<IXLStyle> ApplyTopBottomRule(IXLConditionalFormat conditionalFormat, string typeKey, ConditionalFormatRule rule)
     {
         if (!rule.Value.HasValue)
         {
@@ -306,7 +306,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return style.OkResult();
     }
 
-    private static Result ApplyColorScale2(IXLConditionalFormat conditionalFormat, SpreadsheetConditionalFormatRule rule)
+    private static Result ApplyColorScale2(IXLConditionalFormat conditionalFormat, ConditionalFormatRule rule)
     {
         var lowColorResult = SpreadsheetFormatConverter.ParseColor(rule.LowColor ?? "#FFFFFF");
         if (lowColorResult.IsFailure)
@@ -330,7 +330,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return ApplyHighStopTwoStop(lowStop.Value, rule, highColorResult.Value);
     }
 
-    private static Result ApplyColorScale3(IXLConditionalFormat conditionalFormat, SpreadsheetConditionalFormatRule rule)
+    private static Result ApplyColorScale3(IXLConditionalFormat conditionalFormat, ConditionalFormatRule rule)
     {
         var lowColorResult = SpreadsheetFormatConverter.ParseColor(rule.LowColor ?? "#FF0000");
         if (lowColorResult.IsFailure)
@@ -365,7 +365,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return ApplyHighStopThreeStop(midStop.Value, rule, highColorResult.Value);
     }
 
-    private static Result<IXLCFColorScaleMid> ApplyLowStop(IXLCFColorScaleMin builder, SpreadsheetConditionalFormatRule rule, XLColor lowColor)
+    private static Result<IXLCFColorScaleMid> ApplyLowStop(IXLCFColorScaleMin builder, ConditionalFormatRule rule, XLColor lowColor)
     {
         if (string.IsNullOrEmpty(rule.LowType) || string.Equals(rule.LowType, "min", StringComparison.OrdinalIgnoreCase))
         {
@@ -385,7 +385,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return afterLow.OkResult();
     }
 
-    private static Result<IXLCFColorScaleMax> ApplyMidStop(IXLCFColorScaleMid builder, SpreadsheetConditionalFormatRule rule, XLColor midColor)
+    private static Result<IXLCFColorScaleMax> ApplyMidStop(IXLCFColorScaleMid builder, ConditionalFormatRule rule, XLColor midColor)
     {
         if (string.IsNullOrEmpty(rule.MidType))
         {
@@ -405,7 +405,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return afterMid.OkResult();
     }
 
-    private static Result ApplyHighStopTwoStop(IXLCFColorScaleMid builder, SpreadsheetConditionalFormatRule rule, XLColor highColor)
+    private static Result ApplyHighStopTwoStop(IXLCFColorScaleMid builder, ConditionalFormatRule rule, XLColor highColor)
     {
         if (string.IsNullOrEmpty(rule.HighType) || string.Equals(rule.HighType, "max", StringComparison.OrdinalIgnoreCase))
         {
@@ -431,7 +431,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return Result.Ok();
     }
 
-    private static Result ApplyHighStopThreeStop(IXLCFColorScaleMax builder, SpreadsheetConditionalFormatRule rule, XLColor highColor)
+    private static Result ApplyHighStopThreeStop(IXLCFColorScaleMax builder, ConditionalFormatRule rule, XLColor highColor)
     {
         if (string.IsNullOrEmpty(rule.HighType) || string.Equals(rule.HighType, "max", StringComparison.OrdinalIgnoreCase))
         {

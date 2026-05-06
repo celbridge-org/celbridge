@@ -5,13 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_set_conditional_formatting: how many new
-/// rules were added and how many pre-existing overlapping rules were removed
-/// when clearExisting was true.
-/// </summary>
-public record class SetConditionalFormattingResult(int RulesApplied, int RulesRemoved);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -71,7 +64,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISetConditionalFormattingCommand, SetConditionalFormattingResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -85,12 +78,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new SetConditionalFormattingResult(commandValue.RulesApplied, commandValue.RulesRemoved);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetConditionalFormatRule>> ParseConditionalFormatRules(string rulesJson)
+    private static Result<IReadOnlyList<ConditionalFormatRule>> ParseConditionalFormatRules(string rulesJson)
     {
         if (string.IsNullOrEmpty(rulesJson))
         {
@@ -99,7 +91,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var rules = JsonSerializer.Deserialize<List<SpreadsheetConditionalFormatRule>>(rulesJson, JsonOptions);
+            var rules = JsonSerializer.Deserialize<List<ConditionalFormatRule>>(rulesJson, JsonOptions);
             if (rules is null)
             {
                 return Result.Fail("Rules JSON must be a non-null array.");

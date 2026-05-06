@@ -5,12 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_sort: the number of rows that were
-/// re-ordered.
-/// </summary>
-public record class SortResult(int RowCount);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -57,7 +51,7 @@ public partial class SpreadsheetTools
         var sortKeys = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISortRangeCommand, SpreadsheetSortRangeResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISortRangeCommand, SortRangeResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -72,12 +66,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new SortResult(commandValue.RowCount);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetSortKey>> ParseSortKeys(string sortByJson)
+    private static Result<IReadOnlyList<SortKey>> ParseSortKeys(string sortByJson)
     {
         if (string.IsNullOrEmpty(sortByJson))
         {
@@ -86,7 +79,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var keys = JsonSerializer.Deserialize<List<SpreadsheetSortKey>>(sortByJson, JsonOptions);
+            var keys = JsonSerializer.Deserialize<List<SortKey>>(sortByJson, JsonOptions);
             if (keys is null)
             {
                 return Result.Fail("sortByJson must be a non-null array.");

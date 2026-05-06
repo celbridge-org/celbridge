@@ -49,7 +49,7 @@ public partial class SpreadsheetTools
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
 
-        var options = new SpreadsheetReadOptions(
+        var options = new ReadOptions(
             Range: rangeArgument,
             Mode: readMode,
             Headers: headers,
@@ -63,6 +63,8 @@ public partial class SpreadsheetTools
             return ToolError(readResult);
         }
 
-        return ToolSuccess(SerializeJson(readResult.Value));
+        var readValue = readResult.Value;
+        var json = SerializeJson(readValue);
+        return ToolSuccess(json);
     }
 }

@@ -13,8 +13,8 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
     public string Range { get; set; } = string.Empty;
     public bool Enabled { get; set; }
 
-    public SpreadsheetSetAutoFilterResult ResultValue { get; private set; } =
-        new SpreadsheetSetAutoFilterResult(false, string.Empty);
+    public SetAutoFilterResult ResultValue { get; private set; } =
+        new SetAutoFilterResult(false, string.Empty);
 
     public SetAutoFilterCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -60,7 +60,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
                 {
                     worksheet.AutoFilter.Clear();
                 }
-                ResultValue = new SpreadsheetSetAutoFilterResult(false, string.Empty);
+                ResultValue = new SetAutoFilterResult(false, string.Empty);
             }
             else
             {
@@ -87,7 +87,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
                 }
 
                 filterRange.SetAutoFilter();
-                ResultValue = new SpreadsheetSetAutoFilterResult(true, filterRange.RangeAddress.ToStringRelative());
+                ResultValue = new SetAutoFilterResult(true, filterRange.RangeAddress.ToStringRelative());
             }
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);

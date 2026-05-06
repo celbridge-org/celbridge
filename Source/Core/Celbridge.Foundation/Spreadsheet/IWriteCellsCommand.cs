@@ -10,10 +10,17 @@ namespace Celbridge.Spreadsheet;
 /// (the leading '=' is optional). Explicit beats sniffing — strings that
 /// happen to start with '=' are written as text unless IsFormula is true.
 /// </summary>
-public record SpreadsheetCellEdit(
+public record CellEdit(
     string Cell,
     object? Value,
     bool IsFormula = false);
+
+/// <summary>
+/// Result populated by IWriteCellsCommand on success. CellCount is the
+/// number of cell edits applied (equal to the input edit count when the
+/// command succeeds).
+/// </summary>
+public record WriteCellsResult(int CellCount);
 
 /// <summary>
 /// Applies a batch of single-cell edits to an .xlsx workbook. The workbook is
@@ -21,7 +28,7 @@ public record SpreadsheetCellEdit(
 /// not touch is preserved. Formulas are recalculated as part of the save so
 /// readers see fresh cached values.
 /// </summary>
-public interface IWriteCellsCommand : IExecutableCommand
+public interface IWriteCellsCommand : IExecutableCommand<WriteCellsResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -38,5 +45,5 @@ public interface IWriteCellsCommand : IExecutableCommand
     /// Cell edits to apply, in the order supplied. Later edits to the same
     /// cell overwrite earlier ones.
     /// </summary>
-    IReadOnlyList<SpreadsheetCellEdit> Edits { get; set; }
+    IReadOnlyList<CellEdit> Edits { get; set; }
 }

@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet;
 /// LastRow are the 1-based row numbers that the appended block now occupies.
 /// AppendedRowCount equals LastRow - FirstRow + 1.
 /// </summary>
-public record SpreadsheetAppendRowsResult(
+public record AppendRowsResult(
     int AppendedRowCount,
     int FirstRow,
     int LastRow);
@@ -19,7 +19,7 @@ public record SpreadsheetAppendRowsResult(
 /// writes (any cell value beginning with '=') are interpreted as text. Use
 /// IWriteCellsCommand for formula writes.
 /// </summary>
-public interface IAppendRowsCommand : IExecutableCommand<SpreadsheetAppendRowsResult>
+public interface IAppendRowsCommand : IExecutableCommand<AppendRowsResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

@@ -4,13 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_set_auto_filter: enabled is true when the
-/// sheet has an active auto-filter after the call, filterRange is the A1 range
-/// the filter covers, or empty string when the filter was cleared.
-/// </summary>
-public record class SetAutoFilterResult(bool Enabled, string FilterRange);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -46,7 +39,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISetAutoFilterCommand, SetAutoFilterResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -59,8 +52,7 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new SetAutoFilterResult(commandValue.Enabled, commandValue.FilterRange);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 }

@@ -4,12 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_move_sheet: the sheet's name and its new
-/// 1-based tab position.
-/// </summary>
-public record class MoveSheetResult(string Sheet, int Position);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -42,7 +36,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IMoveSheetCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IMoveSheetCommand, MoveSheetResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -53,6 +47,8 @@ public partial class SpreadsheetTools
             return ToolError(commandResult);
         }
 
-        return ToolSuccess(SerializeJson(new MoveSheetResult(sheet, position)));
+        var commandValue = commandResult.Value;
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 }

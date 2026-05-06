@@ -5,12 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_append_rows: how many rows were appended and
-/// the 1-based row range they now occupy.
-/// </summary>
-public record class AppendRowsResult(int AppendedRowCount, int FirstRow, int LastRow);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -46,7 +40,7 @@ public partial class SpreadsheetTools
         var parsedRows = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IAppendRowsCommand, SpreadsheetAppendRowsResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IAppendRowsCommand, AppendRowsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -58,8 +52,8 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new AppendRowsResult(commandValue.AppendedRowCount, commandValue.FirstRow, commandValue.LastRow);
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
     private static Result<List<IReadOnlyList<object?>>> ParseRows(string rowsJson)

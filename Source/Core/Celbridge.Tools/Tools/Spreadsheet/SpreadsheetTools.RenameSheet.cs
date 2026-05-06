@@ -4,11 +4,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_rename_sheet: the previous and new sheet names.
-/// </summary>
-public record class RenameSheetResult(string PreviousName, string NewName);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -40,7 +35,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IRenameSheetCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IRenameSheetCommand, RenameSheetResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;
@@ -51,6 +46,8 @@ public partial class SpreadsheetTools
             return ToolError(commandResult);
         }
 
-        return ToolSuccess(SerializeJson(new RenameSheetResult(sheet, newName)));
+        var commandValue = commandResult.Value;
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 }

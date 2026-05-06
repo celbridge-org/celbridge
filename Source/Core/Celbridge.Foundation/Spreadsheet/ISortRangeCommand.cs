@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet;
 /// column letter (e.g. "B") or 1-based column number; it must lie within
 /// the range being sorted. Ascending controls the order for this key.
 /// </summary>
-public record SpreadsheetSortKey(
+public record SortKey(
     string Column,
     bool Ascending);
 
@@ -16,7 +16,7 @@ public record SpreadsheetSortKey(
 /// number of rows that were re-ordered (excludes the header row when
 /// HasHeaderRow is true).
 /// </summary>
-public record SpreadsheetSortRangeResult(
+public record SortRangeResult(
     int RowCount);
 
 /// <summary>
@@ -26,7 +26,7 @@ public record SpreadsheetSortRangeResult(
 /// HasHeaderRow is true, the first row of the range stays in place and only
 /// the rows below it are sorted.
 /// </summary>
-public interface ISortRangeCommand : IExecutableCommand<SpreadsheetSortRangeResult>
+public interface ISortRangeCommand : IExecutableCommand<SortRangeResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -47,7 +47,7 @@ public interface ISortRangeCommand : IExecutableCommand<SpreadsheetSortRangeResu
     /// <summary>
     /// Sort keys, applied in order. Must contain at least one key.
     /// </summary>
-    IReadOnlyList<SpreadsheetSortKey> SortKeys { get; set; }
+    IReadOnlyList<SortKey> SortKeys { get; set; }
 
     /// <summary>
     /// When true, the first row of the range is treated as a header and is

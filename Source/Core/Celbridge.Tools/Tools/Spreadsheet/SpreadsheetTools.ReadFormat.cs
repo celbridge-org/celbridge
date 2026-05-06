@@ -7,7 +7,7 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Reads cell formatting from a sheet in an .xlsx workbook. Returns one SpreadsheetFormatSpec object per cell
+    /// Reads cell formatting from a sheet in an .xlsx workbook. Returns one FormatSpec object per cell
     /// in the same shape accepted by spreadsheet_format_ranges, with most non-default properties included.
     /// Cells with no fill emit backgroundColor as the empty string, and theme/auto colours emit as the empty
     /// string, so feeding the output straight back into spreadsheet_format_ranges reproduces the source cell's
@@ -47,6 +47,8 @@ public partial class SpreadsheetTools
             return ToolError(readResult);
         }
 
-        return ToolSuccess(SerializeJson(readResult.Value));
+        var readValue = readResult.Value;
+        var json = SerializeJson(readValue);
+        return ToolSuccess(json);
     }
 }

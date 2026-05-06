@@ -4,7 +4,7 @@ namespace Celbridge.Spreadsheet.Services;
 
 internal static class SpreadsheetFormatReader
 {
-    public static SpreadsheetFormatSpec ReadFormatFromCell(IXLCell cell)
+    public static FormatSpec ReadFormatFromCell(IXLCell cell)
     {
         var style = cell.Style;
 
@@ -16,7 +16,7 @@ internal static class SpreadsheetFormatReader
         bool? wrapText = style.Alignment.WrapText ? true : null;
         string? numberFormat = string.IsNullOrEmpty(style.NumberFormat.Format) ? null : style.NumberFormat.Format;
 
-        return new SpreadsheetFormatSpec(
+        return new FormatSpec(
             TextFormat: textFormat,
             BackgroundColor: backgroundColor,
             Borders: borders,
@@ -26,7 +26,7 @@ internal static class SpreadsheetFormatReader
             NumberFormat: numberFormat);
     }
 
-    private static SpreadsheetTextFormat ReadTextFormat(IXLStyle style)
+    private static TextFormat ReadTextFormat(IXLStyle style)
     {
         bool? bold = style.Font.Bold ? true : null;
         bool? italic = style.Font.Italic ? true : null;
@@ -36,7 +36,7 @@ internal static class SpreadsheetFormatReader
         double? fontSize = style.Font.FontSize > 0 ? style.Font.FontSize : null;
         string? foregroundColor = ReadColor(style.Font.FontColor);
 
-        return new SpreadsheetTextFormat(
+        return new TextFormat(
             Bold: bold,
             Italic: italic,
             Underline: underline,
@@ -58,7 +58,7 @@ internal static class SpreadsheetFormatReader
         return ReadColor(style.Fill.BackgroundColor);
     }
 
-    private static SpreadsheetBordersSpec? ReadBorders(IXLStyle style)
+    private static BordersSpec? ReadBorders(IXLStyle style)
     {
         var top = ReadBorderSide(style.Border.TopBorder, style.Border.TopBorderColor);
         var bottom = ReadBorderSide(style.Border.BottomBorder, style.Border.BottomBorderColor);
@@ -70,10 +70,10 @@ internal static class SpreadsheetFormatReader
             return null;
         }
 
-        return new SpreadsheetBordersSpec(Top: top, Bottom: bottom, Left: left, Right: right);
+        return new BordersSpec(Top: top, Bottom: bottom, Left: left, Right: right);
     }
 
-    private static SpreadsheetBorderSide? ReadBorderSide(XLBorderStyleValues borderStyle, XLColor color)
+    private static BorderSide? ReadBorderSide(XLBorderStyleValues borderStyle, XLColor color)
     {
         var styleString = ReadBorderStyle(borderStyle);
         if (styleString is null)
@@ -82,7 +82,7 @@ internal static class SpreadsheetFormatReader
         }
 
         var colorString = ReadColor(color);
-        return new SpreadsheetBorderSide(Style: styleString, Color: colorString);
+        return new BorderSide(Style: styleString, Color: colorString);
     }
 
     private static string? ReadBorderStyle(XLBorderStyleValues borderStyle)

@@ -32,6 +32,7 @@ public partial class SpreadsheetTools
         }
 
         var info = infoResult.Value;
-        return ToolSuccess(SerializeJson(info));
+        var json = SerializeJson(info);
+        return ToolSuccess(json);
     }
 }

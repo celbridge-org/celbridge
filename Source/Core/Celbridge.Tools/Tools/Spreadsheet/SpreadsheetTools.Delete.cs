@@ -5,12 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_delete: how many operations were applied
-/// and how many rows and columns were deleted in total across them.
-/// </summary>
-public record class DeleteResult(int OperationsApplied, int DeletedRowCount, int DeletedColumnCount);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -46,7 +40,7 @@ public partial class SpreadsheetTools
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IDeleteRangesCommand, SpreadsheetDeleteRangesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IDeleteRangesCommand, DeleteRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
@@ -57,12 +51,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new DeleteResult(commandValue.OperationsApplied, commandValue.DeletedRowCount, commandValue.DeletedColumnCount);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetDeleteRangesOperation>> ParseDeleteOperations(string operationsJson)
+    private static Result<IReadOnlyList<DeleteRangesOperation>> ParseDeleteOperations(string operationsJson)
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
@@ -71,7 +64,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetDeleteRangesOperation>>(operationsJson, JsonOptions);
+            var operations = JsonSerializer.Deserialize<List<DeleteRangesOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
                 return Result.Fail("Operations JSON must be a non-null array.");

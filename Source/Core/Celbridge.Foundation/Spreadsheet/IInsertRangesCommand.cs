@@ -9,7 +9,7 @@ namespace Celbridge.Spreadsheet;
 /// Range examples: "3" or "3:5" for rows; "B" or "B:D" for columns. The
 /// width of the range determines how many empty rows or columns are inserted.
 /// </summary>
-public record SpreadsheetInsertRangesOperation(
+public record InsertRangesOperation(
     string Sheet,
     string Range);
 
@@ -18,7 +18,7 @@ public record SpreadsheetInsertRangesOperation(
 /// is the number of operations processed. InsertedRowCount and
 /// InsertedColumnCount are the totals across all operations after dedup.
 /// </summary>
-public record SpreadsheetInsertRangesResult(
+public record InsertRangesResult(
     int OperationsApplied,
     int InsertedRowCount,
     int InsertedColumnCount);
@@ -36,7 +36,7 @@ public record SpreadsheetInsertRangesResult(
 /// engine. If any operation fails (bad range, missing sheet) the whole batch
 /// fails and nothing is saved.
 /// </summary>
-public interface IInsertRangesCommand : IExecutableCommand<SpreadsheetInsertRangesResult>
+public interface IInsertRangesCommand : IExecutableCommand<InsertRangesResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -47,5 +47,5 @@ public interface IInsertRangesCommand : IExecutableCommand<SpreadsheetInsertRang
     /// Insert operations to apply. Indices are interpreted against the
     /// original workbook state.
     /// </summary>
-    IReadOnlyList<SpreadsheetInsertRangesOperation> Operations { get; set; }
+    IReadOnlyList<InsertRangesOperation> Operations { get; set; }
 }

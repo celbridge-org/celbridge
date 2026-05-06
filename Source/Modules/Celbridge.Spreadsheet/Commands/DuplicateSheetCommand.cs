@@ -13,8 +13,8 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
     public string NewSheet { get; set; } = string.Empty;
     public int Position { get; set; }
 
-    public SpreadsheetDuplicateSheetResult ResultValue { get; private set; } =
-        new SpreadsheetDuplicateSheetResult(string.Empty, 0);
+    public DuplicateSheetResult ResultValue { get; private set; } =
+        new DuplicateSheetResult(string.Empty, 0);
 
     public DuplicateSheetCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -77,7 +77,7 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetDuplicateSheetResult(duplicate.Name, duplicate.Position);
+            ResultValue = new DuplicateSheetResult(duplicate.Name, duplicate.Position);
         }
         catch (Exception ex)
         {

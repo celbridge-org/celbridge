@@ -11,6 +11,9 @@ public class RemoveSheetCommand : CommandBase, IRemoveSheetCommand
     public ResourceKey FileResource { get; set; }
     public string Sheet { get; set; } = string.Empty;
 
+    public RemoveSheetResult ResultValue { get; private set; } =
+        new RemoveSheetResult(string.Empty);
+
     public RemoveSheetCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -48,6 +51,8 @@ public class RemoveSheetCommand : CommandBase, IRemoveSheetCommand
 
             workbook.Worksheets.Delete(Sheet);
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+
+            ResultValue = new RemoveSheetResult(Sheet);
         }
         catch (Exception ex)
         {

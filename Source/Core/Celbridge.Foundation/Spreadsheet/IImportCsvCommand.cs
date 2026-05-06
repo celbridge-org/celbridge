@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet;
 /// targets one sheet; CreateIfMissing is per-import so some entries can
 /// require an existing sheet while others create new ones.
 /// </summary>
-public record SpreadsheetCsvImport(
+public record CsvImport(
     string Sheet,
     string CsvText,
     bool CreateIfMissing = false);
@@ -18,7 +18,7 @@ public record SpreadsheetCsvImport(
 /// across all imports. SheetsCreated is the count of imports that added a new
 /// worksheet.
 /// </summary>
-public record SpreadsheetImportCsvResult(
+public record ImportCsvResult(
     int ImportsApplied,
     int TotalRowCount,
     int SheetsCreated);
@@ -32,7 +32,7 @@ public record SpreadsheetImportCsvResult(
 /// written. Other sheets in the workbook are untouched. Imports run in order;
 /// if any import fails the whole batch fails and nothing is saved.
 /// </summary>
-public interface IImportCsvCommand : IExecutableCommand<SpreadsheetImportCsvResult>
+public interface IImportCsvCommand : IExecutableCommand<ImportCsvResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -42,5 +42,5 @@ public interface IImportCsvCommand : IExecutableCommand<SpreadsheetImportCsvResu
     /// <summary>
     /// CSV imports to apply, in order.
     /// </summary>
-    IReadOnlyList<SpreadsheetCsvImport> Imports { get; set; }
+    IReadOnlyList<CsvImport> Imports { get; set; }
 }

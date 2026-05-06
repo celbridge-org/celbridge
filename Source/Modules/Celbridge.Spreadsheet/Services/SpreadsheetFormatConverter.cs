@@ -3,7 +3,7 @@ using ClosedXML.Excel;
 namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
-/// Converts SpreadsheetFormatSpec values to ClosedXML style types. Unknown
+/// Converts FormatSpec values to ClosedXML style types. Unknown
 /// color strings and unrecognised border-style names return failures so the
 /// command can report them to the caller without saving the workbook.
 /// </summary>

@@ -12,10 +12,10 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetFormatEdit> Edits { get; set; } = Array.Empty<SpreadsheetFormatEdit>();
+    public IReadOnlyList<FormatEdit> Edits { get; set; } = Array.Empty<FormatEdit>();
 
-    public SpreadsheetFormatRangesResult ResultValue { get; private set; } =
-        new SpreadsheetFormatRangesResult(0, 0, false);
+    public FormatRangesResult ResultValue { get; private set; } =
+        new FormatRangesResult(0, 0, false);
 
     public FormatRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
@@ -83,7 +83,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetFormatRangesResult(Edits.Count, totalPropertiesApplied, anyAutoFitApplied);
+            ResultValue = new FormatRangesResult(Edits.Count, totalPropertiesApplied, anyAutoFitApplied);
         }
         catch (Exception ex)
         {
@@ -96,7 +96,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
     private static Result ApplyFormat(
         IXLWorksheet worksheet,
         string range,
-        SpreadsheetFormatSpec format,
+        FormatSpec format,
         out int propertiesApplied,
         out bool autoFitApplied)
     {
@@ -125,7 +125,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
     private static Result ApplyFormatToColumns(
         IXLWorksheet worksheet,
         string range,
-        SpreadsheetFormatSpec format,
+        FormatSpec format,
         out int propertiesApplied,
         out bool autoFitApplied)
     {
@@ -178,7 +178,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
     private static Result ApplyFormatToRows(
         IXLWorksheet worksheet,
         string range,
-        SpreadsheetFormatSpec format,
+        FormatSpec format,
         out int propertiesApplied,
         out bool autoFitApplied)
     {
@@ -222,7 +222,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
     private static Result ApplyFormatToCellRange(
         IXLWorksheet worksheet,
         string range,
-        SpreadsheetFormatSpec format,
+        FormatSpec format,
         out int propertiesApplied,
         out bool autoFitApplied)
     {
@@ -307,7 +307,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         return Result.Ok();
     }
 
-    private static Result ApplyFormatToStyle(IXLStyle style, SpreadsheetFormatSpec format, IXLWorkbook workbook)
+    private static Result ApplyFormatToStyle(IXLStyle style, FormatSpec format, IXLWorkbook workbook)
     {
         if (format.TextFormat is not null)
         {
@@ -379,7 +379,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         return Result.Ok();
     }
 
-    private static Result ApplyTextFormat(IXLStyle style, SpreadsheetTextFormat textFormat, IXLWorkbook workbook)
+    private static Result ApplyTextFormat(IXLStyle style, TextFormat textFormat, IXLWorkbook workbook)
     {
         if (textFormat.Bold.HasValue)
         {
@@ -450,7 +450,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         return Result.Ok();
     }
 
-    private static Result ApplyBorders(IXLBorder border, SpreadsheetBordersSpec borders, IXLWorkbook workbook)
+    private static Result ApplyBorders(IXLBorder border, BordersSpec borders, IXLWorkbook workbook)
     {
         if (borders.Top is not null)
         {
@@ -491,7 +491,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         return Result.Ok();
     }
 
-    private static Result ApplyBorderSide(IXLBorder border, SpreadsheetBorderSide side, BorderPosition position, IXLWorkbook workbook)
+    private static Result ApplyBorderSide(IXLBorder border, BorderSide side, BorderPosition position, IXLWorkbook workbook)
     {
         XLBorderStyleValues? borderStyle = null;
         if (side.Style is not null)
@@ -584,7 +584,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         return specifiedHeight;
     }
 
-    private static int CountStyleProperties(SpreadsheetFormatSpec format)
+    private static int CountStyleProperties(FormatSpec format)
     {
         int count = 0;
         if (format.TextFormat is not null) count++;

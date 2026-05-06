@@ -26,7 +26,7 @@ public enum SpreadsheetReadMode
 /// row objects keyed by header. Offset and Limit page large sheets. Limit zero
 /// applies the reader's default page size.
 /// </summary>
-public record SpreadsheetReadOptions(
+public record ReadOptions(
     string? Range = null,
     SpreadsheetReadMode Mode = SpreadsheetReadMode.Values,
     bool Headers = false,
@@ -42,7 +42,7 @@ public record SpreadsheetReadOptions(
 /// Headers carries the resolved header names when Headers was requested,
 /// otherwise it is empty.
 /// </summary>
-public record SpreadsheetReadResult(
+public record ReadResult(
     IReadOnlyList<object?> Rows,
     int TotalRowCount,
     IReadOnlyList<string> Headers);
@@ -54,7 +54,7 @@ public record SpreadsheetReadResult(
 /// FrozenRows and FrozenColumns are the frozen-pane counts (zero when the
 /// sheet has no frozen rows or columns on that axis).
 /// </summary>
-public record SpreadsheetSheetInfo(
+public record SheetInfo(
     string Name,
     int Position,
     string? UsedRange,
@@ -67,7 +67,7 @@ public record SpreadsheetSheetInfo(
 /// A defined name in the workbook. Scope is either "workbook" or the name of
 /// the worksheet that owns the name.
 /// </summary>
-public record SpreadsheetNamedRange(
+public record NamedRange(
     string Name,
     string RefersTo,
     string Scope);
@@ -76,9 +76,9 @@ public record SpreadsheetNamedRange(
 /// Workbook overview returned by ISpreadsheetReader.GetInfo. Lists every sheet
 /// with its used range and dimensions, plus any defined named ranges.
 /// </summary>
-public record SpreadsheetWorkbookInfo(
-    IReadOnlyList<SpreadsheetSheetInfo> Sheets,
-    IReadOnlyList<SpreadsheetNamedRange> NamedRanges);
+public record WorkbookInfo(
+    IReadOnlyList<SheetInfo> Sheets,
+    IReadOnlyList<NamedRange> NamedRanges);
 
 /// <summary>
 /// Result of ISpreadsheetReader.ExportCsv. Csv is the RFC 4180 encoded text
@@ -87,22 +87,22 @@ public record SpreadsheetWorkbookInfo(
 /// without re-parsing the CSV (which would mis-count rows that contain
 /// embedded line breaks).
 /// </summary>
-public record SpreadsheetExportCsvResult(string Csv, int RowCount, int ColumnCount);
+public record ExportCsvResult(string Csv, int RowCount, int ColumnCount);
 
 /// <summary>
 /// Holds the sheet-qualified range address and the per-cell format specs
 /// returned by ISpreadsheetReader.ReadFormat.
 /// </summary>
-public record SpreadsheetReadFormatResult(
+public record ReadFormatResult(
     string Range,
-    List<List<SpreadsheetFormatSpec>> Rows);
+    List<List<FormatSpec>> Rows);
 
 /// <summary>
 /// Search options for ISpreadsheetReader.Find. Sheet may be empty to search
 /// every worksheet; Range may be empty to search the chosen sheet's entire
 /// used range. Find must be non-empty.
 /// </summary>
-public record SpreadsheetFindOptions(
+public record FindOptions(
     string Find,
     string Sheet,
     string Range,
@@ -115,7 +115,7 @@ public record SpreadsheetFindOptions(
 /// expression that contained the match. IsFormula is true when the match
 /// was found inside a formula cell's expression text.
 /// </summary>
-public record SpreadsheetFindMatch(
+public record FindMatch(
     string Sheet,
     string Cell,
     string Text,
@@ -126,8 +126,8 @@ public record SpreadsheetFindMatch(
 /// formula expression contained the search string. MatchCount is the size of
 /// Matches (provided so a JSON consumer does not have to count the array).
 /// </summary>
-public record SpreadsheetFindResult(
-    IReadOnlyList<SpreadsheetFindMatch> Matches,
+public record FindResult(
+    IReadOnlyList<FindMatch> Matches,
     int MatchCount);
 
 /// <summary>
@@ -141,7 +141,7 @@ public record SpreadsheetFindResult(
 /// the scroll anchor, the cell pinned at the upper-left of the visible
 /// viewport.
 /// </summary>
-public record SpreadsheetActiveView(
+public record ActiveView(
     string Sheet,
     string Range,
     IReadOnlyList<string> Ranges,
@@ -161,13 +161,13 @@ public interface ISpreadsheetReader
     /// Returns a workbook overview: every sheet with its used range and
     /// dimensions, plus any workbook-scoped or sheet-scoped named ranges.
     /// </summary>
-    Result<SpreadsheetWorkbookInfo> GetInfo(string workbookPath);
+    Result<WorkbookInfo> GetInfo(string workbookPath);
 
     /// <summary>
     /// Reads cell values from a sheet. When options.Range is null the sheet's
     /// used range is read. An empty sheet returns Rows = [] and TotalRowCount = 0.
     /// </summary>
-    Result<SpreadsheetReadResult> ReadSheet(string workbookPath, string sheetName, SpreadsheetReadOptions options);
+    Result<ReadResult> ReadSheet(string workbookPath, string sheetName, ReadOptions options);
 
     /// <summary>
     /// Returns the contents of a sheet as RFC 4180 CSV text along with the row
@@ -175,14 +175,14 @@ public interface ISpreadsheetReader
     /// Null exports the sheet's used range. An empty range returns an empty Csv
     /// string and zero dimensions.
     /// </summary>
-    Result<SpreadsheetExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range);
+    Result<ExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range);
 
     /// <summary>
-    /// Reads cell formatting from a sheet as SpreadsheetFormatSpec objects in
+    /// Reads cell formatting from a sheet as FormatSpec objects in
     /// the same shape accepted by spreadsheet_format_ranges. When range is null
     /// the sheet's used range is read. An empty sheet returns Rows = [].
     /// </summary>
-    Result<SpreadsheetReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range);
+    Result<ReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range);
 
     /// <summary>
     /// Returns the workbook's persisted view state: active sheet, selection on
@@ -190,7 +190,7 @@ public interface ISpreadsheetReader
     /// the parameters accepted by ISetActiveViewCommand so callers
     /// can round-trip the view state.
     /// </summary>
-    Result<SpreadsheetActiveView> GetActiveView(string workbookPath);
+    Result<ActiveView> GetActiveView(string workbookPath);
 
     /// <summary>
     /// Searches the workbook for cells whose literal text or formula expression
@@ -198,5 +198,5 @@ public interface ISpreadsheetReader
     /// Empty Sheet searches every worksheet; empty Range searches each chosen
     /// sheet's entire used range.
     /// </summary>
-    Result<SpreadsheetFindResult> Find(string workbookPath, SpreadsheetFindOptions options);
+    Result<FindResult> Find(string workbookPath, FindOptions options);
 }

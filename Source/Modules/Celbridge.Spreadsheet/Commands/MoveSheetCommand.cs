@@ -12,6 +12,9 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
     public string Sheet { get; set; } = string.Empty;
     public int Position { get; set; }
 
+    public MoveSheetResult ResultValue { get; private set; } =
+        new MoveSheetResult(string.Empty, 0);
+
     public MoveSheetCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
@@ -54,13 +57,13 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
             }
 
             var worksheet = workbook.Worksheet(Sheet);
-            if (worksheet.Position == Position)
+            if (worksheet.Position != Position)
             {
-                return Result.Ok();
+                worksheet.Position = Position;
+                SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
             }
 
-            worksheet.Position = Position;
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            ResultValue = new MoveSheetResult(Sheet, Position);
         }
         catch (Exception ex)
         {

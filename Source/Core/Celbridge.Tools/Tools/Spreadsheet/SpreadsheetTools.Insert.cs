@@ -5,12 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_insert: how many operations were applied
-/// and how many rows and columns were inserted in total across them.
-/// </summary>
-public record class InsertResult(int OperationsApplied, int InsertedRowCount, int InsertedColumnCount);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -49,7 +43,7 @@ public partial class SpreadsheetTools
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IInsertRangesCommand, SpreadsheetInsertRangesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IInsertRangesCommand, InsertRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
@@ -60,12 +54,11 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new InsertResult(commandValue.OperationsApplied, commandValue.InsertedRowCount, commandValue.InsertedColumnCount);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
-    private static Result<IReadOnlyList<SpreadsheetInsertRangesOperation>> ParseInsertOperations(string operationsJson)
+    private static Result<IReadOnlyList<InsertRangesOperation>> ParseInsertOperations(string operationsJson)
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
@@ -74,7 +67,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetInsertRangesOperation>>(operationsJson, JsonOptions);
+            var operations = JsonSerializer.Deserialize<List<InsertRangesOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
                 return Result.Fail("Operations JSON must be a non-null array.");

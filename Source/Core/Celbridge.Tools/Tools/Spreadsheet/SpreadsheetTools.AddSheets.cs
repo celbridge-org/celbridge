@@ -5,12 +5,6 @@ using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
 
-/// <summary>
-/// Result returned by spreadsheet_add_sheets: the names of the sheets that
-/// were added, in append order.
-/// </summary>
-public record class AddSheetsResult(IReadOnlyList<string> Sheets);
-
 public partial class SpreadsheetTools
 {
     /// <summary>
@@ -39,7 +33,7 @@ public partial class SpreadsheetTools
         var sheetNames = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<IAddSheetsCommand, SpreadsheetAddSheetsResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IAddSheetsCommand, AddSheetsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheets = sheetNames;
@@ -50,9 +44,8 @@ public partial class SpreadsheetTools
         }
 
         var commandValue = commandResult.Value;
-        var result = new AddSheetsResult(commandValue.Sheets);
-
-        return ToolSuccess(SerializeJson(result));
+        var json = SerializeJson(commandValue);
+        return ToolSuccess(json);
     }
 
     private static Result<IReadOnlyList<string>> ParseSheetNames(string sheetsJson)
