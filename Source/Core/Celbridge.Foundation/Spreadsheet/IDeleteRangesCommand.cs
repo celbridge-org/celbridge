@@ -3,21 +3,21 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// One entry in a SpreadsheetDeleteCommand batch. Each operation targets a
+/// One entry in an IDeleteRangesCommand batch. Each operation targets a
 /// specific sheet and a row range or column range. Cell ranges are not
 /// accepted (Excel's "shift cells up/left" is a footgun and not exposed).
 /// Range examples: "3" or "3:5" for rows; "B" or "B:D" for columns.
 /// </summary>
-public record SpreadsheetDeleteOperation(
+public record SpreadsheetDeleteRangesOperation(
     string Sheet,
     string Range);
 
 /// <summary>
-/// Result populated by ISpreadsheetDeleteCommand on success. OperationsApplied
+/// Result populated by IDeleteRangesCommand on success. OperationsApplied
 /// is the number of operations processed. DeletedRowCount and
 /// DeletedColumnCount are the totals across all operations after dedup.
 /// </summary>
-public record SpreadsheetDeleteResult(
+public record SpreadsheetDeleteRangesResult(
     int OperationsApplied,
     int DeletedRowCount,
     int DeletedColumnCount);
@@ -34,7 +34,7 @@ public record SpreadsheetDeleteResult(
 /// If any operation fails (bad range, missing sheet) the whole batch fails
 /// and nothing is saved.
 /// </summary>
-public interface ISpreadsheetDeleteCommand : IExecutableCommand<SpreadsheetDeleteResult>
+public interface IDeleteRangesCommand : IExecutableCommand<SpreadsheetDeleteRangesResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -45,5 +45,5 @@ public interface ISpreadsheetDeleteCommand : IExecutableCommand<SpreadsheetDelet
     /// Delete operations to apply. Indices are interpreted against the
     /// original workbook state.
     /// </summary>
-    IReadOnlyList<SpreadsheetDeleteOperation> Operations { get; set; }
+    IReadOnlyList<SpreadsheetDeleteRangesOperation> Operations { get; set; }
 }

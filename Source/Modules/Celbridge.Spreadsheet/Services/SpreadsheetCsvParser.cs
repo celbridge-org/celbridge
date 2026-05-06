@@ -1,7 +1,7 @@
 namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
-/// RFC 4180 CSV parser used by ISpreadsheetImportCsvCommand. Comma delimiter,
+/// RFC 4180 CSV parser used by IImportCsvCommand. Comma delimiter,
 /// double-quote quoting, embedded quotes doubled. Recognises both CRLF and LF
 /// row terminators. A trailing newline does not produce a final empty row.
 /// All fields are returned as strings; numeric and other typed coercion is

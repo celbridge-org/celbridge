@@ -30,23 +30,23 @@ public class Module : IModule
         services.AddTransient<SpreadsheetEditor>();
         services.AddSingleton<ISpreadsheetReader, SpreadsheetReader>();
 
-        services.AddTransient<ISpreadsheetWriteCellsCommand, WriteCellsCommand>();
-        services.AddTransient<ISpreadsheetAppendRowsCommand, AppendRowsCommand>();
-        services.AddTransient<ISpreadsheetImportCsvCommand, ImportCsvCommand>();
-        services.AddTransient<ISpreadsheetAddSheetsCommand, AddSheetsCommand>();
-        services.AddTransient<ISpreadsheetRemoveSheetCommand, RemoveSheetCommand>();
-        services.AddTransient<ISpreadsheetRenameSheetCommand, RenameSheetCommand>();
-        services.AddTransient<ISpreadsheetMoveSheetCommand, MoveSheetCommand>();
-        services.AddTransient<ISpreadsheetSetActiveViewCommand, SetActiveViewCommand>();
-        services.AddTransient<ISpreadsheetFormatRangesCommand, FormatRangesCommand>();
-        services.AddTransient<ISpreadsheetFreezePanesCommand, FreezePanesCommand>();
-        services.AddTransient<ISpreadsheetDeleteCommand, DeleteCommand>();
-        services.AddTransient<ISpreadsheetClearCommand, ClearCommand>();
-        services.AddTransient<ISpreadsheetInsertCommand, InsertCommand>();
-        services.AddTransient<ISpreadsheetSortCommand, SortCommand>();
-        services.AddTransient<ISpreadsheetDuplicateSheetCommand, DuplicateSheetCommand>();
-        services.AddTransient<ISpreadsheetSetAutoFilterCommand, SetAutoFilterCommand>();
-        services.AddTransient<ISpreadsheetSetConditionalFormattingCommand, SetConditionalFormattingCommand>();
+        services.AddTransient<IWriteCellsCommand, WriteCellsCommand>();
+        services.AddTransient<IAppendRowsCommand, AppendRowsCommand>();
+        services.AddTransient<IImportCsvCommand, ImportCsvCommand>();
+        services.AddTransient<IAddSheetsCommand, AddSheetsCommand>();
+        services.AddTransient<IRemoveSheetCommand, RemoveSheetCommand>();
+        services.AddTransient<IRenameSheetCommand, RenameSheetCommand>();
+        services.AddTransient<IMoveSheetCommand, MoveSheetCommand>();
+        services.AddTransient<ISetActiveViewCommand, SetActiveViewCommand>();
+        services.AddTransient<IFormatRangesCommand, FormatRangesCommand>();
+        services.AddTransient<IFreezePanesCommand, FreezePanesCommand>();
+        services.AddTransient<IDeleteRangesCommand, DeleteRangesCommand>();
+        services.AddTransient<IClearRangesCommand, ClearRangesCommand>();
+        services.AddTransient<IInsertRangesCommand, InsertRangesCommand>();
+        services.AddTransient<ISortRangeCommand, SortRangeCommand>();
+        services.AddTransient<IDuplicateSheetCommand, DuplicateSheetCommand>();
+        services.AddTransient<ISetAutoFilterCommand, SetAutoFilterCommand>();
+        services.AddTransient<ISetConditionalFormattingCommand, SetConditionalFormattingCommand>();
     }
 
     public Result Initialize()

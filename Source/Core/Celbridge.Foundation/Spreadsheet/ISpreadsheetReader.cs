@@ -187,7 +187,7 @@ public interface ISpreadsheetReader
     /// <summary>
     /// Returns the workbook's persisted view state: active sheet, selection on
     /// that sheet, active cell within the selection, and scroll anchor. Mirrors
-    /// the parameters accepted by ISpreadsheetSetActiveViewCommand so callers
+    /// the parameters accepted by ISetActiveViewCommand so callers
     /// can round-trip the view state.
     /// </summary>
     Result<SpreadsheetActiveView> GetActiveView(string workbookPath);

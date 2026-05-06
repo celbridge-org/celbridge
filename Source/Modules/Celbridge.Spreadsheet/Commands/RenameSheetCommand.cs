@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class RenameSheetCommand : CommandBase, ISpreadsheetRenameSheetCommand
+public class RenameSheetCommand : CommandBase, IRenameSheetCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

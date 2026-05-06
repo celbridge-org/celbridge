@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class MoveSheetCommand : CommandBase, ISpreadsheetMoveSheetCommand
+public class MoveSheetCommand : CommandBase, IMoveSheetCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

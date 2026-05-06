@@ -4,17 +4,17 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class DeleteCommand : CommandBase, ISpreadsheetDeleteCommand
+public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetDeleteOperation> Operations { get; set; } = Array.Empty<SpreadsheetDeleteOperation>();
+    public IReadOnlyList<SpreadsheetDeleteRangesOperation> Operations { get; set; } = Array.Empty<SpreadsheetDeleteRangesOperation>();
 
-    public SpreadsheetDeleteResult ResultValue { get; private set; } =
-        new SpreadsheetDeleteResult(0, 0, 0);
+    public SpreadsheetDeleteRangesResult ResultValue { get; private set; } =
+        new SpreadsheetDeleteRangesResult(0, 0, 0);
 
-    public DeleteCommand(IWorkspaceWrapper workspaceWrapper)
+    public DeleteRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -117,7 +117,7 @@ public class DeleteCommand : CommandBase, ISpreadsheetDeleteCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetDeleteResult(Operations.Count, totalRowsDeleted, totalColumnsDeleted);
+            ResultValue = new SpreadsheetDeleteRangesResult(Operations.Count, totalRowsDeleted, totalColumnsDeleted);
         }
         catch (Exception ex)
         {

@@ -5,7 +5,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class AppendRowsCommand : CommandBase, ISpreadsheetAppendRowsCommand
+public class AppendRowsCommand : CommandBase, IAppendRowsCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

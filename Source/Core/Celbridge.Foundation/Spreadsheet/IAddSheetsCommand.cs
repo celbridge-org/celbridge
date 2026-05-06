@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Result populated by ISpreadsheetAddSheetsCommand on success. Sheets is the
+/// Result populated by IAddSheetsCommand on success. Sheets is the
 /// list of sheet names that were added, in the order they were added.
 /// </summary>
 public record SpreadsheetAddSheetsResult(IReadOnlyList<string> Sheets);
@@ -14,7 +14,7 @@ public record SpreadsheetAddSheetsResult(IReadOnlyList<string> Sheets);
 /// Fails if any requested name collides with an existing sheet or with another
 /// name in the same batch; in that case nothing is saved.
 /// </summary>
-public interface ISpreadsheetAddSheetsCommand : IExecutableCommand<SpreadsheetAddSheetsResult>
+public interface IAddSheetsCommand : IExecutableCommand<SpreadsheetAddSheetsResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

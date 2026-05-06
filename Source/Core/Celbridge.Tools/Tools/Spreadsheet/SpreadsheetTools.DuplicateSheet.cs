@@ -48,7 +48,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.SourceSheet = sourceSheet;

@@ -246,18 +246,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetWriteCellsCommand? capturedCommand = null;
+        IWriteCellsCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetWriteCellsCommand>(
-                Arg.Any<Action<ISpreadsheetWriteCellsCommand>?>(),
+            .ExecuteAsync<IWriteCellsCommand>(
+                Arg.Any<Action<IWriteCellsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetWriteCellsCommand>?>();
+                var configure = callInfo.Arg<Action<IWriteCellsCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetWriteCellsCommand>();
+                    capturedCommand = Substitute.For<IWriteCellsCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result.Ok());
@@ -307,18 +307,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetAppendRowsCommand? capturedCommand = null;
+        IAppendRowsCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetAppendRowsCommand, SpreadsheetAppendRowsResult>(
-                Arg.Any<Action<ISpreadsheetAppendRowsCommand>?>(),
+            .ExecuteAsync<IAppendRowsCommand, SpreadsheetAppendRowsResult>(
+                Arg.Any<Action<IAppendRowsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetAppendRowsCommand>?>();
+                var configure = callInfo.Arg<Action<IAppendRowsCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetAppendRowsCommand>();
+                    capturedCommand = Substitute.For<IAppendRowsCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetAppendRowsResult>.Ok(
@@ -344,18 +344,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetImportCsvCommand? capturedCommand = null;
+        IImportCsvCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetImportCsvCommand, SpreadsheetImportCsvResult>(
-                Arg.Any<Action<ISpreadsheetImportCsvCommand>?>(),
+            .ExecuteAsync<IImportCsvCommand, SpreadsheetImportCsvResult>(
+                Arg.Any<Action<IImportCsvCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetImportCsvCommand>?>();
+                var configure = callInfo.Arg<Action<IImportCsvCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetImportCsvCommand>();
+                    capturedCommand = Substitute.For<IImportCsvCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetImportCsvResult>.Ok(
@@ -384,18 +384,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetAddSheetsCommand? capturedCommand = null;
+        IAddSheetsCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetAddSheetsCommand, SpreadsheetAddSheetsResult>(
-                Arg.Any<Action<ISpreadsheetAddSheetsCommand>?>(),
+            .ExecuteAsync<IAddSheetsCommand, SpreadsheetAddSheetsResult>(
+                Arg.Any<Action<IAddSheetsCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetAddSheetsCommand>?>();
+                var configure = callInfo.Arg<Action<IAddSheetsCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetAddSheetsCommand>();
+                    capturedCommand = Substitute.For<IAddSheetsCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetAddSheetsResult>.Ok(
@@ -419,18 +419,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetRemoveSheetCommand? capturedCommand = null;
+        IRemoveSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetRemoveSheetCommand>(
-                Arg.Any<Action<ISpreadsheetRemoveSheetCommand>?>(),
+            .ExecuteAsync<IRemoveSheetCommand>(
+                Arg.Any<Action<IRemoveSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetRemoveSheetCommand>?>();
+                var configure = callInfo.Arg<Action<IRemoveSheetCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetRemoveSheetCommand>();
+                    capturedCommand = Substitute.For<IRemoveSheetCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result.Ok());
@@ -449,18 +449,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetRenameSheetCommand? capturedCommand = null;
+        IRenameSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetRenameSheetCommand>(
-                Arg.Any<Action<ISpreadsheetRenameSheetCommand>?>(),
+            .ExecuteAsync<IRenameSheetCommand>(
+                Arg.Any<Action<IRenameSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetRenameSheetCommand>?>();
+                var configure = callInfo.Arg<Action<IRenameSheetCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetRenameSheetCommand>();
+                    capturedCommand = Substitute.For<IRenameSheetCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result.Ok());
@@ -481,18 +481,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetMoveSheetCommand? capturedCommand = null;
+        IMoveSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetMoveSheetCommand>(
-                Arg.Any<Action<ISpreadsheetMoveSheetCommand>?>(),
+            .ExecuteAsync<IMoveSheetCommand>(
+                Arg.Any<Action<IMoveSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetMoveSheetCommand>?>();
+                var configure = callInfo.Arg<Action<IMoveSheetCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetMoveSheetCommand>();
+                    capturedCommand = Substitute.For<IMoveSheetCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result.Ok());
@@ -524,18 +524,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetSetActiveViewCommand? capturedCommand = null;
+        ISetActiveViewCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetSetActiveViewCommand>(
-                Arg.Any<Action<ISpreadsheetSetActiveViewCommand>?>(),
+            .ExecuteAsync<ISetActiveViewCommand>(
+                Arg.Any<Action<ISetActiveViewCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetSetActiveViewCommand>?>();
+                var configure = callInfo.Arg<Action<ISetActiveViewCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetSetActiveViewCommand>();
+                    capturedCommand = Substitute.For<ISetActiveViewCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result.Ok());
@@ -576,18 +576,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetFormatRangesCommand? capturedCommand = null;
+        IFormatRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetFormatRangesCommand, SpreadsheetFormatRangesResult>(
-                Arg.Any<Action<ISpreadsheetFormatRangesCommand>?>(),
+            .ExecuteAsync<IFormatRangesCommand, SpreadsheetFormatRangesResult>(
+                Arg.Any<Action<IFormatRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetFormatRangesCommand>?>();
+                var configure = callInfo.Arg<Action<IFormatRangesCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetFormatRangesCommand>();
+                    capturedCommand = Substitute.For<IFormatRangesCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetFormatRangesResult>.Ok(
@@ -654,18 +654,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetFreezePanesCommand? capturedCommand = null;
+        IFreezePanesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetFreezePanesCommand, SpreadsheetFreezePanesResult>(
-                Arg.Any<Action<ISpreadsheetFreezePanesCommand>?>(),
+            .ExecuteAsync<IFreezePanesCommand, SpreadsheetFreezePanesResult>(
+                Arg.Any<Action<IFreezePanesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetFreezePanesCommand>?>();
+                var configure = callInfo.Arg<Action<IFreezePanesCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetFreezePanesCommand>();
+                    capturedCommand = Substitute.For<IFreezePanesCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetFreezePanesResult>.Ok(
@@ -745,22 +745,22 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetInsertCommand? capturedCommand = null;
+        IInsertRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetInsertCommand, SpreadsheetInsertResult>(
-                Arg.Any<Action<ISpreadsheetInsertCommand>?>(),
+            .ExecuteAsync<IInsertRangesCommand, SpreadsheetInsertRangesResult>(
+                Arg.Any<Action<IInsertRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetInsertCommand>?>();
+                var configure = callInfo.Arg<Action<IInsertRangesCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetInsertCommand>();
+                    capturedCommand = Substitute.For<IInsertRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetInsertResult>.Ok(
-                    new SpreadsheetInsertResult(2, 3, 0)));
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetInsertRangesResult>.Ok(
+                    new SpreadsheetInsertRangesResult(2, 3, 0)));
             });
 
         var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"3:5\"}, {\"sheet\": \"Q2\", \"range\": \"10\"}]";
@@ -796,22 +796,22 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetDeleteCommand? capturedCommand = null;
+        IDeleteRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetDeleteCommand, SpreadsheetDeleteResult>(
-                Arg.Any<Action<ISpreadsheetDeleteCommand>?>(),
+            .ExecuteAsync<IDeleteRangesCommand, SpreadsheetDeleteRangesResult>(
+                Arg.Any<Action<IDeleteRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetDeleteCommand>?>();
+                var configure = callInfo.Arg<Action<IDeleteRangesCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetDeleteCommand>();
+                    capturedCommand = Substitute.For<IDeleteRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetDeleteResult>.Ok(
-                    new SpreadsheetDeleteResult(1, 0, 2)));
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetDeleteRangesResult>.Ok(
+                    new SpreadsheetDeleteRangesResult(1, 0, 2)));
             });
 
         var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"B:C\"}]";
@@ -844,22 +844,22 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetClearCommand? capturedCommand = null;
+        IClearRangesCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetClearCommand, SpreadsheetClearResult>(
-                Arg.Any<Action<ISpreadsheetClearCommand>?>(),
+            .ExecuteAsync<IClearRangesCommand, SpreadsheetClearRangesResult>(
+                Arg.Any<Action<IClearRangesCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetClearCommand>?>();
+                var configure = callInfo.Arg<Action<IClearRangesCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetClearCommand>();
+                    capturedCommand = Substitute.For<IClearRangesCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetClearResult>.Ok(
-                    new SpreadsheetClearResult(1, 6)));
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetClearRangesResult>.Ok(
+                    new SpreadsheetClearRangesResult(1, 6)));
             });
 
         var operationsJson = "[{\"sheet\": \"Q1\", \"range\": \"A1:C2\"}]";
@@ -932,22 +932,22 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetSortCommand? capturedCommand = null;
+        ISortRangeCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetSortCommand, SpreadsheetSortResult>(
-                Arg.Any<Action<ISpreadsheetSortCommand>?>(),
+            .ExecuteAsync<ISortRangeCommand, SpreadsheetSortRangeResult>(
+                Arg.Any<Action<ISortRangeCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetSortCommand>?>();
+                var configure = callInfo.Arg<Action<ISortRangeCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetSortCommand>();
+                    capturedCommand = Substitute.For<ISortRangeCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSortResult>.Ok(
-                    new SpreadsheetSortResult(8)));
+                return Task.FromResult(Celbridge.Core.Result<SpreadsheetSortRangeResult>.Ok(
+                    new SpreadsheetSortRangeResult(8)));
             });
 
         var sortByJson = "[{\"column\": \"B\", \"ascending\": false}, {\"column\": \"A\", \"ascending\": true}]";
@@ -989,18 +989,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetDuplicateSheetCommand? capturedCommand = null;
+        IDuplicateSheetCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(
-                Arg.Any<Action<ISpreadsheetDuplicateSheetCommand>?>(),
+            .ExecuteAsync<IDuplicateSheetCommand, SpreadsheetDuplicateSheetResult>(
+                Arg.Any<Action<IDuplicateSheetCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetDuplicateSheetCommand>?>();
+                var configure = callInfo.Arg<Action<IDuplicateSheetCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetDuplicateSheetCommand>();
+                    capturedCommand = Substitute.For<IDuplicateSheetCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetDuplicateSheetResult>.Ok(
@@ -1036,18 +1036,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetSetAutoFilterCommand? capturedCommand = null;
+        ISetAutoFilterCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetSetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(
-                Arg.Any<Action<ISpreadsheetSetAutoFilterCommand>?>(),
+            .ExecuteAsync<ISetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(
+                Arg.Any<Action<ISetAutoFilterCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetSetAutoFilterCommand>?>();
+                var configure = callInfo.Arg<Action<ISetAutoFilterCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetSetAutoFilterCommand>();
+                    capturedCommand = Substitute.For<ISetAutoFilterCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetSetAutoFilterResult>.Ok(
@@ -1083,18 +1083,18 @@ public class SpreadsheetToolTests
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
-        ISpreadsheetSetConditionalFormattingCommand? capturedCommand = null;
+        ISetConditionalFormattingCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<ISpreadsheetSetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(
-                Arg.Any<Action<ISpreadsheetSetConditionalFormattingCommand>?>(),
+            .ExecuteAsync<ISetConditionalFormattingCommand, SpreadsheetSetConditionalFormattingResult>(
+                Arg.Any<Action<ISetConditionalFormattingCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<ISpreadsheetSetConditionalFormattingCommand>?>();
+                var configure = callInfo.Arg<Action<ISetConditionalFormattingCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<ISpreadsheetSetConditionalFormattingCommand>();
+                    capturedCommand = Substitute.For<ISetConditionalFormattingCommand>();
                     configure(capturedCommand);
                 }
                 return Task.FromResult(Celbridge.Core.Result<SpreadsheetSetConditionalFormattingResult>.Ok(

@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Result populated by ISpreadsheetDuplicateSheetCommand on success. NewSheet
+/// Result populated by IDuplicateSheetCommand on success. NewSheet
 /// is the name the duplicate was added under, Position is its 1-based tab
 /// position in the workbook after the operation.
 /// </summary>
@@ -16,7 +16,7 @@ public record SpreadsheetDuplicateSheetResult(string NewSheet, int Position);
 /// sheet does not exist, the new name collides with an existing sheet, or the
 /// position is outside [0, sheetCount + 1] (0 appends after existing sheets).
 /// </summary>
-public interface ISpreadsheetDuplicateSheetCommand : IExecutableCommand<SpreadsheetDuplicateSheetResult>
+public interface IDuplicateSheetCommand : IExecutableCommand<SpreadsheetDuplicateSheetResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

@@ -49,7 +49,7 @@ public partial class SpreadsheetTools
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetInsertCommand, SpreadsheetInsertResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IInsertRangesCommand, SpreadsheetInsertRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
@@ -65,7 +65,7 @@ public partial class SpreadsheetTools
         return ToolSuccess(SerializeJson(result));
     }
 
-    private static Result<IReadOnlyList<SpreadsheetInsertOperation>> ParseInsertOperations(string operationsJson)
+    private static Result<IReadOnlyList<SpreadsheetInsertRangesOperation>> ParseInsertOperations(string operationsJson)
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
@@ -74,7 +74,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetInsertOperation>>(operationsJson, JsonOptions);
+            var operations = JsonSerializer.Deserialize<List<SpreadsheetInsertRangesOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
                 return Result.Fail("Operations JSON must be a non-null array.");

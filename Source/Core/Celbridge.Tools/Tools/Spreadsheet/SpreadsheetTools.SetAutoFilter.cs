@@ -46,7 +46,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetSetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISetAutoFilterCommand, SpreadsheetSetAutoFilterResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

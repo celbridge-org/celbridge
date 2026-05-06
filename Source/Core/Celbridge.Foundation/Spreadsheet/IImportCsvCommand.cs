@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// One CSV import in an ISpreadsheetImportCsvCommand batch. Each entry
+/// One CSV import in an IImportCsvCommand batch. Each entry
 /// targets one sheet; CreateIfMissing is per-import so some entries can
 /// require an existing sheet while others create new ones.
 /// </summary>
@@ -13,7 +13,7 @@ public record SpreadsheetCsvImport(
     bool CreateIfMissing = false);
 
 /// <summary>
-/// Result populated by ISpreadsheetImportCsvCommand on success. ImportsApplied
+/// Result populated by IImportCsvCommand on success. ImportsApplied
 /// is the number of CSV imports processed. TotalRowCount sums the row counts
 /// across all imports. SheetsCreated is the count of imports that added a new
 /// worksheet.
@@ -32,7 +32,7 @@ public record SpreadsheetImportCsvResult(
 /// written. Other sheets in the workbook are untouched. Imports run in order;
 /// if any import fails the whole batch fails and nothing is saved.
 /// </summary>
-public interface ISpreadsheetImportCsvCommand : IExecutableCommand<SpreadsheetImportCsvResult>
+public interface IImportCsvCommand : IExecutableCommand<SpreadsheetImportCsvResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

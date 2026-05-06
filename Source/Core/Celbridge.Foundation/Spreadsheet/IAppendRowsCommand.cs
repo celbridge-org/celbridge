@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Result populated by ISpreadsheetAppendRowsCommand on success. FirstRow and
+/// Result populated by IAppendRowsCommand on success. FirstRow and
 /// LastRow are the 1-based row numbers that the appended block now occupies.
 /// AppendedRowCount equals LastRow - FirstRow + 1.
 /// </summary>
@@ -17,9 +17,9 @@ public record SpreadsheetAppendRowsResult(
 /// receives the rows starting at A1. Each inner list maps positionally to
 /// columns A, B, C, .... Missing trailing values leave cells blank. Formula
 /// writes (any cell value beginning with '=') are interpreted as text. Use
-/// ISpreadsheetWriteCellsCommand for formula writes.
+/// IWriteCellsCommand for formula writes.
 /// </summary>
-public interface ISpreadsheetAppendRowsCommand : IExecutableCommand<SpreadsheetAppendRowsResult>
+public interface IAppendRowsCommand : IExecutableCommand<SpreadsheetAppendRowsResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -28,7 +28,7 @@ public interface ISpreadsheetAppendRowsCommand : IExecutableCommand<SpreadsheetA
 
     /// <summary>
     /// Name of the worksheet to append to. The sheet must already exist;
-    /// callers create it via ISpreadsheetAddSheetCommand first if needed.
+    /// callers create it via IAddSheetsCommand first if needed.
     /// </summary>
     string Sheet { get; set; }
 

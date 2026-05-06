@@ -4,17 +4,17 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class ClearCommand : CommandBase, ISpreadsheetClearCommand
+public class ClearRangesCommand : CommandBase, IClearRangesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetClearOperation> Operations { get; set; } = Array.Empty<SpreadsheetClearOperation>();
+    public IReadOnlyList<SpreadsheetClearRangesOperation> Operations { get; set; } = Array.Empty<SpreadsheetClearRangesOperation>();
 
-    public SpreadsheetClearResult ResultValue { get; private set; } =
-        new SpreadsheetClearResult(0, 0);
+    public SpreadsheetClearRangesResult ResultValue { get; private set; } =
+        new SpreadsheetClearRangesResult(0, 0);
 
-    public ClearCommand(IWorkspaceWrapper workspaceWrapper)
+    public ClearRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -76,7 +76,7 @@ public class ClearCommand : CommandBase, ISpreadsheetClearCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetClearResult(Operations.Count, totalCellCount);
+            ResultValue = new SpreadsheetClearRangesResult(Operations.Count, totalCellCount);
         }
         catch (Exception ex)
         {

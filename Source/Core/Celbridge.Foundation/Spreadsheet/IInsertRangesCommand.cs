@@ -3,22 +3,22 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// One entry in a SpreadsheetInsertCommand batch. Each operation targets a
+/// One entry in an IInsertRangesCommand batch. Each operation targets a
 /// specific sheet and a row range or column range. Cell ranges are not
 /// accepted (Excel's "shift cells down/right" is a footgun and not exposed).
 /// Range examples: "3" or "3:5" for rows; "B" or "B:D" for columns. The
 /// width of the range determines how many empty rows or columns are inserted.
 /// </summary>
-public record SpreadsheetInsertOperation(
+public record SpreadsheetInsertRangesOperation(
     string Sheet,
     string Range);
 
 /// <summary>
-/// Result populated by ISpreadsheetInsertCommand on success. OperationsApplied
+/// Result populated by IInsertRangesCommand on success. OperationsApplied
 /// is the number of operations processed. InsertedRowCount and
 /// InsertedColumnCount are the totals across all operations after dedup.
 /// </summary>
-public record SpreadsheetInsertResult(
+public record SpreadsheetInsertRangesResult(
     int OperationsApplied,
     int InsertedRowCount,
     int InsertedColumnCount);
@@ -36,7 +36,7 @@ public record SpreadsheetInsertResult(
 /// engine. If any operation fails (bad range, missing sheet) the whole batch
 /// fails and nothing is saved.
 /// </summary>
-public interface ISpreadsheetInsertCommand : IExecutableCommand<SpreadsheetInsertResult>
+public interface IInsertRangesCommand : IExecutableCommand<SpreadsheetInsertRangesResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -47,5 +47,5 @@ public interface ISpreadsheetInsertCommand : IExecutableCommand<SpreadsheetInser
     /// Insert operations to apply. Indices are interpreted against the
     /// original workbook state.
     /// </summary>
-    IReadOnlyList<SpreadsheetInsertOperation> Operations { get; set; }
+    IReadOnlyList<SpreadsheetInsertRangesOperation> Operations { get; set; }
 }

@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// One conditional formatting rule for ISpreadsheetSetConditionalFormattingCommand.
+/// One conditional formatting rule for ISetConditionalFormattingCommand.
 ///
 /// Type names (case-insensitive): "greaterThan", "greaterThanOrEqual",
 /// "lessThan", "lessThanOrEqual", "equal", "notEqual", "between", "notBetween",
@@ -56,7 +56,7 @@ public record SpreadsheetConditionalFormatRule(
     string? HighValue = null);
 
 /// <summary>
-/// Result populated by ISpreadsheetSetConditionalFormattingCommand on success.
+/// Result populated by ISetConditionalFormattingCommand on success.
 /// RulesApplied is the number of rules added to the target range. RulesRemoved
 /// is the number of pre-existing rules that were removed before adding the new
 /// ones (always 0 unless ClearExisting was true).
@@ -70,7 +70,7 @@ public record SpreadsheetSetConditionalFormattingResult(int RulesApplied, int Ru
 /// threshold, colour scale across a column of numbers, formula-based highlight
 /// for whole rows.
 /// </summary>
-public interface ISpreadsheetSetConditionalFormattingCommand : IExecutableCommand<SpreadsheetSetConditionalFormattingResult>
+public interface ISetConditionalFormattingCommand : IExecutableCommand<SpreadsheetSetConditionalFormattingResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class SetActiveViewCommand : CommandBase, ISpreadsheetSetActiveViewCommand
+public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

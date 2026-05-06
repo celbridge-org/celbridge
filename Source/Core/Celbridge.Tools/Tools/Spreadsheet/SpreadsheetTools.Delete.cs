@@ -46,7 +46,7 @@ public partial class SpreadsheetTools
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetDeleteCommand, SpreadsheetDeleteResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IDeleteRangesCommand, SpreadsheetDeleteRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
@@ -62,7 +62,7 @@ public partial class SpreadsheetTools
         return ToolSuccess(SerializeJson(result));
     }
 
-    private static Result<IReadOnlyList<SpreadsheetDeleteOperation>> ParseDeleteOperations(string operationsJson)
+    private static Result<IReadOnlyList<SpreadsheetDeleteRangesOperation>> ParseDeleteOperations(string operationsJson)
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
@@ -71,7 +71,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetDeleteOperation>>(operationsJson, JsonOptions);
+            var operations = JsonSerializer.Deserialize<List<SpreadsheetDeleteRangesOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
                 return Result.Fail("Operations JSON must be a non-null array.");

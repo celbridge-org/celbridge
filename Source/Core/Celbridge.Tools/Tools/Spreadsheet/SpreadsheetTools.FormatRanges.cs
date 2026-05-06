@@ -43,7 +43,7 @@ public partial class SpreadsheetTools
         var edits = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetFormatRangesCommand, SpreadsheetFormatRangesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IFormatRangesCommand, SpreadsheetFormatRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Edits = edits;

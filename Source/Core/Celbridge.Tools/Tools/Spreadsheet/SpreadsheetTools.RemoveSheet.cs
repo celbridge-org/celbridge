@@ -34,7 +34,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetRemoveSheetCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IRemoveSheetCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

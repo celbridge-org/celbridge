@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Result populated by ISpreadsheetFreezePanesCommand on success. Sheet is the
+/// Result populated by IFreezePanesCommand on success. Sheet is the
 /// worksheet name. Rows and Columns are the number of frozen rows and columns.
 /// </summary>
 public record SpreadsheetFreezePanesResult(
@@ -16,7 +16,7 @@ public record SpreadsheetFreezePanesResult(
 /// visible while the rest of the sheet scrolls. Either Rows or Columns may be
 /// 0 to leave that axis unfrozen. Setting both to 0 clears any existing freeze.
 /// </summary>
-public interface ISpreadsheetFreezePanesCommand : IExecutableCommand<SpreadsheetFreezePanesResult>
+public interface IFreezePanesCommand : IExecutableCommand<SpreadsheetFreezePanesResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

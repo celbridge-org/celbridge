@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// One entry in a SpreadsheetFormatRangesCommand batch. Each edit targets a
+/// One entry in an IFormatRangesCommand batch. Each edit targets a
 /// specific sheet and range with its own format spec, so a single batch can
 /// span multiple sheets in the same workbook.
 /// </summary>
@@ -13,7 +13,7 @@ public record SpreadsheetFormatEdit(
     SpreadsheetFormatSpec Format);
 
 /// <summary>
-/// Result populated by ISpreadsheetFormatRangesCommand on success.
+/// Result populated by IFormatRangesCommand on success.
 /// EditsApplied is the number of edits processed. PropertiesApplied is the
 /// total count of top-level SpreadsheetFormatSpec fields summed across edits.
 /// AutoFitApplied is true when at least one edit triggered AdjustToContents.
@@ -32,7 +32,7 @@ public record SpreadsheetFormatRangesResult(
 /// batch fails and nothing is saved. Formulas are recalculated as part of the
 /// save once all edits succeed.
 /// </summary>
-public interface ISpreadsheetFormatRangesCommand : IExecutableCommand<SpreadsheetFormatRangesResult>
+public interface IFormatRangesCommand : IExecutableCommand<SpreadsheetFormatRangesResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

@@ -40,7 +40,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetRenameSheetCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IRenameSheetCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

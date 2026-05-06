@@ -5,7 +5,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class ImportCsvCommand : CommandBase, ISpreadsheetImportCsvCommand
+public class ImportCsvCommand : CommandBase, IImportCsvCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

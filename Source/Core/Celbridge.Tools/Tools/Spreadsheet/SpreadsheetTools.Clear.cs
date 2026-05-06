@@ -47,7 +47,7 @@ public partial class SpreadsheetTools
         var operations = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetClearCommand, SpreadsheetClearResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IClearRangesCommand, SpreadsheetClearRangesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Operations = operations;
@@ -63,7 +63,7 @@ public partial class SpreadsheetTools
         return ToolSuccess(SerializeJson(result));
     }
 
-    private static Result<IReadOnlyList<SpreadsheetClearOperation>> ParseClearOperations(string operationsJson)
+    private static Result<IReadOnlyList<SpreadsheetClearRangesOperation>> ParseClearOperations(string operationsJson)
     {
         if (string.IsNullOrEmpty(operationsJson))
         {
@@ -72,7 +72,7 @@ public partial class SpreadsheetTools
 
         try
         {
-            var operations = JsonSerializer.Deserialize<List<SpreadsheetClearOperation>>(operationsJson, JsonOptions);
+            var operations = JsonSerializer.Deserialize<List<SpreadsheetClearRangesOperation>>(operationsJson, JsonOptions);
             if (operations is null)
             {
                 return Result.Fail("Operations JSON must be a non-null array.");

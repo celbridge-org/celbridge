@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// One key in an ISpreadsheetSortCommand sort. Column is the absolute A1
+/// One key in an ISortRangeCommand sort. Column is the absolute A1
 /// column letter (e.g. "B") or 1-based column number; it must lie within
 /// the range being sorted. Ascending controls the order for this key.
 /// </summary>
@@ -12,11 +12,11 @@ public record SpreadsheetSortKey(
     bool Ascending);
 
 /// <summary>
-/// Result populated by ISpreadsheetSortCommand on success. RowCount is the
+/// Result populated by ISortRangeCommand on success. RowCount is the
 /// number of rows that were re-ordered (excludes the header row when
 /// HasHeaderRow is true).
 /// </summary>
-public record SpreadsheetSortResult(
+public record SpreadsheetSortRangeResult(
     int RowCount);
 
 /// <summary>
@@ -26,7 +26,7 @@ public record SpreadsheetSortResult(
 /// HasHeaderRow is true, the first row of the range stays in place and only
 /// the rows below it are sorted.
 /// </summary>
-public interface ISpreadsheetSortCommand : IExecutableCommand<SpreadsheetSortResult>
+public interface ISortRangeCommand : IExecutableCommand<SpreadsheetSortRangeResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

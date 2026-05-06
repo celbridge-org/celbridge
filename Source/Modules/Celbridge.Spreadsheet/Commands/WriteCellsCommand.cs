@@ -5,7 +5,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class WriteCellsCommand : CommandBase, ISpreadsheetWriteCellsCommand
+public class WriteCellsCommand : CommandBase, IWriteCellsCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

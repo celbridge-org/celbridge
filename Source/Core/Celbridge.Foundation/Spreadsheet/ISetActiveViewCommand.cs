@@ -8,7 +8,7 @@ namespace Celbridge.Spreadsheet;
 /// on that sheet. The sheet is always made active. Ranges, Range, ActiveCell,
 /// and TopLeftCell are optional; an empty value leaves that aspect unchanged.
 /// </summary>
-public interface ISpreadsheetSetActiveViewCommand : IExecutableCommand
+public interface ISetActiveViewCommand : IExecutableCommand
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

@@ -6,7 +6,7 @@ namespace Celbridge.Spreadsheet;
 /// Renames an existing worksheet in an .xlsx workbook. Fails if the source
 /// sheet is not found, or if the new name collides with another sheet.
 /// </summary>
-public interface ISpreadsheetRenameSheetCommand : IExecutableCommand
+public interface IRenameSheetCommand : IExecutableCommand
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

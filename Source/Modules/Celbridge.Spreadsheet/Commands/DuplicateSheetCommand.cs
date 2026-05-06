@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class DuplicateSheetCommand : CommandBase, ISpreadsheetDuplicateSheetCommand
+public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

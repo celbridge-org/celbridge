@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class SetAutoFilterCommand : CommandBase, ISpreadsheetSetAutoFilterCommand
+public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

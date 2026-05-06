@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// Result populated by ISpreadsheetSetAutoFilterCommand on success. Enabled
+/// Result populated by ISetAutoFilterCommand on success. Enabled
 /// reflects whether the sheet has an active auto-filter after the operation.
 /// FilterRange is the A1 range the filter covers when Enabled is true, or
 /// the empty string when the filter was cleared.
@@ -18,7 +18,7 @@ public record SpreadsheetSetAutoFilterResult(bool Enabled, string FilterRange);
 /// worksheet supports at most one auto-filter; setting a new one replaces any
 /// existing filter on the sheet.
 /// </summary>
-public interface ISpreadsheetSetAutoFilterCommand : IExecutableCommand<SpreadsheetSetAutoFilterResult>
+public interface ISetAutoFilterCommand : IExecutableCommand<SpreadsheetSetAutoFilterResult>
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

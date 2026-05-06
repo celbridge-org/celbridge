@@ -3,7 +3,7 @@ using Celbridge.Commands;
 namespace Celbridge.Spreadsheet;
 
 /// <summary>
-/// A single cell write applied by ISpreadsheetWriteCellsCommand. Cell is an A1
+/// A single cell write applied by IWriteCellsCommand. Cell is an A1
 /// address (e.g. "B3"). Value is the JSON-typed value to write: a JSON null
 /// blanks the cell, numbers and booleans round-trip directly, strings are
 /// written as text. Set IsFormula true to write the string as a formula
@@ -21,7 +21,7 @@ public record SpreadsheetCellEdit(
 /// not touch is preserved. Formulas are recalculated as part of the save so
 /// readers see fresh cached values.
 /// </summary>
-public interface ISpreadsheetWriteCellsCommand : IExecutableCommand
+public interface IWriteCellsCommand : IExecutableCommand
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.
@@ -30,7 +30,7 @@ public interface ISpreadsheetWriteCellsCommand : IExecutableCommand
 
     /// <summary>
     /// Name of the worksheet to write into. The sheet must already exist;
-    /// callers create it via ISpreadsheetAddSheetCommand first if needed.
+    /// callers create it via IAddSheetsCommand first if needed.
     /// </summary>
     string Sheet { get; set; }
 

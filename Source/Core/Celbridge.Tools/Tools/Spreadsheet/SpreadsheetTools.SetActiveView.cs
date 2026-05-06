@@ -69,7 +69,7 @@ public partial class SpreadsheetTools
         var ranges = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetSetActiveViewCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<ISetActiveViewCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

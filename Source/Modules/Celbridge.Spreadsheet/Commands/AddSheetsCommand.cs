@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class AddSheetsCommand : CommandBase, ISpreadsheetAddSheetsCommand
+public class AddSheetsCommand : CommandBase, IAddSheetsCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

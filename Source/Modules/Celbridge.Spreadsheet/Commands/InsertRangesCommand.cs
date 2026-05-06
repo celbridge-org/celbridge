@@ -4,17 +4,17 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class InsertCommand : CommandBase, ISpreadsheetInsertCommand
+public class InsertRangesCommand : CommandBase, IInsertRangesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
-    public IReadOnlyList<SpreadsheetInsertOperation> Operations { get; set; } = Array.Empty<SpreadsheetInsertOperation>();
+    public IReadOnlyList<SpreadsheetInsertRangesOperation> Operations { get; set; } = Array.Empty<SpreadsheetInsertRangesOperation>();
 
-    public SpreadsheetInsertResult ResultValue { get; private set; } =
-        new SpreadsheetInsertResult(0, 0, 0);
+    public SpreadsheetInsertRangesResult ResultValue { get; private set; } =
+        new SpreadsheetInsertRangesResult(0, 0, 0);
 
-    public InsertCommand(IWorkspaceWrapper workspaceWrapper)
+    public InsertRangesCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -115,7 +115,7 @@ public class InsertCommand : CommandBase, ISpreadsheetInsertCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetInsertResult(Operations.Count, totalRowsInserted, totalColumnsInserted);
+            ResultValue = new SpreadsheetInsertRangesResult(Operations.Count, totalRowsInserted, totalColumnsInserted);
         }
         catch (Exception ex)
         {

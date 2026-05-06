@@ -57,7 +57,7 @@ public partial class SpreadsheetTools
         var sortKeys = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetSortCommand, SpreadsheetSortResult>(command =>
+        var commandResult = await ExecuteCommandAsync<ISortRangeCommand, SpreadsheetSortRangeResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

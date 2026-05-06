@@ -46,7 +46,7 @@ public partial class SpreadsheetTools
         var parsedRows = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetAppendRowsCommand, SpreadsheetAppendRowsResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IAppendRowsCommand, SpreadsheetAppendRowsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

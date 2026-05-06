@@ -39,7 +39,7 @@ public partial class SpreadsheetTools
         var sheetNames = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetAddSheetsCommand, SpreadsheetAddSheetsResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IAddSheetsCommand, SpreadsheetAddSheetsResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheets = sheetNames;

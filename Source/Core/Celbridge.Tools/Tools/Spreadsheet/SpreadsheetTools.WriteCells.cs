@@ -47,7 +47,7 @@ public partial class SpreadsheetTools
         var cellEdits = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetWriteCellsCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IWriteCellsCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

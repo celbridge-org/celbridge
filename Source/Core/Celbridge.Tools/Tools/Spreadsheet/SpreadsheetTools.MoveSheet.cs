@@ -42,7 +42,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetMoveSheetCommand>(command =>
+        var commandResult = await ExecuteCommandAsync<IMoveSheetCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

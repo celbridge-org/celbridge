@@ -44,7 +44,7 @@ public partial class SpreadsheetTools
         var imports = parseResult.Value;
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetImportCsvCommand, SpreadsheetImportCsvResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IImportCsvCommand, SpreadsheetImportCsvResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Imports = imports;

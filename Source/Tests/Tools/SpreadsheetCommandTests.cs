@@ -2035,12 +2035,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("A5").Value = "row5";
         });
 
-        var command = new DeleteCommand(_workspaceWrapper)
+        var command = new DeleteRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteOperation("Q1", "2:3")
+                new SpreadsheetDeleteRangesOperation("Q1", "2:3")
             }
         };
 
@@ -2068,12 +2068,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("D1").Value = "colD";
         });
 
-        var command = new DeleteCommand(_workspaceWrapper)
+        var command = new DeleteRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteOperation("Q1", "B:C")
+                new SpreadsheetDeleteRangesOperation("Q1", "B:C")
             }
         };
 
@@ -2104,13 +2104,13 @@ public class SpreadsheetCommandTests
         // delete rows 3:5 AND row 10. After applying, the remaining rows should be
         // 1, 2, 6, 7, 8, 9, 11, 12 — original row 10 is gone, not "row 10 after the
         // earlier delete shifted it" (which would have been original row 13).
-        var command = new DeleteCommand(_workspaceWrapper)
+        var command = new DeleteRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteOperation("Q1", "3:5"),
-                new SpreadsheetDeleteOperation("Q1", "10")
+                new SpreadsheetDeleteRangesOperation("Q1", "3:5"),
+                new SpreadsheetDeleteRangesOperation("Q1", "10")
             }
         };
 
@@ -2144,13 +2144,13 @@ public class SpreadsheetCommandTests
         });
 
         // Overlapping row ranges 3:5 and 4:6 should expand to {3,4,5,6}.
-        var command = new DeleteCommand(_workspaceWrapper)
+        var command = new DeleteRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteOperation("Q1", "3:5"),
-                new SpreadsheetDeleteOperation("Q1", "4:6")
+                new SpreadsheetDeleteRangesOperation("Q1", "3:5"),
+                new SpreadsheetDeleteRangesOperation("Q1", "4:6")
             }
         };
 
@@ -2174,12 +2174,12 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Q1");
         });
 
-        var command = new DeleteCommand(_workspaceWrapper)
+        var command = new DeleteRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteOperation("Q1", "A1:C3")
+                new SpreadsheetDeleteRangesOperation("Q1", "A1:C3")
             }
         };
 
@@ -2198,13 +2198,13 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Value = "before";
         });
 
-        var command = new DeleteCommand(_workspaceWrapper)
+        var command = new DeleteRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetDeleteOperation("Q1", "1"),
-                new SpreadsheetDeleteOperation("Missing", "1")
+                new SpreadsheetDeleteRangesOperation("Q1", "1"),
+                new SpreadsheetDeleteRangesOperation("Missing", "1")
             }
         };
 
@@ -2229,12 +2229,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("D5").Value = "keep";
         });
 
-        var command = new ClearCommand(_workspaceWrapper)
+        var command = new ClearRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearOperation("Q1", "B2:C2")
+                new SpreadsheetClearRangesOperation("Q1", "B2:C2")
             }
         };
 
@@ -2263,12 +2263,12 @@ public class SpreadsheetCommandTests
             workbook.DefinedNames.Add("MyRange", "Q1!A1:A1");
         });
 
-        var command = new ClearCommand(_workspaceWrapper)
+        var command = new ClearRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearOperation("Q1", "")
+                new SpreadsheetClearRangesOperation("Q1", "")
             }
         };
 
@@ -2296,12 +2296,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("A3").Value = "row3";
         });
 
-        var command = new ClearCommand(_workspaceWrapper)
+        var command = new ClearRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearOperation("Q1", "2")
+                new SpreadsheetClearRangesOperation("Q1", "2")
             }
         };
 
@@ -2327,12 +2327,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("C3").Style.Fill.BackgroundColor = XLColor.Yellow;
         });
 
-        var command = new ClearCommand(_workspaceWrapper)
+        var command = new ClearRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearOperation("Q1", "B2:D4")
+                new SpreadsheetClearRangesOperation("Q1", "B2:D4")
             }
         };
 
@@ -2357,12 +2357,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("B2").Style.Font.Bold = true;
         });
 
-        var command = new ClearCommand(_workspaceWrapper)
+        var command = new ClearRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearOperation("Q1", string.Empty)
+                new SpreadsheetClearRangesOperation("Q1", string.Empty)
             }
         };
 
@@ -2381,13 +2381,13 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Value = "before";
         });
 
-        var command = new ClearCommand(_workspaceWrapper)
+        var command = new ClearRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetClearOperation("Q1", "A1"),
-                new SpreadsheetClearOperation("Missing", "A1")
+                new SpreadsheetClearRangesOperation("Q1", "A1"),
+                new SpreadsheetClearRangesOperation("Missing", "A1")
             }
         };
 
@@ -2411,12 +2411,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("A3").Value = "row3";
         });
 
-        var command = new InsertCommand(_workspaceWrapper)
+        var command = new InsertRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertOperation("Q1", "2:3")
+                new SpreadsheetInsertRangesOperation("Q1", "2:3")
             }
         };
 
@@ -2446,12 +2446,12 @@ public class SpreadsheetCommandTests
             sheet.Cell("C1").Value = "col3";
         });
 
-        var command = new InsertCommand(_workspaceWrapper)
+        var command = new InsertRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertOperation("Q1", "B")
+                new SpreadsheetInsertRangesOperation("Q1", "B")
             }
         };
 
@@ -2480,13 +2480,13 @@ public class SpreadsheetCommandTests
             }
         });
 
-        var command = new InsertCommand(_workspaceWrapper)
+        var command = new InsertRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertOperation("Q1", "2"),
-                new SpreadsheetInsertOperation("Q1", "5")
+                new SpreadsheetInsertRangesOperation("Q1", "2"),
+                new SpreadsheetInsertRangesOperation("Q1", "5")
             }
         };
 
@@ -2516,12 +2516,12 @@ public class SpreadsheetCommandTests
             workbook.Worksheets.Add("Q1");
         });
 
-        var command = new InsertCommand(_workspaceWrapper)
+        var command = new InsertRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertOperation("Q1", "A1:C3")
+                new SpreadsheetInsertRangesOperation("Q1", "A1:C3")
             }
         };
 
@@ -2540,13 +2540,13 @@ public class SpreadsheetCommandTests
             sheet.Cell("A1").Value = "before";
         });
 
-        var command = new InsertCommand(_workspaceWrapper)
+        var command = new InsertRangesCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Operations = new[]
             {
-                new SpreadsheetInsertOperation("Q1", "1"),
-                new SpreadsheetInsertOperation("Missing", "1")
+                new SpreadsheetInsertRangesOperation("Q1", "1"),
+                new SpreadsheetInsertRangesOperation("Missing", "1")
             }
         };
 
@@ -2570,7 +2570,7 @@ public class SpreadsheetCommandTests
             sheet.Cell("A3").Value = "Bravo";
         });
 
-        var command = new SortCommand(_workspaceWrapper)
+        var command = new SortRangeCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Sheet = "Q1",
@@ -2605,7 +2605,7 @@ public class SpreadsheetCommandTests
             sheet.Cell("A4").Value = "Bravo";
         });
 
-        var command = new SortCommand(_workspaceWrapper)
+        var command = new SortRangeCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Sheet = "Q1",
@@ -2646,7 +2646,7 @@ public class SpreadsheetCommandTests
             sheet.Cell("B4").Value = 1;
         });
 
-        var command = new SortCommand(_workspaceWrapper)
+        var command = new SortRangeCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Sheet = "Q1",
@@ -2684,7 +2684,7 @@ public class SpreadsheetCommandTests
             sheet.Cell("A2").Value = "Alpha";
         });
 
-        var command = new SortCommand(_workspaceWrapper)
+        var command = new SortRangeCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Sheet = "Q1",
@@ -2712,7 +2712,7 @@ public class SpreadsheetCommandTests
             sheet.Cell("A3").Value = "Bravo";
         });
 
-        var command = new SortCommand(_workspaceWrapper)
+        var command = new SortRangeCommand(_workspaceWrapper)
         {
             FileResource = _workbookResource,
             Sheet = "Q1",

@@ -44,7 +44,7 @@ public partial class SpreadsheetTools
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
-        var commandResult = await ExecuteCommandAsync<ISpreadsheetFreezePanesCommand, SpreadsheetFreezePanesResult>(command =>
+        var commandResult = await ExecuteCommandAsync<IFreezePanesCommand, SpreadsheetFreezePanesResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Sheet = sheet;

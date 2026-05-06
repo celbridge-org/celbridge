@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class SortCommand : CommandBase, ISpreadsheetSortCommand
+public class SortRangeCommand : CommandBase, ISortRangeCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -15,10 +15,10 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
     public bool HasHeaderRow { get; set; }
     public bool MatchCase { get; set; }
 
-    public SpreadsheetSortResult ResultValue { get; private set; } =
-        new SpreadsheetSortResult(0);
+    public SpreadsheetSortRangeResult ResultValue { get; private set; } =
+        new SpreadsheetSortRangeResult(0);
 
-    public SortCommand(IWorkspaceWrapper workspaceWrapper)
+    public SortRangeCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
@@ -66,7 +66,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
             var resolvedRange = resolveRangeResult.Value;
             if (resolvedRange.IsEmpty)
             {
-                ResultValue = new SpreadsheetSortResult(0);
+                ResultValue = new SpreadsheetSortRangeResult(0);
                 return Result.Ok();
             }
             var sortRange = resolvedRange.Range;
@@ -82,7 +82,7 @@ public class SortCommand : CommandBase, ISpreadsheetSortCommand
 
             SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
 
-            ResultValue = new SpreadsheetSortResult(sortRange.RowCount());
+            ResultValue = new SpreadsheetSortRangeResult(sortRange.RowCount());
         }
         catch (Exception ex)
         {

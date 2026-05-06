@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class FreezePanesCommand : CommandBase, ISpreadsheetFreezePanesCommand
+public class FreezePanesCommand : CommandBase, IFreezePanesCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

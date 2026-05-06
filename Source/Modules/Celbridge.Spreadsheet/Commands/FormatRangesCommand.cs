@@ -5,7 +5,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class FormatRangesCommand : CommandBase, ISpreadsheetFormatRangesCommand
+public class FormatRangesCommand : CommandBase, IFormatRangesCommand
 {
     private enum BorderPosition { Top, Bottom, Left, Right }
 

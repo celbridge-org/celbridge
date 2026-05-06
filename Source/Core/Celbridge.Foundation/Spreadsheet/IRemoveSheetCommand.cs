@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet;
 /// found, or if it is the only sheet remaining (a workbook must contain at
 /// least one sheet).
 /// </summary>
-public interface ISpreadsheetRemoveSheetCommand : IExecutableCommand
+public interface IRemoveSheetCommand : IExecutableCommand
 {
     /// <summary>
     /// Resource key of the .xlsx workbook to mutate.

@@ -4,7 +4,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class RemoveSheetCommand : CommandBase, ISpreadsheetRemoveSheetCommand
+public class RemoveSheetCommand : CommandBase, IRemoveSheetCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 

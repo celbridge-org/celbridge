@@ -6,7 +6,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
-public class SetConditionalFormattingCommand : CommandBase, ISpreadsheetSetConditionalFormattingCommand
+public class SetConditionalFormattingCommand : CommandBase, ISetConditionalFormattingCommand
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
