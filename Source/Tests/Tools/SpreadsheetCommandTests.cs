@@ -3093,6 +3093,275 @@ public class SpreadsheetCommandTests
         result.FirstErrorMessage.Should().Contain("Unknown rule type");
     }
 
+    [TestCase("top", XLConditionalFormatType.Top10)]
+    [TestCase("bottom", XLConditionalFormatType.Top10)]
+    [TestCase("topPercent", XLConditionalFormatType.Top10)]
+    [TestCase("bottomPercent", XLConditionalFormatType.Top10)]
+    public async Task SetConditionalFormatting_TopBottomRule_AppliesToRange(string ruleType, XLConditionalFormatType expected)
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            for (var row = 1; row <= 10; row++)
+            {
+                sheet.Cell($"A{row}").Value = row * 10;
+            }
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: ruleType,
+                Value: 3,
+                BackgroundColor: "#FFCCCC")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A10",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var formats = workbook.Worksheet("Q1").ConditionalFormats.ToList();
+        formats.Should().HaveCount(1);
+        formats[0].ConditionalFormatType.Should().Be(expected);
+    }
+
+    [TestCase(0d, "positive integer")]
+    [TestCase(-1d, "positive integer")]
+    [TestCase(2.5d, "positive integer")]
+    public async Task SetConditionalFormatting_TopRuleInvalidCount_ReturnsFailure(double value, string expectedFragment)
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(Type: "top", Value: value)
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A10",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain(expectedFragment);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_TopPercentOutOfRange_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(Type: "topPercent", Value: 150)
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A10",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("between 1 and 100");
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_TopRuleMissingValue_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(Type: "top")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A10",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("'value'");
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_ColorScale2_CustomNumberThresholds_AppliesScale()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            sheet.Cell("A1").Value = 1;
+            sheet.Cell("A2").Value = 50;
+            sheet.Cell("A3").Value = 100;
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "colorScale2",
+                LowColor: "#FF0000",
+                HighColor: "#00FF00",
+                LowType: "number",
+                LowValue: "0",
+                HighType: "number",
+                HighValue: "80")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A3",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var formats = workbook.Worksheet("Q1").ConditionalFormats.ToList();
+        formats.Should().HaveCount(1);
+        formats[0].ConditionalFormatType.Should().Be(XLConditionalFormatType.ColorScale);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_ColorScale3_PercentileMid_AppliesScale()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Q1");
+            for (var row = 1; row <= 10; row++)
+            {
+                sheet.Cell($"A{row}").Value = row;
+            }
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "colorScale3",
+                LowColor: "#FF0000",
+                MidColor: "#FFFF00",
+                HighColor: "#00FF00",
+                MidType: "percentile",
+                MidValue: "50")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A10",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var formats = workbook.Worksheet("Q1").ConditionalFormats.ToList();
+        formats.Should().HaveCount(1);
+        formats[0].ConditionalFormatType.Should().Be(XLConditionalFormatType.ColorScale);
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_ColorScale_UnknownStopType_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "colorScale2",
+                LowColor: "#FF0000",
+                HighColor: "#00FF00",
+                LowType: "wrong",
+                LowValue: "5")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A3",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("low stop type");
+    }
+
+    [Test]
+    public async Task SetConditionalFormatting_ColorScale_StopTypeMissingValue_ReturnsFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            workbook.Worksheets.Add("Q1");
+        });
+
+        var rules = new[]
+        {
+            new SpreadsheetConditionalFormatRule(
+                Type: "colorScale2",
+                LowColor: "#FF0000",
+                HighColor: "#00FF00",
+                LowType: "number")
+        };
+
+        var command = new SetConditionalFormattingCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Range = "A1:A3",
+            Rules = rules
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("requires a value");
+    }
+
     private void CreateWorkbook(Action<XLWorkbook> populate)
     {
         using var workbook = new XLWorkbook();

@@ -2184,6 +2184,56 @@ class TestSpreadsheet(unittest.TestCase):
         self.assertEqual(replace["rulesApplied"], 1)
         self.assertEqual(replace["rulesRemoved"], 1)
 
+    def test_set_conditional_formatting_top_rule(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [{"cell": f"A{row}", "value": row * 10} for row in range(1, 11)],
+        )
+        result = spreadsheet.set_conditional_formatting(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A10",
+            [{"type": "top", "value": 3, "backgroundColor": "#CCFFCC"}],
+        )
+        self.assertEqual(result["rulesApplied"], 1)
+
+    def test_set_conditional_formatting_top_rule_rejects_non_integer(self):
+        with self.assertRaises(CelError):
+            spreadsheet.set_conditional_formatting(
+                self._WORKBOOK,
+                "Sheet1",
+                "A1:A10",
+                [{"type": "top", "value": 2.5}],
+            )
+
+    def test_set_conditional_formatting_color_scale_custom_thresholds(self):
+        spreadsheet.write_cells(
+            self._WORKBOOK,
+            "Sheet1",
+            [{"cell": f"A{row}", "value": row} for row in range(1, 11)],
+        )
+        result = spreadsheet.set_conditional_formatting(
+            self._WORKBOOK,
+            "Sheet1",
+            "A1:A10",
+            [
+                {
+                    "type": "colorScale3",
+                    "lowColor": "#FF0000",
+                    "midColor": "#FFFF00",
+                    "highColor": "#00FF00",
+                    "lowType": "number",
+                    "lowValue": "0",
+                    "midType": "percentile",
+                    "midValue": "50",
+                    "highType": "number",
+                    "highValue": "10",
+                }
+            ],
+        )
+        self.assertEqual(result["rulesApplied"], 1)
+
 
 # ---------------------------------------------------------------------------
 # Main

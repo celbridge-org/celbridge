@@ -1,3 +1,4 @@
+using System.Globalization;
 using Celbridge.Commands;
 using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
@@ -224,6 +225,14 @@ public class SetConditionalFormattingCommand : CommandBase, ISpreadsheetSetCondi
                 var formula = rule.Formula.StartsWith('=') ? rule.Formula.Substring(1) : rule.Formula;
                 style = conditionalFormat.WhenIsTrue(formula);
                 break;
+            case "top":
+            case "bottom":
+            case "toppercent":
+            case "bottompercent":
+                var topBottomResult = ApplyTopBottomRule(conditionalFormat, typeKey, rule);
+                if (topBottomResult.IsFailure) return Result.Fail(topBottomResult.FirstErrorMessage);
+                style = topBottomResult.Value;
+                break;
             default:
                 return Result.Fail($"Unknown rule type: '{rule.Type}'.");
         }
@@ -267,56 +276,228 @@ public class SetConditionalFormattingCommand : CommandBase, ISpreadsheetSetCondi
         return Result.Ok();
     }
 
+    private static Result<IXLStyle> ApplyTopBottomRule(IXLConditionalFormat conditionalFormat, string typeKey, SpreadsheetConditionalFormatRule rule)
+    {
+        if (!rule.Value.HasValue)
+        {
+            return Result.Fail($"'{rule.Type}' rule requires a numeric 'value' (the count or percent).");
+        }
+
+        var rawValue = rule.Value.Value;
+        if (rawValue < 1 || rawValue > int.MaxValue || Math.Floor(rawValue) != rawValue)
+        {
+            return Result.Fail($"'{rule.Type}' rule 'value' must be a positive integer, was {rawValue}.");
+        }
+        var count = (int)rawValue;
+
+        var isPercent = typeKey == "toppercent" || typeKey == "bottompercent";
+        if (isPercent && (count < 1 || count > 100))
+        {
+            return Result.Fail($"'{rule.Type}' rule 'value' must be between 1 and 100 when expressing a percent.");
+        }
+
+        var topBottomType = isPercent ? XLTopBottomType.Percent : XLTopBottomType.Items;
+        var isTop = typeKey == "top" || typeKey == "toppercent";
+
+        var style = isTop
+            ? conditionalFormat.WhenIsTop(count, topBottomType)
+            : conditionalFormat.WhenIsBottom(count, topBottomType);
+
+        return style.OkResult();
+    }
+
     private static Result ApplyColorScale2(IXLConditionalFormat conditionalFormat, SpreadsheetConditionalFormatRule rule)
     {
-        var lowColorHex = rule.LowColor ?? "#FFFFFF";
-        var highColorHex = rule.HighColor ?? "#FF0000";
-
-        var lowColorResult = SpreadsheetFormatConverter.ParseColor(lowColorHex);
+        var lowColorResult = SpreadsheetFormatConverter.ParseColor(rule.LowColor ?? "#FFFFFF");
         if (lowColorResult.IsFailure)
         {
             return lowColorResult;
         }
-        var highColorResult = SpreadsheetFormatConverter.ParseColor(highColorHex);
+        var highColorResult = SpreadsheetFormatConverter.ParseColor(rule.HighColor ?? "#FF0000");
         if (highColorResult.IsFailure)
         {
             return highColorResult;
         }
 
-        conditionalFormat.ColorScale()
-            .LowestValue(lowColorResult.Value)
-            .HighestValue(highColorResult.Value);
+        var builder = conditionalFormat.ColorScale();
 
-        return Result.Ok();
+        var lowStop = ApplyLowStop(builder, rule, lowColorResult.Value);
+        if (lowStop.IsFailure)
+        {
+            return lowStop;
+        }
+
+        return ApplyHighStopTwoStop(lowStop.Value, rule, highColorResult.Value);
     }
 
     private static Result ApplyColorScale3(IXLConditionalFormat conditionalFormat, SpreadsheetConditionalFormatRule rule)
     {
-        var lowColorHex = rule.LowColor ?? "#FF0000";
-        var midColorHex = rule.MidColor ?? "#FFFFFF";
-        var highColorHex = rule.HighColor ?? "#00FF00";
-
-        var lowColorResult = SpreadsheetFormatConverter.ParseColor(lowColorHex);
+        var lowColorResult = SpreadsheetFormatConverter.ParseColor(rule.LowColor ?? "#FF0000");
         if (lowColorResult.IsFailure)
         {
             return lowColorResult;
         }
-        var midColorResult = SpreadsheetFormatConverter.ParseColor(midColorHex);
+        var midColorResult = SpreadsheetFormatConverter.ParseColor(rule.MidColor ?? "#FFFFFF");
         if (midColorResult.IsFailure)
         {
             return midColorResult;
         }
-        var highColorResult = SpreadsheetFormatConverter.ParseColor(highColorHex);
+        var highColorResult = SpreadsheetFormatConverter.ParseColor(rule.HighColor ?? "#00FF00");
         if (highColorResult.IsFailure)
         {
             return highColorResult;
         }
 
-        conditionalFormat.ColorScale()
-            .LowestValue(lowColorResult.Value)
-            .Midpoint(XLCFContentType.Percent, 50d, midColorResult.Value)
-            .HighestValue(highColorResult.Value);
+        var builder = conditionalFormat.ColorScale();
 
+        var lowStop = ApplyLowStop(builder, rule, lowColorResult.Value);
+        if (lowStop.IsFailure)
+        {
+            return lowStop;
+        }
+
+        var midStop = ApplyMidStop(lowStop.Value, rule, midColorResult.Value);
+        if (midStop.IsFailure)
+        {
+            return midStop;
+        }
+
+        return ApplyHighStopThreeStop(midStop.Value, rule, highColorResult.Value);
+    }
+
+    private static Result<IXLCFColorScaleMid> ApplyLowStop(IXLCFColorScaleMin builder, SpreadsheetConditionalFormatRule rule, XLColor lowColor)
+    {
+        if (string.IsNullOrEmpty(rule.LowType) || string.Equals(rule.LowType, "min", StringComparison.OrdinalIgnoreCase))
+        {
+            return builder.LowestValue(lowColor).OkResult();
+        }
+
+        var stopResult = ParseColorScaleStop("low", rule.LowType!, rule.LowValue);
+        if (stopResult.IsFailure)
+        {
+            return Result.Fail(stopResult.FirstErrorMessage);
+        }
+        var stop = stopResult.Value;
+
+        var afterLow = stop.IsFormula
+            ? builder.Minimum(stop.ContentType, stop.FormulaValue, lowColor)
+            : builder.Minimum(stop.ContentType, stop.NumericValue, lowColor);
+        return afterLow.OkResult();
+    }
+
+    private static Result<IXLCFColorScaleMax> ApplyMidStop(IXLCFColorScaleMid builder, SpreadsheetConditionalFormatRule rule, XLColor midColor)
+    {
+        if (string.IsNullOrEmpty(rule.MidType))
+        {
+            return builder.Midpoint(XLCFContentType.Percent, 50d, midColor).OkResult();
+        }
+
+        var stopResult = ParseColorScaleStop("mid", rule.MidType!, rule.MidValue);
+        if (stopResult.IsFailure)
+        {
+            return Result.Fail(stopResult.FirstErrorMessage);
+        }
+        var stop = stopResult.Value;
+
+        var afterMid = stop.IsFormula
+            ? builder.Midpoint(stop.ContentType, stop.FormulaValue, midColor)
+            : builder.Midpoint(stop.ContentType, stop.NumericValue, midColor);
+        return afterMid.OkResult();
+    }
+
+    private static Result ApplyHighStopTwoStop(IXLCFColorScaleMid builder, SpreadsheetConditionalFormatRule rule, XLColor highColor)
+    {
+        if (string.IsNullOrEmpty(rule.HighType) || string.Equals(rule.HighType, "max", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.HighestValue(highColor);
+            return Result.Ok();
+        }
+
+        var stopResult = ParseColorScaleStop("high", rule.HighType!, rule.HighValue);
+        if (stopResult.IsFailure)
+        {
+            return stopResult;
+        }
+        var stop = stopResult.Value;
+
+        if (stop.IsFormula)
+        {
+            builder.Maximum(stop.ContentType, stop.FormulaValue, highColor);
+        }
+        else
+        {
+            builder.Maximum(stop.ContentType, stop.NumericValue, highColor);
+        }
         return Result.Ok();
+    }
+
+    private static Result ApplyHighStopThreeStop(IXLCFColorScaleMax builder, SpreadsheetConditionalFormatRule rule, XLColor highColor)
+    {
+        if (string.IsNullOrEmpty(rule.HighType) || string.Equals(rule.HighType, "max", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.HighestValue(highColor);
+            return Result.Ok();
+        }
+
+        var stopResult = ParseColorScaleStop("high", rule.HighType!, rule.HighValue);
+        if (stopResult.IsFailure)
+        {
+            return stopResult;
+        }
+        var stop = stopResult.Value;
+
+        if (stop.IsFormula)
+        {
+            builder.Maximum(stop.ContentType, stop.FormulaValue, highColor);
+        }
+        else
+        {
+            builder.Maximum(stop.ContentType, stop.NumericValue, highColor);
+        }
+        return Result.Ok();
+    }
+
+    private record struct ColorScaleStop(XLCFContentType ContentType, double NumericValue, string FormulaValue, bool IsFormula);
+
+    private static Result<ColorScaleStop> ParseColorScaleStop(string position, string type, string? value)
+    {
+        var lowerType = type.ToLowerInvariant();
+
+        XLCFContentType contentType;
+        switch (lowerType)
+        {
+            case "number":
+                contentType = XLCFContentType.Number;
+                break;
+            case "percent":
+                contentType = XLCFContentType.Percent;
+                break;
+            case "percentile":
+                contentType = XLCFContentType.Percentile;
+                break;
+            case "formula":
+                contentType = XLCFContentType.Formula;
+                break;
+            default:
+                return Result.Fail($"Unknown {position} stop type '{type}'. Expected 'number', 'percent', 'percentile' or 'formula'.");
+        }
+
+        if (string.IsNullOrEmpty(value))
+        {
+            return Result.Fail($"{position} stop with type '{type}' requires a value.");
+        }
+
+        if (lowerType == "formula")
+        {
+            var formula = value.StartsWith('=') ? value.Substring(1) : value;
+            return new ColorScaleStop(contentType, 0d, formula, true);
+        }
+
+        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
+        {
+            return Result.Fail($"{position} stop value '{value}' is not a valid number.");
+        }
+
+        return new ColorScaleStop(contentType, numeric, string.Empty, false);
     }
 }
