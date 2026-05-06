@@ -49,7 +49,7 @@ public partial class WebViewTools
         var fillResult = await toolBridge.FillAsync(resourceKey, options);
         if (fillResult.IsFailure)
         {
-            return ErrorResult(fillResult.FirstErrorMessage);
+            return ErrorResult(fillResult);
         }
 
         return SuccessResult(fillResult.Value);

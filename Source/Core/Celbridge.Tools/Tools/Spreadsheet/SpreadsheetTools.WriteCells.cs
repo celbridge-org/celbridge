@@ -31,7 +31,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
@@ -42,7 +42,7 @@ public partial class SpreadsheetTools
         var parseResult = ParseCellEdits(edits);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult.FirstErrorMessage);
+            return ErrorResult(parseResult);
         }
         var cellEdits = parseResult.Value;
 

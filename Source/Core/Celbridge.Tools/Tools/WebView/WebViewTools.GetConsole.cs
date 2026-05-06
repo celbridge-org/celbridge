@@ -46,7 +46,7 @@ public partial class WebViewTools
         var consoleResult = await toolBridge.GetConsoleAsync(resourceKey, options);
         if (consoleResult.IsFailure)
         {
-            return ErrorResult(consoleResult.FirstErrorMessage);
+            return ErrorResult(consoleResult);
         }
 
         return SuccessResult(consoleResult.Value);

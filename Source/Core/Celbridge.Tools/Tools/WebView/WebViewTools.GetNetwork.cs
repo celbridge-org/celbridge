@@ -53,7 +53,7 @@ public partial class WebViewTools
         var networkResult = await toolBridge.GetNetworkAsync(resourceKey, options);
         if (networkResult.IsFailure)
         {
-            return ErrorResult(networkResult.FirstErrorMessage);
+            return ErrorResult(networkResult);
         }
 
         return SuccessResult(networkResult.Value);

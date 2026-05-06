@@ -76,7 +76,7 @@ public partial class WebViewTools
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)
         {
-            return ErrorResult(queryResult.FirstErrorMessage);
+            return ErrorResult(queryResult);
         }
 
         return SuccessResult(queryResult.Value);

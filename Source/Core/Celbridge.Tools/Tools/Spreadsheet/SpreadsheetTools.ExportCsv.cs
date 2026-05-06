@@ -34,7 +34,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -49,7 +49,7 @@ public partial class SpreadsheetTools
         var csvResult = reader.ExportCsv(workbookPath, sheet, rangeArgument);
         if (csvResult.IsFailure)
         {
-            return ErrorResult(csvResult.FirstErrorMessage);
+            return ErrorResult(csvResult);
         }
         var csv = csvResult.Value;
 

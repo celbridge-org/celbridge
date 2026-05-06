@@ -26,7 +26,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))

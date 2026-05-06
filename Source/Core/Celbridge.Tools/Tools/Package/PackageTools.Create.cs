@@ -39,7 +39,9 @@ public partial class PackageTools
         var resolveResult = resourceRegistry.ResolveResourcePath(packageResource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult($"Failed to resolve path for package: {resolveResult.Error}");
+            var failure = Result.Fail("Failed to resolve path for package")
+                .WithErrors(resolveResult);
+            return ErrorResult(failure);
         }
         var packageFolderPath = resolveResult.Value;
 

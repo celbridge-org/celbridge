@@ -61,7 +61,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             var getResult = resourceRegistry.GetResource(Resources[0]);
             if (getResult.IsFailure)
             {
-                return Result.Fail(getResult.Error);
+                return Result.Fail(getResult.DiagnosticReport);
             }
             var resource = getResult.Value;
             var resourceName = resource.Name;
@@ -102,7 +102,7 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         }
         else
         {
-            _logger.LogWarning($"ShowConfirmationDialogAsync failed: {showResult.Error}");
+            _logger.LogWarning($"ShowConfirmationDialogAsync failed: {showResult.DiagnosticReport}");
         }
 
         return Result.Ok();

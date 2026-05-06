@@ -49,7 +49,7 @@ public partial class WebViewTools
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);
         if (htmlResult.IsFailure)
         {
-            return ErrorResult(htmlResult.FirstErrorMessage);
+            return ErrorResult(htmlResult);
         }
 
         return SuccessResult(htmlResult.Value);

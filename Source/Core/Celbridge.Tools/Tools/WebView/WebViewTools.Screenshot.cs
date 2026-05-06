@@ -76,7 +76,7 @@ public partial class WebViewTools
             var resolveResult = WebViewScreenshotResolver.Resolve(saveTo, format, projectFolderPath);
             if (resolveResult.IsFailure)
             {
-                return ErrorResult(resolveResult.FirstErrorMessage);
+                return ErrorResult(resolveResult);
             }
             fileResource = resolveResult.Value;
         }
@@ -88,7 +88,7 @@ public partial class WebViewTools
         var screenshotResult = await toolBridge.ScreenshotAsync(resourceKey, options);
         if (screenshotResult.IsFailure)
         {
-            return ErrorResult(screenshotResult.FirstErrorMessage);
+            return ErrorResult(screenshotResult);
         }
 
         var data = screenshotResult.Value;
@@ -109,7 +109,9 @@ public partial class WebViewTools
 
             if (commandResult.IsFailure)
             {
-                return ErrorResult($"Failed to save screenshot to resource '{fileResource}': {commandResult.FirstErrorMessage}");
+                var failure = Result.Fail($"Failed to save screenshot to resource '{fileResource}'")
+                    .WithErrors(commandResult);
+                return ErrorResult(failure);
             }
         }
 

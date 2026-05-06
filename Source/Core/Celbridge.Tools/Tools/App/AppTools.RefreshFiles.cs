@@ -19,7 +19,9 @@ public partial class AppTools
         var result = workspaceWrapper.WorkspaceService.ResourceService.UpdateResources();
         if (result.IsFailure)
         {
-            return ErrorResult($"Failed to refresh file listing: {result.FirstErrorMessage}");
+            var failure = Result.Fail("Failed to refresh file listing")
+                .WithErrors(result);
+            return ErrorResult(failure);
         }
 
         return SuccessResult("File listing refreshed.");

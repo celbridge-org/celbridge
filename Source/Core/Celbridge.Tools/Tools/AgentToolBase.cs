@@ -32,19 +32,25 @@ public abstract class AgentToolBase
     protected ICommandService CommandService => GetRequiredService<ICommandService>();
 
     /// <summary>
+    /// Maximum length, in characters, of an agent-visible error message produced
+    /// by a failed Result. Long messages are truncated at the tail with an
+    /// ellipsis so the outer-first wrapper survives. Guards against pathological
+    /// exception messages from third-party libraries.
+    /// </summary>
+    private const int MaxErrorMessageLength = 1000;
+
+    /// <summary>
     /// Executes a command asynchronously, returning a CallToolResult so the MCP
-    /// framework can report errors to the client.
+    /// framework can report errors to the client. On failure surfaces the
+    /// command's full message chain so the agent sees both the wrapper and
+    /// any underlying exception message.
     /// </summary>
     protected async Task<CallToolResult> ExecuteCommandAsync<T>(Action<T>? configure = null) where T : IExecutableCommand
     {
         var result = await CommandService.ExecuteAsync(configure);
         if (result.IsFailure)
         {
-            return new CallToolResult
-            {
-                IsError = true,
-                Content = [new TextContentBlock { Text = result.FirstErrorMessage }]
-            };
+            return ErrorResult(result);
         }
 
         return SuccessResult("ok");
@@ -62,12 +68,7 @@ public abstract class AgentToolBase
         var result = await CommandService.ExecuteAsync<TCommand, TResult>(configure);
         if (result.IsFailure)
         {
-            var errorResult = new CallToolResult
-            {
-                IsError = true,
-                Content = [new TextContentBlock { Text = result.FirstErrorMessage }]
-            };
-            return (errorResult, default);
+            return (ErrorResult(result), default);
         }
 
         return (new CallToolResult(), result.Value);
@@ -94,16 +95,38 @@ public abstract class AgentToolBase
     /// </summary>
     protected static CallToolResult ErrorResult(string text)
     {
+        var capped = CapErrorMessage(text);
         return new CallToolResult
         {
             IsError = true,
             Content = [
                 new TextContentBlock
                 {
-                    Text = text
+                    Text = capped
                 }
             ]
         };
+    }
+
+    /// <summary>
+    /// Creates an error CallToolResult from a failed Result, surfacing its
+    /// MessageChain so the agent sees the outer wrapper and any propagated
+    /// inner causes.
+    /// </summary>
+    protected static CallToolResult ErrorResult(Result result)
+    {
+        return ErrorResult(result.MessageChain);
+    }
+
+    private static string CapErrorMessage(string text)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= MaxErrorMessageLength)
+        {
+            return text;
+        }
+
+        const string ellipsis = "...";
+        return string.Concat(text.AsSpan(0, MaxErrorMessageLength - ellipsis.Length), ellipsis);
     }
 
     /// <summary>

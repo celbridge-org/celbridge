@@ -68,7 +68,7 @@ internal sealed class ContributionDocumentHandler : IHostDocument
                 _logger.LogError(saveResult, "Failed to save contribution document");
                 _completeSave();
                 SaveResultTcs?.TrySetResult(saveResult);
-                return new SaveResult(false, saveResult.Error);
+                return new SaveResult(false, saveResult.DiagnosticReport);
             }
 
             _viewModel.OnSaveCompleted();

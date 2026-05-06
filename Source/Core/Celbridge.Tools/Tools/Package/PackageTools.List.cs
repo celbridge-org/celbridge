@@ -25,7 +25,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ErrorResult(listResult.Error);
+            return ErrorResult(listResult);
         }
 
         var packages = new List<PackageListEntry>();

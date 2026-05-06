@@ -53,7 +53,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
@@ -64,7 +64,7 @@ public partial class SpreadsheetTools
         var parseResult = ParseRangesJson(rangesJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult.FirstErrorMessage);
+            return ErrorResult(parseResult);
         }
         var ranges = parseResult.Value;
 

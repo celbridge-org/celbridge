@@ -29,7 +29,7 @@ public class ProjectConfigReaderTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("empty");
+        result.DiagnosticReport.Should().Contain("empty");
     }
 
     [Test]
@@ -40,7 +40,7 @@ public class ProjectConfigReaderTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("empty");
+        result.DiagnosticReport.Should().Contain("empty");
     }
 
     [Test]
@@ -54,8 +54,8 @@ public class ProjectConfigReaderTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("does not exist");
-        result.Error.Should().Contain(nonExistentPath);
+        result.DiagnosticReport.Should().Contain("does not exist");
+        result.DiagnosticReport.Should().Contain(nonExistentPath);
     }
 
     #endregion

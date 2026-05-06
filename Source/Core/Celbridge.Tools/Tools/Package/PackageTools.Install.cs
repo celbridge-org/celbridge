@@ -39,7 +39,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ErrorResult(listResult.Error);
+            return ErrorResult(listResult);
         }
 
         var expectedFileName = $"{packageName}.zip";
@@ -75,7 +75,7 @@ public partial class PackageTools
         var downloadResult = await packageApiClient.DownloadPackageAsync(matchingEntry.Id);
         if (downloadResult.IsFailure)
         {
-            return ErrorResult(downloadResult.Error);
+            return ErrorResult(downloadResult);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -86,7 +86,9 @@ public partial class PackageTools
         var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
         if (resolveTempResult.IsFailure)
         {
-            return ErrorResult($"Failed to resolve temporary archive path: {resolveTempResult.Error}");
+            var failure = Result.Fail("Failed to resolve temporary archive path")
+                .WithErrors(resolveTempResult);
+            return ErrorResult(failure);
         }
         var tempArchivePath = resolveTempResult.Value;
 

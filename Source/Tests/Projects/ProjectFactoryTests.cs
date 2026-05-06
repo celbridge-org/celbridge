@@ -33,7 +33,7 @@ public class ProjectFactoryTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("empty");
+        result.DiagnosticReport.Should().Contain("empty");
     }
 
     [Test]
@@ -48,7 +48,7 @@ public class ProjectFactoryTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("does not exist");
+        result.DiagnosticReport.Should().Contain("does not exist");
     }
 
     #endregion

@@ -112,7 +112,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             if (saveWorkspaceResult.IsFailure)
             {
                 failed = true;
-                _logger.LogError($"Failed to save workspace state. {saveWorkspaceResult.Error}");
+                _logger.LogError($"Failed to save workspace state. {saveWorkspaceResult.DiagnosticReport}");
             }
         }
 
@@ -120,28 +120,28 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         if (saveEntitiesResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to save modified entities. {saveEntitiesResult.Error}");
+            _logger.LogError($"Failed to save modified entities. {saveEntitiesResult.DiagnosticReport}");
         }
 
         var saveDocumentsResult = await DocumentsService.SaveModifiedDocuments(deltaTime);
         if (saveDocumentsResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.Error}");
+            _logger.LogError($"Failed to save modified documents. {saveDocumentsResult.DiagnosticReport}");
         }
 
         var activitiesResult = await ActivityService.UpdateAsync();
         if (activitiesResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to update activity service. {activitiesResult.Error}");
+            _logger.LogError($"Failed to update activity service. {activitiesResult.DiagnosticReport}");
         }
 
         var inspectorResult = await InspectorService.UpdateAsync();
         if (inspectorResult.IsFailure)
         {
             failed = true;
-            _logger.LogError($"Failed to update inspector service. {inspectorResult.Error}");
+            _logger.LogError($"Failed to update inspector service. {inspectorResult.DiagnosticReport}");
         }
 
         // Todo: Clear save icon on the status bar if there are no pending saves

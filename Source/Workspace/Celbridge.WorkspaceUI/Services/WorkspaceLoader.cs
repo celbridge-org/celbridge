@@ -194,7 +194,7 @@ public class WorkspaceLoader
             if (initTerminal.IsFailure)
             {
                 // Workspace loading continues even if terminal initialization fails
-                _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.Error);
+                _logger.LogError(initTerminal.FirstException, "Failed to initialize console terminal: {Error}", initTerminal.DiagnosticReport);
             }
 
             // Initialize Python scripting

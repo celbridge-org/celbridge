@@ -48,7 +48,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
         var getResult = resourceRegistry.GetResource(Resource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.Error);
+            return Result.Fail(getResult.DiagnosticReport);
         }
         var resource = getResult.Value;
 

@@ -77,7 +77,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
                 if (deleteResult.IsFailure)
                 {
-                    _logger.LogError($"Failed to delete resource '{resource}': {deleteResult.Error}");
+                    _logger.LogError($"Failed to delete resource '{resource}': {deleteResult.DiagnosticReport}");
                     failedItems.Add(resource.ResourceName);
                 }
             }

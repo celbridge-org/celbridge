@@ -13,7 +13,6 @@ using FileShare = System.IO.FileShare;
 using FileStream = System.IO.FileStream;
 using MemoryStream = System.IO.MemoryStream;
 using Path = System.IO.Path;
-using Result = Celbridge.Core.Result;
 using SearchOption = System.IO.SearchOption;
 
 namespace Celbridge.Tools;
@@ -92,7 +91,7 @@ public partial class PackageTools
         var validateResult = ValidatePackageManifest(manifestPath);
         if (validateResult.IsFailure)
         {
-            return ErrorResult(validateResult.Error);
+            return ErrorResult(validateResult);
         }
 
         if (confirmWithUser)
@@ -150,7 +149,7 @@ public partial class PackageTools
 
         if (uploadResult.IsFailure)
         {
-            return ErrorResult(uploadResult.Error);
+            return ErrorResult(uploadResult);
         }
 
         var result = new PackagePublishResult(packageName, entryCount, zipData.Length);

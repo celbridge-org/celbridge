@@ -29,7 +29,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -44,7 +44,7 @@ public partial class SpreadsheetTools
         var readResult = reader.ReadFormat(workbookPath, sheet, rangeArgument);
         if (readResult.IsFailure)
         {
-            return ErrorResult(readResult.FirstErrorMessage);
+            return ErrorResult(readResult);
         }
 
         return SuccessResult(SerializeJson(readResult.Value));

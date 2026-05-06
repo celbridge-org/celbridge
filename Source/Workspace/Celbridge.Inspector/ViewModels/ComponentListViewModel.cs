@@ -129,7 +129,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(executeResult.Error);
+            _logger.LogError(executeResult.DiagnosticReport);
             return;
         }
     }
@@ -165,7 +165,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(executeResult.Error);
+            _logger.LogError(executeResult.DiagnosticReport);
             return;
         }
 
@@ -216,7 +216,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(executeResult.Error);
+            _logger.LogError(executeResult.DiagnosticReport);
             return;
         }
 
@@ -246,7 +246,7 @@ public partial class ComponentListViewModel : InspectorViewModel
         if (executeResult.IsFailure)
         {
             // Log the error and refresh the list to attempt to recover
-            _logger.LogError(executeResult.Error);
+            _logger.LogError(executeResult.DiagnosticReport);
             return;
         }
 
@@ -370,7 +370,7 @@ public partial class ComponentListViewModel : InspectorViewModel
             var getTypeResult = _entityService.GetComponentType(new ComponentKey(Resource, i));
             if (getTypeResult.IsFailure)
             {
-                _logger.LogError(getTypeResult.Error);
+                _logger.LogError(getTypeResult.DiagnosticReport);
                 return;
             }
             var componentType = getTypeResult.Value;
@@ -437,7 +437,7 @@ public partial class ComponentListViewModel : InspectorViewModel
                             }
                             else
                             {
-                                _logger.LogError($"Failed to create root form for root component. {createResult.Error}");
+                                _logger.LogError($"Failed to create root form for root component. {createResult.DiagnosticReport}");
                             }
                         }
                     }

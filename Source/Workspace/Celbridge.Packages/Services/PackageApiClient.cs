@@ -20,7 +20,7 @@ public class PackageApiClient : IPackageApiClient
         var loginResult = await EnsureLoggedInAsync();
         if (loginResult.IsFailure)
         {
-            return Result<List<PackageApiEntry>>.Fail(loginResult.Error);
+            return Result<List<PackageApiEntry>>.Fail(loginResult.DiagnosticReport);
         }
 
         try
@@ -59,7 +59,7 @@ public class PackageApiClient : IPackageApiClient
         var loginResult = await EnsureLoggedInAsync();
         if (loginResult.IsFailure)
         {
-            return Result<byte[]>.Fail(loginResult.Error);
+            return Result<byte[]>.Fail(loginResult.DiagnosticReport);
         }
 
         try
@@ -85,7 +85,7 @@ public class PackageApiClient : IPackageApiClient
         var loginResult = await EnsureLoggedInAsync();
         if (loginResult.IsFailure)
         {
-            return Result.Fail(loginResult.Error);
+            return Result.Fail(loginResult.DiagnosticReport);
         }
 
         try

@@ -124,7 +124,7 @@ public class FormBuilder
                 var stackPanelResult = StackPanelElement.CreateStackPanel(config, this);
                 if (stackPanelResult.IsFailure)
                 {
-                    _buildErrors.Add(stackPanelResult.Error);
+                    _buildErrors.Add(stackPanelResult.DiagnosticReport);
                 }
                 else
                 {
@@ -136,7 +136,7 @@ public class FormBuilder
                 var textBoxResult = TextBoxElement.CreateTextBox(config, this);
                 if (textBoxResult.IsFailure)
                 {
-                    _buildErrors.Add(textBoxResult.Error);
+                    _buildErrors.Add(textBoxResult.DiagnosticReport);
                 }
                 else
                 {
@@ -148,7 +148,7 @@ public class FormBuilder
                 var textBlockResult = TextBlockElement.CreateTextBlock(config, this);
                 if (textBlockResult.IsFailure)
                 {
-                    _buildErrors.Add(textBlockResult.Error);
+                    _buildErrors.Add(textBlockResult.DiagnosticReport);
                 }
                 else
                 {
@@ -160,7 +160,7 @@ public class FormBuilder
                 var dropDownTextBoxResult = DropDownTextBoxElement.CreateDropDownTextBox(config, this);
                 if (dropDownTextBoxResult.IsFailure)
                 {
-                    _buildErrors.Add(dropDownTextBoxResult.Error);
+                    _buildErrors.Add(dropDownTextBoxResult.DiagnosticReport);
                 }
                 else
                 {
@@ -172,7 +172,7 @@ public class FormBuilder
                 var buttonResult = ButtonElement.CreateButton(config, this);
                 if (buttonResult.IsFailure)
                 {
-                    _buildErrors.Add(buttonResult.Error);
+                    _buildErrors.Add(buttonResult.DiagnosticReport);
                 }
                 else
                 {
@@ -184,7 +184,7 @@ public class FormBuilder
                 var comboBoxResult = ComboBoxElement.CreateComboBox(config, this);
                 if (comboBoxResult.IsFailure)
                 {
-                    _buildErrors.Add(comboBoxResult.Error);
+                    _buildErrors.Add(comboBoxResult.DiagnosticReport);
                 }
                 else
                 {
@@ -196,7 +196,7 @@ public class FormBuilder
                 var checkBoxResult = CheckBoxElement.CreateCheckBox(config, this);
                 if (checkBoxResult.IsFailure)
                 {
-                    _buildErrors.Add(checkBoxResult.Error);
+                    _buildErrors.Add(checkBoxResult.DiagnosticReport);
                 }
                 else
                 {
@@ -208,7 +208,7 @@ public class FormBuilder
                 var infoBarResult = InfoBarElement.CreateInfoBar(config, this);
                 if (infoBarResult.IsFailure)
                 {
-                    _buildErrors.Add(infoBarResult.Error);
+                    _buildErrors.Add(infoBarResult.DiagnosticReport);
                 }
                 else
                 {

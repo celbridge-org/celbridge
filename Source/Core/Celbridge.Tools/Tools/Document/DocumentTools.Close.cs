@@ -53,7 +53,7 @@ public partial class DocumentTools
             }
             else
             {
-                errors.Add($"{resourceKey}: {result.FirstErrorMessage}");
+                errors.Add(result.MessageChain);
             }
         }
 

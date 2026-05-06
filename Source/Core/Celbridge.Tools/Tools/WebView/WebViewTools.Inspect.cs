@@ -49,7 +49,7 @@ public partial class WebViewTools
         var inspectResult = await toolBridge.InspectAsync(resourceKey, options);
         if (inspectResult.IsFailure)
         {
-            return ErrorResult(inspectResult.FirstErrorMessage);
+            return ErrorResult(inspectResult);
         }
 
         return SuccessResult(inspectResult.Value);

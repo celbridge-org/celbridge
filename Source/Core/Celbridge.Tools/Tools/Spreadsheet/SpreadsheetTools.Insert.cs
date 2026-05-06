@@ -38,13 +38,13 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
 
         var parseResult = ParseInsertOperations(operationsJson);
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult.FirstErrorMessage);
+            return ErrorResult(parseResult);
         }
         var operations = parseResult.Value;
 

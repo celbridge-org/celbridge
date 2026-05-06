@@ -49,7 +49,7 @@ public partial class FileTools
 
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult.FirstErrorMessage);
+            return ErrorResult(parseResult);
         }
 
         var textEdits = parseResult.Value;

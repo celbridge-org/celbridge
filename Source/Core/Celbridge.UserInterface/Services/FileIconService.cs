@@ -23,20 +23,20 @@ public class FileIconService : IFileIconService
         var loadResult = LoadDefinitions();
         if (loadResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to load file icon definitions. {loadResult.Error}");
+            throw new InvalidOperationException($"Failed to load file icon definitions. {loadResult.DiagnosticReport}");
         }
 
         var getFileResult = GetFileIcon(DefaultFileIconName);
         if (getFileResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to get default file icon definitions. {getFileResult.Error}");
+            throw new InvalidOperationException($"Failed to get default file icon definitions. {getFileResult.DiagnosticReport}");
         }
         DefaultFileIcon = getFileResult.Value;
 
         var getFolderResult = GetFileIcon(DefaultFolderIconName);
         if (getFolderResult.IsFailure)
         {
-            throw new InvalidOperationException($"Failed to get default folder icon definitions. {getFolderResult.Error}");
+            throw new InvalidOperationException($"Failed to get default folder icon definitions. {getFolderResult.DiagnosticReport}");
         }
         DefaultFolderIcon = getFolderResult.Value;
     }
@@ -46,7 +46,7 @@ public class FileIconService : IFileIconService
         var loadResult = LoadIconData();
         if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to load file icon definition. {loadResult.Error}");
+            return Result.Fail($"Failed to load file icon definition. {loadResult.DiagnosticReport}");
         }
         var iconData = loadResult.Value;
 
@@ -241,7 +241,7 @@ public class FileIconService : IFileIconService
         var loadResult = LoadIconDataResource(FileIconsThemeResource);
         if (loadResult.IsFailure)
         {
-            return Result<JsonObject>.Fail($"Failed to load icon data from resource '{FileIconsThemeResource}'. Error: {loadResult.Error}");
+            return Result<JsonObject>.Fail($"Failed to load icon data from resource '{FileIconsThemeResource}'. Error: {loadResult.DiagnosticReport}");
         }
         var stream = loadResult.Value;
 

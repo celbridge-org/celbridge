@@ -259,7 +259,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         var resolveResult = ResolveResourcePath(href);
         if (resolveResult.IsFailure)
         {
-            return Result<ResourceKey>.Fail(resolveResult.Error);
+            return Result<ResourceKey>.Fail(resolveResult.DiagnosticReport);
         }
 
         return Result<ResourceKey>.Ok(resolveResult.Value);

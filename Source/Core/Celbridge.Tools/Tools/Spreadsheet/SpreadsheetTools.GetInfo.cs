@@ -20,7 +20,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -28,7 +28,7 @@ public partial class SpreadsheetTools
         var infoResult = reader.GetInfo(workbookPath);
         if (infoResult.IsFailure)
         {
-            return ErrorResult(infoResult.FirstErrorMessage);
+            return ErrorResult(infoResult);
         }
 
         var info = infoResult.Value;

@@ -39,7 +39,7 @@ public partial class WebViewTools
         var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache);
         if (reloadResult.IsFailure)
         {
-            return ErrorResult(reloadResult.FirstErrorMessage);
+            return ErrorResult(reloadResult);
         }
 
         return SuccessResult("ok");

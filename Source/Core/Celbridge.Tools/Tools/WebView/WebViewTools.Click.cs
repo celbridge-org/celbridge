@@ -46,7 +46,7 @@ public partial class WebViewTools
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)
         {
-            return ErrorResult(clickResult.FirstErrorMessage);
+            return ErrorResult(clickResult);
         }
 
         return SuccessResult(clickResult.Value);

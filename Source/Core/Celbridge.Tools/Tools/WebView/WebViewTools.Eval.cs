@@ -53,7 +53,7 @@ public partial class WebViewTools
         var evalResult = await toolBridge.EvalAsync(resourceKey, expression);
         if (evalResult.IsFailure)
         {
-            return ErrorResult(evalResult.FirstErrorMessage);
+            return ErrorResult(evalResult);
         }
 
         var value = evalResult.Value;

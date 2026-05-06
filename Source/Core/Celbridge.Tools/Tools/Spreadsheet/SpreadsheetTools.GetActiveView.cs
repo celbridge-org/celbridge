@@ -25,7 +25,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult(resolveResult.FirstErrorMessage);
+            return ErrorResult(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -33,7 +33,7 @@ public partial class SpreadsheetTools
         var viewResult = reader.GetActiveView(workbookPath);
         if (viewResult.IsFailure)
         {
-            return ErrorResult(viewResult.FirstErrorMessage);
+            return ErrorResult(viewResult);
         }
 
         return SuccessResult(SerializeJson(viewResult.Value));

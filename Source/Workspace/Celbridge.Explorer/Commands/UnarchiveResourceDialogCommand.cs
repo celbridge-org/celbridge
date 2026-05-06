@@ -52,7 +52,7 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
         var getResult = resourceRegistry.GetResource(ArchiveResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.Error);
+            return Result.Fail(getResult.DiagnosticReport);
         }
         var resource = getResult.Value;
 
