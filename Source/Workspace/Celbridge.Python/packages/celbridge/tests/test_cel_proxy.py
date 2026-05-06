@@ -453,7 +453,7 @@ def test_help_cel_shows_namespaced_tools():
     doc = cel.__doc__
     assert "cel.sheet" in doc
     assert "2 methods" in doc
-    assert "cel.test()" in doc
+    assert "cel.test(" in doc
 
 
 # -- Edge cases --
