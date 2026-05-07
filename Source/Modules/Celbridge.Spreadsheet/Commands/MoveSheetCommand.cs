@@ -24,7 +24,7 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -60,7 +60,7 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
             if (worksheet.Position != Position)
             {
                 worksheet.Position = Position;
-                SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+                SpreadsheetHelper.RecalculateAndSave(workbook);
             }
 
             ResultValue = new MoveSheetResult(Sheet, Position);

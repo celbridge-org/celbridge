@@ -1,9 +1,9 @@
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Commands;
+namespace Celbridge.Spreadsheet.Helpers;
 
-internal static class SpreadsheetCommandHelpers
+internal static class SpreadsheetHelper
 {
     private const string XlsxExtension = ".xlsx";
 

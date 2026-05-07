@@ -23,7 +23,7 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -74,7 +74,7 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
                 totalCellCount += cellCount;
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new ClearRangesResult(Operations.Count, totalCellCount);
         }
@@ -100,7 +100,7 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
             return Result.Ok();
         }
 
-        if (SpreadsheetCommandHelpers.IsRowRange(range))
+        if (SpreadsheetHelper.IsRowRange(range))
         {
             try
             {
@@ -122,7 +122,7 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
             }
         }
 
-        if (SpreadsheetCommandHelpers.IsColumnRange(range))
+        if (SpreadsheetHelper.IsColumnRange(range))
         {
             try
             {

@@ -26,7 +26,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -81,7 +81,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
                 }
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new FormatRangesResult(Edits.Count, totalPropertiesApplied, anyAutoFitApplied);
         }
@@ -104,17 +104,17 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         autoFitApplied = false;
 
         if (format.MergeRange.HasValue
-            && (SpreadsheetCommandHelpers.IsColumnRange(range) || SpreadsheetCommandHelpers.IsRowRange(range)))
+            && (SpreadsheetHelper.IsColumnRange(range) || SpreadsheetHelper.IsRowRange(range)))
         {
             return Result.Fail("mergeRange cannot be applied to a column or row range; use an A1 cell range like 'A1:C3'.");
         }
 
-        if (SpreadsheetCommandHelpers.IsColumnRange(range))
+        if (SpreadsheetHelper.IsColumnRange(range))
         {
             return ApplyFormatToColumns(worksheet, range, format, out propertiesApplied, out autoFitApplied);
         }
 
-        if (SpreadsheetCommandHelpers.IsRowRange(range))
+        if (SpreadsheetHelper.IsRowRange(range))
         {
             return ApplyFormatToRows(worksheet, range, format, out propertiesApplied, out autoFitApplied);
         }

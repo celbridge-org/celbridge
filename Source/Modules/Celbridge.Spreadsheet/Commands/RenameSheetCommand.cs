@@ -24,7 +24,7 @@ public class RenameSheetCommand : CommandBase, IRenameSheetCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -63,7 +63,7 @@ public class RenameSheetCommand : CommandBase, IRenameSheetCommand
 
             var worksheet = workbook.Worksheet(Sheet);
             worksheet.Name = NewName;
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new RenameSheetResult(Sheet, NewName);
         }

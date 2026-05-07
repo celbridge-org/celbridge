@@ -23,7 +23,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -113,7 +113,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
                 }
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new InsertRangesResult(Operations.Count, totalRowsInserted, totalColumnsInserted);
         }
@@ -129,7 +129,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
 
     private static Result<AxisRange> ResolveAxisRange(string range)
     {
-        if (SpreadsheetCommandHelpers.IsRowRange(range))
+        if (SpreadsheetHelper.IsRowRange(range))
         {
             try
             {
@@ -150,7 +150,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
             }
         }
 
-        if (SpreadsheetCommandHelpers.IsColumnRange(range))
+        if (SpreadsheetHelper.IsColumnRange(range))
         {
             try
             {

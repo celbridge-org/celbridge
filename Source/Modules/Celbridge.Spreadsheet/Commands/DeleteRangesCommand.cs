@@ -23,7 +23,7 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -115,7 +115,7 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
                 }
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new DeleteRangesResult(Operations.Count, totalRowsDeleted, totalColumnsDeleted);
         }
@@ -131,7 +131,7 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
 
     private static Result<AxisIndices> ResolveAxisIndices(IXLWorksheet worksheet, string range)
     {
-        if (SpreadsheetCommandHelpers.IsRowRange(range))
+        if (SpreadsheetHelper.IsRowRange(range))
         {
             try
             {
@@ -151,7 +151,7 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
             }
         }
 
-        if (SpreadsheetCommandHelpers.IsColumnRange(range))
+        if (SpreadsheetHelper.IsColumnRange(range))
         {
             try
             {

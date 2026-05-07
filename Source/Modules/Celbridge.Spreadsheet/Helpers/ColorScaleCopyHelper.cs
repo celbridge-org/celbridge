@@ -1,14 +1,14 @@
 using System.Globalization;
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Commands;
+namespace Celbridge.Spreadsheet.Helpers;
 
 // Workaround for a ClosedXML bug where IXLWorksheet.CopyTo throws a
 // NullReferenceException when the source sheet contains a 2-stop or 3-stop
 // color-scale conditional formatting rule. Snapshot the color-scale rules
 // before CopyTo, strip them from the source, run CopyTo, then replay the
 // snapshots onto both source and duplicate.
-internal static class ColorScaleCopyHelpers
+internal static class ColorScaleCopyHelper
 {
     internal record ColorScaleStopSnapshot(XLCFContentType ContentType, string FormulaValue, XLColor Color);
 

@@ -27,7 +27,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -207,7 +207,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
                 worksheet.SheetView.TopLeftCellAddress = scrollAnchor.Address;
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             return new AppliedViewState(appliedRanges, appliedActiveCell);
         }

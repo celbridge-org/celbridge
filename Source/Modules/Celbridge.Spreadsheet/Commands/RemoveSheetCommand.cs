@@ -23,7 +23,7 @@ public class RemoveSheetCommand : CommandBase, IRemoveSheetCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -50,7 +50,7 @@ public class RemoveSheetCommand : CommandBase, IRemoveSheetCommand
             }
 
             workbook.Worksheets.Delete(Sheet);
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new RemoveSheetResult(Sheet);
         }

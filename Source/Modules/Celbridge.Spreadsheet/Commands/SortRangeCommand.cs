@@ -27,7 +27,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -80,7 +80,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
 
             sortRange.Sort(sortString, XLSortOrder.Ascending, MatchCase, ignoreBlanks: true);
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new SortRangeResult(sortRange.RowCount());
         }

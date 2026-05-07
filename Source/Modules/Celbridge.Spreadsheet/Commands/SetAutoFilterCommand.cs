@@ -25,7 +25,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -39,7 +39,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
 
         if (Enabled
             && !string.IsNullOrEmpty(Range)
-            && (SpreadsheetCommandHelpers.IsColumnRange(Range) || SpreadsheetCommandHelpers.IsRowRange(Range)))
+            && (SpreadsheetHelper.IsColumnRange(Range) || SpreadsheetHelper.IsRowRange(Range)))
         {
             return Result.Fail($"Auto-filter range must be an A1 cell range like 'A1:F100', was '{Range}'.");
         }
@@ -90,7 +90,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
                 ResultValue = new SetAutoFilterResult(true, filterRange.RangeAddress.ToStringRelative());
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
         }
         catch (Exception ex)
         {

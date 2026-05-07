@@ -25,7 +25,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -127,7 +127,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
                 totalRowCount += parsedRows.Count;
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new ImportCsvResult(parsedImports.Count, totalRowCount, sheetsCreated);
         }

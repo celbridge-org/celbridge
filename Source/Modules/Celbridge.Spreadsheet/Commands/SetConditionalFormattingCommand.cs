@@ -28,7 +28,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -45,7 +45,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
             return Result.Fail("Range is required.");
         }
 
-        if (SpreadsheetCommandHelpers.IsColumnRange(Range) || SpreadsheetCommandHelpers.IsRowRange(Range))
+        if (SpreadsheetHelper.IsColumnRange(Range) || SpreadsheetHelper.IsRowRange(Range))
         {
             return Result.Fail($"Conditional formatting range must be an A1 cell range, was '{Range}'.");
         }
@@ -100,7 +100,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
                 }
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new SetConditionalFormattingResult(Rules.Count, rulesRemoved);
         }

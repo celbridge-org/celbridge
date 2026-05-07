@@ -25,7 +25,7 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -76,7 +76,7 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
             worksheet.SheetView.FreezeRows(Rows);
             worksheet.SheetView.FreezeColumns(Columns);
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new FreezePanesResult(Sheet, Rows, Columns);
         }

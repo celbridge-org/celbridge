@@ -23,7 +23,7 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -66,7 +66,7 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
                 workbook.Worksheets.Add(sheetName);
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new AddSheetsResult(Sheets.ToList());
         }

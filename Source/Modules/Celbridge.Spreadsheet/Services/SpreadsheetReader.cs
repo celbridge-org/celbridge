@@ -362,12 +362,12 @@ public class SpreadsheetReader : ISpreadsheetReader
 
         try
         {
-            if (SpreadsheetCommandHelpers.IsRowRange(range))
+            if (SpreadsheetHelper.IsRowRange(range))
             {
                 var rows = worksheet.Rows(range);
                 return Result<IEnumerable<IXLCell>>.Ok(rows.SelectMany(r => r.CellsUsed(XLCellsUsedOptions.Contents)));
             }
-            if (SpreadsheetCommandHelpers.IsColumnRange(range))
+            if (SpreadsheetHelper.IsColumnRange(range))
             {
                 var columns = worksheet.Columns(range);
                 return Result<IEnumerable<IXLCell>>.Ok(columns.SelectMany(c => c.CellsUsed(XLCellsUsedOptions.Contents)));

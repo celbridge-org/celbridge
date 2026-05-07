@@ -25,7 +25,7 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -84,7 +84,7 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                 {
                     if (edit.Value is double doubleValue)
                     {
-                        var validation = SpreadsheetCommandHelpers.ValidateNumericValue(doubleValue);
+                        var validation = SpreadsheetHelper.ValidateNumericValue(doubleValue);
                         if (validation.IsFailure)
                         {
                             return Result.Fail($"Edit {editIndex + 1}: {validation.FirstErrorMessage}");
@@ -94,7 +94,7 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                 }
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new WriteCellsResult(Edits.Count);
         }

@@ -24,7 +24,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -85,7 +85,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
                     var rawValue = rowValues[columnIndex];
                     if (rawValue is double doubleValue)
                     {
-                        var validation = SpreadsheetCommandHelpers.ValidateNumericValue(doubleValue);
+                        var validation = SpreadsheetHelper.ValidateNumericValue(doubleValue);
                         if (validation.IsFailure)
                         {
                             return Result.Fail($"Row {rowOffset + 1}, column {columnIndex + 1}: {validation.FirstErrorMessage}");
@@ -96,7 +96,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
                 }
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             var lastRow = firstRow + Rows.Count - 1;
             ResultValue = new AppendRowsResult(Rows.Count, firstRow, lastRow);

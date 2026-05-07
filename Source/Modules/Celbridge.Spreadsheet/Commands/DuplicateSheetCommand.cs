@@ -25,7 +25,7 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
     {
         await Task.CompletedTask;
 
-        var resolveResult = SpreadsheetCommandHelpers.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
@@ -69,7 +69,7 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
             // when the source has color-scale conditional formatting. Snapshot
             // and strip those rules first, then replay them onto both sheets
             // after the copy succeeds.
-            var colorScaleSnapshots = ColorScaleCopyHelpers.ExtractAndRemove(sourceWorksheet);
+            var colorScaleSnapshots = ColorScaleCopyHelper.ExtractAndRemove(sourceWorksheet);
 
             IXLWorksheet duplicate;
             if (Position == 0)
@@ -83,11 +83,11 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
 
             if (colorScaleSnapshots.Count > 0)
             {
-                ColorScaleCopyHelpers.Reapply(sourceWorksheet, colorScaleSnapshots);
-                ColorScaleCopyHelpers.Reapply(duplicate, colorScaleSnapshots);
+                ColorScaleCopyHelper.Reapply(sourceWorksheet, colorScaleSnapshots);
+                ColorScaleCopyHelper.Reapply(duplicate, colorScaleSnapshots);
             }
 
-            SpreadsheetCommandHelpers.RecalculateAndSave(workbook);
+            SpreadsheetHelper.RecalculateAndSave(workbook);
 
             ResultValue = new DuplicateSheetResult(duplicate.Name, duplicate.Position);
         }
