@@ -128,12 +128,18 @@ class CelbridgeReporter:
 
     @staticmethod
     def _short_nodeid(nodeid):
-        # "test_app.py::TestApp::test_get_status" -> "TestApp.test_get_status".
+        # "test_app.py::TestApp::test_get_status" -> "TestApp.get_status".
+        # The "test_" prefix is required by pytest discovery but redundant
+        # in output, where [N/M] PASS and the TestX class already signal
+        # this is a test result.
         parts = nodeid.split("::")
+        method = parts[-1]
+        if method.startswith("test_"):
+            method = method[len("test_"):]
         if len(parts) >= 3:
-            return f"{parts[-2]}.{parts[-1]}"
+            return f"{parts[-2]}.{method}"
         if len(parts) == 2:
-            return parts[-1]
+            return method
         return nodeid
 
     @staticmethod
