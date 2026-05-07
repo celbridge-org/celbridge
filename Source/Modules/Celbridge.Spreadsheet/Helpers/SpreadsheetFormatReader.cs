@@ -1,6 +1,6 @@
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Services;
+namespace Celbridge.Spreadsheet.Helpers;
 
 internal static class SpreadsheetFormatReader
 {

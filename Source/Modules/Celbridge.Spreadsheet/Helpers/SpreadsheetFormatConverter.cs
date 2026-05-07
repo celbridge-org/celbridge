@@ -1,6 +1,6 @@
 using ClosedXML.Excel;
 
-namespace Celbridge.Spreadsheet.Services;
+namespace Celbridge.Spreadsheet.Helpers;
 
 /// <summary>
 /// Converts FormatSpec values to ClosedXML style types. Unknown
