@@ -1,3 +1,4 @@
+using System.Globalization;
 using Celbridge.Commands;
 using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
@@ -112,7 +113,14 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
                     for (int columnIndex = 0; columnIndex < fields.Count; columnIndex++)
                     {
                         var cell = worksheet.Cell(rowIndex + 1, columnIndex + 1);
-                        cell.Value = fields[columnIndex];
+                        if (import.InferTypes)
+                        {
+                            ApplyInferredValue(cell, fields[columnIndex]);
+                        }
+                        else
+                        {
+                            cell.Value = fields[columnIndex];
+                        }
                     }
                 }
 
@@ -129,5 +137,101 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
         }
 
         return Result.Ok();
+    }
+
+    // Conservative CSV type inference. Empty string becomes a blank cell;
+    // case-insensitive "true"/"false" become booleans; integer-shaped fields
+    // without a leading zero (so zip codes like "01234" stay text) become
+    // integers; decimal-shaped fields (no scientific notation, so product
+    // codes like "1e10" stay text) become doubles. Anything else stays as a
+    // string so the round-trip is lossless for unfamiliar formats.
+    private static void ApplyInferredValue(IXLCell cell, string field)
+    {
+        if (string.IsNullOrEmpty(field))
+        {
+            cell.Value = string.Empty;
+            return;
+        }
+
+        if (string.Equals(field, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            cell.Value = true;
+            return;
+        }
+
+        if (string.Equals(field, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            cell.Value = false;
+            return;
+        }
+
+        if (LooksLikeInteger(field) && long.TryParse(field, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integerValue))
+        {
+            cell.Value = integerValue;
+            return;
+        }
+
+        if (LooksLikeDecimal(field) && double.TryParse(field, NumberStyles.Float, CultureInfo.InvariantCulture, out var decimalValue)
+            && double.IsFinite(decimalValue))
+        {
+            cell.Value = decimalValue;
+            return;
+        }
+
+        cell.Value = field;
+    }
+
+    // Plain integer: optional leading minus, then one or more digits, no
+    // leading zero unless the value is exactly "0" or "-0". Preserves zip
+    // codes, IDs, and similar zero-padded identifiers.
+    private static bool LooksLikeInteger(string field)
+    {
+        var startIndex = field[0] == '-' ? 1 : 0;
+        if (startIndex >= field.Length)
+        {
+            return false;
+        }
+
+        if (field[startIndex] == '0' && field.Length - startIndex > 1)
+        {
+            return false;
+        }
+
+        for (int characterIndex = startIndex; characterIndex < field.Length; characterIndex++)
+        {
+            if (field[characterIndex] < '0' || field[characterIndex] > '9')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Plain decimal: optional leading minus, digits, exactly one '.', more
+    // digits. No exponent character, so "1e10" stays a string.
+    private static bool LooksLikeDecimal(string field)
+    {
+        var startIndex = field[0] == '-' ? 1 : 0;
+        var dotIndex = -1;
+        for (int characterIndex = startIndex; characterIndex < field.Length; characterIndex++)
+        {
+            var character = field[characterIndex];
+            if (character == '.')
+            {
+                if (dotIndex >= 0)
+                {
+                    return false;
+                }
+                dotIndex = characterIndex;
+                continue;
+            }
+            if (character < '0' || character > '9')
+            {
+                return false;
+            }
+        }
+
+        return dotIndex > startIndex && dotIndex < field.Length - 1;
     }
 }

@@ -18,7 +18,8 @@ public partial class SpreadsheetTools
     /// <param name="headers">When true, the first row in the requested range becomes column names and each subsequent row is returned as an object keyed by header. Duplicate names get a numeric suffix. Empty headers become "column_&lt;letter&gt;".</param>
     /// <param name="offset">Number of data rows to skip before returning rows. Use 0 to start at the first data row.</param>
     /// <param name="limit">Maximum number of data rows to return. Use 0 to apply the default page size of 1000 rows.</param>
-    /// <returns>JSON object with: rows (array of row arrays, or row objects when headers is true), totalRowCount (int, the row count in the read range; when headers is false this includes any header row, when headers is true the header row is excluded), headers (array of resolved header names, empty when headers is false).</returns>
+    /// <param name="columnLimit">Maximum number of columns to materialise per row. Use 0 to apply the default cap of 256 columns. The cap protects callers from sheets whose used range has been inflated by a stray write to a far-right column (e.g. XFD1) that would otherwise emit a 16384-column row of nulls. Compare to totalColumnCount in the response to detect inflation.</param>
+    /// <returns>JSON object with: rows (array of row arrays, or row objects when headers is true), totalRowCount (int, the row count in the read range; when headers is false this includes any header row, when headers is true the header row is excluded), totalColumnCount (int, the column span of the requested range before column clamping), headers (array of resolved header names, empty when headers is false).</returns>
     [McpServerTool(Name = "spreadsheet_read_sheet", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_sheet")]
     public partial CallToolResult ReadSheet(
@@ -28,7 +29,8 @@ public partial class SpreadsheetTools
         string mode = "values",
         bool headers = false,
         int offset = 0,
-        int limit = 0)
+        int limit = 0,
+        int columnLimit = 0)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
@@ -54,7 +56,8 @@ public partial class SpreadsheetTools
             Mode: readMode,
             Headers: headers,
             Offset: offset,
-            Limit: limit);
+            Limit: limit,
+            ColumnLimit: columnLimit);
 
         var reader = GetRequiredService<ISpreadsheetReader>();
         var readResult = reader.ReadSheet(workbookPath, sheet, options);

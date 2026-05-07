@@ -13,7 +13,9 @@ public partial class SpreadsheetTools
     /// "isFormula" flag. Strings beginning with '=' are written as text by default. Set isFormula true
     /// to write a formula. Formulas are recalculated as part of the save, so a follow-up
     /// spreadsheet_read_sheet returns fresh computed values. Other cells in the sheet, including
-    /// formatting on cells the edits do not touch, are preserved.
+    /// formatting on cells the edits do not touch, are preserved. Numeric values must be finite and
+    /// must have magnitude at most 1e+300; values outside that range are rejected because the
+    /// underlying serialiser rounds them to a string that overflows on reopen.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
     /// <param name="sheet">Name of the worksheet to write into. The sheet must already exist.</param>

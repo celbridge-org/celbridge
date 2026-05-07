@@ -10,11 +10,19 @@ namespace Celbridge.Spreadsheet.Services;
 internal static class SpreadsheetFormatConverter
 {
     /// <summary>
-    /// Parses a CSS hex color string (#RRGGBB) into an XLColor. Returns
-    /// failure for strings that ClosedXML cannot parse.
+    /// Parses a CSS hex color string (#RRGGBB) into an XLColor. Strictly
+    /// requires the 6-digit form: ClosedXML's XLColor.FromHtml accepts the
+    /// 3-digit shorthand and CSS named colors as well, but the spec for the
+    /// spreadsheet tools is #RRGGBB only and accepting other forms makes the
+    /// contract inconsistent (named colors are rejected, shorthand was not).
     /// </summary>
     public static Result<XLColor> ParseColor(string colorHex)
     {
+        if (!IsSixDigitHex(colorHex))
+        {
+            return Result.Fail($"Invalid color: '{colorHex}'. Use a 6-digit CSS hex string such as '#FF0000'.");
+        }
+
         try
         {
             var color = XLColor.FromHtml(colorHex);
@@ -22,8 +30,35 @@ internal static class SpreadsheetFormatConverter
         }
         catch
         {
-            return Result.Fail($"Invalid color: '{colorHex}'. Use a CSS hex string such as '#FF0000'.");
+            return Result.Fail($"Invalid color: '{colorHex}'. Use a 6-digit CSS hex string such as '#FF0000'.");
         }
+    }
+
+    private static bool IsSixDigitHex(string colorHex)
+    {
+        if (colorHex.Length != 7)
+        {
+            return false;
+        }
+
+        if (colorHex[0] != '#')
+        {
+            return false;
+        }
+
+        for (int characterIndex = 1; characterIndex < 7; characterIndex++)
+        {
+            var character = colorHex[characterIndex];
+            var isHexDigit = (character >= '0' && character <= '9')
+                || (character >= 'a' && character <= 'f')
+                || (character >= 'A' && character <= 'F');
+            if (!isHexDigit)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

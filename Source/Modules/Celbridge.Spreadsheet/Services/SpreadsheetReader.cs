@@ -12,6 +12,7 @@ namespace Celbridge.Spreadsheet.Services;
 public class SpreadsheetReader : ISpreadsheetReader
 {
     private const int DefaultRowLimit = 1000;
+    private const int DefaultColumnLimit = 256;
 
     public Result<WorkbookInfo> GetInfo(string workbookPath)
     {
@@ -99,6 +100,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             {
                 return new ReadResult(
                     Array.Empty<object?>(),
+                    0,
                     0,
                     Array.Empty<string>());
             }
@@ -503,12 +505,14 @@ public class SpreadsheetReader : ISpreadsheetReader
         var limit = ResolveLimit(options.Limit);
         var endRowOffset = Math.Min(dataRowCount, startRowOffset + limit);
 
+        var emittedColumns = Math.Min(totalColumns, ResolveColumnLimit(options.ColumnLimit));
+
         var rows = new List<object?>();
         for (int rowIndex = startRowOffset; rowIndex < endRowOffset; rowIndex++)
         {
             var rangeRow = range.Row(rowIndex + 1);
-            var rowValues = new object?[totalColumns];
-            for (int columnIndex = 0; columnIndex < totalColumns; columnIndex++)
+            var rowValues = new object?[emittedColumns];
+            for (int columnIndex = 0; columnIndex < emittedColumns; columnIndex++)
             {
                 var cell = rangeRow.Cell(columnIndex + 1);
                 rowValues[columnIndex] = ReadCellValue(cell, options.Mode);
@@ -516,7 +520,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             rows.Add(rowValues);
         }
 
-        return new ReadResult(rows, dataRowCount, Array.Empty<string>());
+        return new ReadResult(rows, dataRowCount, totalColumns, Array.Empty<string>());
     }
 
     private static Result<ReadResult> ReadRangeWithHeaders(
@@ -530,11 +534,14 @@ public class SpreadsheetReader : ISpreadsheetReader
             return new ReadResult(
                 Array.Empty<object?>(),
                 0,
+                totalColumns,
                 Array.Empty<string>());
         }
 
+        var emittedColumns = Math.Min(totalColumns, ResolveColumnLimit(options.ColumnLimit));
+
         var headerRow = range.Row(1);
-        var headers = ResolveHeaders(headerRow, totalColumns);
+        var headers = ResolveHeaders(headerRow, emittedColumns);
 
         var dataRowCount = totalRows - 1;
         var startRowOffset = options.Offset > 0 ? options.Offset : 0;
@@ -545,8 +552,8 @@ public class SpreadsheetReader : ISpreadsheetReader
         for (int dataRowIndex = startRowOffset; dataRowIndex < endRowOffset; dataRowIndex++)
         {
             var rangeRow = range.Row(dataRowIndex + 2);
-            var rowDictionary = new Dictionary<string, object?>(totalColumns);
-            for (int columnIndex = 0; columnIndex < totalColumns; columnIndex++)
+            var rowDictionary = new Dictionary<string, object?>(emittedColumns);
+            for (int columnIndex = 0; columnIndex < emittedColumns; columnIndex++)
             {
                 var cell = rangeRow.Cell(columnIndex + 1);
                 var cellValue = ReadCellValue(cell, options.Mode);
@@ -555,7 +562,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             rows.Add(rowDictionary);
         }
 
-        return new ReadResult(rows, dataRowCount, headers);
+        return new ReadResult(rows, dataRowCount, totalColumns, headers);
     }
 
     private static IReadOnlyList<string> ResolveHeaders(IXLRangeRow headerRow, int columnCount)
@@ -615,6 +622,16 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
 
         return DefaultRowLimit;
+    }
+
+    private static int ResolveColumnLimit(int columnLimit)
+    {
+        if (columnLimit > 0)
+        {
+            return columnLimit;
+        }
+
+        return DefaultColumnLimit;
     }
 
     private static string FormatA1Range(IXLRangeAddress rangeAddress)

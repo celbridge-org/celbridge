@@ -20,6 +20,29 @@ internal static class SpreadsheetCommandHelpers
         workbook.Save(saveOptions);
     }
 
+    // ClosedXML serialises doubles with 15-digit precision, which rounds
+    // values within ~8 orders of magnitude of Double.MaxValue up to a string
+    // that overflows to Infinity on reopen, leaving an unrecoverable .xlsx.
+    // Reject literal writes of values in that danger zone (and obviously
+    // non-finite values) with a clear error rather than silently corrupting
+    // the workbook.
+    public const double SafeMagnitudeLimit = 1e+300;
+
+    public static Result ValidateNumericValue(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            return Result.Fail($"Numeric value must be finite, was {value}.");
+        }
+
+        if (Math.Abs(value) > SafeMagnitudeLimit)
+        {
+            return Result.Fail($"Numeric value magnitude {value} exceeds the safe range (±{SafeMagnitudeLimit:G2}). ClosedXML rounds values larger than this to a string that overflows on reopen and corrupts the workbook.");
+        }
+
+        return Result.Ok();
+    }
+
     public static bool IsColumnRange(string range)
     {
         return range.Split(':').All(part => !string.IsNullOrEmpty(part) && part.All(char.IsLetter));

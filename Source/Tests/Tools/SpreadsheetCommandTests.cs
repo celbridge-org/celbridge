@@ -117,6 +117,68 @@ public class SpreadsheetCommandTests
     }
 
     [Test]
+    public async Task WriteCells_LiteralValueExceedsSafeMagnitude_ReturnsFailure()
+    {
+        CreateWorkbook(workbook => workbook.Worksheets.Add("Q1"));
+
+        var command = new WriteCellsCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Edits = new[]
+            {
+                new CellEdit("A1", 1.7976931348623157e308)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("safe range");
+    }
+
+    [Test]
+    public async Task WriteCells_NaNLiteral_ReturnsFailure()
+    {
+        CreateWorkbook(workbook => workbook.Worksheets.Add("Q1"));
+
+        var command = new WriteCellsCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Edits = new[]
+            {
+                new CellEdit("A1", double.NaN)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("finite");
+    }
+
+    [Test]
+    public async Task WriteCells_LiteralWithinSafeRange_Succeeds()
+    {
+        CreateWorkbook(workbook => workbook.Worksheets.Add("Q1"));
+
+        var command = new WriteCellsCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Q1",
+            Edits = new[]
+            {
+                new CellEdit("A1", 1e+200)
+            }
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsSuccess.Should().BeTrue(result.FirstErrorMessage);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        workbook.Worksheet("Q1").Cell("A1").GetDouble().Should().Be(1e+200);
+    }
+
+    [Test]
     public async Task WriteCells_FormulaStringWithoutIsFormula_IsWrittenAsText()
     {
         CreateWorkbook(workbook =>
@@ -290,6 +352,60 @@ public class SpreadsheetCommandTests
         var sheet = workbook.Worksheet("Data");
         sheet.Cell("A1").GetString().Should().Be("month");
         sheet.Cell("A3").GetString().Should().Be("Feb");
+    }
+
+    [Test]
+    public async Task ImportCsv_DefaultInfersIntegerDecimalAndBoolean()
+    {
+        CreateWorkbook(workbook => workbook.Worksheets.Add("Data"));
+
+        var csvText = "label,count,price,active,zip,bigval\r\nfoo,42,3.14,true,01234,1e10\r\n";
+
+        var command = new ImportCsvCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Imports = new[] { new CsvImport("Data", csvText) }
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsSuccess.Should().BeTrue(result.FirstErrorMessage);
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Data");
+        sheet.Cell("A2").Value.IsText.Should().BeTrue();
+        sheet.Cell("A2").GetString().Should().Be("foo");
+        sheet.Cell("B2").Value.IsNumber.Should().BeTrue();
+        sheet.Cell("B2").GetDouble().Should().Be(42);
+        sheet.Cell("C2").Value.IsNumber.Should().BeTrue();
+        sheet.Cell("C2").GetDouble().Should().BeApproximately(3.14, 1e-9);
+        sheet.Cell("D2").Value.IsBoolean.Should().BeTrue();
+        sheet.Cell("D2").GetBoolean().Should().BeTrue();
+        sheet.Cell("E2").Value.IsText.Should().BeTrue();
+        sheet.Cell("E2").GetString().Should().Be("01234");
+        sheet.Cell("F2").Value.IsText.Should().BeTrue();
+        sheet.Cell("F2").GetString().Should().Be("1e10");
+    }
+
+    [Test]
+    public async Task ImportCsv_InferTypesFalse_KeepsStringValues()
+    {
+        CreateWorkbook(workbook => workbook.Worksheets.Add("Data"));
+
+        var csvText = "label,count\r\nfoo,42\r\n";
+
+        var command = new ImportCsvCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Imports = new[] { new CsvImport("Data", csvText, InferTypes: false) }
+        };
+
+        var result = await command.ExecuteAsync();
+        result.IsSuccess.Should().BeTrue();
+
+        using var workbook = new XLWorkbook(_workbookPath);
+        var sheet = workbook.Worksheet("Data");
+        sheet.Cell("B2").Value.IsText.Should().BeTrue();
+        sheet.Cell("B2").GetString().Should().Be("42");
     }
 
     [Test]
@@ -1431,6 +1547,47 @@ public class SpreadsheetCommandTests
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("non-negative");
+    }
+
+    [Test]
+    public async Task FreezePanes_RowsBeyondUsedRangeAndFloor_ReturnFailure()
+    {
+        CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.Worksheets.Add("Data");
+            sheet.Cell("A1").Value = "h";
+            sheet.Cell("A2").Value = "v";
+        });
+
+        var command = new FreezePanesCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Data",
+            Rows = 99999
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("99999");
+    }
+
+    [Test]
+    public async Task FreezePanes_EmptySheet_AllowsFreezeUpToFloor()
+    {
+        CreateWorkbook(workbook => workbook.Worksheets.Add("Empty"));
+
+        var command = new FreezePanesCommand(_workspaceWrapper)
+        {
+            FileResource = _workbookResource,
+            Sheet = "Empty",
+            Rows = 1,
+            Columns = 1
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue(result.FirstErrorMessage);
     }
 
     [Test]

@@ -82,6 +82,14 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                 }
                 else
                 {
+                    if (edit.Value is double doubleValue)
+                    {
+                        var validation = SpreadsheetCommandHelpers.ValidateNumericValue(doubleValue);
+                        if (validation.IsFailure)
+                        {
+                            return Result.Fail($"Edit {editIndex + 1}: {validation.FirstErrorMessage}");
+                        }
+                    }
                     SpreadsheetValueConverter.SetCellValue(cell, edit.Value);
                 }
             }

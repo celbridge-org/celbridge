@@ -120,6 +120,7 @@ public class SpreadsheetToolTests
                 new ReadResult(
                     new object?[] { new object?[] { "Jan", 100.0 } },
                     1,
+                    2,
                     Array.Empty<string>())));
 
         var tools = new SpreadsheetTools(_services);
@@ -140,7 +141,7 @@ public class SpreadsheetToolTests
         ReadOptions? capturedOptions = null;
         _reader.ReadSheet(workbookPath, "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
             .Returns(Result<ReadResult>.Ok(
-                new ReadResult(Array.Empty<object?>(), 0, Array.Empty<string>())));
+                new ReadResult(Array.Empty<object?>(), 0, 0, Array.Empty<string>())));
 
         var tools = new SpreadsheetTools(_services);
         tools.ReadSheet("data/sales.xlsx", "Q1", "", "formulas");
@@ -185,6 +186,20 @@ public class SpreadsheetToolTests
 
         result.IsError.Should().NotBe(true);
         GetResultText(result).Should().Be(csv);
+    }
+
+    [Test]
+    public async Task ExportCsv_EmptySheet_ReturnsEmptyBody()
+    {
+        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        _reader.ExportCsv(workbookPath, "Empty", null).Returns(
+            Result<ExportCsvResult>.Ok(new ExportCsvResult(string.Empty, 0, 0)));
+
+        var tools = new SpreadsheetTools(_services);
+        var result = await tools.ExportCsv("data/sales.xlsx", "Empty");
+
+        result.IsError.Should().NotBe(true);
+        GetResultText(result).Should().Be(string.Empty);
     }
 
     [Test]

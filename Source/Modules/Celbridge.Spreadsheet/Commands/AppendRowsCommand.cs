@@ -41,6 +41,20 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
             return Result.Fail("At least one row is required.");
         }
 
+        // Reject ragged rows so append_rows matches import_csv's contract.
+        // Pad-with-null behaviour is hostile to round-tripping: a column
+        // ends up with mixed string/null cells whenever the writer omitted
+        // a trailing field.
+        var firstRowFieldCount = Rows[0].Count;
+        for (int rowIndex = 1; rowIndex < Rows.Count; rowIndex++)
+        {
+            var rowFieldCount = Rows[rowIndex].Count;
+            if (rowFieldCount != firstRowFieldCount)
+            {
+                return Result.Fail($"Row {rowIndex + 1} has {rowFieldCount} fields, expected {firstRowFieldCount}.");
+            }
+        }
+
         try
         {
             using var workbook = new XLWorkbook(workbookPath);
@@ -68,8 +82,17 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
                 var rowNumber = firstRow + rowOffset;
                 for (int columnIndex = 0; columnIndex < rowValues.Count; columnIndex++)
                 {
+                    var rawValue = rowValues[columnIndex];
+                    if (rawValue is double doubleValue)
+                    {
+                        var validation = SpreadsheetCommandHelpers.ValidateNumericValue(doubleValue);
+                        if (validation.IsFailure)
+                        {
+                            return Result.Fail($"Row {rowOffset + 1}, column {columnIndex + 1}: {validation.FirstErrorMessage}");
+                        }
+                    }
                     var cell = worksheet.Cell(rowNumber, columnIndex + 1);
-                    SpreadsheetValueConverter.SetCellValue(cell, rowValues[columnIndex]);
+                    SpreadsheetValueConverter.SetCellValue(cell, rawValue);
                 }
             }
 

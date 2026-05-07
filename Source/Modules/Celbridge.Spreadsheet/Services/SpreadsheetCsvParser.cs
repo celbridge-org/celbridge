@@ -17,6 +17,18 @@ internal static class SpreadsheetCsvParser
             return rows;
         }
 
+        // Strip a leading UTF-8 BOM (U+FEFF). Excel writes CSV files with a
+        // BOM and consumes them transparently; without this strip, the BOM
+        // ends up as part of the first cell's value.
+        if (csvText[0] == '﻿')
+        {
+            csvText = csvText.Substring(1);
+            if (csvText.Length == 0)
+            {
+                return rows;
+            }
+        }
+
         var currentRow = new List<string>();
         var fieldBuilder = new System.Text.StringBuilder();
         var inQuotes = false;

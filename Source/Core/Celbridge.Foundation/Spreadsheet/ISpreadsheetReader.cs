@@ -23,15 +23,17 @@ public enum SpreadsheetReadMode
 /// Optional parameters for ISpreadsheetReader.ReadSheet. Range is A1 notation
 /// without a sheet qualifier (e.g. "B2:D10"). Null reads the sheet's used range.
 /// Headers true treats the first row in the range as column names and emits
-/// row objects keyed by header. Offset and Limit page large sheets. Limit zero
-/// applies the reader's default page size.
+/// row objects keyed by header. Offset and Limit page large sheets vertically;
+/// ColumnLimit caps the number of columns materialised in each row. Zero on
+/// any of Limit or ColumnLimit applies the reader's default cap.
 /// </summary>
 public record ReadOptions(
     string? Range = null,
     SpreadsheetReadMode Mode = SpreadsheetReadMode.Values,
     bool Headers = false,
     int Offset = 0,
-    int Limit = 0);
+    int Limit = 0,
+    int ColumnLimit = 0);
 
 /// <summary>
 /// Result of ISpreadsheetReader.ReadSheet. Rows is either a list of row arrays
@@ -39,12 +41,15 @@ public record ReadOptions(
 /// (when Headers was true). Both shapes are JSON-serialised via object?.
 /// TotalRowCount is the total number of data rows the requested range would
 /// produce ignoring offset and limit, so the caller can decide whether to page.
-/// Headers carries the resolved header names when Headers was requested,
-/// otherwise it is empty.
+/// TotalColumnCount is the column span of the requested range before column
+/// clamping, so callers can detect a sheet whose used range has been inflated
+/// by a stray write to a far-right cell. Headers carries the resolved header
+/// names when Headers was requested, otherwise it is empty.
 /// </summary>
 public record ReadResult(
     IReadOnlyList<object?> Rows,
     int TotalRowCount,
+    int TotalColumnCount,
     IReadOnlyList<string> Headers);
 
 /// <summary>

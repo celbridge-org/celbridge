@@ -1601,7 +1601,7 @@ class TestSpreadsheet(unittest.TestCase):
         self.assertEqual(result["totalRowCount"], 2)
         first_row = result["rows"][0]
         self.assertEqual(first_row["month"], "Jan")
-        self.assertEqual(first_row["sales"], "100")
+        self.assertEqual(first_row["sales"], 100)
 
     # -- spreadsheet_export_csv --
 
@@ -1884,13 +1884,14 @@ class TestSpreadsheet(unittest.TestCase):
         )
         self.assertEqual(result["cellCount"], 2)
 
-        # import_csv stores fields as text, so the round-tripped values are strings.
+        # import_csv infers numeric fields by default, so plain integers
+        # round-trip as ints.
         rows = spreadsheet.read_sheet(self._WORKBOOK, "Sheet1")["rows"]
         self.assertEqual(rows[0], ["a", "b", "c"])
-        self.assertEqual(rows[1][0], "1")
+        self.assertEqual(rows[1][0], 1)
         self.assertIsNone(rows[1][1])
         self.assertIsNone(rows[1][2])
-        self.assertEqual(rows[2], ["4", "5", "6"])
+        self.assertEqual(rows[2], [4, 5, 6])
 
     def test_clear_empty_range_clears_entire_sheet(self):
         spreadsheet.import_csv(

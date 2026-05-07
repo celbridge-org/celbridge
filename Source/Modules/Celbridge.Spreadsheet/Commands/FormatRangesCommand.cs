@@ -292,6 +292,10 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
 
         if (format.MergeRange == true)
         {
+            if (xlRange.RangeAddress.RowSpan == 1 && xlRange.RangeAddress.ColumnSpan == 1)
+            {
+                return Result.Fail($"mergeRange:true requires a multi-cell range, was the single cell '{range}'.");
+            }
             xlRange.Merge();
             propertiesApplied++;
         }

@@ -5,12 +5,16 @@ namespace Celbridge.Spreadsheet;
 /// <summary>
 /// One CSV import in an IImportCsvCommand batch. Each entry
 /// targets one sheet; CreateIfMissing is per-import so some entries can
-/// require an existing sheet while others create new ones.
+/// require an existing sheet while others create new ones. InferTypes
+/// turns plain integer / decimal / boolean fields into typed cell values
+/// so downstream SUM, sorting and conditional formatting work; when false
+/// every field is written as a string.
 /// </summary>
 public record CsvImport(
     string Sheet,
     string CsvText,
-    bool CreateIfMissing = false);
+    bool CreateIfMissing = false,
+    bool InferTypes = true);
 
 /// <summary>
 /// Result populated by IImportCsvCommand on success. ImportsApplied
