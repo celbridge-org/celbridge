@@ -19,13 +19,19 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{fileResource}'");
+            return ToolError($"Invalid resource key: '{fileResource}'");
         }
 
-        return await ExecuteCommandAsync<IWriteBinaryFileCommand>(command =>
+        var writeResult = await ExecuteCommandAsync<IWriteBinaryFileCommand>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Base64Content = base64Content;
         });
+        if (writeResult.IsFailure)
+        {
+            return ToolError(writeResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

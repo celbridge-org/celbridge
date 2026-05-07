@@ -27,4 +27,8 @@
     <ProjectReference Include="..\..\Workspace\Celbridge.Entities\Celbridge.Entities.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" />
+  </ItemGroup>
+
 </Project>

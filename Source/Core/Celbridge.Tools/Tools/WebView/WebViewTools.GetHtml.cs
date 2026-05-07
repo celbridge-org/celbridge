@@ -27,12 +27,12 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ErrorResult($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         // Clamp maxDepth so a callsite passing int.MaxValue cannot trigger an
@@ -49,9 +49,9 @@ public partial class WebViewTools
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);
         if (htmlResult.IsFailure)
         {
-            return ErrorResult(htmlResult.FirstErrorMessage);
+            return ToolError(htmlResult);
         }
 
-        return SuccessResult(htmlResult.Value);
+        return ToolSuccess(htmlResult.Value);
     }
 }

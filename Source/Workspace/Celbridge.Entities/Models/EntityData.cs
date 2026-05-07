@@ -216,7 +216,7 @@ public class EntityData
             var parseResult = EntityUtils.ParseComponentTypeAndVersion(typeAndVersion);
             if (parseResult.IsFailure)
             {
-                throw new InvalidOperationException($"Failed to parse component type and version: {typeAndVersion}. {parseResult.Error}");
+                throw new InvalidOperationException($"Failed to parse component type and version: {typeAndVersion}. {parseResult.DiagnosticReport}");
             }
             var (componentType, _) = parseResult.Value;
 

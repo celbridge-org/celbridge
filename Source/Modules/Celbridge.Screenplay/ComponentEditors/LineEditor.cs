@@ -523,7 +523,7 @@ public class LineEditor : ComponentEditorBase
         if (getLineIdResult.IsFailure)
         {
             // Todo: Show an alert if generating line id fails
-            _logger.LogError($"Failed to get a unique line id. {getLineIdResult.Error}");
+            _logger.LogError($"Failed to get a unique line id. {getLineIdResult.DiagnosticReport}");
             return;
         }
         var lineId = getLineIdResult.Value;

@@ -171,7 +171,7 @@ public partial class App : Application
             // Log the error and attempt to continue
             var failure = Result.Fail("Failed to initialize modules")
                 .WithErrors(initializeResult);
-            logger.LogError(failure.Error);
+            logger.LogError(failure.DiagnosticReport);
         }
 
         // Do not repeat app initialization when the Window already has content,
@@ -256,7 +256,7 @@ public partial class App : Application
                 var initResult = userInterfaceService.Initialize(MainWindow, xamlRoot);
                 if (initResult.IsFailure)
                 {
-                    logger.LogError(initResult.Error);
+                    logger.LogError(initResult.DiagnosticReport);
                     // Do not start command execution if UI initialization fails
                     // Todo: Alert the user that the application could not start and to check the logs.
                     return;

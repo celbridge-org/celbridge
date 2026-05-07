@@ -56,7 +56,7 @@ public partial class FileTools
             }
             catch (ArgumentException ex)
             {
-                return ErrorResult($"Invalid regular expression: {ex.Message}");
+                return ToolError($"Invalid regular expression: {ex.Message}");
             }
         }
 
@@ -160,7 +160,7 @@ public partial class FileTools
         }
 
         var grepResult = new GrepResult(results.TotalMatches, results.TotalFiles, truncated, fileResults);
-        return SuccessResult(SerializeJson(grepResult));
+        return ToolSuccess(SerializeJson(grepResult));
     }
 
     private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, IResourceRegistry resourceRegistry)
@@ -172,12 +172,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ErrorResult($"Invalid JSON array for files: {ex.Message}");
+            return ToolError($"Invalid JSON array for files: {ex.Message}");
         }
 
         if (fileKeyStrings is null || fileKeyStrings.Count == 0)
         {
-            return ErrorResult("No resource keys provided in files parameter.");
+            return ToolError("No resource keys provided in files parameter.");
         }
 
         var searchPattern = useRegex ? searchTerm : Regex.Escape(searchTerm);
@@ -285,6 +285,6 @@ public partial class FileTools
         }
 
         var grepResult = new GrepResult(totalMatches, fileResults.Count, truncated, fileResults);
-        return SuccessResult(SerializeJson(grepResult));
+        return ToolSuccess(SerializeJson(grepResult));
     }
 }

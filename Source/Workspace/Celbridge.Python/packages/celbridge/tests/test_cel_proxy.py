@@ -82,7 +82,7 @@ def test_build_signature_optional_param():
     assert build_signature(tool) == "(file_resource: str, force_reload: bool = False)"
 
 
-def testbuild_docstring():
+def test_build_docstring():
     """Test building a docstring from a tool descriptor."""
     tool = {
         "name": "app/log",
@@ -453,7 +453,7 @@ def test_help_cel_shows_namespaced_tools():
     doc = cel.__doc__
     assert "cel.sheet" in doc
     assert "2 methods" in doc
-    assert "cel.test()" in doc
+    assert "cel.test(" in doc
 
 
 # -- Edge cases --

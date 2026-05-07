@@ -35,15 +35,19 @@ public abstract class Result
     private readonly List<ErrorInfo> _errors = new();
 
     /// <summary>
-    /// Gets a concatenated string of all error messages, including file names and line numbers.
+    /// Verbose multi-line diagnostic for logging: every error message in
+    /// outer-first order, each annotated with file name and line number,
+    /// followed by the full exception ToString (including stack trace) when
+    /// one is attached. Use this when feeding into a logger; for
+    /// agent- or user-facing strings prefer MessageChain.
     /// </summary>
-    public string Error
+    public string DiagnosticReport
     {
         get
         {
             var errorMessages = new List<string>();
 
-            for (int i = _errors.Count - 1; i >= 0; i--)
+            for (int i = 0; i < _errors.Count; i++)
             {
                 var error = _errors[i];
 
@@ -58,6 +62,34 @@ public abstract class Result
             }
 
             return string.Join(Environment.NewLine, errorMessages);
+        }
+    }
+
+    /// <summary>
+    /// Concise multi-line summary of every error message in outer-first order,
+    /// joined by newlines, with no file/line decoration and no exception stack
+    /// trace. Suitable for surfacing through a UI dialog or to an MCP tool
+    /// caller. Use DiagnosticReport instead when writing to a developer log.
+    /// </summary>
+    public string MessageChain
+    {
+        get
+        {
+            if (_errors.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var messages = new List<string>(_errors.Count);
+            foreach (var error in _errors)
+            {
+                if (!string.IsNullOrEmpty(error.Message))
+                {
+                    messages.Add(error.Message);
+                }
+            }
+
+            return string.Join(Environment.NewLine, messages);
         }
     }
 
@@ -313,7 +345,8 @@ public class Result<T> : Result where T : notnull
 
     /// <summary>
     /// Implicitly convert a concrete FailureResult into a generic Result<T>, copying all errors.
-    /// This allows you to 
+    /// Lets call sites write `return Result.Fail("...")` from a method whose declared
+    /// return type is Result<T>, without restating the generic argument.
     /// </summary>
     public static implicit operator Result<T>(FailureResult failure)
     {

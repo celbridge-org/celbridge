@@ -63,7 +63,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.Error);
+            return Result.Fail(getResult.DiagnosticReport);
         }
 
         var parentFolder = getResult.Value as IFolderResource;
@@ -121,7 +121,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         var getResult = resourceRegistry.GetResource(DestFolderResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.Error);
+            return Result.Fail(getResult.DiagnosticReport);
         }
 
         var parentFolder = getResult.Value as IFolderResource;

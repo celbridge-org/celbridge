@@ -29,19 +29,20 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         // Route through the command queue so the snapshot observes state after all
         // previously enqueued commands have run. The command reads directly from the
         // resource registry on the command thread, which is the synchronization point
         // for registry mutations (folder adds, renames, etc).
-        var (callResult, snapshot) = await ExecuteCommandAsync<IListFolderContentsCommand, FolderContentsSnapshot>(
+        var listContentsResult = await ExecuteCommandAsync<IListFolderContentsCommand, FolderContentsSnapshot>(
             command => command.Resource = resourceKey);
-        if (callResult.IsError == true || snapshot is null)
+        if (listContentsResult.IsFailure)
         {
-            return callResult;
+            return ToolError(listContentsResult);
         }
+        var snapshot = listContentsResult.Value;
 
         Regex? globRegex = null;
         if (!string.IsNullOrEmpty(glob))
@@ -75,6 +76,6 @@ public partial class FileTools
             }
         }
 
-        return SuccessResult(SerializeJson(items));
+        return ToolSuccess(SerializeJson(items));
     }
 }

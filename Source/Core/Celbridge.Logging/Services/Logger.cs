@@ -123,7 +123,7 @@ public class Logger<T> : ILogger<T>
             {
                 output += Environment.NewLine;
             }
-            output += result.Error;
+            output += result.DiagnosticReport;
         }
 
         return output;

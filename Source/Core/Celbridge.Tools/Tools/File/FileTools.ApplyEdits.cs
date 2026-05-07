@@ -34,7 +34,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{fileResource}'");
+            return ToolError($"Invalid resource key: '{fileResource}'");
         }
 
         Result<List<TextEdit>> parseResult;
@@ -44,31 +44,33 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ErrorResult($"Invalid edits JSON: {ex.Message}");
+            return ToolError($"Invalid edits JSON: {ex.Message}");
         }
 
         if (parseResult.IsFailure)
         {
-            return ErrorResult(parseResult.FirstErrorMessage);
+            return ToolError(parseResult);
         }
 
         var textEdits = parseResult.Value;
         if (textEdits.Count == 0)
         {
-            return SuccessResult("ok");
+            return ToolSuccess("ok");
         }
 
         var fileEdit = new FileEdit(fileResourceKey, textEdits);
 
-        var (callResult, appliedEdits) = await ExecuteCommandAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(command =>
+        var applyEditsResult = await ExecuteCommandAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(command =>
         {
             command.Edits = new List<FileEdit> { fileEdit };
         });
 
-        if (callResult.IsError == true)
+        if (applyEditsResult.IsFailure)
         {
-            return callResult;
+            return ToolError(applyEditsResult);
         }
+
+        var appliedEdits = applyEditsResult.Value;
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -86,7 +88,7 @@ public partial class FileTools
             // one line before through one line after the post-edit range, so
             // multi-line insertions show all of the new content plus surrounding
             // context.
-            var orderedRanges = (appliedEdits ?? Array.Empty<AppliedEdit>())
+            var orderedRanges = appliedEdits
                 .OrderBy(r => r.FromLine)
                 .ToList();
 
@@ -101,7 +103,7 @@ public partial class FileTools
                 affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine, contextLines));
             }
         }
-        else if (appliedEdits is not null)
+        else
         {
             foreach (var range in appliedEdits.OrderBy(r => r.FromLine))
             {
@@ -111,6 +113,6 @@ public partial class FileTools
 
         var result = new ApplyEditsResult(affectedLines, totalLineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

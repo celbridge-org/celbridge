@@ -49,6 +49,10 @@ async function deserializeExcelData(base64Data, viewState = null) {
 
         await new Promise((resolve, reject) => {
             spread.import(file, () => {
+                // spread.import() rebuilds worksheets, dropping any sheet-scoped
+                // event bindings. Re-bind before the user can interact again.
+                bindSheetEvents();
+
                 if (viewState) {
                     requestAnimationFrame(() => {
                         restoreViewState(viewState);
@@ -128,27 +132,38 @@ function captureViewState() {
     }
 }
 
+function selectionsMatch(a, b) {
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i].row !== b[i].row
+            || a[i].col !== b[i].col
+            || a[i].rowCount !== b[i].rowCount
+            || a[i].colCount !== b[i].colCount) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function restoreViewState(state) {
+    // Active sheet and selection are auto-saved to disk on every change via the
+    // ActiveSheetChanged and SelectionChanged hooks in listenForChanges, so the
+    // freshly-imported workbook already reflects the user's pre-reload sheet and
+    // selection (or the new ones written by an MCP set_active_view, if that's
+    // what triggered the reload). Scroll position is the one piece of view state
+    // we deliberately do not auto-save, so we restore it from the in-memory
+    // snapshot here, but only when disk's active sheet and selection still match
+    // the snapshot. If either differs, the reload was driven by a deliberate
+    // view-state change and disk should win for scroll too.
     if (!state || !designer) return;
     try {
         const spread = designer.getWorkbook();
-
-        // Restore active sheet - fall back to current sheet if the name no longer exists.
-        const sheetIndex = spread.getSheetIndex(state.sheetName);
-        if (sheetIndex >= 0) {
-            spread.setActiveSheetIndex(sheetIndex);
-        }
-
         const activeSheet = spread.getActiveSheet();
+        if (!activeSheet) return;
 
-        if (state.selections && state.selections.length > 0) {
-            const first = state.selections[0];
-            activeSheet.setSelection(first.row, first.col, first.rowCount, first.colCount);
-            for (let i = 1; i < state.selections.length; i++) {
-                const sel = state.selections[i];
-                activeSheet.addSelection(sel.row, sel.col, sel.rowCount, sel.colCount);
-            }
-        }
+        if (activeSheet.name() !== state.sheetName) return;
+        if (!selectionsMatch(activeSheet.getSelections(), state.selections)) return;
 
         activeSheet.showRow(state.scrollRow, GC.Spread.Sheets.VerticalPosition.top);
         activeSheet.showColumn(state.scrollColumn, GC.Spread.Sheets.HorizontalPosition.left);
@@ -164,9 +179,38 @@ function listenForChanges() {
     // SpreadJS doesn't have a unified way to detect when the spreadsheet is modified,
     // but as all modifications are performed via the command system we can just
     // listen for any executing commands and assume that the data has changed.
+    // Note that mouse-driven selection changes do not flow through commandManager,
+    // so the SelectionChanged hook in bindSheetEvents covers that gap.
     commandManager.addListener('appListener', (args) => {
         client.document.notifyChanged();
     });
+
+    // ActiveSheetChanged is workbook-scoped and survives spread.import().
+    // SelectionChanged is sheet-scoped and is dropped when import rebuilds
+    // worksheets, so it's re-bound from bindSheetEvents after every import.
+    workbook.bind(GC.Spread.Sheets.Events.ActiveSheetChanged, () => {
+        client.document.notifyChanged();
+        bindSheetEvents();
+    });
+
+    bindSheetEvents();
+}
+
+function bindSheetEvents() {
+    if (!designer) return;
+    try {
+        const workbook = designer.getWorkbook();
+        const sheetCount = workbook.getSheetCount();
+        for (let i = 0; i < sheetCount; i++) {
+            const sheet = workbook.getSheet(i);
+            sheet.unbind(GC.Spread.Sheets.Events.SelectionChanged);
+            sheet.bind(GC.Spread.Sheets.Events.SelectionChanged, () => {
+                client.document.notifyChanged();
+            });
+        }
+    } catch (error) {
+        console.warn('[Spreadsheet] Failed to bind sheet selection events:', error);
+    }
 }
 
 function initializeSpreadsheet() {

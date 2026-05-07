@@ -27,7 +27,7 @@ public partial class PackageTools
     {
         if (!IsValidPackageName(packageName))
         {
-            return ErrorResult(
+            return ToolError(
                 $"Invalid package name: '{packageName}'. " +
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
@@ -39,13 +39,15 @@ public partial class PackageTools
         var resolveResult = resourceRegistry.ResolveResourcePath(packageResource);
         if (resolveResult.IsFailure)
         {
-            return ErrorResult($"Failed to resolve path for package: {resolveResult.Error}");
+            var failure = Result.Fail("Failed to resolve path for package")
+                .WithErrors(resolveResult);
+            return ToolError(failure);
         }
         var packageFolderPath = resolveResult.Value;
 
         if (Directory.Exists(packageFolderPath))
         {
-            return ErrorResult($"Package already exists: 'packages/{packageName}'");
+            return ToolError($"Package already exists: 'packages/{packageName}'");
         }
 
         try
@@ -65,7 +67,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ErrorResult($"Failed to create package: {exception.Message}");
+            return ToolError($"Failed to create package: {exception.Message}");
         }
 
         var result = new PackageCreateResult(
@@ -74,6 +76,6 @@ public partial class PackageTools
             $"packages/{packageName}/{ManifestFileName}");
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

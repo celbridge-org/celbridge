@@ -40,7 +40,7 @@ public class ProjectMigrationServiceTests
         // Assert
         result.Status.Should().Be(MigrationStatus.Failed);
         result.OperationResult.IsFailure.Should().BeTrue();
-        result.OperationResult.Error.Should().Contain("does not exist");
+        result.OperationResult.DiagnosticReport.Should().Contain("does not exist");
     }
 
     [Test]
@@ -150,7 +150,7 @@ public class ProjectMigrationServiceTests
             // Assert
             result.Status.Should().Be(MigrationStatus.IncompatibleVersion);
             result.OperationResult.IsFailure.Should().BeTrue();
-            result.OperationResult.Error.Should().Contain("newer version");
+            result.OperationResult.DiagnosticReport.Should().Contain("newer version");
         }
         finally
         {

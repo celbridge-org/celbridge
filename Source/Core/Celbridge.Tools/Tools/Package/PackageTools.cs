@@ -24,17 +24,18 @@ public partial class PackageTools : AgentToolBase
 
     private async Task<bool> ConfirmActionAsync(string title, string message)
     {
-        var (callToolResult, confirmResult) = await ExecuteCommandAsync<IConfirmActionCommand, ConfirmActionResult>(command =>
+        var confirmResultWrapper = await ExecuteCommandAsync<IConfirmActionCommand, ConfirmActionResult>(command =>
         {
             command.Title = title;
             command.Message = message;
         });
 
-        if (callToolResult.IsError == true || confirmResult is null)
+        if (confirmResultWrapper.IsFailure)
         {
             return false;
         }
 
+        var confirmResult = confirmResultWrapper.Value;
         return confirmResult.Confirmed;
     }
 }

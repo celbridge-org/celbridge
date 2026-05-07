@@ -102,13 +102,19 @@ class CelProxy:
         )
         object.__setattr__(self, "agent", agent_namespace)
 
-        def run_test():
+        def run_test(class_filter=None):
             """Run the Celbridge MCP integration test suite.
 
-            Tests all tool namespaces: app, query, explorer, document, file, package.
+            Tests all tool namespaces: app, query, explorer, document, file, package, spreadsheet, webview.
+
+            Args:
+                class_filter: Optional. Restrict the run to a single test class
+                    (e.g. "TestSpreadsheet") or a substring match against the
+                    class names (e.g. "Spreadsheet"). When omitted, every
+                    test class runs.
             """
             from celbridge.test_suite import main as run_integration_test
-            run_integration_test()
+            run_integration_test(class_filter)
 
         object.__setattr__(self, "test", run_test)
 
@@ -119,6 +125,7 @@ class CelProxy:
         "file": "Read files, search, and query project structure",
         "package": "Archive, publish, and install packages",
         "query": "Agent context and Python API reference",
+        "spreadsheet": "Read, modify, and format .xlsx workbooks",
     }
 
     def _build_help_doc(self) -> str:
@@ -141,7 +148,7 @@ class CelProxy:
         lines.append("Built-in commands:")
         lines.append("")
         lines.append("  cel.agent.claude()  Launch restricted Claude Code CLI")
-        lines.append("  cel.test()          Run the MCP integration test suite")
+        lines.append("  cel.test([cls])     Run the MCP integration test suite (optional class filter)")
         lines.append("  cel.tools()         Print raw tool descriptors as JSON")
 
         return "\n".join(lines)

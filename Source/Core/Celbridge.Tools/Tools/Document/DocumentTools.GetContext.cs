@@ -33,11 +33,12 @@ public partial class DocumentTools
         // Route through the command queue so the snapshot observes state after all
         // previously enqueued commands have run. The underlying read is served from
         // a cache on DocumentsService, so this never touches WinUI collections.
-        var (callResult, snapshot) = await ExecuteCommandAsync<IGetDocumentContextCommand, DocumentContextSnapshot>();
-        if (callResult.IsError == true || snapshot is null)
+        var getContextResult = await ExecuteCommandAsync<IGetDocumentContextCommand, DocumentContextSnapshot>();
+        if (getContextResult.IsFailure)
         {
-            return callResult;
+            return ToolError(getContextResult);
         }
+        var snapshot = getContextResult.Value;
 
         var activeDocument = snapshot.ActiveDocument;
 
@@ -58,6 +59,6 @@ public partial class DocumentTools
             documents);
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

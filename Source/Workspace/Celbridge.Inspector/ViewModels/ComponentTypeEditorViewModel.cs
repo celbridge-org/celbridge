@@ -42,7 +42,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var getTypeResult = _entityService.GetComponentType(componentKey);
         if (getTypeResult.IsFailure)
         {
-            _logger.LogError(getTypeResult.Error);
+            _logger.LogError(getTypeResult.DiagnosticReport);
             return;
         }
         var existingType = getTypeResult.Value;
@@ -59,7 +59,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var replaceResult = _entityService.ReplaceComponent(componentKey, componentType);
         if (replaceResult.IsFailure)
         {
-            _logger.LogError(replaceResult.Error);
+            _logger.LogError(replaceResult.DiagnosticReport);
             return;
         }
     }
@@ -143,7 +143,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var getTypeResult = _entityService.GetComponentType(componentKey);
         if (getTypeResult.IsFailure)
         {
-            _logger.LogError(getTypeResult.Error);
+            _logger.LogError(getTypeResult.DiagnosticReport);
             return;
         }
         var componentType = getTypeResult.Value;
@@ -157,7 +157,7 @@ public partial class ComponentTypeEditorViewModel : ObservableObject
         var replaceResult = _entityService.ReplaceComponent(componentKey, newComponentType);
         if (replaceResult.IsFailure)
         {
-            _logger.LogError(replaceResult.Error);
+            _logger.LogError(replaceResult.DiagnosticReport);
             return;
         }        
     }

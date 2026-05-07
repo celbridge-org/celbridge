@@ -318,7 +318,7 @@ public class EntityRegistry
                 }
                 else
                 {
-                    _logger.LogError(loadDataResult.Error);
+                    _logger.LogError(loadDataResult.DiagnosticReport);
                 }
             }
 
@@ -337,7 +337,7 @@ public class EntityRegistry
                 {
                     // At this point we should always have an EntityData.
                     // This is probably a configuration issue in the application.
-                    _logger.LogError(createResult.Error);
+                    _logger.LogError(createResult.DiagnosticReport);
                     return Result<Entity>.Fail($"Failed to acquire entity data for resource: {resource}");
                 }
             }

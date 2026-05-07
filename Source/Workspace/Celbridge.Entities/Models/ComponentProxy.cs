@@ -92,7 +92,7 @@ public class ComponentProxy : IComponentProxy
         var setResult = SetProperty(propertyPath, jsonValue);        
         if (setResult.IsFailure)
         {
-            _logger.LogError($"Failed to set property: '{propertyPath}'. {0}", setResult.Error);
+            _logger.LogError($"Failed to set property: '{propertyPath}'. {0}", setResult.DiagnosticReport);
         }
     }
 

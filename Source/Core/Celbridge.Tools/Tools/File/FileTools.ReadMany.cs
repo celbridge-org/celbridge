@@ -34,12 +34,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ErrorResult($"Invalid JSON array: {ex.Message}");
+            return ToolError($"Invalid JSON array: {ex.Message}");
         }
 
         if (resourceKeys is null || resourceKeys.Count == 0)
         {
-            return ErrorResult("No resource keys provided.");
+            return ToolError("No resource keys provided.");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -98,6 +98,6 @@ public partial class FileTools
         }
 
         var result = new ReadManyResult(entries);
-        return SuccessResult(SerializeJson(result));
+        return ToolSuccess(SerializeJson(result));
     }
 }

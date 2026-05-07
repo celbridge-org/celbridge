@@ -52,7 +52,7 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
         var getResult = resourceRegistry.GetResource(FolderResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.Error);
+            return Result.Fail(getResult.DiagnosticReport);
         }
         var resource = getResult.Value;
 

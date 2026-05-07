@@ -19,22 +19,34 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         if (showDialog)
         {
-            return await ExecuteCommandAsync<IAddResourceDialogCommand>(command =>
+            var dialogResult = await ExecuteCommandAsync<IAddResourceDialogCommand>(command =>
             {
                 command.ResourceType = ResourceType.File;
                 command.DestFolderResource = resourceKey;
             });
+            if (dialogResult.IsFailure)
+            {
+                return ToolError(dialogResult);
+            }
+
+            return ToolSuccess("ok");
         }
 
-        return await ExecuteCommandAsync<IAddResourceCommand>(command =>
+        var addResult = await ExecuteCommandAsync<IAddResourceCommand>(command =>
         {
             command.ResourceType = ResourceType.File;
             command.DestResource = resourceKey;
         });
+        if (addResult.IsFailure)
+        {
+            return ToolError(addResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

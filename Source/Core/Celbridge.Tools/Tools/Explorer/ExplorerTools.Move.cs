@@ -17,18 +17,24 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{sourceResource}'");
+            return ToolError($"Invalid resource key: '{sourceResource}'");
         }
         if (!ResourceKey.TryCreate(destinationResource, out var destinationResourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{destinationResource}'");
+            return ToolError($"Invalid resource key: '{destinationResource}'");
         }
 
-        return await ExecuteCommandAsync<ICopyResourceCommand>(command =>
+        var copyResult = await ExecuteCommandAsync<ICopyResourceCommand>(command =>
         {
             command.SourceResources = new List<ResourceKey> { sourceResourceKey };
             command.DestResource = destinationResourceKey;
             command.TransferMode = DataTransferMode.Move;
         });
+        if (copyResult.IsFailure)
+        {
+            return ToolError(copyResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

@@ -27,28 +27,29 @@ public partial class PackageTools
     {
         if (!ResourceKey.TryCreate(archive, out var archiveKey))
         {
-            return ErrorResult($"Invalid resource key: '{archive}'");
+            return ToolError($"Invalid resource key: '{archive}'");
         }
 
         if (!ResourceKey.TryCreate(destination, out var destinationKey))
         {
-            return ErrorResult($"Invalid resource key: '{destination}'");
+            return ToolError($"Invalid resource key: '{destination}'");
         }
 
-        var (callToolResult, unarchiveResult) = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
+        var unarchiveResultWrapper = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
         {
             command.ArchiveResource = archiveKey;
             command.DestinationResource = destinationKey;
             command.Overwrite = overwrite;
         });
 
-        if (callToolResult.IsError == true || unarchiveResult is null)
+        if (unarchiveResultWrapper.IsFailure)
         {
-            return callToolResult;
+            return ToolError(unarchiveResultWrapper);
         }
 
+        var unarchiveResult = unarchiveResultWrapper.Value;
         var result = new PackageUnarchiveResult(unarchiveResult.Entries, unarchiveResult.Destination);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return SuccessResult(json);
+        return ToolSuccess(json);
     }
 }

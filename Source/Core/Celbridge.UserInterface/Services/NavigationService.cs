@@ -99,7 +99,7 @@ public class NavigationService : INavigationService
         var navigateResult = _navigateHandler(pageInfo.PageType, parameter);
         if (navigateResult.IsFailure)
         {
-            _logger.LogError(navigateResult.Error);
+            _logger.LogError(navigateResult.DiagnosticReport);
             return navigateResult;
         }
 

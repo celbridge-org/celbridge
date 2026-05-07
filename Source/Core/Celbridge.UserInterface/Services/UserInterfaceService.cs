@@ -52,14 +52,14 @@ public class UserInterfaceService : IUserInterfaceService
         if (mainWindow is not Window window)
         {
             var error = Result.Fail("MainWindow is not a Window instance");
-            _logger.LogError(error.Error);
+            _logger.LogError(error.DiagnosticReport);
             return error;
         }
 
         if (xamlRoot is not XamlRoot root)
         {
             var error = Result.Fail("XamlRoot is not a XamlRoot instance");
-            _logger.LogError(error.Error);
+            _logger.LogError(error.DiagnosticReport);
             return error;
         }
 

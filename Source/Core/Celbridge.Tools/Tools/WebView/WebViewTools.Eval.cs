@@ -25,22 +25,22 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ErrorResult($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!webViewService.IsDevToolsEvalFeatureEnabled())
         {
-            return ErrorResult($"The '{FeatureFlagConstants.WebViewDevToolsEval}' feature flag is disabled. webview_eval is gated separately because it is an arbitrary code execution primitive.");
+            return ToolError($"The '{FeatureFlagConstants.WebViewDevToolsEval}' feature flag is disabled. webview_eval is gated separately because it is an arbitrary code execution primitive.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         if (string.IsNullOrEmpty(expression))
         {
-            return ErrorResult("Expression must not be empty");
+            return ToolError("Expression must not be empty");
         }
 
         // The expression body may contain sensitive output (e.g. document.cookie,
@@ -53,10 +53,10 @@ public partial class WebViewTools
         var evalResult = await toolBridge.EvalAsync(resourceKey, expression);
         if (evalResult.IsFailure)
         {
-            return ErrorResult(evalResult.FirstErrorMessage);
+            return ToolError(evalResult);
         }
 
         var value = evalResult.Value;
-        return SuccessResult(value);
+        return ToolSuccess(value);
     }
 }

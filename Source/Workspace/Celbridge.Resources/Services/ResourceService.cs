@@ -122,7 +122,7 @@ public class ResourceService : IResourceService, IDisposable
         var updateResult = Registry.UpdateResourceRegistry();
         if (updateResult.IsFailure)
         {
-            return Result.Fail($"Failed to update resources. {updateResult.Error}");
+            return Result.Fail($"Failed to update resources. {updateResult.DiagnosticReport}");
         }
 
         _logger.LogDebug("Updated resources successfully.");

@@ -17,20 +17,32 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         if (showDialog)
         {
-            return await ExecuteCommandAsync<IDeleteResourceDialogCommand>(command =>
+            var dialogResult = await ExecuteCommandAsync<IDeleteResourceDialogCommand>(command =>
             {
                 command.Resources = new List<ResourceKey> { resourceKey };
             });
+            if (dialogResult.IsFailure)
+            {
+                return ToolError(dialogResult);
+            }
+
+            return ToolSuccess("ok");
         }
 
-        return await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
+        var deleteResult = await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
         {
             command.Resources = new List<ResourceKey> { resourceKey };
         });
+        if (deleteResult.IsFailure)
+        {
+            return ToolError(deleteResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

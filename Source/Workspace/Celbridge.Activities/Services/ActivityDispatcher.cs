@@ -105,7 +105,7 @@ public class ActivityDispatcher
                 if (initResult.IsFailure)
                 {
                     failed = true;
-                    _logger.LogError(initResult.Error);
+                    _logger.LogError(initResult.DiagnosticReport);
                     continue;
                 }
             }
@@ -142,7 +142,7 @@ public class ActivityDispatcher
                 var annotateResult = _activityService.AnnotateEntity(fileResource);
                 if (annotateResult.IsFailure)
                 {
-                    _logger.LogError(annotateResult.Error);
+                    _logger.LogError(annotateResult.DiagnosticReport);
                     continue;
                 }
                 var entityAnnotation = annotateResult.Value;

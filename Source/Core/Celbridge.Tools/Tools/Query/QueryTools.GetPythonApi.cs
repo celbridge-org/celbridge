@@ -19,7 +19,7 @@ public partial class QueryTools
     public partial CallToolResult GetPythonApi()
     {
         var reference = BuildPythonApiReference();
-        return SuccessResult(reference);
+        return ToolSuccess(reference);
     }
 
     private static string BuildPythonApiReference()

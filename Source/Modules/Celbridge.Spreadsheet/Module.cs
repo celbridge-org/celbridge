@@ -3,6 +3,7 @@ using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Screenplay.Components;
+using Celbridge.Spreadsheet.Commands;
 using Celbridge.Spreadsheet.Services;
 
 namespace Celbridge.Spreadsheet;
@@ -27,6 +28,25 @@ public class Module : IModule
     {
         services.AddTransient<SpreadsheetActivity>();
         services.AddTransient<SpreadsheetEditor>();
+        services.AddSingleton<ISpreadsheetReader, SpreadsheetReader>();
+
+        services.AddTransient<IWriteCellsCommand, WriteCellsCommand>();
+        services.AddTransient<IAppendRowsCommand, AppendRowsCommand>();
+        services.AddTransient<IImportCsvCommand, ImportCsvCommand>();
+        services.AddTransient<IAddSheetsCommand, AddSheetsCommand>();
+        services.AddTransient<IRemoveSheetCommand, RemoveSheetCommand>();
+        services.AddTransient<IRenameSheetCommand, RenameSheetCommand>();
+        services.AddTransient<IMoveSheetCommand, MoveSheetCommand>();
+        services.AddTransient<ISetActiveViewCommand, SetActiveViewCommand>();
+        services.AddTransient<IFormatRangesCommand, FormatRangesCommand>();
+        services.AddTransient<IFreezePanesCommand, FreezePanesCommand>();
+        services.AddTransient<IDeleteRangesCommand, DeleteRangesCommand>();
+        services.AddTransient<IClearRangesCommand, ClearRangesCommand>();
+        services.AddTransient<IInsertRangesCommand, InsertRangesCommand>();
+        services.AddTransient<ISortRangeCommand, SortRangeCommand>();
+        services.AddTransient<IDuplicateSheetCommand, DuplicateSheetCommand>();
+        services.AddTransient<ISetAutoFilterCommand, SetAutoFilterCommand>();
+        services.AddTransient<ISetConditionalFormattingCommand, SetConditionalFormattingCommand>();
     }
 
     public Result Initialize()
@@ -44,10 +64,10 @@ public class Module : IModule
         if (activityName == nameof(SpreadsheetActivity))
         {
             var activity = ServiceLocator.AcquireService<SpreadsheetActivity>();
-            return Result<IActivity>.Ok(activity);
+            return activity;
         }
 
-        return Result<IActivity>.Fail();
+        return Result.Fail();
     }
 
     public IReadOnlyList<BundledPackageDescriptor> GetBundledPackages()

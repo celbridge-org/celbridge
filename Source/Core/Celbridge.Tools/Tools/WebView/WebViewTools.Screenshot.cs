@@ -38,18 +38,18 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ErrorResult($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
         var willSave = !string.IsNullOrEmpty(saveTo);
         if (!returnImage && !willSave)
         {
-            return ErrorResult(
+            return ToolError(
                 "webview_screenshot was called with returnImage = false and no saveTo, " +
                 "which would discard the captured image. Either set returnImage = true to view the image inline, " +
                 "or provide a saveTo to archive it into the project tree.");
@@ -70,13 +70,13 @@ public partial class WebViewTools
             var projectFolderPath = resourceRegistry.ProjectFolderPath;
             if (string.IsNullOrEmpty(projectFolderPath))
             {
-                return ErrorResult("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
+                return ToolError("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
             }
 
             var resolveResult = WebViewScreenshotResolver.Resolve(saveTo, format, projectFolderPath);
             if (resolveResult.IsFailure)
             {
-                return ErrorResult(resolveResult.FirstErrorMessage);
+                return ToolError(resolveResult);
             }
             fileResource = resolveResult.Value;
         }
@@ -88,7 +88,7 @@ public partial class WebViewTools
         var screenshotResult = await toolBridge.ScreenshotAsync(resourceKey, options);
         if (screenshotResult.IsFailure)
         {
-            return ErrorResult(screenshotResult.FirstErrorMessage);
+            return ToolError(screenshotResult);
         }
 
         var data = screenshotResult.Value;
@@ -109,7 +109,9 @@ public partial class WebViewTools
 
             if (commandResult.IsFailure)
             {
-                return ErrorResult($"Failed to save screenshot to resource '{fileResource}': {commandResult.FirstErrorMessage}");
+                var failure = Result.Fail($"Failed to save screenshot to resource '{fileResource}'")
+                    .WithErrors(commandResult);
+                return ToolError(failure);
             }
         }
 
@@ -126,10 +128,10 @@ public partial class WebViewTools
         if (returnImage)
         {
             var mimeType = data.Format == "png" ? "image/png" : "image/jpeg";
-            return SuccessResultWithImage(data.Bytes, mimeType, metadataJson);
+            return ToolSuccessWithImage(data.Bytes, mimeType, metadataJson);
         }
 
-        return SuccessResult(metadataJson);
+        return ToolSuccess(metadataJson);
     }
 
     private sealed record ScreenshotResponse(

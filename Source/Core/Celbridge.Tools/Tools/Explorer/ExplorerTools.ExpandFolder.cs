@@ -17,13 +17,19 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ErrorResult($"Invalid resource key: '{resource}'");
+            return ToolError($"Invalid resource key: '{resource}'");
         }
 
-        return await ExecuteCommandAsync<IExpandFolderCommand>(command =>
+        var expandResult = await ExecuteCommandAsync<IExpandFolderCommand>(command =>
         {
             command.FolderResource = resourceKey;
             command.Expanded = expanded;
         });
+        if (expandResult.IsFailure)
+        {
+            return ToolError(expandResult);
+        }
+
+        return ToolSuccess("ok");
     }
 }

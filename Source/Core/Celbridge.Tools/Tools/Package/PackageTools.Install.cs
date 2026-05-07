@@ -28,7 +28,7 @@ public partial class PackageTools
     {
         if (!IsValidPackageName(packageName))
         {
-            return ErrorResult(
+            return ToolError(
                 $"Invalid package name: '{packageName}'. " +
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
@@ -39,7 +39,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ErrorResult(listResult.Error);
+            return ToolError(listResult);
         }
 
         var expectedFileName = $"{packageName}.zip";
@@ -55,7 +55,7 @@ public partial class PackageTools
 
         if (matchingEntry is null)
         {
-            return ErrorResult($"Package not found in registry: '{packageName}'");
+            return ToolError($"Package not found in registry: '{packageName}'");
         }
 
         if (confirmWithUser)
@@ -67,7 +67,7 @@ public partial class PackageTools
             var confirmed = await ConfirmActionAsync(title, message);
             if (!confirmed)
             {
-                return ErrorResult("Install cancelled by user.");
+                return ToolError("Install cancelled by user.");
             }
         }
 
@@ -75,7 +75,7 @@ public partial class PackageTools
         var downloadResult = await packageApiClient.DownloadPackageAsync(matchingEntry.Id);
         if (downloadResult.IsFailure)
         {
-            return ErrorResult(downloadResult.Error);
+            return ToolError(downloadResult);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -86,7 +86,9 @@ public partial class PackageTools
         var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
         if (resolveTempResult.IsFailure)
         {
-            return ErrorResult($"Failed to resolve temporary archive path: {resolveTempResult.Error}");
+            var failure = Result.Fail("Failed to resolve temporary archive path")
+                .WithErrors(resolveTempResult);
+            return ToolError(failure);
         }
         var tempArchivePath = resolveTempResult.Value;
 
@@ -102,28 +104,29 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ErrorResult($"Failed to write downloaded package: {exception.Message}");
+            return ToolError($"Failed to write downloaded package: {exception.Message}");
         }
 
         var destinationResource = ResourceKey.Create($"packages/{packageName}");
 
         try
         {
-            var (callToolResult, unarchiveResult) = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
+            var unarchiveResultWrapper = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
             {
                 command.ArchiveResource = tempArchiveResource;
                 command.DestinationResource = destinationResource;
                 command.Overwrite = false;
             });
 
-            if (callToolResult.IsError == true || unarchiveResult is null)
+            if (unarchiveResultWrapper.IsFailure)
             {
-                return callToolResult;
+                return ToolError(unarchiveResultWrapper);
             }
 
+            var unarchiveResult = unarchiveResultWrapper.Value;
             var result = new PackageInstallResult(packageName, unarchiveResult.Entries, destinationResource.ToString());
             var json = JsonSerializer.Serialize(result, JsonOptions);
-            return SuccessResult(json);
+            return ToolSuccess(json);
         }
         finally
         {

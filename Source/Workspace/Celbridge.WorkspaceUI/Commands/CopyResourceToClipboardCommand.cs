@@ -36,7 +36,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
             var getResult = resourceRegistry.GetResource(sourceResource);
             if (getResult.IsFailure)
             {
-                _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {getResult.Error}");
+                _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {getResult.DiagnosticReport}");
                 continue;
             }
             var resource = getResult.Value;
@@ -46,7 +46,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
                 var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
                 if (resolveResult.IsFailure)
                 {
-                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.Error}");
+                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
                     continue;
                 }
                 var storageFile = await StorageFile.GetFileFromPathAsync(resolveResult.Value);
@@ -60,7 +60,7 @@ public class CopyResourceToClipboardCommand : CommandBase, ICopyResourceToClipbo
                 var resolveResult = resourceRegistry.ResolveResourcePath(folderResource);
                 if (resolveResult.IsFailure)
                 {
-                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.Error}");
+                    _logger.LogWarning($"Skipping resource '{sourceResource}' during clipboard copy: {resolveResult.DiagnosticReport}");
                     continue;
                 }
                 var storageFolder = await StorageFolder.GetFolderFromPathAsync(resolveResult.Value);
