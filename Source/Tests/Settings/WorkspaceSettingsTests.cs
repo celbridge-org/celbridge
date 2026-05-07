@@ -2,7 +2,7 @@ using Celbridge.Projects;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Settings;
 
 [TestFixture]
 public class WorkspaceSettingsTests

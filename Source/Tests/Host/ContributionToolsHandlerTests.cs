@@ -3,7 +3,7 @@ using Celbridge.Host;
 using Celbridge.Server;
 using StreamJsonRpc;
 
-namespace Celbridge.Tests.Helpers;
+namespace Celbridge.Tests.Host;
 
 [TestFixture]
 public class ContributionToolsHandlerTests

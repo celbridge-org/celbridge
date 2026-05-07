@@ -3,7 +3,7 @@ using Celbridge.Commands;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 
-namespace Celbridge.Tests.WebView;
+namespace Celbridge.Tests.WebHost;
 
 [TestFixture]
 public partial class DocumentWebViewToolBridgeTests

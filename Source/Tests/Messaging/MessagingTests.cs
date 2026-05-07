@@ -2,7 +2,7 @@ using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Messaging;
 
 [TestFixture]
 public class MessagingTests

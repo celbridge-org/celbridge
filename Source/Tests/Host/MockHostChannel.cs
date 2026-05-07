@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Celbridge.Host;
 
-namespace Celbridge.Tests.Helpers;
+namespace Celbridge.Tests.Host;
 
 /// <summary>
 /// Mock implementation of IHostChannel for testing.

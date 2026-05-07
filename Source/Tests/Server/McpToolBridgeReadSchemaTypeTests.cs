@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using Celbridge.Server.Services;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Server;
 
 /// <summary>
 /// Tests for McpToolBridge.ReadSchemaType. The MCP SDK emits a JSON Schema

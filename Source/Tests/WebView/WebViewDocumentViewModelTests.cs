@@ -6,7 +6,7 @@ using Celbridge.WebView.Services;
 using Celbridge.WebView.ViewModels;
 using Celbridge.Workspace;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.WebView;
 
 [TestFixture]
 public class WebViewDocumentViewModelTests

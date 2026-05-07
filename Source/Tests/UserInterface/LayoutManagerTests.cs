@@ -6,7 +6,7 @@ using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.UserInterface;
 
 [TestFixture]
 public class LayoutManagerTests

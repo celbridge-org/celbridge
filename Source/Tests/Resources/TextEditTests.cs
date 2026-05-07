@@ -1,6 +1,6 @@
 using Celbridge.Resources;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.Resources;
 
 [TestFixture]
 public class TextEditTests

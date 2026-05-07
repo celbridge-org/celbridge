@@ -2,7 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.WebView.Services;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.WebView;
 
 [TestFixture]
 public class WebViewNavigationPolicyTests
