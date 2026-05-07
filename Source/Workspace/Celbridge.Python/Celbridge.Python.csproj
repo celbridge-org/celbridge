@@ -49,30 +49,22 @@
     <PythonPackageFolder>$(MSBuildThisFileDirectory)packages\celbridge</PythonPackageFolder>
     <PythonAssetsFolder>$(MSBuildThisFileDirectory)Assets\Python</PythonAssetsFolder>
     <PythonWheelPath>$(PythonAssetsFolder)\celbridge-0.1.0-py3-none-any.whl</PythonWheelPath>
-    <!-- Use a TFM-independent temp folder so parallel builds don't conflict -->
-    <UvTempFolder>$(MSBuildThisFileDirectory)obj\uv_temp</UvTempFolder>
   </PropertyGroup>
 
   <ItemGroup>
-    <PythonSourceFiles Include="$(PythonPackageFolder)\src\celbridge\*.py" />
+    <PythonSourceFiles Include="$(PythonPackageFolder)\src\celbridge\**\*.py" />
     <PythonSourceFiles Include="$(PythonPackageFolder)\pyproject.toml" />
   </ItemGroup>
 
-  <!-- Build the wheel for one TFM only. Other TFMs pick it up via IncludePythonAssets. -->
-  <Target Name="BuildPythonWheel" BeforeTargets="Build" DependsOnTargets="DownloadUv"
+  <!-- Build the wheel for one TFM only. Other TFMs pick it up via IncludePythonAssets.
+       Delegates to build.py so wheel-building logic lives in one place; build.py is
+       also the script developers run manually outside Visual Studio. Requires a
+       system Python on PATH at build time. -->
+  <Target Name="BuildPythonWheel" BeforeTargets="Build"
           Inputs="@(PythonSourceFiles)" Outputs="$(PythonWheelPath)"
-          Condition="'$(UvPlatform)' != '' AND '$(TargetFramework)' == 'net9.0-windows10.0.22621'">
-    <Message Text="Building celbridge Python wheel..." Importance="high" />
-
-    <!-- Extract uv from the zip to a temp folder -->
-    <RemoveDir Directories="$(UvTempFolder)" />
-    <Unzip SourceFiles="$(UvZipPath)" DestinationFolder="$(UvTempFolder)" />
-
-    <!-- Build the wheel using uv -->
-    <Exec Command="&quot;$(UvTempFolder)\uv.exe&quot; build --wheel --out-dir &quot;$(PythonAssetsFolder)&quot; &quot;$(PythonPackageFolder)&quot;" />
-
-    <!-- Clean up temp folder -->
-    <RemoveDir Directories="$(UvTempFolder)" />
+          Condition="'$(TargetFramework)' == 'net9.0-windows10.0.22621'">
+    <Message Text="Building celbridge Python wheel via build.py..." Importance="high" />
+    <Exec Command="python &quot;$(MSBuildThisFileDirectory)build.py&quot;" />
   </Target>
 
   <!-- Note: the wheel is NOT cleaned during 'Clean' because MSBuild evaluates Content items

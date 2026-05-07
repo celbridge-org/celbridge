@@ -113,8 +113,8 @@ class CelProxy:
                     class names (e.g. "Spreadsheet"). When omitted, every
                     test class runs.
             """
-            from celbridge.test_suite import main as run_integration_test
-            run_integration_test(class_filter)
+            from celbridge.integration_tests import run_suite
+            run_suite(class_filter)
 
         object.__setattr__(self, "test", run_test)
 
