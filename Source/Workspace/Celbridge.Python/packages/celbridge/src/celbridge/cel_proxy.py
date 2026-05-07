@@ -102,6 +102,23 @@ class CelProxy:
         )
         object.__setattr__(self, "agent", agent_namespace)
 
+        def get_payload_report():
+            """Write a tools/list payload-size report to the project root.
+
+            Walks the discovered MCP tools, computes per-tool, per-namespace,
+            and aggregate character and approximate-token counts, and writes a
+            timestamped markdown report next to the project file. Returns the
+            absolute path of the written report. Used by the tool-surface trim
+            work to capture before/after baselines; not exposed as an MCP tool.
+            """
+            return self._client.call("diagnostics/get_payload_report")
+
+        app_namespace = getattr(self, "app", None)
+        if app_namespace is None:
+            app_namespace = ToolNamespace("app")
+            object.__setattr__(self, "app", app_namespace)
+        object.__setattr__(app_namespace, "get_payload_report", get_payload_report)
+
         def run_test(class_filter=None):
             """Run the Celbridge MCP integration test suite.
 

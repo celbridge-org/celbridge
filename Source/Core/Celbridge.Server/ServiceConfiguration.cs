@@ -11,6 +11,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IMcpToolBridge, McpToolBridge>();
         services.AddSingleton<IAgentServer, AgentServer>();
         services.AddSingleton<IServerService, ServerService>();
+        services.AddSingleton<ServerDiagnostics>();
+        services.AddSingleton<ServerDiagnosticsRpcHandler>();
         services.AddTransient<ITcpTransport, TcpTransport>();
     }
 }

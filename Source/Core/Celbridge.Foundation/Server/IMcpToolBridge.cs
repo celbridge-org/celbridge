@@ -43,4 +43,13 @@ public interface IMcpToolBridge
     /// implementations normalize before sending to the MCP transport.
     /// </summary>
     Task<ToolCallResult> CallToolAsync(string name, object? arguments);
+
+    /// <summary>
+    /// Returns the raw tools/list JSON the broker emits, with the outer
+    /// envelope unwrapped so the caller sees the tools array as JSON text.
+    /// Returns an empty string when the MCP server has not started. Intended
+    /// for broker introspection (size measurement, payload diffs); production
+    /// callers should prefer ListToolsAsync.
+    /// </summary>
+    Task<string> GetRawToolsListJsonAsync();
 }

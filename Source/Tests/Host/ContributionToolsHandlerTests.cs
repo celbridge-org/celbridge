@@ -184,5 +184,10 @@ public class ContributionToolsHandlerTests
 
             return Task.FromResult(CallResult);
         }
+
+        public Task<string> GetRawToolsListJsonAsync()
+        {
+            return Task.FromResult(string.Empty);
+        }
     }
 }

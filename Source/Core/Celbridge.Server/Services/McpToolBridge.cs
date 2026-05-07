@@ -261,6 +261,13 @@ public class McpToolBridge : IMcpToolBridge
         }
     }
 
+    public async Task<string> GetRawToolsListJsonAsync()
+    {
+        var response = await SendMcpRequestAsync("tools/list", null);
+        var toolsArray = response?["tools"] as JsonArray;
+        return toolsArray?.ToJsonString() ?? string.Empty;
+    }
+
     /// <summary>
     /// Enumerates all tools registered with the local MCP server, returning typed
     /// ToolDescriptor records. Parallels ToolsList, which returns the same data as
