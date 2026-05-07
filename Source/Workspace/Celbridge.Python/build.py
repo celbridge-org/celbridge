@@ -14,7 +14,7 @@ def build_wheel(pkg_dir):
     
     subprocess.run(
         ["python", "-m", "pip", "wheel", "--no-deps", str(pkg_dir), "-w", str(dist)],
-        check=True, capture_output=True
+        check=True,
     )
     return list(dist.glob("*.whl"))[0]
 
