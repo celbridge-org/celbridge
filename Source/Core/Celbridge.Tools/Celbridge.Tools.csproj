@@ -26,8 +26,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\**\*" />
-    <EmbeddedResource Include="Docs\**\*.md" />
+    <EmbeddedResource Include="Guides\**\*.md" />
   </ItemGroup>
 
   <ItemGroup>

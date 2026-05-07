@@ -5,18 +5,18 @@ using System.Text.RegularExpressions;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Concrete IDocLibrary implementation. The static Initialize entry point
+/// Concrete IGuides implementation. The static Initialize entry point
 /// resolves the singleton from DI and runs Load on it; Load scans embedded
-/// markdown under the Celbridge.Tools.Docs.* namespace, parses frontmatter,
+/// markdown under the Celbridge.Tools.Guides.* namespace, parses frontmatter,
 /// validates names against the registered MCP tool surface, and precomputes
 /// per-tool invocation strings via reflection. Failures throw from Load so
 /// they surface at app startup rather than on the first agent call. Members
 /// other than Load throw if used before loading.
 /// </summary>
-internal sealed class DocLibrary : IDocLibrary
+internal sealed class Guides : IGuides
 {
     private const int DefaultPriority = 100;
-    private const string ResourcePrefix = "Celbridge.Tools.Docs.";
+    private const string ResourcePrefix = "Celbridge.Tools.Guides.";
     private const string ConceptsSegment = "Concepts.";
     private const string ToolsSegment = "Tools.";
     private const string MarkdownSuffix = ".md";
@@ -25,27 +25,27 @@ internal sealed class DocLibrary : IDocLibrary
 
     private LoadedState? _state;
 
-    public DocLibrary()
+    public Guides()
     {
     }
 
     /// <summary>
-    /// Resolves the DocLibrary singleton from DI and loads the embedded doc
+    /// Resolves the Guides singleton from DI and loads the embedded guide
     /// set. ServiceConfiguration.Initialize calls this once at app startup;
-    /// any embedded-doc validation failure throws here so it fails app
+    /// any embedded-guide validation failure throws here so it fails app
     /// launch rather than the first agent call.
     /// </summary>
     public static void Initialize()
     {
-        var docLibrary = ServiceLocator.AcquireService<IDocLibrary>() as DocLibrary;
-        Guard.IsNotNull(docLibrary);
-        docLibrary.Load();
+        var guides = ServiceLocator.AcquireService<IGuides>() as Guides;
+        Guard.IsNotNull(guides);
+        guides.Load();
     }
 
     /// <summary>
-    /// Loads and validates the embedded doc set. Idempotent — subsequent
+    /// Loads and validates the embedded guide set. Idempotent — subsequent
     /// calls are no-ops. The static Initialize entry point is the production
-    /// caller; tests construct a DocLibrary and call Load directly.
+    /// caller; tests construct a Guides instance and call Load directly.
     /// </summary>
     internal void Load()
     {
@@ -54,26 +54,26 @@ internal sealed class DocLibrary : IDocLibrary
             return;
         }
 
-        var assembly = typeof(DocLibrary).Assembly;
-        var rawDocs = LoadRawDocs(assembly);
+        var assembly = typeof(Guides).Assembly;
+        var rawGuides = LoadRawGuides(assembly);
         var toolAliasNames = DiscoverToolAliasNames(assembly);
         var toolInvocations = BuildToolInvocations(assembly);
 
-        var entries = new Dictionary<string, DocEntry>(StringComparer.Ordinal);
+        var entries = new Dictionary<string, GuideEntry>(StringComparer.Ordinal);
 
-        foreach (var raw in rawDocs)
+        foreach (var raw in rawGuides)
         {
-            ValidateRawDoc(raw, toolAliasNames, entries);
+            ValidateRawGuide(raw, toolAliasNames, entries);
 
             string? pythonInvocation = null;
             string? javaScriptInvocation = null;
-            if (raw.Kind == DocKind.Tool && toolInvocations.TryGetValue(raw.Name, out var pair))
+            if (raw.Kind == GuideKind.Tool && toolInvocations.TryGetValue(raw.Name, out var pair))
             {
                 pythonInvocation = pair.Python;
                 javaScriptInvocation = pair.JavaScript;
             }
 
-            var entry = new DocEntry(
+            var entry = new GuideEntry(
                 Name: raw.Name,
                 Kind: raw.Kind,
                 Description: raw.Frontmatter.Description,
@@ -86,17 +86,17 @@ internal sealed class DocLibrary : IDocLibrary
         }
 
         var sortedIndex = entries.Values
-            .OrderBy(e => e.Kind == DocKind.Concept ? 0 : 1)
-            .ThenBy(e => e.Kind == DocKind.Concept ? e.Priority : 0)
+            .OrderBy(e => e.Kind == GuideKind.Concept ? 0 : 1)
+            .ThenBy(e => e.Kind == GuideKind.Concept ? e.Priority : 0)
             .ThenBy(e => e.Name, StringComparer.Ordinal)
             .ToList();
 
         _state = new LoadedState(entries, sortedIndex, toolInvocations);
     }
 
-    public IReadOnlyList<DocEntry> Index => RequireLoaded().SortedIndex;
+    public IReadOnlyList<GuideEntry> Index => RequireLoaded().SortedIndex;
 
-    public DocEntry? GetByName(string name)
+    public GuideEntry? GetByName(string name)
     {
         return RequireLoaded().ByName.GetValueOrDefault(name);
     }
@@ -111,7 +111,7 @@ internal sealed class DocLibrary : IDocLibrary
         return RequireLoaded().ToolInvocations.ContainsKey(toolAliasName);
     }
 
-    public IReadOnlyList<DocSearchMatch> Search(string pattern, out string? errorMessage)
+    public IReadOnlyList<GuideSearchMatch> Search(string pattern, out string? errorMessage)
     {
         var state = RequireLoaded();
         errorMessage = null;
@@ -124,21 +124,21 @@ internal sealed class DocLibrary : IDocLibrary
         catch (ArgumentException exception)
         {
             errorMessage = exception.Message;
-            return Array.Empty<DocSearchMatch>();
+            return Array.Empty<GuideSearchMatch>();
         }
 
-        var matches = new List<DocSearchMatch>();
-        foreach (var doc in state.SortedIndex)
+        var matches = new List<GuideSearchMatch>();
+        foreach (var guide in state.SortedIndex)
         {
-            DocSearchMatch? match = null;
+            GuideSearchMatch? match = null;
             try
             {
-                match = ScoreDoc(regex, doc);
+                match = ScoreGuide(regex, guide);
             }
             catch (RegexMatchTimeoutException exception)
             {
                 errorMessage = $"Search timed out after {SearchRegexTimeout.TotalMilliseconds:F0}ms: {exception.Message}";
-                return Array.Empty<DocSearchMatch>();
+                return Array.Empty<GuideSearchMatch>();
             }
 
             if (match is not null)
@@ -160,11 +160,11 @@ internal sealed class DocLibrary : IDocLibrary
         return matches;
     }
 
-    private static DocSearchMatch? ScoreDoc(Regex regex, DocEntry doc)
+    private static GuideSearchMatch? ScoreGuide(Regex regex, GuideEntry guide)
     {
-        var nameMatchCount = regex.Matches(doc.Name).Count;
-        var descriptionMatchCount = regex.Matches(doc.Description).Count;
-        var bodyMatchCollection = regex.Matches(doc.Body);
+        var nameMatchCount = regex.Matches(guide.Name).Count;
+        var descriptionMatchCount = regex.Matches(guide.Description).Count;
+        var bodyMatchCollection = regex.Matches(guide.Body);
         var bodyMatchCount = bodyMatchCollection.Count;
 
         if (nameMatchCount == 0 && descriptionMatchCount == 0 && bodyMatchCount == 0)
@@ -172,17 +172,17 @@ internal sealed class DocLibrary : IDocLibrary
             return null;
         }
 
-        var bodyLength = Math.Max(doc.Body.Length, 1);
+        var bodyLength = Math.Max(guide.Body.Length, 1);
         var nameWeight = 100.0 * nameMatchCount;
         var descriptionWeight = 25.0 * descriptionMatchCount;
         var bodyWeight = 1000.0 * bodyMatchCount / bodyLength;
         var score = nameWeight + descriptionWeight + bodyWeight;
 
-        var snippet = BuildSnippet(doc, bodyMatchCollection, regex);
-        return new DocSearchMatch(doc.Name, doc.Kind, doc.Description, snippet, score);
+        var snippet = BuildSnippet(guide, bodyMatchCollection, regex);
+        return new GuideSearchMatch(guide.Name, guide.Kind, guide.Description, snippet, score);
     }
 
-    private static string BuildSnippet(DocEntry doc, MatchCollection bodyMatches, Regex regex)
+    private static string BuildSnippet(GuideEntry guide, MatchCollection bodyMatches, Regex regex)
     {
         const int snippetWindow = 80;
         const int snippetMaxLength = 200;
@@ -199,22 +199,22 @@ internal sealed class DocLibrary : IDocLibrary
 
         if (primaryMatch is not null)
         {
-            source = doc.Body;
+            source = guide.Body;
             matchStart = primaryMatch.Index;
             matchLength = primaryMatch.Length;
         }
         else
         {
-            var descriptionMatch = regex.Match(doc.Description);
+            var descriptionMatch = regex.Match(guide.Description);
             if (descriptionMatch.Success)
             {
-                source = doc.Description;
+                source = guide.Description;
                 matchStart = descriptionMatch.Index;
                 matchLength = descriptionMatch.Length;
             }
             else
             {
-                return TruncateSnippet(doc.Description, snippetMaxLength);
+                return TruncateSnippet(guide.Description, snippetMaxLength);
             }
         }
 
@@ -240,41 +240,41 @@ internal sealed class DocLibrary : IDocLibrary
         return text.Substring(0, maxLength - 3) + "...";
     }
 
-    private static void ValidateRawDoc(
-        RawDoc raw,
+    private static void ValidateRawGuide(
+        RawGuide raw,
         HashSet<string> toolAliasNames,
-        Dictionary<string, DocEntry> alreadyLoaded)
+        Dictionary<string, GuideEntry> alreadyLoaded)
     {
-        if (raw.Kind == DocKind.Tool)
+        if (raw.Kind == GuideKind.Tool)
         {
             if (raw.Frontmatter.Priority.HasValue)
             {
                 throw new InvalidDataException(
-                    $"Per-tool doc '{raw.Name}' sets 'priority' in frontmatter; priority is only valid on conceptual docs.");
+                    $"Per-tool guide '{raw.Name}' sets 'priority' in frontmatter; priority is only valid on conceptual guides.");
             }
 
             if (!toolAliasNames.Contains(raw.Name))
             {
                 throw new InvalidDataException(
-                    $"Per-tool doc '{raw.Name}' does not match any registered MCP tool alias name.");
+                    $"Per-tool guide '{raw.Name}' does not match any registered MCP tool alias name.");
             }
         }
         else if (toolAliasNames.Contains(raw.Name))
         {
             throw new InvalidDataException(
-                $"Conceptual doc '{raw.Name}' collides with an MCP tool alias name.");
+                $"Conceptual guide '{raw.Name}' collides with an MCP tool alias name.");
         }
 
         if (alreadyLoaded.ContainsKey(raw.Name))
         {
             throw new InvalidDataException(
-                $"Doc name '{raw.Name}' is defined in both Concepts/ and Tools/ (or appears twice in one folder).");
+                $"Guide name '{raw.Name}' is defined in both Concepts/ and Tools/ (or appears twice in one folder).");
         }
     }
 
-    private static List<RawDoc> LoadRawDocs(Assembly assembly)
+    private static List<RawGuide> LoadRawGuides(Assembly assembly)
     {
-        var rawDocs = new List<RawDoc>();
+        var rawGuides = new List<RawGuide>();
         var resourceNames = assembly.GetManifestResourceNames();
 
         foreach (var resourceName in resourceNames)
@@ -289,51 +289,51 @@ internal sealed class DocLibrary : IDocLibrary
             }
 
             var subPath = resourceName.Substring(ResourcePrefix.Length);
-            DocKind kind;
+            GuideKind kind;
             string remainder;
 
             if (subPath.StartsWith(ConceptsSegment, StringComparison.Ordinal))
             {
-                kind = DocKind.Concept;
+                kind = GuideKind.Concept;
                 remainder = subPath.Substring(ConceptsSegment.Length);
             }
             else if (subPath.StartsWith(ToolsSegment, StringComparison.Ordinal))
             {
-                kind = DocKind.Tool;
+                kind = GuideKind.Tool;
                 remainder = subPath.Substring(ToolsSegment.Length);
             }
             else
             {
                 throw new InvalidDataException(
-                    $"Doc resource '{resourceName}' is not under Concepts/ or Tools/.");
+                    $"Guide resource '{resourceName}' is not under Concepts/ or Tools/.");
             }
 
-            var docName = remainder.Substring(0, remainder.Length - MarkdownSuffix.Length);
-            if (docName.Contains('.'))
+            var guideName = remainder.Substring(0, remainder.Length - MarkdownSuffix.Length);
+            if (guideName.Contains('.'))
             {
                 throw new InvalidDataException(
-                    $"Doc resource '{resourceName}' must live directly under Concepts/ or Tools/, not in a nested folder.");
+                    $"Guide resource '{resourceName}' must live directly under Concepts/ or Tools/, not in a nested folder.");
             }
 
             var content = ReadResource(assembly, resourceName);
             var (frontmatter, body) = ParseFrontmatter(content, resourceName);
 
-            if (frontmatter.Name != docName)
+            if (frontmatter.Name != guideName)
             {
                 throw new InvalidDataException(
-                    $"Doc '{resourceName}' frontmatter name '{frontmatter.Name}' does not match its file name '{docName}'.");
+                    $"Guide '{resourceName}' frontmatter name '{frontmatter.Name}' does not match its file name '{guideName}'.");
             }
 
-            rawDocs.Add(new RawDoc(docName, kind, frontmatter, body));
+            rawGuides.Add(new RawGuide(guideName, kind, frontmatter, body));
         }
 
-        return rawDocs;
+        return rawGuides;
     }
 
     private static string ReadResource(Assembly assembly, string resourceName)
     {
         using var stream = assembly.GetManifestResourceStream(resourceName)
-            ?? throw new InvalidDataException($"Doc resource '{resourceName}' could not be opened.");
+            ?? throw new InvalidDataException($"Guide resource '{resourceName}' could not be opened.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
@@ -343,13 +343,13 @@ internal sealed class DocLibrary : IDocLibrary
         var normalised = content.Replace("\r\n", "\n");
         if (!normalised.StartsWith("---\n", StringComparison.Ordinal))
         {
-            throw new InvalidDataException($"Doc '{resourceName}' is missing the opening '---' frontmatter line.");
+            throw new InvalidDataException($"Guide '{resourceName}' is missing the opening '---' frontmatter line.");
         }
 
         var closing = normalised.IndexOf("\n---\n", 4, StringComparison.Ordinal);
         if (closing < 0)
         {
-            throw new InvalidDataException($"Doc '{resourceName}' is missing the closing '---' frontmatter line.");
+            throw new InvalidDataException($"Guide '{resourceName}' is missing the closing '---' frontmatter line.");
         }
 
         var frontmatterText = normalised.Substring(4, closing - 4);
@@ -370,7 +370,7 @@ internal sealed class DocLibrary : IDocLibrary
             var colon = line.IndexOf(':');
             if (colon <= 0)
             {
-                throw new InvalidDataException($"Doc '{resourceName}' frontmatter line '{line}' is not 'key: value'.");
+                throw new InvalidDataException($"Guide '{resourceName}' frontmatter line '{line}' is not 'key: value'.");
             }
 
             var key = line.Substring(0, colon).Trim();
@@ -388,22 +388,22 @@ internal sealed class DocLibrary : IDocLibrary
                 case "priority":
                     if (!int.TryParse(value, out var parsedPriority))
                     {
-                        throw new InvalidDataException($"Doc '{resourceName}' has non-integer priority '{value}'.");
+                        throw new InvalidDataException($"Guide '{resourceName}' has non-integer priority '{value}'.");
                     }
                     priority = parsedPriority;
                     break;
                 default:
-                    throw new InvalidDataException($"Doc '{resourceName}' has unknown frontmatter key '{key}'.");
+                    throw new InvalidDataException($"Guide '{resourceName}' has unknown frontmatter key '{key}'.");
             }
         }
 
         if (string.IsNullOrEmpty(name))
         {
-            throw new InvalidDataException($"Doc '{resourceName}' frontmatter is missing required field 'name'.");
+            throw new InvalidDataException($"Guide '{resourceName}' frontmatter is missing required field 'name'.");
         }
         if (string.IsNullOrEmpty(description))
         {
-            throw new InvalidDataException($"Doc '{resourceName}' frontmatter is missing required field 'description'.");
+            throw new InvalidDataException($"Guide '{resourceName}' frontmatter is missing required field 'description'.");
         }
 
         return (new Frontmatter(name, description, priority), body);
@@ -576,15 +576,15 @@ internal sealed class DocLibrary : IDocLibrary
     {
         return _state
             ?? throw new InvalidOperationException(
-                "DocLibrary has not been initialized. Call Initialize before use; the DI container does this once at app startup via Celbridge.Tools.ServiceConfiguration.Initialize.");
+                "Guides has not been initialized. Call Initialize before use; the DI container does this once at app startup via Celbridge.Tools.ServiceConfiguration.Initialize.");
     }
 
     private record class Frontmatter(string Name, string Description, int? Priority);
 
-    private record class RawDoc(string Name, DocKind Kind, Frontmatter Frontmatter, string Body);
+    private record class RawGuide(string Name, GuideKind Kind, Frontmatter Frontmatter, string Body);
 
     private record class LoadedState(
-        IReadOnlyDictionary<string, DocEntry> ByName,
-        IReadOnlyList<DocEntry> SortedIndex,
+        IReadOnlyDictionary<string, GuideEntry> ByName,
+        IReadOnlyList<GuideEntry> SortedIndex,
         IReadOnlyDictionary<string, (string Python, string JavaScript)> ToolInvocations);
 }

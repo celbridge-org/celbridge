@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Projects;
+using Celbridge.Python;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Tools;
+using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tests.Tools;
@@ -37,9 +39,9 @@ public class AppToolTests
     }
 
     [Test]
-    public void GetProjectStatus_ProjectLoaded()
+    public void GetState_ProjectLoaded()
     {
-        WireFeatureFlags();
+        WireAppStateDependencies();
         var projectService = Substitute.For<IProjectService>();
         var project = Substitute.For<IProject>();
         project.ProjectName.Returns("MyProject");
@@ -47,47 +49,79 @@ public class AppToolTests
         _services.GetRequiredService<IProjectService>().Returns(projectService);
 
         var tools = new AppTools(_services);
-        var root = ParseResult(tools.GetProjectStatus());
+        var root = ParseResult(tools.GetState());
 
         root.GetProperty("isLoaded").GetBoolean().Should().BeTrue();
         root.GetProperty("projectName").GetString().Should().Be("MyProject");
     }
 
     [Test]
-    public void GetProjectStatus_NoProjectLoaded()
+    public void GetState_NoProjectLoaded()
     {
-        WireFeatureFlags();
+        WireAppStateDependencies();
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
         _services.GetRequiredService<IProjectService>().Returns(projectService);
 
         var tools = new AppTools(_services);
-        var root = ParseResult(tools.GetProjectStatus());
+        var root = ParseResult(tools.GetState());
 
         root.GetProperty("isLoaded").GetBoolean().Should().BeFalse();
         root.GetProperty("projectName").GetString().Should().BeEmpty();
     }
 
     [Test]
-    public void GetProjectStatus_IncludesAgentDocsPointer()
+    public void GetState_IncludesAgentDocsPointer()
     {
-        WireFeatureFlags();
+        WireAppStateDependencies();
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
         _services.GetRequiredService<IProjectService>().Returns(projectService);
 
         var tools = new AppTools(_services);
-        var root = ParseResult(tools.GetProjectStatus());
+        var root = ParseResult(tools.GetState());
 
         var agentDocs = root.GetProperty("agentDocs");
         agentDocs.GetProperty("entry").GetString().Should().Be("getting_started");
-        agentDocs.GetProperty("via").GetString().Should().Be("docs_read");
+        agentDocs.GetProperty("via").GetString().Should().Be("guides_read");
     }
 
     [Test]
-    public void GetProjectStatus_IncludesFeatureFlagsForEveryKnownFlag()
+    public void GetState_IncludesFocusedPanelLayoutModeAndPythonEnvironment()
     {
-        var featureFlags = WireFeatureFlags();
+        WireAppStateDependencies(focusedPanel: WorkspacePanel.Documents, contextVisible: true, inspectorVisible: false, consoleVisible: true, consoleMaximized: false);
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+        PythonEnvironmentInfo.InstalledPackages = new List<string> { "pytest==8.0.0", "numpy==2.0.0" };
+
+        try
+        {
+            var tools = new AppTools(_services);
+            var root = ParseResult(tools.GetState());
+
+            root.GetProperty("focusedPanel").GetString().Should().Be("Documents");
+
+            var layoutMode = root.GetProperty("layoutMode");
+            layoutMode.GetProperty("contextPanelVisible").GetBoolean().Should().BeTrue();
+            layoutMode.GetProperty("inspectorPanelVisible").GetBoolean().Should().BeFalse();
+            layoutMode.GetProperty("consolePanelVisible").GetBoolean().Should().BeTrue();
+            layoutMode.GetProperty("consoleMaximized").GetBoolean().Should().BeFalse();
+
+            var packages = root.GetProperty("pythonEnvironment").GetProperty("installedPackages");
+            packages.GetArrayLength().Should().Be(2);
+            packages[0].GetString().Should().Be("pytest==8.0.0");
+        }
+        finally
+        {
+            PythonEnvironmentInfo.InstalledPackages = Array.Empty<string>();
+        }
+    }
+
+    [Test]
+    public void GetState_IncludesFeatureFlagsForEveryKnownFlag()
+    {
+        var featureFlags = WireAppStateDependencies();
         // Mark just the eval flag enabled so the test verifies both true and false
         // values land in the returned payload.
         featureFlags.IsEnabled(FeatureFlagConstants.WebViewDevToolsEval).Returns(true);
@@ -97,7 +131,7 @@ public class AppToolTests
         _services.GetRequiredService<IProjectService>().Returns(projectService);
 
         var tools = new AppTools(_services);
-        var root = ParseResult(tools.GetProjectStatus());
+        var root = ParseResult(tools.GetState());
 
         var flagsElement = root.GetProperty("featureFlags");
         flagsElement.ValueKind.Should().Be(JsonValueKind.Object);
@@ -113,11 +147,28 @@ public class AppToolTests
         webViewDevToolsEval.GetBoolean().Should().BeTrue();
     }
 
-    private IFeatureFlags WireFeatureFlags()
+    private IFeatureFlags WireAppStateDependencies(
+        WorkspacePanel focusedPanel = WorkspacePanel.None,
+        bool contextVisible = false,
+        bool inspectorVisible = false,
+        bool consoleVisible = false,
+        bool consoleMaximized = false)
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
+
+        var panelFocusService = Substitute.For<IPanelFocusService>();
+        panelFocusService.FocusedPanel.Returns(focusedPanel);
+        _services.GetRequiredService<IPanelFocusService>().Returns(panelFocusService);
+
+        var layoutService = Substitute.For<ILayoutService>();
+        layoutService.IsContextPanelVisible.Returns(contextVisible);
+        layoutService.IsInspectorPanelVisible.Returns(inspectorVisible);
+        layoutService.IsConsolePanelVisible.Returns(consoleVisible);
+        layoutService.IsConsoleMaximized.Returns(consoleMaximized);
+        _services.GetRequiredService<ILayoutService>().Returns(layoutService);
+
         return featureFlags;
     }
 

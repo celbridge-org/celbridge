@@ -8,7 +8,7 @@ priority: 1
 
 Celbridge is a desktop application for editing project files (text, spreadsheets, custom editors) with an MCP tool surface for agents. Every tool call operates on the project the user has loaded.
 
-Call `app_get_status` first. Most workspace tools require a loaded project, and the response also includes the `featureFlags` map you should consult before invoking a feature-gated tool.
+Call `app_get_state` first. Most workspace tools require a loaded project, and the response also reports the `featureFlags` map you should consult before invoking a feature-gated tool, the `focusedPanel` and `layoutMode` you can consult to follow the user's attention, and the installed Python package list.
 
 ## The conventions agents trip over
 
@@ -23,7 +23,7 @@ Call `app_get_status` first. Most workspace tools require a loaded project, and 
 | Understand the project file tree | `project_structure`, `resource_keys` |
 | Edit, search, or grep file contents | `file_changes`, `regex_syntax`, the `file_*` tools |
 | Open or activate documents in the editor | `editing_documents`, the `document_*` tools |
-| Inspect what the user is currently doing | `workspace_panels`, `app_get_status`, `document_get_context`, `explorer_get_context` |
+| Inspect what the user is currently doing | `workspace_panels`, `app_get_state`, `document_get_context`, `explorer_get_context` |
 | Work with `.xlsx` workbooks | `spreadsheet_a1_notation`, `spreadsheet_cell_typing`, `spreadsheet_workflows` |
 | Embed an external page | `webview_documents` |
 | Use the WebView devtools loop on a contribution editor | `webview_devtools` |
@@ -34,8 +34,8 @@ Call `app_get_status` first. Most workspace tools require a loaded project, and 
 | Understand which actions ask the user before running | `silent_vs_interactive` |
 | Understand command names and conventions | `command_conventions`, `tool_naming` |
 
-When you know what you want but not the exact doc name, call `docs_search` with a regex pattern. Plain words work as patterns.
+When you know what you want but not the exact guide name, call `guides_search` with a regex pattern. Plain words work as patterns.
 
 ## Asking for more
 
-Every tool's full description is available via `docs_read([tool_name])`. The trimmed `tools/list` summary is enough for selection; the per-tool doc carries the rationale, examples, and gotchas. Parameter-validation errors will often nudge you at a specific doc; follow the link.
+Every tool's full description is available via `guides_read([tool_name])`. The trimmed `tools/list` summary is enough for selection; the per-tool guide carries the rationale, examples, and gotchas. Parameter-validation errors will often nudge you at a specific guide; follow the link.

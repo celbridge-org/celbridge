@@ -14,7 +14,7 @@ A single tool method is exposed under three names — the MCP form, the Python f
 | JavaScript call site (in a package) | `cel.<namespace>.<camelMethod>(...)` | `cel.file.applyEdits(...)` |
 | `requires_tools` manifest entry | `<namespace>.<snake_method>` | `"file.apply_edits"` |
 
-The dot-form alias used in manifests is the same form `cel.docs.list` returns for tool entries' identifiers — it matches the MCP tool name after swapping the first underscore for a dot. The JavaScript proxy converts the method portion to camelCase at the call site automatically; the manifest does **not**.
+The dot-form alias used in manifests is the same form `cel.guides.list` returns for tool entries' identifiers — it matches the MCP tool name after swapping the first underscore for a dot. The JavaScript proxy converts the method portion to camelCase at the call site automatically; the manifest does **not**.
 
 ## Common pitfalls
 

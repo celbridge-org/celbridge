@@ -1,6 +1,6 @@
 ---
 name: regex_syntax
-description: The regex flavour Celbridge tools (file_grep, docs_search, etc.) use, and the gotchas relative to PCRE/Python.
+description: The regex flavour Celbridge tools (file_grep, guides_search, etc.) use, and the gotchas relative to PCRE/Python.
 ---
 
 # Regex syntax
@@ -8,7 +8,7 @@ description: The regex flavour Celbridge tools (file_grep, docs_search, etc.) us
 Tools that accept regex patterns use **.NET `System.Text.RegularExpressions` syntax**. This applies to:
 
 - `file_grep` (when called with `useRegex: true`)
-- `docs_search`
+- `guides_search`
 - Any other tool that documents its `pattern` parameter as a regex
 
 ## Key differences from other flavours
@@ -17,7 +17,7 @@ Tools that accept regex patterns use **.NET `System.Text.RegularExpressions` syn
 - **Variable-length lookbehinds are supported.** `(?<!foo)bar` works regardless of the `foo` length.
 - **`\w` and `\d` are Unicode-aware by default.** `\d` matches any Unicode decimal digit, not just `[0-9]`. Use `[0-9]` if you need ASCII-only.
 - **`\K` (PCRE keep) is not available.** Use a lookbehind instead.
-- **Case-insensitive matching** — `docs_search` defaults to case-insensitive; for `file_grep` use the `(?i)` inline flag or the tool's case-insensitivity option.
+- **Case-insensitive matching** — `guides_search` defaults to case-insensitive; for `file_grep` use the `(?i)` inline flag or the tool's case-insensitivity option.
 
 ## Common patterns
 
@@ -33,4 +33,4 @@ Plain words are valid regex without metacharacters, so a literal substring searc
 
 ## Performance
 
-A pathological pattern can cause exponential backtracking on a hostile input. Tools wrap regex execution in a short timeout (typically a few hundred milliseconds for `docs_search`) and surface a timeout error rather than hanging. For very large inputs, prefer a substring or a fixed-length pattern over heavy alternation.
+A pathological pattern can cause exponential backtracking on a hostile input. Tools wrap regex execution in a short timeout (typically a few hundred milliseconds for `guides_search`) and surface a timeout error rather than hanging. For very large inputs, prefer a substring or a fixed-length pattern over heavy alternation.

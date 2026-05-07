@@ -7,10 +7,10 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// Shared reflection helpers for discovering MCP tool methods and their XML
-/// returns documentation. Used by the language-specific API reference tools
-/// (e.g. query_get_python_api, query_get_javascript_api) to build their
-/// output. Language-specific formatting (type names, parameter signatures,
-/// return annotations) lives in the tool classes themselves.
+/// returns documentation. The Guides loader uses these to build the per-tool
+/// Python and JavaScript invocation strings cached for guides_read.
+/// Language-specific formatting (type names, parameter signatures,
+/// return annotations) lives in the call-site formatter.
 /// </summary>
 internal static class ToolApiReflection
 {

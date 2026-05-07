@@ -18,13 +18,8 @@ def file():
 
 
 @pytest.fixture(scope="session")
-def query():
-    return celbridge.query
-
-
-@pytest.fixture(scope="session")
-def docs():
-    return celbridge.docs
+def guides():
+    return celbridge.guides
 
 
 @pytest.fixture(scope="session")

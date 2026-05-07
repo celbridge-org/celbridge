@@ -19,14 +19,14 @@ Module names match tool namespaces. Inside the REPL, `cel.app.log("hi")` and `ap
 ## Conventions
 
 - **Parameters use snake_case.** `cel.file.apply_edits(...)`, not `applyEdits`.
-- **JSON results are returned as dicts.** Tools that return structured payloads (e.g. `app.get_status`, `document.get_context`) deserialise into native Python dicts.
+- **JSON results are returned as dicts.** Tools that return structured payloads (e.g. `app.get_state`, `document.get_context`) deserialise into native Python dicts.
 - **Errors raise `CelError`** with a message string. The REPL is configured to display these without a traceback so the message is the focus.
 - **Methods marked `-> ok`** return the string `'ok'` on success or raise `CelError`.
 - **Methods with no return annotation** return `None`.
 
 ## Discovering the API
 
-Type `help(cel)` to list the namespaces, or `help(cel.file)` to see the methods available on one. Each method's docstring shows its parameters and return shape, sourced from the trimmed MCP tool description. For full detail, call `cel.docs.read([tool_name])`.
+Type `help(cel)` to list the namespaces, or `help(cel.file)` to see the methods available on one. Each method's docstring shows its parameters and return shape, sourced from the trimmed MCP tool description. For full detail, call `cel.guides.read([tool_name])`.
 
 ## Structured-parameter formats
 

@@ -1,15 +1,32 @@
 class TestApp:
 
-    def test_get_status(self, app):
-        result = app.get_status()
+    def test_get_state(self, app):
+        result = app.get_state()
         assert result["isLoaded"]
         assert len(result["projectName"]) > 0
 
-    def test_get_status_returns_agent_docs_pointer(self, app):
-        result = app.get_status()
+    def test_get_state_returns_agent_docs_pointer(self, app):
+        result = app.get_state()
         agent_docs = result["agentDocs"]
         assert agent_docs["entry"] == "getting_started"
-        assert agent_docs["via"] == "docs_read"
+        assert agent_docs["via"] == "guides_read"
+
+    def test_get_state_returns_focused_panel(self, app):
+        result = app.get_state()
+        assert isinstance(result["focusedPanel"], str)
+
+    def test_get_state_returns_layout_mode(self, app):
+        result = app.get_state()
+        layout_mode = result["layoutMode"]
+        assert isinstance(layout_mode["contextPanelVisible"], bool)
+        assert isinstance(layout_mode["inspectorPanelVisible"], bool)
+        assert isinstance(layout_mode["consolePanelVisible"], bool)
+        assert isinstance(layout_mode["consoleMaximized"], bool)
+
+    def test_get_state_returns_python_environment(self, app):
+        result = app.get_state()
+        python_environment = result["pythonEnvironment"]
+        assert isinstance(python_environment["installedPackages"], list)
 
     def test_get_version(self, app):
         version = app.get_version()

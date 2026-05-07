@@ -5,13 +5,13 @@ description: Curated cold-start prompts and rubric for validating tool-selection
 
 # Cold-Start Validation
 
-This doc carries the prompt set and evaluation rubric used to gate the tool-surface redesign. A developer triggers a validation run by asking the agent to "run cold start validation"; the agent fetches this doc on demand and works through it. The doc is intentionally not loaded by default — it must not bias cold-start behaviour the rest of the time.
+This guide carries the prompt set and evaluation rubric used to gate the tool-surface redesign. A developer triggers a validation run by asking the agent to "run cold start validation"; the agent fetches this guide on demand and works through it. The guide is intentionally not loaded by default — it must not bias cold-start behaviour the rest of the time.
 
 ## How to run
 
-1. Read this doc with `docs_read(['cold_start_validation'])`.
-2. For each prompt below, work the task as if it were a fresh user request. Do not consult any other doc unless the task itself requires it.
-3. After each task, fill in the rubric scoresheet at the bottom of this doc.
+1. Read this guide with `guides_read(['cold_start_validation'])`.
+2. For each prompt below, work the task as if it were a fresh user request. Do not consult any other guide unless the task itself requires it.
+3. After each task, fill in the rubric scoresheet at the bottom of this guide.
 4. Report the aggregate result back to the developer.
 
 ## Prompts
@@ -20,13 +20,13 @@ This doc carries the prompt set and evaluation rubric used to gate the tool-surf
 
 > *"What's in this project? Give me a tree and a one-line description of each top-level folder."*
 
-Expected first calls: `app_get_status`, then `file_get_tree("")`. Should not call any docs_*.
+Expected first calls: `app_get_state`, then `file_get_tree("")`. Should not call any guides_*.
 
 ### P2 — Targeted edit
 
 > *"Add a `# TODO: review` line above the `main` function in `scripts/build.py`."*
 
-Expected: `file_grep` (or `file_read`) to locate the function, then `file_apply_edits`. Should not write a new file. Should not call `file_write` (that overwrites). Should not navigate the doc library before acting.
+Expected: `file_grep` (or `file_read`) to locate the function, then `file_apply_edits`. Should not write a new file. Should not call `file_write` (that overwrites). Should not navigate the guide library before acting.
 
 ### P3 — Spreadsheet read
 
@@ -62,7 +62,7 @@ Expected: `explorer_create_folder("archive")` (top-level) — confirm what the u
 
 > *"Run `console.log('hi')` in the WebView devtools."*
 
-Expected: check `featureFlags['webview-dev-tools-eval']` from `app_get_status` before calling `webview_eval`, and explain the flag if it is off.
+Expected: check `featureFlags['webview-dev-tools-eval']` from `app_get_state` before calling `webview_eval`, and explain the flag if it is off.
 
 ## Rubric
 

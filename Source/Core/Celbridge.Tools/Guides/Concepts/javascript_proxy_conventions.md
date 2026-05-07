@@ -13,7 +13,7 @@ Before writing any JS that calls `cel.*`, declare the tools your package needs i
 
 ```toml
 [mod]
-requires_tools = ["document.*", "file.*", "app.get_status"]
+requires_tools = ["document.*", "file.*", "app.get_state"]
 ```
 
 ## Naming: manifest vs. JS call site
@@ -65,4 +65,4 @@ Arrays and objects passed to `string`-typed parameters are JSON-encoded automati
 | `files` (in `file.grep`) | `string[]` of resource keys |
 | `fileResource` (in `document.close`) | A single resource key or a `string[]` |
 
-For per-tool parameter detail, call `docs_read([tool_name])` (the agent surface) or browse the trimmed MCP tool descriptions.
+For per-tool parameter detail, call `guides_read([tool_name])` (the agent surface) or browse the trimmed MCP tool descriptions.

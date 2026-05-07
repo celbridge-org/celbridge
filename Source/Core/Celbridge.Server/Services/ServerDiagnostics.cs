@@ -92,7 +92,7 @@ public class ServerDiagnostics
         return (characterCount + 3) / 4;
     }
 
-    // Tool names follow the namespace_method convention (e.g. "app_get_status").
+    // Tool names follow the namespace_method convention (e.g. "app_get_state").
     // Everything before the first underscore is the namespace; tools without an
     // underscore are bucketed under their full name.
     private static string ExtractNamespace(string toolName)
