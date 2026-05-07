@@ -69,6 +69,22 @@ public class AppToolTests
     }
 
     [Test]
+    public void GetProjectStatus_IncludesAgentDocsPointer()
+    {
+        WireFeatureFlags();
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetProjectStatus());
+
+        var agentDocs = root.GetProperty("agentDocs");
+        agentDocs.GetProperty("entry").GetString().Should().Be("getting_started");
+        agentDocs.GetProperty("via").GetString().Should().Be("docs_read");
+    }
+
+    [Test]
     public void GetProjectStatus_IncludesFeatureFlagsForEveryKnownFlag()
     {
         var featureFlags = WireFeatureFlags();

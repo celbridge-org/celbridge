@@ -23,6 +23,11 @@ def query():
 
 
 @pytest.fixture(scope="session")
+def docs():
+    return celbridge.docs
+
+
+@pytest.fixture(scope="session")
 def explorer():
     return celbridge.explorer
 

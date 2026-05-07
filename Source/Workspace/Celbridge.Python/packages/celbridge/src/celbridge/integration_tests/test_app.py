@@ -5,6 +5,12 @@ class TestApp:
         assert result["isLoaded"]
         assert len(result["projectName"]) > 0
 
+    def test_get_status_returns_agent_docs_pointer(self, app):
+        result = app.get_status()
+        agent_docs = result["agentDocs"]
+        assert agent_docs["entry"] == "getting_started"
+        assert agent_docs["via"] == "docs_read"
+
     def test_get_version(self, app):
         version = app.get_version()
         parts = version.split(".")

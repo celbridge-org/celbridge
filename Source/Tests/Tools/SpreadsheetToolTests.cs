@@ -58,16 +58,6 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void GetContext_ReturnsSpreadsheetContextMarkdown()
-    {
-        var tools = new SpreadsheetTools(_services);
-        var text = GetResultText(tools.GetContext());
-
-        text.Should().Contain("# Celbridge Spreadsheet Tools");
-        text.Should().Contain("A1 notation");
-    }
-
-    [Test]
     public void GetInfo_DispatchesToReaderAndReturnsJson()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");

@@ -10,6 +10,7 @@ public record class FileReadResult(string Content, int TotalLineCount);
 
 public partial class FileTools
 {
+    // Bootstrap tool. Keep summary rich and do not trim.
     /// <summary>
     /// Reads the text content of a file. Always returns JSON with content and totalLineCount.
     /// Supports optional line range via offset and limit.

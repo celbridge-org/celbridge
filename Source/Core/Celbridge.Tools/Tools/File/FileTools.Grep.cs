@@ -28,6 +28,7 @@ public record class GrepMatchWithContext(int LineNumber, string LineText, int Ma
 
 public partial class FileTools
 {
+    // Bootstrap tool. Keep summary rich and do not trim.
     /// <summary>
     /// Searches file contents by text or regex, returning matches with line numbers and optional context lines.
     /// Use the files parameter to search specific files directly, or use resource/include/exclude to scope by folder or glob.

@@ -1,10 +1,18 @@
 # Celbridge Agent Context
 
+> **There is now a focused agent guide library available via `docs_list`
+> and `docs_read`.** The library covers the same topics this document does
+> but in shorter, navigable per-topic entries — call `docs_read(['getting_started'])`
+> for an orientation entry point, or `docs_search(pattern)` to find a
+> specific topic. This `AgentContext.md` blob is being retired as that
+> library matures.
+
 ## Getting Started
 
 Call `app_get_status` before using workspace tools — most require a loaded project. The
 response also includes a `featureFlags` map you can consult before calling a feature-gated
-tool (e.g. check `webview-dev-tools-eval` before `webview_eval`).
+tool (e.g. check `webview-dev-tools-eval` before `webview_eval`), plus an `agentDocs`
+pointer naming the entry point in the docs library described above.
 
 ## Resource Keys
 

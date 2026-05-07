@@ -122,7 +122,7 @@ class CelProxy:
         def run_test(class_filter=None):
             """Run the Celbridge MCP integration test suite.
 
-            Tests all tool namespaces: app, query, explorer, document, file, package, spreadsheet, webview.
+            Tests all tool namespaces: app, docs, query, explorer, document, file, package, spreadsheet, webview.
 
             Args:
                 class_filter: Optional. Restrict the run to a single test class
@@ -137,6 +137,7 @@ class CelProxy:
 
     _namespace_descriptions = {
         "app": "Application status, logging, and alerts",
+        "docs": "Browse and search the agent documentation library",
         "document": "Open, edit, and manage editor documents",
         "explorer": "File and folder operations in the project tree",
         "file": "Read files, search, and query project structure",

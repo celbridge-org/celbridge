@@ -6,6 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class DocumentTools
 {
+    // Bootstrap tool. Keep summary rich and do not trim.
     /// <summary>
     /// Opens a document in the editor. By default the document is opened without
     /// activating it, so the user's current active tab is preserved. Use

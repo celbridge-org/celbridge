@@ -11,6 +11,7 @@ public record class WriteFileResult(int LineCount);
 
 public partial class FileTools
 {
+    // Bootstrap tool. Keep summary rich and do not trim.
     /// <summary>
     /// Writes text content to a file. Creates the file if it does not exist.
     /// For existing files, replaces the entire content. Writes directly to disk.

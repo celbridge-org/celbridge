@@ -22,12 +22,6 @@ def workspace(explorer, document):
 
 class TestSpreadsheet:
 
-    # spreadsheet_get_context
-
-    def test_get_context(self, spreadsheet):
-        result = spreadsheet.get_context()
-        assert "A1 notation" in result
-
     # spreadsheet_get_info
 
     def test_get_info_empty_workbook(self, spreadsheet):

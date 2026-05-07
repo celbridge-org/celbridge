@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\**\*" />
+    <EmbeddedResource Include="Docs\**\*.md" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +38,10 @@
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
   </ItemGroup>
 
 </Project>
