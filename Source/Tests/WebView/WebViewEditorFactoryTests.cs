@@ -1,7 +1,7 @@
 using Celbridge.WebView.Services;
 using Microsoft.Extensions.Localization;
 
-namespace Celbridge.Tests.Documents;
+namespace Celbridge.Tests.WebView;
 
 [TestFixture]
 public class WebViewEditorFactoryTests

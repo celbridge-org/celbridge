@@ -1,7 +1,7 @@
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 
-namespace Celbridge.Tests.Tools;
+namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Tests for DeleteLinesHelper — the pure logic helpers for the

@@ -3,7 +3,7 @@ using Celbridge.Settings.Services;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Settings;
 
 [TestFixture]
 public class EditorSettingsTests

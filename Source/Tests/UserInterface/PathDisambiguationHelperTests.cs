@@ -1,6 +1,6 @@
 using Celbridge.UserInterface.Helpers;
 
-namespace Celbridge.Tests.Helpers;
+namespace Celbridge.Tests.UserInterface;
 
 [TestFixture]
 public class PathDisambiguationHelperTests

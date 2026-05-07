@@ -2,7 +2,7 @@ using Celbridge.Spreadsheet;
 using Celbridge.Spreadsheet.Services;
 using ClosedXML.Excel;
 
-namespace Celbridge.Tests.Tools;
+namespace Celbridge.Tests.Spreadsheet;
 
 /// <summary>
 /// Tests for SpreadsheetReader against fixture .xlsx workbooks generated in

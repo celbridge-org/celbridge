@@ -5,7 +5,7 @@ using Celbridge.Server;
 using Celbridge.Server.Services;
 using StreamJsonRpc;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Server;
 
 [TestFixture]
 public class TcpTransportTests

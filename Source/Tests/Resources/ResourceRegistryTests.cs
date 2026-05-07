@@ -5,7 +5,7 @@ using Celbridge.Resources.Services;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Resources;
 
 [TestFixture]
 public class ResourceRegistryTests

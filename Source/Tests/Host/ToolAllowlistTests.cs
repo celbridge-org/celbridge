@@ -1,6 +1,6 @@
 using Celbridge.Host;
 
-namespace Celbridge.Tests.Helpers;
+namespace Celbridge.Tests.Host;
 
 [TestFixture]
 public class ToolAllowlistTests

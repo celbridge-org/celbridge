@@ -1,4 +1,4 @@
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Resources;
 
 [TestFixture]
 public class ResourceKeyTests

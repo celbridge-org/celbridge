@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using Celbridge.Resources.Services;
 
-namespace Celbridge.Tests;
+namespace Celbridge.Tests.Archive;
 
 [TestFixture]
 public class PackageArchiveTests

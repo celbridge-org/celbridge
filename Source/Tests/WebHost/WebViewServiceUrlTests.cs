@@ -2,7 +2,7 @@ using Celbridge.Settings;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
 
-namespace Celbridge.Tests.WebView;
+namespace Celbridge.Tests.WebHost;
 
 [TestFixture]
 public class WebViewServiceUrlTests

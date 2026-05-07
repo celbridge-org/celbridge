@@ -5,7 +5,7 @@ using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
-namespace Celbridge.Tests.Tools;
+namespace Celbridge.Tests.Spreadsheet;
 
 /// <summary>
 /// Tests for the ISpreadsheet*Command implementations against fixture .xlsx
