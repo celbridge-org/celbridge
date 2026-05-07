@@ -331,7 +331,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
             }
             else
             {
-                var colorResult = SpreadsheetFormatConverter.ParseColor(format.BackgroundColor);
+                var colorResult = FormatConverterHelper.ParseColor(format.BackgroundColor);
                 if (colorResult.IsFailure)
                 {
                     return colorResult;
@@ -352,7 +352,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
 
         if (format.HorizontalAlignment is not null)
         {
-            var result = SpreadsheetFormatConverter.ParseHorizontalAlignment(format.HorizontalAlignment);
+            var result = FormatConverterHelper.ParseHorizontalAlignment(format.HorizontalAlignment);
             if (result.IsFailure)
             {
                 return result;
@@ -362,7 +362,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
 
         if (format.VerticalAlignment is not null)
         {
-            var result = SpreadsheetFormatConverter.ParseVerticalAlignment(format.VerticalAlignment);
+            var result = FormatConverterHelper.ParseVerticalAlignment(format.VerticalAlignment);
             if (result.IsFailure)
             {
                 return result;
@@ -442,7 +442,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
             }
             else
             {
-                var colorResult = SpreadsheetFormatConverter.ParseColor(textFormat.ForegroundColor);
+                var colorResult = FormatConverterHelper.ParseColor(textFormat.ForegroundColor);
                 if (colorResult.IsFailure)
                 {
                     return colorResult;
@@ -500,7 +500,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         XLBorderStyleValues? borderStyle = null;
         if (side.Style is not null)
         {
-            var styleResult = SpreadsheetFormatConverter.ParseBorderStyle(side.Style);
+            var styleResult = FormatConverterHelper.ParseBorderStyle(side.Style);
             if (styleResult.IsFailure)
             {
                 return styleResult;
@@ -518,7 +518,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
             }
             else
             {
-                var colorResult = SpreadsheetFormatConverter.ParseColor(side.Color);
+                var colorResult = FormatConverterHelper.ParseColor(side.Color);
                 if (colorResult.IsFailure)
                 {
                     return colorResult;

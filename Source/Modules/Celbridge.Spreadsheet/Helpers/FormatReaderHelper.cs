@@ -2,7 +2,7 @@ using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Helpers;
 
-internal static class SpreadsheetFormatReader
+internal static class FormatReaderHelper
 {
     public static FormatSpec ReadFormatFromCell(IXLCell cell)
     {

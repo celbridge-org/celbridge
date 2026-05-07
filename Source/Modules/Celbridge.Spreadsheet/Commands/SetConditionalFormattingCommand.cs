@@ -244,7 +244,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
     {
         if (rule.BackgroundColor is not null)
         {
-            var colorResult = SpreadsheetFormatConverter.ParseColor(rule.BackgroundColor);
+            var colorResult = FormatConverterHelper.ParseColor(rule.BackgroundColor);
             if (colorResult.IsFailure)
             {
                 return colorResult;
@@ -255,7 +255,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
         if (rule.FontColor is not null)
         {
-            var colorResult = SpreadsheetFormatConverter.ParseColor(rule.FontColor);
+            var colorResult = FormatConverterHelper.ParseColor(rule.FontColor);
             if (colorResult.IsFailure)
             {
                 return colorResult;
@@ -308,12 +308,12 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
     private static Result ApplyColorScale2(IXLConditionalFormat conditionalFormat, ConditionalFormatRule rule)
     {
-        var lowColorResult = SpreadsheetFormatConverter.ParseColor(rule.LowColor ?? "#FFFFFF");
+        var lowColorResult = FormatConverterHelper.ParseColor(rule.LowColor ?? "#FFFFFF");
         if (lowColorResult.IsFailure)
         {
             return lowColorResult;
         }
-        var highColorResult = SpreadsheetFormatConverter.ParseColor(rule.HighColor ?? "#FF0000");
+        var highColorResult = FormatConverterHelper.ParseColor(rule.HighColor ?? "#FF0000");
         if (highColorResult.IsFailure)
         {
             return highColorResult;
@@ -332,17 +332,17 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
     private static Result ApplyColorScale3(IXLConditionalFormat conditionalFormat, ConditionalFormatRule rule)
     {
-        var lowColorResult = SpreadsheetFormatConverter.ParseColor(rule.LowColor ?? "#FF0000");
+        var lowColorResult = FormatConverterHelper.ParseColor(rule.LowColor ?? "#FF0000");
         if (lowColorResult.IsFailure)
         {
             return lowColorResult;
         }
-        var midColorResult = SpreadsheetFormatConverter.ParseColor(rule.MidColor ?? "#FFFFFF");
+        var midColorResult = FormatConverterHelper.ParseColor(rule.MidColor ?? "#FFFFFF");
         if (midColorResult.IsFailure)
         {
             return midColorResult;
         }
-        var highColorResult = SpreadsheetFormatConverter.ParseColor(rule.HighColor ?? "#00FF00");
+        var highColorResult = FormatConverterHelper.ParseColor(rule.HighColor ?? "#00FF00");
         if (highColorResult.IsFailure)
         {
             return highColorResult;

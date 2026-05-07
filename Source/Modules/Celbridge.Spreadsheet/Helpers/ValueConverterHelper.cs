@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet.Helpers;
 /// ISO 8601 date strings, booleans, strings, error strings, or null), and
 /// renders cells as RFC 4180 CSV fields.
 /// </summary>
-internal static class SpreadsheetValueConverter
+internal static class ValueConverterHelper
 {
     /// <summary>
     /// Writes a JSON-typed value into a cell. Null clears the cell. Booleans,

@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet.Helpers;
 /// All fields are returned as strings; numeric and other typed coercion is
 /// the caller's responsibility.
 /// </summary>
-internal static class SpreadsheetCsvParser
+internal static class CsvParserHelper
 {
     public static IReadOnlyList<IReadOnlyList<string>> Parse(string csvText)
     {

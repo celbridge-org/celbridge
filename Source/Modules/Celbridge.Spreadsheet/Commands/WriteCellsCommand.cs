@@ -78,7 +78,7 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                     {
                         return Result.Fail($"Edit {editIndex + 1}: marked isFormula but value is not a string.");
                     }
-                    SpreadsheetValueConverter.SetCellFormula(cell, formulaText);
+                    ValueConverterHelper.SetCellFormula(cell, formulaText);
                 }
                 else
                 {
@@ -90,7 +90,7 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                             return Result.Fail($"Edit {editIndex + 1}: {validation.FirstErrorMessage}");
                         }
                     }
-                    SpreadsheetValueConverter.SetCellValue(cell, edit.Value);
+                    ValueConverterHelper.SetCellValue(cell, edit.Value);
                 }
             }
 

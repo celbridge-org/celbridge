@@ -7,7 +7,7 @@ namespace Celbridge.Spreadsheet.Helpers;
 /// color strings and unrecognised border-style names return failures so the
 /// command can report them to the caller without saving the workbook.
 /// </summary>
-internal static class SpreadsheetFormatConverter
+internal static class FormatConverterHelper
 {
     /// <summary>
     /// Parses a CSS hex color string (#RRGGBB) into an XLColor. Strictly

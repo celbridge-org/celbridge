@@ -54,7 +54,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
             IReadOnlyList<IReadOnlyList<string>> parsedRows;
             try
             {
-                parsedRows = SpreadsheetCsvParser.Parse(import.CsvText);
+                parsedRows = CsvParserHelper.Parse(import.CsvText);
             }
             catch (Exception ex)
             {

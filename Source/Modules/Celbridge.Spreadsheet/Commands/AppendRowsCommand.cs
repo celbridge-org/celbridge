@@ -92,7 +92,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
                         }
                     }
                     var cell = worksheet.Cell(rowNumber, columnIndex + 1);
-                    SpreadsheetValueConverter.SetCellValue(cell, rawValue);
+                    ValueConverterHelper.SetCellValue(cell, rawValue);
                 }
             }
 

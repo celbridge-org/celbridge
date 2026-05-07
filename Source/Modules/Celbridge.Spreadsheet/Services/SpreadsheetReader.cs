@@ -153,8 +153,8 @@ public class SpreadsheetReader : ISpreadsheetReader
                         builder.Append(',');
                     }
                     var cell = rangeRow.Cell(columnOffset);
-                    var cellValue = SpreadsheetValueConverter.ToJsonValue(cell.Value);
-                    builder.Append(SpreadsheetValueConverter.ToCsvField(cellValue));
+                    var cellValue = ValueConverterHelper.ToJsonValue(cell.Value);
+                    builder.Append(ValueConverterHelper.ToCsvField(cellValue));
                 }
                 builder.Append("\r\n");
             }
@@ -427,7 +427,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 for (int columnOffset = 1; columnOffset <= columnCount; columnOffset++)
                 {
                     var cell = resolvedRange.Cell(rowOffset, columnOffset);
-                    var spec = SpreadsheetFormatReader.ReadFormatFromCell(cell);
+                    var spec = FormatReaderHelper.ReadFormatFromCell(cell);
                     rowSpecs.Add(spec);
                 }
                 rows.Add(rowSpecs);
@@ -611,7 +611,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             return "=" + cell.FormulaA1;
         }
 
-        return SpreadsheetValueConverter.ToJsonValue(cell.Value);
+        return ValueConverterHelper.ToJsonValue(cell.Value);
     }
 
     private static int ResolveLimit(int limit)
