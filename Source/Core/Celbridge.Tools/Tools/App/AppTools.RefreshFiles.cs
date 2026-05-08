@@ -16,9 +16,9 @@ public partial class AppTools
         {
             var failure = Result.Fail("Failed to refresh file listing")
                 .WithErrors(result);
-            return ToolError(failure);
+            return ToolResponse.Error(failure);
         }
 
-        return ToolSuccess("File listing refreshed.");
+        return ToolResponse.Success("File listing refreshed.");
     }
 }

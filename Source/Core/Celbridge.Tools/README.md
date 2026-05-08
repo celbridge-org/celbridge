@@ -73,7 +73,7 @@ If you add a tool but forget the guide, the app won't launch — the build doesn
 1. Implement the partial method in `Tools/<Namespace>/<NamespaceTools>.<Method>.cs`. Follow the existing partial-class layout. Use `[McpServerTool(Name = "<namespace>_<method>")]` and `[ToolAlias("<namespace>.<method>")]`.
 2. Write the XML `<summary>` as a discriminator only. Add `READ GUIDE FIRST.` at the start if the tool is destructive. Document parameters with `<param>` and add a `<returns>` if the tool returns a value.
 3. Author the per-tool guide at `Guides/Tools/<namespace>_<method>.md` using `Guides/template_guide.md` as a starting scaffold. Match `name:` to the tool alias.
-4. If the tool has agent-recoverable failure modes, return `ToolError(...)` for them — the suffix and length cap come for free. Bootstrap tools use `BootstrapToolError(...)` instead.
+4. If the tool has agent-recoverable failure modes, return `ToolResponse.Error(...)` for them — the suffix and length cap come for free. Bootstrap tools use `ToolResponse.BootstrapError(...)` instead.
 5. Add a unit test in `Source/Tests/Tools/<Namespace>ToolTests.cs` covering the happy case and the most common failure mode. Add a Python integration test in `Source/Workspace/Celbridge.Python/packages/celbridge/src/celbridge/integration_tests/test_<namespace>.py` for end-to-end coverage through the proxy.
 
 ## Adding a new namespace — checklist
@@ -100,5 +100,5 @@ The workbook is the only output format. If you need a quick eyeball view, open S
 
 - `tool_surface_redesign.md` (under `05_development/02_proposals/` then `02_working/` then `03_landed/`) — the design rationale and phase history for everything described above.
 - `Guides/template_guide.md` — the authoring scaffold for new per-tool guides.
-- `Tools/AgentToolBase.cs` — `ToolError`, `BootstrapToolError`, and the helpers every tool uses.
+- `Tools/ToolResponse.cs` — `Error`, `BootstrapError`, `SuccessWithGuides`, and the guide-pointer policy every tool uses. `Tools/AgentToolBase.cs` provides the DI plumbing those tools share.
 - `Server/Services/AgentGate.cs`, `AgentTelemetry.cs` — the cold-start gate and telemetry infrastructure.

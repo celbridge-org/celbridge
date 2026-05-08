@@ -28,6 +28,6 @@ public partial class ExplorerTools
             explorerService.FolderStateService.ExpandedFolders);
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

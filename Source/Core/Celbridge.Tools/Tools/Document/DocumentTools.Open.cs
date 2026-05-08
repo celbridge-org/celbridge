@@ -13,12 +13,12 @@ public partial class DocumentTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
         }
 
         if (sectionIndex != -1 && sectionIndex is < 0 or > 2)
         {
-            return ToolError($"Invalid sectionIndex '{sectionIndex}': must be 0, 1, 2, or -1 for the active section.");
+            return ToolResponse.Error($"Invalid sectionIndex '{sectionIndex}': must be 0, 1, 2, or -1 for the active section.");
         }
 
         int? targetSectionIndex = sectionIndex == -1 ? null : sectionIndex;
@@ -33,12 +33,12 @@ public partial class DocumentTools
 
         if (openResult.IsFailure)
         {
-            return ToolError(openResult);
+            return ToolResponse.Error(openResult);
         }
 
         var outcome = openResult.Value;
         return outcome == OpenDocumentOutcome.Cancelled
-            ? ToolSuccess("cancelled")
-            : ToolSuccess("opened");
+            ? ToolResponse.Success("cancelled")
+            : ToolResponse.Success("opened");
     }
 }

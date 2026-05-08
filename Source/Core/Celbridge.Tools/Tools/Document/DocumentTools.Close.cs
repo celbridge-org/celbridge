@@ -24,7 +24,7 @@ public partial class DocumentTools
         {
             if (!ResourceKey.TryCreate(keyString, out var validatedKey))
             {
-                return ToolError($"Invalid resource key: '{keyString}'");
+                return ToolResponse.Error($"Invalid resource key: '{keyString}'");
             }
             validatedKeys.Add(validatedKey);
         }
@@ -55,9 +55,9 @@ public partial class DocumentTools
 
         if (errors.Count > 0)
         {
-            return ToolError(json);
+            return ToolResponse.Error(json);
         }
 
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

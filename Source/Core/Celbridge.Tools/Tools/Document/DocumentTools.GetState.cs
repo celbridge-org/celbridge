@@ -31,7 +31,7 @@ public partial class DocumentTools
         var getStateResult = await ExecuteCommandAsync<IGetDocumentStateCommand, DocumentStateSnapshot>();
         if (getStateResult.IsFailure)
         {
-            return ToolError(getStateResult);
+            return ToolResponse.Error(getStateResult);
         }
         var snapshot = getStateResult.Value;
 
@@ -54,6 +54,6 @@ public partial class DocumentTools
             documents);
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

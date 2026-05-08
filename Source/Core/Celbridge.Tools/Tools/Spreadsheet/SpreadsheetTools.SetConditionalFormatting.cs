@@ -20,29 +20,29 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolError("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         if (string.IsNullOrEmpty(range))
         {
-            return ToolError("Range is required.");
+            return ToolResponse.Error("Range is required.");
         }
 
         var parseResult = ParseConditionalFormatRules(rulesJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var rules = parseResult.Value;
 
         if (rules.Count == 0 && !clearExisting)
         {
-            return ToolError("Rules array must contain at least one rule when clearExisting is false.");
+            return ToolResponse.Error("Rules array must contain at least one rule when clearExisting is false.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -56,12 +56,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<IReadOnlyList<ConditionalFormatRule>> ParseConditionalFormatRules(string rulesJson)

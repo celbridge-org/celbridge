@@ -22,6 +22,7 @@ JSON object with `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always `
 
 - Synthetic events: handlers gated on `event.isTrusted` will not fire. If a click appears to do nothing, follow up with `webview_eval` to read a side effect, or with `webview_inspect` to verify a class change.
 - The selector must match a currently mounted element. If the matching element is conditionally rendered, query for it first with `webview_query` to confirm presence.
+- Canvas-painted UI cannot be targeted by selector. See the `webview` namespace guide for the workaround.
 
 ## See also
 

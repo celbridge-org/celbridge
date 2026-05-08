@@ -31,7 +31,7 @@ public partial class GuidesTools
         var parsedNames = ParseNamesArgument(names);
         if (parsedNames.IsFailure)
         {
-            return BootstrapToolError(parsedNames.MessageChain);
+            return ToolResponse.BootstrapError(parsedNames.MessageChain);
         }
 
         var library = Guides;
@@ -51,7 +51,7 @@ public partial class GuidesTools
 
         var payload = new GuidesReadResult(results, unknown);
         var json = JsonSerializer.Serialize(payload, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<List<string>> ParseNamesArgument(string names)

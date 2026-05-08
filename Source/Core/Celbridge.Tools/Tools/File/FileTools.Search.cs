@@ -49,11 +49,11 @@ public partial class FileTools
                         0,
                         directoryInfo.LastWriteTimeUtc.ToString("o")));
                 }
-                return ToolSuccess(SerializeJson(results));
+                return ToolResponse.Success(SerializeJson(results));
             }
 
             var folderStrings = matchingFolders.Select(key => key.ToString()).ToList();
-            return ToolSuccess(SerializeJson(folderStrings));
+            return ToolResponse.Success(SerializeJson(folderStrings));
         }
 
         var allResources = resourceRegistry.GetAllFileResources();
@@ -73,10 +73,10 @@ public partial class FileTools
                     fileInfo.Length,
                     fileInfo.LastWriteTimeUtc.ToString("o")));
             }
-            return ToolSuccess(SerializeJson(results));
+            return ToolResponse.Success(SerializeJson(results));
         }
 
         var resourceStrings = matches.Select(r => r.Resource.ToString()).ToList();
-        return ToolSuccess(SerializeJson(resourceStrings));
+        return ToolResponse.Success(SerializeJson(resourceStrings));
     }
 }

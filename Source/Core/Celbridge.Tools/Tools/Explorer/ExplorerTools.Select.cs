@@ -12,7 +12,7 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         var selectResult = await ExecuteCommandAsync<ISelectResourceCommand>(command =>
@@ -22,9 +22,9 @@ public partial class ExplorerTools
         });
         if (selectResult.IsFailure)
         {
-            return ToolError(selectResult);
+            return ToolResponse.Error(selectResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

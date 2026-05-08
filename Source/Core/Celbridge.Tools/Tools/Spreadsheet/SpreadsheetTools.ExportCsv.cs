@@ -23,13 +23,13 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolError("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
@@ -38,18 +38,18 @@ public partial class SpreadsheetTools
         var csvResult = reader.ExportCsv(workbookPath, sheet, rangeArgument);
         if (csvResult.IsFailure)
         {
-            return ToolError(csvResult);
+            return ToolResponse.Error(csvResult);
         }
         var csv = csvResult.Value;
 
         if (string.IsNullOrEmpty(destination))
         {
-            return ToolSuccess(csv.Csv);
+            return ToolResponse.Success(csv.Csv);
         }
 
         if (!ResourceKey.TryCreate(destination, out var destinationResourceKey))
         {
-            return ToolError($"Invalid destination resource key: '{destination}'");
+            return ToolResponse.Error($"Invalid destination resource key: '{destination}'");
         }
 
         var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
@@ -59,12 +59,12 @@ public partial class SpreadsheetTools
         });
         if (writeResult.IsFailure)
         {
-            return ToolError(writeResult);
+            return ToolResponse.Error(writeResult);
         }
 
         var byteCount = Encoding.UTF8.GetByteCount(csv.Csv);
         var metadata = new ExportCsvFileResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
         var json = SerializeJson(metadata);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

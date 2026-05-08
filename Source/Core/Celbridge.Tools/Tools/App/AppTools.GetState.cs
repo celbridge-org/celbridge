@@ -87,7 +87,7 @@ public partial class AppTools
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
 
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static IReadOnlyList<string> ReadFeatureFlagNames()

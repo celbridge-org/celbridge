@@ -22,7 +22,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ToolError(listResult);
+            return ToolResponse.Error(listResult);
         }
 
         var packages = new List<PackageListEntry>();
@@ -39,6 +39,6 @@ public partial class PackageTools
         }
 
         var json = JsonSerializer.Serialize(packages, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

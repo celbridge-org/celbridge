@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Celbridge.Settings;
 using Celbridge.WebHost;
 using ModelContextProtocol.Protocol;
@@ -21,12 +22,12 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         var modeCount = 0;
@@ -35,7 +36,7 @@ public partial class WebViewTools
         if (!string.IsNullOrEmpty(selector)) modeCount++;
         if (modeCount != 1)
         {
-            return ToolError("webview_query requires exactly one of role, text, or selector.");
+            return ToolResponse.Error("webview_query requires exactly one of role, text, or selector.");
         }
 
         Logger.LogInformation("webview_query resource={Resource} role={Role} name={Name} text={Text} selector={Selector} maxResults={MaxResults}",
@@ -61,9 +62,46 @@ public partial class WebViewTools
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)
         {
-            return ToolError(queryResult);
+            return ToolResponse.Error(queryResult);
         }
 
-        return ToolSuccess(queryResult.Value);
+        var queryJson = queryResult.Value;
+        if (HasZeroMatches(queryJson))
+        {
+            // Zero matches is a documented stuck-point: speculative reselectors
+            // are usually the wrong response. Route the agent to the per-tool
+            // guide, which lists the recurring causes (selector miss, not yet
+            // mounted, content-ready not signalled, canvas-painted UI).
+            return ToolResponse.SuccessWithGuides(
+                queryJson,
+                new GuidePointer("webview_query", "zero matches — see selector, timing, and editor-binding notes"));
+        }
+
+        return ToolResponse.Success(queryJson);
+    }
+
+    private static bool HasZeroMatches(string queryJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(queryJson);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            if (!root.TryGetProperty("totalMatches", out var totalMatchesElement))
+            {
+                return false;
+            }
+
+            return totalMatchesElement.ValueKind == JsonValueKind.Number
+                && totalMatchesElement.GetInt32() == 0;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

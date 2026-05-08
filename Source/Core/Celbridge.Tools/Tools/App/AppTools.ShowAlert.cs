@@ -17,9 +17,9 @@ public partial class AppTools
         });
         if (alertResult.IsFailure)
         {
-            return ToolError(alertResult);
+            return ToolResponse.Error(alertResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

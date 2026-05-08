@@ -29,7 +29,7 @@ public partial class GuidesTools
     {
         if (string.IsNullOrEmpty(pattern))
         {
-            return BootstrapToolError("guides_search requires a non-empty 'pattern'.");
+            return ToolResponse.BootstrapError("guides_search requires a non-empty 'pattern'.");
         }
 
         var effectiveLimit = limit <= 0 ? GuidesSearchDefaultLimit : Math.Min(limit, GuidesSearchMaxLimit);
@@ -45,6 +45,6 @@ public partial class GuidesTools
 
         var result = new GuidesSearchResult(entries, matches.Count, error);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

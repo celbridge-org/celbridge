@@ -17,7 +17,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -26,13 +26,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolError($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolError($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
+            return ToolResponse.Error($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
         }
 
         var fileText = await File.ReadAllTextAsync(resourcePath);
@@ -54,7 +54,7 @@ public partial class FileTools
             }
 
             var wholeFileResult = new FileReadResult(content, totalLineCount);
-            return ToolSuccess(SerializeJson(wholeFileResult));
+            return ToolResponse.Success(SerializeJson(wholeFileResult));
         }
 
         var allLines = LineEndingHelper.SplitToContentLines(fileText);
@@ -65,7 +65,7 @@ public partial class FileTools
         if (startIndex >= allLines.Count)
         {
             var emptyResult = new FileReadResult(string.Empty, totalLineCount);
-            return ToolSuccess(SerializeJson(emptyResult));
+            return ToolResponse.Success(SerializeJson(emptyResult));
         }
 
         var selectedLines = allLines.Skip(startIndex).Take(count).ToList();
@@ -82,6 +82,6 @@ public partial class FileTools
         }
 
         var readResult = new FileReadResult(rangeContent, totalLineCount);
-        return ToolSuccess(SerializeJson(readResult));
+        return ToolResponse.Success(SerializeJson(readResult));
     }
 }

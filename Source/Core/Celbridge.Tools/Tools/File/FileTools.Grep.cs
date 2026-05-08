@@ -57,7 +57,7 @@ public partial class FileTools
             }
             catch (ArgumentException ex)
             {
-                return ToolError($"Invalid regular expression: {ex.Message}");
+                return ToolResponse.Error($"Invalid regular expression: {ex.Message}");
             }
         }
 
@@ -175,7 +175,7 @@ public partial class FileTools
         var json = SerializeJson(grepResult);
         if (json.Length <= MaxGrepResponseChars)
         {
-            return ToolSuccess(json);
+            return ToolResponse.Success(json);
         }
 
         var oversizeError = new GrepOversizeError(
@@ -207,12 +207,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolError($"Invalid JSON array for files: {ex.Message}");
+            return ToolResponse.Error($"Invalid JSON array for files: {ex.Message}");
         }
 
         if (fileKeyStrings is null || fileKeyStrings.Count == 0)
         {
-            return ToolError("No resource keys provided in files parameter.");
+            return ToolResponse.Error("No resource keys provided in files parameter.");
         }
 
         var searchPattern = useRegex ? searchTerm : Regex.Escape(searchTerm);

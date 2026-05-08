@@ -14,7 +14,7 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -22,11 +22,11 @@ public partial class SpreadsheetTools
         var viewResult = reader.GetActiveView(workbookPath);
         if (viewResult.IsFailure)
         {
-            return ToolError(viewResult);
+            return ToolResponse.Error(viewResult);
         }
 
         var viewValue = viewResult.Value;
         var json = SerializeJson(viewValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

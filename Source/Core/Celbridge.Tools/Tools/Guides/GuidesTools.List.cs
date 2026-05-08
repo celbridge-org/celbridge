@@ -28,6 +28,6 @@ public partial class GuidesTools
 
         var result = new GuidesListResult(entries);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

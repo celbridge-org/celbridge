@@ -15,13 +15,13 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         var parseResult = ParseCsvImports(importsJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var imports = parseResult.Value;
 
@@ -33,12 +33,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<IReadOnlyList<CsvImport>> ParseCsvImports(string importsJson)

@@ -23,7 +23,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         // Route through the command queue so the snapshot observes state after all
@@ -39,7 +39,7 @@ public partial class FileTools
 
         if (getTreeResult.IsFailure)
         {
-            return ToolError(getTreeResult);
+            return ToolResponse.Error(getTreeResult);
         }
 
         var snapshot = getTreeResult.Value;
@@ -47,7 +47,7 @@ public partial class FileTools
             ? ConvertNode(snapshot.Root)
             : new TreeFolderNode(string.Empty, "folder", new List<object>());
 
-        return ToolSuccess(SerializeJson(rootNode));
+        return ToolResponse.Success(SerializeJson(rootNode));
     }
 
     private static TreeFolderNode ConvertNode(FileTreeSnapshotNode node)

@@ -13,9 +13,9 @@ public partial class ExplorerTools
         var collapseResult = await ExecuteCommandAsync<ICollapseAllCommand>();
         if (collapseResult.IsFailure)
         {
-            return ToolError(collapseResult);
+            return ToolResponse.Error(collapseResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

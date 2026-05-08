@@ -15,17 +15,17 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolError("webview_click requires a non-empty selector.");
+            return ToolResponse.Error("webview_click requires a non-empty selector.");
         }
 
         Logger.LogInformation("webview_click resource={Resource} selector={Selector}", resourceKey, selector);
@@ -35,9 +35,19 @@ public partial class WebViewTools
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)
         {
-            return ToolError(clickResult);
+            // The bridge produces this exact phrase when WaitForContentReadyAsync
+            // times out. The agent is most often stuck on notifyContentLoaded() not
+            // firing, so name the guide that explains the content-ready handshake.
+            if (clickResult.MessageChain.Contains("content-ready signal", StringComparison.Ordinal))
+            {
+                return ToolResponse.Error(
+                    clickResult,
+                    new GuidePointer("webview_devtools", "content-ready handshake and notifyContentLoaded"));
+            }
+
+            return ToolResponse.Error(clickResult);
         }
 
-        return ToolSuccess(clickResult.Value);
+        return ToolResponse.Success(clickResult.Value);
     }
 }

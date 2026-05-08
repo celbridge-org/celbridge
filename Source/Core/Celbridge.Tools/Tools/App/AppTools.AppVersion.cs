@@ -13,6 +13,6 @@ public partial class AppTools
     {
         var environmentService = GetRequiredService<IEnvironmentService>();
         var environmentInfo = environmentService.GetEnvironmentInfo();
-        return ToolSuccess(environmentInfo.AppVersion);
+        return ToolResponse.Success(environmentInfo.AppVersion);
     }
 }

@@ -13,9 +13,9 @@ public partial class ExplorerTools
         var redoResult = await ExecuteCommandAsync<IRedoResourceCommand>();
         if (redoResult.IsFailure)
         {
-            return ToolError(redoResult);
+            return ToolResponse.Error(redoResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

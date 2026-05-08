@@ -23,12 +23,12 @@ public partial class PackageTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         if (!ResourceKey.TryCreate(archive, out var archiveKey))
         {
-            return ToolError($"Invalid resource key: '{archive}'");
+            return ToolResponse.Error($"Invalid resource key: '{archive}'");
         }
 
         var archiveResultWrapper = await ExecuteCommandAsync<IArchiveResourceCommand, ArchiveResult>(command =>
@@ -42,12 +42,12 @@ public partial class PackageTools
 
         if (archiveResultWrapper.IsFailure)
         {
-            return ToolError(archiveResultWrapper);
+            return ToolResponse.Error(archiveResultWrapper);
         }
 
         var archiveResult = archiveResultWrapper.Value;
         var result = new PackageArchiveResult(archiveResult.Entries, archiveResult.Size, archiveResult.Archive);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

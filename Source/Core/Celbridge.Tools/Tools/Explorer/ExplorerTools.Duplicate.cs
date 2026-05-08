@@ -12,7 +12,7 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         var duplicateResult = await ExecuteCommandAsync<IDuplicateResourceDialogCommand>(command =>
@@ -21,9 +21,9 @@ public partial class ExplorerTools
         });
         if (duplicateResult.IsFailure)
         {
-            return ToolError(duplicateResult);
+            return ToolResponse.Error(duplicateResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

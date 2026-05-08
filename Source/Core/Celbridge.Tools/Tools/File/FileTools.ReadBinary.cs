@@ -18,7 +18,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -27,13 +27,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolError($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolError($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resource}'");
         }
 
         var bytes = await File.ReadAllBytesAsync(resourcePath);
@@ -42,6 +42,6 @@ public partial class FileTools
         var mimeType = GetMimeType(extension);
 
         var result = new FileReadBinaryResult(base64, mimeType, bytes.Length);
-        return ToolSuccess(SerializeJson(result));
+        return ToolResponse.Success(SerializeJson(result));
     }
 }

@@ -43,6 +43,10 @@ JSON object with:
 - `returned` — number of entries in `elements` after the cap.
 - `elements` — each entry carries a stable `selector` plus tag, visible flag, rect, role, and accessible name.
 
+## Zero-match results
+
+When `totalMatches` is `0` the response carries a guide pointer alongside the value. Common causes: the selector or role does not match the rendered DOM, the element is conditionally rendered and not mounted yet, the document has not finished its content-ready handshake, or the page paints its UI to a `<canvas>` (where there is no DOM to query — see the `webview` namespace guide).
+
 ## See also
 
 - `webview_devtools` — cross-cutting concept guide.

@@ -12,7 +12,7 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         var expandResult = await ExecuteCommandAsync<IExpandFolderCommand>(command =>
@@ -22,9 +22,9 @@ public partial class ExplorerTools
         });
         if (expandResult.IsFailure)
         {
-            return ToolError(expandResult);
+            return ToolResponse.Error(expandResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

@@ -12,7 +12,7 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         if (showDialog)
@@ -23,10 +23,10 @@ public partial class ExplorerTools
             });
             if (dialogResult.IsFailure)
             {
-                return ToolError(dialogResult);
+                return ToolResponse.Error(dialogResult);
             }
 
-            return ToolSuccess("ok");
+            return ToolResponse.Success("ok");
         }
 
         var deleteResult = await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
@@ -35,9 +35,9 @@ public partial class ExplorerTools
         });
         if (deleteResult.IsFailure)
         {
-            return ToolError(deleteResult);
+            return ToolResponse.Error(deleteResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

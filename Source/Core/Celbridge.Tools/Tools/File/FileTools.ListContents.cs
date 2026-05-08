@@ -23,7 +23,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.Error($"Invalid resource key: '{resource}'");
         }
 
         // Route through the command queue so the snapshot observes state after all
@@ -34,7 +34,7 @@ public partial class FileTools
             command => command.Resource = resourceKey);
         if (listContentsResult.IsFailure)
         {
-            return ToolError(listContentsResult);
+            return ToolResponse.Error(listContentsResult);
         }
         var snapshot = listContentsResult.Value;
 
@@ -70,6 +70,6 @@ public partial class FileTools
             }
         }
 
-        return ToolSuccess(SerializeJson(items));
+        return ToolResponse.Success(SerializeJson(items));
     }
 }

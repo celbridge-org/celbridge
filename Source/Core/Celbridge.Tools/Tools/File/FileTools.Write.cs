@@ -18,7 +18,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
         }
 
         var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
@@ -29,12 +29,12 @@ public partial class FileTools
 
         if (writeResult.IsFailure)
         {
-            return ToolError(writeResult);
+            return ToolResponse.Error(writeResult);
         }
 
         var lineCount = LineEndingHelper.CountLines(content);
         var result = new WriteFileResult(lineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

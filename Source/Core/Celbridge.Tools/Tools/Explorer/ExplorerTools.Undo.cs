@@ -13,9 +13,9 @@ public partial class ExplorerTools
         var undoResult = await ExecuteCommandAsync<IUndoResourceCommand>();
         if (undoResult.IsFailure)
         {
-            return ToolError(undoResult);
+            return ToolResponse.Error(undoResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

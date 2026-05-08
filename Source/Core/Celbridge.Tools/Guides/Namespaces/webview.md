@@ -13,6 +13,7 @@ The `webview` namespace drives WebView-backed editors: HTML viewers and contribu
 - **The right editor must have opened the document.** `document_get_state` returns an `editorId` for each open document. If you opened a `.html` expecting the HTML viewer but `editorId` is the code editor, webview tools won't work against it. See `webview_devtools`.
 - **`webview_screenshot` requires the tab to be active.** WebView2 pauses rendering for inactive tabs, so an inactive tab cannot produce a frame. Activate the tab via `document_activate` first. See `webview_devtools`.
 - **Synthetic events have `isTrusted: false`.** Handlers gated on `event.isTrusted` will not fire from `webview_click`. If a click appears to do nothing, use `webview_eval` to confirm the handler ran.
+- **Canvas-painted UI is invisible to selectors.** Pages that draw controls to a `<canvas>` have no DOM elements to query or click. Drive interaction by dispatching a synthetic `MouseEvent` to the canvas via `webview_eval` at the page-expected coordinates.
 - **Console and network buffers survive reloads.** `webview_get_console` and `webview_get_network` return everything observed since the document opened, including across reloads.
 
 ## Tools

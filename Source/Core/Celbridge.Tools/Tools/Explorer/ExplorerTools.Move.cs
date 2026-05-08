@@ -12,11 +12,11 @@ public partial class ExplorerTools
     {
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
         {
-            return ToolError($"Invalid resource key: '{sourceResource}'");
+            return ToolResponse.Error($"Invalid resource key: '{sourceResource}'");
         }
         if (!ResourceKey.TryCreate(destinationResource, out var destinationResourceKey))
         {
-            return ToolError($"Invalid resource key: '{destinationResource}'");
+            return ToolResponse.Error($"Invalid resource key: '{destinationResource}'");
         }
 
         var copyResult = await ExecuteCommandAsync<ICopyResourceCommand>(command =>
@@ -27,9 +27,9 @@ public partial class ExplorerTools
         });
         if (copyResult.IsFailure)
         {
-            return ToolError(copyResult);
+            return ToolResponse.Error(copyResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

@@ -26,7 +26,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
         }
 
         Result<List<TextEdit>> parseResult;
@@ -36,18 +36,18 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolError($"Invalid edits JSON: {ex.Message}");
+            return ToolResponse.Error($"Invalid edits JSON: {ex.Message}");
         }
 
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
 
         var textEdits = parseResult.Value;
         if (textEdits.Count == 0)
         {
-            return ToolSuccess("ok");
+            return ToolResponse.Success("ok");
         }
 
         var fileEdit = new FileEdit(fileResourceKey, textEdits);
@@ -59,7 +59,7 @@ public partial class FileTools
 
         if (applyEditsResult.IsFailure)
         {
-            return ToolError(applyEditsResult);
+            return ToolResponse.Error(applyEditsResult);
         }
 
         var appliedEdits = applyEditsResult.Value;
@@ -105,6 +105,6 @@ public partial class FileTools
 
         var result = new ApplyEditsResult(affectedLines, totalLineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

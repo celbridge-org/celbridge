@@ -14,17 +14,17 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolError("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         if (string.IsNullOrEmpty(newName))
         {
-            return ToolError("New sheet name is required.");
+            return ToolResponse.Error("New sheet name is required.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -36,11 +36,11 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

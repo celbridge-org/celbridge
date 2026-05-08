@@ -13,7 +13,7 @@ public partial class DocumentTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
         }
 
         var activateResult = await ExecuteCommandAsync<IActivateDocumentCommand>(command =>
@@ -22,9 +22,9 @@ public partial class DocumentTools
         });
         if (activateResult.IsFailure)
         {
-            return ToolError(activateResult);
+            return ToolResponse.Error(activateResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }
