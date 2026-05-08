@@ -25,7 +25,12 @@ namespace Celbridge.Server.Services;
 ///
 /// guides_read invocations are inspected after the inner handler runs so that
 /// the orientation flag and the per-session read-guides set track what the
-/// agent actually requested.
+/// agent actually requested. Side effects only fire on a successful response —
+/// a failed guides_read (bad JSON arguments, missing names parameter) does not
+/// flip orientation or mark guides as read. Names that resolve to the response's
+/// "unknown" array still count as read for telemetry purposes; the orientation
+/// flag's exact-match on "agent_instructions" means it can only be flipped by
+/// passing that literal name.
 /// </summary>
 internal static class ToolGate
 {
@@ -87,12 +92,13 @@ internal static class ToolGate
         }
         stopwatch.Stop();
 
-        if (toolName == "guides_read")
+        var success = result.IsError != true;
+        if (toolName == "guides_read"
+            && success)
         {
             ApplyGuidesReadSideEffects(telemetry, session, arguments);
         }
 
-        var success = result.IsError != true;
         var errorMessage = success ? "" : ExtractTextContent(result);
         telemetry.RecordInvocation(server, session, toolName, new InvocationOutcome(
             Success: success,
@@ -104,7 +110,7 @@ internal static class ToolGate
         return result;
     }
 
-    private static void ApplyGuidesReadSideEffects(
+    internal static void ApplyGuidesReadSideEffects(
         ToolTelemetry telemetry,
         ToolSessionState session,
         IDictionary<string, JsonElement>? arguments)
@@ -122,7 +128,7 @@ internal static class ToolGate
         }
     }
 
-    private static List<string> ParseRequestedGuideNames(JsonElement namesElement)
+    internal static List<string> ParseRequestedGuideNames(JsonElement namesElement)
     {
         var result = new List<string>();
         var json = namesElement.ValueKind == JsonValueKind.String

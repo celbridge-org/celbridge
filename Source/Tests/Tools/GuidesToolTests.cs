@@ -125,6 +125,10 @@ public class GuidesToolTests
     [Test]
     public void Read_PerToolGuideCarriesPythonAndJavaScriptInvocations()
     {
+        // Per-tool guides resolve to a tool entry that carries the language
+        // invocation strings alongside the body. The Guides loader enforces
+        // a per-tool guide for every registered MCP tool, so this never
+        // falls back to an unknown response.
         var tools = new GuidesTools(_services);
         var json = GetResultText(tools.Read("[\"file_grep\"]"));
         var root = JsonDocument.Parse(json).RootElement;

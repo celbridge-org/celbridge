@@ -149,6 +149,7 @@ class CelProxy:
         "guides": "Browse and search the agent guide library",
         "package": "Archive, publish, and install packages",
         "spreadsheet": "Read, modify, and format .xlsx workbooks",
+        "webview": "Devtools-style automation of HTML and contribution editors",
     }
 
     def _build_help_doc(self) -> str:

@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Projects;
-using Celbridge.Python;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Tools;
@@ -87,35 +86,28 @@ public class AppToolTests
     }
 
     [Test]
-    public void GetState_IncludesFocusedPanelLayoutModeAndPythonEnvironment()
+    public void GetState_IncludesFocusedPanelAndLayoutMode()
     {
-        WireAppStateDependencies(focusedPanel: WorkspacePanel.Documents, contextVisible: true, inspectorVisible: false, consoleVisible: true, consoleMaximized: false);
+        WireAppStateDependencies(
+            focusedPanel: WorkspacePanel.Documents,
+            contextVisible: true,
+            inspectorVisible: false,
+            consoleVisible: true,
+            consoleMaximized: false);
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
         _services.GetRequiredService<IProjectService>().Returns(projectService);
-        PythonEnvironmentInfo.InstalledPackages = new List<string> { "pytest==8.0.0", "numpy==2.0.0" };
 
-        try
-        {
-            var tools = new AppTools(_services);
-            var root = ParseResult(tools.GetState());
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
 
-            root.GetProperty("focusedPanel").GetString().Should().Be("Documents");
+        root.GetProperty("focusedPanel").GetString().Should().Be("Documents");
 
-            var layoutMode = root.GetProperty("layoutMode");
-            layoutMode.GetProperty("contextPanelVisible").GetBoolean().Should().BeTrue();
-            layoutMode.GetProperty("inspectorPanelVisible").GetBoolean().Should().BeFalse();
-            layoutMode.GetProperty("consolePanelVisible").GetBoolean().Should().BeTrue();
-            layoutMode.GetProperty("consoleMaximized").GetBoolean().Should().BeFalse();
-
-            var packages = root.GetProperty("pythonEnvironment").GetProperty("installedPackages");
-            packages.GetArrayLength().Should().Be(2);
-            packages[0].GetString().Should().Be("pytest==8.0.0");
-        }
-        finally
-        {
-            PythonEnvironmentInfo.InstalledPackages = Array.Empty<string>();
-        }
+        var layoutMode = root.GetProperty("layoutMode");
+        layoutMode.GetProperty("contextPanelVisible").GetBoolean().Should().BeTrue();
+        layoutMode.GetProperty("inspectorPanelVisible").GetBoolean().Should().BeFalse();
+        layoutMode.GetProperty("consolePanelVisible").GetBoolean().Should().BeTrue();
+        layoutMode.GetProperty("consoleMaximized").GetBoolean().Should().BeFalse();
     }
 
     [Test]

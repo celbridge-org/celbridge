@@ -60,8 +60,10 @@ class TestGuides:
         assert result["unknown"] == ["nonexistent"]
 
     def test_read_tool_alias_returns_invocations(self, guides):
-        # file_grep is a real MCP tool; even without a per-tool guide it should
-        # resolve to a stub entry carrying the language invocation strings.
+        # The Guides loader enforces a per-tool guide for every registered
+        # MCP tool, and tool entries carry the language-specific invocation
+        # strings alongside the body so the agent can call straight from
+        # the response.
         result = guides.read('["file_grep"]')
         assert len(result["results"]) == 1
         entry = result["results"][0]

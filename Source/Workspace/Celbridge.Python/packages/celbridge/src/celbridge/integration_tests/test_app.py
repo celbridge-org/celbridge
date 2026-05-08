@@ -23,11 +23,6 @@ class TestApp:
         assert isinstance(layout_mode["consolePanelVisible"], bool)
         assert isinstance(layout_mode["consoleMaximized"], bool)
 
-    def test_get_state_returns_python_environment(self, app):
-        result = app.get_state()
-        python_environment = result["pythonEnvironment"]
-        assert isinstance(python_environment["installedPackages"], list)
-
     def test_get_version(self, app):
         version = app.get_version()
         parts = version.split(".")

@@ -162,7 +162,7 @@ public class AgentAnalytics
             .ToList();
     }
 
-    private static int ApproximateTokenCount(int characterCount)
+    internal static int ApproximateTokenCount(int characterCount)
     {
         return (characterCount + 3) / 4;
     }
@@ -170,7 +170,7 @@ public class AgentAnalytics
     // Tool names follow the namespace_method convention (e.g. "app_get_state").
     // Everything before the first underscore is the namespace; tools without an
     // underscore are bucketed under their full name.
-    private static string ExtractNamespace(string toolName)
+    internal static string ExtractNamespace(string toolName)
     {
         var underscoreIndex = toolName.IndexOf('_');
         if (underscoreIndex <= 0)

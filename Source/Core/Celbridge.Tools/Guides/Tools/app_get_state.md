@@ -1,6 +1,6 @@
 ---
 name: app_get_state
-description: Application-level state — project load status, feature flag map, focused panel, layout visibility, Python packages — usually the first call on a fresh session.
+description: Application-level state — project load status, feature flag map, focused panel, layout visibility — usually the first call on a fresh session.
 ---
 
 # app_get_state
@@ -21,7 +21,8 @@ A JSON object with these fields:
 - `agentDocs` (object) — `{entry, via}`. The entry is the orientation guide name (`agent_instructions`); `via` names the tool to read it through (`guides_read`). Compliant agents call `guides_read([entry])` on a fresh session — the broker's cold-start gate also enforces this for agent connections.
 - `focusedPanel` (string) — the currently focused workspace panel (`Documents`, `Explorer`, `Inspector`, `Console`, etc., or `None`).
 - `layoutMode` (object) — `{contextPanelVisible, inspectorPanelVisible, consolePanelVisible, consoleMaximized}`. Tells you which regions the user can see right now.
-- `pythonEnvironment` (object) — `{installedPackages: [...] }`. Stable for the life of the process; reported by the Python host at startup.
+
+To inspect the project's declared Python dependencies, read the `.celbridge` project file directly with `file_read` — the `[project].dependencies` array carries the list.
 
 ## Feature flags
 

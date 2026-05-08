@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Celbridge.Tools;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Server.Services;
@@ -39,19 +40,47 @@ internal record class InvocationOutcome(
 /// the set of guide names already read in the session (used to compute the
 /// cache-miss flag for tool invocations), and the MCP session id (carried into
 /// invocation rows so they correlate with the Mcp-Session-Id header observed by
-/// the client).
+/// the client). All mutating members are safe to call concurrently from
+/// parallel gate-filter invocations on the same MCP session.
 /// </summary>
 internal sealed class ToolSessionState
 {
+    // ConcurrentDictionary used as a set; the byte value is unused. Plain
+    // HashSet<string> is not safe under concurrent Add and Contains calls, which
+    // happens when an agent issues parallel guides_read and tool calls in the
+    // same turn.
+    private readonly ConcurrentDictionary<string, byte> _guidesRead = new(StringComparer.Ordinal);
+
+    // Volatile reads/writes give every parallel gate-filter invocation a
+    // consistent view of the orientation flag without taking a lock.
+    private int _orientationRead;
+
     public ToolSessionState(string sessionId)
     {
         SessionId = sessionId;
     }
 
     public string SessionId { get; }
-    public bool OrientationRead { get; set; }
-    public HashSet<string> GuidesReadThisSession { get; } = new(StringComparer.Ordinal);
+
+    // Set to the same value every GetOrCreateSession call. Concurrent writes are
+    // idempotent and reads on a bool are atomic on the runtimes we target.
     public bool IsProxyClient { get; set; }
+
+    public bool OrientationRead => Volatile.Read(ref _orientationRead) != 0;
+
+    public void MarkGuideRead(string guideName)
+    {
+        _guidesRead.TryAdd(guideName, 0);
+        if (string.Equals(guideName, "agent_instructions", StringComparison.Ordinal))
+        {
+            Volatile.Write(ref _orientationRead, 1);
+        }
+    }
+
+    public bool WasGuideRead(string guideName)
+    {
+        return _guidesRead.ContainsKey(guideName);
+    }
 }
 
 /// <summary>
@@ -79,7 +108,6 @@ public sealed class ToolTelemetry
 
     private readonly ConcurrentDictionary<string, ToolSessionState> _sessionStates = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<ToolInvocationRecord> _invocations = new();
-    private long _invocationCount;
 
     /// <summary>
     /// Returns the per-session state for the given MCP server, or null if the
@@ -105,11 +133,7 @@ public sealed class ToolTelemetry
 
     public bool IsBootstrapTool(string toolName)
     {
-        return toolName switch
-        {
-            "guides_list" or "guides_read" or "guides_search" => true,
-            _ => false,
-        };
+        return BootstrapTools.Contains(toolName);
     }
 
     /// <summary>
@@ -123,29 +147,19 @@ public sealed class ToolTelemetry
         return state.IsProxyClient || state.OrientationRead;
     }
 
-    internal void MarkOrientationRead(ToolSessionState state)
-    {
-        state.OrientationRead = true;
-    }
-
     internal void MarkGuideRead(ToolSessionState state, string guideName)
     {
-        state.GuidesReadThisSession.Add(guideName);
-        if (string.Equals(guideName, "agent_instructions", StringComparison.Ordinal))
-        {
-            state.OrientationRead = true;
-        }
+        state.MarkGuideRead(guideName);
     }
 
     internal bool WasGuideReadInSession(ToolSessionState state, string guideName)
     {
-        return state.GuidesReadThisSession.Contains(guideName);
+        return state.WasGuideRead(guideName);
     }
 
     public void RecordInvocation(ToolInvocationRecord record)
     {
         _invocations.Enqueue(record);
-        Interlocked.Increment(ref _invocationCount);
 
         while (_invocations.Count > MaxInvocationRows && _invocations.TryDequeue(out _))
         {

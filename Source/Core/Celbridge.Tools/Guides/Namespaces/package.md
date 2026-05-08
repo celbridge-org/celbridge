@@ -12,7 +12,7 @@ The `package` namespace builds, installs, archives, and publishes Celbridge pack
 - **Publishing is interactive by default.** `package_publish` confirms with the user before mutating a remote registry. Pass `confirmWithUser: false` only for automated flows where the user has consented in advance. See `silent_vs_interactive`.
 - **`package_install` reads a project-level configuration.** Installing without a project loaded fails fast.
 - **Archives are produced under the project's content folder.** `package_archive` writes a `.celpkg` next to the source folder unless an explicit destination is given. `package_unarchive` is the inverse.
-- **Packages are not Python packages.** Despite some tooling overlap, this namespace is for Celbridge's own package format. The `pythonEnvironment` field on `app_get_state` reports installed Python packages.
+- **Packages are not Python packages.** Despite some tooling overlap, this namespace is for Celbridge's own package format. To see the project's Python dependencies, read the `.celbridge` project file (`[project].dependencies`).
 
 ## Tools
 

@@ -1,9 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Celbridge.Projects;
-using Celbridge.Python;
 using Celbridge.Settings;
-using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -27,19 +25,11 @@ public record class LayoutModeInfo(
     bool ConsoleMaximized);
 
 /// <summary>
-/// Python environment snapshot reported as part of app_get_state. The package
-/// list is reported by the Python host at startup and remains stable for the
-/// life of the process.
-/// </summary>
-public record class PythonEnvironmentSnapshot(IReadOnlyList<string> InstalledPackages);
-
-/// <summary>
 /// Result returned by app_get_state. featureFlags maps each public flag name
 /// declared in FeatureFlagConstants to its current enabled state. agentDocs
 /// names the orientation entry point and the tool to read it through.
 /// focusedPanel is the WorkspacePanel currently holding focus (or "None").
-/// layoutMode reports current panel visibility. pythonEnvironment carries the
-/// installed package list reported by the Python host.
+/// layoutMode reports current panel visibility.
 /// </summary>
 public record class AppStateResult(
     bool IsLoaded,
@@ -47,8 +37,7 @@ public record class AppStateResult(
     IReadOnlyDictionary<string, bool> FeatureFlags,
     AgentDocsPointer AgentDocs,
     string FocusedPanel,
-    LayoutModeInfo LayoutMode,
-    PythonEnvironmentSnapshot PythonEnvironment);
+    LayoutModeInfo LayoutMode);
 
 public partial class AppTools
 {
@@ -60,7 +49,7 @@ public partial class AppTools
     // Static pointer to the orientation guide.
     private static readonly AgentDocsPointer AgentDocsPointerValue = new("agent_instructions", "guides_read");
 
-    /// <summary>App state: project load status, feature flags, focused panel, layout, Python packages.</summary>
+    /// <summary>App state: project load status, feature flags, focused panel, layout.</summary>
     [McpServerTool(Name = "app_get_state", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.get_state")]
     public partial CallToolResult GetState()
@@ -88,16 +77,13 @@ public partial class AppTools
             ConsolePanelVisible: layoutService.IsConsolePanelVisible,
             ConsoleMaximized: layoutService.IsConsoleMaximized);
 
-        var pythonEnvironment = new PythonEnvironmentSnapshot(PythonEnvironmentInfo.InstalledPackages);
-
         var result = new AppStateResult(
             IsLoaded: isLoaded,
             ProjectName: projectName,
             FeatureFlags: featureFlags,
             AgentDocs: AgentDocsPointerValue,
             FocusedPanel: focusedPanel,
-            LayoutMode: layoutMode,
-            PythonEnvironment: pythonEnvironment);
+            LayoutMode: layoutMode);
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
 

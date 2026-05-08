@@ -45,8 +45,8 @@ internal interface IGuides
 {
     /// <summary>
     /// All loaded guide entries in the canonical order returned by guides_list:
-    /// concepts before per-tool guides, concepts ordered by priority then name,
-    /// per-tool guides ordered by name. Computed once at construction.
+    /// concepts first (by priority then name), then namespace guides (by name),
+    /// then per-tool guides (by name). Computed once at construction.
     /// </summary>
     IReadOnlyList<GuideEntry> Index { get; }
 
