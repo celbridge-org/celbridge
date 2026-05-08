@@ -8,16 +8,11 @@ namespace Celbridge.Tools;
 public partial class WebViewTools
 {
     /// <summary>
-    /// Reloads the WebView hosting the document. Page state is discarded by design.
-    /// The editor's package code reinitialises from scratch. Use this after writing
-    /// new package files (HTML, CSS, JS, manifest) so the WebView picks up the edits.
-    /// Requires the webview-dev-tools feature flag. If the target document is not
-    /// supported (wrong editor, external URL, or package opts out) the error message
-    /// names the specific reason.
+    /// Reloads the WebView; page state is discarded. Use after writing package files. See guides_read(['webview_devtools']).
     /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to reload.</param>
-    /// <param name="clearCache">When true (default), clears the WebView's HTTP cache (in-memory and on-disk) before reloading so newly-edited package sub-resources (JS, CSS, images) are refetched instead of served stale. The cache clear evicts data for every document hosted in the same WebView profile, not just this one — pass false to skip the clear when you know no sub-resources have changed and want a slightly faster reload.</param>
-    /// <returns>"ok" on success, or an error message if the WebView is not registered or reload failed.</returns>
+    /// <param name="resource">Resource key of the open document.</param>
+    /// <param name="clearCache">When true, clears the WebView HTTP cache so edited sub-resources are refetched. The clear evicts data for every document in the same profile.</param>
+    /// <returns>"ok" on success.</returns>
     [McpServerTool(Name = "webview_reload")]
     [ToolAlias("webview.reload")]
     public async partial Task<CallToolResult> Reload(string resource, bool clearCache = true)

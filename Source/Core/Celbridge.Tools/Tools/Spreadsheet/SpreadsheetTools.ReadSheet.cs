@@ -7,19 +7,17 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Reads cell values from a sheet in an .xlsx workbook. By default returns row arrays from the
-    /// sheet's used range, with the default page size of 1000 rows. Cells round-trip with their Excel
-    /// type preserved. See spreadsheet_get_context for the JSON typing rules.
+    /// Reads cell values from a sheet. Cells round-trip with their Excel type preserved.
     /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook to read.</param>
-    /// <param name="sheet">Name of the worksheet to read.</param>
-    /// <param name="range">A1-notation range to read (e.g. "B2:D10"). Empty string reads the sheet's used range. Do not include a sheet qualifier ("Sheet1!A1" is rejected).</param>
-    /// <param name="mode">"values" (default) returns computed cell values. "formulas" returns the formula text (with leading '=') for cells that contain a formula.</param>
-    /// <param name="headers">When true, the first row in the requested range becomes column names and each subsequent row is returned as an object keyed by header. Duplicate names get a numeric suffix. Empty headers become "column_&lt;letter&gt;".</param>
-    /// <param name="offset">Number of data rows to skip before returning rows. Use 0 to start at the first data row.</param>
-    /// <param name="limit">Maximum number of data rows to return. Use 0 to apply the default page size of 1000 rows.</param>
-    /// <param name="columnLimit">Maximum number of columns to materialise per row. Use 0 to apply the default cap of 256 columns. The cap protects callers from sheets whose used range has been inflated by a stray write to a far-right column (e.g. XFD1) that would otherwise emit a 16384-column row of nulls. Compare to totalColumnCount in the response to detect inflation.</param>
-    /// <returns>JSON object with: rows (array of row arrays, or row objects when headers is true), totalRowCount (int, the row count in the read range; when headers is false this includes any header row, when headers is true the header row is excluded), totalColumnCount (int, the column span of the requested range before column clamping), headers (array of resolved header names, empty when headers is false).</returns>
+    /// <param name="resource">Resource key of the .xlsx workbook.</param>
+    /// <param name="sheet">Worksheet to read.</param>
+    /// <param name="range">A1 range. Empty reads the sheet's used range. Sheet qualifiers are rejected.</param>
+    /// <param name="mode">"values" returns computed values; "formulas" returns formula text with leading '='.</param>
+    /// <param name="headers">When true, the first row becomes column names and each row is returned as an object.</param>
+    /// <param name="offset">Data rows to skip before returning rows.</param>
+    /// <param name="limit">Maximum data rows to return. 0 applies the default page size of 1000.</param>
+    /// <param name="columnLimit">Maximum columns per row. 0 applies the default cap of 256.</param>
+    /// <returns>JSON object with rows, totalRowCount, totalColumnCount, and resolved headers. See guides_read(['spreadsheet_read_sheet']).</returns>
     [McpServerTool(Name = "spreadsheet_read_sheet", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_sheet")]
     public partial CallToolResult ReadSheet(

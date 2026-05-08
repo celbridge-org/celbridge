@@ -8,19 +8,12 @@ namespace Celbridge.Tools;
 public partial class WebViewTools
 {
     /// <summary>
-    /// Sets the value of an input, textarea, select, or contenteditable element matched
-    /// by a CSS selector and dispatches bubbling input and change events. Works for
-    /// most framework input bindings (vanilla JS, Lit, Vue, Svelte) because the value
-    /// is set through the native HTMLInputElement/HTMLTextAreaElement/HTMLSelectElement
-    /// setter so the framework's value-tracking observers fire. Waits up to 5 seconds
-    /// for the editor's content-ready signal before dispatching. Requires the
-    /// webview-dev-tools feature flag. Works on any open document editor whose package
-    /// has not opted out of devtools.
+    /// Sets the value of an input/textarea/select/contenteditable matched by selector and fires bubbling input/change events. See guides_read(['webview_devtools']).
     /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to target.</param>
-    /// <param name="selector">CSS selector identifying the element to fill. The first match receives the value and events.</param>
-    /// <param name="value">String value to assign. For contenteditable elements this is set as textContent.</param>
-    /// <returns>JSON object with `selector`, `tag`, and `value` (the value read back from the element after the assignment).</returns>
+    /// <param name="resource">Resource key of the open document.</param>
+    /// <param name="selector">CSS selector. The first match receives the value.</param>
+    /// <param name="value">String value to assign. Set as textContent for contenteditable.</param>
+    /// <returns>JSON object with selector, tag, and the value read back after assignment.</returns>
     [McpServerTool(Name = "webview_fill")]
     [ToolAlias("webview.fill")]
     public async partial Task<CallToolResult> Fill(string resource, string selector, string value)

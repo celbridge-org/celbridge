@@ -13,16 +13,12 @@ public record class DeleteLinesResult(int DeletedFrom, int DeletedTo, int TotalL
 public partial class FileTools
 {
     /// <summary>
-    /// Deletes complete lines from a file, removing them entirely including their
-    /// line terminators. Unlike file_apply_edits with empty newText (which always
-    /// leaves a residual empty line), this tool cleanly removes the specified lines.
-    /// Writes directly to disk. Any open document reloads its buffer from disk after
-    /// the write.
+    /// Deletes complete lines from a file including their terminators. Cleanly removes lines (file_apply_edits with empty newText leaves a residual blank line).
     /// </summary>
-    /// <param name="fileResource">Resource key of the file to delete lines from.</param>
+    /// <param name="fileResource">Resource key of the file.</param>
     /// <param name="startLine">First line to delete (1-based, inclusive).</param>
     /// <param name="endLine">Last line to delete (1-based, inclusive).</param>
-    /// <returns>JSON with fields: deletedFrom (int), deletedTo (int), totalLineCount (int), contextLines (array of strings around the deletion point).</returns>
+    /// <returns>JSON with deletedFrom, deletedTo, totalLineCount, and contextLines around the deletion point.</returns>
     [McpServerTool(Name = "file_delete_lines")]
     [ToolAlias("file.delete_lines")]
     public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)

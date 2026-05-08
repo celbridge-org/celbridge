@@ -13,13 +13,11 @@ public record class DocumentCloseResult(int Closed, int Failed, List<string> Err
 public partial class DocumentTools
 {
     /// <summary>
-    /// Closes one or more documents in the editor.
-    /// Pass a single resource key or a JSON array of resource keys (e.g. ["foo.txt","scripts/bar.txt"]).
-    /// Documents are closed sequentially. If any close fails (e.g. user cancels a save prompt), the remaining documents are still attempted.
+    /// Closes one or more documents. Closes are sequential; a failure does not stop the remaining attempts.
     /// </summary>
-    /// <param name="fileResource">Resource key of the file to close, or a JSON array of resource keys.</param>
+    /// <param name="fileResource">Resource key, or a JSON array of resource keys.</param>
     /// <param name="forceClose">Force close without save confirmation.</param>
-    /// <returns>JSON object with fields: closed (int), failed (int), errors (array of strings).</returns>
+    /// <returns>JSON object with closed, failed, and errors.</returns>
     [McpServerTool(Name = "document_close", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.close")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)

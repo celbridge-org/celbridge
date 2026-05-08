@@ -8,23 +8,11 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Inserts empty rows or columns into one or more sheets in a single open/save cycle. Each
-    /// operation specifies a sheet and a row range ("3" or "3:5") or column range ("B" or "B:D").
-    /// Cell ranges (e.g. "A1:C3") are not accepted — Excel's "shift cells down/right" is
-    /// intentionally not exposed. The width of the range determines how many empty rows or
-    /// columns are inserted (e.g. "3:5" inserts 3 rows starting at row 3, "B:D" inserts 3
-    /// columns starting at column B). Indices are interpreted against the original workbook
-    /// state, so an agent can specify "insert rows at 3 and at 10" without having to mentally
-    /// shift indices after earlier inserts; the implementation applies inserts in descending
-    /// order to make the original-coordinate semantics work, and overlapping ranges are
-    /// deduped. Existing rows at or below the insert position shift down; existing columns at
-    /// or to the right of the insert position shift right. Formulas are recalculated as part
-    /// of the save. If any operation fails, the whole batch fails and nothing is saved.
-    /// Mirrors spreadsheet_delete: insert and delete are inverse structural operations.
+    /// Inserts empty rows or columns across one or more sheets in a single save.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="operationsJson">JSON array of operations. Each operation is an object with sheet (string) and range (string) fields. range is "3" or "3:5" for rows, "B" or "B:D" for columns. Do not include a sheet qualifier in range.</param>
-    /// <returns>JSON object with fields: operationsApplied (int), insertedRowCount (int), insertedColumnCount (int).</returns>
+    /// <param name="operationsJson">JSON array of operations with sheet and range fields. range is "3"/"3:5" for rows, "B"/"B:D" for columns. See guides_read(['spreadsheet_insert']) for original-coordinate semantics.</param>
+    /// <returns>JSON object with operationsApplied, insertedRowCount, and insertedColumnCount.</returns>
     [McpServerTool(Name = "spreadsheet_insert")]
     [ToolAlias("spreadsheet.insert")]
     public async partial Task<CallToolResult> Insert(string resource, string operationsJson)

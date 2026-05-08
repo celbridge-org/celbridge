@@ -8,17 +8,11 @@ namespace Celbridge.Tools;
 public partial class WebViewTools
 {
     /// <summary>
-    /// Dispatches a programmatic mouse-click sequence (mousedown, mouseup, click) on
-    /// the element matched by a CSS selector. Events bubble but have isTrusted = false,
-    /// so handlers that gate on event.isTrusted will not fire. If a click appears to do
-    /// nothing, use webview_eval to verify the listener is registered before assuming
-    /// the click failed. Waits up to 5 seconds for the editor's content-ready signal
-    /// before dispatching. Requires the webview-dev-tools feature flag. Works on any
-    /// open document editor whose package has not opted out of devtools.
+    /// Dispatches a synthetic mousedown/mouseup/click sequence on the first element matching a CSS selector. Events have isTrusted=false. See guides_read(['webview_devtools']).
     /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to target.</param>
-    /// <param name="selector">CSS selector identifying the element to click. The first match receives the click sequence.</param>
-    /// <returns>JSON object with `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always false because the events are programmatic).</returns>
+    /// <param name="resource">Resource key of the open document.</param>
+    /// <param name="selector">CSS selector identifying the element. The first match receives the click.</param>
+    /// <returns>JSON object with selector, tag, visible, rect, and isTrusted (always false).</returns>
     [McpServerTool(Name = "webview_click")]
     [ToolAlias("webview.click")]
     public async partial Task<CallToolResult> Click(string resource, string selector)

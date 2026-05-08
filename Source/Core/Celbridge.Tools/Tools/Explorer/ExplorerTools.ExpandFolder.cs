@@ -10,7 +10,7 @@ public partial class ExplorerTools
     /// </summary>
     /// <param name="resource">Resource key of the folder.</param>
     /// <param name="expanded">If true, expand the folder. If false, collapse it.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <returns>"ok" on success.</returns>
     [McpServerTool(Name = "explorer_expand_folder")]
     [ToolAlias("explorer.expand_folder")]
     public async partial Task<CallToolResult> ExpandFolder(string resource, bool expanded = true)

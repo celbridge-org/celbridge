@@ -7,18 +7,12 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Reads cell formatting from a sheet in an .xlsx workbook. Returns one FormatSpec object per cell
-    /// in the same shape accepted by spreadsheet_format_ranges, with most non-default properties included.
-    /// Cells with no fill emit backgroundColor as the empty string, and theme/auto colours emit as the empty
-    /// string, so feeding the output straight back into spreadsheet_format_ranges reproduces the source cell's
-    /// fill and colour state on the destination (the empty string is the explicit clear/reset sentinel).
-    /// Use this to inspect existing formatting or to capture formatting before copying it to another range or
-    /// sheet with spreadsheet_format_ranges.
+    /// Reads cell formatting in the same shape accepted by spreadsheet_format_ranges.
     /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook to read.</param>
-    /// <param name="sheet">Name of the worksheet to read formatting from.</param>
-    /// <param name="range">A1-notation cell range to read (e.g. "A1:C3"). Empty string reads the sheet's used range. Do not include a sheet qualifier.</param>
-    /// <returns>JSON object with: range (string, sheet-qualified range that was read), rows (2D array of format spec objects, one per cell, with null fields omitted and empty-string colours indicating no fill or default colour).</returns>
+    /// <param name="resource">Resource key of the .xlsx workbook.</param>
+    /// <param name="sheet">Worksheet to read formatting from.</param>
+    /// <param name="range">A1 cell range. Empty reads the sheet's used range.</param>
+    /// <returns>JSON object with the read range and a 2D array of FormatSpec objects. See guides_read(['spreadsheet_read_format']) for round-trip rules.</returns>
     [McpServerTool(Name = "spreadsheet_read_format", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_format")]
     public partial CallToolResult ReadFormat(

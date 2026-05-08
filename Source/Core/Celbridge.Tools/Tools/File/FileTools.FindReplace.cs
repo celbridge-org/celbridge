@@ -12,20 +12,16 @@ public record class FindReplaceResult(int ReplacementCount);
 public partial class FileTools
 {
     /// <summary>
-    /// Finds and replaces text within a file. Supports plain text and regex patterns.
-    /// Multi-line search and replace text may use \n line endings regardless of the file's
-    /// actual line endings — the tool normalises them automatically. Replacements are
-    /// written directly to disk. Any open document reloads its buffer from disk after
-    /// the write.
+    /// Finds and replaces text within a file. Multi-line text may use \n line endings; the tool normalises to the file's actual endings.
     /// </summary>
-    /// <param name="fileResource">Resource key of the file to perform find and replace on.</param>
-    /// <param name="searchText">The text to search for.</param>
-    /// <param name="replaceText">The replacement text.</param>
+    /// <param name="fileResource">Resource key of the file.</param>
+    /// <param name="searchText">Text to search for.</param>
+    /// <param name="replaceText">Replacement text.</param>
     /// <param name="matchCase">If true, the search is case-sensitive.</param>
-    /// <param name="useRegex">If true, the search text is treated as a regular expression.</param>
-    /// <param name="fromLine">First line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no lower bound.</param>
-    /// <param name="toLine">Last line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no upper bound.</param>
-    /// <returns>JSON object with field: replacementCount (int).</returns>
+    /// <param name="useRegex">If true, searchText is treated as a regular expression.</param>
+    /// <param name="fromLine">First line (1-based, inclusive) of the replacement scope. 0 means no lower bound.</param>
+    /// <param name="toLine">Last line (1-based, inclusive) of the replacement scope. 0 means no upper bound.</param>
+    /// <returns>JSON object with replacementCount.</returns>
     [McpServerTool(Name = "file_find_replace")]
     [ToolAlias("file.find_replace")]
     public async partial Task<CallToolResult> FindReplace(

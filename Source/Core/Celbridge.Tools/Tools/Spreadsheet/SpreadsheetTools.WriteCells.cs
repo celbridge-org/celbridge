@@ -8,19 +8,12 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Writes a batch of single-cell edits to a worksheet. Each edit is an object with a "cell"
-    /// (A1 address), a "value" (number, boolean, string, or null to blank the cell), and an optional
-    /// "isFormula" flag. Strings beginning with '=' are written as text by default. Set isFormula true
-    /// to write a formula. Formulas are recalculated as part of the save, so a follow-up
-    /// spreadsheet_read_sheet returns fresh computed values. Other cells in the sheet, including
-    /// formatting on cells the edits do not touch, are preserved. Numeric values must be finite and
-    /// must have magnitude at most 1e+300; values outside that range are rejected because the
-    /// underlying serialiser rounds them to a string that overflows on reopen.
+    /// Writes a batch of single-cell edits to a worksheet. Other cells and formatting are preserved.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Name of the worksheet to write into. The sheet must already exist.</param>
-    /// <param name="editsJson">JSON array of edit objects, each with fields: cell (A1 string, required), value (number, boolean, string, or null), isFormula (bool, optional, default false).</param>
-    /// <returns>JSON object with field: cellCount (int, the number of edits applied).</returns>
+    /// <param name="sheet">Worksheet to write into. Must already exist.</param>
+    /// <param name="editsJson">JSON array of edit objects with cell, value, and optional isFormula. See guides_read(['spreadsheet_write_cells']) for formula-vs-text and numeric-magnitude rules.</param>
+    /// <returns>JSON object with cellCount.</returns>
     [McpServerTool(Name = "spreadsheet_write_cells")]
     [ToolAlias("spreadsheet.write_cells")]
     public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string editsJson)

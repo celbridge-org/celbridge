@@ -6,13 +6,11 @@ namespace Celbridge.Tools;
 public partial class ExplorerTools
 {
     /// <summary>
-    /// Creates an empty file in the project. Pass show_dialog=true for interactive mode where the user can choose the name and location.
-    /// Tip: file_write can create and write files in a single step, so you only need this tool
-    /// when you want an empty file or want the interactive dialog.
+    /// Creates an empty file. Use file_write to create and write content in one step; this tool is for empty files or the interactive dialog.
     /// </summary>
     /// <param name="resource">Resource key for the new file, or the parent folder when using the dialog.</param>
     /// <param name="showDialog">If true, show the create file dialog for interactive naming.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <returns>"ok" on success.</returns>
     [McpServerTool(Name = "explorer_create_file")]
     [ToolAlias("explorer.create_file")]
     public async partial Task<CallToolResult> CreateFile(string resource, bool showDialog = false)

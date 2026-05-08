@@ -8,21 +8,15 @@ namespace Celbridge.Tools;
 public partial class WebViewTools
 {
     /// <summary>
-    /// Locates elements in the WebView by ARIA role + accessible name, by visible
-    /// text content, or by CSS selector. Exactly one of role, text, or selector
-    /// must be supplied. Returns stable CSS selectors generated from each match,
-    /// along with bounding rectangles, visibility flags, and accessible names.
-    /// Waits up to 5 seconds for the editor's content-ready signal before
-    /// dispatching. Requires the webview-dev-tools feature flag. Works on any
-    /// open document editor whose package has not opted out of devtools.
+    /// Locates elements by ARIA role+name, visible text, or CSS selector. Exactly one of role, text, or selector must be supplied. See guides_read(['webview_devtools']).
     /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to query.</param>
-    /// <param name="role">ARIA role to match. Combines explicit role attributes and the implicit role for the element's tag (e.g. button → button, h2 → heading). Pass an empty string when not querying by role.</param>
-    /// <param name="name">Accessible name substring used to filter role matches. Compared case-insensitively against aria-label, aria-labelledby, label-for, alt, title, placeholder, value, then text content. Ignored unless `role` is also provided.</param>
-    /// <param name="text">Visible text substring. Matches leaf elements whose collapsed text contains this substring (case-insensitive). Pass an empty string when not querying by text.</param>
-    /// <param name="selector">CSS selector. Matches the same set as document.querySelectorAll. Pass an empty string when not querying by selector.</param>
-    /// <param name="maxResults">Maximum number of matches to return. Default 20.</param>
-    /// <returns>JSON object with `mode` (the query mode that ran), `totalMatches`, `returned`, and `elements` (array of `{tag, selector, role, accessibleName, attributes, visible, rect}`). The selector returned for each element is suitable for passing to webview_inspect.</returns>
+    /// <param name="resource">Resource key of the open document.</param>
+    /// <param name="role">ARIA role (combines explicit and implicit roles). Empty when not querying by role.</param>
+    /// <param name="name">Accessible name substring filter. Ignored unless role is also provided.</param>
+    /// <param name="text">Visible text substring (case-insensitive). Empty when not querying by text.</param>
+    /// <param name="selector">CSS selector. Empty when not querying by selector.</param>
+    /// <param name="maxResults">Maximum matches to return.</param>
+    /// <returns>JSON object with mode, totalMatches, returned, and elements (each carrying a selector suitable for webview_inspect).</returns>
     [McpServerTool(Name = "webview_query")]
     [ToolAlias("webview.query")]
     public async partial Task<CallToolResult> Query(

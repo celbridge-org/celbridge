@@ -8,16 +8,11 @@ namespace Celbridge.Tools;
 public partial class WebViewTools
 {
     /// <summary>
-    /// Evaluates a JavaScript expression in the WebView hosting the document.
-    /// The expression must produce a JSON-serialisable value. The result is
-    /// returned as a JSON string. Requires the webview-dev-tools and
-    /// webview-dev-tools-eval feature flags. If the target document is not
-    /// supported (wrong editor, external URL, or package opts out) the error
-    /// message names the specific reason.
+    /// Evaluates a JavaScript expression in the WebView and returns its JSON-serialised value. See guides_read(['webview_devtools']).
     /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to target.</param>
-    /// <param name="expression">JavaScript expression to evaluate. Must be a single expression — the returned value is the expression's JSON-serialised result. Multi-statement code (const/let declarations, if/else blocks, several statements in sequence) returns null because statements have no value. Wrap such code in an IIFE with an explicit return, for example: (function() { const x = f(); return x + 1; })()</param>
-    /// <returns>JSON-encoded value produced by the expression. Returns "null" when the expression evaluates to undefined or null.</returns>
+    /// <param name="resource">Resource key of the open document.</param>
+    /// <param name="expression">A single expression. Multi-statement code returns null; wrap in an IIFE with an explicit return.</param>
+    /// <returns>JSON-encoded result. "null" when undefined or null.</returns>
     [McpServerTool(Name = "webview_eval")]
     [ToolAlias("webview.eval")]
     public async partial Task<CallToolResult> Eval(string resource, string expression)

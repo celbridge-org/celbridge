@@ -9,7 +9,7 @@ public partial class ExplorerTools
     /// Duplicates a resource. Always shows an interactive dialog where the user can choose the new name.
     /// </summary>
     /// <param name="resource">Resource key of the item to duplicate.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <returns>"ok" on success.</returns>
     [McpServerTool(Name = "explorer_duplicate")]
     [ToolAlias("explorer.duplicate")]
     public async partial Task<CallToolResult> Duplicate(string resource)

@@ -16,11 +16,10 @@ public record class FolderInfoResult(string Type, string Modified);
 public partial class FileTools
 {
     /// <summary>
-    /// Gets metadata about a resource including type, size, modified date, extension, and text/binary indicator.
-    /// For text files, also returns the line count.
+    /// Returns resource metadata: type, size, modified date, extension, text/binary indicator, and line count for text files.
     /// </summary>
-    /// <param name="resource">Resource key of the resource to inspect.</param>
-    /// <returns>JSON object with fields: type (string: "file" or "folder"), size (long, files only), modified (string, ISO 8601), extension (string, files only), isText (bool, files only), lineCount (int, text files only).</returns>
+    /// <param name="resource">Resource key to inspect.</param>
+    /// <returns>JSON object with type, plus size/extension/isText/lineCount for files (modified is always set).</returns>
     [McpServerTool(Name = "file_get_info", ReadOnly = true)]
     [ToolAlias("file.get_info")]
     public async partial Task<CallToolResult> GetInfo(string resource)

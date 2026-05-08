@@ -8,18 +8,11 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Clears cell content, formatting, comments, merged ranges, and data validation across a
-    /// batch of ranges in one or more sheets in a single open/save cycle. Each operation specifies
-    /// a sheet and a range. range may be a cell range ("A1:C3"), single cell ("B2"), column or
-    /// column range ("E", "B:D"), row or row range ("3", "3:5"), or empty string to clear the
-    /// entire sheet. Unlike spreadsheet_delete, clear does NOT shift remaining cells — the cleared
-    /// range is emptied in place. When the entire sheet is cleared, the sheet's identity (tab
-    /// name, position, color, frozen panes, named ranges, column widths, row heights) is
-    /// preserved. If any operation fails, the whole batch fails and nothing is saved.
+    /// Clears cell content, formatting, comments, merged ranges, and data validation across a batch of ranges.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="operationsJson">JSON array of operations. Each operation is an object with sheet (string) and range (string) fields. range is any A1 form: cell range "A1:C3", single cell "B2", column letter or range "E"/"B:D", row number or range "3"/"3:5", or empty string to clear the entire sheet. Do not include a sheet qualifier in range.</param>
-    /// <returns>JSON object with fields: operationsApplied (int), cellCount (int, total cells whose state was reset across operations — includes formatting-only cells; already-default cells do not count).</returns>
+    /// <param name="operationsJson">JSON array of operations with sheet and range fields. range accepts any A1 form including empty string for the entire sheet. See guides_read(['spreadsheet_clear']) for the clear-vs-delete contrast.</param>
+    /// <returns>JSON object with operationsApplied and cellCount.</returns>
     [McpServerTool(Name = "spreadsheet_clear")]
     [ToolAlias("spreadsheet.clear")]
     public async partial Task<CallToolResult> Clear(string resource, string operationsJson)

@@ -7,22 +7,15 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Searches a workbook for cells whose text or formula expression contains a search string.
-    /// Returns the list of matches without modifying the workbook. Use this to identify cells
-    /// to act on (e.g. before a targeted spreadsheet_write_cells), without slurping the whole
-    /// sheet via spreadsheet_read_sheet. Numeric, boolean and date cells are skipped — only
-    /// text-bearing cells and formula cells are searched. For formula cells, the search is
-    /// performed against the formula expression text (so SUM(A1:A10) would match "A1:A10" or
-    /// "SUM"). Empty sheet searches every worksheet; empty range searches the chosen sheet's
-    /// entire used range. range can only be used together with a specific sheet.
+    /// Searches a workbook for cells whose text or formula expression contains a substring.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
     /// <param name="find">Substring to search for. Required and non-empty.</param>
-    /// <param name="sheet">Name of the worksheet to search. Empty string searches every worksheet in the workbook.</param>
-    /// <param name="range">Optional A1 range to limit the search ("A1:C100", "B", "B:D", "3", "3:10"). Empty string searches the entire used range of the chosen sheet. Only valid when sheet is also specified. Do not include a sheet qualifier.</param>
-    /// <param name="matchCase">If true, the search is case-sensitive. Default false.</param>
-    /// <param name="matchEntireCellContents">If true, find must equal the cell's full text. If false, find matches as a substring. Default false.</param>
-    /// <returns>JSON object with fields: matches (array of {sheet, cell, text, isFormula}), matchCount (int). For formula cells, text is the formula expression without the leading '=' (e.g. "SUM(C2:F2)" for the cell =SUM(C2:F2)).</returns>
+    /// <param name="sheet">Worksheet to search. Empty searches every worksheet.</param>
+    /// <param name="range">Optional A1 range to limit the search. Only valid when sheet is also specified.</param>
+    /// <param name="matchCase">If true, the search is case-sensitive.</param>
+    /// <param name="matchEntireCellContents">If true, find must equal the cell's full text rather than matching as a substring.</param>
+    /// <returns>JSON object with matches (array of {sheet, cell, text, isFormula}) and matchCount. See guides_read(['spreadsheet_find']).</returns>
     [McpServerTool(Name = "spreadsheet_find", ReadOnly = true)]
     [ToolAlias("spreadsheet.find")]
     public partial CallToolResult Find(

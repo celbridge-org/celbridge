@@ -7,13 +7,12 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Renames a worksheet in a workbook. Returns an error if the source sheet does not exist or if
-    /// the new name collides with another sheet.
+    /// Renames a worksheet. The new name must not collide with another sheet.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Current name of the worksheet to rename.</param>
-    /// <param name="newName">New name to assign to the worksheet.</param>
-    /// <returns>JSON object with fields: previousName (string), newName (string).</returns>
+    /// <param name="sheet">Current name of the worksheet.</param>
+    /// <param name="newName">New name to assign.</param>
+    /// <returns>JSON object with previousName and newName.</returns>
     [McpServerTool(Name = "spreadsheet_rename_sheet")]
     [ToolAlias("spreadsheet.rename_sheet")]
     public async partial Task<CallToolResult> RenameSheet(string resource, string sheet, string newName)

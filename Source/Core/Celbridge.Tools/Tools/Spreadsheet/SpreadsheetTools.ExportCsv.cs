@@ -16,17 +16,13 @@ public record class ExportCsvFileResult(int RowCount, int ColumnCount, int ByteC
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Exports a sheet (or a sub-range of one) as RFC 4180 CSV text. Comma delimiter, double-quote
-    /// quoting, embedded quotes doubled, CRLF line endings between rows. With no destination the
-    /// CSV body is returned inline. With a destination resource key the CSV is written to that file
-    /// via the audited file-write command and a small JSON metadata object is returned instead of
-    /// the body, so a large export does not have to round-trip through the agent or script context.
+    /// Exports a sheet (or a sub-range) as RFC 4180 CSV text.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Name of the worksheet to export.</param>
-    /// <param name="range">A1-notation range to export (e.g. "B2:D10"). Empty string exports the sheet's used range.</param>
-    /// <param name="destination">Optional resource key of a file to write the CSV to. Empty string returns the CSV inline. When set, the file is created or overwritten and the response is a JSON object with rowCount, columnCount, byteCount, and destination fields.</param>
-    /// <returns>The CSV text when destination is empty, otherwise a JSON object with fields: rowCount (int), columnCount (int), byteCount (int), destination (string). When the sheet or requested range is empty, the inline response is an empty body and the file destination is a zero-byte file; the metadata in the file case reports rowCount and columnCount of zero.</returns>
+    /// <param name="sheet">Worksheet to export.</param>
+    /// <param name="range">A1-notation range. Empty string exports the sheet's used range.</param>
+    /// <param name="destination">Optional resource key to write the CSV to. Empty returns CSV inline; non-empty returns metadata. See guides_read(['spreadsheet_export_csv']).</param>
+    /// <returns>CSV text when destination is empty, otherwise a JSON object with rowCount, columnCount, byteCount, and destination.</returns>
     [McpServerTool(Name = "spreadsheet_export_csv")]
     [ToolAlias("spreadsheet.export_csv")]
     public async partial Task<CallToolResult> ExportCsv(string resource, string sheet, string range = "", string destination = "")

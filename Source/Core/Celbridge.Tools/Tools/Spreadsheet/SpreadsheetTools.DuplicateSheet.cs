@@ -7,16 +7,13 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Duplicates an existing worksheet, copying values, formulas, formatting, conditional formatting,
-    /// freeze panes, column widths, row heights, and other sheet-level state. Useful for templating
-    /// workflows where you want a new sheet seeded from an existing layout. Fails if the source sheet
-    /// does not exist, the new name collides with an existing sheet, or position is out of range.
+    /// Duplicates a worksheet with all sheet-level state (values, formulas, formatting, panes, dimensions).
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sourceSheet">Name of the worksheet to duplicate.</param>
-    /// <param name="newSheet">Name to give the duplicate. Must not collide with an existing sheet name.</param>
-    /// <param name="position">1-based tab position to place the duplicate at, or 0 (default) to append it after existing sheets. Must be in [0, sheetCount + 1].</param>
-    /// <returns>JSON object with fields: newSheet (string, the duplicate's name), position (int, the duplicate's 1-based tab position).</returns>
+    /// <param name="sourceSheet">Worksheet to duplicate.</param>
+    /// <param name="newSheet">Name for the duplicate. Must not collide with an existing sheet.</param>
+    /// <param name="position">1-based tab position, or 0 to append. Must be in [0, sheetCount + 1].</param>
+    /// <returns>JSON object with the duplicate's newSheet and position.</returns>
     [McpServerTool(Name = "spreadsheet_duplicate_sheet")]
     [ToolAlias("spreadsheet.duplicate_sheet")]
     public async partial Task<CallToolResult> DuplicateSheet(

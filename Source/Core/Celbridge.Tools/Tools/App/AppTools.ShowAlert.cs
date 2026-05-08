@@ -10,7 +10,7 @@ public partial class AppTools
     /// </summary>
     /// <param name="message">The message to display in the alert dialog.</param>
     /// <param name="title">Optional title for the alert dialog.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <returns>"ok" on success.</returns>
     [McpServerTool(Name = "app_show_alert")]
     [ToolAlias("app.show_alert")]
     public async partial Task<CallToolResult> ShowAlert(string message, string title = "")

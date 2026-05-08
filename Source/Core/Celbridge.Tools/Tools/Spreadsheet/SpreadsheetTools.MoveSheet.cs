@@ -7,14 +7,12 @@ namespace Celbridge.Tools;
 public partial class SpreadsheetTools
 {
     /// <summary>
-    /// Moves a worksheet to a new 1-based tab position. Position 1 places the sheet first. The maximum
-    /// valid position is the current sheet count. Returns an error if the sheet does not exist or the
-    /// position is out of range. Use spreadsheet_get_info to read current sheet positions before calling.
+    /// Moves a worksheet to a new 1-based tab position.
     /// </summary>
     /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Name of the worksheet to move.</param>
-    /// <param name="position">1-based tab position to move the sheet to. Must be in [1, sheetCount].</param>
-    /// <returns>JSON object with fields: sheet (string), position (int, the new 1-based position).</returns>
+    /// <param name="sheet">Worksheet to move.</param>
+    /// <param name="position">1-based tab position. Must be in [1, sheetCount].</param>
+    /// <returns>JSON object with sheet and the new position.</returns>
     [McpServerTool(Name = "spreadsheet_move_sheet")]
     [ToolAlias("spreadsheet.move_sheet")]
     public async partial Task<CallToolResult> MoveSheet(string resource, string sheet, int position)

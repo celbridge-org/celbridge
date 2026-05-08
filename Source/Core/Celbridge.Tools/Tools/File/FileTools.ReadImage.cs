@@ -25,12 +25,10 @@ public partial class FileTools
     };
 
     /// <summary>
-    /// Reads an image from the project tree and returns it inline so the
-    /// multimodal model can see it. Supported formats: JPEG, PNG, GIF, WebP.
-    /// For non-image binary content, use file_read_binary.
+    /// Reads a JPEG/PNG/GIF/WebP image inline for multimodal viewing. Use file_read_binary for non-image binary content.
     /// </summary>
-    /// <param name="resource">Resource key of the image file to read.</param>
-    /// <returns>Inline image content block plus JSON metadata with `resource`, `mimeType`, and `sizeBytes`.</returns>
+    /// <param name="resource">Resource key of the image file.</param>
+    /// <returns>Inline image content block plus JSON metadata with resource, mimeType, and sizeBytes.</returns>
     [McpServerTool(Name = "file_read_image", ReadOnly = true)]
     [ToolAlias("file.read_image")]
     public async partial Task<CallToolResult> ReadImage(string resource)

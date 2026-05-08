@@ -10,7 +10,7 @@ public partial class ExplorerTools
     /// </summary>
     /// <param name="resource">Resource key for the new folder, or the parent folder when using the dialog.</param>
     /// <param name="showDialog">If true, show the create folder dialog for interactive naming.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <returns>"ok" on success.</returns>
     [McpServerTool(Name = "explorer_create_folder")]
     [ToolAlias("explorer.create_folder")]
     public async partial Task<CallToolResult> CreateFolder(string resource, bool showDialog = false)

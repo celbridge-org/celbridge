@@ -17,12 +17,11 @@ public record class ListContentsFolderItem(string Name, string Type, string Modi
 public partial class FileTools
 {
     /// <summary>
-    /// Lists the immediate children of a folder with their type, size, and modification date.
-    /// Optionally filters children by a glob pattern.
+    /// Lists the immediate children of a folder, optionally filtered by glob.
     /// </summary>
-    /// <param name="resource">Resource key of the folder to list.</param>
-    /// <param name="glob">Optional glob pattern to filter children by name (e.g. "*.py", "readme*"). When empty, all children are returned.</param>
-    /// <returns>JSON array of objects with fields: name (string), type (string: "file" or "folder"), size (long, files only), modified (string, ISO 8601).</returns>
+    /// <param name="resource">Resource key of the folder.</param>
+    /// <param name="glob">Optional glob pattern matched against child names.</param>
+    /// <returns>JSON array of entries with name, type, size (files only), and modified.</returns>
     [McpServerTool(Name = "file_list_contents", ReadOnly = true)]
     [ToolAlias("file.list_contents")]
     public async partial Task<CallToolResult> ListContents(string resource, string glob = "")

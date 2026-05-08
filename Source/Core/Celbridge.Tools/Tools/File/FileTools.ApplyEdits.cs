@@ -20,14 +20,11 @@ public record class AffectedLineRange(int From, int To, List<string>? ContextLin
 public partial class FileTools
 {
     /// <summary>
-    /// Applies targeted text edits to a file at specific line and column positions.
-    /// Each edit specifies a range and replacement text, using 1-based line and column numbers.
-    /// Edits are written directly to disk. Any open document reloads its buffer from disk
-    /// after the write.
+    /// Applies targeted text edits at 1-based line/column positions; writes to disk.
     /// </summary>
     /// <param name="fileResource">Resource key of the file to edit.</param>
-    /// <param name="editsJson">JSON array of edit objects, each with fields: line (int), column (int, optional, default 1), endLine (int), endColumn (int, optional, default -1), newText (string). Line and column numbers are 1-based. column defaults to 1 and endColumn defaults to -1 (end of line), so whole-line replacements only require line, endLine, and newText.</param>
-    /// <returns>JSON object describing the file state after the edits are applied, with fields: affectedLines (array of objects with from (int), to (int), and contextLines (array of strings showing the post-edit content of the affected lines with one line of surrounding context on each side)), totalLineCount (int, post-edit line count). Use these fields to verify the edit landed without issuing a follow-up file_read.</returns>
+    /// <param name="editsJson">JSON array of edits with line, column (default 1), endLine, endColumn (default -1 for end of line), and newText.</param>
+    /// <returns>JSON object with affectedLines (each carrying post-edit context) and totalLineCount, sufficient for verifying the edit without a follow-up file_read.</returns>
     [McpServerTool(Name = "file_apply_edits")]
     [ToolAlias("file.apply_edits")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)
