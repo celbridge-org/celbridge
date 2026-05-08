@@ -6,29 +6,28 @@ using Path = System.IO.Path;
 namespace Celbridge.Server.Services;
 
 /// <summary>
-/// Aggregates and surfaces agent-activity analytics. Pulls per-call telemetry
-/// from <see cref="ToolTelemetry"/>, joins it with the broker's tools/list
-/// payload data, and emits the consolidated agent report as a multi-sheet
-/// .xlsx workbook via <see cref="GenerateAsync"/>. The combined Tools sheet
-/// is the natural pivot: sort by payload tokens to find expensive tools, by
-/// calls to find hot tools, or compare both columns to spot tools paying
-/// context cost without earning their keep. New analytics surfaces (top-N
-/// queries, per-session breakdowns, cost projections) belong here so they
-/// share the same payload+telemetry join.
+/// Builds the consolidated agent report. Pulls per-call telemetry from
+/// <see cref="AgentTelemetry"/>, joins it with the broker's tools/list payload
+/// data, and emits the report as a multi-sheet .xlsx workbook via
+/// <see cref="GenerateAsync"/>. The combined Tools sheet is the natural pivot:
+/// sort by payload tokens to find expensive tools, by calls to find hot tools,
+/// or compare both columns to spot tools paying context cost without earning
+/// their keep. New analytics surfaces (top-N queries, per-session breakdowns,
+/// cost projections) belong here so they share the same payload+telemetry join.
 /// </summary>
-public class AgentAnalytics
+public class AgentReportBuilder
 {
     // The chars/4 rule is Anthropic's published rule of thumb. Not Claude's
     // actual tokeniser, but consistent across runs so trim-trend comparisons
     // remain meaningful.
     private const string TokenisationLabel = "approximate (chars/4)";
 
-    private readonly ToolTelemetry _telemetry;
+    private readonly AgentTelemetry _telemetry;
     private readonly IMcpToolBridge _toolBridge;
     private readonly IProjectService _projectService;
 
-    public AgentAnalytics(
-        ToolTelemetry telemetry,
+    public AgentReportBuilder(
+        AgentTelemetry telemetry,
         IMcpToolBridge toolBridge,
         IProjectService projectService)
     {

@@ -9,11 +9,11 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IFileServer, FileServer>();
         services.AddSingleton<IMcpToolBridge, McpToolBridge>();
-        services.AddSingleton<ToolTelemetry>();
+        services.AddSingleton<AgentTelemetry>();
         services.AddSingleton<IAgentServer, AgentServer>();
         services.AddSingleton<IServerService, ServerService>();
-        services.AddSingleton<AgentAnalytics>();
-        services.AddSingleton<AgentAnalyticsRpcHandler>();
+        services.AddSingleton<AgentReportBuilder>();
+        services.AddSingleton<AgentReportBuilderRpcHandler>();
         services.AddTransient<ITcpTransport, TcpTransport>();
     }
 }

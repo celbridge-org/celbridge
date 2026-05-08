@@ -6,7 +6,7 @@ namespace Celbridge.Server.Services;
 
 /// <summary>
 /// One captured tool invocation. Field order is the column order used in the
-/// Invocations sheet of the workbook produced by AgentAnalytics.GenerateAsync.
+/// Invocations sheet of the workbook produced by AgentReportBuilder.GenerateAsync.
 /// </summary>
 public record class ToolInvocationRecord(
     DateTimeOffset TimestampUtc,
@@ -36,14 +36,14 @@ internal record class InvocationOutcome(
     long ResultPayloadBytes);
 
 /// <summary>
-/// Per-connection state owned by ToolTelemetry. Tracks the orientation gate flag,
+/// Per-connection state owned by AgentTelemetry. Tracks the orientation gate flag,
 /// the set of guide names already read in the session (used to compute the
 /// cache-miss flag for tool invocations), and the MCP session id (carried into
 /// invocation rows so they correlate with the Mcp-Session-Id header observed by
 /// the client). All mutating members are safe to call concurrently from
 /// parallel gate-filter invocations on the same MCP session.
 /// </summary>
-internal sealed class ToolSessionState
+internal sealed class AgentSessionState
 {
     // ConcurrentDictionary used as a set; the byte value is unused. Plain
     // HashSet<string> is not safe under concurrent Add and Contains calls, which
@@ -55,7 +55,7 @@ internal sealed class ToolSessionState
     // consistent view of the orientation flag without taking a lock.
     private int _orientationRead;
 
-    public ToolSessionState(string sessionId)
+    public AgentSessionState(string sessionId)
     {
         SessionId = sessionId;
     }
@@ -91,7 +91,7 @@ internal sealed class ToolSessionState
 /// source of truth for the telemetry report; the report writer projects them
 /// directly to the workbook.
 /// </summary>
-public sealed class ToolTelemetry
+public sealed class AgentTelemetry
 {
     /// <summary>
     /// Maximum number of invocation rows kept in memory. Older rows are evicted
@@ -106,7 +106,7 @@ public sealed class ToolTelemetry
     /// </summary>
     public const string ProxyClientName = "CelbridgeMcpToolBridge";
 
-    private readonly ConcurrentDictionary<string, ToolSessionState> _sessionStates = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, AgentSessionState> _sessionStates = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<ToolInvocationRecord> _invocations = new();
 
     /// <summary>
@@ -117,7 +117,7 @@ public sealed class ToolTelemetry
     /// populates SessionId before the first tools/call, so this branch is
     /// defence-in-depth against an unexpected transport configuration.
     /// </summary>
-    internal ToolSessionState? GetOrCreateSession(McpServer server)
+    internal AgentSessionState? GetOrCreateSession(McpServer server)
     {
         var sessionId = server.SessionId;
         if (string.IsNullOrEmpty(sessionId))
@@ -125,7 +125,7 @@ public sealed class ToolTelemetry
             return null;
         }
 
-        var state = _sessionStates.GetOrAdd(sessionId, key => new ToolSessionState(key));
+        var state = _sessionStates.GetOrAdd(sessionId, key => new AgentSessionState(key));
         var clientName = server.ClientInfo?.Name ?? "";
         state.IsProxyClient = string.Equals(clientName, ProxyClientName, StringComparison.Ordinal);
         return state;
@@ -142,17 +142,17 @@ public sealed class ToolTelemetry
     /// tools are allowed unconditionally; callers should check IsBootstrapTool
     /// before consulting this method.
     /// </summary>
-    internal bool IsOrientationSatisfied(ToolSessionState state)
+    internal bool IsOrientationSatisfied(AgentSessionState state)
     {
         return state.IsProxyClient || state.OrientationRead;
     }
 
-    internal void MarkGuideRead(ToolSessionState state, string guideName)
+    internal void MarkGuideRead(AgentSessionState state, string guideName)
     {
         state.MarkGuideRead(guideName);
     }
 
-    internal bool WasGuideReadInSession(ToolSessionState state, string guideName)
+    internal bool WasGuideReadInSession(AgentSessionState state, string guideName)
     {
         return state.WasGuideRead(guideName);
     }
@@ -174,7 +174,7 @@ public sealed class ToolTelemetry
     /// </summary>
     internal void RecordInvocation(
         McpServer server,
-        ToolSessionState session,
+        AgentSessionState session,
         string toolName,
         InvocationOutcome outcome)
     {

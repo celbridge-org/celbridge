@@ -18,7 +18,7 @@ namespace Celbridge.Server.Services;
 ///     ToolError until guides_read has been called for "agent_instructions" on
 ///     this session.</item>
 ///   <item>Every dispatch is recorded as a ToolInvocationRecord on
-///     ToolTelemetry, including duration, payload sizes, and the cache-miss
+///     AgentTelemetry, including duration, payload sizes, and the cache-miss
 ///     flag (whether the agent had read this tool's per-tool guide on this
 ///     session before invoking it).</item>
 /// </list>
@@ -32,15 +32,15 @@ namespace Celbridge.Server.Services;
 /// flag's exact-match on "agent_instructions" means it can only be flipped by
 /// passing that literal name.
 /// </summary>
-internal static class ToolGate
+internal static class AgentGate
 {
-    public static McpRequestFilter<CallToolRequestParams, CallToolResult> CreateFilter(ToolTelemetry telemetry)
+    public static McpRequestFilter<CallToolRequestParams, CallToolResult> CreateFilter(AgentTelemetry telemetry)
     {
         return next => (context, cancellationToken) => InvokeAsync(telemetry, next, context, cancellationToken);
     }
 
     private static async ValueTask<CallToolResult> InvokeAsync(
-        ToolTelemetry telemetry,
+        AgentTelemetry telemetry,
         McpRequestHandler<CallToolRequestParams, CallToolResult> next,
         RequestContext<CallToolRequestParams> context,
         CancellationToken cancellationToken)
@@ -111,8 +111,8 @@ internal static class ToolGate
     }
 
     internal static void ApplyGuidesReadSideEffects(
-        ToolTelemetry telemetry,
-        ToolSessionState session,
+        AgentTelemetry telemetry,
+        AgentSessionState session,
         IDictionary<string, JsonElement>? arguments)
     {
         if (arguments is null

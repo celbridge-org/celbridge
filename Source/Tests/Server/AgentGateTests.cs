@@ -4,7 +4,7 @@ using Celbridge.Server.Services;
 namespace Celbridge.Tests.Server;
 
 [TestFixture]
-public class ToolGateTests
+public class AgentGateTests
 {
     // ParseRequestedGuideNames — JSON array of strings
 
@@ -12,7 +12,7 @@ public class ToolGateTests
     public void ParseRequestedGuideNames_FromJsonArrayElement()
     {
         var element = ParseElement("[\"agent_instructions\",\"file_grep\"]");
-        var names = ToolGate.ParseRequestedGuideNames(element);
+        var names = AgentGate.ParseRequestedGuideNames(element);
         names.Should().Equal("agent_instructions", "file_grep");
     }
 
@@ -23,7 +23,7 @@ public class ToolGateTests
         // tool itself parses string-typed args as JSON internally). The gate
         // mirrors that so the cache-miss tracking matches what the tool sees.
         var element = ParseElement("\"[\\\"agent_instructions\\\"]\"");
-        var names = ToolGate.ParseRequestedGuideNames(element);
+        var names = AgentGate.ParseRequestedGuideNames(element);
         names.Should().Equal("agent_instructions");
     }
 
@@ -31,7 +31,7 @@ public class ToolGateTests
     public void ParseRequestedGuideNames_EmptyArrayReturnsEmptyList()
     {
         var element = ParseElement("[]");
-        var names = ToolGate.ParseRequestedGuideNames(element);
+        var names = AgentGate.ParseRequestedGuideNames(element);
         names.Should().BeEmpty();
     }
 
@@ -39,7 +39,7 @@ public class ToolGateTests
     public void ParseRequestedGuideNames_MalformedJsonReturnsEmptyList()
     {
         var element = ParseElement("\"[unclosed\"");
-        var names = ToolGate.ParseRequestedGuideNames(element);
+        var names = AgentGate.ParseRequestedGuideNames(element);
         names.Should().BeEmpty();
     }
 
@@ -47,20 +47,20 @@ public class ToolGateTests
     public void ParseRequestedGuideNames_DropsEmptyStringEntries()
     {
         var element = ParseElement("[\"\",\"agent_instructions\",\"\"]");
-        var names = ToolGate.ParseRequestedGuideNames(element);
+        var names = AgentGate.ParseRequestedGuideNames(element);
         names.Should().Equal("agent_instructions");
     }
 
-    // ApplyGuidesReadSideEffects — full path through to ToolSessionState
+    // ApplyGuidesReadSideEffects — full path through to AgentSessionState
 
     [Test]
     public void ApplyGuidesReadSideEffects_AgentInstructionsFlipsOrientation()
     {
-        var telemetry = new ToolTelemetry();
-        var session = new ToolSessionState("session-1");
+        var telemetry = new AgentTelemetry();
+        var session = new AgentSessionState("session-1");
         var arguments = BuildArguments("[\"agent_instructions\"]");
 
-        ToolGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
+        AgentGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
 
         session.OrientationRead.Should().BeTrue();
         session.WasGuideRead("agent_instructions").Should().BeTrue();
@@ -69,11 +69,11 @@ public class ToolGateTests
     [Test]
     public void ApplyGuidesReadSideEffects_RecordsNonOrientationGuide()
     {
-        var telemetry = new ToolTelemetry();
-        var session = new ToolSessionState("session-1");
+        var telemetry = new AgentTelemetry();
+        var session = new AgentSessionState("session-1");
         var arguments = BuildArguments("[\"file_grep\",\"resource_keys\"]");
 
-        ToolGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
+        AgentGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
 
         session.OrientationRead.Should().BeFalse();
         session.WasGuideRead("file_grep").Should().BeTrue();
@@ -83,10 +83,10 @@ public class ToolGateTests
     [Test]
     public void ApplyGuidesReadSideEffects_NullArgumentsIsNoOp()
     {
-        var telemetry = new ToolTelemetry();
-        var session = new ToolSessionState("session-1");
+        var telemetry = new AgentTelemetry();
+        var session = new AgentSessionState("session-1");
 
-        ToolGate.ApplyGuidesReadSideEffects(telemetry, session, null);
+        AgentGate.ApplyGuidesReadSideEffects(telemetry, session, null);
 
         session.OrientationRead.Should().BeFalse();
     }
@@ -94,14 +94,14 @@ public class ToolGateTests
     [Test]
     public void ApplyGuidesReadSideEffects_MissingNamesKeyIsNoOp()
     {
-        var telemetry = new ToolTelemetry();
-        var session = new ToolSessionState("session-1");
+        var telemetry = new AgentTelemetry();
+        var session = new AgentSessionState("session-1");
         var arguments = new Dictionary<string, JsonElement>
         {
             ["other"] = ParseElement("\"value\"")
         };
 
-        ToolGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
+        AgentGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
 
         session.OrientationRead.Should().BeFalse();
     }
@@ -113,11 +113,11 @@ public class ToolGateTests
         // BootstrapToolError — the side effects must not record anything when
         // the inner handler returns failure. The gate already gates this on
         // the tool result; this test pins the inner-helper behaviour.
-        var telemetry = new ToolTelemetry();
-        var session = new ToolSessionState("session-1");
+        var telemetry = new AgentTelemetry();
+        var session = new AgentSessionState("session-1");
         var arguments = BuildArguments("\"[unclosed\"");
 
-        ToolGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
+        AgentGate.ApplyGuidesReadSideEffects(telemetry, session, arguments);
 
         session.OrientationRead.Should().BeFalse();
         session.WasGuideRead("agent_instructions").Should().BeFalse();

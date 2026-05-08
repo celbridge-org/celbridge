@@ -27,11 +27,11 @@ Tools whose misuse can cause silent data loss or write the wrong thing prepend `
 
 ## The cold-start gate
 
-`Celbridge.Server.Services.ToolGate` registers an MCP `CallToolFilter` that blocks any non-bootstrap tool call from a connection that hasn't read the orientation guide on its session. The gate keys on per-connection state held by `ToolTelemetry` and is identified by the `clientInfo.name` reported during MCP `initialize`.
+`Celbridge.Server.Services.AgentGate` registers an MCP `CallToolFilter` that blocks any non-bootstrap tool call from a connection that hasn't read the orientation guide on its session. The gate keys on per-connection state held by `AgentTelemetry` and is identified by the `clientInfo.name` reported during MCP `initialize`.
 
 Bootstrap tools (`guides_list`, `guides_read`, `guides_search`) bypass the gate.
 
-Proxy connections — those identified by `clientInfo.name == "CelbridgeMcpToolBridge"` — bypass the gate entirely. The Python and JavaScript proxies are scripted callers that don't need orientation. The `ProxyClientName` constant on `ToolTelemetry` is the single source of truth for that name.
+Proxy connections — those identified by `clientInfo.name == "CelbridgeMcpToolBridge"` — bypass the gate entirely. The Python and JavaScript proxies are scripted callers that don't need orientation. The `ProxyClientName` constant on `AgentTelemetry` is the single source of truth for that name.
 
 Workspace switches restart the Kestrel instance and therefore reset all gate state. Project reloads (no broker restart) do not reset.
 
@@ -40,8 +40,8 @@ Workspace switches restart the Kestrel instance and therefore reset all gate sta
 `agent_instructions` is the orientation guide. It is the only guide whose name is hard-coded in three places:
 
 - `AppTools.GetState.AgentDocsPointerValue` — the `agentDocs.entry` field of `app_get_state`.
-- `ToolTelemetry.MarkGuideRead` — flips `OrientationRead` when a `guides_read` call resolves this name.
-- `ToolGate.BuildOrientationGateError` — the unlock command surfaced in the gate error.
+- `AgentTelemetry.MarkGuideRead` — flips `OrientationRead` when a `guides_read` call resolves this name.
+- `AgentGate.BuildOrientationGateError` — the unlock command surfaced in the gate error.
 
 If you rename it again, all three sites need to change.
 
@@ -85,7 +85,7 @@ If you add a tool but forget the guide, the app won't launch — the build doesn
 
 ## Telemetry and the agent report
 
-`ToolTelemetry` captures every tool invocation as a `ToolInvocationRecord` row (timestamp, session id, client name and version, tool name, success, duration, payload sizes, proxy and cache-miss flags). The rows are the source of truth.
+`AgentTelemetry` captures every tool invocation as a `ToolInvocationRecord` row (timestamp, session id, client name and version, tool name, success, duration, payload sizes, proxy and cache-miss flags). The rows are the source of truth.
 
 `cel.agent.get_report()` writes a consolidated agent report as an `.xlsx` workbook to the project root via ClosedXML. Four sheets:
 
@@ -94,11 +94,11 @@ If you add a tool but forget the guide, the app won't launch — the build doesn
 - **Namespaces** — per-namespace aggregates of the above.
 - **Invocations** — every captured call. The substrate for ad-hoc analysis (pivot tables, charts, slicing by session or client).
 
-The workbook is the only output format. If you need a quick eyeball view, open Summary; if you want the at-a-glance pivot, open Tools; if you need to dig in, work from Invocations. `AgentAnalytics` does the aggregation and report build; `AgentAnalyticsRpcHandler` exposes it over the broker's TCP RPC channel as `diagnostics/get_agent_report`. New analytics methods (top-N queries, per-session breakdowns, cost projections) belong on `AgentAnalytics` so they share the same payload+telemetry join.
+The workbook is the only output format. If you need a quick eyeball view, open Summary; if you want the at-a-glance pivot, open Tools; if you need to dig in, work from Invocations. `AgentReportBuilder` does the aggregation and report build; `AgentReportBuilderRpcHandler` exposes it over the broker's TCP RPC channel as `diagnostics/get_agent_report`. New analytics methods (top-N queries, per-session breakdowns, cost projections) belong on `AgentReportBuilder` so they share the same payload+telemetry join.
 
 ## See also
 
 - `tool_surface_redesign.md` (under `05_development/02_proposals/` then `02_working/` then `03_landed/`) — the design rationale and phase history for everything described above.
 - `Guides/template_guide.md` — the authoring scaffold for new per-tool guides.
 - `Tools/AgentToolBase.cs` — `ToolError`, `BootstrapToolError`, and the helpers every tool uses.
-- `Server/Services/ToolGate.cs`, `ToolTelemetry.cs` — the cold-start gate and telemetry infrastructure.
+- `Server/Services/AgentGate.cs`, `AgentTelemetry.cs` — the cold-start gate and telemetry infrastructure.

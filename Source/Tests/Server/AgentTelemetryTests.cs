@@ -4,14 +4,14 @@ using Celbridge.Server.Services;
 namespace Celbridge.Tests.Server;
 
 [TestFixture]
-public class ToolTelemetryTests
+public class AgentTelemetryTests
 {
-    private ToolTelemetry _telemetry = null!;
+    private AgentTelemetry _telemetry = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _telemetry = new ToolTelemetry();
+        _telemetry = new AgentTelemetry();
     }
 
     // IsBootstrapTool
@@ -33,19 +33,19 @@ public class ToolTelemetryTests
         _telemetry.IsBootstrapTool("").Should().BeFalse();
     }
 
-    // ToolSessionState — orientation
+    // AgentSessionState — orientation
 
     [Test]
     public void OrientationRead_DefaultsToFalse()
     {
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
         state.OrientationRead.Should().BeFalse();
     }
 
     [Test]
     public void MarkGuideRead_AgentInstructions_FlipsOrientation()
     {
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
         state.MarkGuideRead("agent_instructions");
         state.OrientationRead.Should().BeTrue();
     }
@@ -53,7 +53,7 @@ public class ToolTelemetryTests
     [Test]
     public void MarkGuideRead_OtherGuide_DoesNotFlipOrientation()
     {
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
         state.MarkGuideRead("resource_keys");
         state.OrientationRead.Should().BeFalse();
     }
@@ -61,7 +61,7 @@ public class ToolTelemetryTests
     [Test]
     public void MarkGuideRead_RecordsNameInSessionSet()
     {
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
         state.MarkGuideRead("file_grep");
         state.WasGuideRead("file_grep").Should().BeTrue();
         state.WasGuideRead("file_read").Should().BeFalse();
@@ -70,7 +70,7 @@ public class ToolTelemetryTests
     [Test]
     public void MarkGuideRead_IsIdempotent()
     {
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
         state.MarkGuideRead("file_grep");
         state.MarkGuideRead("file_grep");
         state.WasGuideRead("file_grep").Should().BeTrue();
@@ -82,17 +82,17 @@ public class ToolTelemetryTests
         // guideName equality uses Ordinal comparison; "Agent_Instructions"
         // does not flip orientation. The exact casing of "agent_instructions"
         // is the contract; the gate's unlock command spells it that way.
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
         state.MarkGuideRead("Agent_Instructions");
         state.OrientationRead.Should().BeFalse();
     }
 
-    // ToolSessionState — concurrency
+    // AgentSessionState — concurrency
 
     [Test]
     public async Task MarkGuideRead_ConcurrentCallsAllRecordedAndOrientationFlips()
     {
-        var state = new ToolSessionState("session-1");
+        var state = new AgentSessionState("session-1");
 
         var tasks = new List<Task>();
         // Mix of agent_instructions calls (orientation-flipping) and other

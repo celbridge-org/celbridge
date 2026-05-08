@@ -10,9 +10,9 @@ namespace Celbridge.Server.Services;
 /// </summary>
 public class AgentServer : IAgentServer
 {
-    private readonly ToolTelemetry _telemetry;
+    private readonly AgentTelemetry _telemetry;
 
-    public AgentServer(ToolTelemetry telemetry)
+    public AgentServer(AgentTelemetry telemetry)
     {
         _telemetry = telemetry;
     }
@@ -23,7 +23,7 @@ public class AgentServer : IAgentServer
     /// </summary>
     public void ConfigureServices(IServiceCollection services)
     {
-        // Surface the application-scoped ToolTelemetry singleton inside the
+        // Surface the application-scoped AgentTelemetry singleton inside the
         // server scope as well, so the cold-start gate filter and the
         // diagnostics RPC handler share one instance.
         services.AddSingleton(_telemetry);
@@ -33,8 +33,8 @@ public class AgentServer : IAgentServer
             .WithHttpTransport()
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
 
-        var toolGateFilter = ToolGate.CreateFilter(_telemetry);
-        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(toolGateFilter));
+        var agentGateFilter = AgentGate.CreateFilter(_telemetry);
+        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(agentGateFilter));
     }
 
     /// <summary>
