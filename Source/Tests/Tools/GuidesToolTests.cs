@@ -7,9 +7,9 @@ namespace Celbridge.Tests.Tools;
 
 /// <summary>
 /// Tests for the GuidesTools MCP tool methods. Also exercises the embedded
-/// guide library loader: any missing frontmatter, name collision, or per-tool
-/// guide whose name doesn't match a registered tool surfaces here rather than
-/// on first agent call.
+/// guide library loader: missing frontmatter, name collisions, per-tool
+/// guides whose name doesn't match a registered tool, and registered tools
+/// that lack a per-tool guide all surface here rather than on first agent call.
 /// </summary>
 [TestFixture]
 public class GuidesToolTests
@@ -123,7 +123,7 @@ public class GuidesToolTests
     }
 
     [Test]
-    public void Read_ToolAliasNameWithoutPerToolGuideReturnsStubWithInvocations()
+    public void Read_PerToolGuideCarriesPythonAndJavaScriptInvocations()
     {
         var tools = new GuidesTools(_services);
         var json = GetResultText(tools.Read("[\"file_grep\"]"));

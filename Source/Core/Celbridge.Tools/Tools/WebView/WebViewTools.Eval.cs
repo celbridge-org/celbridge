@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Evaluates a JavaScript expression in the WebView and returns its JSON-serialised value. See guides_read(['webview_devtools']).
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="expression">A single expression. Multi-statement code returns null; wrap in an IIFE with an explicit return.</param>
-    /// <returns>JSON-encoded result. "null" when undefined or null.</returns>
+    /// <summary>Evaluate an arbitrary JavaScript expression in the WebView (gated by a separate feature flag).</summary>
     [McpServerTool(Name = "webview_eval")]
     [ToolAlias("webview.eval")]
     public async partial Task<CallToolResult> Eval(string resource, string expression)

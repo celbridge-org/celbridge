@@ -6,14 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Duplicates a worksheet with all sheet-level state (values, formulas, formatting, panes, dimensions).
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sourceSheet">Worksheet to duplicate.</param>
-    /// <param name="newSheet">Name for the duplicate. Must not collide with an existing sheet.</param>
-    /// <param name="position">1-based tab position, or 0 to append. Must be in [0, sheetCount + 1].</param>
-    /// <returns>JSON object with the duplicate's newSheet and position.</returns>
+    /// <summary>Duplicate a worksheet with all values, formulas, and formatting under a new name.</summary>
     [McpServerTool(Name = "spreadsheet_duplicate_sheet")]
     [ToolAlias("spreadsheet.duplicate_sheet")]
     public async partial Task<CallToolResult> DuplicateSheet(

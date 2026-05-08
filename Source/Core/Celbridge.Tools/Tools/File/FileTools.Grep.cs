@@ -28,23 +28,7 @@ public record class GrepMatchWithContext(int LineNumber, string LineText, int Ma
 
 public partial class FileTools
 {
-    // Bootstrap tool. Keep summary rich and do not trim.
-    /// <summary>
-    /// Searches file contents by text or regex, returning matches with line numbers and optional context lines.
-    /// Use the files parameter to search specific files directly, or use resource/include/exclude to scope by folder or glob.
-    /// </summary>
-    /// <param name="searchTerm">The text or regular expression to search for in file contents.</param>
-    /// <param name="useRegex">If true, searchTerm is interpreted as a .NET regular expression.</param>
-    /// <param name="matchCase">If true, the search is case-sensitive. Ignored when useRegex is true (embed (?-i) in the pattern instead).</param>
-    /// <param name="wholeWord">If true, only match whole words. Ignored when useRegex is true (use \b in the pattern instead).</param>
-    /// <param name="include">Comma-separated glob patterns to restrict which files are searched (e.g. "*.cs,*.xaml"). When empty, all text files are searched.</param>
-    /// <param name="exclude">Comma-separated glob patterns to exclude files from the search (e.g. "*.generated.cs,*.g.cs"). Excluded files are skipped even if they match include.</param>
-    /// <param name="resource">Resource key of a folder to scope the search to. Only files within this folder are searched. When empty, all project files are searched.</param>
-    /// <param name="maxResults">Maximum number of matches to return. Default is 100.</param>
-    /// <param name="contextLines">Number of lines to include before and after each match (like grep -C). Default is 0.</param>
-    /// <param name="files">JSON array of resource key strings to search (e.g. ["src/foo.cs","src/bar.cs"]). When provided, only these files are searched and resource/include/exclude are ignored.</param>
-    /// <param name="includeContent">When true, each file entry in the result includes the full file content alongside the matches. Useful for collapsing a grep+read workflow into a single call.</param>
-    /// <returns>JSON object with fields: totalMatches (int), totalFiles (int), truncated (bool), files (array of objects with resource, fileName, matches array with lineNumber, lineText, matchStart, matchLength, contextBefore/contextAfter arrays when contextLines > 0, and content (string) when includeContent is true).</returns>
+    /// <summary>Search file contents by text or regex across the project, with optional context lines.</summary>
     [McpServerTool(Name = "file_grep", ReadOnly = true)]
     [ToolAlias("file.grep")]
     public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", string exclude = "", string resource = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false)

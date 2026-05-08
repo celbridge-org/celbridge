@@ -5,12 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Copies a resource to a new location in the project.
-    /// </summary>
-    /// <param name="sourceResource">Resource key of the source item.</param>
-    /// <param name="destinationResource">Resource key of the destination.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Copy a resource to a new destination key (source remains in place).</summary>
     [McpServerTool(Name = "explorer_copy")]
     [ToolAlias("explorer.copy")]
     public async partial Task<CallToolResult> Copy(string sourceResource, string destinationResource)

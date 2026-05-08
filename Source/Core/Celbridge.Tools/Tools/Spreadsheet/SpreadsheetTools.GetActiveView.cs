@@ -6,11 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Returns the workbook's persisted view state: active sheet, selection, active cell, scroll anchor.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook to read.</param>
-    /// <returns>JSON object with sheet, range (first range), ranges (full selection, may be non-contiguous), activeCell (anchor), and topLeftCell (scroll anchor). See guides_read(['spreadsheet_set_active_view']).</returns>
+    /// <summary>Read the workbook's persisted view: active sheet, selection, active cell, scroll anchor.</summary>
     [McpServerTool(Name = "spreadsheet_get_active_view", ReadOnly = true)]
     [ToolAlias("spreadsheet.get_active_view")]
     public partial CallToolResult GetActiveView(string resource)

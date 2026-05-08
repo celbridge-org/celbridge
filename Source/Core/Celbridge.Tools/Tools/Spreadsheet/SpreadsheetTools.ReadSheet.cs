@@ -6,18 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Reads cell values from a sheet. Cells round-trip with their Excel type preserved.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to read.</param>
-    /// <param name="range">A1 range. Empty reads the sheet's used range. Sheet qualifiers are rejected.</param>
-    /// <param name="mode">"values" returns computed values; "formulas" returns formula text with leading '='.</param>
-    /// <param name="headers">When true, the first row becomes column names and each row is returned as an object.</param>
-    /// <param name="offset">Data rows to skip before returning rows.</param>
-    /// <param name="limit">Maximum data rows to return. 0 applies the default page size of 1000.</param>
-    /// <param name="columnLimit">Maximum columns per row. 0 applies the default cap of 256.</param>
-    /// <returns>JSON object with rows, totalRowCount, totalColumnCount, and resolved headers. See guides_read(['spreadsheet_read_sheet']).</returns>
+    /// <summary>Read cell values or formulas from a sheet range, with paging and optional headers.</summary>
     [McpServerTool(Name = "spreadsheet_read_sheet", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_sheet")]
     public partial CallToolResult ReadSheet(

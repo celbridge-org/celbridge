@@ -12,10 +12,7 @@ public record class PackageListEntry(string PackageName, long Size, DateTime Upl
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Lists all packages available in the remote package registry.
-    /// </summary>
-    /// <returns>JSON array of objects with fields: packageName (string), size (long), uploadedAt (datetime).</returns>
+    /// <summary>List all packages available in the remote package registry.</summary>
     [McpServerTool(Name = "package_list", ReadOnly = true)]
     [ToolAlias("package.list")]
     public async partial Task<CallToolResult> List()

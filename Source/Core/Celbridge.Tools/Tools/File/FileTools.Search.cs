@@ -11,13 +11,7 @@ public record class SearchResultWithMetadata(string Resource, long Size, string 
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Searches for resources by name using a glob pattern matched against the full resource path.
-    /// </summary>
-    /// <param name="pattern">Glob pattern. See guides_read(['file_search']) for recursive vs. anchored semantics.</param>
-    /// <param name="includeMetadata">When true, returns objects with size and modified instead of plain resource keys.</param>
-    /// <param name="type">"file" (default) or "folder".</param>
-    /// <returns>JSON array of matching resource keys, or objects with metadata when includeMetadata is true.</returns>
+    /// <summary>Find files or folders by name using a glob pattern matched against the resource path.</summary>
     [McpServerTool(Name = "file_search", ReadOnly = true)]
     [ToolAlias("file.search")]
     public partial CallToolResult Search(string pattern, bool includeMetadata = false, string type = "")

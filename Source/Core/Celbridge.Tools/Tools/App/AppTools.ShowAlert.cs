@@ -5,12 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class AppTools
 {
-    /// <summary>
-    /// Shows an alert dialog to the user with a message and optional title.
-    /// </summary>
-    /// <param name="message">The message to display in the alert dialog.</param>
-    /// <param name="title">Optional title for the alert dialog.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Show a modal alert dialog (always interactive; blocks until the user dismisses it).</summary>
     [McpServerTool(Name = "app_show_alert")]
     [ToolAlias("app.show_alert")]
     public async partial Task<CallToolResult> ShowAlert(string message, string title = "")

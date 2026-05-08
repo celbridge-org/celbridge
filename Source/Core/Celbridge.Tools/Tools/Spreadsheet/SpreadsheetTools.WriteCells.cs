@@ -7,13 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Writes a batch of single-cell edits to a worksheet. Other cells and formatting are preserved.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to write into. Must already exist.</param>
-    /// <param name="editsJson">JSON array of edit objects with cell, value, and optional isFormula. See guides_read(['spreadsheet_write_cells']) for formula-vs-text and numeric-magnitude rules.</param>
-    /// <returns>JSON object with cellCount.</returns>
+    /// <summary>Write per-cell value or formula edits to a worksheet, leaving other cells untouched.</summary>
     [McpServerTool(Name = "spreadsheet_write_cells")]
     [ToolAlias("spreadsheet.write_cells")]
     public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string editsJson)

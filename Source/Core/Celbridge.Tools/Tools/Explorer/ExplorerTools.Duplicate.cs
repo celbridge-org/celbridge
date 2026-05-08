@@ -5,11 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Duplicates a resource. Always shows an interactive dialog where the user can choose the new name.
-    /// </summary>
-    /// <param name="resource">Resource key of the item to duplicate.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Duplicate a resource in place via the interactive rename dialog (user picks the new name).</summary>
     [McpServerTool(Name = "explorer_duplicate")]
     [ToolAlias("explorer.duplicate")]
     public async partial Task<CallToolResult> Duplicate(string resource)

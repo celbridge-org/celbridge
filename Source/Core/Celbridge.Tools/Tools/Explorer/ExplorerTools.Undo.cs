@@ -5,10 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Undoes the most recent explorer operation (create, delete, move, rename, copy). Does not affect text edits.
-    /// </summary>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Undo the last explorer-domain operation (create/delete/move/rename/copy, not text edits).</summary>
     [McpServerTool(Name = "explorer_undo")]
     [ToolAlias("explorer.undo")]
     public async partial Task<CallToolResult> Undo()

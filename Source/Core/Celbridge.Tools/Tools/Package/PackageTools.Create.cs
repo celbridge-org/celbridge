@@ -15,12 +15,7 @@ public record class PackageCreateResult(string PackageName, string Resource, str
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Creates a new package in the project's packages folder with a stub manifest.
-    /// The package folder is created at packages/{packageName}/ with a package.toml file.
-    /// </summary>
-    /// <param name="packageName">Package name (lowercase alphanumeric and hyphens, e.g. "my-widget").</param>
-    /// <returns>JSON object with fields: packageName (string), resource (string), manifestPath (string).</returns>
+    /// <summary>READ GUIDE FIRST. Create a new package skeleton at packages/{packageName}/ with stub manifest.</summary>
     [McpServerTool(Name = "package_create", Destructive = true)]
     [ToolAlias("package.create")]
     public partial CallToolResult Create(string packageName)

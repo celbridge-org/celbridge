@@ -60,17 +60,7 @@ public partial class AppTools
     // Static pointer to the orientation guide.
     private static readonly AgentDocsPointer AgentDocsPointerValue = new("getting_started", "guides_read");
 
-    // Bootstrap tool. Keep summary rich and do not trim.
-    /// <summary>
-    /// Returns application-level state as JSON. Covers project load status,
-    /// the featureFlags map agents must consult before invoking a
-    /// feature-gated tool (e.g. webview-dev-tools, webview-dev-tools-eval),
-    /// the agentDocs pointer naming the orientation entry point in the agent
-    /// guide library, the currently focused workspace panel, the visibility
-    /// of each layout region, and the installed Python package list reported
-    /// by the Python host.
-    /// </summary>
-    /// <returns>JSON object with fields: isLoaded (bool), projectName (string), featureFlags (object mapping flag name to bool), agentDocs (object with entry and via fields), focusedPanel (string WorkspacePanel name), layoutMode (object describing region visibility), pythonEnvironment (object with installedPackages array).</returns>
+    /// <summary>App state: project load status, feature flags, focused panel, layout, Python packages.</summary>
     [McpServerTool(Name = "app_get_state", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.get_state")]
     public partial CallToolResult GetState()

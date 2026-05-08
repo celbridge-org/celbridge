@@ -6,10 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class AppTools
 {
-    /// <summary>
-    /// Returns the application version string.
-    /// </summary>
-    /// <returns>A version string in the format "major.minor.patch", e.g. "0.2.5".</returns>
+    /// <summary>Returns the running Celbridge version as a major.minor.patch string.</summary>
     [McpServerTool(Name = "app_get_version", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.get_version")]
     public partial CallToolResult AppVersion()

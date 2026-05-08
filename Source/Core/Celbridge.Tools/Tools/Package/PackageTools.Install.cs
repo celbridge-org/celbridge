@@ -14,12 +14,7 @@ public record class PackageInstallResult(string PackageName, int Entries, string
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Installs a named package from the remote registry into packages/{packageName}/. Set confirmWithUser to true unless the user explicitly asked for unattended operation.
-    /// </summary>
-    /// <param name="packageName">Name of the package.</param>
-    /// <param name="confirmWithUser">When true, shows a confirmation dialog before installing.</param>
-    /// <returns>JSON object with packageName, entries, and destination.</returns>
+    /// <summary>READ GUIDE FIRST. Install a package from the remote registry into packages/{packageName}/.</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
     public async partial Task<CallToolResult> Install(string packageName, bool confirmWithUser = true)

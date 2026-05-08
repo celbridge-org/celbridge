@@ -7,13 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Returns metadata for a single element matched by selector: tag, attributes, computed styles, role/name, rect, child preview.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="selector">CSS selector. The first match is described.</param>
-    /// <param name="childPreviewLimit">Children to include in the preview. Full child count is always reported separately.</param>
-    /// <returns>JSON object with tag, selector, role, accessibleName, attributes, visible, rect, computedStyles, and children.</returns>
+    /// <summary>Read computed metadata (attributes, styles, role/name, rect, child preview) for one selector match.</summary>
     [McpServerTool(Name = "webview_inspect")]
     [ToolAlias("webview.inspect")]
     public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5)

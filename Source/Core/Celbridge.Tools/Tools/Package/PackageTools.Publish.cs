@@ -27,13 +27,7 @@ public partial class PackageTools
     private const string PackagesFolderPrefix = "packages/";
     private const string ManifestFileName = "package.toml";
 
-    /// <summary>
-    /// Publishes packages/{packageName}/ to the remote registry. Folder name must match packageName and contain a valid package.toml. Set confirmWithUser to true unless the user explicitly asked for unattended operation.
-    /// </summary>
-    /// <param name="resource">Resource key of packages/{packageName}.</param>
-    /// <param name="packageName">Package name (lowercase alphanumeric and hyphens).</param>
-    /// <param name="confirmWithUser">When true, shows a confirmation dialog before publishing.</param>
-    /// <returns>JSON object with packageName, entries, and size.</returns>
+    /// <summary>READ GUIDE FIRST. Publish packages/{packageName}/ to the remote registry (visible to other users).</summary>
     [McpServerTool(Name = "package_publish", Destructive = true)]
     [ToolAlias("package.publish")]
     public async partial Task<CallToolResult> Publish(string resource, string packageName, bool confirmWithUser = true)

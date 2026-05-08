@@ -15,14 +15,7 @@ public record class ExportCsvFileResult(int RowCount, int ColumnCount, int ByteC
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Exports a sheet (or a sub-range) as RFC 4180 CSV text.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to export.</param>
-    /// <param name="range">A1-notation range. Empty string exports the sheet's used range.</param>
-    /// <param name="destination">Optional resource key to write the CSV to. Empty returns CSV inline; non-empty returns metadata. See guides_read(['spreadsheet_export_csv']).</param>
-    /// <returns>CSV text when destination is empty, otherwise a JSON object with rowCount, columnCount, byteCount, and destination.</returns>
+    /// <summary>Export a sheet or sub-range as RFC 4180 CSV, returned inline or written to a file.</summary>
     [McpServerTool(Name = "spreadsheet_export_csv")]
     [ToolAlias("spreadsheet.export_csv")]
     public async partial Task<CallToolResult> ExportCsv(string resource, string sheet, string range = "", string destination = "")

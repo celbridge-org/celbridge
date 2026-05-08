@@ -11,16 +11,7 @@ public record class PackageArchiveResult(int Entries, long Size, string Archive)
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Creates a zip archive from a file or folder. When archiving a folder, the archive
-    /// contains the folder's contents at the root, not the folder itself.
-    /// </summary>
-    /// <param name="resource">Resource key of the file or folder to archive.</param>
-    /// <param name="archive">Resource key for the output zip file.</param>
-    /// <param name="include">Optional semicolon-separated glob patterns to include (e.g. "*.py;*.md"). When empty, all files are included.</param>
-    /// <param name="exclude">Optional semicolon-separated glob patterns to exclude (e.g. "__pycache__;.git").</param>
-    /// <param name="overwrite">Whether to overwrite an existing archive. Default is false.</param>
-    /// <returns>JSON object with fields: entries (int), size (long), archive (string).</returns>
+    /// <summary>Zip a file or folder into a project-tree archive (folder contents at archive root).</summary>
     [McpServerTool(Name = "package_archive")]
     [ToolAlias("package.archive")]
     public async partial Task<CallToolResult> Archive(

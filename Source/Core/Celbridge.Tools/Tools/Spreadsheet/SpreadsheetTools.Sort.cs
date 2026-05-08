@@ -7,16 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Sorts the rows of a range by one or more columns, applied in order (earlier keys primary, later keys tiebreak).
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet whose range should be sorted. Required.</param>
-    /// <param name="range">A1 cell range. Empty sorts the used range.</param>
-    /// <param name="sortByJson">JSON array of sort keys with column (letter or 1-based number) and ascending (bool). At least one key required. Columns must lie inside the sort range.</param>
-    /// <param name="hasHeaderRow">If true, the first row stays in place and is excluded from the sort.</param>
-    /// <param name="matchCase">If true, text comparisons are case-sensitive.</param>
-    /// <returns>JSON object with rowCount (excluding the header when hasHeaderRow is true).</returns>
+    /// <summary>Sort the rows of a range by one or more column keys, with optional header row.</summary>
     [McpServerTool(Name = "spreadsheet_sort")]
     [ToolAlias("spreadsheet.sort")]
     public async partial Task<CallToolResult> Sort(

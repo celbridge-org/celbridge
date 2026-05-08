@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Dispatches a synthetic mousedown/mouseup/click sequence on the first element matching a CSS selector. Events have isTrusted=false. See guides_read(['webview_devtools']).
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="selector">CSS selector identifying the element. The first match receives the click.</param>
-    /// <returns>JSON object with selector, tag, visible, rect, and isTrusted (always false).</returns>
+    /// <summary>Dispatch a synthetic click on the first element matching a CSS selector.</summary>
     [McpServerTool(Name = "webview_click")]
     [ToolAlias("webview.click")]
     public async partial Task<CallToolResult> Click(string resource, string selector)

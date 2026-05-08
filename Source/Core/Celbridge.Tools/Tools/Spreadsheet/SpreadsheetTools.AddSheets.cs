@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Adds empty worksheets to a workbook, appended in the order given.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheetsJson">JSON array of sheet name strings. Names must be unique within the batch and not collide with existing sheets.</param>
-    /// <returns>JSON object with the names added in append order.</returns>
+    /// <summary>Add empty worksheets to a workbook, appended in the given order.</summary>
     [McpServerTool(Name = "spreadsheet_add_sheets")]
     [ToolAlias("spreadsheet.add_sheets")]
     public async partial Task<CallToolResult> AddSheets(string resource, string sheetsJson)

@@ -6,12 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class DocumentTools
 {
-    /// <summary>
-    /// Activates an open document, making it the active tab in the editor.
-    /// The document must already be open.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the document to activate.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Bring an already-open document to the foreground (make it the active tab).</summary>
     [McpServerTool(Name = "document_activate", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.activate")]
     public async partial Task<CallToolResult> Activate(string fileResource)

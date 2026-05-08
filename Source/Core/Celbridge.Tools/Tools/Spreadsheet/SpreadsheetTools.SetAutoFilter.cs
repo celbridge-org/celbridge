@@ -6,14 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Adds or clears the auto-filter on a worksheet. Each sheet supports at most one auto-filter.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to set the filter on.</param>
-    /// <param name="range">A1 cell range. Empty applies to the used range. Column-letter and row-number ranges are rejected. Ignored when enabled is false.</param>
-    /// <param name="enabled">True applies the filter; false clears any existing filter.</param>
-    /// <returns>JSON object with enabled and filterRange.</returns>
+    /// <summary>Apply or clear the auto-filter on a worksheet over a header range.</summary>
     [McpServerTool(Name = "spreadsheet_set_auto_filter")]
     [ToolAlias("spreadsheet.set_auto_filter")]
     public async partial Task<CallToolResult> SetAutoFilter(

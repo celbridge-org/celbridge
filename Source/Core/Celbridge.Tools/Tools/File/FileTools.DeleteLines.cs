@@ -12,13 +12,7 @@ public record class DeleteLinesResult(int DeletedFrom, int DeletedTo, int TotalL
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Deletes complete lines from a file including their terminators. Cleanly removes lines (file_apply_edits with empty newText leaves a residual blank line).
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file.</param>
-    /// <param name="startLine">First line to delete (1-based, inclusive).</param>
-    /// <param name="endLine">Last line to delete (1-based, inclusive).</param>
-    /// <returns>JSON with deletedFrom, deletedTo, totalLineCount, and contextLines around the deletion point.</returns>
+    /// <summary>Delete a 1-based inclusive line range from a text file, including the line terminators.</summary>
     [McpServerTool(Name = "file_delete_lines")]
     [ToolAlias("file.delete_lines")]
     public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)

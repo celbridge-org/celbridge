@@ -19,12 +19,7 @@ public record class AffectedLineRange(int From, int To, List<string>? ContextLin
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Applies targeted text edits at 1-based line/column positions; writes to disk.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to edit.</param>
-    /// <param name="editsJson">JSON array of edits with line, column (default 1), endLine, endColumn (default -1 for end of line), and newText.</param>
-    /// <returns>JSON object with affectedLines (each carrying post-edit context) and totalLineCount, sufficient for verifying the edit without a follow-up file_read.</returns>
+    /// <summary>Apply structured edits at 1-based line/column ranges to a text file.</summary>
     [McpServerTool(Name = "file_apply_edits")]
     [ToolAlias("file.apply_edits")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)

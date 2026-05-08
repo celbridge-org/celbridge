@@ -5,12 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Moves or renames a resource.
-    /// </summary>
-    /// <param name="sourceResource">Resource key of the source item.</param>
-    /// <param name="destinationResource">Resource key of the destination.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Move a resource to a new key (also used for non-interactive rename).</summary>
     [McpServerTool(Name = "explorer_move")]
     [ToolAlias("explorer.move")]
     public async partial Task<CallToolResult> Move(string sourceResource, string destinationResource)

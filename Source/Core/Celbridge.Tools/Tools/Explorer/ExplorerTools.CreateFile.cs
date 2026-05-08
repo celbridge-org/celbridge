@@ -5,12 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Creates an empty file. Use file_write to create and write content in one step; this tool is for empty files or the interactive dialog.
-    /// </summary>
-    /// <param name="resource">Resource key for the new file, or the parent folder when using the dialog.</param>
-    /// <param name="showDialog">If true, show the create file dialog for interactive naming.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Create an empty file (or open the new-file dialog); use file_write to also write content.</summary>
     [McpServerTool(Name = "explorer_create_file")]
     [ToolAlias("explorer.create_file")]
     public async partial Task<CallToolResult> CreateFile(string resource, bool showDialog = false)

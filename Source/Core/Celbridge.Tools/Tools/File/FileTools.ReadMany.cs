@@ -16,13 +16,7 @@ public record class ReadManyFileEntry(string Resource, string? Content = null, i
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Reads multiple files in a single call. Each file is read independently. Per-entry errors do not fail the whole call.
-    /// </summary>
-    /// <param name="resources">JSON array of resource key strings to read (e.g. ["src/foo.cs", "src/bar.cs"]).</param>
-    /// <param name="offset">Starting line number (1-based) applied to all files. Use 0 to read from the beginning.</param>
-    /// <param name="limit">Maximum number of lines to return per file. Use 0 to read to the end.</param>
-    /// <returns>JSON object with files array, each entry having: resource (string), content (string), totalLineCount (int), or error (string) on failure.</returns>
+    /// <summary>Batch-read several text files in one call; per-file errors are reported per entry, not as a global failure.</summary>
     [McpServerTool(Name = "file_read_many", ReadOnly = true)]
     [ToolAlias("file.read_many")]
     public async partial Task<CallToolResult> ReadMany(string resources, int offset = 0, int limit = 0)

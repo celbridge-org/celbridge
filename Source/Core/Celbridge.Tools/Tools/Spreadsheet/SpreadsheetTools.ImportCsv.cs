@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Replaces the contents of one or more worksheets with RFC 4180 CSV data in a single save.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="importsJson">JSON array of imports with sheet, csvText, optional createIfMissing, and optional inferTypes. See guides_read(['spreadsheet_import_csv']) for parsing rules and inference behaviour.</param>
-    /// <returns>JSON object with importsApplied, totalRowCount, and sheetsCreated.</returns>
+    /// <summary>Replace one or more worksheets with parsed CSV data, optionally creating missing sheets.</summary>
     [McpServerTool(Name = "spreadsheet_import_csv")]
     [ToolAlias("spreadsheet.import_csv")]
     public async partial Task<CallToolResult> ImportCsv(string resource, string importsJson)

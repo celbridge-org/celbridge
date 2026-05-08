@@ -24,11 +24,7 @@ public partial class FileTools
         [".webp"] = "image/webp"
     };
 
-    /// <summary>
-    /// Reads a JPEG/PNG/GIF/WebP image inline for multimodal viewing. Use file_read_binary for non-image binary content.
-    /// </summary>
-    /// <param name="resource">Resource key of the image file.</param>
-    /// <returns>Inline image content block plus JSON metadata with resource, mimeType, and sizeBytes.</returns>
+    /// <summary>Read a JPEG/PNG/GIF/WebP image as an inline multimodal content block for viewing.</summary>
     [McpServerTool(Name = "file_read_image", ReadOnly = true)]
     [ToolAlias("file.read_image")]
     public async partial Task<CallToolResult> ReadImage(string resource)

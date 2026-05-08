@@ -8,18 +8,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Captures a screenshot of the WebView. The document must be the active tab. See guides_read(['webview_devtools']).
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="saveTo">Optional resource key or folder to archive the image. Empty skips the save. Extension must match format.</param>
-    /// <param name="returnImage">When true, returns the image inline. At least one of returnImage or saveTo must produce output.</param>
-    /// <param name="format">"jpeg" or "png".</param>
-    /// <param name="quality">JPEG quality 1-100; ignored for PNG.</param>
-    /// <param name="maxEdge">Maximum longer-edge pixels. 0 disables downscaling.</param>
-    /// <param name="selector">Optional CSS selector to clip the capture.</param>
-    /// <param name="settleMs">Extra delay before capture. Bump to 500-1000 after layout-changing operations.</param>
-    /// <returns>Inline image (when returnImage) plus JSON metadata with format, width, height, sizeBytes, resource, imageReturned.</returns>
+    /// <summary>Capture a visual screenshot of the WebView (returned inline and/or saved into the project tree).</summary>
     [McpServerTool(Name = "webview_screenshot")]
     [ToolAlias("webview.screenshot")]
     public async partial Task<CallToolResult> Screenshot(

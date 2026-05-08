@@ -7,15 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Adds one or more conditional formatting rules to a cell range.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to apply rules to.</param>
-    /// <param name="range">A1 cell range. Column-letter and row-number ranges are rejected.</param>
-    /// <param name="rulesJson">JSON array of rule objects. See guides_read(['spreadsheet_set_conditional_formatting']) for the full rule type catalog.</param>
-    /// <param name="clearExisting">When true, pre-existing rules whose ranges intersect the target range are removed first.</param>
-    /// <returns>JSON object with rulesApplied and rulesRemoved counts.</returns>
+    /// <summary>Add conditional formatting rules to a cell range, optionally replacing prior rules.</summary>
     [McpServerTool(Name = "spreadsheet_set_conditional_formatting")]
     [ToolAlias("spreadsheet.set_conditional_formatting")]
     public async partial Task<CallToolResult> SetConditionalFormatting(

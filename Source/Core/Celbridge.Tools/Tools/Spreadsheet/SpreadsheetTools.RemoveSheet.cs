@@ -6,12 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Removes a worksheet. A workbook must retain at least one sheet.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to remove.</param>
-    /// <returns>JSON object with the removed sheet name.</returns>
+    /// <summary>Remove a worksheet from the workbook (at least one sheet must remain).</summary>
     [McpServerTool(Name = "spreadsheet_remove_sheet")]
     [ToolAlias("spreadsheet.remove_sheet")]
     public async partial Task<CallToolResult> RemoveSheet(string resource, string sheet)

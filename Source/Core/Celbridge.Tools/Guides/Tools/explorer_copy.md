@@ -1,0 +1,33 @@
+---
+name: explorer_copy
+description: Copy a file or folder to a new location, leaving the original in place; pair with explorer_move for the cut-and-paste form.
+---
+
+# explorer_copy
+
+Copies a single resource (file or folder) to a new location in the project tree. The original resource is left in place. Folder copies are recursive. The copy is recorded on the explorer undo stack and can be reversed with `explorer_undo`.
+
+## Parameters
+
+### sourceResource
+
+Resource key of the file or folder to copy. See `resource_keys` for the syntax.
+
+### destinationResource
+
+Resource key of the destination. The destination is resolved against the source:
+
+- If `destinationResource` names an existing folder, the source is copied **into** that folder, keeping its original name (`Notes/todo.md` to `Archive` becomes `Archive/todo.md`).
+- Otherwise the destination is treated as the new full path and name for the copy (`Notes/todo.md` to `Archive/old-todo.md` produces that file directly).
+
+## Returns
+
+`"ok"` on success. On any failure the destination is not created and an error is returned.
+
+## See also
+
+- `explorer_move` — same shape, but removes the source.
+- `explorer_duplicate` — interactive copy alongside the original with a chosen name.
+- `explorer_undo` — reverse the copy.
+- `resource_keys` — resource key syntax.
+- `undo_semantics` — what the explorer undo stack covers.

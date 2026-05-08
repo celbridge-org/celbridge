@@ -6,17 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class DocumentTools
 {
-    // Bootstrap tool. Keep summary rich and do not trim.
-    /// <summary>
-    /// Opens a document in the editor. By default the document is opened without
-    /// activating it, so the user's current active tab is preserved. Use
-    /// document_activate to bring a document to the foreground.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to open.</param>
-    /// <param name="sectionIndex">Target editor section: 0 (left), 1 (center), 2 (right). Use -1 to open in the active section (default).</param>
-    /// <param name="forceReload">Force reload even if already open.</param>
-    /// <param name="activate">When true, the opened document becomes the active tab.</param>
-    /// <returns>"opened" when the document is now open (including activating an already-open tab), or "cancelled" when the open was a no-op because an existing tab refused to close. An error message is returned if the operation failed.</returns>
+    /// <summary>Open a document in the editor (without activating it by default).</summary>
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
     public async partial Task<CallToolResult> Open(string fileResource, int sectionIndex = -1, bool forceReload = false, bool activate = false)

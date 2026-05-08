@@ -11,11 +11,7 @@ public record class FileReadBinaryResult(string Base64, string MimeType, int Siz
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Reads a binary file and returns its content as base64 with MIME type.
-    /// </summary>
-    /// <param name="resource">Resource key of the file to read.</param>
-    /// <returns>JSON object with fields: base64 (string), mimeType (string), size (int).</returns>
+    /// <summary>Read any file as base64-encoded bytes plus MIME type. Use file_read_image for inline images.</summary>
     [McpServerTool(Name = "file_read_binary", ReadOnly = true)]
     [ToolAlias("file.read_binary")]
     public async partial Task<CallToolResult> ReadBinary(string resource)

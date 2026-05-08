@@ -7,13 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Appends rows to the end of a worksheet's used range. Values starting with '=' are written as text.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to append to. Must already exist.</param>
-    /// <param name="rowsJson">JSON array of rows. Each row is an array of cell values starting at column A.</param>
-    /// <returns>JSON object with appendedRowCount, firstRow, and lastRow (1-based).</returns>
+    /// <summary>Append rows of cell values to the end of a worksheet's used range.</summary>
     [McpServerTool(Name = "spreadsheet_append_rows")]
     [ToolAlias("spreadsheet.append_rows")]
     public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rowsJson)

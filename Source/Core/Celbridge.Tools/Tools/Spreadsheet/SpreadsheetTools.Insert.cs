@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Inserts empty rows or columns across one or more sheets in a single save.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="operationsJson">JSON array of operations with sheet and range fields. range is "3"/"3:5" for rows, "B"/"B:D" for columns. See guides_read(['spreadsheet_insert']) for original-coordinate semantics.</param>
-    /// <returns>JSON object with operationsApplied, insertedRowCount, and insertedColumnCount.</returns>
+    /// <summary>Insert empty rows or columns, shifting existing cells down or right.</summary>
     [McpServerTool(Name = "spreadsheet_insert")]
     [ToolAlias("spreadsheet.insert")]
     public async partial Task<CallToolResult> Insert(string resource, string operationsJson)

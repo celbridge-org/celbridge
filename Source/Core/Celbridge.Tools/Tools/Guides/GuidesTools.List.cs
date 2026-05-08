@@ -10,18 +10,11 @@ public record class GuidesListResult(IReadOnlyList<GuidesListEntry> Guides);
 
 public partial class GuidesTools
 {
-    // Bootstrap tool. Keep summary rich and do not trim.
+    // Bootstrap tool. Summary stays informative for cold-start use; trim conservatively.
     /// <summary>
-    /// Lists Celbridge's built-in agent guide library — tool usage,
-    /// conventions, and gotchas. This is meta-documentation about Celbridge
-    /// itself, distinct from any markdown files in the project tree. Returns
-    /// conceptual guides first (e.g. resource_keys, regex_syntax,
-    /// python_proxy_conventions) then per-tool guides holding extended
-    /// rationale for specific MCP tools. Each entry carries a kind and a
-    /// one-sentence description; pass any name to guides_read to fetch full
-    /// content.
+    /// Enumerate the built-in agent guide library: each entry's name, kind (concept or tool), and one-line description. Pass any name to guides_read for full content. Meta-documentation about Celbridge — not project files.
     /// </summary>
-    /// <returns>JSON object with field: guides (array of {name, kind, description}); conceptual guides come first, ordered by priority then name; per-tool guides follow, ordered alphabetically.</returns>
+    /// <returns>JSON: {guides: [{name, kind, description}]} — concepts first, then per-tool guides alphabetically.</returns>
     [McpServerTool(Name = "guides_list", ReadOnly = true, Idempotent = true)]
     [ToolAlias("guides.list")]
     public partial CallToolResult List()

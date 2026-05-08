@@ -5,10 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Redoes the most recently undone explorer operation. Does not affect text edits.
-    /// </summary>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Redo the last undone explorer-domain operation (file/folder ops only, not text edits).</summary>
     [McpServerTool(Name = "explorer_redo")]
     [ToolAlias("explorer.redo")]
     public async partial Task<CallToolResult> Redo()

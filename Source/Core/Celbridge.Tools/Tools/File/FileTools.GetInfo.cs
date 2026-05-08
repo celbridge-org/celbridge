@@ -15,11 +15,7 @@ public record class FolderInfoResult(string Type, string Modified);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Returns resource metadata: type, size, modified date, extension, text/binary indicator, and line count for text files.
-    /// </summary>
-    /// <param name="resource">Resource key to inspect.</param>
-    /// <returns>JSON object with type, plus size/extension/isText/lineCount for files (modified is always set).</returns>
+    /// <summary>Get metadata for a single file or folder resource.</summary>
     [McpServerTool(Name = "file_get_info", ReadOnly = true)]
     [ToolAlias("file.get_info")]
     public async partial Task<CallToolResult> GetInfo(string resource)

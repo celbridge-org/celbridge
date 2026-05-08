@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Guides\**\*.md" />
+    <!-- template_guide.md is an authoring template for human contributors; it must not be embedded into the agent guide library. -->
+    <EmbeddedResource Remove="Guides\template_guide.md" />
   </ItemGroup>
 
   <ItemGroup>

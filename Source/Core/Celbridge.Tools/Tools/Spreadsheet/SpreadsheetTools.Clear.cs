@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Clears cell content, formatting, comments, merged ranges, and data validation across a batch of ranges.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="operationsJson">JSON array of operations with sheet and range fields. range accepts any A1 form including empty string for the entire sheet. See guides_read(['spreadsheet_clear']) for the clear-vs-delete contrast.</param>
-    /// <returns>JSON object with operationsApplied and cellCount.</returns>
+    /// <summary>Clear cell content and formatting in ranges without removing the rows or columns.</summary>
     [McpServerTool(Name = "spreadsheet_clear")]
     [ToolAlias("spreadsheet.clear")]
     public async partial Task<CallToolResult> Clear(string resource, string operationsJson)

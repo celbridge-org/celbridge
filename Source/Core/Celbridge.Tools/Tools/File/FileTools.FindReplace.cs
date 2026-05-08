@@ -11,17 +11,7 @@ public record class FindReplaceResult(int ReplacementCount);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Finds and replaces text within a file. Multi-line text may use \n line endings; the tool normalises to the file's actual endings.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file.</param>
-    /// <param name="searchText">Text to search for.</param>
-    /// <param name="replaceText">Replacement text.</param>
-    /// <param name="matchCase">If true, the search is case-sensitive.</param>
-    /// <param name="useRegex">If true, searchText is treated as a regular expression.</param>
-    /// <param name="fromLine">First line (1-based, inclusive) of the replacement scope. 0 means no lower bound.</param>
-    /// <param name="toLine">Last line (1-based, inclusive) of the replacement scope. 0 means no upper bound.</param>
-    /// <returns>JSON object with replacementCount.</returns>
+    /// <summary>Replace literal or regex matches inside one file, optionally scoped to a line range.</summary>
     [McpServerTool(Name = "file_find_replace")]
     [ToolAlias("file.find_replace")]
     public async partial Task<CallToolResult> FindReplace(

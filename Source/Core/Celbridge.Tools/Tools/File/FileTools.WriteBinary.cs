@@ -5,12 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Replaces the content of a binary file from base64-encoded data.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file.</param>
-    /// <param name="base64Content">New content as base64.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Wholesale-replace a binary file from base64-encoded bytes, creating it if missing.</summary>
     [McpServerTool(Name = "file_write_binary")]
     [ToolAlias("file.write_binary")]
     public async partial Task<CallToolResult> WriteBinary(string fileResource, string base64Content)

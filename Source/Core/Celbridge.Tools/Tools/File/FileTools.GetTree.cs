@@ -16,14 +16,7 @@ public record class TreeFileNode(string Name, string Type);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Returns a recursive folder tree as JSON, with optional glob and type filtering.
-    /// </summary>
-    /// <param name="resource">Resource key of the root folder.</param>
-    /// <param name="depth">Maximum depth to traverse.</param>
-    /// <param name="glob">Optional glob to filter files by name. Folders are kept when they have matching descendants.</param>
-    /// <param name="type">Optional type filter: "file" or "folder". Empty shows both.</param>
-    /// <returns>JSON tree where each node has name, type, children (folders only), and a truncated flag at the depth limit.</returns>
+    /// <summary>Walk a folder recursively and return a nested tree, with optional depth, glob, and type filters.</summary>
     [McpServerTool(Name = "file_get_tree", ReadOnly = true)]
     [ToolAlias("file.get_tree")]
     public async partial Task<CallToolResult> GetTree(string resource, int depth = 3, string glob = "", string type = "")

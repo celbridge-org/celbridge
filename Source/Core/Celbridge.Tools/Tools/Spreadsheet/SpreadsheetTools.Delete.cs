@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Deletes contiguous ranges of rows or columns across one or more sheets in a single save.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="operationsJson">JSON array of operations with sheet and range fields. range is "3"/"3:5" for rows, "B"/"B:D" for columns. See guides_read(['spreadsheet_delete']) for original-coordinate semantics.</param>
-    /// <returns>JSON object with operationsApplied, deletedRowCount, and deletedColumnCount.</returns>
+    /// <summary>Delete entire rows or columns, shifting remaining cells to fill the gap.</summary>
     [McpServerTool(Name = "spreadsheet_delete")]
     [ToolAlias("spreadsheet.delete")]
     public async partial Task<CallToolResult> Delete(string resource, string operationsJson)

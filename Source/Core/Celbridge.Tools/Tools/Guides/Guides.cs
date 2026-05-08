@@ -8,10 +8,12 @@ namespace Celbridge.Tools;
 /// Concrete IGuides implementation. The static Initialize entry point
 /// resolves the singleton from DI and runs Load on it; Load scans embedded
 /// markdown under the Celbridge.Tools.Guides.* namespace, parses frontmatter,
-/// validates names against the registered MCP tool surface, and precomputes
-/// per-tool invocation strings via reflection. Failures throw from Load so
-/// they surface at app startup rather than on the first agent call. Members
-/// other than Load throw if used before loading.
+/// validates names against the registered MCP tool surface (every per-tool
+/// guide must match a registered tool, and every registered tool must have
+/// a per-tool guide), and precomputes per-tool invocation strings via
+/// reflection. Failures throw from Load so they surface at app startup
+/// rather than on the first agent call. Members other than Load throw if
+/// used before loading.
 /// </summary>
 internal sealed class Guides : IGuides
 {
@@ -84,6 +86,8 @@ internal sealed class Guides : IGuides
 
             entries.Add(raw.Name, entry);
         }
+
+        ValidateEveryToolHasGuide(toolAliasNames, entries);
 
         var sortedIndex = entries.Values
             .OrderBy(e => e.Kind == GuideKind.Concept ? 0 : 1)
@@ -238,6 +242,34 @@ internal sealed class Guides : IGuides
             return text;
         }
         return text.Substring(0, maxLength - 3) + "...";
+    }
+
+    private static void ValidateEveryToolHasGuide(
+        HashSet<string> toolAliasNames,
+        Dictionary<string, GuideEntry> entries)
+    {
+        var missing = new List<string>();
+        foreach (var toolAliasName in toolAliasNames)
+        {
+            if (!entries.TryGetValue(toolAliasName, out var entry))
+            {
+                missing.Add(toolAliasName);
+                continue;
+            }
+            if (entry.Kind != GuideKind.Tool)
+            {
+                missing.Add(toolAliasName);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            missing.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every registered MCP tool must have a per-tool guide under " +
+                "Source/Core/Celbridge.Tools/Guides/Tools/. The following tools are missing a guide: " +
+                string.Join(", ", missing) + ".");
+        }
     }
 
     private static void ValidateRawGuide(

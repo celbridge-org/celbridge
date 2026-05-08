@@ -7,14 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Returns captured console.* messages, uncaught errors, and unhandled promise rejections; survives reloads. See guides_read(['webview_devtools']).
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="tail">Maximum recent entries to return.</param>
-    /// <param name="includeDebug">When true, include console.debug() entries.</param>
-    /// <param name="sinceTimestampMs">When &gt; 0, only entries with timestampMs strictly greater. Use a prior call's timestampMs to poll incrementally.</param>
-    /// <returns>JSON object with entries, returned (after filtering), and totalAccumulated.</returns>
+    /// <summary>Read the captured console buffer (console.* messages, errors, unhandled rejections); survives reloads.</summary>
     [McpServerTool(Name = "webview_get_console")]
     [ToolAlias("webview.get_console")]
     public async partial Task<CallToolResult> GetConsole(string resource, int tail = 100, bool includeDebug = false, long sinceTimestampMs = 0)

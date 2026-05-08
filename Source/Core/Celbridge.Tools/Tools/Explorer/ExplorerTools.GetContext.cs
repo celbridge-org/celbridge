@@ -14,12 +14,7 @@ public record class ExplorerContextResult(
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Gets the visual state of the explorer panel: the selected resources and the
-    /// expanded folders. Use this to understand what the user is currently looking at
-    /// in the file tree.
-    /// </summary>
-    /// <returns>JSON object with fields: selectedResource (string, the primary selected resource key), selectedResources (array of string resource keys), expandedFolders (array of string resource keys).</returns>
+    /// <summary>Explorer panel state: selected resource(s) and expanded folders.</summary>
     [McpServerTool(Name = "explorer_get_context", ReadOnly = true)]
     [ToolAlias("explorer.get_context")]
     public partial CallToolResult GetContext()

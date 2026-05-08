@@ -20,12 +20,7 @@ public record class OpenDocumentEntry(string Resource, int SectionIndex, int Tab
 
 public partial class DocumentTools
 {
-    /// <summary>
-    /// Gets the visual state of the document editor: the active document, the editor
-    /// section layout, and all open documents with their positions. Use this to
-    /// understand what the user is currently looking at in the editor.
-    /// </summary>
-    /// <returns>JSON object with fields: activeDocument (string, resource key of the active document or empty), sectionCount (int, number of visible editor sections 1-3), openDocuments (array of objects with resource (string), sectionIndex (int), tabOrder (int), isActive (bool), editorId (string, e.g. "celbridge.code-editor"; empty when no editor is bound)).</returns>
+    /// <summary>Document editor state: active document, section layout, all open tabs and their positions.</summary>
     [McpServerTool(Name = "document_get_context", ReadOnly = true)]
     [ToolAlias("document.get_context")]
     public async partial Task<CallToolResult> GetContext()

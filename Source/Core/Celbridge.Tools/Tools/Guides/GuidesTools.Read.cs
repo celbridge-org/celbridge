@@ -18,19 +18,12 @@ public record class GuidesReadResult(
 
 public partial class GuidesTools
 {
-    // Bootstrap tool. Keep summary rich and do not trim.
+    // Bootstrap tool. Summary stays informative for cold-start use; trim conservatively.
     /// <summary>
-    /// Reads one or more entries from Celbridge's built-in agent guide
-    /// library (meta-documentation about Celbridge — distinct from project
-    /// files). A name can be either a conceptual guide name (e.g.
-    /// 'resource_keys') or a tool alias name (e.g. 'file_grep'); the
-    /// resolver tries both. Tool entries also carry the Python and JavaScript
-    /// invocation strings so the agent doesn't have to translate from the MCP
-    /// tool name. Names that resolve to neither land in the unknown array
-    /// rather than failing the call.
+    /// Read one or more guides from the built-in library by name. A name resolves to either a concept guide (e.g. 'resource_keys') or a tool name (e.g. 'file_grep'). Pair with guides_list to enumerate, guides_search for regex lookup. Names that match neither land in 'unknown' rather than failing.
     /// </summary>
-    /// <param name="names">Names of guides or tools to fetch, JSON-encoded as a string array (e.g. '["resource_keys","file_grep"]').</param>
-    /// <returns>JSON object with fields: results (array of {name, kind, description, body, pythonInvocation?, javascriptInvocation?}), unknown (array of names that resolved to neither a guide nor a tool).</returns>
+    /// <param name="names">JSON array of names, e.g. '["resource_keys","file_grep"]'.</param>
+    /// <returns>JSON: {results: [{name, kind, description, body, pythonInvocation?, javascriptInvocation?}], unknown: [string]}. Tool entries carry Python and JavaScript invocation strings.</returns>
     [McpServerTool(Name = "guides_read", ReadOnly = true, Idempotent = true)]
     [ToolAlias("guides.read")]
     public partial CallToolResult Read(string names)
@@ -86,30 +79,17 @@ public partial class GuidesTools
     private static GuidesReadEntry? ResolveEntry(IGuides library, string requestedName)
     {
         var guide = library.GetByName(requestedName);
-        if (guide is not null)
+        if (guide is null)
         {
-            return new GuidesReadEntry(
-                Name: guide.Name,
-                Kind: guide.Kind.ToString().ToLowerInvariant(),
-                Description: guide.Description,
-                Body: guide.Body,
-                PythonInvocation: guide.PythonInvocation,
-                JavaScriptInvocation: guide.JavaScriptInvocation);
+            return null;
         }
 
-        if (library.IsKnownToolAliasName(requestedName))
-        {
-            var invocations = library.GetToolInvocations(requestedName);
-            var stubBody = $"No extended documentation for `{requestedName}`. See its summary in tools/list for the call shape.";
-            return new GuidesReadEntry(
-                Name: requestedName,
-                Kind: GuideKind.Tool.ToString().ToLowerInvariant(),
-                Description: stubBody,
-                Body: stubBody,
-                PythonInvocation: invocations?.PythonInvocation,
-                JavaScriptInvocation: invocations?.JavaScriptInvocation);
-        }
-
-        return null;
+        return new GuidesReadEntry(
+            Name: guide.Name,
+            Kind: guide.Kind.ToString().ToLowerInvariant(),
+            Description: guide.Description,
+            Body: guide.Body,
+            PythonInvocation: guide.PythonInvocation,
+            JavaScriptInvocation: guide.JavaScriptInvocation);
     }
 }

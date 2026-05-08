@@ -7,12 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Applies a batch of format edits across one or more sheets in a single save.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="editsJson">JSON array of edits with sheet, range, and format fields. See guides_read(['spreadsheet_format_ranges']) for the format spec keys, units, and clear sentinels.</param>
-    /// <returns>JSON object with editsApplied, propertiesApplied, and autoFitApplied.</returns>
+    /// <summary>Apply font, fill, border, alignment, and number-format edits to cell ranges.</summary>
     [McpServerTool(Name = "spreadsheet_format_ranges")]
     [ToolAlias("spreadsheet.format_ranges")]
     public async partial Task<CallToolResult> FormatRanges(string resource, string editsJson)

@@ -7,13 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Sets the value of an input/textarea/select/contenteditable matched by selector and fires bubbling input/change events. See guides_read(['webview_devtools']).
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="selector">CSS selector. The first match receives the value.</param>
-    /// <param name="value">String value to assign. Set as textContent for contenteditable.</param>
-    /// <returns>JSON object with selector, tag, and the value read back after assignment.</returns>
+    /// <summary>Set the value of an input, textarea, select, or contenteditable element and fire input/change events.</summary>
     [McpServerTool(Name = "webview_fill")]
     [ToolAlias("webview.fill")]
     public async partial Task<CallToolResult> Fill(string resource, string selector, string value)

@@ -11,15 +11,7 @@ public record class WriteFileResult(int LineCount);
 
 public partial class FileTools
 {
-    // Bootstrap tool. Keep summary rich and do not trim.
-    /// <summary>
-    /// Writes text content to a file. Creates the file if it does not exist.
-    /// For existing files, replaces the entire content. Writes directly to disk.
-    /// Any open document reloads its buffer from disk after the write.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to write. The file is created automatically if it does not exist.</param>
-    /// <param name="content">The new text content for the file.</param>
-    /// <returns>JSON object with field: lineCount (int).</returns>
+    /// <summary>Wholesale-replace a text file with new content, creating it if missing.</summary>
     [McpServerTool(Name = "file_write")]
     [ToolAlias("file.write")]
     public async partial Task<CallToolResult> Write(string fileResource, string content)

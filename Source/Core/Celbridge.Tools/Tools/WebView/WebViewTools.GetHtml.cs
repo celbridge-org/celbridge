@@ -7,13 +7,7 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Returns outerHTML of the WebView document or a subtree, with script/style bodies redacted to control payload. See guides_read(['webview_devtools']).
-    /// </summary>
-    /// <param name="resource">Resource key of the open document.</param>
-    /// <param name="selector">Optional CSS selector to scope to a subtree. Empty returns the full document.</param>
-    /// <param name="maxDepth">Maximum tree depth; children beyond it are replaced with a placeholder.</param>
-    /// <returns>JSON object with selector and html.</returns>
+    /// <summary>Read the raw outerHTML of the WebView document or a subtree (script/style bodies redacted).</summary>
     [McpServerTool(Name = "webview_get_html")]
     [ToolAlias("webview.get_html")]
     public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8)

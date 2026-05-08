@@ -6,13 +6,7 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Moves a worksheet to a new 1-based tab position.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Worksheet to move.</param>
-    /// <param name="position">1-based tab position. Must be in [1, sheetCount].</param>
-    /// <returns>JSON object with sheet and the new position.</returns>
+    /// <summary>Move a worksheet to a new 1-based tab position within the workbook.</summary>
     [McpServerTool(Name = "spreadsheet_move_sheet")]
     [ToolAlias("spreadsheet.move_sheet")]
     public async partial Task<CallToolResult> MoveSheet(string resource, string sheet, int position)

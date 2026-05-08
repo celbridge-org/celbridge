@@ -5,12 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Selects a resource in the explorer panel.
-    /// </summary>
-    /// <param name="resource">Resource key of the item to select.</param>
-    /// <param name="showExplorerPanel">Show the explorer panel if hidden.</param>
-    /// <returns>"ok" on success.</returns>
+    /// <summary>Programmatically set the single selected resource in the explorer panel.</summary>
     [McpServerTool(Name = "explorer_select", ReadOnly = true, Idempotent = true)]
     [ToolAlias("explorer.select")]
     public async partial Task<CallToolResult> Select(string resource, bool showExplorerPanel = true)
