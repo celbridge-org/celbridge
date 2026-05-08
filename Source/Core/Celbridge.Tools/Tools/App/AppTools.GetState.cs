@@ -58,7 +58,7 @@ public partial class AppTools
     private static readonly IReadOnlyList<string> KnownFeatureFlagNames = ReadFeatureFlagNames();
 
     // Static pointer to the orientation guide.
-    private static readonly AgentDocsPointer AgentDocsPointerValue = new("getting_started", "guides_read");
+    private static readonly AgentDocsPointer AgentDocsPointerValue = new("agent_instructions", "guides_read");
 
     /// <summary>App state: project load status, feature flags, focused panel, layout, Python packages.</summary>
     [McpServerTool(Name = "app_get_state", ReadOnly = true, Idempotent = true)]

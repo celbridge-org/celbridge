@@ -18,8 +18,8 @@ A loaded project shows several panels around a central editor area:
 
 When the user refers to "the file" or "this script" without naming it, resolve the reference against workspace state, not against a project-wide search:
 
-1. **Active document.** Call `document_get_context` and check `activeDocument`. This is what the user is looking at right now.
+1. **Active document.** Call `document_get_state` and check `activeDocument`. This is what the user is looking at right now.
 2. **Other open documents.** Same call, check `openDocuments`.
-3. **Explorer selection.** Call `explorer_get_context` and check the selected resource(s) and expanded folders.
+3. **Explorer selection.** Call `explorer_get_state` and check the selected resource(s) and expanded folders.
 
 Only after these don't resolve the reference, fall back to `file_grep` or `file_get_tree`. Searching the whole project for an ambiguous reference burns time and risks acting on the wrong file.

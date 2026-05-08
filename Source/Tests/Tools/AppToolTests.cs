@@ -82,7 +82,7 @@ public class AppToolTests
         var root = ParseResult(tools.GetState());
 
         var agentDocs = root.GetProperty("agentDocs");
-        agentDocs.GetProperty("entry").GetString().Should().Be("getting_started");
+        agentDocs.GetProperty("entry").GetString().Should().Be("agent_instructions");
         agentDocs.GetProperty("via").GetString().Should().Be("guides_read");
     }
 

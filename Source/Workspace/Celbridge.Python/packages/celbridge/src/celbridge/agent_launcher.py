@@ -57,10 +57,12 @@ def _write_mcp_config(project_folder: str) -> str:
 
 
 _BOOTSTRAP_PROMPT = (
-    "Before doing anything else, call guides_read(['getting_started']) to "
+    "Before doing anything else, call guides_read(['agent_instructions']) to "
     "learn the Celbridge project conventions. The guides library carries the "
     "resource key rules, workspace panel descriptions, file change semantics, "
-    "and tool usage guidance you need to act correctly."
+    "and tool usage guidance you need to act correctly. The broker enforces "
+    "this with a cold-start gate, so non-bootstrap tools will refuse to run "
+    "until the agent_instructions guide has been read."
 )
 
 
@@ -70,7 +72,7 @@ def launch_claude() -> None:
     Writes the .mcp.json config file and starts Claude in the current terminal.
     Claude will only have access to Celbridge MCP tools, with no file editing,
     bash access, or other built-in tools. A bootstrap system prompt instructs
-    the agent to read the getting_started guide before starting work.
+    the agent to read the agent_instructions guide before starting work.
     """
     if not shutil.which("claude"):
         print(

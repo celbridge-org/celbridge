@@ -14,4 +14,4 @@ Collapses every currently expanded folder in the explorer panel, leaving only th
 ## See also
 
 - `explorer_expand_folder` — expand or collapse a single folder.
-- `explorer_get_context` — inspect which folders are currently expanded.
+- `explorer_get_state` — inspect which folders are currently expanded.

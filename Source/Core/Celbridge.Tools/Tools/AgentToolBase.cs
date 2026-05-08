@@ -42,6 +42,14 @@ public abstract class AgentToolBase
     private const int MaxErrorMessageLength = 1000;
 
     /// <summary>
+    /// Appended to every agent-visible error message produced by ToolError so the
+    /// agent knows where to find the tool's full guide. Bootstrap tools that
+    /// document themselves (guides_*) opt out via BootstrapToolError.
+    /// </summary>
+    private const string GuideNudgeSuffix =
+        " If this tool is unfamiliar, call `guides_read` with the tool name to fetch its full guide.";
+
+    /// <summary>
     /// Executes a command that produces no typed result, returning a Result so the
     /// tool can branch on IsFailure and pass the failed Result to ToolError. Mirrors
     /// the typed overload's shape so every command call site reads the same way.
@@ -81,11 +89,15 @@ public abstract class AgentToolBase
     }
 
     /// <summary>
-    /// Creates an error CallToolResult with a text message.
+    /// Creates an error CallToolResult with a text message. The generic
+    /// guide-nudge suffix is appended so the agent knows it can fetch the
+    /// tool's full guide via guides_read on a recoverable failure. Bootstrap
+    /// tools that document themselves use BootstrapToolError instead.
     /// </summary>
     protected static CallToolResult ToolError(string text)
     {
-        var capped = CapErrorMessage(text);
+        var withNudge = AppendGuideNudge(text);
+        var capped = CapErrorMessage(withNudge);
         return new CallToolResult
         {
             IsError = true,
@@ -101,11 +113,44 @@ public abstract class AgentToolBase
     /// <summary>
     /// Creates an error CallToolResult from a failed Result, surfacing its
     /// MessageChain so the agent sees the outer wrapper and any propagated
-    /// inner causes.
+    /// inner causes. Adds the guide-nudge suffix.
     /// </summary>
     protected static CallToolResult ToolError(Result result)
     {
         return ToolError(result.MessageChain);
+    }
+
+    /// <summary>
+    /// Bootstrap-tool error variant. Does not append the guide-nudge suffix —
+    /// the bootstrap tools (guides_list, guides_read, guides_search) are how
+    /// the agent reads guides in the first place, so nudging them at
+    /// guides_read would be circular.
+    /// </summary>
+    protected static CallToolResult BootstrapToolError(string text)
+    {
+        var capped = CapErrorMessage(text);
+        return new CallToolResult
+        {
+            IsError = true,
+            Content = [
+                new TextContentBlock
+                {
+                    Text = capped
+                }
+            ]
+        };
+    }
+
+    private static string AppendGuideNudge(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return GuideNudgeSuffix.TrimStart();
+        }
+
+        // Trailing whitespace and punctuation already on the message stay as
+        // written; the suffix has its own leading space.
+        return text + GuideNudgeSuffix;
     }
 
     private static string CapErrorMessage(string text)
@@ -121,7 +166,6 @@ public abstract class AgentToolBase
 
     /// <summary>
     /// Loads an embedded resource from the Celbridge.Tools assembly as a string.
-    /// Used by *_get_context tool methods to return embedded markdown guidance.
     /// Returns a placeholder string when the resource is missing (build-time invariant).
     /// </summary>
     protected static string LoadEmbeddedResource(string resourceName)

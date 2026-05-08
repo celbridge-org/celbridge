@@ -5,7 +5,7 @@ description: Fetch full bodies of one or more guides or per-tool guides from Cel
 
 # guides_read
 
-Reads one or more entries from Celbridge's built-in agent guide library. A name may be a conceptual guide name (e.g. `resource_keys`) or a tool name (e.g. `file_grep`); the resolver tries both.
+Reads one or more entries from Celbridge's built-in agent guide library. A name may be a concept guide name (e.g. `resource_keys`), a namespace name (e.g. `file`, `spreadsheet`), or a tool name (e.g. `file_grep`); the resolver tries all three.
 
 Tool entries also carry the Python and JavaScript invocation strings, so the agent doesn't have to translate from the MCP tool name when working inside scripts or contribution editors.
 

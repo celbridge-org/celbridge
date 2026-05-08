@@ -2,11 +2,15 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// Kind of a guide entry. Inferred from the embedded resource path:
-/// files under Guides/Concepts/ are concept, files under Guides/Tools/ are tool.
+/// files under Guides/Concepts/ are concept, files under Guides/Namespaces/ are
+/// namespace, files under Guides/Tools/ are tool. Declaration order is also
+/// the canonical sort order for guides_list (Concepts first, then Namespaces,
+/// then Tools), since enums sort by underlying integer.
 /// </summary>
 internal enum GuideKind
 {
     Concept,
+    Namespace,
     Tool
 }
 

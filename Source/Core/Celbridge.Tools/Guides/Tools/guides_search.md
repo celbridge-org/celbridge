@@ -1,6 +1,6 @@
 ---
 name: guides_search
-description: Regex-search the built-in agent guide library by frontmatter and body content; returns ranked matches with snippets.
+description: Regex-search the built-in agent guide library by frontmatter and body. Single regex pattern — not fuzzy phrase search; multi-word inputs match as a literal phrase.
 ---
 
 # guides_search
@@ -14,6 +14,8 @@ Use this when you know what you want but not the exact guide name. The search co
 ### pattern
 
 A .NET regex pattern, matched case-insensitively. A literal substring is a valid pattern — plain words like `freeze` or `regex` work without any regex syntax. Use anchors (`^`, `$`), alternation (`a|b`), and character classes when refinement is needed.
+
+Multi-word inputs match as a literal phrase, not a conjunction: `python package` finds the exact sequence `python package`, not guides that mention both words separately. For OR-style matching, use alternation (`python|package`); for ordered loose matching, use `python.*package`.
 
 If the pattern fails to compile, the call still returns successfully but the `error` field carries the compile error and `matches` is empty.
 

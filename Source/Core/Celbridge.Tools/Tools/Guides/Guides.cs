@@ -20,6 +20,7 @@ internal sealed class Guides : IGuides
     private const int DefaultPriority = 100;
     private const string ResourcePrefix = "Celbridge.Tools.Guides.";
     private const string ConceptsSegment = "Concepts.";
+    private const string NamespacesSegment = "Namespaces.";
     private const string ToolsSegment = "Tools.";
     private const string MarkdownSuffix = ".md";
 
@@ -59,13 +60,14 @@ internal sealed class Guides : IGuides
         var assembly = typeof(Guides).Assembly;
         var rawGuides = LoadRawGuides(assembly);
         var toolAliasNames = DiscoverToolAliasNames(assembly);
+        var toolNamespaces = DiscoverToolNamespaces(toolAliasNames);
         var toolInvocations = BuildToolInvocations(assembly);
 
         var entries = new Dictionary<string, GuideEntry>(StringComparer.Ordinal);
 
         foreach (var raw in rawGuides)
         {
-            ValidateRawGuide(raw, toolAliasNames, entries);
+            ValidateRawGuide(raw, toolAliasNames, toolNamespaces, entries);
 
             string? pythonInvocation = null;
             string? javaScriptInvocation = null;
@@ -88,9 +90,10 @@ internal sealed class Guides : IGuides
         }
 
         ValidateEveryToolHasGuide(toolAliasNames, entries);
+        ValidateEveryNamespaceHasGuide(toolNamespaces, entries);
 
         var sortedIndex = entries.Values
-            .OrderBy(e => e.Kind == GuideKind.Concept ? 0 : 1)
+            .OrderBy(e => e.Kind)
             .ThenBy(e => e.Kind == GuideKind.Concept ? e.Priority : 0)
             .ThenBy(e => e.Name, StringComparer.Ordinal)
             .ToList();
@@ -272,9 +275,38 @@ internal sealed class Guides : IGuides
         }
     }
 
+    private static void ValidateEveryNamespaceHasGuide(
+        HashSet<string> toolNamespaces,
+        Dictionary<string, GuideEntry> entries)
+    {
+        var missing = new List<string>();
+        foreach (var namespaceName in toolNamespaces)
+        {
+            if (!entries.TryGetValue(namespaceName, out var entry))
+            {
+                missing.Add(namespaceName);
+                continue;
+            }
+            if (entry.Kind != GuideKind.Namespace)
+            {
+                missing.Add(namespaceName);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            missing.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every registered MCP namespace must have a namespace guide under " +
+                "Source/Core/Celbridge.Tools/Guides/Namespaces/. The following namespaces are missing a guide: " +
+                string.Join(", ", missing) + ".");
+        }
+    }
+
     private static void ValidateRawGuide(
         RawGuide raw,
         HashSet<string> toolAliasNames,
+        HashSet<string> toolNamespaces,
         Dictionary<string, GuideEntry> alreadyLoaded)
     {
         if (raw.Kind == GuideKind.Tool)
@@ -291,10 +323,30 @@ internal sealed class Guides : IGuides
                     $"Per-tool guide '{raw.Name}' does not match any registered MCP tool alias name.");
             }
         }
-        else if (toolAliasNames.Contains(raw.Name))
+        else if (raw.Kind == GuideKind.Namespace)
+        {
+            if (raw.Frontmatter.Priority.HasValue)
+            {
+                throw new InvalidDataException(
+                    $"Namespace guide '{raw.Name}' sets 'priority' in frontmatter; priority is only valid on conceptual guides.");
+            }
+
+            if (!toolNamespaces.Contains(raw.Name))
+            {
+                throw new InvalidDataException(
+                    $"Namespace guide '{raw.Name}' does not match any registered MCP tool namespace.");
+            }
+
+            if (toolAliasNames.Contains(raw.Name))
+            {
+                throw new InvalidDataException(
+                    $"Namespace guide '{raw.Name}' collides with an MCP tool alias name.");
+            }
+        }
+        else if (toolAliasNames.Contains(raw.Name) || toolNamespaces.Contains(raw.Name))
         {
             throw new InvalidDataException(
-                $"Conceptual guide '{raw.Name}' collides with an MCP tool alias name.");
+                $"Conceptual guide '{raw.Name}' collides with an MCP tool alias or namespace name.");
         }
 
         if (alreadyLoaded.ContainsKey(raw.Name))
@@ -329,6 +381,11 @@ internal sealed class Guides : IGuides
                 kind = GuideKind.Concept;
                 remainder = subPath.Substring(ConceptsSegment.Length);
             }
+            else if (subPath.StartsWith(NamespacesSegment, StringComparison.Ordinal))
+            {
+                kind = GuideKind.Namespace;
+                remainder = subPath.Substring(NamespacesSegment.Length);
+            }
             else if (subPath.StartsWith(ToolsSegment, StringComparison.Ordinal))
             {
                 kind = GuideKind.Tool;
@@ -337,14 +394,14 @@ internal sealed class Guides : IGuides
             else
             {
                 throw new InvalidDataException(
-                    $"Guide resource '{resourceName}' is not under Concepts/ or Tools/.");
+                    $"Guide resource '{resourceName}' is not under Concepts/, Namespaces/, or Tools/.");
             }
 
             var guideName = remainder.Substring(0, remainder.Length - MarkdownSuffix.Length);
             if (guideName.Contains('.'))
             {
                 throw new InvalidDataException(
-                    $"Guide resource '{resourceName}' must live directly under Concepts/ or Tools/, not in a nested folder.");
+                    $"Guide resource '{resourceName}' must live directly under Concepts/, Namespaces/, or Tools/, not in a nested folder.");
             }
 
             var content = ReadResource(assembly, resourceName);
@@ -465,6 +522,20 @@ internal sealed class Guides : IGuides
         }
 
         return names;
+    }
+
+    private static HashSet<string> DiscoverToolNamespaces(HashSet<string> toolAliasNames)
+    {
+        var namespaces = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var aliasName in toolAliasNames)
+        {
+            var underscoreIndex = aliasName.IndexOf('_');
+            if (underscoreIndex > 0)
+            {
+                namespaces.Add(aliasName.Substring(0, underscoreIndex));
+            }
+        }
+        return namespaces;
     }
 
     private static Dictionary<string, (string Python, string JavaScript)> BuildToolInvocations(Assembly assembly)

@@ -6,34 +6,34 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by document_get_context with the visual state of the document editor.
+/// Result returned by document_get_state with the visual state of the document editor.
 /// </summary>
-public record class DocumentContextResult(
+public record class DocumentStateResult(
     string ActiveDocument,
     int SectionCount,
     List<OpenDocumentEntry> OpenDocuments);
 
 /// <summary>
-/// An open document entry within the document_get_context result.
+/// An open document entry within the document_get_state result.
 /// </summary>
 public record class OpenDocumentEntry(string Resource, int SectionIndex, int TabOrder, bool IsActive, string EditorId);
 
 public partial class DocumentTools
 {
     /// <summary>Document editor state: active document, section layout, all open tabs and their positions.</summary>
-    [McpServerTool(Name = "document_get_context", ReadOnly = true)]
-    [ToolAlias("document.get_context")]
-    public async partial Task<CallToolResult> GetContext()
+    [McpServerTool(Name = "document_get_state", ReadOnly = true)]
+    [ToolAlias("document.get_state")]
+    public async partial Task<CallToolResult> GetState()
     {
         // Route through the command queue so the snapshot observes state after all
         // previously enqueued commands have run. The underlying read is served from
         // a cache on DocumentsService, so this never touches WinUI collections.
-        var getContextResult = await ExecuteCommandAsync<IGetDocumentContextCommand, DocumentContextSnapshot>();
-        if (getContextResult.IsFailure)
+        var getStateResult = await ExecuteCommandAsync<IGetDocumentStateCommand, DocumentStateSnapshot>();
+        if (getStateResult.IsFailure)
         {
-            return ToolError(getContextResult);
+            return ToolError(getStateResult);
         }
-        var snapshot = getContextResult.Value;
+        var snapshot = getStateResult.Value;
 
         var activeDocument = snapshot.ActiveDocument;
 
@@ -48,7 +48,7 @@ public partial class DocumentTools
                 document.EditorId.ToString()));
         }
 
-        var result = new DocumentContextResult(
+        var result = new DocumentStateResult(
             activeDocument.ToString(),
             snapshot.SectionCount,
             documents);

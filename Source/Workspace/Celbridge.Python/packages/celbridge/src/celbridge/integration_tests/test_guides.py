@@ -22,9 +22,9 @@ class TestGuides:
         if first_tool < len(entries):
             assert last_concept < first_tool
 
-    def test_list_starts_with_getting_started(self, guides):
+    def test_list_starts_with_agent_instructions(self, guides):
         entries = guides.list()["guides"]
-        assert entries[0]["name"] == "getting_started"
+        assert entries[0]["name"] == "agent_instructions"
         assert entries[0]["kind"] == "concept"
 
     def test_list_includes_resource_keys_guide(self, guides):

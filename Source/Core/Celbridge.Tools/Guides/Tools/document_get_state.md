@@ -1,9 +1,9 @@
 ---
-name: document_get_context
+name: document_get_state
 description: Snapshot of the editor: active document, visible sections, and every open tab with its position.
 ---
 
-# document_get_context
+# document_get_state
 
 Returns the visual state of the document editor: which document is active, how the editor is split into sections, and every open document with its section, tab order, active flag, and bound editor id. Use this to understand what the user is currently looking at before deciding which tools to invoke or which document to operate on.
 

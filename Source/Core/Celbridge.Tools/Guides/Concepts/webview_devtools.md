@@ -18,7 +18,7 @@ The `webview_*` tools give the agent a feedback loop into a running contribution
 
 ## Confirm the right editor opened the document
 
-`document_get_context` returns an `editorId` for each open document (e.g. `celbridge.html-viewer`, `celbridge.code-editor`). If you opened a `.html` file expecting the HTML viewer but `editorId` is the code editor, the WebView devtools won't work against it — check the resource's file association before calling any `webview_*` tool.
+`document_get_state` returns an `editorId` for each open document (e.g. `celbridge.html-viewer`, `celbridge.code-editor`). If you opened a `.html` file expecting the HTML viewer but `editorId` is the code editor, the WebView devtools won't work against it — check the resource's file association before calling any `webview_*` tool.
 
 ## Programmatic clicks have `isTrusted: false`
 
@@ -34,7 +34,7 @@ Each entry includes URL, method, status, timing, and sizes. Set `includeHeaders`
 
 ## `webview_screenshot` requires the document to be the active tab
 
-WebView2 pauses rendering for inactive tabs, so an inactive tab cannot produce a frame and the tool fails fast rather than hanging. Before calling, ensure the document is open (`document_open`) and that it is the active document (check `document_get_context` -> `activeDocument`). If the user switches tabs during the capture, the tool times out within ~5 seconds with an explanatory error — re-activate the tab and retry.
+WebView2 pauses rendering for inactive tabs, so an inactive tab cannot produce a frame and the tool fails fast rather than hanging. Before calling, ensure the document is open (`document_open`) and that it is the active document (check `document_get_state` -> `activeDocument`). If the user switches tabs during the capture, the tool times out within ~5 seconds with an explanatory error — re-activate the tab and retry.
 
 ## `webview_screenshot` returns the image inline by default
 

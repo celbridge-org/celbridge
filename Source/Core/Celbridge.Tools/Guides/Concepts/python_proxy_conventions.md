@@ -1,25 +1,23 @@
 ---
 name: python_proxy_conventions
-description: How the Celbridge Python REPL exposes MCP tools via the cel proxy; parameter conventions, error handling, and structured-parameter formats.
+description: Write Python scripts and REPL commands that call Celbridge tools — the cel proxy, imports, parameter conventions, error handling, and structured-parameter formats.
 ---
 
 # Python proxy conventions
 
-Access tools via the `cel` proxy in the Python REPL, or import namespaces:
+The `cel` proxy is the canonical way to call Celbridge tools from Python. It is available at the REPL prompt and inside scripts run from the REPL via `%run`:
 
 ```python
-from celbridge import app, document, file
-
-document.open("readme.md")
-app.log("Processing complete")
+cel.document.open("readme.md")
+cel.app.log("Processing complete")
 ```
 
-Module names match tool namespaces. Inside the REPL, `cel.app.log("hi")` and `app.log("hi")` are equivalent.
+Tool namespaces are also exposed as bare names — `from celbridge import app, document` then `app.log("hi")` — and the bare form is equivalent to `cel.app.log("hi")`. Use whichever reads better for the script; the examples in this guide and in per-tool guides use the `cel.*` form.
 
 ## Conventions
 
 - **Parameters use snake_case.** `cel.file.apply_edits(...)`, not `applyEdits`.
-- **JSON results are returned as dicts.** Tools that return structured payloads (e.g. `app.get_state`, `document.get_context`) deserialise into native Python dicts.
+- **JSON results are returned as dicts.** Tools that return structured payloads (e.g. `app.get_state`, `document.get_state`) deserialise into native Python dicts.
 - **Errors raise `CelError`** with a message string. The REPL is configured to display these without a traceback so the message is the focus.
 - **Methods marked `-> ok`** return the string `'ok'` on success or raise `CelError`.
 - **Methods with no return annotation** return `None`.
@@ -43,4 +41,12 @@ You don't need to call `json.dumps` yourself.
 
 ## Running scripts
 
-The REPL is the canonical surface; standalone Python scripts can also import the package and run, but they need `CELBRIDGE_PROJECT_FOLDER` and `CELBRIDGE_MCP_PORT` set in the environment to find the broker.
+Scripts run inside the REPL via `%run` (or the **Run** context-menu command on a `.py` file, which dispatches to `%run`) share the REPL's namespace, so `cel.*` and bare-namespace forms work the same as at the prompt. To make the dependency on the proxy explicit at the top of a script, import it:
+
+```python
+from celbridge import cel
+
+cel.app.log("Hello from a script")
+```
+
+Truly standalone Python processes — invoked outside the REPL — are not a supported surface for `cel`; the proxy is wired up at REPL startup and is not available in a fresh `python script.py` invocation. If you need to drive the broker from outside the REPL, you would call MCP directly with `CELBRIDGE_PROJECT_FOLDER` and `CELBRIDGE_MCP_PORT` set in the environment.

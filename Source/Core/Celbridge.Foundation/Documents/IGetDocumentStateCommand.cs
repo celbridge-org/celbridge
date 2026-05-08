@@ -3,9 +3,9 @@ using Celbridge.Commands;
 namespace Celbridge.Documents;
 
 /// <summary>
-/// Snapshot of the documents panel state produced by IGetDocumentContextCommand.
+/// Snapshot of the documents panel state produced by IGetDocumentStateCommand.
 /// </summary>
-public record class DocumentContextSnapshot(
+public record class DocumentStateSnapshot(
     ResourceKey ActiveDocument,
     int SectionCount,
     IReadOnlyList<OpenDocumentInfo> OpenDocuments);
@@ -15,6 +15,6 @@ public record class DocumentContextSnapshot(
 /// section count, open documents) in a snapshot. Routed through the command queue so
 /// callers observe state that is consistent with all previously enqueued commands.
 /// </summary>
-public interface IGetDocumentContextCommand : IExecutableCommand<DocumentContextSnapshot>
+public interface IGetDocumentStateCommand : IExecutableCommand<DocumentStateSnapshot>
 {
 }

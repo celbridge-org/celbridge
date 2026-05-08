@@ -1,6 +1,6 @@
 ---
 name: javascript_proxy_conventions
-description: How JavaScript inside a contribution editor calls Celbridge tools through the cel global; manifest declarations, naming, errors, and structured parameters.
+description: Write JavaScript in a contribution editor that calls Celbridge tools — the cel global, manifest declarations, naming, errors, and structured parameters.
 ---
 
 # JavaScript proxy conventions

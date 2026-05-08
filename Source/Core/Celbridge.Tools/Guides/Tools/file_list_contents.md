@@ -7,11 +7,24 @@ description: Single-level folder listing with optional name-glob filtering.
 
 Lists the immediate children of a folder. For a recursive view, use `file_get_tree`; for project-wide name searches, use `file_search`.
 
+## Examples
+
+```python
+# What's at the project root?
+cel.file.list_contents("")
+
+# Files and folders in a specific folder
+cel.file.list_contents("Scripts")
+
+# Filter to Python files in a folder
+cel.file.list_contents("Scripts", glob="*.py")
+```
+
 ## Parameters
 
 ### resource
 
-Folder resource key. Empty string lists the project root.
+Folder resource key. The empty string `""` lists the project root — that's the canonical way to discover what the project contains when you don't yet know its top-level layout.
 
 ### glob
 

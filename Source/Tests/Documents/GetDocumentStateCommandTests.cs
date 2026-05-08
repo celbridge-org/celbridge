@@ -4,12 +4,12 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Documents;
 
 /// <summary>
-/// Direct unit test for GetDocumentContextCommand. Complements the DocumentTools tests which
+/// Direct unit test for GetDocumentStateCommand. Complements the DocumentTools tests which
 /// stub the command entirely and therefore don't exercise the command's own snapshot-building
 /// logic.
 /// </summary>
 [TestFixture]
-public class GetDocumentContextCommandTests
+public class GetDocumentStateCommandTests
 {
     [Test]
     public async Task Execute_CapturesActiveDocumentSectionCountAndOpenList()
@@ -33,7 +33,7 @@ public class GetDocumentContextCommandTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var command = new GetDocumentContextCommand(workspaceWrapper);
+        var command = new GetDocumentStateCommand(workspaceWrapper);
 
         var result = await command.ExecuteAsync();
 
@@ -58,7 +58,7 @@ public class GetDocumentContextCommandTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var command = new GetDocumentContextCommand(workspaceWrapper);
+        var command = new GetDocumentStateCommand(workspaceWrapper);
 
         var result = await command.ExecuteAsync();
 

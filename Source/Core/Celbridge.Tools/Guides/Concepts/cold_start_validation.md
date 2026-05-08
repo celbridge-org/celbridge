@@ -38,7 +38,7 @@ Expected: `spreadsheet_get_info`, then `spreadsheet_read_sheet` with `headers: t
 
 > *"Can you fix the typo on line 12?"*
 
-Expected: the agent resolves "the file" against the active document via `document_get_context` rather than searching the whole project. Failure mode: calling `file_grep` for "typo" or asking the user which file before checking the active document.
+Expected: the agent resolves "the file" against the active document via `document_get_state` rather than searching the whole project. Failure mode: calling `file_grep` for "typo" or asking the user which file before checking the active document.
 
 ### P5 — Regex search
 

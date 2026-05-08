@@ -83,14 +83,14 @@ public class GuidesToolTests
     }
 
     [Test]
-    public void List_StartsWithGettingStarted()
+    public void List_StartsWithAgentInstructions()
     {
         var tools = new GuidesTools(_services);
         var json = GetResultText(tools.List());
         var root = JsonDocument.Parse(json).RootElement;
         var firstEntry = root.GetProperty("guides")[0];
 
-        firstEntry.GetProperty("name").GetString().Should().Be("getting_started");
+        firstEntry.GetProperty("name").GetString().Should().Be("agent_instructions");
         firstEntry.GetProperty("kind").GetString().Should().Be("concept");
     }
 

@@ -34,11 +34,11 @@ public class TcpTransport : ITcpTransport
     public TcpTransport(
         ILogger<TcpTransport> logger,
         IMcpToolBridge mcpToolBridge,
-        ServerDiagnosticsRpcHandler serverDiagnosticsRpcHandler)
+        AgentAnalyticsRpcHandler agentAnalyticsRpcHandler)
     {
         _logger = logger;
         _mcpToolBridge = mcpToolBridge;
-        _additionalTargets.Add(serverDiagnosticsRpcHandler);
+        _additionalTargets.Add(agentAnalyticsRpcHandler);
     }
 
     /// <summary>

@@ -29,7 +29,7 @@ public partial class GuidesTools
     {
         if (string.IsNullOrEmpty(pattern))
         {
-            return ToolError("guides_search requires a non-empty 'pattern'.");
+            return BootstrapToolError("guides_search requires a non-empty 'pattern'.");
         }
 
         var effectiveLimit = limit <= 0 ? GuidesSearchDefaultLimit : Math.Min(limit, GuidesSearchMaxLimit);

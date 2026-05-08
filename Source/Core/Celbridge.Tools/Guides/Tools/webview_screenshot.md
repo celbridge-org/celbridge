@@ -32,4 +32,4 @@ Save resolution runs before capture, so a malformed `saveTo` fails before any wo
 
 - `webview_devtools` — cross-cutting concept guide; covers activation, save/return semantics, defaults, and `settleMs` rationale.
 - `file_read_image` — read an already-saved screenshot back into context.
-- `document_get_context` — confirm the tab is active before capture.
+- `document_get_state` — confirm the tab is active before capture.

@@ -47,5 +47,5 @@ An error message is returned if the operation failed.
 
 - `document_activate` — activate an already-open tab without re-opening.
 - `document_close` — close one or more documents.
-- `document_get_context` — discover which documents are currently open and which is active.
+- `document_get_state` — discover which documents are currently open and which is active.
 - `editing_documents`, `file_changes` — when to open and how the save model behaves.

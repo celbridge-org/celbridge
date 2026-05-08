@@ -23,6 +23,6 @@ When `true` (the default), the explorer panel is brought into view if it was hid
 
 ## See also
 
-- `explorer_get_context` — confirm what is currently selected.
+- `explorer_get_state` — confirm what is currently selected.
 - `explorer_expand_folder`, `explorer_collapse_all` — adjust surrounding tree state.
 - `workspace_panels` — focused panel and layout.

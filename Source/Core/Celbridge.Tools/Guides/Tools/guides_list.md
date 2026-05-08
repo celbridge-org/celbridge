@@ -13,8 +13,8 @@ Use `guides_list` to scan the available titles when you don't yet know what's th
 
 A JSON object with a single `guides` field — an array of `{name, kind, description}` entries.
 
-- `kind` is either `concept` (cross-cutting documentation under `Concepts/`, e.g. `resource_keys`, `regex_syntax`, `python_proxy_conventions`) or `tool` (per-tool guide under `Tools/`, e.g. `file_grep`, `spreadsheet_clear`).
-- Conceptual guides come first, ordered by frontmatter `priority` then by name. Per-tool guides follow, ordered alphabetically.
+- `kind` is one of `concept` (cross-cutting documentation under `Concepts/`, e.g. `resource_keys`, `regex_syntax`, `python_proxy_conventions`), `namespace` (per-namespace overview under `Namespaces/`, e.g. `file`, `spreadsheet`), or `tool` (per-tool guide under `Tools/`, e.g. `file_grep`, `spreadsheet_clear`).
+- Concept guides come first, ordered by frontmatter `priority` then by name. Namespace guides come next, ordered alphabetically. Per-tool guides come last, ordered alphabetically.
 - The `description` is the one-sentence summary from the guide's frontmatter — enough to decide whether to fetch the full body.
 
 ## Pairing with guides_read
@@ -29,4 +29,4 @@ guides_read('["resource_keys", "file_grep"]')
 
 - `guides_read` — fetches one or more guide bodies.
 - `guides_search` — regex-search across the library.
-- `getting_started` — the orientation guide; usually the first thing to read on a fresh session.
+- `agent_instructions` — the orientation guide; mandatory reading before any tool work on a fresh session.

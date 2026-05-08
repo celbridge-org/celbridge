@@ -25,4 +25,4 @@ When `true` (the default), the folder is expanded. When `false`, it is collapsed
 
 - `explorer_collapse_all` — collapse every expanded folder in one call.
 - `explorer_select` — focus a resource (auto-expands ancestors).
-- `explorer_get_context` — inspect which folders are currently expanded.
+- `explorer_get_state` — inspect which folders are currently expanded.

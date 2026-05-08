@@ -31,7 +31,7 @@ public partial class GuidesTools
         var parsedNames = ParseNamesArgument(names);
         if (parsedNames.IsFailure)
         {
-            return ToolError(parsedNames);
+            return BootstrapToolError(parsedNames.MessageChain);
         }
 
         var library = Guides;

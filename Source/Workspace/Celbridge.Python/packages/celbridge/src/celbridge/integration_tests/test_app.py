@@ -8,7 +8,7 @@ class TestApp:
     def test_get_state_returns_agent_docs_pointer(self, app):
         result = app.get_state()
         agent_docs = result["agentDocs"]
-        assert agent_docs["entry"] == "getting_started"
+        assert agent_docs["entry"] == "agent_instructions"
         assert agent_docs["via"] == "guides_read"
 
     def test_get_state_returns_focused_panel(self, app):

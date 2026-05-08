@@ -25,9 +25,9 @@ class TestDocument:
         document.open("TestDocument/hello.txt")
         document.activate("TestDocument/hello.txt")
 
-    def test_get_context(self, document):
+    def test_get_state(self, document):
         document.open("TestDocument/hello.txt")
-        ctx = document.get_context()
+        ctx = document.get_state()
         assert "activeDocument" in ctx
         assert "openDocuments" in ctx
         assert "sectionCount" in ctx
@@ -37,7 +37,7 @@ class TestDocument:
     def test_close(self, document):
         document.open("TestDocument/hello.txt")
         document.close("TestDocument/hello.txt", force_close=True)
-        ctx = document.get_context()
+        ctx = document.get_state()
         resources = [d["resource"] for d in ctx["openDocuments"]]
         assert "TestDocument/hello.txt" not in resources
 
@@ -49,7 +49,7 @@ class TestDocument:
             ["TestDocument/hello.txt", "TestDocument/new_file.txt"],
             force_close=True,
         )
-        ctx = document.get_context()
+        ctx = document.get_state()
         resources = [d["resource"] for d in ctx["openDocuments"]]
         assert "TestDocument/hello.txt" not in resources
         assert "TestDocument/new_file.txt" not in resources

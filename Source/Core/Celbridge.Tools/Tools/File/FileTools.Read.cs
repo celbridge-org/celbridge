@@ -32,7 +32,7 @@ public partial class FileTools
 
         if (!File.Exists(resourcePath))
         {
-            return ToolError($"File not found: '{resource}'");
+            return ToolError($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
         }
 
         var fileText = await File.ReadAllTextAsync(resourcePath);
