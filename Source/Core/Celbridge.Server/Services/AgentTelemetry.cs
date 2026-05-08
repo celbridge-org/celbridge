@@ -137,6 +137,18 @@ public sealed class AgentTelemetry
     }
 
     /// <summary>
+    /// Drops all per-session state. Called by ServerService.StopAsync when the
+    /// Kestrel instance shuts down on workspace unload, so the SessionId-keyed
+    /// dictionary doesn't accumulate orphaned entries across workspace switches.
+    /// Captured invocation rows are intentionally retained so the agent report
+    /// can aggregate across the whole application session.
+    /// </summary>
+    public void ClearSessions()
+    {
+        _sessionStates.Clear();
+    }
+
+    /// <summary>
     /// Returns true when the connection has either read the orientation guide on
     /// this session or is a proxy connection that bypasses the gate. Bootstrap
     /// tools are allowed unconditionally; callers should check IsBootstrapTool

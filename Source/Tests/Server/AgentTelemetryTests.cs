@@ -156,6 +156,29 @@ public class AgentTelemetryTests
         snapshot[2].ToolName.Should().Be("third");
     }
 
+    // ClearSessions
+
+    [Test]
+    public void ClearSessions_PreservesInvocationLog()
+    {
+        // The agent report aggregates across the whole application session, so
+        // ClearSessions must drop the SessionId-keyed map without touching the
+        // invocation queue.
+        _telemetry.RecordInvocation(BuildRecord("first"));
+        _telemetry.RecordInvocation(BuildRecord("second"));
+
+        _telemetry.ClearSessions();
+
+        _telemetry.Invocations.Should().HaveCount(2);
+    }
+
+    [Test]
+    public void ClearSessions_OnEmptyTelemetryDoesNotThrow()
+    {
+        var act = () => _telemetry.ClearSessions();
+        act.Should().NotThrow();
+    }
+
     private static ToolInvocationRecord BuildRecord(string toolName)
     {
         return new ToolInvocationRecord(

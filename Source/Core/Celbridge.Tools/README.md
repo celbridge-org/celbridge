@@ -33,7 +33,7 @@ Bootstrap tools (`guides_list`, `guides_read`, `guides_search`) bypass the gate.
 
 Proxy connections — those identified by `clientInfo.name == "CelbridgeMcpToolBridge"` — bypass the gate entirely. The Python and JavaScript proxies are scripted callers that don't need orientation. The `ProxyClientName` constant on `AgentTelemetry` is the single source of truth for that name.
 
-Workspace switches restart the Kestrel instance and therefore reset all gate state. Project reloads (no broker restart) do not reset.
+Workspace switches restart the Kestrel instance and `ServerService.StopAsync` calls `AgentTelemetry.ClearSessions` to drop the per-session map, resetting all gate state. Project reloads (no broker restart) do not reset.
 
 ## The privileged role of `agent_instructions`
 
