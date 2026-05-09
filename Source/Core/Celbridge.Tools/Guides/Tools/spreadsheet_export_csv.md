@@ -1,8 +1,3 @@
----
-name: spreadsheet_export_csv
-description: Inline-versus-destination output for spreadsheet_export_csv and the RFC 4180 dialect it produces.
----
-
 # spreadsheet_export_csv
 
 Exports a sheet (or a sub-range of one) as RFC 4180 CSV text:

@@ -1,8 +1,3 @@
----
-name: webview_documents
-description: The .webview file format and how to embed an external URL inside Celbridge.
----
-
 # `.webview` documents
 
 A `.webview` file is a JSON file with a single `sourceUrl` property that specifies an external web page to display in an embedded browser panel.

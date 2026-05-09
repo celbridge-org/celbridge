@@ -1,8 +1,3 @@
----
-name: spreadsheet_move_sheet
-description: Moves a worksheet to a 1-based tab position; valid range is [1, sheetCount].
----
-
 # spreadsheet_move_sheet
 
 Moves an existing worksheet to a new tab position. Use this to reorder a workbook after `spreadsheet_add_sheets` (which always appends) or `spreadsheet_duplicate_sheet`.

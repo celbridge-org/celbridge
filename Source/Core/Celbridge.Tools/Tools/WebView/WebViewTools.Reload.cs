@@ -12,12 +12,10 @@ public partial class WebViewTools
     [ToolAlias("webview.reload")]
     public async partial Task<CallToolResult> Reload(string resource, bool clearCache = true)
     {
-        const string ToolGuide = "webview_reload";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -31,7 +29,7 @@ public partial class WebViewTools
         var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache);
         if (reloadResult.IsFailure)
         {
-            return ToolResponse.Error(reloadResult, ToolGuide);
+            return ToolResponse.Error(reloadResult);
         }
 
         return ToolResponse.Success("ok");

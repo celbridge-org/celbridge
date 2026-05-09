@@ -1,8 +1,3 @@
----
-name: spreadsheet_insert
-description: Original-coordinate semantics, batch behaviour, and shift direction for spreadsheet_insert.
----
-
 # spreadsheet_insert
 
 Inserts empty rows or columns into one or more sheets in a single open/save cycle. Cell ranges (e.g. `A1:C3`) are not accepted — Excel's "shift cells down/right" is intentionally not exposed.

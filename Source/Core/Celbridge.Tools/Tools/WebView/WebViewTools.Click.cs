@@ -12,12 +12,10 @@ public partial class WebViewTools
     [ToolAlias("webview.click")]
     public async partial Task<CallToolResult> Click(string resource, string selector)
     {
-        const string ToolGuide = "webview_click";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -27,7 +25,7 @@ public partial class WebViewTools
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolResponse.Error("webview_click requires a non-empty selector.", ToolGuide);
+            return ToolResponse.Error("webview_click requires a non-empty selector.");
         }
 
         Logger.LogInformation("webview_click resource={Resource} selector={Selector}", resourceKey, selector);
@@ -37,7 +35,7 @@ public partial class WebViewTools
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)
         {
-            return ToolResponse.Error(clickResult, ToolGuide);
+            return ToolResponse.Error(clickResult);
         }
 
         return ToolResponse.Success(clickResult.Value);

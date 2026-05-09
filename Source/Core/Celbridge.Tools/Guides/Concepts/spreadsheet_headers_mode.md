@@ -1,8 +1,3 @@
----
-name: spreadsheet_headers_mode
-description: How the headers mode on spreadsheet_read_sheet returns rows keyed by header name, and the rules for collisions and blanks.
----
-
 # Spreadsheet headers mode
 
 Set `headers: true` on `spreadsheet_read_sheet` to treat the first row in the requested range as column names. Each subsequent row is returned as an object keyed by header.

@@ -1,8 +1,3 @@
----
-name: file_get_info
-description: Lightweight metadata probe — type, size, line count, and text/binary classification — for a single resource.
----
-
 # file_get_info
 
 Returns metadata for a file or folder without reading its content. Useful before reading large files (check `size` and `lineCount` to decide whether to page via `file_read`'s `offset` and `limit`) or to confirm a resource exists at the expected key.

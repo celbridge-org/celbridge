@@ -1,8 +1,3 @@
----
-name: app_log_warning
-description: Write a warning to the application log; for unexpected-but-recoverable situations.
----
-
 # app_log_warning
 
 Writes a warning message to the running Celbridge application log at `Warning` level.

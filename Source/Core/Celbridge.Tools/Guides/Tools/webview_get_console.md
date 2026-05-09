@@ -1,8 +1,3 @@
----
-name: webview_get_console
-description: Returns captured console.* messages, uncaught errors, and unhandled promise rejections for an open WebView document.
----
-
 # webview_get_console
 
 Reads the WebView's accumulated console buffer. Each entry is a `console.log`/`info`/`warn`/`error` call, an uncaught exception, or an unhandled promise rejection. The buffer survives reloads, so errors logged before a `webview_reload` remain visible afterwards.

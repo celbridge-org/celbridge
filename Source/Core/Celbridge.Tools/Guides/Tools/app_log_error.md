@@ -1,8 +1,3 @@
----
-name: app_log_error
-description: Write an error to the application log; for failed operations the agent could not recover from.
----
-
 # app_log_error
 
 Writes an error message to the running Celbridge application log at `Error` level.

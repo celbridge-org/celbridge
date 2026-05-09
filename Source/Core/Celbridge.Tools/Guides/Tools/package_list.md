@@ -1,8 +1,3 @@
----
-name: package_list
-description: List packages available on the remote package registry.
----
-
 # package_list
 
 Returns the packages currently published to the remote package registry. Use this to discover what is available before calling `package_install`, or to check whether a package you intend to publish would collide with an existing entry.

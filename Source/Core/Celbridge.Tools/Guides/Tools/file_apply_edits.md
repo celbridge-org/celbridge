@@ -1,8 +1,3 @@
----
-name: file_apply_edits
-description: Edit shape, line/column conventions, and the post-edit verification payload for file_apply_edits.
----
-
 # file_apply_edits
 
 Applies a batch of targeted text edits at 1-based line and column positions and writes the result to disk. The default tool when you already know the line numbers (typically after a `file_grep` or `file_read`) and want surgical changes rather than a full-file rewrite.

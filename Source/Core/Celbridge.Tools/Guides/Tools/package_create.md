@@ -1,8 +1,3 @@
----
-name: package_create
-description: Scaffold a new package folder under packages/ with a stub package.toml manifest.
----
-
 # package_create
 
 Creates a new package in the project's `packages/` folder. The resulting folder is `packages/{packageName}/` and contains a stub `package.toml` with `[package]` (id, name, version) and an empty `[contributes]` section. Use this as the first step when authoring a new package; from there add editor manifests, web content, or other files before publishing.

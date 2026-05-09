@@ -11,12 +11,10 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.get_active_view")]
     public partial CallToolResult GetActiveView(string resource)
     {
-        const string ToolGuide = "spreadsheet_get_active_view";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
@@ -24,7 +22,7 @@ public partial class SpreadsheetTools
         var viewResult = reader.GetActiveView(workbookPath);
         if (viewResult.IsFailure)
         {
-            return ToolResponse.Error(viewResult, ToolGuide);
+            return ToolResponse.Error(viewResult);
         }
 
         var viewValue = viewResult.Value;

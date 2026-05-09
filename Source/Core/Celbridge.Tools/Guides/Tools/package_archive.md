@@ -1,8 +1,3 @@
----
-name: package_archive
-description: Zip a file or folder under the project content root into a new zip resource.
----
-
 # package_archive
 
 Creates a zip archive from a file or folder inside the project. When archiving a folder, the archive contains the folder's *contents* at the root, not the folder itself — extracting it back over an empty folder reproduces the original layout.

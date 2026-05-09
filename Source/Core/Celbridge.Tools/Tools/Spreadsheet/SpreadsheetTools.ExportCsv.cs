@@ -20,18 +20,16 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.export_csv")]
     public async partial Task<CallToolResult> ExportCsv(string resource, string sheet, string range = "", string destination = "")
     {
-        const string ToolGuide = "spreadsheet_export_csv";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
@@ -40,7 +38,7 @@ public partial class SpreadsheetTools
         var csvResult = reader.ExportCsv(workbookPath, sheet, rangeArgument);
         if (csvResult.IsFailure)
         {
-            return ToolResponse.Error(csvResult, ToolGuide);
+            return ToolResponse.Error(csvResult);
         }
         var csv = csvResult.Value;
 
@@ -61,7 +59,7 @@ public partial class SpreadsheetTools
         });
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult, ToolGuide);
+            return ToolResponse.Error(writeResult);
         }
 
         var byteCount = Encoding.UTF8.GetByteCount(csv.Csv);

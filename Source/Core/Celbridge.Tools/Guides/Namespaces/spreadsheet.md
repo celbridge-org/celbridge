@@ -1,8 +1,3 @@
----
-name: spreadsheet
-description: Workbook tools for .xlsx files — read and write cells, manage sheets, apply formatting and views. Even reads need A1 notation and a cell-typing decision before you trust the result.
----
-
 # spreadsheet
 
 The `spreadsheet` namespace operates on `.xlsx` workbooks: reading and writing cells, adding and removing sheets, sorting and filtering, formatting, and capturing or restoring the active view. Spreadsheet operations are non-trivial: the cell-typing model, A1 notation, and headers-mode flag interact, and a misuse of any of them will silently produce wrong results — including on read-only operations. Read the relevant concept guides before you call.

@@ -24,7 +24,7 @@ public class AgentReportBuilderTests
     [TestCase("app_get_state", ExpectedResult = "app")]
     [TestCase("file_grep", ExpectedResult = "file")]
     [TestCase("spreadsheet_read_sheet", ExpectedResult = "spreadsheet")]
-    [TestCase("guides_list", ExpectedResult = "guides")]
+    [TestCase("guides_read", ExpectedResult = "guides")]
     public string ExtractNamespace_SplitsOnFirstUnderscore(string toolName)
     {
         return AgentReportBuilder.ExtractNamespace(toolName);

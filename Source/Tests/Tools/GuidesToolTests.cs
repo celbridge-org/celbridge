@@ -7,9 +7,9 @@ namespace Celbridge.Tests.Tools;
 
 /// <summary>
 /// Tests for the GuidesTools MCP tool methods. Also exercises the embedded
-/// guide library loader: missing frontmatter, name collisions, per-tool
-/// guides whose name doesn't match a registered tool, and registered tools
-/// that lack a per-tool guide all surface here rather than on first agent call.
+/// guide library loader: per-tool guides whose name doesn't match a registered
+/// tool, and registered tools that lack a per-tool guide all surface here
+/// rather than on first agent call.
 /// </summary>
 [TestFixture]
 public class GuidesToolTests
@@ -49,49 +49,6 @@ public class GuidesToolTests
     public void SetUp()
     {
         _services = new TestServiceProvider();
-    }
-
-    [Test]
-    public void List_ReturnsConceptGuidesBeforeToolGuides()
-    {
-        var tools = new GuidesTools(_services);
-        var json = GetResultText(tools.List());
-        var root = JsonDocument.Parse(json).RootElement;
-        var guides = root.GetProperty("guides");
-
-        guides.GetArrayLength().Should().BeGreaterThan(0);
-
-        var lastConceptIndex = -1;
-        var firstToolIndex = int.MaxValue;
-        for (int index = 0; index < guides.GetArrayLength(); index++)
-        {
-            var kind = guides[index].GetProperty("kind").GetString();
-            if (kind == "concept")
-            {
-                lastConceptIndex = index;
-            }
-            else if (kind == "tool" && firstToolIndex == int.MaxValue)
-            {
-                firstToolIndex = index;
-            }
-        }
-
-        if (firstToolIndex != int.MaxValue)
-        {
-            lastConceptIndex.Should().BeLessThan(firstToolIndex);
-        }
-    }
-
-    [Test]
-    public void List_StartsWithAgentInstructions()
-    {
-        var tools = new GuidesTools(_services);
-        var json = GetResultText(tools.List());
-        var root = JsonDocument.Parse(json).RootElement;
-        var firstEntry = root.GetProperty("guides")[0];
-
-        firstEntry.GetProperty("name").GetString().Should().Be("agent_instructions");
-        firstEntry.GetProperty("kind").GetString().Should().Be("concept");
     }
 
     [Test]
@@ -139,44 +96,6 @@ public class GuidesToolTests
         entry.GetProperty("kind").GetString().Should().Be("tool");
         entry.GetProperty("pythonInvocation").GetString().Should().StartWith("cel.file.grep(");
         entry.GetProperty("javaScriptInvocation").GetString().Should().StartWith("cel.file.grep(");
-    }
-
-    [Test]
-    public void Search_FindsResourceKeysGuide()
-    {
-        var tools = new GuidesTools(_services);
-        var json = GetResultText(tools.Search("resource keys", 10));
-        var root = JsonDocument.Parse(json).RootElement;
-        var matches = root.GetProperty("matches");
-
-        var matchNames = new List<string>();
-        for (int index = 0; index < matches.GetArrayLength(); index++)
-        {
-            matchNames.Add(matches[index].GetProperty("name").GetString()!);
-        }
-        matchNames.Should().Contain("resource_keys");
-        root.GetProperty("totalMatches").GetInt32().Should().BeGreaterThan(0);
-    }
-
-    [Test]
-    public void Search_ReturnsErrorOnInvalidRegex()
-    {
-        var tools = new GuidesTools(_services);
-        var json = GetResultText(tools.Search("[unclosed", 10));
-        var root = JsonDocument.Parse(json).RootElement;
-
-        root.GetProperty("matches").GetArrayLength().Should().Be(0);
-        root.GetProperty("error").GetString().Should().NotBeNullOrEmpty();
-    }
-
-    [Test]
-    public void Search_ClampsLimitAboveMax()
-    {
-        var tools = new GuidesTools(_services);
-        var json = GetResultText(tools.Search("a", 500));
-        var root = JsonDocument.Parse(json).RootElement;
-
-        root.GetProperty("matches").GetArrayLength().Should().BeLessThanOrEqualTo(25);
     }
 
     private static string GetResultText(CallToolResult result)

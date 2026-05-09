@@ -5,13 +5,11 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>READ GUIDE FIRST. Remove a resource from the project (file or folder); undoable via explorer_undo.</summary>
+    /// <summary>Remove a resource from the project (file or folder); undoable via explorer_undo.</summary>
     [McpServerTool(Name = "explorer_delete", Destructive = true)]
     [ToolAlias("explorer.delete")]
     public async partial Task<CallToolResult> Delete(string resource, bool showDialog = false)
     {
-        const string ToolGuide = "explorer_delete";
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -25,7 +23,7 @@ public partial class ExplorerTools
             });
             if (dialogResult.IsFailure)
             {
-                return ToolResponse.Error(dialogResult, ToolGuide);
+                return ToolResponse.Error(dialogResult);
             }
 
             return ToolResponse.Success("ok");
@@ -37,7 +35,7 @@ public partial class ExplorerTools
         });
         if (deleteResult.IsFailure)
         {
-            return ToolResponse.Error(deleteResult, ToolGuide);
+            return ToolResponse.Error(deleteResult);
         }
 
         return ToolResponse.Success("ok");

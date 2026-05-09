@@ -1,8 +1,3 @@
----
-name: silent_vs_interactive
-description: Which tools run silently vs. surfacing a confirmation dialog, and how to control that explicitly.
----
-
 # Silent vs. interactive tools
 
 Most tools run silently — they execute, return a result, and leave no UI trace beyond the state change itself. A small number of tools surface a confirmation dialog or notification to the user.

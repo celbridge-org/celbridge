@@ -21,8 +21,6 @@ public partial class PackageTools
         string exclude = "",
         bool overwrite = false)
     {
-        const string ToolGuide = "package_archive";
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -44,7 +42,7 @@ public partial class PackageTools
 
         if (archiveResultWrapper.IsFailure)
         {
-            return ToolResponse.Error(archiveResultWrapper, ToolGuide);
+            return ToolResponse.Error(archiveResultWrapper);
         }
 
         var archiveResult = archiveResultWrapper.Value;

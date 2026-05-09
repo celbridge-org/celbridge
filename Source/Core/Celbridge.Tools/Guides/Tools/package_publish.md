@@ -1,8 +1,3 @@
----
-name: package_publish
-description: Validate a packages/{packageName}/ folder and upload it to the remote package registry.
----
-
 # package_publish
 
 Zips the contents of `packages/{packageName}/` and uploads the result to the remote package registry as `{packageName}.zip`. Validates the package layout and manifest before uploading; an existing entry with the same name on the registry is overwritten by the upload.

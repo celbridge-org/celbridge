@@ -1,8 +1,3 @@
----
-name: file_read
-description: Read text file contents, optionally a line range with line-number prefixes, returning content plus total line count.
----
-
 # file_read
 
 Reads the text content of a file and returns it along with the file's total line count. The default reads the whole file; pass `offset` and `limit` to page large files. For multiple files in one call, use `file_read_many`.

@@ -1,8 +1,3 @@
----
-name: packages_overview
-description: How packages extend Celbridge with custom editors and other contributions; manifest layout and registry workflow.
----
-
 # Packages
 
 Packages extend Celbridge with custom document editors and other contributions. Each package lives in its own kebab-case subfolder under `packages/` at the project root (e.g. `packages/my-widget`). Packages run inside a WebView2 control and communicate with the host via JSON-RPC. They can contain any kind of content; web content (HTML, JavaScript, CSS) is typical.

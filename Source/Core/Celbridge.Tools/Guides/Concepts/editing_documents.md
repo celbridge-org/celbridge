@@ -1,8 +1,3 @@
----
-name: editing_documents
-description: How to make text edits — when to use file_apply_edits vs. file_write vs. find/replace, and how the editor reflects each.
----
-
 # Editing documents
 
 Celbridge offers several ways to change a file's content. Choose based on the shape of the change.

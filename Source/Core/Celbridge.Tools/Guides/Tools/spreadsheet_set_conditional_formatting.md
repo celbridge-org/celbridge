@@ -1,8 +1,3 @@
----
-name: spreadsheet_set_conditional_formatting
-description: Rule type catalog and formatting fields for spreadsheet_set_conditional_formatting, including color-scale stop thresholds.
----
-
 # spreadsheet_set_conditional_formatting
 
 Conditional formatting drives cell appearance based on cell values or a formula, so highlights stay correct as data changes (vs. `spreadsheet_format_ranges`, which sets static styles).

@@ -15,19 +15,16 @@ public record class PackageCreateResult(string PackageName, string Resource, str
 
 public partial class PackageTools
 {
-    /// <summary>READ GUIDE FIRST. Create a new package skeleton at packages/{packageName}/ with stub manifest.</summary>
+    /// <summary>Create a new package skeleton at packages/{packageName}/ with stub manifest.</summary>
     [McpServerTool(Name = "package_create", Destructive = true)]
     [ToolAlias("package.create")]
     public partial CallToolResult Create(string packageName)
     {
-        const string ToolGuide = "package_create";
-
         if (!IsValidPackageName(packageName))
         {
             return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
-                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.",
-                ToolGuide);
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -39,13 +36,13 @@ public partial class PackageTools
         {
             var failure = Result.Fail("Failed to resolve path for package")
                 .WithErrors(resolveResult);
-            return ToolResponse.Error(failure, ToolGuide);
+            return ToolResponse.Error(failure);
         }
         var packageFolderPath = resolveResult.Value;
 
         if (Directory.Exists(packageFolderPath))
         {
-            return ToolResponse.Error($"Package already exists: 'packages/{packageName}'", ToolGuide);
+            return ToolResponse.Error($"Package already exists: 'packages/{packageName}'");
         }
 
         try
@@ -65,7 +62,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolResponse.Error($"Failed to create package: {exception.Message}", ToolGuide);
+            return ToolResponse.Error($"Failed to create package: {exception.Message}");
         }
 
         var result = new PackageCreateResult(

@@ -1,8 +1,3 @@
----
-name: explorer_rename
-description: Open the rename dialog for a resource; renaming through this tool is always interactive.
----
-
 # explorer_rename
 
 Shows the rename dialog for a file or folder. The dialog opens preseeded with the current name and the user types the new name. Use `explorer_move` when you need to rename silently to a known new name without surfacing UI.

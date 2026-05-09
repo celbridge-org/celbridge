@@ -1,8 +1,3 @@
----
-name: spreadsheet_set_active_view
-description: Selection vs. active-cell vs. scroll-anchor semantics for spreadsheet_set_active_view, plus how it round-trips with spreadsheet_get_active_view.
----
-
 # spreadsheet_set_active_view
 
 Sets the persisted view state of a workbook so a user opening the file lands on a chosen sheet, selection, active cell, and scroll position. The named `sheet` is always made active.

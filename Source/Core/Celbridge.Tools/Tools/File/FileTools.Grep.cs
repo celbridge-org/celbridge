@@ -49,8 +49,6 @@ public partial class FileTools
     [ToolAlias("file.grep")]
     public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", string exclude = "", string resource = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false)
     {
-        const string ToolGuide = "file_grep";
-
         if (useRegex)
         {
             try
@@ -59,7 +57,7 @@ public partial class FileTools
             }
             catch (ArgumentException ex)
             {
-                return ToolResponse.Error($"Invalid regular expression: {ex.Message}", ToolGuide);
+                return ToolResponse.Error($"Invalid regular expression: {ex.Message}");
             }
         }
 
@@ -202,8 +200,6 @@ public partial class FileTools
 
     private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceRegistry resourceRegistry)
     {
-        const string ToolGuide = "file_grep";
-
         List<string>? fileKeyStrings;
         try
         {
@@ -211,12 +207,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolResponse.Error($"Invalid JSON array for files: {ex.Message}", ToolGuide);
+            return ToolResponse.Error($"Invalid JSON array for files: {ex.Message}");
         }
 
         if (fileKeyStrings is null || fileKeyStrings.Count == 0)
         {
-            return ToolResponse.Error("No resource keys provided in files parameter.", ToolGuide);
+            return ToolResponse.Error("No resource keys provided in files parameter.");
         }
 
         var searchPattern = useRegex ? searchTerm : Regex.Escape(searchTerm);

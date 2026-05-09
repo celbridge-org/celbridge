@@ -12,18 +12,16 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.import_csv")]
     public async partial Task<CallToolResult> ImportCsv(string resource, string importsJson)
     {
-        const string ToolGuide = "spreadsheet_import_csv";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         var parseResult = ParseCsvImports(importsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult, ToolGuide);
+            return ToolResponse.Error(parseResult);
         }
         var imports = parseResult.Value;
 
@@ -35,7 +33,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

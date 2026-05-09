@@ -110,11 +110,6 @@ public sealed class AgentMonitor
         return state;
     }
 
-    public bool IsBootstrapTool(string toolName)
-    {
-        return BootstrapTools.Contains(toolName);
-    }
-
     /// <summary>
     /// Drops all per-session state. Captured invocation rows are retained so
     /// the agent report can aggregate across the whole application session.
@@ -166,12 +161,9 @@ public sealed class AgentMonitor
         var clientName = clientInfo?.Name ?? "";
         var clientVersion = clientInfo?.Version ?? "";
 
-        // Cache-miss is only meaningful for non-bootstrap, non-proxy invocations:
-        // bootstrap tools have no associated guide, and proxy callers are not
-        // expected to read guides before invoking.
-        var isBootstrap = IsBootstrapTool(toolName);
-        var cacheMiss = !isBootstrap
-            && !session.IsProxyClient
+        // Cache-miss is only meaningful for non-proxy invocations: proxy
+        // callers are not expected to read guides before invoking.
+        var cacheMiss = !session.IsProxyClient
             && !WasGuideReadInSession(session, toolName);
 
         var record = new ToolInvocationRecord(

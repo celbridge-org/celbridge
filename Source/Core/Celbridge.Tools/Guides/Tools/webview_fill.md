@@ -1,8 +1,3 @@
----
-name: webview_fill
-description: Sets the value of an input, textarea, select, or contenteditable matched by a CSS selector and fires bubbling input/change events.
----
-
 # webview_fill
 
 Sets the value of a form control (or `contenteditable` element) inside an open WebView document and dispatches the bubbling `input` and `change` events that frameworks listen for. The native `HTMLInputElement` / `HTMLTextAreaElement` / `HTMLSelectElement` setter is used, so React's synthetic event system, Lit, Vue, and Svelte all observe the change.

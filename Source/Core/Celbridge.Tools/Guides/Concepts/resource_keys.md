@@ -1,9 +1,3 @@
----
-name: resource_keys
-description: How resource keys identify files and folders in a project, and the rules for forming them.
-priority: 5
----
-
 # Resource keys
 
 All file and folder references in Celbridge tools use **resource keys**: forward-slash paths relative to the project content root.

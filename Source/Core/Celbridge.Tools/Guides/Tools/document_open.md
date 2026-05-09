@@ -1,8 +1,3 @@
----
-name: document_open
-description: Open a document in the editor, optionally targeting a specific section and activating it.
----
-
 # document_open
 
 Opens a document in the editor. By default the document is opened in the background — the user's current active tab is preserved. Pass `activate: true` (or follow up with `document_activate`) when you want to bring it to the foreground.

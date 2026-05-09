@@ -17,8 +17,6 @@ public partial class DocumentTools
     [ToolAlias("document.close")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
-        const string ToolGuide = "document_close";
-
         var resourceKeyStrings = ParseResourceKeys(fileResource);
 
         var validatedKeys = new List<ResourceKey>();
@@ -57,7 +55,7 @@ public partial class DocumentTools
 
         if (errors.Count > 0)
         {
-            return ToolResponse.Error(json, ToolGuide);
+            return ToolResponse.Error(json);
         }
 
         return ToolResponse.Success(json);

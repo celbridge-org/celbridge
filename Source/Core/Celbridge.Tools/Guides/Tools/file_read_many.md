@@ -1,8 +1,3 @@
----
-name: file_read_many
-description: Batch-read several text files in one call; per-file errors do not fail the whole request.
----
-
 # file_read_many
 
 Reads multiple text files in a single call. Each file is read independently, so a missing file or invalid resource key produces a per-entry error rather than failing the entire request. Useful after `file_grep` or `file_search` returns a candidate set you want to inspect together.

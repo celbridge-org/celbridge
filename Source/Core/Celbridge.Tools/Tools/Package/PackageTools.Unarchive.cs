@@ -19,8 +19,6 @@ public partial class PackageTools
         string destination,
         bool overwrite = false)
     {
-        const string ToolGuide = "package_unarchive";
-
         if (!ResourceKey.TryCreate(archive, out var archiveKey))
         {
             return ToolResponse.InvalidResourceKey(archive);
@@ -40,7 +38,7 @@ public partial class PackageTools
 
         if (unarchiveResultWrapper.IsFailure)
         {
-            return ToolResponse.Error(unarchiveResultWrapper, ToolGuide);
+            return ToolResponse.Error(unarchiveResultWrapper);
         }
 
         var unarchiveResult = unarchiveResultWrapper.Value;

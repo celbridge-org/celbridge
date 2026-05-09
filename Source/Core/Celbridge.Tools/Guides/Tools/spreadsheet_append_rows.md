@@ -1,8 +1,3 @@
----
-name: spreadsheet_append_rows
-description: Appends row arrays after a sheet's used range, with the rowsJson shape, formula-vs-text rule, and the returned 1-based row numbers.
----
-
 # spreadsheet_append_rows
 
 Appends rows to the end of a worksheet's used range in a single open/save cycle. The sheet must already exist; create it first with `spreadsheet_add_sheets` if needed. An empty sheet receives the rows starting at A1.

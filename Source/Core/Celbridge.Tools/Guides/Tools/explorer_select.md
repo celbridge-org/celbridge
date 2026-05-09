@@ -1,8 +1,3 @@
----
-name: explorer_select
-description: Select a resource in the explorer panel and (by default) bring the panel into view.
----
-
 # explorer_select
 
 Selects a resource in the explorer tree. Ancestor folders are expanded as needed so the selection is visible. Use this to direct the user's attention to a specific file or folder after performing work on it.

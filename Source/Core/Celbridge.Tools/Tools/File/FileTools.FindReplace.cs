@@ -23,8 +23,6 @@ public partial class FileTools
         int fromLine = 0,
         int toLine = 0)
     {
-        const string ToolGuide = "file_find_replace";
-
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
             return ToolResponse.InvalidResourceKey(fileResource);
@@ -43,7 +41,7 @@ public partial class FileTools
 
         if (findReplaceResult.IsFailure)
         {
-            return ToolResponse.Error(findReplaceResult, ToolGuide);
+            return ToolResponse.Error(findReplaceResult);
         }
 
         var replacementCount = findReplaceResult.Value;

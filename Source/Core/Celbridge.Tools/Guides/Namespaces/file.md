@@ -1,8 +1,3 @@
----
-name: file
-description: File-content tools — read, write, search, edit, and inspect files in the project tree. Read this before any non-trivial file edit.
----
-
 # file
 
 The `file` namespace operates on the contents of files in the project tree: reading, writing, searching, and applying targeted edits. The `explorer` namespace manages a file's existence, location, and name; `file` manages what's inside. Most edits write straight to disk and are visible immediately to the user — read `file_changes` before you edit.

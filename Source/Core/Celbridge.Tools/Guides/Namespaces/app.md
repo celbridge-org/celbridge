@@ -1,8 +1,3 @@
----
-name: app
-description: Application-level state, logging, and notification tools — the namespace you call first on a fresh session and use to surface messages to the user.
----
-
 # app
 
 The `app` namespace covers application-level concerns that aren't tied to a specific resource: querying workspace state, logging to the console panel, refreshing the file system view, and showing modal alerts. Most workspace tools require a loaded project, so `app_get_state` is typically the first call on a fresh session.

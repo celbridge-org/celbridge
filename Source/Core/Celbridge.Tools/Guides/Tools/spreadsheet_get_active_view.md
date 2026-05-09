@@ -1,8 +1,3 @@
----
-name: spreadsheet_get_active_view
-description: Reads the persisted view state (active sheet, selection, active cell, scroll anchor) of a workbook and round-trips with spreadsheet_set_active_view.
----
-
 # spreadsheet_get_active_view
 
 Reads the workbook's persisted view state: the active sheet, the selection on that sheet, the active cell within the selection, and the scroll anchor. Use this to discover what a user is currently looking at, or to capture a view before mutating it.

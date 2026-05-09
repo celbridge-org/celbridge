@@ -12,18 +12,16 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.delete")]
     public async partial Task<CallToolResult> Delete(string resource, string operationsJson)
     {
-        const string ToolGuide = "spreadsheet_delete";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         var parseResult = ParseDeleteOperations(operationsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult, ToolGuide);
+            return ToolResponse.Error(parseResult);
         }
         var operations = parseResult.Value;
 
@@ -35,7 +33,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

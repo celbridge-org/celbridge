@@ -1,8 +1,3 @@
----
-name: app_get_state
-description: Application-level state — project load status, feature flag map, focused panel, layout visibility — usually the first call on a fresh session.
----
-
 # app_get_state
 
 Returns application-level state as a JSON object. Most workspace tools require a loaded project, so calling this first lets the agent confirm the session is ready and pick up the information needed to follow the user's attention.

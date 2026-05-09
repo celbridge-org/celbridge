@@ -1,8 +1,3 @@
----
-name: command_conventions
-description: How tool calls execute (sequentially, awaited to completion) and what state guarantees agents can rely on.
----
-
 # Command conventions
 
 All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns.

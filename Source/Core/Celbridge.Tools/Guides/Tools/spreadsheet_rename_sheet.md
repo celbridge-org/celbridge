@@ -1,8 +1,3 @@
----
-name: spreadsheet_rename_sheet
-description: Renames a worksheet in place; the new name must be unique within the workbook.
----
-
 # spreadsheet_rename_sheet
 
 Renames an existing worksheet. References elsewhere in the workbook (formulas, named ranges, conditional formatting) are updated by the spreadsheet engine to point at the new name, so a rename is non-destructive for valid references.

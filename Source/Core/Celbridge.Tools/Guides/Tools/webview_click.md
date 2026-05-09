@@ -1,8 +1,3 @@
----
-name: webview_click
-description: Dispatches a synthetic mousedown/mouseup/click sequence on the first element matching a CSS selector inside a WebView document.
----
-
 # webview_click
 
 Drives a click against an open contribution editor or HTML viewer by selector. The first match receives a `mousedown`, `mouseup`, and `click` sequence with bubbling enabled, so React, Lit, Vue, and Svelte handlers all observe the click.

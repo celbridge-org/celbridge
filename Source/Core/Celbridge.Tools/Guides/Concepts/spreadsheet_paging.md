@@ -1,8 +1,3 @@
----
-name: spreadsheet_paging
-description: How offset and limit page through large sheets in spreadsheet_read_sheet, and how to detect truncation.
----
-
 # Spreadsheet paging
 
 `spreadsheet_read_sheet` defaults to a row limit of 1000. `offset` and `limit` page through large sheets the same way `file_read` does.

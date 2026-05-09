@@ -14,18 +14,16 @@ public partial class SpreadsheetTools
         string sheet,
         string range = "")
     {
-        const string ToolGuide = "spreadsheet_read_format";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
@@ -34,7 +32,7 @@ public partial class SpreadsheetTools
         var readResult = reader.ReadFormat(workbookPath, sheet, rangeArgument);
         if (readResult.IsFailure)
         {
-            return ToolResponse.Error(readResult, ToolGuide);
+            return ToolResponse.Error(readResult);
         }
 
         var readValue = readResult.Value;

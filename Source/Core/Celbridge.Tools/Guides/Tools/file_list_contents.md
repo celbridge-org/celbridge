@@ -1,8 +1,3 @@
----
-name: file_list_contents
-description: Single-level folder listing with optional name-glob filtering.
----
-
 # file_list_contents
 
 Lists the immediate children of a folder. For a recursive view, use `file_get_tree`; for project-wide name searches, use `file_search`.

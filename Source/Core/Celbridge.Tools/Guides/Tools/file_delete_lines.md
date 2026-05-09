@@ -1,8 +1,3 @@
----
-name: file_delete_lines
-description: Inclusive line-range deletion with verification context, and why this is preferred over apply_edits for whole-line removal.
----
-
 # file_delete_lines
 
 Removes one or more whole lines from a file, including their line terminators. Use this rather than `file_apply_edits` with empty `newText` when you want clean line removal — `apply_edits` over a full-line range leaves a residual blank line because the trailing terminator is still present.

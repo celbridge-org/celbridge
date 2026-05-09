@@ -1,8 +1,3 @@
----
-name: explorer_delete
-description: Delete a file or folder from the project, optionally surfacing a confirmation dialog first.
----
-
 # explorer_delete
 
 Deletes a resource from the project tree. Folder deletes are recursive — every file and subfolder underneath is removed. The delete is recorded on the explorer undo stack and can be reversed with `explorer_undo`, but undo only restores resources that the application itself deleted, so do not rely on it as a substitute for source control.

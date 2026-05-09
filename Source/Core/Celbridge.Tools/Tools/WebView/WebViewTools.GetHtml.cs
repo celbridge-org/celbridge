@@ -12,12 +12,10 @@ public partial class WebViewTools
     [ToolAlias("webview.get_html")]
     public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8)
     {
-        const string ToolGuide = "webview_get_html";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -39,7 +37,7 @@ public partial class WebViewTools
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);
         if (htmlResult.IsFailure)
         {
-            return ToolResponse.Error(htmlResult, ToolGuide);
+            return ToolResponse.Error(htmlResult);
         }
 
         return ToolResponse.Success(htmlResult.Value);

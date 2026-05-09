@@ -1,8 +1,3 @@
----
-name: webview_reload
-description: Reloads the WebView for an open document; page state is discarded and edited package sub-resources are refetched.
----
-
 # webview_reload
 
 Reloads the WebView associated with an open document so package code reinitialises against the latest files on disk. Call this after editing HTML, CSS, or JavaScript in a contribution package to see the changes.

@@ -1,8 +1,3 @@
----
-name: document
-description: Document editor tools — open, close, activate tabs, and snapshot the editor state. Read this before reasoning about "the open file" or directing the user's attention.
----
-
 # document
 
 The `document` namespace controls the documents panel: which files are open as tabs, which is active, and how the editor sections are split. It pairs with the `file` namespace, which operates on file contents directly. Use `document` when the user is talking about an editor tab; use `file` when they're talking about the file on disk.

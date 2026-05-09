@@ -1,8 +1,3 @@
----
-name: spreadsheet_remove_sheet
-description: Removes a worksheet from a workbook; fails when the workbook has only one sheet.
----
-
 # spreadsheet_remove_sheet
 
 Removes a worksheet from a workbook. The deletion is destructive — every cell, formula, formatting, and per-sheet view state on that sheet is lost.

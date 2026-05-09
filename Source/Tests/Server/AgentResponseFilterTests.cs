@@ -113,21 +113,6 @@ public class AgentResponseFilterTests
         session.WasGuideRead("file_read").Should().BeFalse();
     }
 
-    // Bootstrap tools
-
-    [Test]
-    public void ApplyAutoAttach_BootstrapTool_ReturnsBareResult()
-    {
-        var session = new AgentSessionState("session-1");
-        var result = BuildSuccess("guides_read result");
-
-        var attached = _filter.ApplyAutoAttach(result, session, "guides_read");
-
-        attached.Content.Should().HaveCount(1);
-        TextAt(attached.Content!, 0).Should().Be("guides_read result");
-        session.WasGuideRead("agent_instructions").Should().BeFalse();
-    }
-
     // Errors
 
     [Test]
@@ -357,15 +342,11 @@ public class AgentResponseFilterTests
 
     /// <summary>
     /// Minimal IGuides used for filter tests. Returns a GuideEntry with the
-    /// canned body for known names and null for unknown names; the other
-    /// IGuides members throw because the filter does not exercise them.
+    /// canned body for known names and null for unknown names.
     /// </summary>
     private sealed class FakeGuides : IGuides
     {
         public Dictionary<string, string> Bodies { get; } = new(StringComparer.Ordinal);
-
-        public IReadOnlyList<GuideEntry> Index =>
-            throw new NotSupportedException("Index is not exercised by the response filter.");
 
         public GuideEntry? GetByName(string name)
         {
@@ -374,22 +355,11 @@ public class AgentResponseFilterTests
                 return new GuideEntry(
                     Name: name,
                     Kind: GuideKind.Tool,
-                    Description: "",
-                    Priority: 0,
                     Body: body,
                     PythonInvocation: null,
                     JavaScriptInvocation: null);
             }
             return null;
         }
-
-        public (string PythonInvocation, string JavaScriptInvocation)? GetToolInvocations(string toolAliasName) =>
-            throw new NotSupportedException("GetToolInvocations is not exercised by the response filter.");
-
-        public bool IsKnownToolAliasName(string toolAliasName) =>
-            throw new NotSupportedException("IsKnownToolAliasName is not exercised by the response filter.");
-
-        public IReadOnlyList<GuideSearchMatch> Search(string pattern, out string? errorMessage) =>
-            throw new NotSupportedException("Search is not exercised by the response filter.");
     }
 }

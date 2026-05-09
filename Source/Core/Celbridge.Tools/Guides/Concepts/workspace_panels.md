@@ -1,9 +1,3 @@
----
-name: workspace_panels
-description: The panels that make up the Celbridge workspace and how to resolve ambiguous user references against them.
-priority: 10
----
-
 # Workspace panels
 
 A loaded project shows several panels around a central editor area:

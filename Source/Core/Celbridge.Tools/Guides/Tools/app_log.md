@@ -1,8 +1,3 @@
----
-name: app_log
-description: Write an informational message to the application log; for routine progress or context, not for problems.
----
-
 # app_log
 
 Writes an informational message to the running Celbridge application log at `Information` level. The message lands in the same log stream the application uses for its own diagnostics.

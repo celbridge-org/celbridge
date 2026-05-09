@@ -1,8 +1,3 @@
----
-name: spreadsheet_duplicate_sheet
-description: Copies a worksheet with all sheet-level state preserved, with positioning rules and collision behaviour for spreadsheet_duplicate_sheet.
----
-
 # spreadsheet_duplicate_sheet
 
 Duplicates an existing worksheet inside the same workbook. The copy preserves values, formulas, cell formatting, conditional formatting, freeze panes, column widths, row heights, and any other sheet-level state. Use this when scaffolding a "next quarter" sheet from an existing template, or capturing a snapshot of a sheet before destructive edits.

@@ -1,8 +1,3 @@
----
-name: spreadsheet_sort
-description: Sorts the rows of a range by one or more columns in priority order, with header-row pinning and case sensitivity options.
----
-
 # spreadsheet_sort
 
 Sorts the rows of a range by one or more columns. Sort keys are applied in priority order — the first key is primary, later keys break ties on equal values from the keys above. The sort is in place: cells outside the range are untouched, cells inside the range are physically reordered.

@@ -1,8 +1,3 @@
----
-name: spreadsheet_read_sheet
-description: Paging, headers mode, and column-clamping for spreadsheet_read_sheet, including how to detect a sheet whose used range was inflated by a stray far-right write.
----
-
 # spreadsheet_read_sheet
 
 Reads cell values from a sheet in an .xlsx workbook. By default returns row arrays from the sheet's used range. Cells round-trip with their Excel type preserved (see `spreadsheet_cell_typing`).

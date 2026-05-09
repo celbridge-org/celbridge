@@ -1,8 +1,3 @@
----
-name: webview_inspect
-description: Returns rich metadata for a single element matched by CSS selector — tag, attributes, computed styles, role, rect, and a child preview.
----
-
 # webview_inspect
 
 Describes a single element in the WebView in detail. Use this after `webview_query` returns a stable selector, or when you already know the selector and want the structured view rather than raw `outerHTML`.

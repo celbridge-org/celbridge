@@ -1,8 +1,3 @@
----
-name: spreadsheet_get_info
-description: Cheap workbook overview — per-sheet metadata and named ranges — typically the first call before reading or paging a workbook.
----
-
 # spreadsheet_get_info
 
 Returns a workbook overview: every sheet with its name, tab position, used range, dimensions, and frozen-pane counts, plus any defined named ranges. Always cheap, and almost always the right first call before any read or write — it tells the agent the sheet names, whether the workbook is empty, and how big the data is.

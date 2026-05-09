@@ -1,8 +1,3 @@
----
-name: spreadsheet_find
-description: What spreadsheet_find searches (text and formula expression text only) and the find -> decide -> write workflow for targeted edits.
----
-
 # spreadsheet_find
 
 Searches a workbook for cells whose text or formula expression contains a search string. Returns the list of matches without modifying the workbook.

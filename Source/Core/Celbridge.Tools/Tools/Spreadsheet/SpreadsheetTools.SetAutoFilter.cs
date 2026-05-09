@@ -15,17 +15,15 @@ public partial class SpreadsheetTools
         string range = "",
         bool enabled = true)
     {
-        const string ToolGuide = "spreadsheet_set_auto_filter";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -38,7 +36,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

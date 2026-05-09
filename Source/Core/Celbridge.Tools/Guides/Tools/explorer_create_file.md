@@ -1,8 +1,3 @@
----
-name: explorer_create_file
-description: Create an empty file at a given resource key, or open the create-file dialog with the parent folder preselected.
----
-
 # explorer_create_file
 
 Creates an empty file in the project. For files that should start with content, prefer `file_write` — it creates the file and writes the content in one step. Use this tool when you specifically need an empty file, or when the user should pick the name interactively.

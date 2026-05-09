@@ -1,8 +1,3 @@
----
-name: package
-description: Build, install, archive, and publish Celbridge packages — the unit of distributable functionality (custom editors, asset libraries, Python modules).
----
-
 # package
 
 The `package` namespace builds, installs, archives, and publishes Celbridge packages. A package is the unit of distributable functionality (a custom document editor, an asset library, a reusable Python module). Each package follows a folder layout with a manifest at the root.

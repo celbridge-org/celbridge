@@ -18,23 +18,21 @@ public partial class SpreadsheetTools
         bool hasHeaderRow = false,
         bool matchCase = false)
     {
-        const string ToolGuide = "spreadsheet_sort";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var parseResult = ParseSortKeys(sortByJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult, ToolGuide);
+            return ToolResponse.Error(parseResult);
         }
         var sortKeys = parseResult.Value;
 
@@ -50,7 +48,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

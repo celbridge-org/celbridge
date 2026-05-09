@@ -1,8 +1,3 @@
----
-name: undo_semantics
-description: Which actions can be undone, by which mechanism, and which cannot.
----
-
 # Undo semantics
 
 Celbridge has three independent undo stacks, each scoped to a different surface.

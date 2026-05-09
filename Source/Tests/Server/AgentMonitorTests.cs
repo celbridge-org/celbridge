@@ -14,25 +14,6 @@ public class AgentMonitorTests
         _monitor = new AgentMonitor();
     }
 
-    // IsBootstrapTool
-
-    [Test]
-    public void IsBootstrapTool_ReturnsTrueForGuidesTriad()
-    {
-        _monitor.IsBootstrapTool("guides_list").Should().BeTrue();
-        _monitor.IsBootstrapTool("guides_read").Should().BeTrue();
-        _monitor.IsBootstrapTool("guides_search").Should().BeTrue();
-    }
-
-    [Test]
-    public void IsBootstrapTool_ReturnsFalseForNonBootstrapTools()
-    {
-        _monitor.IsBootstrapTool("file_read").Should().BeFalse();
-        _monitor.IsBootstrapTool("app_get_state").Should().BeFalse();
-        _monitor.IsBootstrapTool("guides_unknown").Should().BeFalse();
-        _monitor.IsBootstrapTool("").Should().BeFalse();
-    }
-
     // AgentSessionState — TryMarkServed
 
     [Test]

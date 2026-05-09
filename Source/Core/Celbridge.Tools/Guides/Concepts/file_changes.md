@@ -1,9 +1,3 @@
----
-name: file_changes
-description: How saves and reloads work; why agent edits cannot be reverted with Ctrl+Z.
-priority: 10
----
-
 # File changes and saving
 
 Celbridge saves automatically. There is no save tool, no "unsaved changes" dialog on close, and no user-facing flush command.

@@ -4,129 +4,91 @@ using TextContentBlock = ModelContextProtocol.Protocol.TextContentBlock;
 namespace Celbridge.Tests.Tools;
 
 /// <summary>
-/// Tests for ToolResponse — pins the literal-command guide-instruction format
-/// agents see at the moment of failure, the category-helper messages, and the
-/// shape of error and success CallToolResults.
+/// Tests for ToolResponse — pins the category-helper messages, the length cap,
+/// and the shape of error and success CallToolResults.
 /// </summary>
 [TestFixture]
 public class ToolResponseTests
 {
-    // FormatGuideInstruction
+    // Success / Error
 
     [Test]
-    public void FormatGuideInstruction_NoHook_RendersBareCall()
+    public void Success_PutsTextInSingleBlock_AndIsNotMarkedAsError()
     {
-        var instruction = ToolResponse.FormatGuideInstruction(new GuideReference("webview_click"));
-        instruction.Should().Be("Run `guides_read([\"webview_click\"])`.");
+        var result = ToolResponse.Success("payload");
+
+        result.IsError.Should().NotBe(true);
+        var text = ((TextContentBlock)result.Content!.Single()).Text;
+        text.Should().Be("payload");
     }
 
     [Test]
-    public void FormatGuideInstruction_WithHook_AppendsHookAfterDash()
+    public void Error_MessageGoesIntoSingleBlock_AndIsMarkedAsError()
     {
-        var instruction = ToolResponse.FormatGuideInstruction(
-            new GuideReference("resource_keys", "forward-slash paths relative to the project content root"));
-        instruction.Should().Be("Run `guides_read([\"resource_keys\"])` — forward-slash paths relative to the project content root.");
-    }
-
-    [Test]
-    public void GuideReference_ImplicitConversionFromString_LeavesHookEmpty()
-    {
-        GuideReference reference = "webview_click";
-        reference.Name.Should().Be("webview_click");
-        reference.Hook.Should().BeEmpty();
-    }
-
-    // Error
-
-    [Test]
-    public void Error_AppendsGuideInstructionAfterMessage()
-    {
-        var result = ToolResponse.Error("webview_click requires a non-empty selector.", "webview_click");
+        var result = ToolResponse.Error("webview_click requires a non-empty selector.");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().Be("webview_click requires a non-empty selector. Run `guides_read([\"webview_click\"])`.");
+        text.Should().Be("webview_click requires a non-empty selector.");
     }
 
     [Test]
     public void Error_FromFailedResult_UsesMessageChain()
     {
-        var failedResult = Result.Fail("Outer wrapper");
+        var failedResult = Result.Fail("Outer wrapper").WithErrors(Result.Fail("Inner cause"));
 
-        var result = ToolResponse.Error(failedResult, "file_read");
+        var result = ToolResponse.Error(failedResult);
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
         text.Should().Contain("Outer wrapper");
-        text.Should().EndWith("Run `guides_read([\"file_read\"])`.");
+        text.Should().Contain("Inner cause");
     }
 
-    // SuccessWithGuide
-
     [Test]
-    public void SuccessWithGuide_PrimaryTextBlockUnchanged_GuideInstructionInSecondBlock()
+    public void Error_LongMessage_IsCappedWithEllipsis()
     {
-        var result = ToolResponse.SuccessWithGuide(
-            "{\"totalMatches\":0,\"elements\":[]}",
-            new GuideReference("webview_query", "zero matches — see selector, timing, and editor-binding notes"));
+        // Pin the length cap so a pathological exception message can't dominate
+        // the response. The cap is at 1,000 characters; the ellipsis substitutes
+        // the final three characters.
+        var longMessage = new string('a', 2_000);
 
-        result.IsError.Should().NotBe(true);
-        result.Content.Should().HaveCount(2);
-        var primary = ((TextContentBlock)result.Content![0]).Text;
-        var secondary = ((TextContentBlock)result.Content![1]).Text;
-        primary.Should().Be("{\"totalMatches\":0,\"elements\":[]}");
-        secondary.Should().Be("Run `guides_read([\"webview_query\"])` — zero matches — see selector, timing, and editor-binding notes.");
-    }
+        var result = ToolResponse.Error(longMessage);
 
-    // BootstrapError
-
-    [Test]
-    public void BootstrapError_DoesNotAppendGuideInstruction()
-    {
-        // Bootstrap tools (guides_*) document themselves; pointing them back at
-        // guides_read on failure would be circular.
-        var result = ToolResponse.BootstrapError("Unknown guide name 'banana'.");
-
-        result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().Be("Unknown guide name 'banana'.");
-        text.Should().NotContain("guides_read");
+        text.Length.Should().Be(1_000);
+        text.Should().EndWith("...");
     }
 
     // Category helpers
 
     [Test]
-    public void InvalidResourceKey_PointsAtResourceKeysGuide()
+    public void InvalidResourceKey_RendersTheBadKeyVerbatim()
     {
         var result = ToolResponse.InvalidResourceKey("Bad\\Key");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().StartWith("Invalid resource key: 'Bad\\Key'.");
-        text.Should().Contain("`guides_read([\"resource_keys\"])`");
+        text.Should().Be("Invalid resource key: 'Bad\\Key'.");
     }
 
     [Test]
-    public void FeatureFlagDisabled_PointsAtNamespaceGuide()
+    public void FeatureFlagDisabled_NamesTheFlagAndPointsAtConfigFile()
     {
-        var result = ToolResponse.FeatureFlagDisabled("webview-dev-tools", "webview");
+        var result = ToolResponse.FeatureFlagDisabled("webview-dev-tools");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().StartWith("The 'webview-dev-tools' feature flag is disabled.");
-        text.Should().Contain("`guides_read([\"webview\"])`");
-        text.Should().Contain("feature flag setup and prerequisites");
+        text.Should().Be("The 'webview-dev-tools' feature flag is disabled. Enable it in the user .celbridge config to use this tool.");
     }
 
     [Test]
-    public void ResourceNotFound_PointsAtPerToolGuide()
+    public void ResourceNotFound_RendersTheMissingResource()
     {
-        var result = ToolResponse.ResourceNotFound("Scripts/missing.py", "file_read");
+        var result = ToolResponse.ResourceNotFound("Scripts/missing.py");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
-        text.Should().StartWith("Resource not found: 'Scripts/missing.py'.");
-        text.Should().Contain("`guides_read([\"file_read\"])`");
-        text.Should().Contain("verify the resource exists before targeting it");
+        text.Should().Be("Resource not found: 'Scripts/missing.py'.");
     }
 }

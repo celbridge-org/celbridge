@@ -1,8 +1,3 @@
----
-name: python_proxy_conventions
-description: Write Python scripts and REPL commands that call Celbridge tools — the cel proxy, imports, parameter conventions, error handling, and structured-parameter formats.
----
-
 # Python proxy conventions
 
 The `cel` proxy is the canonical way to call Celbridge tools from Python. It is available at the REPL prompt and inside scripts run from the REPL via `%run`:

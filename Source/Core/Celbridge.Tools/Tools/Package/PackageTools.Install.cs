@@ -14,19 +14,16 @@ public record class PackageInstallResult(string PackageName, int Entries, string
 
 public partial class PackageTools
 {
-    /// <summary>READ GUIDE FIRST. Install a package from the remote registry into packages/{packageName}/.</summary>
+    /// <summary>Install a package from the remote registry into packages/{packageName}/.</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
     public async partial Task<CallToolResult> Install(string packageName, bool confirmWithUser = true)
     {
-        const string ToolGuide = "package_install";
-
         if (!IsValidPackageName(packageName))
         {
             return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
-                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.",
-                ToolGuide);
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
 
         // Find the package in the remote registry
@@ -35,7 +32,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ToolResponse.Error(listResult, ToolGuide);
+            return ToolResponse.Error(listResult);
         }
 
         var expectedFileName = $"{packageName}.zip";
@@ -51,7 +48,7 @@ public partial class PackageTools
 
         if (matchingEntry is null)
         {
-            return ToolResponse.Error($"Package not found in registry: '{packageName}'", ToolGuide);
+            return ToolResponse.Error($"Package not found in registry: '{packageName}'");
         }
 
         if (confirmWithUser)
@@ -63,7 +60,7 @@ public partial class PackageTools
             var confirmed = await ConfirmActionAsync(title, message);
             if (!confirmed)
             {
-                return ToolResponse.Error("Install cancelled by user.", ToolGuide);
+                return ToolResponse.Error("Install cancelled by user.");
             }
         }
 
@@ -71,7 +68,7 @@ public partial class PackageTools
         var downloadResult = await packageApiClient.DownloadPackageAsync(matchingEntry.Id);
         if (downloadResult.IsFailure)
         {
-            return ToolResponse.Error(downloadResult, ToolGuide);
+            return ToolResponse.Error(downloadResult);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -84,7 +81,7 @@ public partial class PackageTools
         {
             var failure = Result.Fail("Failed to resolve temporary archive path")
                 .WithErrors(resolveTempResult);
-            return ToolResponse.Error(failure, ToolGuide);
+            return ToolResponse.Error(failure);
         }
         var tempArchivePath = resolveTempResult.Value;
 
@@ -100,7 +97,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolResponse.Error($"Failed to write downloaded package: {exception.Message}", ToolGuide);
+            return ToolResponse.Error($"Failed to write downloaded package: {exception.Message}");
         }
 
         var destinationResource = ResourceKey.Create($"packages/{packageName}");
@@ -116,7 +113,7 @@ public partial class PackageTools
 
             if (unarchiveResultWrapper.IsFailure)
             {
-                return ToolResponse.Error(unarchiveResultWrapper, ToolGuide);
+                return ToolResponse.Error(unarchiveResultWrapper);
             }
 
             var unarchiveResult = unarchiveResultWrapper.Value;

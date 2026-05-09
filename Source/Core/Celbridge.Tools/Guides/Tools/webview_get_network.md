@@ -1,8 +1,3 @@
----
-name: webview_get_network
-description: Returns captured fetch/XHR activity for an open WebView document; headers and bodies are opt-in.
----
-
 # webview_get_network
 
 Reads the WebView's accumulated network buffer of `fetch` and `XMLHttpRequest` activity. The default payload is a header- and body-free summary so casual polling stays cheap. The buffer survives reloads, mirroring `webview_get_console`.

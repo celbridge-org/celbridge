@@ -1,8 +1,3 @@
----
-name: spreadsheet_import_csv
-description: CSV parsing rules and type-inference behaviour for spreadsheet_import_csv (per RFC 4180), including createIfMissing and inferTypes semantics.
----
-
 # spreadsheet_import_csv
 
 Replaces the contents of one or more worksheets with parsed CSV data in a single open/save cycle. Existing cells in each target sheet are cleared before its CSV block is written; other sheets in the workbook are untouched. Imports run in order. If any import fails, the whole batch fails and nothing is saved.

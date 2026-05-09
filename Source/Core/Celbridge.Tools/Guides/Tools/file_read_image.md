@@ -1,8 +1,3 @@
----
-name: file_read_image
-description: Read a JPEG/PNG/GIF/WebP image inline for multimodal viewing, with a 5 MB size cap.
----
-
 # file_read_image
 
 Reads an image file and returns it as an inline image content block plus a JSON metadata payload, so the agent can visually inspect the picture. Use `file_read_binary` for any other binary format.

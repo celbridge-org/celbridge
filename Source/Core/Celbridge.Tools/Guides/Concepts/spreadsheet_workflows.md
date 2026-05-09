@@ -1,8 +1,3 @@
----
-name: spreadsheet_workflows
-description: Common end-to-end spreadsheet tasks expressed as tool sequences — inspect, read-modify-write, formulas, CSV round-trip, and multi-sheet scaffolding.
----
-
 # Spreadsheet workflows
 
 Common end-to-end tasks expressed as tool sequences. Each example uses the Python proxy form; the MCP / JS forms are equivalent (see `tool_naming`).

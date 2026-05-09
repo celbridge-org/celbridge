@@ -11,8 +11,6 @@ public partial class DocumentTools
     [ToolAlias("document.open")]
     public async partial Task<CallToolResult> Open(string fileResource, int sectionIndex = -1, bool forceReload = false, bool activate = false)
     {
-        const string ToolGuide = "document_open";
-
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
             return ToolResponse.InvalidResourceKey(fileResource);
@@ -20,7 +18,7 @@ public partial class DocumentTools
 
         if (sectionIndex != -1 && sectionIndex is < 0 or > 2)
         {
-            return ToolResponse.Error($"Invalid sectionIndex '{sectionIndex}': must be 0, 1, 2, or -1 for the active section.", ToolGuide);
+            return ToolResponse.Error($"Invalid sectionIndex '{sectionIndex}': must be 0, 1, 2, or -1 for the active section.");
         }
 
         int? targetSectionIndex = sectionIndex == -1 ? null : sectionIndex;
@@ -35,7 +33,7 @@ public partial class DocumentTools
 
         if (openResult.IsFailure)
         {
-            return ToolResponse.Error(openResult, ToolGuide);
+            return ToolResponse.Error(openResult);
         }
 
         var outcome = openResult.Value;

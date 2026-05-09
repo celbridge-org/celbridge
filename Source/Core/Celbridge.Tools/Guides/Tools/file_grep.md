@@ -1,8 +1,3 @@
----
-name: file_grep
-description: Content search across project files, with literal/regex modes, glob scoping, context lines, and result capping.
----
-
 # file_grep
 
 Searches the contents of project text files for a string or regex. Returns matches with line numbers, optional surrounding context, and optional full-file content for collapsing a grep-then-read workflow into a single call.

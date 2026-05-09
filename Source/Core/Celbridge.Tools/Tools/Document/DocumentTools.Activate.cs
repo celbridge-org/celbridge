@@ -11,8 +11,6 @@ public partial class DocumentTools
     [ToolAlias("document.activate")]
     public async partial Task<CallToolResult> Activate(string fileResource)
     {
-        const string ToolGuide = "document_activate";
-
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
             return ToolResponse.InvalidResourceKey(fileResource);
@@ -24,7 +22,7 @@ public partial class DocumentTools
         });
         if (activateResult.IsFailure)
         {
-            return ToolResponse.Error(activateResult, ToolGuide);
+            return ToolResponse.Error(activateResult);
         }
 
         return ToolResponse.Success("ok");

@@ -1,8 +1,3 @@
----
-name: webview_eval
-description: Evaluates a JavaScript expression inside the WebView and returns its JSON-serialised value.
----
-
 # webview_eval
 
 Runs an arbitrary JavaScript expression in the WebView's main world and returns the JSON-encoded value. Useful for reading state that no other `webview_*` tool exposes, confirming side effects after `webview_click`, or invoking a function the editor exports on `window`.

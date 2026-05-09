@@ -1,8 +1,3 @@
----
-name: javascript_proxy_conventions
-description: Write JavaScript in a contribution editor that calls Celbridge tools — the cel global, manifest declarations, naming, errors, and structured parameters.
----
-
 # JavaScript proxy conventions
 
 Package extensions run inside a WebView hosted by a document editor contribution (declared in `package.toml` under `[contributes].document_editors`). There is currently no non-editor WebView surface, so JS tool calls happen from within an editor.

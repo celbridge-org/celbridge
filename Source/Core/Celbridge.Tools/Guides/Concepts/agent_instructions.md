@@ -1,9 +1,3 @@
----
-name: agent_instructions
-description: Mandatory instructions for any agent connecting to Celbridge — read before any tool work, and read each domain's namespace guide before relying on its results.
-priority: 1
----
-
 # Agent instructions
 
 These are instructions, not a tutorial. Every agent that connects to Celbridge must read this guide before invoking any tool other than the `guides_*` bootstrap tools. The broker's cold-start gate enforces this.
@@ -49,8 +43,4 @@ If the user asks you to write a Python script that calls Celbridge tools, read `
 
 ## Finding more
 
-- `guides_list` — every guide in canonical order with one-line descriptions.
-- `guides_read(["<name>"])` — read one or more guides by exact name. Tool guides carry runnable Python and JavaScript invocation strings.
-- `guides_search` — regex search over names, descriptions, and bodies. Plain words work as patterns.
-
-Tool errors that mention an unfamiliar tool will nudge you at `guides_read`. Follow the link.
+Per-tool, namespace, and orientation guides auto-attach on first use of the relevant tool, namespace, or session. If your context auto-compacts and you need a guide back, fetch it explicitly with `guides_read(["<name>"])`. Tool guides carry runnable Python and JavaScript invocation strings.

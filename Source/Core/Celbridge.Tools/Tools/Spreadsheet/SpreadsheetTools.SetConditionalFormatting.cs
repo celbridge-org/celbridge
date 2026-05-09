@@ -17,34 +17,32 @@ public partial class SpreadsheetTools
         string rulesJson,
         bool clearExisting = false)
     {
-        const string ToolGuide = "spreadsheet_set_conditional_formatting";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         if (string.IsNullOrEmpty(range))
         {
-            return ToolResponse.Error("Range is required.", ToolGuide);
+            return ToolResponse.Error("Range is required.");
         }
 
         var parseResult = ParseConditionalFormatRules(rulesJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult, ToolGuide);
+            return ToolResponse.Error(parseResult);
         }
         var rules = parseResult.Value;
 
         if (rules.Count == 0 && !clearExisting)
         {
-            return ToolResponse.Error("Rules array must contain at least one rule when clearExisting is false.", ToolGuide);
+            return ToolResponse.Error("Rules array must contain at least one rule when clearExisting is false.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -58,7 +56,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

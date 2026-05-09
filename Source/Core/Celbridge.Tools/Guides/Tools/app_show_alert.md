@@ -1,8 +1,3 @@
----
-name: app_show_alert
-description: Surface a modal alert dialog to the user; always interactive, blocks until the user dismisses it.
----
-
 # app_show_alert
 
 Shows a modal alert dialog to the user with a message and an optional title. Always interactive — there is no silent mode. The call blocks until the user dismisses the dialog.

@@ -17,14 +17,12 @@ public partial class PackageTools
     [ToolAlias("package.list")]
     public async partial Task<CallToolResult> List()
     {
-        const string ToolGuide = "package_list";
-
         var packageApiClient = GetRequiredService<IPackageApiClient>();
         var listResult = await packageApiClient.ListPackagesAsync();
 
         if (listResult.IsFailure)
         {
-            return ToolResponse.Error(listResult, ToolGuide);
+            return ToolResponse.Error(listResult);
         }
 
         var packages = new List<PackageListEntry>();

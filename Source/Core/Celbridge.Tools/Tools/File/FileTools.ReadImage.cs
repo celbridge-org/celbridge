@@ -29,8 +29,6 @@ public partial class FileTools
     [ToolAlias("file.read_image")]
     public async partial Task<CallToolResult> ReadImage(string resource)
     {
-        const string ToolGuide = "file_read_image";
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -42,13 +40,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'", ToolGuide);
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolResponse.Error($"File not found: '{resource}'", ToolGuide);
+            return ToolResponse.Error($"File not found: '{resource}'");
         }
 
         var extension = Path.GetExtension(resourcePath).ToLowerInvariant();
@@ -57,8 +55,7 @@ public partial class FileTools
             return ToolResponse.Error(
                 $"file_read_image does not support extension '{extension}'. " +
                 $"Supported formats: .jpg, .jpeg, .png, .gif, .webp. " +
-                $"For other binary content, use file_read_binary.",
-                ToolGuide);
+                $"For other binary content, use file_read_binary.");
         }
 
         var fileInfo = new FileInfo(resourcePath);
@@ -67,8 +64,7 @@ public partial class FileTools
             return ToolResponse.Error(
                 $"Image '{resource}' is {fileInfo.Length} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
                 $"Resize or recompress the image (or capture a smaller screenshot via webview_screenshot with maxEdge) " +
-                $"before calling file_read_image.",
-                ToolGuide);
+                $"before calling file_read_image.");
         }
 
         var bytes = await File.ReadAllBytesAsync(resourcePath);

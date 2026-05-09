@@ -10,8 +10,6 @@ public partial class ExplorerTools
     [ToolAlias("explorer.move")]
     public async partial Task<CallToolResult> Move(string sourceResource, string destinationResource)
     {
-        const string ToolGuide = "explorer_move";
-
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
         {
             return ToolResponse.InvalidResourceKey(sourceResource);
@@ -29,7 +27,7 @@ public partial class ExplorerTools
         });
         if (copyResult.IsFailure)
         {
-            return ToolResponse.Error(copyResult, ToolGuide);
+            return ToolResponse.Error(copyResult);
         }
 
         return ToolResponse.Success("ok");

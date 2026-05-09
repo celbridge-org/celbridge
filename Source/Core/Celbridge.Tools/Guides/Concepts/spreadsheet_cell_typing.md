@@ -1,8 +1,3 @@
----
-name: spreadsheet_cell_typing
-description: How Excel cell types round-trip through the spreadsheet_* tools as JSON, and how to write formulas vs. text values.
----
-
 # Spreadsheet cell typing
 
 Cells round-trip with their Excel type preserved.

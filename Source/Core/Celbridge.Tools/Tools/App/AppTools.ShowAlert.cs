@@ -10,8 +10,6 @@ public partial class AppTools
     [ToolAlias("app.show_alert")]
     public async partial Task<CallToolResult> ShowAlert(string message, string title = "")
     {
-        const string ToolGuide = "app_show_alert";
-
         var alertResult = await ExecuteCommandAsync<IAlertCommand>(command =>
         {
             command.Message = message;
@@ -19,7 +17,7 @@ public partial class AppTools
         });
         if (alertResult.IsFailure)
         {
-            return ToolResponse.Error(alertResult, ToolGuide);
+            return ToolResponse.Error(alertResult);
         }
 
         return ToolResponse.Success("ok");

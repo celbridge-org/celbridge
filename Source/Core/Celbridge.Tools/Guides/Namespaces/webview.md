@@ -1,8 +1,3 @@
----
-name: webview
-description: WebView devtools-style automation for HTML and contribution editors — click, fill, eval, query, screenshot, and observe network and console traffic.
----
-
 # webview
 
 The `webview` namespace drives WebView-backed editors: HTML viewers and contribution document editors. It exposes a devtools-style automation surface — click and fill simulated user input, evaluate JavaScript, query the DOM, take screenshots, and observe console and network traffic. Most webview tools require the document to be open and the right editor to have opened it.

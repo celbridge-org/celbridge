@@ -12,12 +12,10 @@ public partial class WebViewTools
     [ToolAlias("webview.get_console")]
     public async partial Task<CallToolResult> GetConsole(string resource, int tail = 100, bool includeDebug = false, long sinceTimestampMs = 0)
     {
-        const string ToolGuide = "webview_get_console";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -34,7 +32,7 @@ public partial class WebViewTools
         var consoleResult = await toolBridge.GetConsoleAsync(resourceKey, options);
         if (consoleResult.IsFailure)
         {
-            return ToolResponse.Error(consoleResult, ToolGuide);
+            return ToolResponse.Error(consoleResult);
         }
 
         return ToolResponse.Success(consoleResult.Value);

@@ -7,7 +7,6 @@ namespace Celbridge.Tools;
 public record class GuidesReadEntry(
     string Name,
     string Kind,
-    string Description,
     string Body,
     string? PythonInvocation,
     string? JavaScriptInvocation);
@@ -18,12 +17,7 @@ public record class GuidesReadResult(
 
 public partial class GuidesTools
 {
-    // Bootstrap tool. Summary stays informative for cold-start use; trim conservatively.
-    /// <summary>
-    /// Read one or more guides from the built-in library by name. A name resolves to either a concept guide (e.g. 'resource_keys') or a tool name (e.g. 'file_grep'). Pair with guides_list to enumerate, guides_search for regex lookup. Names that match neither land in 'unknown' rather than failing.
-    /// </summary>
-    /// <param name="names">JSON array of names, e.g. '["resource_keys","file_grep"]'.</param>
-    /// <returns>JSON: {results: [{name, kind, description, body, pythonInvocation?, javascriptInvocation?}], unknown: [string]}. Tool entries carry Python and JavaScript invocation strings.</returns>
+    /// <summary>Re-fetch one or more guides after the host context auto-compacted.</summary>
     [McpServerTool(Name = "guides_read", ReadOnly = true, Idempotent = true)]
     [ToolAlias("guides.read")]
     public partial CallToolResult Read(string names)
@@ -31,7 +25,7 @@ public partial class GuidesTools
         var parsedNames = ParseNamesArgument(names);
         if (parsedNames.IsFailure)
         {
-            return ToolResponse.BootstrapError(parsedNames.MessageChain);
+            return ToolResponse.Error(parsedNames);
         }
 
         var library = Guides;
@@ -87,7 +81,6 @@ public partial class GuidesTools
         return new GuidesReadEntry(
             Name: guide.Name,
             Kind: guide.Kind.ToString().ToLowerInvariant(),
-            Description: guide.Description,
             Body: guide.Body,
             PythonInvocation: guide.PythonInvocation,
             JavaScriptInvocation: guide.JavaScriptInvocation);

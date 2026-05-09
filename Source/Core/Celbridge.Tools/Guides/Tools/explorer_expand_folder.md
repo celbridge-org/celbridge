@@ -1,8 +1,3 @@
----
-name: explorer_expand_folder
-description: Expand or collapse a single folder in the explorer tree.
----
-
 # explorer_expand_folder
 
 Sets the expanded or collapsed state of a folder in the explorer panel. Pair with `explorer_select` when guiding the user toward a specific resource — expand the parent first so the selection is visible without scrolling.

@@ -1,8 +1,3 @@
----
-name: app_refresh_files
-description: Force a rescan of the project file listing; only needed after non-Celbridge tools wrote files directly to disk.
----
-
 # app_refresh_files
 
 Forces a rescan of the project file listing. The application normally watches the project tree and updates its in-memory listing automatically, so this is rarely needed.

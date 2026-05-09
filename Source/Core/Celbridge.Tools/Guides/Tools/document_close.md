@@ -1,8 +1,3 @@
----
-name: document_close
-description: Close one or more open document tabs, optionally as a batch.
----
-
 # document_close
 
 Closes one or more documents in the editor. Pass either a single resource key or a JSON array of keys. Closes are processed sequentially, and a failure on one document does not stop the remaining attempts — the response summarises how many succeeded and which failed.

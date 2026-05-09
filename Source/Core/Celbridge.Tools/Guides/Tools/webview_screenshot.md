@@ -1,8 +1,3 @@
----
-name: webview_screenshot
-description: Captures a screenshot of an open WebView document, optionally clipped to a selector and optionally archived to the project tree.
----
-
 # webview_screenshot
 
 Captures a PNG or JPEG of an open WebView document. By default the image is returned inline as an MCP image content block alongside a JSON metadata text block. The document must be the active tab — WebView2 pauses rendering for inactive tabs, so an inactive tab fails fast rather than hanging.

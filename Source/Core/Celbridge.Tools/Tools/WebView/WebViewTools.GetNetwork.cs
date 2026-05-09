@@ -17,12 +17,10 @@ public partial class WebViewTools
         bool includeBodies = false,
         long sinceTimestampMs = 0)
     {
-        const string ToolGuide = "webview_get_network";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -39,7 +37,7 @@ public partial class WebViewTools
         var networkResult = await toolBridge.GetNetworkAsync(resourceKey, options);
         if (networkResult.IsFailure)
         {
-            return ToolResponse.Error(networkResult, ToolGuide);
+            return ToolResponse.Error(networkResult);
         }
 
         return ToolResponse.Success(networkResult.Value);

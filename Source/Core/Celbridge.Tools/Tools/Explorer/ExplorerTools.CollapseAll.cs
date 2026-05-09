@@ -10,12 +10,10 @@ public partial class ExplorerTools
     [ToolAlias("explorer.collapse_all")]
     public async partial Task<CallToolResult> CollapseAll()
     {
-        const string ToolGuide = "explorer_collapse_all";
-
         var collapseResult = await ExecuteCommandAsync<ICollapseAllCommand>();
         if (collapseResult.IsFailure)
         {
-            return ToolResponse.Error(collapseResult, ToolGuide);
+            return ToolResponse.Error(collapseResult);
         }
 
         return ToolResponse.Success("ok");

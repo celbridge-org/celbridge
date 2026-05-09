@@ -12,17 +12,15 @@ public partial class WebViewTools
     [ToolAlias("webview.eval")]
     public async partial Task<CallToolResult> Eval(string resource, string expression)
     {
-        const string ToolGuide = "webview_eval";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!webViewService.IsDevToolsEvalFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevToolsEval, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevToolsEval);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -32,7 +30,7 @@ public partial class WebViewTools
 
         if (string.IsNullOrEmpty(expression))
         {
-            return ToolResponse.Error("Expression must not be empty", ToolGuide);
+            return ToolResponse.Error("Expression must not be empty");
         }
 
         // The expression body may contain sensitive output (e.g. document.cookie,
@@ -45,7 +43,7 @@ public partial class WebViewTools
         var evalResult = await toolBridge.EvalAsync(resourceKey, expression);
         if (evalResult.IsFailure)
         {
-            return ToolResponse.Error(evalResult, ToolGuide);
+            return ToolResponse.Error(evalResult);
         }
 
         var value = evalResult.Value;

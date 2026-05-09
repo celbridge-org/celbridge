@@ -1,8 +1,3 @@
----
-name: spreadsheet_read_format
-description: Format-spec round-trip rules for spreadsheet_read_format, including how empty strings denote "no fill" / theme / auto colours.
----
-
 # spreadsheet_read_format
 
 Reads cell formatting from a sheet. Returns one `FormatSpec` object per cell in the same shape accepted by `spreadsheet_format_ranges`, with most non-default properties included.

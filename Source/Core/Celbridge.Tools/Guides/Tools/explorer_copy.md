@@ -1,8 +1,3 @@
----
-name: explorer_copy
-description: Copy a file or folder to a new location, leaving the original in place; pair with explorer_move for the cut-and-paste form.
----
-
 # explorer_copy
 
 Copies a single resource (file or folder) to a new location in the project tree. The original resource is left in place. Folder copies are recursive. The copy is recorded on the explorer undo stack and can be reversed with `explorer_undo`.

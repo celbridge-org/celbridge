@@ -9,7 +9,7 @@ namespace Celbridge.Server.Services;
 /// <summary>
 /// Wraps every MCP tools/call dispatch to record per-invocation data on
 /// AgentMonitor and auto-attach guide bodies on first use per session.
-/// Bootstrap tools and proxy connections receive the bare result.
+/// Proxy connections receive the bare result.
 /// </summary>
 internal sealed class AgentResponseFilter
 {
@@ -90,17 +90,11 @@ internal sealed class AgentResponseFilter
     /// <summary>
     /// Prepends agent_instructions, the namespace guide, and the per-tool
     /// guide to the result for any that haven't been served on this session
-    /// yet. Returns the result unchanged for proxy connections and bootstrap
-    /// tools.
+    /// yet. Returns the result unchanged for proxy connections.
     /// </summary>
     internal CallToolResult ApplyAutoAttach(CallToolResult result, AgentSessionState session, string toolName)
     {
         if (session.IsProxyClient)
-        {
-            return result;
-        }
-
-        if (_monitor.IsBootstrapTool(toolName))
         {
             return result;
         }

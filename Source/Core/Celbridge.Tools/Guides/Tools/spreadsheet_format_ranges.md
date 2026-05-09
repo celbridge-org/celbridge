@@ -1,8 +1,3 @@
----
-name: spreadsheet_format_ranges
-description: Format spec keys, units (column widths in character units, row heights in points), and clear/reset sentinels for spreadsheet_format_ranges.
----
-
 # spreadsheet_format_ranges
 
 Each edit is an object with `sheet`, `range`, and `format` fields. `range` is an A1 cell range, column letter or range, or row number or range. Edits may target different sheets and run in order. If any edit fails, the whole batch fails and nothing is saved.

@@ -1,8 +1,3 @@
----
-name: file_find_replace
-description: Literal vs. regex replacement, line-range scoping, and line-ending normalisation for file_find_replace.
----
-
 # file_find_replace
 
 Finds and replaces text within a single file. Most appropriate when the change is "replace every X with Y" — for targeted edits at known line numbers, prefer `file_apply_edits`. For multi-file find/replace, run `file_grep` first to enumerate matches, then call this tool per file.

@@ -1,8 +1,3 @@
----
-name: cold_start_validation
-description: Curated cold-start prompts and rubric for validating tool-selection accuracy after the tool surface trim.
----
-
 # Cold-Start Validation
 
 This guide carries the prompt set and evaluation rubric used to gate the tool-surface redesign. A developer triggers a validation run by asking the agent to "run cold start validation"; the agent fetches this guide on demand and works through it. The guide is intentionally not loaded by default — it must not bias cold-start behaviour the rest of the time.

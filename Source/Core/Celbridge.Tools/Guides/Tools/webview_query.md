@@ -1,8 +1,3 @@
----
-name: webview_query
-description: Locates elements in a WebView document by ARIA role plus name, by visible text, or by CSS selector — exactly one mode per call.
----
-
 # webview_query
 
 Finds elements inside an open WebView document. The returned `selector` strings are stable enough to pass straight to `webview_inspect`, `webview_click`, or `webview_fill`. Pick the mode that best matches what you know about the target.

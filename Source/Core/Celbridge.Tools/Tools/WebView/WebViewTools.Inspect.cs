@@ -12,12 +12,10 @@ public partial class WebViewTools
     [ToolAlias("webview.inspect")]
     public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5)
     {
-        const string ToolGuide = "webview_inspect";
-
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -27,7 +25,7 @@ public partial class WebViewTools
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolResponse.Error("webview_inspect requires a non-empty selector.", ToolGuide);
+            return ToolResponse.Error("webview_inspect requires a non-empty selector.");
         }
 
         Logger.LogInformation("webview_inspect resource={Resource} selector={Selector} childPreviewLimit={ChildPreviewLimit}",
@@ -38,7 +36,7 @@ public partial class WebViewTools
         var inspectResult = await toolBridge.InspectAsync(resourceKey, options);
         if (inspectResult.IsFailure)
         {
-            return ToolResponse.Error(inspectResult, ToolGuide);
+            return ToolResponse.Error(inspectResult);
         }
 
         return ToolResponse.Success(inspectResult.Value);

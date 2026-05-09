@@ -20,8 +20,6 @@ public partial class FileTools
     [ToolAlias("file.get_info")]
     public async partial Task<CallToolResult> GetInfo(string resource)
     {
-        const string ToolGuide = "file_get_info";
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -34,13 +32,13 @@ public partial class FileTools
             command => command.Resource = resourceKey);
         if (getInfoResult.IsFailure)
         {
-            return ToolResponse.Error(getInfoResult, ToolGuide);
+            return ToolResponse.Error(getInfoResult);
         }
         var snapshot = getInfoResult.Value;
 
         if (!snapshot.Exists)
         {
-            return ToolResponse.ResourceNotFound(resource, ToolGuide);
+            return ToolResponse.ResourceNotFound(resource);
         }
 
         if (snapshot.IsFile)

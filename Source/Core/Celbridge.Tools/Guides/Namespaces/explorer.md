@@ -1,8 +1,3 @@
----
-name: explorer
-description: Resource tree tools — create, rename, move, copy, delete files and folders, and inspect or change the explorer panel's selection.
----
-
 # explorer
 
 The `explorer` namespace operates on the resource tree: it creates, renames, moves, copies, and deletes files and folders, and it manipulates the explorer panel's selection and expanded-folder state. The `file` namespace handles content reads and edits; `explorer` handles existence, location, and naming. Most explorer operations are routed through the same undo stack as user-driven actions.

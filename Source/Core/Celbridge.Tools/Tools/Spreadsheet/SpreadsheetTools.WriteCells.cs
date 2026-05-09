@@ -12,23 +12,21 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.write_cells")]
     public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string editsJson)
     {
-        const string ToolGuide = "spreadsheet_write_cells";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var parseResult = ParseCellEdits(editsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult, ToolGuide);
+            return ToolResponse.Error(parseResult);
         }
         var cellEdits = parseResult.Value;
 
@@ -41,7 +39,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

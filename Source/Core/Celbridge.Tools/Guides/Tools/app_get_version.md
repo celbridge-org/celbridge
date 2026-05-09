@@ -1,8 +1,3 @@
----
-name: app_get_version
-description: Returns the running Celbridge build version as a "major.minor.patch" string.
----
-
 # app_get_version
 
 Returns the running Celbridge application version. Useful when reporting a problem to the user or branching behaviour on a known release.

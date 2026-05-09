@@ -21,8 +21,6 @@ public partial class FileTools
     [ToolAlias("file.get_tree")]
     public async partial Task<CallToolResult> GetTree(string resource, int depth = 3, string glob = "", string type = "")
     {
-        const string ToolGuide = "file_get_tree";
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -41,7 +39,7 @@ public partial class FileTools
 
         if (getTreeResult.IsFailure)
         {
-            return ToolResponse.Error(getTreeResult, ToolGuide);
+            return ToolResponse.Error(getTreeResult);
         }
 
         var snapshot = getTreeResult.Value;

@@ -1,8 +1,3 @@
----
-name: package_install
-description: Download a named package from the remote registry and extract it into packages/{packageName}/.
----
-
 # package_install
 
 Downloads a package from the remote registry and extracts it into `packages/{packageName}/` in the current project. The package must already exist on the registry — use `package_list` to discover what is published. By default the call surfaces a confirmation dialog before installing; pass `confirmWithUser: false` only when the user has explicitly asked for unattended operation.

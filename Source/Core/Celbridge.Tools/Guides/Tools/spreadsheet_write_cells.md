@@ -1,8 +1,3 @@
----
-name: spreadsheet_write_cells
-description: Edit shape, formula vs. text resolution, recalculation, and numeric magnitude limits for spreadsheet_write_cells.
----
-
 # spreadsheet_write_cells
 
 Writes a batch of single-cell edits to a worksheet. Other cells in the sheet — including formatting on cells the edits do not touch — are preserved.

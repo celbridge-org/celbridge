@@ -1,8 +1,3 @@
----
-name: webview_devtools
-description: The webview_* tool surface for inspecting and driving a running contribution editor or HTML viewer; the edit-reload-inspect loop, screenshots, and gotchas.
----
-
 # WebView devtools
 
 The `webview_*` tools give the agent a feedback loop into a running contribution editor or HTML viewer WebView, so the agent can iterate on package code without needing the user to reload and paste back errors.

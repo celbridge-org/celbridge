@@ -1,9 +1,3 @@
----
-name: project_structure
-description: How a Celbridge project lays out files and folders, and where the agent's tools operate.
-priority: 10
----
-
 # Project structure
 
 A Celbridge project is a folder on disk. The folder contains a project file (extension `.celbridge`) plus any number of user content files and subfolders. The project file's parent folder is the **content root**: every resource key is relative to it.

@@ -1,8 +1,3 @@
----
-name: file_read_binary
-description: Read any binary file as base64 with a derived MIME type; for images use file_read_image instead.
----
-
 # file_read_binary
 
 Reads a binary file and returns its bytes as a base64 string with a MIME type guessed from the extension. Use this for non-text content the agent needs to forward (downloaded archives, PDFs, fonts, etc.).

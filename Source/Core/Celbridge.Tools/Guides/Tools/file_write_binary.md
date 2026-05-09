@@ -1,8 +1,3 @@
----
-name: file_write_binary
-description: Replace a binary file's contents from a base64 string; binary files have no targeted-edit tooling.
----
-
 # file_write_binary
 
 Replaces the entire content of a binary file with bytes decoded from a base64 string. Creates the file if it does not exist. There is no partial-edit equivalent for binary content — every write is wholesale.

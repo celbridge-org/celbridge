@@ -11,22 +11,20 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.move_sheet")]
     public async partial Task<CallToolResult> MoveSheet(string resource, string sheet, int position)
     {
-        const string ToolGuide = "spreadsheet_move_sheet";
-
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult, ToolGuide);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.", ToolGuide);
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         if (position < 1)
         {
-            return ToolResponse.Error($"Position must be 1 or greater, was {position}.", ToolGuide);
+            return ToolResponse.Error($"Position must be 1 or greater, was {position}.");
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -38,7 +36,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult, ToolGuide);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;

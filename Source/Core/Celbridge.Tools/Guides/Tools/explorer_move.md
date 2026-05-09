@@ -1,8 +1,3 @@
----
-name: explorer_move
-description: Move or rename a file or folder; pair with explorer_copy for the copy-and-paste form.
----
-
 # explorer_move
 
 Moves a single resource (file or folder) to a new location in the project tree. The original is removed. This is also the silent rename path — pass a destination with a different name in the same parent folder to rename. Folder moves are recursive. The move is recorded on the explorer undo stack and can be reversed with `explorer_undo`.

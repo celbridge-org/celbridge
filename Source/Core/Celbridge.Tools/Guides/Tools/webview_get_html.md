@@ -1,8 +1,3 @@
----
-name: webview_get_html
-description: Returns the outerHTML of the WebView document or a subtree, with script and style bodies redacted.
----
-
 # webview_get_html
 
 Returns serialised HTML for an open document, optionally scoped to a subtree by CSS selector and pruned to a maximum depth. Use this to confirm rendered markup after a click, fill, or reload, or to read the layout the editor produced from package code.

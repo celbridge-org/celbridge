@@ -1,8 +1,3 @@
----
-name: file_get_tree
-description: Recursive folder tree as JSON, with depth limit, glob filtering, and a truncated flag at the depth boundary.
----
-
 # file_get_tree
 
 Returns a recursive folder tree rooted at the given resource as a JSON object. Use this when you need a structural view of multiple levels at once — for the immediate children of a single folder, `file_list_contents` is cheaper.

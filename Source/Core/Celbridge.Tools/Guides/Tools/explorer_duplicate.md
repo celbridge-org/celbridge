@@ -1,8 +1,3 @@
----
-name: explorer_duplicate
-description: Duplicate a resource alongside the original; always shows the rename dialog so the user picks the new name.
----
-
 # explorer_duplicate
 
 Creates a copy of a resource alongside the original. This tool is always interactive — the rename dialog opens preseeded with a default name, and the user confirms or types a different one before the copy is committed. Use `explorer_copy` for a silent copy to a known destination.

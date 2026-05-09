@@ -1,8 +1,3 @@
----
-name: spreadsheet_set_auto_filter
-description: Adds or clears the single auto-filter on a worksheet; only A1 cell ranges are accepted, not column or row ranges.
----
-
 # spreadsheet_set_auto_filter
 
 Sets or clears the auto-filter on a single worksheet. Each sheet supports at most one auto-filter; setting a new one replaces any existing filter. The Celbridge editor and Excel both render the filter as the familiar dropdown arrows on the header row.

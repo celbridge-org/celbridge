@@ -1,8 +1,3 @@
----
-name: spreadsheet_editor_division
-description: Which spreadsheet operations belong to the agent-side spreadsheet_* tools versus the SpreadJS editor; what the tools preserve and what they can't.
----
-
 # Spreadsheet editor division of labour
 
 The MCP `spreadsheet_*` tools and the SpreadJS editor share state through disk: every write the agent makes is visible to the editor on its next reload, and every save the editor makes is visible to the next agent read.

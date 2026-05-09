@@ -1,34 +1,18 @@
----
-name: template_guide
-description: Authoring template for per-tool guides. Not a real tool guide — copy this file and adapt when documenting a new MCP tool.
----
-
 # template_guide
 
-This file is the authoring template for per-tool guides under `Source/Core/Celbridge.Tools/Guides/Tools/`. It is not documentation for a real tool. Agents that fetch it via `guides_read` should ignore it and continue.
+This file is the authoring template for per-tool guides under `Source/Core/Celbridge.Tools/Guides/Tools/`. It is not documentation for a real tool.
 
 Every MCP tool registered in `Celbridge.Tools` must have a corresponding guide under `Tools/<tool_name>.md` (matching the `[McpServerTool(Name = "...")]` attribute). The load-time validator hard-fails app startup if any tool is missing its guide.
 
 ## How to use this template
 
 1. Copy this file to `Source/Core/Celbridge.Tools/Guides/Tools/<tool_name>.md` (e.g. `file_apply_edits.md`).
-2. Replace the frontmatter and body using the structure below.
+2. Replace the body using the structure below.
 3. Adapt the section headings to fit the tool. The structure here is a starting scaffold — drop sections that don't apply, add sections the tool genuinely needs. Existing guides in this folder are good references for how much variation is acceptable.
-
-## Frontmatter
-
-The `name` field must match the tool's `[McpServerTool(Name = "...")]` attribute exactly (and therefore the filename stem). The `description` field is one short sentence describing **how** the tool is used — distinct from the tool's XML `<summary>`, which describes whether to **pick** the tool. Keeping these two summaries different is intentional: selection vs. application.
-
-```yaml
----
-name: <tool_name>
-description: <one-sentence "how to use it" summary, distinct from the XML discriminator>
----
-```
 
 ## Body structure
 
-The body is free-form Markdown. Use whatever subheadings best capture what's actually tricky about the tool. The following are the sections most guides will want, in roughly this order:
+Guide files are plain markdown — no YAML frontmatter. The first line must be a `#` heading whose text matches the tool name (`# <tool_name>`). The body is free-form Markdown; use whatever subheadings best capture what's actually tricky about the tool. The following are the sections most guides will want, in roughly this order:
 
 ### Opening paragraph (required)
 

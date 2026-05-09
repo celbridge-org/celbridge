@@ -1,8 +1,3 @@
----
-name: spreadsheet_a1_notation
-description: A1 cell addressing rules used by every spreadsheet_* tool, plus the supported range forms.
----
-
 # Spreadsheet A1 notation
 
 Every range parameter on the `spreadsheet_*` tools uses A1 notation: `"A1"`, `"B2:D10"`. The sheet name is always a separate parameter. **Do not** embed the sheet inside the range as `"Sheet1!A1"` — that form is rejected with an error.

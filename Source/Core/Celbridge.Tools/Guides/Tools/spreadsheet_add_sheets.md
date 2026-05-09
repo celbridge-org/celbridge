@@ -1,8 +1,3 @@
----
-name: spreadsheet_add_sheets
-description: Batch-creates empty worksheets at the end of a workbook in append order, with collision rules and the JSON shape for sheetsJson.
----
-
 # spreadsheet_add_sheets
 
 Adds one or more empty worksheets to a workbook in a single open/save cycle. New sheets are appended after the existing sheets in the order given. Use this to scaffold a multi-sheet workbook before populating cells.

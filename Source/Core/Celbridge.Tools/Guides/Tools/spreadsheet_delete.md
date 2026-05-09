@@ -1,8 +1,3 @@
----
-name: spreadsheet_delete
-description: Original-coordinate semantics, batch behaviour, and shift direction for spreadsheet_delete.
----
-
 # spreadsheet_delete
 
 Deletes contiguous ranges of rows or columns from one or more sheets in a single open/save cycle. Cell ranges (e.g. `A1:C3`) are not accepted — Excel's "shift cells up/left" is intentionally not exposed.

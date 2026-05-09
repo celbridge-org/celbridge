@@ -1,8 +1,3 @@
----
-name: spreadsheet_clear
-description: Clear-versus-delete semantics, range forms, and sheet-identity preservation for spreadsheet_clear.
----
-
 # spreadsheet_clear
 
 Clears cell content, formatting, comments, merged ranges, and data validation across a batch of ranges in one or more sheets in a single open/save cycle.

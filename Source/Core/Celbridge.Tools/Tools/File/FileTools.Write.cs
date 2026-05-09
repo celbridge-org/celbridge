@@ -16,8 +16,6 @@ public partial class FileTools
     [ToolAlias("file.write")]
     public async partial Task<CallToolResult> Write(string fileResource, string content)
     {
-        const string ToolGuide = "file_write";
-
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
             return ToolResponse.InvalidResourceKey(fileResource);
@@ -31,7 +29,7 @@ public partial class FileTools
 
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult, ToolGuide);
+            return ToolResponse.Error(writeResult);
         }
 
         var lineCount = LineEndingHelper.CountLines(content);

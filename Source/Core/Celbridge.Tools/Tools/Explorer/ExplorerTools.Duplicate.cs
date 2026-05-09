@@ -10,8 +10,6 @@ public partial class ExplorerTools
     [ToolAlias("explorer.duplicate")]
     public async partial Task<CallToolResult> Duplicate(string resource)
     {
-        const string ToolGuide = "explorer_duplicate";
-
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
             return ToolResponse.InvalidResourceKey(resource);
@@ -23,7 +21,7 @@ public partial class ExplorerTools
         });
         if (duplicateResult.IsFailure)
         {
-            return ToolResponse.Error(duplicateResult, ToolGuide);
+            return ToolResponse.Error(duplicateResult);
         }
 
         return ToolResponse.Success("ok");

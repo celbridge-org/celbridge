@@ -1,8 +1,3 @@
----
-name: explorer_create_folder
-description: Create an empty folder at a given resource key, or open the create-folder dialog with the parent folder preselected.
----
-
 # explorer_create_folder
 
 Creates an empty folder in the project tree. Use the silent form to script directory layout, or the dialog form to let the user name the folder.
