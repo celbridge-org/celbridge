@@ -8,13 +8,15 @@ namespace Celbridge.Server.Services;
 /// Manages the MCP agent server: registers the MCP endpoint on the shared
 /// Kestrel instance so that MCP clients can connect to the server.
 /// </summary>
-public class AgentServer : IAgentServer
+internal class AgentServer : IAgentServer
 {
-    private readonly AgentTelemetry _telemetry;
+    private readonly AgentMonitor _monitor;
+    private readonly IGuides _guides;
 
-    public AgentServer(AgentTelemetry telemetry)
+    public AgentServer(AgentMonitor monitor, IGuides guides)
     {
-        _telemetry = telemetry;
+        _monitor = monitor;
+        _guides = guides;
     }
 
     /// <summary>
@@ -23,18 +25,18 @@ public class AgentServer : IAgentServer
     /// </summary>
     public void ConfigureServices(IServiceCollection services)
     {
-        // Surface the application-scoped AgentTelemetry singleton inside the
-        // server scope as well, so the cold-start gate filter and the
-        // diagnostics RPC handler share one instance.
-        services.AddSingleton(_telemetry);
+        // Surface the application-scoped AgentMonitor singleton inside the
+        // server scope as well, so the response filter and the diagnostics
+        // RPC handler share one instance.
+        services.AddSingleton(_monitor);
 
         var mcpBuilder = services
             .AddMcpServer()
             .WithHttpTransport()
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
 
-        var agentGateFilter = AgentGate.CreateFilter(_telemetry);
-        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(agentGateFilter));
+        var responseFilter = new AgentResponseFilter(_monitor, _guides);
+        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(responseFilter.CreateFilter()));
     }
 
     /// <summary>

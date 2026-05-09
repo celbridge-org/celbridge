@@ -6,14 +6,14 @@ using Path = System.IO.Path;
 namespace Celbridge.Server.Services;
 
 /// <summary>
-/// Builds the consolidated agent report. Pulls per-call telemetry from
-/// <see cref="AgentTelemetry"/>, joins it with the broker's tools/list payload
+/// Builds the consolidated agent report. Pulls per-call data from
+/// <see cref="AgentMonitor"/>, joins it with the broker's tools/list payload
 /// data, and emits the report as a multi-sheet .xlsx workbook via
 /// <see cref="GenerateAsync"/>. The combined Tools sheet is the natural pivot:
 /// sort by payload tokens to find expensive tools, by calls to find hot tools,
 /// or compare both columns to spot tools paying context cost without earning
 /// their keep. New analytics surfaces (top-N queries, per-session breakdowns,
-/// cost projections) belong here so they share the same payload+telemetry join.
+/// cost projections) belong here so they share the same payload+monitoring join.
 /// </summary>
 public class AgentReportBuilder
 {
@@ -22,16 +22,16 @@ public class AgentReportBuilder
     // remain meaningful.
     private const string TokenisationLabel = "approximate (chars/4)";
 
-    private readonly AgentTelemetry _telemetry;
+    private readonly AgentMonitor _monitor;
     private readonly IMcpToolBridge _toolBridge;
     private readonly IProjectService _projectService;
 
     public AgentReportBuilder(
-        AgentTelemetry telemetry,
+        AgentMonitor monitor,
         IMcpToolBridge toolBridge,
         IProjectService projectService)
     {
-        _telemetry = telemetry;
+        _monitor = monitor;
         _toolBridge = toolBridge;
         _projectService = projectService;
     }
@@ -46,7 +46,7 @@ public class AgentReportBuilder
 
         var rawJson = await _toolBridge.GetRawToolsListJsonAsync();
         var payloadEntries = ParseToolsListPayload(rawJson);
-        var invocations = _telemetry.Invocations;
+        var invocations = _monitor.Invocations;
         var generatedAt = DateTime.Now;
 
         var toolRows = BuildToolRows(payloadEntries, invocations);

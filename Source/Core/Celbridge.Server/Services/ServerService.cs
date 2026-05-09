@@ -22,7 +22,7 @@ public class ServerService : IServerService, IDisposable
     private readonly IProjectService _projectService;
     private readonly IServiceProvider _applicationServices;
     private readonly IFeatureFlags _featureFlags;
-    private readonly AgentTelemetry _agentTelemetry;
+    private readonly AgentMonitor _agentMonitor;
     private readonly ILogger<ServerService> _logger;
 
     private WebApplication? _webApplication;
@@ -40,7 +40,7 @@ public class ServerService : IServerService, IDisposable
         IProjectService projectService,
         IServiceProvider applicationServices,
         IFeatureFlags featureFlags,
-        AgentTelemetry agentTelemetry,
+        AgentMonitor agentMonitor,
         ILogger<ServerService> logger)
     {
         _agentServer = agentServer;
@@ -49,7 +49,7 @@ public class ServerService : IServerService, IDisposable
         _projectService = projectService;
         _applicationServices = applicationServices;
         _featureFlags = featureFlags;
-        _agentTelemetry = agentTelemetry;
+        _agentMonitor = agentMonitor;
         _logger = logger;
     }
 
@@ -156,7 +156,7 @@ public class ServerService : IServerService, IDisposable
         // dictionary is keyed on MCP SessionId, so orphaned entries would never
         // be queried again, but clearing keeps memory tidy across workspace
         // switches.
-        _agentTelemetry.ClearSessions();
+        _agentMonitor.ClearSessions();
 
         Port = 0;
         Status = ServerStatus.NotStarted;

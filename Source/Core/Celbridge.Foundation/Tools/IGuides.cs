@@ -7,7 +7,7 @@ namespace Celbridge.Tools;
 /// the canonical sort order for guides_list (Concepts first, then Namespaces,
 /// then Tools), since enums sort by underlying integer.
 /// </summary>
-internal enum GuideKind
+public enum GuideKind
 {
     Concept,
     Namespace,
@@ -19,7 +19,7 @@ internal enum GuideKind
 /// Per-tool guides additionally carry the cached language-specific invocation
 /// strings produced from MCP tool reflection.
 /// </summary>
-internal record class GuideEntry(
+public record class GuideEntry(
     string Name,
     GuideKind Kind,
     string Description,
@@ -31,7 +31,7 @@ internal record class GuideEntry(
 /// <summary>
 /// One match returned by IGuides.Search.
 /// </summary>
-internal record class GuideSearchMatch(string Name, GuideKind Kind, string Description, string Snippet, double Score);
+public record class GuideSearchMatch(string Name, GuideKind Kind, string Description, string Snippet, double Score);
 
 /// <summary>
 /// In-memory guide library backing the guides_* MCP tools. Loaded once at app
@@ -41,7 +41,7 @@ internal record class GuideSearchMatch(string Name, GuideKind Kind, string Descr
 /// the library is immutable for the life of the process — every method is an
 /// O(1) dictionary lookup or a linear regex scan over the cached bodies.
 /// </summary>
-internal interface IGuides
+public interface IGuides
 {
     /// <summary>
     /// All loaded guide entries in the canonical order returned by guides_list:

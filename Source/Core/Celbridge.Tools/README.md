@@ -25,25 +25,24 @@ The bootstrap tools (`guides_list`, `guides_read`, `guides_search`) are the exce
 
 Tools whose misuse can cause silent data loss or write the wrong thing prepend `READ GUIDE FIRST.` to their XML summary. The directive is short, blunt, and consistent across destructive tools so an agent learns to recognise it. Examples: edit and write tools in `file`, mutating tools in `spreadsheet`. Read-only tools and idempotent tools omit it.
 
-## The cold-start gate
+## Auto-attach on first use
 
-`Celbridge.Server.Services.AgentGate` registers an MCP `CallToolFilter` that blocks any non-bootstrap tool call from a connection that hasn't read the orientation guide on its session. The gate keys on per-connection state held by `AgentTelemetry` and is identified by the `clientInfo.name` reported during MCP `initialize`.
+`Celbridge.Server.Services.AgentResponseFilter` registers an MCP `CallToolFilter` that inlines guide bodies into tool responses on first use, per session. Three guides are eligible to attach on each non-bootstrap call: the orientation guide (`agent_instructions`), the tool's namespace guide, and the tool's per-tool guide. Each attaches exactly once per MCP session via `AgentMonitor.TryMarkServed`; subsequent calls return the bare result. When any guides attach, the guide blocks come before the original result content.
 
-Bootstrap tools (`guides_list`, `guides_read`, `guides_search`) bypass the gate.
+Bootstrap tools (`guides_list`, `guides_read`, `guides_search`) bypass auto-attach in this phase.
 
-Proxy connections — those identified by `clientInfo.name == "CelbridgeMcpToolBridge"` — bypass the gate entirely. The Python and JavaScript proxies are scripted callers that don't need orientation. The `ProxyClientName` constant on `AgentTelemetry` is the single source of truth for that name.
+Proxy connections — those identified by `clientInfo.name == "CelbridgeMcpToolBridge"` — bypass auto-attach entirely. The Python and JavaScript proxies are scripted callers that don't need guide bodies on every script call. The `ProxyClientName` constant on `AgentMonitor` is the single source of truth for that name.
 
-Workspace switches restart the Kestrel instance and `ServerService.StopAsync` calls `AgentTelemetry.ClearSessions` to drop the per-session map, resetting all gate state. Project reloads (no broker restart) do not reset.
+Workspace switches restart the Kestrel instance and `ServerService.StopAsync` calls `AgentMonitor.ClearSessions` to drop the per-session map, resetting all auto-attach state. Project reloads (no broker restart) do not reset.
 
 ## The privileged role of `agent_instructions`
 
-`agent_instructions` is the orientation guide. It is the only guide whose name is hard-coded in three places:
+`agent_instructions` is the orientation guide. Its name is hard-coded in two places:
 
 - `AppTools.GetState.AgentDocsPointerValue` — the `agentDocs.entry` field of `app_get_state`.
-- `AgentTelemetry.MarkGuideRead` — flips `OrientationRead` when a `guides_read` call resolves this name.
-- `AgentGate.BuildOrientationGateError` — the unlock command surfaced in the gate error.
+- `AgentResponseFilter.ApplyAutoAttach` — the orientation guide's name in the auto-attach lookup.
 
-If you rename it again, all three sites need to change.
+If you rename it again, both sites need to change.
 
 ## Three guide kinds
 
@@ -83,22 +82,22 @@ If you add a tool but forget the guide, the app won't launch — the build doesn
 3. Extend `agent_instructions` to cite the new namespace in the "Domain prep — namespace guides" section so agents know to read it before working in the new domain.
 4. Add per-tool guides for every tool in the namespace (the load-time validator hard-fails if any are missing).
 
-## Telemetry and the agent report
+## Monitoring and the agent report
 
-`AgentTelemetry` captures every tool invocation as a `ToolInvocationRecord` row (timestamp, session id, client name and version, tool name, success, duration, payload sizes, proxy and cache-miss flags). The rows are the source of truth.
+`AgentMonitor` captures every tool invocation as a `ToolInvocationRecord` row (timestamp, session id, client name and version, tool name, success, duration, payload sizes, proxy and cache-miss flags). The rows are the source of truth.
 
 `cel.agent.get_report()` writes a consolidated agent report as an `.xlsx` workbook to the project root via ClosedXML. Four sheets:
 
 - **Summary** — generated timestamp, registered-tool counts, payload totals, invocation totals, sessions, error counts, agent cache misses.
-- **Tools** — one row per registered tool, joining payload size with telemetry: chars, approx tokens, calls, errors, error rate, agent cache misses, avg duration. The pivot point: sort by tokens to find expensive tools, by calls to find hot tools, or compare both columns to spot tools paying context cost without earning their keep. Tools that exist but were never called still appear with zero call metrics.
+- **Tools** — one row per registered tool, joining payload size with monitoring data: chars, approx tokens, calls, errors, error rate, agent cache misses, avg duration. The pivot point: sort by tokens to find expensive tools, by calls to find hot tools, or compare both columns to spot tools paying context cost without earning their keep. Tools that exist but were never called still appear with zero call metrics.
 - **Namespaces** — per-namespace aggregates of the above.
 - **Invocations** — every captured call. The substrate for ad-hoc analysis (pivot tables, charts, slicing by session or client).
 
-The workbook is the only output format. If you need a quick eyeball view, open Summary; if you want the at-a-glance pivot, open Tools; if you need to dig in, work from Invocations. `AgentReportBuilder` does the aggregation and report build; `AgentReportBuilderRpcHandler` exposes it over the broker's TCP RPC channel as `diagnostics/get_agent_report`. New analytics methods (top-N queries, per-session breakdowns, cost projections) belong on `AgentReportBuilder` so they share the same payload+telemetry join.
+The workbook is the only output format. If you need a quick eyeball view, open Summary; if you want the at-a-glance pivot, open Tools; if you need to dig in, work from Invocations. `AgentReportBuilder` does the aggregation and report build; `AgentReportBuilderRpcHandler` exposes it over the broker's TCP RPC channel as `diagnostics/get_agent_report`. New analytics methods (top-N queries, per-session breakdowns, cost projections) belong on `AgentReportBuilder` so they share the same payload+monitoring join.
 
 ## See also
 
 - `tool_surface_redesign.md` (under `05_development/02_proposals/` then `02_working/` then `03_landed/`) — the design rationale and phase history for everything described above.
 - `Guides/template_guide.md` — the authoring scaffold for new per-tool guides.
 - `Tools/ToolResponse.cs` — `Error`, `BootstrapError`, `SuccessWithGuide`, the `GuideReference` type, and the category helpers (`InvalidResourceKey`, `FeatureFlagDisabled`, `ResourceNotFound`) every tool uses. `Tools/AgentToolBase.cs` provides the DI plumbing those tools share.
-- `Server/Services/AgentGate.cs`, `AgentTelemetry.cs` — the cold-start gate and telemetry infrastructure.
+- `Server/Services/AgentResponseFilter.cs`, `AgentMonitor.cs` — the auto-attach filter and per-invocation monitoring infrastructure.

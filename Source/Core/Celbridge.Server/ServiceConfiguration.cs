@@ -9,7 +9,7 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IFileServer, FileServer>();
         services.AddSingleton<IMcpToolBridge, McpToolBridge>();
-        services.AddSingleton<AgentTelemetry>();
+        services.AddSingleton<AgentMonitor>();
         services.AddSingleton<IAgentServer, AgentServer>();
         services.AddSingleton<IServerService, ServerService>();
         services.AddSingleton<AgentReportBuilder>();

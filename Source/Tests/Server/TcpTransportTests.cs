@@ -33,7 +33,7 @@ public class TcpTransportTests
         _transport = new TcpTransport(
             transportLogger,
             _mcpToolBridge,
-            new AgentReportBuilderRpcHandler(new AgentReportBuilder(new AgentTelemetry(), _mcpToolBridge, Substitute.For<IProjectService>())));
+            new AgentReportBuilderRpcHandler(new AgentReportBuilder(new AgentMonitor(), _mcpToolBridge, Substitute.For<IProjectService>())));
 
         // Find a free port and start listening
         _port = GetAvailableTcpPort();
@@ -107,7 +107,7 @@ public class TcpTransportTests
         _transport = new TcpTransport(
             transportLogger,
             _mcpToolBridge,
-            new AgentReportBuilderRpcHandler(new AgentReportBuilder(new AgentTelemetry(), _mcpToolBridge, Substitute.For<IProjectService>())));
+            new AgentReportBuilderRpcHandler(new AgentReportBuilder(new AgentMonitor(), _mcpToolBridge, Substitute.For<IProjectService>())));
         _transport.AddRpcTarget(additionalHandler);
 
         _port = GetAvailableTcpPort();
