@@ -16,9 +16,11 @@ public partial class FileTools
     [ToolAlias("file.write")]
     public async partial Task<CallToolResult> Write(string fileResource, string content)
     {
+        const string ToolGuide = "file_write";
+
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
@@ -29,7 +31,7 @@ public partial class FileTools
 
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult);
+            return ToolResponse.Error(writeResult, ToolGuide);
         }
 
         var lineCount = LineEndingHelper.CountLines(content);

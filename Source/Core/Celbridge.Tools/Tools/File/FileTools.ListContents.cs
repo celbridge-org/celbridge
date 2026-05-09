@@ -21,9 +21,11 @@ public partial class FileTools
     [ToolAlias("file.list_contents")]
     public async partial Task<CallToolResult> ListContents(string resource, string glob = "")
     {
+        const string ToolGuide = "file_list_contents";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         // Route through the command queue so the snapshot observes state after all
@@ -34,7 +36,7 @@ public partial class FileTools
             command => command.Resource = resourceKey);
         if (listContentsResult.IsFailure)
         {
-            return ToolResponse.Error(listContentsResult);
+            return ToolResponse.Error(listContentsResult, ToolGuide);
         }
         var snapshot = listContentsResult.Value;
 

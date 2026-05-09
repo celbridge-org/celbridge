@@ -12,20 +12,22 @@ public partial class WebViewTools
     [ToolAlias("webview.inspect")]
     public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5)
     {
+        const string ToolGuide = "webview_inspect";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolResponse.Error("webview_inspect requires a non-empty selector.");
+            return ToolResponse.Error("webview_inspect requires a non-empty selector.", ToolGuide);
         }
 
         Logger.LogInformation("webview_inspect resource={Resource} selector={Selector} childPreviewLimit={ChildPreviewLimit}",
@@ -36,7 +38,7 @@ public partial class WebViewTools
         var inspectResult = await toolBridge.InspectAsync(resourceKey, options);
         if (inspectResult.IsFailure)
         {
-            return ToolResponse.Error(inspectResult);
+            return ToolResponse.Error(inspectResult, ToolGuide);
         }
 
         return ToolResponse.Success(inspectResult.Value);

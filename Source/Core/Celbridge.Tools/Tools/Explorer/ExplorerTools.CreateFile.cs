@@ -10,9 +10,11 @@ public partial class ExplorerTools
     [ToolAlias("explorer.create_file")]
     public async partial Task<CallToolResult> CreateFile(string resource, bool showDialog = false)
     {
+        const string ToolGuide = "explorer_create_file";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (showDialog)
@@ -24,7 +26,7 @@ public partial class ExplorerTools
             });
             if (dialogResult.IsFailure)
             {
-                return ToolResponse.Error(dialogResult);
+                return ToolResponse.Error(dialogResult, ToolGuide);
             }
 
             return ToolResponse.Success("ok");
@@ -37,7 +39,7 @@ public partial class ExplorerTools
         });
         if (addResult.IsFailure)
         {
-            return ToolResponse.Error(addResult);
+            return ToolResponse.Error(addResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

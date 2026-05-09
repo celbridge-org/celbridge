@@ -10,9 +10,11 @@ public partial class ExplorerTools
     [ToolAlias("explorer.rename")]
     public async partial Task<CallToolResult> Rename(string resource)
     {
+        const string ToolGuide = "explorer_rename";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var renameResult = await ExecuteCommandAsync<IRenameResourceDialogCommand>(command =>
@@ -21,7 +23,7 @@ public partial class ExplorerTools
         });
         if (renameResult.IsFailure)
         {
-            return ToolResponse.Error(renameResult);
+            return ToolResponse.Error(renameResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

@@ -12,20 +12,22 @@ public partial class WebViewTools
     [ToolAlias("webview.click")]
     public async partial Task<CallToolResult> Click(string resource, string selector)
     {
+        const string ToolGuide = "webview_click";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolResponse.Error("webview_click requires a non-empty selector.");
+            return ToolResponse.Error("webview_click requires a non-empty selector.", ToolGuide);
         }
 
         Logger.LogInformation("webview_click resource={Resource} selector={Selector}", resourceKey, selector);
@@ -35,17 +37,7 @@ public partial class WebViewTools
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)
         {
-            // The bridge produces this exact phrase when WaitForContentReadyAsync
-            // times out. The agent is most often stuck on notifyContentLoaded() not
-            // firing, so name the guide that explains the content-ready handshake.
-            if (clickResult.MessageChain.Contains("content-ready signal", StringComparison.Ordinal))
-            {
-                return ToolResponse.Error(
-                    clickResult,
-                    new GuidePointer("webview_devtools", "content-ready handshake and notifyContentLoaded"));
-            }
-
-            return ToolResponse.Error(clickResult);
+            return ToolResponse.Error(clickResult, ToolGuide);
         }
 
         return ToolResponse.Success(clickResult.Value);

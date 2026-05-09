@@ -243,7 +243,9 @@ public class SpreadsheetToolTests
         var result = await tools.ExportCsv("data/sales.xlsx", "Q1", range: "", destination: "../escape.csv");
 
         result.IsError.Should().BeTrue();
-        GetResultText(result).Should().Contain("destination");
+        var text = GetResultText(result);
+        text.Should().Contain("Invalid resource key");
+        text.Should().Contain("../escape.csv");
     }
 
     [Test]

@@ -10,9 +10,11 @@ public partial class ExplorerTools
     [ToolAlias("explorer.select")]
     public async partial Task<CallToolResult> Select(string resource, bool showExplorerPanel = true)
     {
+        const string ToolGuide = "explorer_select";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var selectResult = await ExecuteCommandAsync<ISelectResourceCommand>(command =>
@@ -22,7 +24,7 @@ public partial class ExplorerTools
         });
         if (selectResult.IsFailure)
         {
-            return ToolResponse.Error(selectResult);
+            return ToolResponse.Error(selectResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

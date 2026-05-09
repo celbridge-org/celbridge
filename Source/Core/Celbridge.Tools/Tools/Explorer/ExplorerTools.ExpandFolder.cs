@@ -10,9 +10,11 @@ public partial class ExplorerTools
     [ToolAlias("explorer.expand_folder")]
     public async partial Task<CallToolResult> ExpandFolder(string resource, bool expanded = true)
     {
+        const string ToolGuide = "explorer_expand_folder";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var expandResult = await ExecuteCommandAsync<IExpandFolderCommand>(command =>
@@ -22,7 +24,7 @@ public partial class ExplorerTools
         });
         if (expandResult.IsFailure)
         {
-            return ToolResponse.Error(expandResult);
+            return ToolResponse.Error(expandResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

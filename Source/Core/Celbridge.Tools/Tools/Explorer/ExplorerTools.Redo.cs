@@ -10,10 +10,12 @@ public partial class ExplorerTools
     [ToolAlias("explorer.redo")]
     public async partial Task<CallToolResult> Redo()
     {
+        const string ToolGuide = "explorer_redo";
+
         var redoResult = await ExecuteCommandAsync<IRedoResourceCommand>();
         if (redoResult.IsFailure)
         {
-            return ToolResponse.Error(redoResult);
+            return ToolResponse.Error(redoResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

@@ -100,5 +100,5 @@ The workbook is the only output format. If you need a quick eyeball view, open S
 
 - `tool_surface_redesign.md` (under `05_development/02_proposals/` then `02_working/` then `03_landed/`) — the design rationale and phase history for everything described above.
 - `Guides/template_guide.md` — the authoring scaffold for new per-tool guides.
-- `Tools/ToolResponse.cs` — `Error`, `BootstrapError`, `SuccessWithGuides`, and the guide-pointer policy every tool uses. `Tools/AgentToolBase.cs` provides the DI plumbing those tools share.
+- `Tools/ToolResponse.cs` — `Error`, `BootstrapError`, `SuccessWithGuide`, the `GuideReference` type, and the category helpers (`InvalidResourceKey`, `FeatureFlagDisabled`, `ResourceNotFound`) every tool uses. `Tools/AgentToolBase.cs` provides the DI plumbing those tools share.
 - `Server/Services/AgentGate.cs`, `AgentTelemetry.cs` — the cold-start gate and telemetry infrastructure.

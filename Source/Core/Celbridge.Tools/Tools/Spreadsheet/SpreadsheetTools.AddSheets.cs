@@ -12,16 +12,18 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.add_sheets")]
     public async partial Task<CallToolResult> AddSheets(string resource, string sheetsJson)
     {
+        const string ToolGuide = "spreadsheet_add_sheets";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         var parseResult = ParseSheetNames(sheetsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult);
+            return ToolResponse.Error(parseResult, ToolGuide);
         }
         var sheetNames = parseResult.Value;
 
@@ -33,7 +35,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

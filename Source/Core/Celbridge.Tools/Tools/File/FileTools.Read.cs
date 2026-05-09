@@ -15,9 +15,11 @@ public partial class FileTools
     [ToolAlias("file.read")]
     public async partial Task<CallToolResult> Read(string resource, int offset = 0, int limit = 0, bool lineNumbers = false)
     {
+        const string ToolGuide = "file_read";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -26,13 +28,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'", ToolGuide);
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolResponse.Error($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
+            return ToolResponse.Error($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.", ToolGuide);
         }
 
         var fileText = await File.ReadAllTextAsync(resourcePath);

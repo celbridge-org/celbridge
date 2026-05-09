@@ -11,20 +11,22 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.rename_sheet")]
     public async partial Task<CallToolResult> RenameSheet(string resource, string sheet, string newName)
     {
+        const string ToolGuide = "spreadsheet_rename_sheet";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.", ToolGuide);
         }
 
         if (string.IsNullOrEmpty(newName))
         {
-            return ToolResponse.Error("New sheet name is required.");
+            return ToolResponse.Error("New sheet name is required.", ToolGuide);
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -36,7 +38,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

@@ -12,15 +12,17 @@ public partial class WebViewTools
     [ToolAlias("webview.get_console")]
     public async partial Task<CallToolResult> GetConsole(string resource, int tail = 100, bool includeDebug = false, long sinceTimestampMs = 0)
     {
+        const string ToolGuide = "webview_get_console";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         Logger.LogInformation("webview_get_console resource={Resource} tail={Tail} includeDebug={IncludeDebug} since={Since}",
@@ -32,7 +34,7 @@ public partial class WebViewTools
         var consoleResult = await toolBridge.GetConsoleAsync(resourceKey, options);
         if (consoleResult.IsFailure)
         {
-            return ToolResponse.Error(consoleResult);
+            return ToolResponse.Error(consoleResult, ToolGuide);
         }
 
         return ToolResponse.Success(consoleResult.Value);

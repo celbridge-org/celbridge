@@ -10,13 +10,15 @@ public partial class ExplorerTools
     [ToolAlias("explorer.copy")]
     public async partial Task<CallToolResult> Copy(string sourceResource, string destinationResource)
     {
+        const string ToolGuide = "explorer_copy";
+
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{sourceResource}'");
+            return ToolResponse.InvalidResourceKey(sourceResource);
         }
         if (!ResourceKey.TryCreate(destinationResource, out var destinationResourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{destinationResource}'");
+            return ToolResponse.InvalidResourceKey(destinationResource);
         }
 
         var copyResult = await ExecuteCommandAsync<ICopyResourceCommand>(command =>
@@ -27,7 +29,7 @@ public partial class ExplorerTools
         });
         if (copyResult.IsFailure)
         {
-            return ToolResponse.Error(copyResult);
+            return ToolResponse.Error(copyResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

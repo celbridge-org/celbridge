@@ -19,15 +19,17 @@ public partial class WebViewTools
         string selector = "",
         int maxResults = 20)
     {
+        const string ToolGuide = "webview_query";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var modeCount = 0;
@@ -36,7 +38,7 @@ public partial class WebViewTools
         if (!string.IsNullOrEmpty(selector)) modeCount++;
         if (modeCount != 1)
         {
-            return ToolResponse.Error("webview_query requires exactly one of role, text, or selector.");
+            return ToolResponse.Error("webview_query requires exactly one of role, text, or selector.", ToolGuide);
         }
 
         Logger.LogInformation("webview_query resource={Resource} role={Role} name={Name} text={Text} selector={Selector} maxResults={MaxResults}",
@@ -62,7 +64,7 @@ public partial class WebViewTools
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)
         {
-            return ToolResponse.Error(queryResult);
+            return ToolResponse.Error(queryResult, ToolGuide);
         }
 
         var queryJson = queryResult.Value;
@@ -72,9 +74,9 @@ public partial class WebViewTools
             // are usually the wrong response. Route the agent to the per-tool
             // guide, which lists the recurring causes (selector miss, not yet
             // mounted, content-ready not signalled, canvas-painted UI).
-            return ToolResponse.SuccessWithGuides(
+            return ToolResponse.SuccessWithGuide(
                 queryJson,
-                new GuidePointer("webview_query", "zero matches — see selector, timing, and editor-binding notes"));
+                new GuideReference(ToolGuide, "zero matches — see selector, timing, and editor-binding notes"));
         }
 
         return ToolResponse.Success(queryJson);

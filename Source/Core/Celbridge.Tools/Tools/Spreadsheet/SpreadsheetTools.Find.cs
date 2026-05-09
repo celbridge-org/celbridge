@@ -17,16 +17,18 @@ public partial class SpreadsheetTools
         bool matchCase = false,
         bool matchEntireCellContents = false)
     {
+        const string ToolGuide = "spreadsheet_find";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(find))
         {
-            return ToolResponse.Error("Find text is required and must be non-empty.");
+            return ToolResponse.Error("Find text is required and must be non-empty.", ToolGuide);
         }
 
         var reader = GetRequiredService<ISpreadsheetReader>();
@@ -34,7 +36,7 @@ public partial class SpreadsheetTools
         var findResult = reader.Find(workbookPath, options);
         if (findResult.IsFailure)
         {
-            return ToolResponse.Error(findResult);
+            return ToolResponse.Error(findResult, ToolGuide);
         }
 
         var findValue = findResult.Value;

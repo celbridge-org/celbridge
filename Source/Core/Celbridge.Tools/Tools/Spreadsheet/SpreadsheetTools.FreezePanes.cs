@@ -11,20 +11,22 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.freeze_panes")]
     public async partial Task<CallToolResult> FreezePanes(string resource, string sheet, int rows = 0, int columns = 0)
     {
+        const string ToolGuide = "spreadsheet_freeze_panes";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.", ToolGuide);
         }
 
         if (rows < 0 || columns < 0)
         {
-            return ToolResponse.Error("rows and columns must be non-negative.");
+            return ToolResponse.Error("rows and columns must be non-negative.", ToolGuide);
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -37,7 +39,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

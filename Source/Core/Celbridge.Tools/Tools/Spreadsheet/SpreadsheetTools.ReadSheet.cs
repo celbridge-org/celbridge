@@ -19,21 +19,23 @@ public partial class SpreadsheetTools
         int limit = 0,
         int columnLimit = 0)
     {
+        const string ToolGuide = "spreadsheet_read_sheet";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.", ToolGuide);
         }
 
         if (!Enum.TryParse<SpreadsheetReadMode>(mode, ignoreCase: true, out var readMode))
         {
-            return ToolResponse.Error($"Invalid mode '{mode}'. Expected \"values\" or \"formulas\".");
+            return ToolResponse.Error($"Invalid mode '{mode}'. Expected \"values\" or \"formulas\".", ToolGuide);
         }
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
@@ -50,7 +52,7 @@ public partial class SpreadsheetTools
         var readResult = reader.ReadSheet(workbookPath, sheet, options);
         if (readResult.IsFailure)
         {
-            return ToolResponse.Error(readResult);
+            return ToolResponse.Error(readResult, ToolGuide);
         }
 
         var readValue = readResult.Value;

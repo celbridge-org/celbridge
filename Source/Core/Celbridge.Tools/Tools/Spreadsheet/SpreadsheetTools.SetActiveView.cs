@@ -18,21 +18,23 @@ public partial class SpreadsheetTools
         string activeCell = "",
         string topLeftCell = "")
     {
+        const string ToolGuide = "spreadsheet_set_active_view";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.", ToolGuide);
         }
 
         var parseResult = ParseRangesJson(rangesJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult);
+            return ToolResponse.Error(parseResult, ToolGuide);
         }
         var ranges = parseResult.Value;
 
@@ -48,7 +50,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

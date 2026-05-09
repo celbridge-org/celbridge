@@ -25,13 +25,15 @@ public partial class DocumentTools
     [ToolAlias("document.get_state")]
     public async partial Task<CallToolResult> GetState()
     {
+        const string ToolGuide = "document_get_state";
+
         // Route through the command queue so the snapshot observes state after all
         // previously enqueued commands have run. The underlying read is served from
         // a cache on DocumentsService, so this never touches WinUI collections.
         var getStateResult = await ExecuteCommandAsync<IGetDocumentStateCommand, DocumentStateSnapshot>();
         if (getStateResult.IsFailure)
         {
-            return ToolResponse.Error(getStateResult);
+            return ToolResponse.Error(getStateResult, ToolGuide);
         }
         var snapshot = getStateResult.Value;
 

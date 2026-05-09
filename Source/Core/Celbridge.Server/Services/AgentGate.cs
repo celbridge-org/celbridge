@@ -15,7 +15,7 @@ namespace Celbridge.Server.Services;
 ///     the gate so Python and JavaScript proxy callers don't need to read
 ///     agent_instructions before using tools.</item>
 ///   <item>For agent connections, non-bootstrap tools fail with a synthetic
-///     ToolError until guides_read has been called for "agent_instructions" on
+///     error until guides_read has been called for "agent_instructions" on
 ///     this session.</item>
 ///   <item>Every dispatch is recorded as a ToolInvocationRecord on
 ///     AgentTelemetry, including duration, payload sizes, and the cache-miss

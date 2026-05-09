@@ -10,9 +10,11 @@ public partial class ExplorerTools
     [ToolAlias("explorer.delete")]
     public async partial Task<CallToolResult> Delete(string resource, bool showDialog = false)
     {
+        const string ToolGuide = "explorer_delete";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (showDialog)
@@ -23,7 +25,7 @@ public partial class ExplorerTools
             });
             if (dialogResult.IsFailure)
             {
-                return ToolResponse.Error(dialogResult);
+                return ToolResponse.Error(dialogResult, ToolGuide);
             }
 
             return ToolResponse.Success("ok");
@@ -35,7 +37,7 @@ public partial class ExplorerTools
         });
         if (deleteResult.IsFailure)
         {
-            return ToolResponse.Error(deleteResult);
+            return ToolResponse.Error(deleteResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");

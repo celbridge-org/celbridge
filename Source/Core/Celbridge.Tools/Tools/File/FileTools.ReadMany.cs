@@ -21,6 +21,8 @@ public partial class FileTools
     [ToolAlias("file.read_many")]
     public async partial Task<CallToolResult> ReadMany(string resources, int offset = 0, int limit = 0)
     {
+        const string ToolGuide = "file_read_many";
+
         List<string>? resourceKeys;
         try
         {
@@ -28,12 +30,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolResponse.Error($"Invalid JSON array: {ex.Message}");
+            return ToolResponse.Error($"Invalid JSON array: {ex.Message}", ToolGuide);
         }
 
         if (resourceKeys is null || resourceKeys.Count == 0)
         {
-            return ToolResponse.Error("No resource keys provided.");
+            return ToolResponse.Error("No resource keys provided.", ToolGuide);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();

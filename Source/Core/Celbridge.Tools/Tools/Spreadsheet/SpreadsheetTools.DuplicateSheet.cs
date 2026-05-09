@@ -15,20 +15,22 @@ public partial class SpreadsheetTools
         string newSheet,
         int position = 0)
     {
+        const string ToolGuide = "spreadsheet_duplicate_sheet";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         if (string.IsNullOrEmpty(sourceSheet))
         {
-            return ToolResponse.Error("Source sheet name is required.");
+            return ToolResponse.Error("Source sheet name is required.", ToolGuide);
         }
 
         if (string.IsNullOrEmpty(newSheet))
         {
-            return ToolResponse.Error("New sheet name is required.");
+            return ToolResponse.Error("New sheet name is required.", ToolGuide);
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -41,7 +43,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

@@ -12,20 +12,22 @@ public partial class WebViewTools
     [ToolAlias("webview.fill")]
     public async partial Task<CallToolResult> Fill(string resource, string selector, string value)
     {
+        const string ToolGuide = "webview_fill";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolResponse.Error("webview_fill requires a non-empty selector.");
+            return ToolResponse.Error("webview_fill requires a non-empty selector.", ToolGuide);
         }
 
         Logger.LogInformation("webview_fill resource={Resource} selector={Selector} valueLength={ValueLength}",
@@ -36,7 +38,7 @@ public partial class WebViewTools
         var fillResult = await toolBridge.FillAsync(resourceKey, options);
         if (fillResult.IsFailure)
         {
-            return ToolResponse.Error(fillResult);
+            return ToolResponse.Error(fillResult, ToolGuide);
         }
 
         return ToolResponse.Success(fillResult.Value);

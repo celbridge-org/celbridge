@@ -21,15 +21,17 @@ public partial class WebViewTools
         string selector = "",
         int settleMs = 0)
     {
+        const string ToolGuide = "webview_screenshot";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var willSave = !string.IsNullOrEmpty(saveTo);
@@ -38,7 +40,8 @@ public partial class WebViewTools
             return ToolResponse.Error(
                 "webview_screenshot was called with returnImage = false and no saveTo, " +
                 "which would discard the captured image. Either set returnImage = true to view the image inline, " +
-                "or provide a saveTo to archive it into the project tree.");
+                "or provide a saveTo to archive it into the project tree.",
+                ToolGuide);
         }
 
         Logger.LogInformation("webview_screenshot resource={Resource} saveTo={SaveTo} returnImage={ReturnImage} format={Format} quality={Quality} maxEdge={MaxEdge} selector={Selector} settleMs={SettleMs}",
@@ -56,13 +59,13 @@ public partial class WebViewTools
             var projectFolderPath = resourceRegistry.ProjectFolderPath;
             if (string.IsNullOrEmpty(projectFolderPath))
             {
-                return ToolResponse.Error("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
+                return ToolResponse.Error("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.", ToolGuide);
             }
 
             var resolveResult = WebViewScreenshotResolver.Resolve(saveTo, format, projectFolderPath);
             if (resolveResult.IsFailure)
             {
-                return ToolResponse.Error(resolveResult);
+                return ToolResponse.Error(resolveResult, ToolGuide);
             }
             fileResource = resolveResult.Value;
         }
@@ -74,7 +77,7 @@ public partial class WebViewTools
         var screenshotResult = await toolBridge.ScreenshotAsync(resourceKey, options);
         if (screenshotResult.IsFailure)
         {
-            return ToolResponse.Error(screenshotResult);
+            return ToolResponse.Error(screenshotResult, ToolGuide);
         }
 
         var data = screenshotResult.Value;
@@ -97,7 +100,7 @@ public partial class WebViewTools
             {
                 var failure = Result.Fail($"Failed to save screenshot to resource '{fileResource}'")
                     .WithErrors(commandResult);
-                return ToolResponse.Error(failure);
+                return ToolResponse.Error(failure, ToolGuide);
             }
         }
 

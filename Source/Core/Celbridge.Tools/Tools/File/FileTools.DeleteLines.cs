@@ -17,19 +17,21 @@ public partial class FileTools
     [ToolAlias("file.delete_lines")]
     public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)
     {
+        const string ToolGuide = "file_delete_lines";
+
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         if (startLine < 1)
         {
-            return ToolResponse.Error($"startLine must be at least 1, got {startLine}");
+            return ToolResponse.Error($"startLine must be at least 1, got {startLine}", ToolGuide);
         }
 
         if (endLine < startLine)
         {
-            return ToolResponse.Error($"endLine ({endLine}) must be greater than or equal to startLine ({startLine})");
+            return ToolResponse.Error($"endLine ({endLine}) must be greater than or equal to startLine ({startLine})", ToolGuide);
         }
 
         var deleteResult = await ExecuteCommandAsync<IDeleteLinesCommand>(command =>
@@ -41,7 +43,7 @@ public partial class FileTools
 
         if (deleteResult.IsFailure)
         {
-            return ToolResponse.Error(deleteResult);
+            return ToolResponse.Error(deleteResult, ToolGuide);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();

@@ -11,10 +11,12 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.get_info")]
     public partial CallToolResult GetInfo(string resource)
     {
+        const string ToolGuide = "spreadsheet_get_info";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
         var workbookPath = resolveResult.Value;
 
@@ -22,7 +24,7 @@ public partial class SpreadsheetTools
         var infoResult = reader.GetInfo(workbookPath);
         if (infoResult.IsFailure)
         {
-            return ToolResponse.Error(infoResult);
+            return ToolResponse.Error(infoResult, ToolGuide);
         }
 
         var info = infoResult.Value;

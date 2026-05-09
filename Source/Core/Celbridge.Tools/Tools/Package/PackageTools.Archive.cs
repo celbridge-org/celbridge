@@ -21,14 +21,16 @@ public partial class PackageTools
         string exclude = "",
         bool overwrite = false)
     {
+        const string ToolGuide = "package_archive";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (!ResourceKey.TryCreate(archive, out var archiveKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{archive}'");
+            return ToolResponse.InvalidResourceKey(archive);
         }
 
         var archiveResultWrapper = await ExecuteCommandAsync<IArchiveResourceCommand, ArchiveResult>(command =>
@@ -42,7 +44,7 @@ public partial class PackageTools
 
         if (archiveResultWrapper.IsFailure)
         {
-            return ToolResponse.Error(archiveResultWrapper);
+            return ToolResponse.Error(archiveResultWrapper, ToolGuide);
         }
 
         var archiveResult = archiveResultWrapper.Value;

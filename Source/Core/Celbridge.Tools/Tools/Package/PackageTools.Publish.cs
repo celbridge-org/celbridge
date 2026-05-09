@@ -32,16 +32,19 @@ public partial class PackageTools
     [ToolAlias("package.publish")]
     public async partial Task<CallToolResult> Publish(string resource, string packageName, bool confirmWithUser = true)
     {
+        const string ToolGuide = "package_publish";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (!IsValidPackageName(packageName))
         {
             return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
-                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.",
+                ToolGuide);
         }
 
         // Validate the resource is inside the packages folder
@@ -50,7 +53,8 @@ public partial class PackageTools
         {
             return ToolResponse.Error(
                 $"Package must be inside the '{PackagesFolderPrefix}' folder. " +
-                $"Expected: '{PackagesFolderPrefix}{packageName}'");
+                $"Expected: '{PackagesFolderPrefix}{packageName}'",
+                ToolGuide);
         }
 
         // Validate the folder name matches the package name
@@ -59,7 +63,8 @@ public partial class PackageTools
         {
             return ToolResponse.Error(
                 $"Folder name '{folderName}' does not match package name '{packageName}'. " +
-                $"The package folder must be '{PackagesFolderPrefix}{packageName}'.");
+                $"The package folder must be '{PackagesFolderPrefix}{packageName}'.",
+                ToolGuide);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -68,13 +73,13 @@ public partial class PackageTools
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveSourceResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'", ToolGuide);
         }
         var sourcePath = resolveSourceResult.Value;
 
         if (!Directory.Exists(sourcePath))
         {
-            return ToolResponse.Error($"Folder not found: '{resource}'");
+            return ToolResponse.Error($"Folder not found: '{resource}'", ToolGuide);
         }
 
         // Validate that the package manifest exists and is valid
@@ -82,7 +87,7 @@ public partial class PackageTools
         var validateResult = ValidatePackageManifest(manifestPath);
         if (validateResult.IsFailure)
         {
-            return ToolResponse.Error(validateResult);
+            return ToolResponse.Error(validateResult, ToolGuide);
         }
 
         if (confirmWithUser)
@@ -94,7 +99,7 @@ public partial class PackageTools
             var confirmed = await ConfirmActionAsync(title, message);
             if (!confirmed)
             {
-                return ToolResponse.Error("Publish cancelled by user.");
+                return ToolResponse.Error("Publish cancelled by user.", ToolGuide);
             }
         }
 
@@ -131,7 +136,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolResponse.Error($"Failed to create package archive: {exception.Message}");
+            return ToolResponse.Error($"Failed to create package archive: {exception.Message}", ToolGuide);
         }
 
         var packageApiClient = GetRequiredService<IPackageApiClient>();
@@ -140,7 +145,7 @@ public partial class PackageTools
 
         if (uploadResult.IsFailure)
         {
-            return ToolResponse.Error(uploadResult);
+            return ToolResponse.Error(uploadResult, ToolGuide);
         }
 
         var result = new PackagePublishResult(packageName, entryCount, zipData.Length);

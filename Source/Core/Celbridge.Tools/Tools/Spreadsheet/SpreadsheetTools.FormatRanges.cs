@@ -12,16 +12,18 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.format_ranges")]
     public async partial Task<CallToolResult> FormatRanges(string resource, string editsJson)
     {
+        const string ToolGuide = "spreadsheet_format_ranges";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         var parseResult = ParseFormatEdits(editsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult);
+            return ToolResponse.Error(parseResult, ToolGuide);
         }
         var edits = parseResult.Value;
 
@@ -33,7 +35,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

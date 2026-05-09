@@ -24,9 +24,11 @@ public partial class FileTools
     [ToolAlias("file.apply_edits")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)
     {
+        const string ToolGuide = "file_apply_edits";
+
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         Result<List<TextEdit>> parseResult;
@@ -36,12 +38,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolResponse.Error($"Invalid edits JSON: {ex.Message}");
+            return ToolResponse.Error($"Invalid edits JSON: {ex.Message}", ToolGuide);
         }
 
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult);
+            return ToolResponse.Error(parseResult, ToolGuide);
         }
 
         var textEdits = parseResult.Value;
@@ -59,7 +61,7 @@ public partial class FileTools
 
         if (applyEditsResult.IsFailure)
         {
-            return ToolResponse.Error(applyEditsResult);
+            return ToolResponse.Error(applyEditsResult, ToolGuide);
         }
 
         var appliedEdits = applyEditsResult.Value;

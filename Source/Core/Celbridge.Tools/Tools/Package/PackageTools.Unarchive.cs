@@ -19,14 +19,16 @@ public partial class PackageTools
         string destination,
         bool overwrite = false)
     {
+        const string ToolGuide = "package_unarchive";
+
         if (!ResourceKey.TryCreate(archive, out var archiveKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{archive}'");
+            return ToolResponse.InvalidResourceKey(archive);
         }
 
         if (!ResourceKey.TryCreate(destination, out var destinationKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{destination}'");
+            return ToolResponse.InvalidResourceKey(destination);
         }
 
         var unarchiveResultWrapper = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
@@ -38,7 +40,7 @@ public partial class PackageTools
 
         if (unarchiveResultWrapper.IsFailure)
         {
-            return ToolResponse.Error(unarchiveResultWrapper);
+            return ToolResponse.Error(unarchiveResultWrapper, ToolGuide);
         }
 
         var unarchiveResult = unarchiveResultWrapper.Value;

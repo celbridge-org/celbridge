@@ -11,15 +11,17 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.remove_sheet")]
     public async partial Task<CallToolResult> RemoveSheet(string resource, string sheet)
     {
+        const string ToolGuide = "spreadsheet_remove_sheet";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.", ToolGuide);
         }
 
         var fileResourceKey = ResourceKey.Create(resource);
@@ -30,7 +32,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

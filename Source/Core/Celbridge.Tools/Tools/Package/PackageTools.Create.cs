@@ -20,11 +20,14 @@ public partial class PackageTools
     [ToolAlias("package.create")]
     public partial CallToolResult Create(string packageName)
     {
+        const string ToolGuide = "package_create";
+
         if (!IsValidPackageName(packageName))
         {
             return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
-                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
+                "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.",
+                ToolGuide);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -36,13 +39,13 @@ public partial class PackageTools
         {
             var failure = Result.Fail("Failed to resolve path for package")
                 .WithErrors(resolveResult);
-            return ToolResponse.Error(failure);
+            return ToolResponse.Error(failure, ToolGuide);
         }
         var packageFolderPath = resolveResult.Value;
 
         if (Directory.Exists(packageFolderPath))
         {
-            return ToolResponse.Error($"Package already exists: 'packages/{packageName}'");
+            return ToolResponse.Error($"Package already exists: 'packages/{packageName}'", ToolGuide);
         }
 
         try
@@ -62,7 +65,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolResponse.Error($"Failed to create package: {exception.Message}");
+            return ToolResponse.Error($"Failed to create package: {exception.Message}", ToolGuide);
         }
 
         var result = new PackageCreateResult(

@@ -12,21 +12,23 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.append_rows")]
     public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rowsJson)
     {
+        const string ToolGuide = "spreadsheet_append_rows";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolResponse.Error("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.", ToolGuide);
         }
 
         var parseResult = ParseRows(rowsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult);
+            return ToolResponse.Error(parseResult, ToolGuide);
         }
         var parsedRows = parseResult.Value;
 
@@ -39,7 +41,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

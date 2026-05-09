@@ -12,15 +12,17 @@ public partial class WebViewTools
     [ToolAlias("webview.get_html")]
     public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8)
     {
+        const string ToolGuide = "webview_get_html";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         // Clamp maxDepth so a callsite passing int.MaxValue cannot trigger an
@@ -37,7 +39,7 @@ public partial class WebViewTools
         var htmlResult = await toolBridge.GetHtmlAsync(resourceKey, options);
         if (htmlResult.IsFailure)
         {
-            return ToolResponse.Error(htmlResult);
+            return ToolResponse.Error(htmlResult, ToolGuide);
         }
 
         return ToolResponse.Success(htmlResult.Value);

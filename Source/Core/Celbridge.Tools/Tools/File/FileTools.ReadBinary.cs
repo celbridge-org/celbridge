@@ -16,9 +16,11 @@ public partial class FileTools
     [ToolAlias("file.read_binary")]
     public async partial Task<CallToolResult> ReadBinary(string resource)
     {
+        const string ToolGuide = "file_read_binary";
+
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -27,13 +29,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'", ToolGuide);
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolResponse.Error($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resource}'", ToolGuide);
         }
 
         var bytes = await File.ReadAllBytesAsync(resourcePath);

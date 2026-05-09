@@ -10,13 +10,15 @@ public partial class AppTools
     [ToolAlias("app.refresh_files")]
     public partial CallToolResult RefreshFiles()
     {
+        const string ToolGuide = "app_refresh_files";
+
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var result = workspaceWrapper.WorkspaceService.ResourceService.UpdateResources();
         if (result.IsFailure)
         {
             var failure = Result.Fail("Failed to refresh file listing")
                 .WithErrors(result);
-            return ToolResponse.Error(failure);
+            return ToolResponse.Error(failure, ToolGuide);
         }
 
         return ToolResponse.Success("File listing refreshed.");

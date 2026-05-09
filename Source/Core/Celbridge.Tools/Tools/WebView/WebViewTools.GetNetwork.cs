@@ -17,15 +17,17 @@ public partial class WebViewTools
         bool includeBodies = false,
         long sinceTimestampMs = 0)
     {
+        const string ToolGuide = "webview_get_network";
+
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolResponse.Error($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools, "webview");
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         Logger.LogInformation("webview_get_network resource={Resource} tail={Tail} includeHeaders={IncludeHeaders} includeBodies={IncludeBodies} since={Since}",
@@ -37,7 +39,7 @@ public partial class WebViewTools
         var networkResult = await toolBridge.GetNetworkAsync(resourceKey, options);
         if (networkResult.IsFailure)
         {
-            return ToolResponse.Error(networkResult);
+            return ToolResponse.Error(networkResult, ToolGuide);
         }
 
         return ToolResponse.Success(networkResult.Value);

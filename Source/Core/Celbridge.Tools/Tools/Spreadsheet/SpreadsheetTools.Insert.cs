@@ -12,16 +12,18 @@ public partial class SpreadsheetTools
     [ToolAlias("spreadsheet.insert")]
     public async partial Task<CallToolResult> Insert(string resource, string operationsJson)
     {
+        const string ToolGuide = "spreadsheet_insert";
+
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult);
+            return ToolResponse.Error(resolveResult, ToolGuide);
         }
 
         var parseResult = ParseInsertOperations(operationsJson);
         if (parseResult.IsFailure)
         {
-            return ToolResponse.Error(parseResult);
+            return ToolResponse.Error(parseResult, ToolGuide);
         }
         var operations = parseResult.Value;
 
@@ -33,7 +35,7 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolResponse.Error(commandResult);
+            return ToolResponse.Error(commandResult, ToolGuide);
         }
 
         var commandValue = commandResult.Value;

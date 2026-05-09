@@ -10,9 +10,11 @@ public partial class FileTools
     [ToolAlias("file.write_binary")]
     public async partial Task<CallToolResult> WriteBinary(string fileResource, string base64Content)
     {
+        const string ToolGuide = "file_write_binary";
+
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolResponse.Error($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         var writeResult = await ExecuteCommandAsync<IWriteBinaryFileCommand>(command =>
@@ -22,7 +24,7 @@ public partial class FileTools
         });
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult);
+            return ToolResponse.Error(writeResult, ToolGuide);
         }
 
         return ToolResponse.Success("ok");
