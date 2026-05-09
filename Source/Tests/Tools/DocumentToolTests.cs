@@ -22,6 +22,12 @@ public class DocumentToolTests
         _commandService = Substitute.For<ICommandService>();
 
         _services.GetRequiredService<ICommandService>().Returns(_commandService);
+
+        // DocumentTools.GetState resolves IDocumentStateProvider; the provider
+        // wraps the command service so the existing snapshot stubs still drive
+        // the full path.
+        _services.GetRequiredService<IDocumentStateProvider>().Returns(
+            new DocumentStateProvider(_commandService));
     }
 
     /// <summary>

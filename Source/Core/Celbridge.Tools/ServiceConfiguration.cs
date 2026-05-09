@@ -7,6 +7,8 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IGuides, Guides>();
+        services.AddSingleton<IAppStateProvider, AppStateProvider>();
+        services.AddSingleton<IDocumentStateProvider, DocumentStateProvider>();
     }
 
     /// <summary>

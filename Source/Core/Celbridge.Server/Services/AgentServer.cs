@@ -12,11 +12,19 @@ internal class AgentServer : IAgentServer
 {
     private readonly AgentMonitor _monitor;
     private readonly IGuides _guides;
+    private readonly IAppStateProvider _appStateProvider;
+    private readonly IDocumentStateProvider _documentStateProvider;
 
-    public AgentServer(AgentMonitor monitor, IGuides guides)
+    public AgentServer(
+        AgentMonitor monitor,
+        IGuides guides,
+        IAppStateProvider appStateProvider,
+        IDocumentStateProvider documentStateProvider)
     {
         _monitor = monitor;
         _guides = guides;
+        _appStateProvider = appStateProvider;
+        _documentStateProvider = documentStateProvider;
     }
 
     /// <summary>
@@ -35,7 +43,7 @@ internal class AgentServer : IAgentServer
             .WithHttpTransport()
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
 
-        var responseFilter = new AgentResponseFilter(_monitor, _guides);
+        var responseFilter = new AgentResponseFilter(_monitor, _guides, _appStateProvider, _documentStateProvider);
         mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(responseFilter.CreateFilter()));
     }
 

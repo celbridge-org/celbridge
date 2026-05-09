@@ -13,14 +13,34 @@ namespace Celbridge.Server.Services;
 /// </summary>
 internal sealed class AgentResponseFilter
 {
+    // Sentinel name used with TryMarkServed so the session-state snapshot
+    // (app + document) attaches exactly once per session, ahead of any
+    // guide content. Not a guide name; the auto-attach walker treats it
+    // as an opaque marker.
+    internal const string SessionStateMarker = "__session_state__";
+
     private readonly AgentMonitor _monitor;
     private readonly IGuides _guides;
+    private readonly IAppStateProvider _appStateProvider;
+    private readonly IDocumentStateProvider _documentStateProvider;
 
-    public AgentResponseFilter(AgentMonitor monitor, IGuides guides)
+    public AgentResponseFilter(
+        AgentMonitor monitor,
+        IGuides guides,
+        IAppStateProvider appStateProvider,
+        IDocumentStateProvider documentStateProvider)
     {
         _monitor = monitor;
         _guides = guides;
+        _appStateProvider = appStateProvider;
+        _documentStateProvider = documentStateProvider;
     }
+
+    private static readonly JsonSerializerOptions StateSnapshotJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+    };
 
     public McpRequestFilter<CallToolRequestParams, CallToolResult> CreateFilter()
     {
@@ -42,7 +62,7 @@ internal sealed class AgentResponseFilter
             // session; the broker's stateful Streamable HTTP transport always
             // populates SessionId before tools/call, so this branch shouldn't
             // fire in practice.
-            return await next(context, cancellationToken).ConfigureAwait(false);
+            return await next(context, cancellationToken);
         }
 
         var arguments = context.Params?.Arguments;
@@ -52,7 +72,7 @@ internal sealed class AgentResponseFilter
         CallToolResult result;
         try
         {
-            result = await next(context, cancellationToken).ConfigureAwait(false);
+            result = await next(context, cancellationToken);
         }
         catch
         {
@@ -74,7 +94,7 @@ internal sealed class AgentResponseFilter
             ApplyGuidesReadSideEffects(_monitor, session, arguments);
         }
 
-        result = ApplyAutoAttach(result, session, toolName);
+        result = await ApplyAutoAttachAsync(result, session, toolName);
 
         var errorMessage = success ? "" : ExtractTextContent(result);
         _monitor.RecordInvocation(server, session, toolName, new InvocationOutcome(
@@ -88,15 +108,15 @@ internal sealed class AgentResponseFilter
     }
 
     /// <summary>
-    /// Builds the candidate list of guides for this call and prepends the body
-    /// of each candidate that hasn't been served on this session yet. The
-    /// candidate list is broadest-scoped first: orientation, namespace,
-    /// per-tool, then [RelatedGuides] in declaration order, and finally any
-    /// troubleshooter named in the result's Meta dictionary. The
-    /// troubleshooter Meta entry is removed before the response leaves the
-    /// broker. Returns the result unchanged for proxy connections.
+    /// Builds the prepend list for this call and prepends each block to the
+    /// result. The order is: session-state snapshot (app + open documents)
+    /// once per session, then guide bodies (orientation, namespace,
+    /// per-tool, [RelatedGuides], troubleshooter) for any names not yet
+    /// served. The troubleshooter Meta entry is removed before the
+    /// response leaves the broker. Returns the result unchanged for proxy
+    /// connections.
     /// </summary>
-    internal CallToolResult ApplyAutoAttach(CallToolResult result, AgentSessionState session, string toolName)
+    internal async Task<CallToolResult> ApplyAutoAttachAsync(CallToolResult result, AgentSessionState session, string toolName)
     {
         if (session.IsProxyClient)
         {
@@ -108,13 +128,20 @@ internal sealed class AgentResponseFilter
             return result;
         }
 
+        var prefix = new List<ContentBlock>();
+
+        if (_monitor.TryMarkServed(session, SessionStateMarker))
+        {
+            var stateBlocks = await BuildSessionStateBlocksAsync();
+            prefix.AddRange(stateBlocks);
+        }
+
         var troubleshooterName = ExtractAndClearTroubleshooterMeta(result);
         var troubleshooterNames = troubleshooterName is null
             ? Array.Empty<string>()
             : new[] { troubleshooterName };
 
         var candidates = BuildCandidateList(toolName, troubleshooterNames);
-        var prefix = new List<ContentBlock>();
         foreach (var candidateName in candidates)
         {
             if (!_monitor.TryMarkServed(session, candidateName))
@@ -148,6 +175,41 @@ internal sealed class AgentResponseFilter
             StructuredContent = result.StructuredContent,
             Meta = result.Meta,
         };
+    }
+
+    /// <summary>
+    /// Builds the session-start state snapshot blocks: an app-state block
+    /// followed by an open-documents block. Each block is markdown-wrapped
+    /// JSON so the agent can identify the source. Document state is fetched
+    /// via the command queue; if the fetch fails the block is omitted
+    /// rather than failing the response.
+    /// </summary>
+    private async Task<IReadOnlyList<ContentBlock>> BuildSessionStateBlocksAsync()
+    {
+        var blocks = new List<ContentBlock>(2);
+
+        var appState = _appStateProvider.GetState();
+        var appJson = JsonSerializer.Serialize(appState, StateSnapshotJsonOptions);
+        blocks.Add(new TextContentBlock
+        {
+            Text = "# App state (session-start snapshot)\n\n"
+                + "Snapshot taken on the first tool call this session. Call `app_get_state` for current state.\n\n"
+                + "```json\n" + appJson + "\n```"
+        });
+
+        var documentStateResult = await _documentStateProvider.GetStateAsync();
+        if (documentStateResult.IsSuccess)
+        {
+            var documentJson = JsonSerializer.Serialize(documentStateResult.Value, StateSnapshotJsonOptions);
+            blocks.Add(new TextContentBlock
+            {
+                Text = "# Open documents (session-start snapshot)\n\n"
+                    + "Snapshot taken on the first tool call this session. Call `document_get_state` for current state.\n\n"
+                    + "```json\n" + documentJson + "\n```"
+            });
+        }
+
+        return blocks;
     }
 
     /// <summary>

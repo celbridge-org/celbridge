@@ -19,8 +19,16 @@ public class AgentResponseFilterTests
     private const string RegexSyntaxBody = "# regex_syntax concept body";
     private const string TroubleshootResourceKeyBody = "# troubleshoot_resource_key body";
 
+    // First-call attachments always include two session-state blocks
+    // (app + open documents) ahead of the guide bodies.
+    private const int SessionStateBlockCount = 2;
+    private const int AppStateBlockIndex = 0;
+    private const int DocumentStateBlockIndex = 1;
+
     private AgentMonitor _monitor = null!;
     private FakeGuides _guides = null!;
+    private FakeAppStateProvider _appStateProvider = null!;
+    private FakeDocumentStateProvider _documentStateProvider = null!;
     private AgentResponseFilter _filter = null!;
 
     [SetUp]
@@ -48,51 +56,56 @@ public class AgentResponseFilterTests
                 ["app_get_state"] = Array.Empty<string>(),
             }
         };
-        _filter = new AgentResponseFilter(_monitor, _guides);
+        _appStateProvider = new FakeAppStateProvider();
+        _documentStateProvider = new FakeDocumentStateProvider();
+        _filter = new AgentResponseFilter(_monitor, _guides, _appStateProvider, _documentStateProvider);
     }
 
-    // ApplyAutoAttach — first-use behaviour
+    // ApplyAutoAttachAsync — first-use behaviour
 
     [Test]
-    public void ApplyAutoAttach_FirstCall_AttachesOrientationNamespacePerToolAndRelated()
+    public async Task ApplyAutoAttachAsync_FirstCall_AttachesSessionStateOrientationNamespacePerToolAndRelated()
     {
         var session = new AgentSessionState("session-1");
         var result = BuildSuccess("file_read result");
 
-        var attached = _filter.ApplyAutoAttach(result, session, "file_read");
+        var attached = await _filter.ApplyAutoAttachAsync(result, session, "file_read");
 
         var blocks = attached.Content!;
-        blocks.Should().HaveCount(5);
-        TextAt(blocks, 0).Should().Be(OrientationBody);
-        TextAt(blocks, 1).Should().Be(FileNamespaceBody);
-        TextAt(blocks, 2).Should().Be(FileReadBody);
-        TextAt(blocks, 3).Should().Be(ResourceKeysBody);
-        TextAt(blocks, 4).Should().Be("file_read result");
+        // 2 session-state blocks + orientation + namespace + per-tool + related + result
+        blocks.Should().HaveCount(SessionStateBlockCount + 5);
+        TextAt(blocks, AppStateBlockIndex).Should().Contain("# App state");
+        TextAt(blocks, DocumentStateBlockIndex).Should().Contain("# Open documents");
+        TextAt(blocks, SessionStateBlockCount + 0).Should().Be(OrientationBody);
+        TextAt(blocks, SessionStateBlockCount + 1).Should().Be(FileNamespaceBody);
+        TextAt(blocks, SessionStateBlockCount + 2).Should().Be(FileReadBody);
+        TextAt(blocks, SessionStateBlockCount + 3).Should().Be(ResourceKeysBody);
+        TextAt(blocks, SessionStateBlockCount + 4).Should().Be("file_read result");
     }
 
     [Test]
-    public void ApplyAutoAttach_RepeatCall_ReturnsBareResult()
+    public async Task ApplyAutoAttachAsync_RepeatCall_ReturnsBareResult()
     {
         var session = new AgentSessionState("session-1");
 
-        _filter.ApplyAutoAttach(BuildSuccess("first"), session, "file_read");
-        var second = _filter.ApplyAutoAttach(BuildSuccess("second"), session, "file_read");
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
+        var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_read");
 
         second.Content.Should().HaveCount(1);
         TextAt(second.Content!, 0).Should().Be("second");
     }
 
     [Test]
-    public void ApplyAutoAttach_DifferentToolSameNamespace_AttachesOnlyPerToolAndUnservedRelated()
+    public async Task ApplyAutoAttachAsync_DifferentToolSameNamespace_AttachesOnlyPerToolAndUnservedRelated()
     {
         var session = new AgentSessionState("session-1");
 
-        // First call to file_read serves orientation, file namespace, file_read,
-        // and the file_read related concept (resource_keys).
-        _filter.ApplyAutoAttach(BuildSuccess("first"), session, "file_read");
+        // First call to file_read serves session state, orientation, file
+        // namespace, file_read, and the file_read related concept (resource_keys).
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
 
         // file_grep declares resource_keys (already served) plus regex_syntax (new).
-        var second = _filter.ApplyAutoAttach(BuildSuccess("second"), session, "file_grep");
+        var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_grep");
 
         second.Content.Should().HaveCount(3);
         TextAt(second.Content!, 0).Should().Be(FileGrepBody);
@@ -101,12 +114,12 @@ public class AgentResponseFilterTests
     }
 
     [Test]
-    public void ApplyAutoAttach_NewNamespace_AttachesNamespaceAndPerToolGuide_ButNotOrientation()
+    public async Task ApplyAutoAttachAsync_NewNamespace_AttachesNamespaceAndPerToolGuide_ButNotOrientation()
     {
         var session = new AgentSessionState("session-1");
 
-        _filter.ApplyAutoAttach(BuildSuccess("first"), session, "file_read");
-        var second = _filter.ApplyAutoAttach(BuildSuccess("second"), session, "app_get_state");
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
+        var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "app_get_state");
 
         second.Content.Should().HaveCount(3);
         TextAt(second.Content!, 0).Should().Be(AppNamespaceBody);
@@ -117,78 +130,76 @@ public class AgentResponseFilterTests
     // Proxy connections
 
     [Test]
-    public void ApplyAutoAttach_ProxyConnection_ReturnsBareResult()
+    public async Task ApplyAutoAttachAsync_ProxyConnection_ReturnsBareResult()
     {
         var session = new AgentSessionState("session-1") { IsProxyClient = true };
         var result = BuildSuccess("proxy result");
 
-        var attached = _filter.ApplyAutoAttach(result, session, "file_read");
+        var attached = await _filter.ApplyAutoAttachAsync(result, session, "file_read");
 
         attached.Content.Should().HaveCount(1);
         TextAt(attached.Content!, 0).Should().Be("proxy result");
         // Proxy bypass should not consume the per-session served-guides budget.
         session.WasGuideRead("agent_instructions").Should().BeFalse();
         session.WasGuideRead("file_read").Should().BeFalse();
+        session.WasGuideRead(AgentResponseFilter.SessionStateMarker).Should().BeFalse();
     }
 
     // Errors
 
     [Test]
-    public void ApplyAutoAttach_ErrorResultOnFirstUse_PrependsGuidesAndPreservesIsError()
+    public async Task ApplyAutoAttachAsync_ErrorResultOnFirstUse_PrependsBlocksAndPreservesIsError()
     {
         var session = new AgentSessionState("session-1");
         var result = BuildError("file_read failed");
 
-        var attached = _filter.ApplyAutoAttach(result, session, "file_read");
+        var attached = await _filter.ApplyAutoAttachAsync(result, session, "file_read");
 
         attached.IsError.Should().BeTrue();
-        attached.Content.Should().HaveCount(5);
-        TextAt(attached.Content!, 0).Should().Be(OrientationBody);
-        TextAt(attached.Content!, 1).Should().Be(FileNamespaceBody);
-        TextAt(attached.Content!, 2).Should().Be(FileReadBody);
-        TextAt(attached.Content!, 3).Should().Be(ResourceKeysBody);
-        TextAt(attached.Content!, 4).Should().Be("file_read failed");
+        attached.Content.Should().HaveCount(SessionStateBlockCount + 5);
+        TextAt(attached.Content!, SessionStateBlockCount + 0).Should().Be(OrientationBody);
+        TextAt(attached.Content!, SessionStateBlockCount + 4).Should().Be("file_read failed");
     }
 
     // Race: parallel first calls in the same namespace
 
     [Test]
-    public async Task ApplyAutoAttach_ParallelFirstCallsSameNamespace_AttachNamespaceExactlyOnce()
+    public async Task ApplyAutoAttachAsync_ParallelFirstCallsSameNamespace_AttachNamespaceExactlyOnce()
     {
         var session = new AgentSessionState("session-1");
 
-        var readTask = Task.Run(() => _filter.ApplyAutoAttach(BuildSuccess("read"), session, "file_read"));
-        var grepTask = Task.Run(() => _filter.ApplyAutoAttach(BuildSuccess("grep"), session, "file_grep"));
+        var readTask = Task.Run(() => _filter.ApplyAutoAttachAsync(BuildSuccess("read"), session, "file_read"));
+        var grepTask = Task.Run(() => _filter.ApplyAutoAttachAsync(BuildSuccess("grep"), session, "file_grep"));
 
         await Task.WhenAll(readTask, grepTask);
 
-        var readResult = readTask.Result;
-        var grepResult = grepTask.Result;
-
-        var combined = ExtractBodies(readResult).Concat(ExtractBodies(grepResult)).ToList();
+        var combined = ExtractBodies(readTask.Result).Concat(ExtractBodies(grepTask.Result)).ToList();
 
         // Both calls together should attach orientation, namespace, each per-tool,
-        // and each related concept exactly once across the pair.
+        // and each related concept exactly once across the pair. Session-state
+        // blocks should also each appear exactly once.
         combined.Count(body => body == OrientationBody).Should().Be(1);
         combined.Count(body => body == FileNamespaceBody).Should().Be(1);
         combined.Count(body => body == FileReadBody).Should().Be(1);
         combined.Count(body => body == FileGrepBody).Should().Be(1);
         combined.Count(body => body == ResourceKeysBody).Should().Be(1);
         combined.Count(body => body == RegexSyntaxBody).Should().Be(1);
+        combined.Count(body => body.StartsWith("# App state")).Should().Be(1);
+        combined.Count(body => body.StartsWith("# Open documents")).Should().Be(1);
     }
 
     // Related-guides attachment ordering
 
     [Test]
-    public void ApplyAutoAttach_RelatedGuidesArriveAfterPerToolInDeclarationOrder()
+    public async Task ApplyAutoAttachAsync_RelatedGuidesArriveAfterPerToolInDeclarationOrder()
     {
         var session = new AgentSessionState("session-1");
 
-        // Burn the orientation and namespace slots so the assertion focuses on
-        // the per-tool + related ordering.
-        _filter.ApplyAutoAttach(BuildSuccess("warmup"), session, "file_read");
+        // Burn the session state, orientation, and namespace slots so the assertion
+        // focuses on the per-tool + related ordering.
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("warmup"), session, "file_read");
 
-        var attached = _filter.ApplyAutoAttach(BuildSuccess("grep result"), session, "file_grep");
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("grep result"), session, "file_grep");
 
         // file_grep declares ["resource_keys", "regex_syntax"]; resource_keys
         // already served on the warmup call. So expect: file_grep body, then
@@ -199,19 +210,76 @@ public class AgentResponseFilterTests
         TextAt(attached.Content!, 2).Should().Be("grep result");
     }
 
+    // Session-state attach pipeline
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_SessionState_AttachesAppAndDocumentBlocksOnFirstCall()
+    {
+        _appStateProvider.State = new AppStateResult(
+            Version: "9.9.9-fake",
+            IsLoaded: true,
+            ProjectName: "ProbeProject",
+            FeatureFlags: new Dictionary<string, bool>(),
+            FocusedPanel: "Documents",
+            LayoutMode: new LayoutModeInfo(true, false, true, false));
+        _documentStateProvider.Result = new DocumentStateResult(
+            ActiveDocument: "/Notes/README.md",
+            SectionCount: 1,
+            OpenDocuments: new List<OpenDocumentEntry>
+            {
+                new OpenDocumentEntry("/Notes/README.md", 0, 0, true, "markdown"),
+            });
+
+        var session = new AgentSessionState("session-1");
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
+
+        TextAt(attached.Content!, AppStateBlockIndex).Should().Contain("\"version\": \"9.9.9-fake\"");
+        TextAt(attached.Content!, AppStateBlockIndex).Should().Contain("\"projectName\": \"ProbeProject\"");
+        TextAt(attached.Content!, DocumentStateBlockIndex).Should().Contain("\"activeDocument\": \"/Notes/README.md\"");
+        TextAt(attached.Content!, DocumentStateBlockIndex).Should().Contain("# Open documents");
+    }
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_SessionState_DoesNotReAttachOnSecondCall()
+    {
+        var session = new AgentSessionState("session-1");
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
+
+        var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_read");
+
+        // No prepended blocks on the second call (everything's already served).
+        second.Content.Should().HaveCount(1);
+        TextAt(second.Content!, 0).Should().Be("second");
+    }
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_SessionState_DocumentProviderFailureSkipsDocumentBlockOnly()
+    {
+        _documentStateProvider.Result = Result<DocumentStateResult>.Fail("document state unavailable");
+
+        var session = new AgentSessionState("session-1");
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
+
+        // App state still attaches; document state is omitted because the
+        // provider failed. Slot count drops by one.
+        var bodies = ExtractBodies(attached);
+        bodies.Should().Contain(b => b.StartsWith("# App state"));
+        bodies.Should().NotContain(b => b.StartsWith("# Open documents"));
+    }
+
     // Troubleshooter Meta pipeline
 
     [Test]
-    public void ApplyAutoAttach_TroubleshooterMeta_AttachesTroubleshooterAndClearsMeta()
+    public async Task ApplyAutoAttachAsync_TroubleshooterMeta_AttachesTroubleshooterAndClearsMeta()
     {
         var session = new AgentSessionState("session-1");
 
-        // Burn orientation/namespace/per-tool/related so this test focuses on
-        // the troubleshooter slot.
-        _filter.ApplyAutoAttach(BuildSuccess("warmup"), session, "file_read");
+        // Burn session state/orientation/namespace/per-tool/related so this test
+        // focuses on the troubleshooter slot.
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("warmup"), session, "file_read");
 
         var helperResult = ToolResponse.InvalidResourceKey("Bad\\Key");
-        var attached = _filter.ApplyAutoAttach(helperResult, session, "file_read");
+        var attached = await _filter.ApplyAutoAttachAsync(helperResult, session, "file_read");
 
         attached.IsError.Should().BeTrue();
         // Expect: troubleshoot_resource_key body, then the original error
@@ -223,14 +291,14 @@ public class AgentResponseFilterTests
     }
 
     [Test]
-    public void ApplyAutoAttach_TroubleshooterRepeatCall_DoesNotReAttach()
+    public async Task ApplyAutoAttachAsync_TroubleshooterRepeatCall_DoesNotReAttach()
     {
         var session = new AgentSessionState("session-1");
 
-        _filter.ApplyAutoAttach(BuildSuccess("warmup"), session, "file_read");
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("warmup"), session, "file_read");
 
-        _filter.ApplyAutoAttach(ToolResponse.InvalidResourceKey("Bad\\Key"), session, "file_read");
-        var second = _filter.ApplyAutoAttach(ToolResponse.InvalidResourceKey("Other\\Key"), session, "file_read");
+        await _filter.ApplyAutoAttachAsync(ToolResponse.InvalidResourceKey("Bad\\Key"), session, "file_read");
+        var second = await _filter.ApplyAutoAttachAsync(ToolResponse.InvalidResourceKey("Other\\Key"), session, "file_read");
 
         // Meta hint still gets cleared on the second call, so the response
         // contains only the (capped) error text and no leaked Meta entry.
@@ -243,17 +311,17 @@ public class AgentResponseFilterTests
     // Missing guide bodies (defence-in-depth)
 
     [Test]
-    public void ApplyAutoAttach_UnknownToolName_DoesNotPrepend()
+    public async Task ApplyAutoAttachAsync_UnknownToolName_DoesNotPrependPerToolBody()
     {
         var session = new AgentSessionState("session-1");
-        // No matching per-tool entry in FakeGuides; namespace and orientation
-        // still attach because they exist.
-        var attached = _filter.ApplyAutoAttach(BuildSuccess("payload"), session, "file_unknown");
+        // No matching per-tool entry in FakeGuides; namespace, orientation, and
+        // session state still attach because they exist.
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_unknown");
 
-        attached.Content.Should().HaveCount(3);
-        TextAt(attached.Content!, 0).Should().Be(OrientationBody);
-        TextAt(attached.Content!, 1).Should().Be(FileNamespaceBody);
-        TextAt(attached.Content!, 2).Should().Be("payload");
+        attached.Content.Should().HaveCount(SessionStateBlockCount + 3);
+        TextAt(attached.Content!, SessionStateBlockCount + 0).Should().Be(OrientationBody);
+        TextAt(attached.Content!, SessionStateBlockCount + 1).Should().Be(FileNamespaceBody);
+        TextAt(attached.Content!, SessionStateBlockCount + 2).Should().Be("payload");
         // The TryMarkServed slot is consumed even when no body was attached, so
         // a follow-up call doesn't prepend a phantom block either.
         session.WasGuideRead("file_unknown").Should().BeTrue();
@@ -467,5 +535,26 @@ public class AgentResponseFilterTests
             }
             return Array.Empty<string>();
         }
+    }
+
+    private sealed class FakeAppStateProvider : IAppStateProvider
+    {
+        public AppStateResult State { get; set; } = new AppStateResult(
+            Version: "1.0.0-test",
+            IsLoaded: true,
+            ProjectName: "TestProject",
+            FeatureFlags: new Dictionary<string, bool>(),
+            FocusedPanel: "None",
+            LayoutMode: new LayoutModeInfo(true, true, false, false));
+
+        public AppStateResult GetState() => State;
+    }
+
+    private sealed class FakeDocumentStateProvider : IDocumentStateProvider
+    {
+        public Result<DocumentStateResult> Result { get; set; } =
+            new DocumentStateResult("", 1, new List<OpenDocumentEntry>());
+
+        public Task<Result<DocumentStateResult>> GetStateAsync() => Task.FromResult(Result);
     }
 }

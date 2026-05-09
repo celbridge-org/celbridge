@@ -2,7 +2,14 @@
 
 You are reading this because the auto-attach response filter prepended it to the result of your first non-proxy tool call this session. You will not see it again unless your context auto-compacts and you re-fetch it explicitly with `guides_read(["agent_instructions"])`.
 
-## How guides arrive
+## How guides and state arrive
+
+The first non-proxy tool call this session also delivered two state snapshots ahead of these instructions:
+
+- **App state** — the running app `version`, whether a project is loaded, the `featureFlags` map (consult before invoking a feature-gated tool such as `webview_eval`), the `focusedPanel`, and the `layoutMode` visibility flags.
+- **Open documents** — the active document and the full list of open editor tabs with their `resource`, `sectionIndex`, `tabOrder`, `isActive`, and `editorId`.
+
+These are **snapshots taken at session start**. The user can switch tabs, open new files, or change focus at any time, and your snapshot will not update with them. Whenever current state matters — resolving an ambiguous file reference, deciding whether a feature flag is enabled, checking which document is active before a `webview_*` call — call `app_get_state` or `document_get_state` to refresh.
 
 Per-tool, namespace, and concept guides ride along with your tool calls automatically:
 
@@ -11,12 +18,6 @@ Per-tool, namespace, and concept guides ride along with your tool calls automati
 - Errors that map to a category helper (`InvalidResourceKey`, `FeatureFlagDisabled`, `ResourceNotFound`) attach a focused troubleshooter guide on first occurrence.
 
 Each guide attaches once per session. There is no separate fetch step you need to make. If the host has compacted your context and you need a guide back, call `guides_read(["<name>"])` explicitly.
-
-## What to do first
-
-After this guide attaches, **call `app_get_state`**. It reports the running app `version`, whether a project is loaded, the `featureFlags` map (consult before invoking a feature-gated tool such as `webview_eval`), the `focusedPanel`, and the `layoutMode` visibility flags. Most workspace tools require a loaded project, so this is the call that makes everything after it meaningful.
-
-The act of calling `app_get_state` also delivers the `app` namespace guide and its per-tool guide on the same response, so you finish step one with everything you need to follow up.
 
 ## The conventions you will trip on
 

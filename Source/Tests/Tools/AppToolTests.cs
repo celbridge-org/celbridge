@@ -150,23 +150,38 @@ public class AppToolTests
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
-        _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
 
         var environmentService = Substitute.For<IEnvironmentService>();
         var environmentInfo = new EnvironmentInfo(appVersion, "Windows", "Debug");
         environmentService.GetEnvironmentInfo().Returns(environmentInfo);
-        _services.GetRequiredService<IEnvironmentService>().Returns(environmentService);
 
         var panelFocusService = Substitute.For<IPanelFocusService>();
         panelFocusService.FocusedPanel.Returns(focusedPanel);
-        _services.GetRequiredService<IPanelFocusService>().Returns(panelFocusService);
 
         var layoutService = Substitute.For<ILayoutService>();
         layoutService.IsContextPanelVisible.Returns(contextVisible);
         layoutService.IsInspectorPanelVisible.Returns(inspectorVisible);
         layoutService.IsConsolePanelVisible.Returns(consoleVisible);
         layoutService.IsConsoleMaximized.Returns(consoleMaximized);
+
+        _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
+        _services.GetRequiredService<IEnvironmentService>().Returns(environmentService);
+        _services.GetRequiredService<IPanelFocusService>().Returns(panelFocusService);
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
+
+        // AppTools.GetState resolves IAppStateProvider; build a real provider
+        // that wraps the substituted underlying services so the existing
+        // JSON-shape assertions continue to exercise the full build path. The
+        // factory re-resolves IProjectService at call time so tests that
+        // override the project service after WireAppStateDependencies returns
+        // (most of them) see their override.
+        _services.GetRequiredService<IAppStateProvider>().Returns(
+            _ => new AppStateProvider(
+                environmentService,
+                _services.GetRequiredService<IProjectService>(),
+                featureFlags,
+                panelFocusService,
+                layoutService));
 
         return featureFlags;
     }
