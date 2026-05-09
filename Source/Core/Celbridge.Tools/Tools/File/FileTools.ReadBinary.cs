@@ -14,6 +14,7 @@ public partial class FileTools
     /// <summary>Read any file as base64-encoded bytes plus MIME type. Use file_read_image for inline images.</summary>
     [McpServerTool(Name = "file_read_binary", ReadOnly = true)]
     [ToolAlias("file.read_binary")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ReadBinary(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

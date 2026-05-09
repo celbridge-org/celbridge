@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Apply or clear the auto-filter on a worksheet over a header range.</summary>
     [McpServerTool(Name = "spreadsheet_set_auto_filter")]
     [ToolAlias("spreadsheet.set_auto_filter")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> SetAutoFilter(
         string resource,
         string sheet,

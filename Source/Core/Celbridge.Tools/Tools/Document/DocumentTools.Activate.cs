@@ -9,6 +9,7 @@ public partial class DocumentTools
     /// <summary>Bring an already-open document to the foreground (make it the active tab).</summary>
     [McpServerTool(Name = "document_activate", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.activate")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Activate(string fileResource)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))

@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Find cells whose text or formula contains a substring across one or all sheets.</summary>
     [McpServerTool(Name = "spreadsheet_find", ReadOnly = true)]
     [ToolAlias("spreadsheet.find")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_cell_typing")]
     public partial CallToolResult Find(
         string resource,
         string find,

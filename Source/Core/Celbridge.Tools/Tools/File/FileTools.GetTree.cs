@@ -19,6 +19,7 @@ public partial class FileTools
     /// <summary>Walk a folder recursively and return a nested tree, with optional depth, glob, and type filters.</summary>
     [McpServerTool(Name = "file_get_tree", ReadOnly = true)]
     [ToolAlias("file.get_tree")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> GetTree(string resource, int depth = 3, string glob = "", string type = "")
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

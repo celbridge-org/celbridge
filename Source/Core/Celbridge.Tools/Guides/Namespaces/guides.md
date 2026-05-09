@@ -1,6 +1,6 @@
 # guides
 
-The `guides` namespace exposes the built-in agent guide library: the meta-documentation describing how to work in this application. Guides come in three kinds: **concept** (cross-cutting topics like resource keys or the file save model), **namespace** (per-namespace overviews like this one), and **tool** (one per registered MCP tool, with full parameter and return semantics). The library is loaded once at application startup from embedded markdown.
+The `guides` namespace exposes the built-in agent guide library: the meta-documentation describing how to work in this application. Guides come in four kinds: **concept** (cross-cutting topics like resource keys or the file save model), **namespace** (per-namespace overviews like this one), **tool** (one per registered MCP tool, with full parameter and return semantics), and **troubleshooter** (focused recovery notes, each mapped 1:1 to a `ToolResponse` category helper and auto-attached the first time that error class fires). The library is loaded once at application startup from embedded markdown.
 
 ## Must-knows
 

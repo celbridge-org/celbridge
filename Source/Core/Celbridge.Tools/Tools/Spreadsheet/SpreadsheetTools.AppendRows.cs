@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Append rows of cell values to the end of a worksheet's used range.</summary>
     [McpServerTool(Name = "spreadsheet_append_rows")]
     [ToolAlias("spreadsheet.append_rows")]
+    [RelatedGuides("resource_keys", "spreadsheet_cell_typing", "spreadsheet_headers_mode", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rowsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

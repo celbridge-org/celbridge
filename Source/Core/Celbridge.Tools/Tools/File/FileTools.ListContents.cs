@@ -19,6 +19,7 @@ public partial class FileTools
     /// <summary>List the immediate (single-level) children of a folder, with optional glob filter.</summary>
     [McpServerTool(Name = "file_list_contents", ReadOnly = true)]
     [ToolAlias("file.list_contents")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ListContents(string resource, string glob = "")
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

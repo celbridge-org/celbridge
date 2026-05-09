@@ -8,6 +8,7 @@ public partial class AppTools
     /// <summary>Rescan the project tree; only needed after non-Celbridge tools wrote files directly.</summary>
     [McpServerTool(Name = "app_refresh_files", ReadOnly = false, Idempotent = true)]
     [ToolAlias("app.refresh_files")]
+    [RelatedGuides]
     public partial CallToolResult RefreshFiles()
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();

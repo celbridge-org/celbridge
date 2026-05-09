@@ -30,6 +30,7 @@ public partial class PackageTools
     /// <summary>Publish packages/{packageName}/ to the remote registry (visible to other users).</summary>
     [McpServerTool(Name = "package_publish", Destructive = true)]
     [ToolAlias("package.publish")]
+    [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Publish(string resource, string packageName, bool confirmWithUser = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

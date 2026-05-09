@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tools;
@@ -6,7 +7,11 @@ namespace Celbridge.Tools;
 /// Builds CallToolResult instances with consistent error capping. The single
 /// home for tool-response shaping so the rules can be tightened (or audited)
 /// in one place. New error categories that recur across tools belong here as
-/// named factory methods that hardcode the right phrasing.
+/// named factory methods that hardcode the right phrasing. Category helpers
+/// that map to a troubleshooter guide stash the troubleshooter name in
+/// CallToolResult.Meta under TroubleshooterMetaKey; AgentResponseFilter reads
+/// the entry, removes it, and adds the named troubleshooter to its
+/// auto-attach candidate list before the response leaves the broker.
 /// </summary>
 public static class ToolResponse
 {
@@ -17,6 +22,28 @@ public static class ToolResponse
     /// third-party libraries.
     /// </summary>
     private const int MaxErrorMessageLength = 1000;
+
+    /// <summary>
+    /// Meta-dictionary key under which a category helper records the
+    /// troubleshooter guide that should auto-attach. AgentResponseFilter
+    /// reads and removes this entry before the response leaves the broker,
+    /// so the agent never sees it.
+    /// </summary>
+    public const string TroubleshooterMetaKey = "celbridge.troubleshooter";
+
+    /// <summary>
+    /// Maps each category-helper method name to the troubleshooter guide
+    /// auto-attached the first time it fires in a session. Used by the guide
+    /// loader to validate that every helper-declared troubleshooter has a
+    /// loaded guide and every loaded troubleshooter is referenced by a helper.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> HelperTroubleshooters { get; } =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [nameof(InvalidResourceKey)] = "troubleshoot_resource_key",
+            [nameof(FeatureFlagDisabled)] = "troubleshoot_feature_flag",
+            [nameof(ResourceNotFound)] = "troubleshoot_resource_not_found",
+        };
 
     /// <summary>
     /// Creates a successful CallToolResult with a text message.
@@ -91,20 +118,45 @@ public static class ToolResponse
     /// etc.).
     /// </summary>
     public static CallToolResult InvalidResourceKey(string key) =>
-        Error($"Invalid resource key: '{key}'.");
+        ErrorWithTroubleshooter(
+            $"Invalid resource key: '{key}'.",
+            HelperTroubleshooters[nameof(InvalidResourceKey)]);
 
     /// <summary>
     /// Standardised response for tools whose feature flag is disabled.
     /// </summary>
     public static CallToolResult FeatureFlagDisabled(string flagName) =>
-        Error($"The '{flagName}' feature flag is disabled. Enable it in the user .celbridge config to use this tool.");
+        ErrorWithTroubleshooter(
+            $"The '{flagName}' feature flag is disabled. Enable it in the user .celbridge config to use this tool.",
+            HelperTroubleshooters[nameof(FeatureFlagDisabled)]);
 
     /// <summary>
     /// Standardised response for the "resource key parsed but the resource
     /// doesn't exist" case.
     /// </summary>
     public static CallToolResult ResourceNotFound(string resource) =>
-        Error($"Resource not found: '{resource}'.");
+        ErrorWithTroubleshooter(
+            $"Resource not found: '{resource}'.",
+            HelperTroubleshooters[nameof(ResourceNotFound)]);
+
+    private static CallToolResult ErrorWithTroubleshooter(string message, string troubleshooterName)
+    {
+        var capped = CapErrorMessage(message);
+        return new CallToolResult
+        {
+            IsError = true,
+            Content = [
+                new TextContentBlock
+                {
+                    Text = capped
+                }
+            ],
+            Meta = new JsonObject
+            {
+                [TroubleshooterMetaKey] = troubleshooterName
+            }
+        };
+    }
 
     private static string CapErrorMessage(string text)
     {

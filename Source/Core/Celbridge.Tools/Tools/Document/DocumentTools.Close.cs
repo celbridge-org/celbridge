@@ -15,6 +15,7 @@ public partial class DocumentTools
     /// <summary>Close one or more open documents; sequential, partial-success batch.</summary>
     [McpServerTool(Name = "document_close", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.close")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
         var resourceKeyStrings = ParseResourceKeys(fileResource);

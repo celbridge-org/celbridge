@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Open the interactive rename dialog for a resource (user picks the new name).</summary>
     [McpServerTool(Name = "explorer_rename")]
     [ToolAlias("explorer.rename")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Rename(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

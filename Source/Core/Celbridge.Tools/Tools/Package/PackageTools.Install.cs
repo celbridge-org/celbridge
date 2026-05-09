@@ -17,6 +17,7 @@ public partial class PackageTools
     /// <summary>Install a package from the remote registry into packages/{packageName}/.</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
+    [RelatedGuides("packages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Install(string packageName, bool confirmWithUser = true)
     {
         if (!IsValidPackageName(packageName))

@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Copy a resource to a new destination key (source remains in place).</summary>
     [McpServerTool(Name = "explorer_copy")]
     [ToolAlias("explorer.copy")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Copy(string sourceResource, string destinationResource)
     {
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))

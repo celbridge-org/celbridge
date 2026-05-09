@@ -14,6 +14,7 @@ public partial class PackageTools
     /// <summary>Extract a zip archive into a destination folder in the project tree.</summary>
     [McpServerTool(Name = "package_unarchive")]
     [ToolAlias("package.unarchive")]
+    [RelatedGuides("resource_keys", "packages_overview")]
     public async partial Task<CallToolResult> Unarchive(
         string archive,
         string destination,

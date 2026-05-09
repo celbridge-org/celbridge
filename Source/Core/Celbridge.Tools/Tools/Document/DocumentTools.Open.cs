@@ -9,6 +9,7 @@ public partial class DocumentTools
     /// <summary>Open a document in the editor (without activating it by default).</summary>
     [McpServerTool(Name = "document_open", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.open")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Open(string fileResource, int sectionIndex = -1, bool forceReload = false, bool activate = false)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))

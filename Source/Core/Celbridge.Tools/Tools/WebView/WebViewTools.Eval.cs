@@ -10,6 +10,7 @@ public partial class WebViewTools
     /// <summary>Evaluate an arbitrary JavaScript expression in the WebView (gated by a separate feature flag).</summary>
     [McpServerTool(Name = "webview_eval")]
     [ToolAlias("webview.eval")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Eval(string resource, string expression)
     {
         var webViewService = GetRequiredService<IWebViewService>();

@@ -5,12 +5,6 @@ class TestApp:
         assert result["isLoaded"]
         assert len(result["projectName"]) > 0
 
-    def test_get_state_returns_agent_docs_pointer(self, app):
-        result = app.get_state()
-        agent_docs = result["agentDocs"]
-        assert agent_docs["entry"] == "agent_instructions"
-        assert agent_docs["via"] == "guides_read"
-
     def test_get_state_returns_focused_panel(self, app):
         result = app.get_state()
         assert isinstance(result["focusedPanel"], str)
@@ -23,8 +17,9 @@ class TestApp:
         assert isinstance(layout_mode["consolePanelVisible"], bool)
         assert isinstance(layout_mode["consoleMaximized"], bool)
 
-    def test_get_version(self, app):
-        version = app.get_version()
+    def test_get_state_returns_version(self, app):
+        result = app.get_state()
+        version = result["version"]
         parts = version.split(".")
         assert len(parts) == 3, f"Expected 3-part version, got: {version}"
 

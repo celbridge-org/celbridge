@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Add empty worksheets to a workbook, appended in the given order.</summary>
     [McpServerTool(Name = "spreadsheet_add_sheets")]
     [ToolAlias("spreadsheet.add_sheets")]
+    [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> AddSheets(string resource, string sheetsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

@@ -47,6 +47,7 @@ public partial class FileTools
     /// <summary>Search file contents by text or regex across the project, with optional context lines.</summary>
     [McpServerTool(Name = "file_grep", ReadOnly = true)]
     [ToolAlias("file.grep")]
+    [RelatedGuides("resource_keys", "regex_syntax")]
     public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", string exclude = "", string resource = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false)
     {
         if (useRegex)

@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Workbook overview: sheet list with dimensions and frozen panes, plus named ranges.</summary>
     [McpServerTool(Name = "spreadsheet_get_info", ReadOnly = true)]
     [ToolAlias("spreadsheet.get_info")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_workflows")]
     public partial CallToolResult GetInfo(string resource)
     {
         var resolveResult = ResolveWorkbookPath(resource);

@@ -14,6 +14,7 @@ public partial class PackageTools
     /// <summary>Zip a file or folder into a project-tree archive (folder contents at archive root).</summary>
     [McpServerTool(Name = "package_archive")]
     [ToolAlias("package.archive")]
+    [RelatedGuides("resource_keys", "packages_overview")]
     public async partial Task<CallToolResult> Archive(
         string resource,
         string archive,

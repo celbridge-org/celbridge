@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Apply font, fill, border, alignment, and number-format edits to cell ranges.</summary>
     [McpServerTool(Name = "spreadsheet_format_ranges")]
     [ToolAlias("spreadsheet.format_ranges")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> FormatRanges(string resource, string editsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

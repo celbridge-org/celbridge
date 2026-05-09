@@ -1,6 +1,6 @@
 # Spreadsheet workflows
 
-Common end-to-end tasks expressed as tool sequences. Each example uses the Python proxy form; the MCP / JS forms are equivalent (see `tool_naming`).
+Common end-to-end tasks expressed as tool sequences. Each example uses the Python proxy form; the MCP / JS forms are equivalent (see the tool-naming and proxy sections in `agent_instructions`).
 
 ## Inspect a workbook before reading
 

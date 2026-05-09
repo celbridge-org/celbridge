@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Freeze the top N rows and/or left M columns of a worksheet for scroll locking.</summary>
     [McpServerTool(Name = "spreadsheet_freeze_panes")]
     [ToolAlias("spreadsheet.freeze_panes")]
+    [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> FreezePanes(string resource, string sheet, int rows = 0, int columns = 0)
     {
         var resolveResult = ResolveWorkbookPath(resource);

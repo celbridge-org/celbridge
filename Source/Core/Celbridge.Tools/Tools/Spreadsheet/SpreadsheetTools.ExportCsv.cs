@@ -18,6 +18,7 @@ public partial class SpreadsheetTools
     /// <summary>Export a sheet or sub-range as RFC 4180 CSV, returned inline or written to a file.</summary>
     [McpServerTool(Name = "spreadsheet_export_csv")]
     [ToolAlias("spreadsheet.export_csv")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> ExportCsv(string resource, string sheet, string range = "", string destination = "")
     {
         var resolveResult = ResolveWorkbookPath(resource);

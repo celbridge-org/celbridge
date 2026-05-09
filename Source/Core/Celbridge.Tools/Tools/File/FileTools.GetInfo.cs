@@ -18,6 +18,7 @@ public partial class FileTools
     /// <summary>Get metadata for a single file or folder resource.</summary>
     [McpServerTool(Name = "file_get_info", ReadOnly = true)]
     [ToolAlias("file.get_info")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> GetInfo(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

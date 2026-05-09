@@ -48,9 +48,6 @@ public class ToolResponseTests
     [Test]
     public void Error_LongMessage_IsCappedWithEllipsis()
     {
-        // Pin the length cap so a pathological exception message can't dominate
-        // the response. The cap is at 1,000 characters; the ellipsis substitutes
-        // the final three characters.
         var longMessage = new string('a', 2_000);
 
         var result = ToolResponse.Error(longMessage);
@@ -60,35 +57,58 @@ public class ToolResponseTests
         text.Should().EndWith("...");
     }
 
-    // Category helpers
+    // Category helpers — each emits the error message in a single content block
+    // and stashes the troubleshooter name in Meta for AgentResponseFilter to
+    // consume.
 
     [Test]
-    public void InvalidResourceKey_RendersTheBadKeyVerbatim()
+    public void InvalidResourceKey_RendersTheBadKeyAndStashesTroubleshooterInMeta()
     {
         var result = ToolResponse.InvalidResourceKey("Bad\\Key");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
         text.Should().Be("Invalid resource key: 'Bad\\Key'.");
+        result.Meta![ToolResponse.TroubleshooterMetaKey]!.GetValue<string>()
+            .Should().Be("troubleshoot_resource_key");
     }
 
     [Test]
-    public void FeatureFlagDisabled_NamesTheFlagAndPointsAtConfigFile()
+    public void FeatureFlagDisabled_NamesTheFlagAndStashesTroubleshooterInMeta()
     {
         var result = ToolResponse.FeatureFlagDisabled("webview-dev-tools");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
         text.Should().Be("The 'webview-dev-tools' feature flag is disabled. Enable it in the user .celbridge config to use this tool.");
+        result.Meta![ToolResponse.TroubleshooterMetaKey]!.GetValue<string>()
+            .Should().Be("troubleshoot_feature_flag");
     }
 
     [Test]
-    public void ResourceNotFound_RendersTheMissingResource()
+    public void ResourceNotFound_RendersTheMissingResourceAndStashesTroubleshooterInMeta()
     {
         var result = ToolResponse.ResourceNotFound("Scripts/missing.py");
 
         result.IsError.Should().BeTrue();
         var text = ((TextContentBlock)result.Content!.Single()).Text;
         text.Should().Be("Resource not found: 'Scripts/missing.py'.");
+        result.Meta![ToolResponse.TroubleshooterMetaKey]!.GetValue<string>()
+            .Should().Be("troubleshoot_resource_not_found");
+    }
+
+    [Test]
+    public void HelperTroubleshooters_NamesEveryCategoryHelper()
+    {
+        // The set of helper-to-troubleshooter pairs is what the guide loader
+        // validates against the loaded troubleshooter guides. Pin the contract.
+        ToolResponse.HelperTroubleshooters.Keys.Should().BeEquivalentTo(
+            "InvalidResourceKey",
+            "FeatureFlagDisabled",
+            "ResourceNotFound");
+        ToolResponse.HelperTroubleshooters.Values.Should().BeEquivalentTo(
+            "troubleshoot_resource_key",
+            "troubleshoot_feature_flag",
+            "troubleshoot_resource_not_found");
     }
 }

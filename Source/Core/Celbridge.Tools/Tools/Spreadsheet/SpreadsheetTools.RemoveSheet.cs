@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Remove a worksheet from the workbook (at least one sheet must remain).</summary>
     [McpServerTool(Name = "spreadsheet_remove_sheet")]
     [ToolAlias("spreadsheet.remove_sheet")]
+    [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> RemoveSheet(string resource, string sheet)
     {
         var resolveResult = ResolveWorkbookPath(resource);

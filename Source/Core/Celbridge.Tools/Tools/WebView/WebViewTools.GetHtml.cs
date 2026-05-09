@@ -10,6 +10,7 @@ public partial class WebViewTools
     /// <summary>Read the raw outerHTML of the WebView document or a subtree (script/style bodies redacted).</summary>
     [McpServerTool(Name = "webview_get_html")]
     [ToolAlias("webview.get_html")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> GetHtml(string resource, string selector = "", int maxDepth = 8)
     {
         var webViewService = GetRequiredService<IWebViewService>();

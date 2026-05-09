@@ -43,4 +43,4 @@ To publish, the package must be in the `packages/` folder, the folder name must 
 
 `package_publish` and `package_install` are destructive actions. Both accept a `confirmWithUser` parameter (default `true`) that displays a confirmation dialog in the application before proceeding. Pass `true` (or omit the parameter) unless the user has explicitly asked for unattended operation (e.g. inside an install script).
 
-For the JS proxy and `requires_tools` declarations packages need at runtime, see `javascript_proxy_conventions`.
+For the JS proxy conventions and `requires_tools` declarations packages need at runtime, see the JavaScript-proxy section in `agent_instructions`.

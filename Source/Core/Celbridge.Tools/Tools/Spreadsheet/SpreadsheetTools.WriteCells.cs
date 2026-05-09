@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Write per-cell value or formula edits to a worksheet, leaving other cells untouched.</summary>
     [McpServerTool(Name = "spreadsheet_write_cells")]
     [ToolAlias("spreadsheet.write_cells")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_cell_typing", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string editsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

@@ -10,6 +10,7 @@ public partial class WebViewTools
     /// <summary>Read computed metadata (attributes, styles, role/name, rect, child preview) for one selector match.</summary>
     [McpServerTool(Name = "webview_inspect")]
     [ToolAlias("webview.inspect")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5)
     {
         var webViewService = GetRequiredService<IWebViewService>();

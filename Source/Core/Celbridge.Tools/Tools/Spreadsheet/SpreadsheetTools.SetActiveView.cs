@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Set the workbook's persisted view: active sheet, selection, active cell, scroll anchor.</summary>
     [McpServerTool(Name = "spreadsheet_set_active_view")]
     [ToolAlias("spreadsheet.set_active_view")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> SetActiveView(
         string resource,
         string sheet,

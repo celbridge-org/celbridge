@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Move a worksheet to a new 1-based tab position within the workbook.</summary>
     [McpServerTool(Name = "spreadsheet_move_sheet")]
     [ToolAlias("spreadsheet.move_sheet")]
+    [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> MoveSheet(string resource, string sheet, int position)
     {
         var resolveResult = ResolveWorkbookPath(resource);

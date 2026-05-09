@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Duplicate a worksheet with all values, formulas, and formatting under a new name.</summary>
     [McpServerTool(Name = "spreadsheet_duplicate_sheet")]
     [ToolAlias("spreadsheet.duplicate_sheet")]
+    [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> DuplicateSheet(
         string resource,
         string sourceSheet,

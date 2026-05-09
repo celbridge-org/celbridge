@@ -8,6 +8,7 @@ public partial class AppTools
     /// <summary>Show a modal alert dialog (always interactive; blocks until the user dismisses it).</summary>
     [McpServerTool(Name = "app_show_alert")]
     [ToolAlias("app.show_alert")]
+    [RelatedGuides("silent_vs_interactive")]
     public async partial Task<CallToolResult> ShowAlert(string message, string title = "")
     {
         var alertResult = await ExecuteCommandAsync<IAlertCommand>(command =>

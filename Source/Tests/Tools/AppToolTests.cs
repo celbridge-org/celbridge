@@ -24,20 +24,6 @@ public class AppToolTests
     }
 
     [Test]
-    public void AppVersion_ReturnsVersionString()
-    {
-        var environmentService = Substitute.For<IEnvironmentService>();
-        var environmentInfo = new EnvironmentInfo("1.2.3", "Windows", "Debug");
-        environmentService.GetEnvironmentInfo().Returns(environmentInfo);
-        _services.GetRequiredService<IEnvironmentService>().Returns(environmentService);
-
-        var tools = new AppTools(_services);
-        var text = GetResultText(tools.AppVersion());
-
-        text.Should().Be("1.2.3");
-    }
-
-    [Test]
     public void GetState_ProjectLoaded()
     {
         WireAppStateDependencies();
@@ -70,8 +56,25 @@ public class AppToolTests
     }
 
     [Test]
-    public void GetState_IncludesAgentDocsPointer()
+    public void GetState_IncludesAppVersion()
     {
+        WireAppStateDependencies(appVersion: "1.2.3");
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns((IProject?)null);
+        _services.GetRequiredService<IProjectService>().Returns(projectService);
+
+        var tools = new AppTools(_services);
+        var root = ParseResult(tools.GetState());
+
+        root.GetProperty("version").GetString().Should().Be("1.2.3");
+    }
+
+    [Test]
+    public void GetState_DoesNotIncludeAgentDocs()
+    {
+        // Phase 3 of tool_guide_auto_attach removes the agentDocs pointer because
+        // the orientation guide auto-attaches on first tool use. Pin the absence
+        // so a regression that re-introduces the field surfaces here.
         WireAppStateDependencies();
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns((IProject?)null);
@@ -80,9 +83,7 @@ public class AppToolTests
         var tools = new AppTools(_services);
         var root = ParseResult(tools.GetState());
 
-        var agentDocs = root.GetProperty("agentDocs");
-        agentDocs.GetProperty("entry").GetString().Should().Be("agent_instructions");
-        agentDocs.GetProperty("via").GetString().Should().Be("guides_read");
+        root.TryGetProperty("agentDocs", out _).Should().BeFalse();
     }
 
     [Test]
@@ -144,11 +145,17 @@ public class AppToolTests
         bool contextVisible = false,
         bool inspectorVisible = false,
         bool consoleVisible = false,
-        bool consoleMaximized = false)
+        bool consoleMaximized = false,
+        string appVersion = "0.0.0")
     {
         var featureFlags = Substitute.For<IFeatureFlags>();
         featureFlags.IsEnabled(Arg.Any<string>()).Returns(false);
         _services.GetRequiredService<IFeatureFlags>().Returns(featureFlags);
+
+        var environmentService = Substitute.For<IEnvironmentService>();
+        var environmentInfo = new EnvironmentInfo(appVersion, "Windows", "Debug");
+        environmentService.GetEnvironmentInfo().Returns(environmentInfo);
+        _services.GetRequiredService<IEnvironmentService>().Returns(environmentService);
 
         var panelFocusService = Substitute.For<IPanelFocusService>();
         panelFocusService.FocusedPanel.Returns(focusedPanel);
@@ -162,11 +169,6 @@ public class AppToolTests
         _services.GetRequiredService<ILayoutService>().Returns(layoutService);
 
         return featureFlags;
-    }
-
-    private static string GetResultText(CallToolResult result)
-    {
-        return result.Content.OfType<TextContentBlock>().Single().Text;
     }
 
     private static JsonElement ParseResult(CallToolResult result)

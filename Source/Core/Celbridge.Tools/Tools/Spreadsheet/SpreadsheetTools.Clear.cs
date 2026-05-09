@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Clear cell content and formatting in ranges without removing the rows or columns.</summary>
     [McpServerTool(Name = "spreadsheet_clear")]
     [ToolAlias("spreadsheet.clear")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> Clear(string resource, string operationsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

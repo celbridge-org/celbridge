@@ -17,6 +17,7 @@ public partial class ExplorerTools
     /// <summary>Explorer panel state: selected resource(s) and expanded folders.</summary>
     [McpServerTool(Name = "explorer_get_state", ReadOnly = true)]
     [ToolAlias("explorer.get_state")]
+    [RelatedGuides("workspace_panels")]
     public partial CallToolResult GetState()
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();

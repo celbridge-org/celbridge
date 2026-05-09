@@ -10,6 +10,7 @@ public partial class WebViewTools
     /// <summary>Find elements by ARIA role+name, visible text, or CSS selector (exactly one mode per call).</summary>
     [McpServerTool(Name = "webview_query")]
     [ToolAlias("webview.query")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Query(
         string resource,
         string role = "",

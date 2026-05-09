@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Replace one or more worksheets with parsed CSV data, optionally creating missing sheets.</summary>
     [McpServerTool(Name = "spreadsheet_import_csv")]
     [ToolAlias("spreadsheet.import_csv")]
+    [RelatedGuides("resource_keys", "spreadsheet_cell_typing", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> ImportCsv(string resource, string importsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

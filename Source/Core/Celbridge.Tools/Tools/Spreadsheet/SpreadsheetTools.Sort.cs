@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Sort the rows of a range by one or more column keys, with optional header row.</summary>
     [McpServerTool(Name = "spreadsheet_sort")]
     [ToolAlias("spreadsheet.sort")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_headers_mode", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> Sort(
         string resource,
         string sheet,

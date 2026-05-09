@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Duplicate a resource in place via the interactive rename dialog (user picks the new name).</summary>
     [McpServerTool(Name = "explorer_duplicate")]
     [ToolAlias("explorer.duplicate")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Duplicate(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

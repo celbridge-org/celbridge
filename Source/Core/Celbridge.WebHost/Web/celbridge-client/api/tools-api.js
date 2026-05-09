@@ -61,7 +61,7 @@ export class CelToolError extends Error {
 
 /**
  * Returns true if the given tool alias is allowed by an allowlist entry.
- * Supported patterns: literal alias ("app.get_version"), namespace wildcard ("app.*"),
+ * Supported patterns: literal alias ("app.get_state"), namespace wildcard ("app.*"),
  * and a lone "*" which allows all tools. Glob syntax only — no regex.
  * @param {string} alias - The tool alias to check (e.g. "document.open").
  * @param {string} pattern - A single allowlist pattern.
@@ -329,7 +329,7 @@ export class ToolsAPI {
     }
 
     /**
-     * Invokes a tool by its alias (e.g. "app.get_version"). This is the primary
+     * Invokes a tool by its alias (e.g. "app.get_state"). This is the primary
      * entry point and is what the `cel.*` proxy calls internally.
      * @param {string} alias - The tool alias.
      * @param {Object} [args] - Keyword arguments for the tool.
@@ -412,8 +412,8 @@ export function jsonRpcCodeForCelCode(celCode) {
 
 /**
  * @typedef {Object} ToolDescriptor
- * @property {string} name - The MCP tool name (e.g. "app_get_version").
- * @property {string} alias - The cel-proxy alias (e.g. "app.get_version").
+ * @property {string} name - The MCP tool name (e.g. "app_get_state").
+ * @property {string} alias - The cel-proxy alias (e.g. "app.get_state").
  * @property {string} description - Human-readable description.
  * @property {string} [returnType] - JSON Schema type name for the return value.
  * @property {Array<ToolParameter>} [parameters] - Parameter metadata.

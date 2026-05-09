@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Move a resource to a new key (also used for non-interactive rename).</summary>
     [McpServerTool(Name = "explorer_move")]
     [ToolAlias("explorer.move")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Move(string sourceResource, string destinationResource)
     {
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))

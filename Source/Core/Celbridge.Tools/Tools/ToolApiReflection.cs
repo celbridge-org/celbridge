@@ -103,7 +103,17 @@ internal static class ToolApiReflection
                 var returnsText = FindReturnsDocumentation(method, xmlReturns);
                 var isVoid = method.ReturnType == typeof(void);
 
-                results.Add(new ToolMethodInfo(namespaceName, methodName, parameterSignature, returnsText, isVoid));
+                var relatedGuidesAttribute = method.GetCustomAttribute<RelatedGuidesAttribute>();
+                var relatedGuides = relatedGuidesAttribute?.Names ?? (IReadOnlyList<string>)Array.Empty<string>();
+
+                results.Add(new ToolMethodInfo(
+                    namespaceName,
+                    methodName,
+                    parameterSignature,
+                    returnsText,
+                    isVoid,
+                    relatedGuidesAttribute is not null,
+                    relatedGuides));
             }
         }
 
@@ -155,4 +165,6 @@ internal record class ToolMethodInfo(
     string MethodName,
     string ParameterSignature,
     string Returns,
-    bool IsVoid);
+    bool IsVoid,
+    bool HasRelatedGuidesAttribute,
+    IReadOnlyList<string> RelatedGuides);

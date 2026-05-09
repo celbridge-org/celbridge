@@ -10,6 +10,7 @@ public partial class WebViewTools
     /// <summary>Set the value of an input, textarea, select, or contenteditable element and fire input/change events.</summary>
     [McpServerTool(Name = "webview_fill")]
     [ToolAlias("webview.fill")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Fill(string resource, string selector, string value)
     {
         var webViewService = GetRequiredService<IWebViewService>();

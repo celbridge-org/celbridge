@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Read per-cell formatting from a range as a 2D grid of format specs.</summary>
     [McpServerTool(Name = "spreadsheet_read_format", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_format")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation")]
     public partial CallToolResult ReadFormat(
         string resource,
         string sheet,

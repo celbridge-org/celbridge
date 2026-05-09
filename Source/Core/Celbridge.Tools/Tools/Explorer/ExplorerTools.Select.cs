@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Programmatically set the single selected resource in the explorer panel.</summary>
     [McpServerTool(Name = "explorer_select", ReadOnly = true, Idempotent = true)]
     [ToolAlias("explorer.select")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Select(string resource, bool showExplorerPanel = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

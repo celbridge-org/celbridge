@@ -8,6 +8,7 @@ public partial class FileTools
     /// <summary>Wholesale-replace a binary file from base64-encoded bytes, creating it if missing.</summary>
     [McpServerTool(Name = "file_write_binary")]
     [ToolAlias("file.write_binary")]
+    [RelatedGuides("resource_keys", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> WriteBinary(string fileResource, string base64Content)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))

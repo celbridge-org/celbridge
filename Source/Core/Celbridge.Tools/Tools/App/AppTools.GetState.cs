@@ -1,18 +1,12 @@
 using System.Reflection;
 using System.Text.Json;
+using Celbridge.ApplicationEnvironment;
 using Celbridge.Projects;
 using Celbridge.Settings;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
-
-/// <summary>
-/// Pointer to the agent guide library carried in the app_get_state payload so
-/// that compliant agents discover the guide surface on their mandatory first
-/// state call instead of relying on tool-name pattern matching.
-/// </summary>
-public record class AgentDocsPointer(string Entry, string Via);
 
 /// <summary>
 /// Workspace layout snapshot reported as part of app_get_state. Reflects which
@@ -25,17 +19,16 @@ public record class LayoutModeInfo(
     bool ConsoleMaximized);
 
 /// <summary>
-/// Result returned by app_get_state. featureFlags maps each public flag name
-/// declared in FeatureFlagConstants to its current enabled state. agentDocs
-/// names the orientation entry point and the tool to read it through.
-/// focusedPanel is the WorkspacePanel currently holding focus (or "None").
-/// layoutMode reports current panel visibility.
+/// Result returned by app_get_state. version is the running Celbridge version.
+/// featureFlags maps each public flag name declared in FeatureFlagConstants to
+/// its current enabled state. focusedPanel is the WorkspacePanel currently
+/// holding focus (or "None"). layoutMode reports current panel visibility.
 /// </summary>
 public record class AppStateResult(
+    string Version,
     bool IsLoaded,
     string ProjectName,
     IReadOnlyDictionary<string, bool> FeatureFlags,
-    AgentDocsPointer AgentDocs,
     string FocusedPanel,
     LayoutModeInfo LayoutMode);
 
@@ -46,14 +39,15 @@ public partial class AppTools
     // get_state payload.
     private static readonly IReadOnlyList<string> KnownFeatureFlagNames = ReadFeatureFlagNames();
 
-    // Static pointer to the orientation guide.
-    private static readonly AgentDocsPointer AgentDocsPointerValue = new("agent_instructions", "guides_read");
-
-    /// <summary>App state: project load status, feature flags, focused panel, layout.</summary>
+    /// <summary>App state: app version, project load status, feature flags, focused panel, layout.</summary>
     [McpServerTool(Name = "app_get_state", ReadOnly = true, Idempotent = true)]
     [ToolAlias("app.get_state")]
+    [RelatedGuides("workspace_panels", "project_structure")]
     public partial CallToolResult GetState()
     {
+        var environmentService = GetRequiredService<IEnvironmentService>();
+        var version = environmentService.GetEnvironmentInfo().AppVersion;
+
         var projectService = GetRequiredService<IProjectService>();
         var currentProject = projectService.CurrentProject;
 
@@ -78,10 +72,10 @@ public partial class AppTools
             ConsoleMaximized: layoutService.IsConsoleMaximized);
 
         var result = new AppStateResult(
+            Version: version,
             IsLoaded: isLoaded,
             ProjectName: projectName,
             FeatureFlags: featureFlags,
-            AgentDocs: AgentDocsPointerValue,
             FocusedPanel: focusedPanel,
             LayoutMode: layoutMode);
 

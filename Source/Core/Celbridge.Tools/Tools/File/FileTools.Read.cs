@@ -13,6 +13,7 @@ public partial class FileTools
     /// <summary>Read the text content of one file, with optional line offset, limit, and line-number prefixes.</summary>
     [McpServerTool(Name = "file_read", ReadOnly = true)]
     [ToolAlias("file.read")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> Read(string resource, int offset = 0, int limit = 0, bool lineNumbers = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

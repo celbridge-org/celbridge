@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Read the workbook's persisted view: active sheet, selection, active cell, scroll anchor.</summary>
     [McpServerTool(Name = "spreadsheet_get_active_view", ReadOnly = true)]
     [ToolAlias("spreadsheet.get_active_view")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public partial CallToolResult GetActiveView(string resource)
     {
         var resolveResult = ResolveWorkbookPath(resource);

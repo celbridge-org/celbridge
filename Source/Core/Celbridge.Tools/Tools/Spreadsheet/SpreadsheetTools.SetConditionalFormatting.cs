@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Add conditional formatting rules to a cell range, optionally replacing prior rules.</summary>
     [McpServerTool(Name = "spreadsheet_set_conditional_formatting")]
     [ToolAlias("spreadsheet.set_conditional_formatting")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> SetConditionalFormatting(
         string resource,
         string sheet,

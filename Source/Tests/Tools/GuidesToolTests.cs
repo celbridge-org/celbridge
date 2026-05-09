@@ -80,6 +80,36 @@ public class GuidesToolTests
     }
 
     [Test]
+    public void Loader_AcceptsRealGuideLibrary()
+    {
+        // The TestServiceProvider above calls Guides.Load() in its constructor,
+        // and Load runs every validator in the live tool surface. Reaching this
+        // point — i.e. SetUp succeeding — exercises the load. Pin it explicitly
+        // so a regression in the validators doesn't silently skip when the
+        // setup dies before the more specific tests run.
+        Action act = () => new Guides().Load();
+        act.Should().NotThrow();
+    }
+
+    [Test]
+    public void Loader_LoadsTroubleshooterGuides()
+    {
+        // Each ToolResponse helper that names a troubleshooter must resolve to
+        // a Troubleshooter-kind guide in the loaded library. The validators
+        // already enforce this at load time; pin it here so the test surface
+        // documents the contract explicitly.
+        var library = new Guides();
+        library.Load();
+        foreach (var pair in ToolResponse.HelperTroubleshooters)
+        {
+            var guide = library.GetByName(pair.Value);
+            guide.Should().NotBeNull(
+                $"helper {pair.Key} declares troubleshooter '{pair.Value}'");
+            guide!.Kind.Should().Be(GuideKind.Troubleshooter);
+        }
+    }
+
+    [Test]
     public void Read_PerToolGuideCarriesPythonAndJavaScriptInvocations()
     {
         // Per-tool guides resolve to a tool entry that carries the language

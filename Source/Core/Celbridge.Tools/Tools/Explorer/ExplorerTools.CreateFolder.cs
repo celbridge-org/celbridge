@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Create an empty folder (or open the new-folder dialog for interactive naming).</summary>
     [McpServerTool(Name = "explorer_create_folder")]
     [ToolAlias("explorer.create_folder")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> CreateFolder(string resource, bool showDialog = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

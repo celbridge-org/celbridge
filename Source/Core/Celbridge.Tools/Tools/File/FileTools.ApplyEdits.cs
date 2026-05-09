@@ -22,6 +22,7 @@ public partial class FileTools
     /// <summary>Apply structured edits at 1-based line/column ranges to a text file.</summary>
     [McpServerTool(Name = "file_apply_edits")]
     [ToolAlias("file.apply_edits")]
+    [RelatedGuides("resource_keys", "editing_documents", "file_changes", "undo_semantics")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))

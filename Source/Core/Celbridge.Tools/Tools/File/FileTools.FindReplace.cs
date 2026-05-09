@@ -14,6 +14,7 @@ public partial class FileTools
     /// <summary>Replace literal or regex matches inside one file, optionally scoped to a line range.</summary>
     [McpServerTool(Name = "file_find_replace")]
     [ToolAlias("file.find_replace")]
+    [RelatedGuides("resource_keys", "regex_syntax", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> FindReplace(
         string fileResource,
         string searchText,

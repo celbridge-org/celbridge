@@ -9,9 +9,10 @@ namespace Celbridge.Tools;
 /// markdown under the Celbridge.Tools.Guides.* namespace, validates filenames
 /// against the registered MCP tool surface (every per-tool guide must match
 /// a registered tool, and every registered tool must have a per-tool guide),
-/// and precomputes per-tool invocation strings via reflection. Failures
-/// throw from Load so they surface at app startup rather than on the first
-/// agent call. Members other than Load throw if used before loading.
+/// validates the [RelatedGuides] / troubleshooter wiring, and precomputes
+/// per-tool invocation strings via reflection. Failures throw from Load so
+/// they surface at app startup rather than on the first agent call. Members
+/// other than Load throw if used before loading.
 /// </summary>
 internal sealed class Guides : IGuides
 {
@@ -19,6 +20,7 @@ internal sealed class Guides : IGuides
     private const string ConceptsSegment = "Concepts.";
     private const string NamespacesSegment = "Namespaces.";
     private const string ToolsSegment = "Tools.";
+    private const string TroubleshootersSegment = "Troubleshooters.";
     private const string MarkdownSuffix = ".md";
 
     private LoadedState? _state;
@@ -53,44 +55,60 @@ internal sealed class Guides : IGuides
         }
 
         var assembly = typeof(Guides).Assembly;
-        var rawGuides = LoadRawGuides(assembly);
-        var toolAliasNames = DiscoverToolAliasNames(assembly);
+        var guideFiles = LoadGuideFiles(assembly);
+        var toolMethods = DiscoverToolMethods(assembly);
+        var toolAliasNames = BuildToolAliasNames(toolMethods);
         var toolNamespaces = DiscoverToolNamespaces(toolAliasNames);
         var toolInvocations = BuildToolInvocations(assembly);
+        var toolRelatedGuides = BuildToolRelatedGuides(toolMethods);
 
         var entries = new Dictionary<string, GuideEntry>(StringComparer.Ordinal);
 
-        foreach (var raw in rawGuides)
+        foreach (var guideFile in guideFiles)
         {
-            ValidateRawGuide(raw, toolAliasNames, toolNamespaces, entries);
+            ValidateGuideFile(guideFile, toolAliasNames, toolNamespaces, entries);
 
             string? pythonInvocation = null;
             string? javaScriptInvocation = null;
-            if (raw.Kind == GuideKind.Tool && toolInvocations.TryGetValue(raw.Name, out var pair))
+            if (guideFile.Kind == GuideKind.Tool && toolInvocations.TryGetValue(guideFile.Name, out var pair))
             {
                 pythonInvocation = pair.Python;
                 javaScriptInvocation = pair.JavaScript;
             }
 
             var entry = new GuideEntry(
-                Name: raw.Name,
-                Kind: raw.Kind,
-                Body: raw.Body,
+                Name: guideFile.Name,
+                Kind: guideFile.Kind,
+                Body: guideFile.Body,
                 PythonInvocation: pythonInvocation,
                 JavaScriptInvocation: javaScriptInvocation);
 
-            entries.Add(raw.Name, entry);
+            entries.Add(guideFile.Name, entry);
         }
 
         ValidateEveryToolHasGuide(toolAliasNames, entries);
         ValidateEveryNamespaceHasGuide(toolNamespaces, entries);
+        ValidateRelatedGuidesAttributePresent(toolMethods);
+        ValidateRelatedGuideNamesResolve(toolRelatedGuides, entries);
+        ValidateConceptGuidesAreReachable(entries, toolRelatedGuides);
+        ValidateTroubleshootersWireUpToHelpers(entries);
 
-        _state = new LoadedState(entries);
+        _state = new LoadedState(entries, toolRelatedGuides);
     }
 
     public GuideEntry? GetByName(string name)
     {
         return RequireLoaded().ByName.GetValueOrDefault(name);
+    }
+
+    public IReadOnlyList<string> GetRelatedGuides(string toolAliasName)
+    {
+        var state = RequireLoaded();
+        if (state.RelatedGuidesByTool.TryGetValue(toolAliasName, out var related))
+        {
+            return related;
+        }
+        return Array.Empty<string>();
     }
 
     private static void ValidateEveryToolHasGuide(
@@ -149,50 +167,188 @@ internal sealed class Guides : IGuides
         }
     }
 
-    private static void ValidateRawGuide(
-        RawGuide raw,
+    private static void ValidateRelatedGuidesAttributePresent(IReadOnlyList<DiscoveredToolMethod> toolMethods)
+    {
+        var missing = new List<string>();
+        foreach (var method in toolMethods)
+        {
+            if (!method.HasRelatedGuidesAttribute)
+            {
+                missing.Add(method.AliasName);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            missing.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every MCP tool method must declare a [RelatedGuides] attribute (use [RelatedGuides] " +
+                "with no arguments to assert no extra guides). Missing on: " +
+                string.Join(", ", missing) + ".");
+        }
+    }
+
+    private static void ValidateRelatedGuideNamesResolve(
+        Dictionary<string, IReadOnlyList<string>> toolRelatedGuides,
+        Dictionary<string, GuideEntry> entries)
+    {
+        var unresolved = new List<string>();
+        foreach (var pair in toolRelatedGuides)
+        {
+            foreach (var relatedName in pair.Value)
+            {
+                if (!entries.ContainsKey(relatedName))
+                {
+                    unresolved.Add($"{pair.Key} -> {relatedName}");
+                }
+            }
+        }
+
+        if (unresolved.Count > 0)
+        {
+            unresolved.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every name listed in [RelatedGuides] must resolve to a loaded guide. " +
+                "Unresolved references: " + string.Join(", ", unresolved) + ".");
+        }
+    }
+
+    private static void ValidateConceptGuidesAreReachable(
+        Dictionary<string, GuideEntry> entries,
+        Dictionary<string, IReadOnlyList<string>> toolRelatedGuides)
+    {
+        var reachable = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var related in toolRelatedGuides.Values)
+        {
+            foreach (var name in related)
+            {
+                reachable.Add(name);
+            }
+        }
+
+        var orphans = new List<string>();
+        foreach (var entry in entries.Values)
+        {
+            if (entry.Kind != GuideKind.Concept)
+            {
+                continue;
+            }
+            // The orientation guide is the implicit first candidate for every
+            // tool call (see AgentResponseFilter.BuildCandidateList) and is
+            // never named in [RelatedGuides], so it is the one concept guide
+            // that legitimately has no entry-by-tool reachability.
+            if (string.Equals(entry.Name, OrientationGuideName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            if (!reachable.Contains(entry.Name))
+            {
+                orphans.Add(entry.Name);
+            }
+        }
+
+        if (orphans.Count > 0)
+        {
+            orphans.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every concept guide under Guides/Concepts/ must appear in at least one tool's " +
+                "[RelatedGuides] list. Orphaned concepts: " + string.Join(", ", orphans) +
+                ". Re-home into a tool's [RelatedGuides], fold into agent_instructions, or delete.");
+        }
+    }
+
+    private const string OrientationGuideName = "agent_instructions";
+
+    private static void ValidateTroubleshootersWireUpToHelpers(Dictionary<string, GuideEntry> entries)
+    {
+        var helperTroubleshooters = ToolResponse.HelperTroubleshooters;
+        var declaredNames = new HashSet<string>(helperTroubleshooters.Values, StringComparer.Ordinal);
+
+        var missingFromGuides = new List<string>();
+        foreach (var pair in helperTroubleshooters)
+        {
+            if (!entries.TryGetValue(pair.Value, out var entry)
+                || entry.Kind != GuideKind.Troubleshooter)
+            {
+                missingFromGuides.Add($"{pair.Key} -> {pair.Value}");
+            }
+        }
+        if (missingFromGuides.Count > 0)
+        {
+            missingFromGuides.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every ToolResponse helper that declares a troubleshooter must reference an existing " +
+                "troubleshooter guide under Guides/Troubleshooters/. Missing: " +
+                string.Join(", ", missingFromGuides) + ".");
+        }
+
+        var unreferenced = new List<string>();
+        foreach (var entry in entries.Values)
+        {
+            if (entry.Kind != GuideKind.Troubleshooter)
+            {
+                continue;
+            }
+            if (!declaredNames.Contains(entry.Name))
+            {
+                unreferenced.Add(entry.Name);
+            }
+        }
+        if (unreferenced.Count > 0)
+        {
+            unreferenced.Sort(StringComparer.Ordinal);
+            throw new InvalidDataException(
+                "Every troubleshooter guide under Guides/Troubleshooters/ must be referenced by at " +
+                "least one ToolResponse helper. Unreferenced troubleshooters: " +
+                string.Join(", ", unreferenced) + ".");
+        }
+    }
+
+    private static void ValidateGuideFile(
+        GuideFile guideFile,
         HashSet<string> toolAliasNames,
         HashSet<string> toolNamespaces,
         Dictionary<string, GuideEntry> alreadyLoaded)
     {
-        if (raw.Kind == GuideKind.Tool)
+        if (guideFile.Kind == GuideKind.Tool)
         {
-            if (!toolAliasNames.Contains(raw.Name))
+            if (!toolAliasNames.Contains(guideFile.Name))
             {
                 throw new InvalidDataException(
-                    $"Per-tool guide '{raw.Name}' does not match any registered MCP tool alias name.");
+                    $"Per-tool guide '{guideFile.Name}' does not match any registered MCP tool alias name.");
             }
         }
-        else if (raw.Kind == GuideKind.Namespace)
+        else if (guideFile.Kind == GuideKind.Namespace)
         {
-            if (!toolNamespaces.Contains(raw.Name))
+            if (!toolNamespaces.Contains(guideFile.Name))
             {
                 throw new InvalidDataException(
-                    $"Namespace guide '{raw.Name}' does not match any registered MCP tool namespace.");
+                    $"Namespace guide '{guideFile.Name}' does not match any registered MCP tool namespace.");
             }
 
-            if (toolAliasNames.Contains(raw.Name))
+            if (toolAliasNames.Contains(guideFile.Name))
             {
                 throw new InvalidDataException(
-                    $"Namespace guide '{raw.Name}' collides with an MCP tool alias name.");
+                    $"Namespace guide '{guideFile.Name}' collides with an MCP tool alias name.");
             }
         }
-        else if (toolAliasNames.Contains(raw.Name) || toolNamespaces.Contains(raw.Name))
+        else if (toolAliasNames.Contains(guideFile.Name) || toolNamespaces.Contains(guideFile.Name))
         {
+            // Concept and troubleshooter guides must not collide with the tool or namespace surface.
             throw new InvalidDataException(
-                $"Conceptual guide '{raw.Name}' collides with an MCP tool alias or namespace name.");
+                $"{guideFile.Kind} guide '{guideFile.Name}' collides with an MCP tool alias or namespace name.");
         }
 
-        if (alreadyLoaded.ContainsKey(raw.Name))
+        if (alreadyLoaded.ContainsKey(guideFile.Name))
         {
             throw new InvalidDataException(
-                $"Guide name '{raw.Name}' is defined in more than one location (or appears twice in one folder).");
+                $"Guide name '{guideFile.Name}' is defined in more than one location (or appears twice in one folder).");
         }
     }
 
-    private static List<RawGuide> LoadRawGuides(Assembly assembly)
+    private static List<GuideFile> LoadGuideFiles(Assembly assembly)
     {
-        var rawGuides = new List<RawGuide>();
+        var guideFiles = new List<GuideFile>();
         var resourceNames = assembly.GetManifestResourceNames();
 
         foreach (var resourceName in resourceNames)
@@ -225,24 +381,29 @@ internal sealed class Guides : IGuides
                 kind = GuideKind.Tool;
                 remainder = subPath.Substring(ToolsSegment.Length);
             }
+            else if (subPath.StartsWith(TroubleshootersSegment, StringComparison.Ordinal))
+            {
+                kind = GuideKind.Troubleshooter;
+                remainder = subPath.Substring(TroubleshootersSegment.Length);
+            }
             else
             {
                 throw new InvalidDataException(
-                    $"Guide resource '{resourceName}' is not under Concepts/, Namespaces/, or Tools/.");
+                    $"Guide resource '{resourceName}' is not under Concepts/, Namespaces/, Tools/, or Troubleshooters/.");
             }
 
             var guideName = remainder.Substring(0, remainder.Length - MarkdownSuffix.Length);
             if (guideName.Contains('.'))
             {
                 throw new InvalidDataException(
-                    $"Guide resource '{resourceName}' must live directly under Concepts/, Namespaces/, or Tools/, not in a nested folder.");
+                    $"Guide resource '{resourceName}' must live directly under its kind folder, not in a nested folder.");
             }
 
             var body = ReadResource(assembly, resourceName);
-            rawGuides.Add(new RawGuide(guideName, kind, body));
+            guideFiles.Add(new GuideFile(guideName, kind, body));
         }
 
-        return rawGuides;
+        return guideFiles;
     }
 
     private static string ReadResource(Assembly assembly, string resourceName)
@@ -253,17 +414,30 @@ internal sealed class Guides : IGuides
         return reader.ReadToEnd();
     }
 
-    private static HashSet<string> DiscoverToolAliasNames(Assembly assembly)
+    private static List<DiscoveredToolMethod> DiscoverToolMethods(Assembly assembly)
     {
-        var names = new HashSet<string>(StringComparer.Ordinal);
         var xmlReturns = new Dictionary<string, string>();
         var methods = ToolApiReflection.FindToolMethods(assembly, xmlReturns, _ => "");
 
+        var results = new List<DiscoveredToolMethod>(methods.Count);
         foreach (var method in methods)
         {
-            names.Add($"{method.Namespace}_{method.MethodName}");
+            var aliasName = $"{method.Namespace}_{method.MethodName}";
+            results.Add(new DiscoveredToolMethod(
+                AliasName: aliasName,
+                HasRelatedGuidesAttribute: method.HasRelatedGuidesAttribute,
+                RelatedGuides: method.RelatedGuides));
         }
+        return results;
+    }
 
+    private static HashSet<string> BuildToolAliasNames(IReadOnlyList<DiscoveredToolMethod> toolMethods)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var method in toolMethods)
+        {
+            names.Add(method.AliasName);
+        }
         return names;
     }
 
@@ -279,6 +453,17 @@ internal sealed class Guides : IGuides
             }
         }
         return namespaces;
+    }
+
+    private static Dictionary<string, IReadOnlyList<string>> BuildToolRelatedGuides(
+        IReadOnlyList<DiscoveredToolMethod> toolMethods)
+    {
+        var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var method in toolMethods)
+        {
+            result[method.AliasName] = method.RelatedGuides;
+        }
+        return result;
     }
 
     private static Dictionary<string, (string Python, string JavaScript)> BuildToolInvocations(Assembly assembly)
@@ -425,7 +610,14 @@ internal sealed class Guides : IGuides
                 "Guides has not been initialized. Call Initialize before use; the DI container does this once at app startup via Celbridge.Tools.ServiceConfiguration.Initialize.");
     }
 
-    private record class RawGuide(string Name, GuideKind Kind, string Body);
+    private record class GuideFile(string Name, GuideKind Kind, string Body);
 
-    private record class LoadedState(IReadOnlyDictionary<string, GuideEntry> ByName);
+    private record class DiscoveredToolMethod(
+        string AliasName,
+        bool HasRelatedGuidesAttribute,
+        IReadOnlyList<string> RelatedGuides);
+
+    private record class LoadedState(
+        IReadOnlyDictionary<string, GuideEntry> ByName,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> RelatedGuidesByTool);
 }

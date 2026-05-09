@@ -8,6 +8,7 @@ public partial class ExplorerTools
     /// <summary>Collapse every expanded folder in the explorer tree.</summary>
     [McpServerTool(Name = "explorer_collapse_all")]
     [ToolAlias("explorer.collapse_all")]
+    [RelatedGuides]
     public async partial Task<CallToolResult> CollapseAll()
     {
         var collapseResult = await ExecuteCommandAsync<ICollapseAllCommand>();

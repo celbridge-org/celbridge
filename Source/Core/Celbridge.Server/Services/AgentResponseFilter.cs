@@ -88,9 +88,13 @@ internal sealed class AgentResponseFilter
     }
 
     /// <summary>
-    /// Prepends agent_instructions, the namespace guide, and the per-tool
-    /// guide to the result for any that haven't been served on this session
-    /// yet. Returns the result unchanged for proxy connections.
+    /// Builds the candidate list of guides for this call and prepends the body
+    /// of each candidate that hasn't been served on this session yet. The
+    /// candidate list is broadest-scoped first: orientation, namespace,
+    /// per-tool, then [RelatedGuides] in declaration order, and finally any
+    /// troubleshooter named in the result's Meta dictionary. The
+    /// troubleshooter Meta entry is removed before the response leaves the
+    /// broker. Returns the result unchanged for proxy connections.
     /// </summary>
     internal CallToolResult ApplyAutoAttach(CallToolResult result, AgentSessionState session, string toolName)
     {
@@ -104,31 +108,20 @@ internal sealed class AgentResponseFilter
             return result;
         }
 
+        var troubleshooterName = ExtractAndClearTroubleshooterMeta(result);
+        var troubleshooterNames = troubleshooterName is null
+            ? Array.Empty<string>()
+            : new[] { troubleshooterName };
+
+        var candidates = BuildCandidateList(toolName, troubleshooterNames);
         var prefix = new List<ContentBlock>();
-
-        if (_monitor.TryMarkServed(session, "agent_instructions"))
+        foreach (var candidateName in candidates)
         {
-            var body = GetGuideBody("agent_instructions");
-            if (!string.IsNullOrEmpty(body))
+            if (!_monitor.TryMarkServed(session, candidateName))
             {
-                prefix.Add(new TextContentBlock { Text = body });
+                continue;
             }
-        }
-
-        var namespaceName = ExtractNamespace(toolName);
-        if (!string.IsNullOrEmpty(namespaceName)
-            && _monitor.TryMarkServed(session, namespaceName))
-        {
-            var body = GetGuideBody(namespaceName);
-            if (!string.IsNullOrEmpty(body))
-            {
-                prefix.Add(new TextContentBlock { Text = body });
-            }
-        }
-
-        if (_monitor.TryMarkServed(session, toolName))
-        {
-            var body = GetGuideBody(toolName);
+            var body = GetGuideBody(candidateName);
             if (!string.IsNullOrEmpty(body))
             {
                 prefix.Add(new TextContentBlock { Text = body });
@@ -140,10 +133,8 @@ internal sealed class AgentResponseFilter
             return result;
         }
 
-        // Single ordering rule: when guides attach, all guide blocks come
-        // before the original result content. Preserves IsError so error
-        // responses still surface as errors with the guides preceding them.
-        var combined = new List<ContentBlock>(prefix.Count + (result.Content?.Count ?? 0));
+        var combinedCount = prefix.Count + (result.Content?.Count ?? 0);
+        var combined = new List<ContentBlock>(combinedCount);
         combined.AddRange(prefix);
         if (result.Content is not null)
         {
@@ -155,7 +146,64 @@ internal sealed class AgentResponseFilter
             IsError = result.IsError,
             Content = combined,
             StructuredContent = result.StructuredContent,
+            Meta = result.Meta,
         };
+    }
+
+    /// <summary>
+    /// Builds the broadest-first candidate list for the given tool call:
+    /// agent_instructions, namespace, tool name, declared [RelatedGuides]
+    /// (in declaration order), then troubleshooter names supplied by the
+    /// caller (most specific). Order matters: the walker attaches in this
+    /// order, and TryMarkServed dedups across the walk.
+    /// </summary>
+    internal IReadOnlyList<string> BuildCandidateList(string toolName, IReadOnlyList<string> troubleshooterNames)
+    {
+        var candidates = new List<string>(8);
+        candidates.Add("agent_instructions");
+
+        var namespaceName = ExtractNamespace(toolName);
+        if (!string.IsNullOrEmpty(namespaceName))
+        {
+            candidates.Add(namespaceName);
+        }
+
+        candidates.Add(toolName);
+
+        foreach (var relatedName in _guides.GetRelatedGuides(toolName))
+        {
+            candidates.Add(relatedName);
+        }
+
+        foreach (var troubleshooterName in troubleshooterNames)
+        {
+            candidates.Add(troubleshooterName);
+        }
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// Reads the troubleshooter name out of the result's Meta dictionary (set
+    /// by ToolResponse category helpers) and clears the entry so it doesn't
+    /// leak to the agent. Returns null when no troubleshooter was named.
+    /// </summary>
+    internal static string? ExtractAndClearTroubleshooterMeta(CallToolResult result)
+    {
+        var meta = result.Meta;
+        if (meta is null)
+        {
+            return null;
+        }
+        if (!meta.TryGetPropertyValue(ToolResponse.TroubleshooterMetaKey, out var node)
+            || node is null)
+        {
+            return null;
+        }
+
+        var troubleshooterName = node.GetValue<string>();
+        meta.Remove(ToolResponse.TroubleshooterMetaKey);
+        return troubleshooterName;
     }
 
     /// <summary>

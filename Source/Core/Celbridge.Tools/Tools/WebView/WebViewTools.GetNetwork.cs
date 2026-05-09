@@ -10,6 +10,7 @@ public partial class WebViewTools
     /// <summary>Read the captured network log (fetch/XHR activity); survives reloads.</summary>
     [McpServerTool(Name = "webview_get_network")]
     [ToolAlias("webview.get_network")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> GetNetwork(
         string resource,
         int tail = 100,

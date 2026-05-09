@@ -15,6 +15,7 @@ public partial class PackageTools
     /// <summary>List all packages available in the remote package registry.</summary>
     [McpServerTool(Name = "package_list", ReadOnly = true)]
     [ToolAlias("package.list")]
+    [RelatedGuides("packages_overview")]
     public async partial Task<CallToolResult> List()
     {
         var packageApiClient = GetRequiredService<IPackageApiClient>();

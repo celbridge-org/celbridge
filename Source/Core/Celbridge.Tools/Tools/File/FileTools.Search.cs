@@ -14,6 +14,7 @@ public partial class FileTools
     /// <summary>Find files or folders by name using a glob pattern matched against the resource path.</summary>
     [McpServerTool(Name = "file_search", ReadOnly = true)]
     [ToolAlias("file.search")]
+    [RelatedGuides("resource_keys")]
     public partial CallToolResult Search(string pattern, bool includeMetadata = false, string type = "")
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();

@@ -20,6 +20,7 @@ public partial class GuidesTools
     /// <summary>Re-fetch one or more guides after the host context auto-compacted.</summary>
     [McpServerTool(Name = "guides_read", ReadOnly = true, Idempotent = true)]
     [ToolAlias("guides.read")]
+    [RelatedGuides]
     public partial CallToolResult Read(string names)
     {
         var parsedNames = ParseNamesArgument(names);

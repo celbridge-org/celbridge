@@ -27,6 +27,7 @@ public partial class FileTools
     /// <summary>Read a JPEG/PNG/GIF/WebP image as an inline multimodal content block for viewing.</summary>
     [McpServerTool(Name = "file_read_image", ReadOnly = true)]
     [ToolAlias("file.read_image")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ReadImage(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))

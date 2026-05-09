@@ -15,6 +15,9 @@ public class AgentResponseFilterTests
     private const string FileGrepBody = "# file_grep tool body";
     private const string AppNamespaceBody = "# App namespace body";
     private const string AppGetStateBody = "# app_get_state tool body";
+    private const string ResourceKeysBody = "# resource_keys concept body";
+    private const string RegexSyntaxBody = "# regex_syntax concept body";
+    private const string TroubleshootResourceKeyBody = "# troubleshoot_resource_key body";
 
     private AgentMonitor _monitor = null!;
     private FakeGuides _guides = null!;
@@ -34,6 +37,15 @@ public class AgentResponseFilterTests
                 ["file_grep"] = FileGrepBody,
                 ["app"] = AppNamespaceBody,
                 ["app_get_state"] = AppGetStateBody,
+                ["resource_keys"] = ResourceKeysBody,
+                ["regex_syntax"] = RegexSyntaxBody,
+                ["troubleshoot_resource_key"] = TroubleshootResourceKeyBody,
+            },
+            RelatedByTool =
+            {
+                ["file_read"] = new[] { "resource_keys" },
+                ["file_grep"] = new[] { "resource_keys", "regex_syntax" },
+                ["app_get_state"] = Array.Empty<string>(),
             }
         };
         _filter = new AgentResponseFilter(_monitor, _guides);
@@ -42,7 +54,7 @@ public class AgentResponseFilterTests
     // ApplyAutoAttach — first-use behaviour
 
     [Test]
-    public void ApplyAutoAttach_FirstCall_AttachesOrientationNamespaceAndToolGuide()
+    public void ApplyAutoAttach_FirstCall_AttachesOrientationNamespacePerToolAndRelated()
     {
         var session = new AgentSessionState("session-1");
         var result = BuildSuccess("file_read result");
@@ -50,11 +62,12 @@ public class AgentResponseFilterTests
         var attached = _filter.ApplyAutoAttach(result, session, "file_read");
 
         var blocks = attached.Content!;
-        blocks.Should().HaveCount(4);
+        blocks.Should().HaveCount(5);
         TextAt(blocks, 0).Should().Be(OrientationBody);
         TextAt(blocks, 1).Should().Be(FileNamespaceBody);
         TextAt(blocks, 2).Should().Be(FileReadBody);
-        TextAt(blocks, 3).Should().Be("file_read result");
+        TextAt(blocks, 3).Should().Be(ResourceKeysBody);
+        TextAt(blocks, 4).Should().Be("file_read result");
     }
 
     [Test]
@@ -70,16 +83,21 @@ public class AgentResponseFilterTests
     }
 
     [Test]
-    public void ApplyAutoAttach_DifferentToolSameNamespace_AttachesOnlyPerToolGuide()
+    public void ApplyAutoAttach_DifferentToolSameNamespace_AttachesOnlyPerToolAndUnservedRelated()
     {
         var session = new AgentSessionState("session-1");
 
+        // First call to file_read serves orientation, file namespace, file_read,
+        // and the file_read related concept (resource_keys).
         _filter.ApplyAutoAttach(BuildSuccess("first"), session, "file_read");
+
+        // file_grep declares resource_keys (already served) plus regex_syntax (new).
         var second = _filter.ApplyAutoAttach(BuildSuccess("second"), session, "file_grep");
 
-        second.Content.Should().HaveCount(2);
+        second.Content.Should().HaveCount(3);
         TextAt(second.Content!, 0).Should().Be(FileGrepBody);
-        TextAt(second.Content!, 1).Should().Be("second");
+        TextAt(second.Content!, 1).Should().Be(RegexSyntaxBody);
+        TextAt(second.Content!, 2).Should().Be("second");
     }
 
     [Test]
@@ -124,11 +142,12 @@ public class AgentResponseFilterTests
         var attached = _filter.ApplyAutoAttach(result, session, "file_read");
 
         attached.IsError.Should().BeTrue();
-        attached.Content.Should().HaveCount(4);
+        attached.Content.Should().HaveCount(5);
         TextAt(attached.Content!, 0).Should().Be(OrientationBody);
         TextAt(attached.Content!, 1).Should().Be(FileNamespaceBody);
         TextAt(attached.Content!, 2).Should().Be(FileReadBody);
-        TextAt(attached.Content!, 3).Should().Be("file_read failed");
+        TextAt(attached.Content!, 3).Should().Be(ResourceKeysBody);
+        TextAt(attached.Content!, 4).Should().Be("file_read failed");
     }
 
     // Race: parallel first calls in the same namespace
@@ -146,20 +165,79 @@ public class AgentResponseFilterTests
         var readResult = readTask.Result;
         var grepResult = grepTask.Result;
 
-        var readBodies = ExtractBodies(readResult);
-        var grepBodies = ExtractBodies(grepResult);
+        var combined = ExtractBodies(readResult).Concat(ExtractBodies(grepResult)).ToList();
 
-        // Both calls together should attach the namespace guide exactly once,
-        // exactly one orientation guide, and each per-tool guide once.
-        var combined = readBodies.Concat(grepBodies).ToList();
+        // Both calls together should attach orientation, namespace, each per-tool,
+        // and each related concept exactly once across the pair.
         combined.Count(body => body == OrientationBody).Should().Be(1);
         combined.Count(body => body == FileNamespaceBody).Should().Be(1);
         combined.Count(body => body == FileReadBody).Should().Be(1);
         combined.Count(body => body == FileGrepBody).Should().Be(1);
+        combined.Count(body => body == ResourceKeysBody).Should().Be(1);
+        combined.Count(body => body == RegexSyntaxBody).Should().Be(1);
+    }
 
-        // Each call should still receive its own per-tool guide.
-        readBodies.Should().Contain(FileReadBody);
-        grepBodies.Should().Contain(FileGrepBody);
+    // Related-guides attachment ordering
+
+    [Test]
+    public void ApplyAutoAttach_RelatedGuidesArriveAfterPerToolInDeclarationOrder()
+    {
+        var session = new AgentSessionState("session-1");
+
+        // Burn the orientation and namespace slots so the assertion focuses on
+        // the per-tool + related ordering.
+        _filter.ApplyAutoAttach(BuildSuccess("warmup"), session, "file_read");
+
+        var attached = _filter.ApplyAutoAttach(BuildSuccess("grep result"), session, "file_grep");
+
+        // file_grep declares ["resource_keys", "regex_syntax"]; resource_keys
+        // already served on the warmup call. So expect: file_grep body, then
+        // regex_syntax, then the result. Per-tool stays before related.
+        attached.Content.Should().HaveCount(3);
+        TextAt(attached.Content!, 0).Should().Be(FileGrepBody);
+        TextAt(attached.Content!, 1).Should().Be(RegexSyntaxBody);
+        TextAt(attached.Content!, 2).Should().Be("grep result");
+    }
+
+    // Troubleshooter Meta pipeline
+
+    [Test]
+    public void ApplyAutoAttach_TroubleshooterMeta_AttachesTroubleshooterAndClearsMeta()
+    {
+        var session = new AgentSessionState("session-1");
+
+        // Burn orientation/namespace/per-tool/related so this test focuses on
+        // the troubleshooter slot.
+        _filter.ApplyAutoAttach(BuildSuccess("warmup"), session, "file_read");
+
+        var helperResult = ToolResponse.InvalidResourceKey("Bad\\Key");
+        var attached = _filter.ApplyAutoAttach(helperResult, session, "file_read");
+
+        attached.IsError.Should().BeTrue();
+        // Expect: troubleshoot_resource_key body, then the original error
+        // text. The Meta hint must not survive into the response.
+        attached.Content.Should().HaveCount(2);
+        TextAt(attached.Content!, 0).Should().Be(TroubleshootResourceKeyBody);
+        TextAt(attached.Content!, 1).Should().Be("Invalid resource key: 'Bad\\Key'.");
+        attached.Meta?.ContainsKey(ToolResponse.TroubleshooterMetaKey).Should().NotBe(true);
+    }
+
+    [Test]
+    public void ApplyAutoAttach_TroubleshooterRepeatCall_DoesNotReAttach()
+    {
+        var session = new AgentSessionState("session-1");
+
+        _filter.ApplyAutoAttach(BuildSuccess("warmup"), session, "file_read");
+
+        _filter.ApplyAutoAttach(ToolResponse.InvalidResourceKey("Bad\\Key"), session, "file_read");
+        var second = _filter.ApplyAutoAttach(ToolResponse.InvalidResourceKey("Other\\Key"), session, "file_read");
+
+        // Meta hint still gets cleared on the second call, so the response
+        // contains only the (capped) error text and no leaked Meta entry.
+        second.IsError.Should().BeTrue();
+        second.Content.Should().HaveCount(1);
+        TextAt(second.Content!, 0).Should().Be("Invalid resource key: 'Other\\Key'.");
+        second.Meta?.ContainsKey(ToolResponse.TroubleshooterMetaKey).Should().NotBe(true);
     }
 
     // Missing guide bodies (defence-in-depth)
@@ -181,6 +259,30 @@ public class AgentResponseFilterTests
         session.WasGuideRead("file_unknown").Should().BeTrue();
     }
 
+    // Candidate list construction (pure)
+
+    [Test]
+    public void BuildCandidateList_OrderIsBroadestFirst()
+    {
+        var candidates = _filter.BuildCandidateList("file_grep", new[] { "troubleshoot_resource_key" });
+
+        candidates.Should().Equal(
+            "agent_instructions",
+            "file",
+            "file_grep",
+            "resource_keys",
+            "regex_syntax",
+            "troubleshoot_resource_key");
+    }
+
+    [Test]
+    public void BuildCandidateList_NoNamespace_OmitsNamespaceSlot()
+    {
+        var candidates = _filter.BuildCandidateList("standalone", Array.Empty<string>());
+
+        candidates.Should().Equal("agent_instructions", "standalone");
+    }
+
     // ParseRequestedGuideNames — JSON array of strings
 
     [Test]
@@ -194,9 +296,6 @@ public class AgentResponseFilterTests
     [Test]
     public void ParseRequestedGuideNames_FromJsonStringWrappingArray()
     {
-        // Some MCP clients send `names` as a quoted JSON string (the guides_read
-        // tool itself parses string-typed args as JSON internally). The filter
-        // mirrors that so the served-guide tracking matches what the tool sees.
         var element = ParseElement("\"[\\\"agent_instructions\\\"]\"");
         var names = AgentResponseFilter.ParseRequestedGuideNames(element);
         names.Should().Equal("agent_instructions");
@@ -270,10 +369,6 @@ public class AgentResponseFilterTests
     [Test]
     public void ApplyGuidesReadSideEffects_MalformedNamesIsNoOp()
     {
-        // Bad JSON in `names` is the case the tool itself rejects with an
-        // error result; the side effects must not record anything when the
-        // inner handler returns failure. The filter already gates this on the
-        // tool result; this test pins the inner-helper behaviour.
         var monitor = new AgentMonitor();
         var session = new AgentSessionState("session-1");
         var arguments = BuildArguments("\"[unclosed\"");
@@ -342,11 +437,13 @@ public class AgentResponseFilterTests
 
     /// <summary>
     /// Minimal IGuides used for filter tests. Returns a GuideEntry with the
-    /// canned body for known names and null for unknown names.
+    /// canned body for known names and null for unknown names; carries a
+    /// per-tool related-guides map keyed on alias name.
     /// </summary>
     private sealed class FakeGuides : IGuides
     {
         public Dictionary<string, string> Bodies { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, IReadOnlyList<string>> RelatedByTool { get; } = new(StringComparer.Ordinal);
 
         public GuideEntry? GetByName(string name)
         {
@@ -360,6 +457,15 @@ public class AgentResponseFilterTests
                     JavaScriptInvocation: null);
             }
             return null;
+        }
+
+        public IReadOnlyList<string> GetRelatedGuides(string toolAliasName)
+        {
+            if (RelatedByTool.TryGetValue(toolAliasName, out var list))
+            {
+                return list;
+            }
+            return Array.Empty<string>();
         }
     }
 }

@@ -9,6 +9,7 @@ public partial class SpreadsheetTools
     /// <summary>Read cell values or formulas from a sheet range, with paging and optional headers.</summary>
     [McpServerTool(Name = "spreadsheet_read_sheet", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_sheet")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_cell_typing", "spreadsheet_headers_mode", "spreadsheet_paging")]
     public partial CallToolResult ReadSheet(
         string resource,
         string sheet,

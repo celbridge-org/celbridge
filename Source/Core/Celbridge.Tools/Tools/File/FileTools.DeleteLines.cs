@@ -15,6 +15,7 @@ public partial class FileTools
     /// <summary>Delete a 1-based inclusive line range from a text file, including the line terminators.</summary>
     [McpServerTool(Name = "file_delete_lines")]
     [ToolAlias("file.delete_lines")]
+    [RelatedGuides("resource_keys", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))

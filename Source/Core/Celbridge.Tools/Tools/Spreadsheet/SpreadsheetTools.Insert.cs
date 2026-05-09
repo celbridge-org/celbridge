@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Insert empty rows or columns, shifting existing cells down or right.</summary>
     [McpServerTool(Name = "spreadsheet_insert")]
     [ToolAlias("spreadsheet.insert")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> Insert(string resource, string operationsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

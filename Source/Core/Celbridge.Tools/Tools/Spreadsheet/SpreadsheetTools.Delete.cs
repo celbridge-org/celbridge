@@ -10,6 +10,7 @@ public partial class SpreadsheetTools
     /// <summary>Delete entire rows or columns, shifting remaining cells to fill the gap.</summary>
     [McpServerTool(Name = "spreadsheet_delete")]
     [ToolAlias("spreadsheet.delete")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> Delete(string resource, string operationsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);

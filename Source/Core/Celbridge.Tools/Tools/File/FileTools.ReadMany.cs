@@ -19,6 +19,7 @@ public partial class FileTools
     /// <summary>Batch-read several text files in one call; per-file errors are reported per entry, not as a global failure.</summary>
     [McpServerTool(Name = "file_read_many", ReadOnly = true)]
     [ToolAlias("file.read_many")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ReadMany(string resources, int offset = 0, int limit = 0)
     {
         List<string>? resourceKeys;
