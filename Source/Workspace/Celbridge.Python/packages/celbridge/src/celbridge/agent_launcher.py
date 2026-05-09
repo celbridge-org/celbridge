@@ -60,9 +60,7 @@ _BOOTSTRAP_PROMPT = (
     "Before doing anything else, call guides_read(['agent_instructions']) to "
     "learn the Celbridge project conventions. The guides library carries the "
     "resource key rules, workspace panel descriptions, file change semantics, "
-    "and tool usage guidance you need to act correctly. The broker enforces "
-    "this with a cold-start gate, so non-bootstrap tools will refuse to run "
-    "until the agent_instructions guide has been read."
+    "and tool usage guidance you need to act correctly."
 )
 
 

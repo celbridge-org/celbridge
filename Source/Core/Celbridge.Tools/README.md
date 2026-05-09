@@ -6,7 +6,7 @@ The design rationale lives in `05_development/02_proposals/tool_surface_redesign
 
 ## The discriminator-only XML rule
 
-The XML doc for a tool method contains **only** the discriminator and parameter descriptions (and `<returns>` for tools that return a value, since MCP has no output schema). One short sentence that helps an agent decide whether to **pick** this tool over other candidates. Don't write multi-paragraph `<summary>` blocks, don't link to other tools, don't embed examples, don't restate concept-guide content. Anything beyond the discriminator belongs in the per-tool guide.
+The XML doc for a tool method contains **only** a single-line `<summary>` — one short sentence (~100 chars) that helps an agent decide whether to **pick** this tool over other candidates. No `<param>` tags, no `<returns>` tags, no multi-paragraph blocks, no links to other tools, no embedded examples, no restated concept-guide content. Anything beyond the discriminator belongs in the per-tool guide.
 
 The body of the per-tool guide carries the parameter semantics, gotchas, examples, and cross-references. The agent reaches the body via auto-attach on first use, or via `guides_read` on demand.
 
@@ -53,7 +53,7 @@ If you add a tool but forget the guide, the app won't launch — the build doesn
 ## Adding a new tool — checklist
 
 1. Implement the partial method in `Tools/<Namespace>/<NamespaceTools>.<Method>.cs`. Follow the existing partial-class layout. Use `[McpServerTool(Name = "<namespace>_<method>")]` and `[ToolAlias("<namespace>.<method>")]`.
-2. Write the XML `<summary>` as a discriminator only. Document parameters with `<param>` and add a `<returns>` if the tool returns a value.
+2. Write the XML `<summary>` as a discriminator only — one sentence under ~100 chars. No `<param>` or `<returns>` tags; full parameter and return semantics go in the per-tool guide.
 3. Author the per-tool guide at `Guides/Tools/<namespace>_<method>.md` using `Guides/template_guide.md` as a starting scaffold. Match the filename stem to the tool alias and open the body with a `# <namespace>_<method>` heading.
 4. If the tool has agent-recoverable failure modes, return `ToolResponse.Error(...)` for them — the length cap and `IsError` flag come for free. Use the category helpers (`InvalidResourceKey`, `FeatureFlagDisabled`, `ResourceNotFound`) when they fit.
 5. Add a unit test in `Source/Tests/Tools/<Namespace>ToolTests.cs` covering the happy case and the most common failure mode. Add a Python integration test in `Source/Workspace/Celbridge.Python/packages/celbridge/src/celbridge/integration_tests/test_<namespace>.py` for end-to-end coverage through the proxy.

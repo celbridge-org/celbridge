@@ -1,10 +1,10 @@
 # Agent instructions
 
-These are instructions, not a tutorial. Every agent that connects to Celbridge must read this guide before invoking any tool other than the `guides_*` bootstrap tools. The broker's cold-start gate enforces this.
+These are instructions, not a tutorial. Every agent that connects to Celbridge must read this guide before relying on the result of any tool call.
 
 ## Before any tool work
 
-1. **Read this guide.** You are doing that now. On a fresh session, call `guides_read(["agent_instructions"])` on its own — do not parallelize it with other tool calls in the same turn, or those calls will be rejected by the cold-start gate.
+1. **Read this guide.** You are doing that now — it auto-attached on the response to your first non-proxy tool call. If your context auto-compacts and you need it back, fetch it explicitly with `guides_read(["agent_instructions"])`.
 2. **Call `app_get_state`.** Most workspace tools require a loaded project. The response reports the project load status, the `featureFlags` map (consult before invoking a feature-gated tool), and the `focusedPanel` plus `layoutMode` you can use to follow the user's attention. To see the project's Python dependencies, read the `.celbridge` project file (`[project].dependencies`).
 3. **Read the namespace guide for each tool domain you engage with, before relying on results from that domain.** Namespace guides consolidate the must-knows for the namespace and are the single guide you read to be ready to work in that domain. Every registered MCP namespace has one. Skipping this step is the most common cause of silent-failure bugs.
 
