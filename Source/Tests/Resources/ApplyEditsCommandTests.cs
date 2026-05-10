@@ -149,6 +149,105 @@ public class ApplyEditsCommandTests
     }
 
     [Test]
+    public async Task ExecuteAsync_AppendSentinel_AddsLinesAtEnd()
+    {
+        var resource = new ResourceKey("notes/append.md");
+        var path = Path.Combine(_tempFolder, "append.md");
+        await File.WriteAllLinesAsync(path, new[] { "First", "Second" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var append = new TextEdit(-1, 1, -1, 1, "Third\nFourth");
+        var command = CreateCommand();
+        command.Edits = new List<FileEdit>
+        {
+            new(resource, new List<TextEdit> { append })
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var lines = await File.ReadAllLinesAsync(path);
+        lines.Should().Equal("First", "Second", "Third", "Fourth");
+        command.ResultValue.Should().HaveCount(1);
+        command.ResultValue[0].FromLine.Should().Be(3);
+        command.ResultValue[0].ToLine.Should().Be(4);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_AppendSentinel_WorksOnEmptyFile()
+    {
+        var resource = new ResourceKey("notes/empty.md");
+        var path = Path.Combine(_tempFolder, "empty.md");
+        await File.WriteAllTextAsync(path, string.Empty);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var append = new TextEdit(-1, 1, -1, 1, "Hello");
+        var command = CreateCommand();
+        command.Edits = new List<FileEdit>
+        {
+            new(resource, new List<TextEdit> { append })
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("Hello");
+        command.ResultValue[0].FromLine.Should().Be(1);
+        command.ResultValue[0].ToLine.Should().Be(1);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_AppendSentinel_PostEditRangeAccountsForEarlierEdit()
+    {
+        // An in-range edit that grows the file by 2 lines, plus an append, should
+        // place the append's post-edit range after the expanded content.
+        var resource = new ResourceKey("notes/mixed.md");
+        var path = Path.Combine(_tempFolder, "mixed.md");
+        await File.WriteAllLinesAsync(path, new[] { "A", "B", "C" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var inRange = new TextEdit(2, 1, 2, -1, "B1\nB2\nB3");
+        var append = new TextEdit(-1, 1, -1, 1, "D");
+        var command = CreateCommand();
+        command.Edits = new List<FileEdit>
+        {
+            new(resource, new List<TextEdit> { inRange, append })
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var lines = await File.ReadAllLinesAsync(path);
+        lines.Should().Equal("A", "B1", "B2", "B3", "C", "D");
+        command.ResultValue.Should().HaveCount(2);
+        command.ResultValue[0].FromLine.Should().Be(2);
+        command.ResultValue[0].ToLine.Should().Be(4);
+        command.ResultValue[1].FromLine.Should().Be(6);
+        command.ResultValue[1].ToLine.Should().Be(6);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_FailsWhenAppendSentinelMixesMinusOneWithRealLine()
+    {
+        var resource = new ResourceKey("notes/bad.md");
+        var path = Path.Combine(_tempFolder, "bad.md");
+        await File.WriteAllLinesAsync(path, new[] { "X" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var bad = new TextEdit(-1, 1, 1, 1, "y");
+        var command = CreateCommand();
+        command.Edits = new List<FileEdit>
+        {
+            new(resource, new List<TextEdit> { bad })
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public async Task ExecuteAsync_FailsWhenFileMissing()
     {
         var resource = new ResourceKey("missing.md");

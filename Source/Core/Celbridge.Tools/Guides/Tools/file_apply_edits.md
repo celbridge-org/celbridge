@@ -31,7 +31,15 @@ When the edits array is empty the tool returns the literal string `"ok"` instead
 
 ## Appending past the last line
 
-`line` and `endLine` must point at existing lines. An edit at `line: lineCount + 1` fails with `Edit start line N is out of range (file has M lines)`. To append after the last line, replace the last line with itself plus the new content: read the last line first (`file_read` with `offset: lineCount, limit: 1`), then submit `line: lineCount, endLine: lineCount, newText: "<original last line>\n<new content>"`.
+Set both `line` and `endLine` to `-1` to append `newText` after the current last line. `column` and `endColumn` are ignored. Embed `\n` in `newText` to append multiple lines in one edit. Works on an empty file too.
+
+```json
+[
+  { "line": -1, "endLine": -1, "newText": "first appended line\nsecond appended line" }
+]
+```
+
+For any other `line`/`endLine` value the position must point at an existing line — an out-of-range value fails with `Edit start line N is out of range (file has M lines)`.
 
 ## Edge cases
 

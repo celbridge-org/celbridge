@@ -8,8 +8,6 @@ Common cases: highlight cells over or under a threshold, top or bottom N items i
 
 Each rule has a `type` field plus the inputs that type needs, and (for non-color-scale rules) optional formatting fields applied to matched cells.
 
-The colour-scale types use the **arity-suffixed** names `colorScale2` and `colorScale3` — there is no plain `colorScale`. The validator rejects unsuffixed names with `Unknown rule type: 'colorScale'`.
-
 | Type | Inputs |
 |---|---|
 | `colorScale2` | `lowColor`, `highColor` |

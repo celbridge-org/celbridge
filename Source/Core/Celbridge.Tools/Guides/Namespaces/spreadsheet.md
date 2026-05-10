@@ -10,6 +10,8 @@ The `spreadsheet` namespace operates on `.xlsx` workbooks: reading and writing c
 - **`headers: true` shifts row indexing.** Rows return as `{header: value}` objects, the header row is consumed, and `totalRowCount` excludes it. See `spreadsheet_headers_mode`.
 - **Pagination is opt-in.** `spreadsheet_read_sheet` returns up to `pageSize` rows starting at `offset`; large sheets must be paged. See `spreadsheet_paging`.
 - **The editor and tool surface share a workbook model.** Edits via these tools are visible to the open spreadsheet editor and vice versa. See `spreadsheet_editor_division`.
+- **`spreadsheet_append_rows` is strict about row shape.** Every row must match the first row's field count — pad shorter rows with `null`. Cell values starting with `=` are stored as text, not formulas; for formulas use `spreadsheet_write_cells` with `isFormula: true`.
+- **Conditional-formatting type names are arity-suffixed.** Use `colorScale2` (low + high) or `colorScale3` (low + mid + high) — there is no plain `colorScale`. See `spreadsheet_set_conditional_formatting`.
 
 ## Tools
 

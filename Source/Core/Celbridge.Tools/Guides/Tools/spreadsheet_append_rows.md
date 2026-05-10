@@ -4,18 +4,16 @@ Appends rows to the end of a worksheet's used range in a single open/save cycle.
 
 ## rowsJson
 
-A JSON array of rows. Each row is itself an array of cell values starting at column A. Cell values may be numbers, booleans, strings, or `null` to leave a cell blank. Every row in the batch must have the same field count as the first row — ragged rows are rejected (`Row N has X fields, expected Y`). Pad shorter rows with `null` to keep the width uniform.
+A JSON array of rows. Each row is itself an array of cell values starting at column A. Cell values may be numbers, booleans, strings, or `null` to leave a cell blank.
 
 ```json
 [
-  ["Mar", 1200, "shipped"],
-  ["Apr", 1450, "pending"]
+  ["Mar", 1200, "shipped", null],
+  ["Apr", 1450, "pending", null]
 ]
 ```
 
-## Formulas are written as text
-
-Cell values starting with `=` are written as text, not formulas. Use `spreadsheet_write_cells` with `isFormula: true` for formula writes.
+The ragged-row failure message is `Row N has X fields, expected Y`, naming the first offending row and the expected width.
 
 ## Returned row numbers
 
