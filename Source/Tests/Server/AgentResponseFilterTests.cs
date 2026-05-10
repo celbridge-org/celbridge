@@ -71,7 +71,7 @@ public class AgentResponseFilterTests
 
         var attached = await _filter.ApplyAutoAttachAsync(result, session, "file_read");
 
-        var blocks = attached.Content!;
+        var blocks = attached.Result.Content!;
         // 2 session-state blocks + orientation + namespace + per-tool + related + result
         blocks.Should().HaveCount(SessionStateBlockCount + 5);
         TextAt(blocks, AppStateBlockIndex).Should().Contain("# App state");
@@ -91,8 +91,8 @@ public class AgentResponseFilterTests
         await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
         var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_read");
 
-        second.Content.Should().HaveCount(1);
-        TextAt(second.Content!, 0).Should().Be("second");
+        second.Result.Content.Should().HaveCount(1);
+        TextAt(second.Result.Content!, 0).Should().Be("second");
     }
 
     [Test]
@@ -107,10 +107,10 @@ public class AgentResponseFilterTests
         // file_grep declares resource_keys (already served) plus regex_syntax (new).
         var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_grep");
 
-        second.Content.Should().HaveCount(3);
-        TextAt(second.Content!, 0).Should().Be(FileGrepBody);
-        TextAt(second.Content!, 1).Should().Be(RegexSyntaxBody);
-        TextAt(second.Content!, 2).Should().Be("second");
+        second.Result.Content.Should().HaveCount(3);
+        TextAt(second.Result.Content!, 0).Should().Be(FileGrepBody);
+        TextAt(second.Result.Content!, 1).Should().Be(RegexSyntaxBody);
+        TextAt(second.Result.Content!, 2).Should().Be("second");
     }
 
     [Test]
@@ -121,10 +121,10 @@ public class AgentResponseFilterTests
         await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
         var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "app_get_state");
 
-        second.Content.Should().HaveCount(3);
-        TextAt(second.Content!, 0).Should().Be(AppNamespaceBody);
-        TextAt(second.Content!, 1).Should().Be(AppGetStateBody);
-        TextAt(second.Content!, 2).Should().Be("second");
+        second.Result.Content.Should().HaveCount(3);
+        TextAt(second.Result.Content!, 0).Should().Be(AppNamespaceBody);
+        TextAt(second.Result.Content!, 1).Should().Be(AppGetStateBody);
+        TextAt(second.Result.Content!, 2).Should().Be("second");
     }
 
     // Proxy connections
@@ -137,8 +137,8 @@ public class AgentResponseFilterTests
 
         var attached = await _filter.ApplyAutoAttachAsync(result, session, "file_read");
 
-        attached.Content.Should().HaveCount(1);
-        TextAt(attached.Content!, 0).Should().Be("proxy result");
+        attached.Result.Content.Should().HaveCount(1);
+        TextAt(attached.Result.Content!, 0).Should().Be("proxy result");
         // Proxy bypass should not consume the per-session served-guides budget.
         session.WasGuideRead("agent_instructions").Should().BeFalse();
         session.WasGuideRead("file_read").Should().BeFalse();
@@ -155,10 +155,10 @@ public class AgentResponseFilterTests
 
         var attached = await _filter.ApplyAutoAttachAsync(result, session, "file_read");
 
-        attached.IsError.Should().BeTrue();
-        attached.Content.Should().HaveCount(SessionStateBlockCount + 5);
-        TextAt(attached.Content!, SessionStateBlockCount + 0).Should().Be(OrientationBody);
-        TextAt(attached.Content!, SessionStateBlockCount + 4).Should().Be("file_read failed");
+        attached.Result.IsError.Should().BeTrue();
+        attached.Result.Content.Should().HaveCount(SessionStateBlockCount + 5);
+        TextAt(attached.Result.Content!, SessionStateBlockCount + 0).Should().Be(OrientationBody);
+        TextAt(attached.Result.Content!, SessionStateBlockCount + 4).Should().Be("file_read failed");
     }
 
     // Race: parallel first calls in the same namespace
@@ -173,7 +173,7 @@ public class AgentResponseFilterTests
 
         await Task.WhenAll(readTask, grepTask);
 
-        var combined = ExtractBodies(readTask.Result).Concat(ExtractBodies(grepTask.Result)).ToList();
+        var combined = ExtractBodies(readTask.Result.Result).Concat(ExtractBodies(grepTask.Result.Result)).ToList();
 
         // Both calls together should attach orientation, namespace, each per-tool,
         // and each related concept exactly once across the pair. Session-state
@@ -204,10 +204,10 @@ public class AgentResponseFilterTests
         // file_grep declares ["resource_keys", "regex_syntax"]; resource_keys
         // already served on the warmup call. So expect: file_grep body, then
         // regex_syntax, then the result. Per-tool stays before related.
-        attached.Content.Should().HaveCount(3);
-        TextAt(attached.Content!, 0).Should().Be(FileGrepBody);
-        TextAt(attached.Content!, 1).Should().Be(RegexSyntaxBody);
-        TextAt(attached.Content!, 2).Should().Be("grep result");
+        attached.Result.Content.Should().HaveCount(3);
+        TextAt(attached.Result.Content!, 0).Should().Be(FileGrepBody);
+        TextAt(attached.Result.Content!, 1).Should().Be(RegexSyntaxBody);
+        TextAt(attached.Result.Content!, 2).Should().Be("grep result");
     }
 
     // Session-state attach pipeline
@@ -233,10 +233,10 @@ public class AgentResponseFilterTests
         var session = new AgentSessionState("session-1");
         var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
 
-        TextAt(attached.Content!, AppStateBlockIndex).Should().Contain("\"version\": \"9.9.9-fake\"");
-        TextAt(attached.Content!, AppStateBlockIndex).Should().Contain("\"projectName\": \"ProbeProject\"");
-        TextAt(attached.Content!, DocumentStateBlockIndex).Should().Contain("\"activeDocument\": \"/Notes/README.md\"");
-        TextAt(attached.Content!, DocumentStateBlockIndex).Should().Contain("# Open documents");
+        TextAt(attached.Result.Content!, AppStateBlockIndex).Should().Contain("\"version\": \"9.9.9-fake\"");
+        TextAt(attached.Result.Content!, AppStateBlockIndex).Should().Contain("\"projectName\": \"ProbeProject\"");
+        TextAt(attached.Result.Content!, DocumentStateBlockIndex).Should().Contain("\"activeDocument\": \"/Notes/README.md\"");
+        TextAt(attached.Result.Content!, DocumentStateBlockIndex).Should().Contain("# Open documents");
     }
 
     [Test]
@@ -248,8 +248,8 @@ public class AgentResponseFilterTests
         var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_read");
 
         // No prepended blocks on the second call (everything's already served).
-        second.Content.Should().HaveCount(1);
-        TextAt(second.Content!, 0).Should().Be("second");
+        second.Result.Content.Should().HaveCount(1);
+        TextAt(second.Result.Content!, 0).Should().Be("second");
     }
 
     [Test]
@@ -262,7 +262,7 @@ public class AgentResponseFilterTests
 
         // App state still attaches; document state is omitted because the
         // provider failed. Slot count drops by one.
-        var bodies = ExtractBodies(attached);
+        var bodies = ExtractBodies(attached.Result);
         bodies.Should().Contain(b => b.StartsWith("# App state"));
         bodies.Should().NotContain(b => b.StartsWith("# Open documents"));
     }
@@ -281,13 +281,13 @@ public class AgentResponseFilterTests
         var helperResult = ToolResponse.InvalidResourceKey("Bad\\Key");
         var attached = await _filter.ApplyAutoAttachAsync(helperResult, session, "file_read");
 
-        attached.IsError.Should().BeTrue();
+        attached.Result.IsError.Should().BeTrue();
         // Expect: troubleshoot_resource_key body, then the original error
         // text. The Meta hint must not survive into the response.
-        attached.Content.Should().HaveCount(2);
-        TextAt(attached.Content!, 0).Should().Be(TroubleshootResourceKeyBody);
-        TextAt(attached.Content!, 1).Should().Be("Invalid resource key: 'Bad\\Key'.");
-        attached.Meta?.ContainsKey(ToolResponse.TroubleshooterMetaKey).Should().NotBe(true);
+        attached.Result.Content.Should().HaveCount(2);
+        TextAt(attached.Result.Content!, 0).Should().Be(TroubleshootResourceKeyBody);
+        TextAt(attached.Result.Content!, 1).Should().Be("Invalid resource key: 'Bad\\Key'.");
+        attached.Result.Meta?.ContainsKey(ToolResponse.TroubleshooterMetaKey).Should().NotBe(true);
     }
 
     [Test]
@@ -302,10 +302,10 @@ public class AgentResponseFilterTests
 
         // Meta hint still gets cleared on the second call, so the response
         // contains only the (capped) error text and no leaked Meta entry.
-        second.IsError.Should().BeTrue();
-        second.Content.Should().HaveCount(1);
-        TextAt(second.Content!, 0).Should().Be("Invalid resource key: 'Other\\Key'.");
-        second.Meta?.ContainsKey(ToolResponse.TroubleshooterMetaKey).Should().NotBe(true);
+        second.Result.IsError.Should().BeTrue();
+        second.Result.Content.Should().HaveCount(1);
+        TextAt(second.Result.Content!, 0).Should().Be("Invalid resource key: 'Other\\Key'.");
+        second.Result.Meta?.ContainsKey(ToolResponse.TroubleshooterMetaKey).Should().NotBe(true);
     }
 
     // Missing guide bodies (defence-in-depth)
@@ -318,13 +318,64 @@ public class AgentResponseFilterTests
         // session state still attach because they exist.
         var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_unknown");
 
-        attached.Content.Should().HaveCount(SessionStateBlockCount + 3);
-        TextAt(attached.Content!, SessionStateBlockCount + 0).Should().Be(OrientationBody);
-        TextAt(attached.Content!, SessionStateBlockCount + 1).Should().Be(FileNamespaceBody);
-        TextAt(attached.Content!, SessionStateBlockCount + 2).Should().Be("payload");
+        attached.Result.Content.Should().HaveCount(SessionStateBlockCount + 3);
+        TextAt(attached.Result.Content!, SessionStateBlockCount + 0).Should().Be(OrientationBody);
+        TextAt(attached.Result.Content!, SessionStateBlockCount + 1).Should().Be(FileNamespaceBody);
+        TextAt(attached.Result.Content!, SessionStateBlockCount + 2).Should().Be("payload");
         // The TryMarkServed slot is consumed even when no body was attached, so
         // a follow-up call doesn't prepend a phantom block either.
         session.WasGuideRead("file_unknown").Should().BeTrue();
+    }
+
+    // AutoAttachOutcome — AttachedNames list for the diagnostic column
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_FirstCall_ReturnsAttachedNamesInBroadestFirstOrder()
+    {
+        var session = new AgentSessionState("session-1");
+
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
+
+        attached.AttachedNames.Should().Equal(
+            AgentResponseFilter.AppStateBlockName,
+            AgentResponseFilter.DocumentStateBlockName,
+            "agent_instructions",
+            "file",
+            "file_read",
+            "resource_keys");
+    }
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_RepeatCall_ReturnsEmptyAttachedNames()
+    {
+        var session = new AgentSessionState("session-1");
+        await _filter.ApplyAutoAttachAsync(BuildSuccess("first"), session, "file_read");
+
+        var second = await _filter.ApplyAutoAttachAsync(BuildSuccess("second"), session, "file_read");
+
+        second.AttachedNames.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_ProxyConnection_ReturnsEmptyAttachedNames()
+    {
+        var session = new AgentSessionState("session-1") { IsProxyClient = true };
+
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
+
+        attached.AttachedNames.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task ApplyAutoAttachAsync_DocumentProviderFailure_OmitsDocumentStateFromAttachedNames()
+    {
+        _documentStateProvider.Result = Result<DocumentStateResult>.Fail("document state unavailable");
+        var session = new AgentSessionState("session-1");
+
+        var attached = await _filter.ApplyAutoAttachAsync(BuildSuccess("payload"), session, "file_read");
+
+        attached.AttachedNames.Should().Contain(AgentResponseFilter.AppStateBlockName);
+        attached.AttachedNames.Should().NotContain(AgentResponseFilter.DocumentStateBlockName);
     }
 
     // Candidate list construction (pure)

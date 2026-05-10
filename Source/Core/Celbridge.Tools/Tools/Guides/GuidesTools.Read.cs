@@ -17,7 +17,7 @@ public record class GuidesReadResult(
 
 public partial class GuidesTools
 {
-    /// <summary>Re-fetch one or more guides after the host context auto-compacted.</summary>
+    /// <summary>Read guide bodies by name; the recovery path when context compaction has dropped a guide. Start with agent_instructions to recover orientation.</summary>
     [McpServerTool(Name = "guides_read", ReadOnly = true, Idempotent = true)]
     [ToolAlias("guides.read")]
     [RelatedGuides]

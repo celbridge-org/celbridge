@@ -82,7 +82,8 @@ internal sealed class AgentResponseFilter
                 ErrorMessage: "<exception>",
                 DurationMilliseconds: stopwatch.Elapsed.TotalMilliseconds,
                 ArgPayloadBytes: argBytes,
-                ResultPayloadBytes: 0));
+                ResultPayloadBytes: 0,
+                AttachedNames: Array.Empty<string>()));
             throw;
         }
         stopwatch.Stop();
@@ -94,7 +95,8 @@ internal sealed class AgentResponseFilter
             ApplyGuidesReadSideEffects(_monitor, session, arguments);
         }
 
-        result = await ApplyAutoAttachAsync(result, session, toolName);
+        var attachOutcome = await ApplyAutoAttachAsync(result, session, toolName);
+        result = attachOutcome.Result;
 
         var errorMessage = success ? "" : ExtractTextContent(result);
         _monitor.RecordInvocation(server, session, toolName, new InvocationOutcome(
@@ -102,10 +104,33 @@ internal sealed class AgentResponseFilter
             ErrorMessage: errorMessage,
             DurationMilliseconds: stopwatch.Elapsed.TotalMilliseconds,
             ArgPayloadBytes: argBytes,
-            ResultPayloadBytes: MeasureResult(result)));
+            ResultPayloadBytes: MeasureResult(result),
+            AttachedNames: attachOutcome.AttachedNames));
 
         return result;
     }
+
+    /// <summary>
+    /// Diagnostic name used in the ResponseBlocks column for the app-state
+    /// snapshot block. Distinct from the SessionStateMarker dedup sentinel
+    /// because the marker is a single slot, but the snapshot itself is two
+    /// blocks (app + document) that the workbook needs to show separately.
+    /// </summary>
+    internal const string AppStateBlockName = "app_state";
+
+    /// <summary>
+    /// Diagnostic name used in the ResponseBlocks column for the open-documents
+    /// snapshot block.
+    /// </summary>
+    internal const string DocumentStateBlockName = "document_state";
+
+    /// <summary>
+    /// Outcome of a single auto-attach pass: the (possibly modified) result
+    /// and the ordered list of names the broker prepended ahead of the
+    /// tool's own output. The names are recorded on the invocation row so
+    /// duplicate auto-attaches show up directly in the workbook.
+    /// </summary>
+    internal record class AutoAttachOutcome(CallToolResult Result, IReadOnlyList<string> AttachedNames);
 
     /// <summary>
     /// Builds the prepend list for this call and prepends each block to the
@@ -116,24 +141,29 @@ internal sealed class AgentResponseFilter
     /// response leaves the broker. Returns the result unchanged for proxy
     /// connections.
     /// </summary>
-    internal async Task<CallToolResult> ApplyAutoAttachAsync(CallToolResult result, AgentSessionState session, string toolName)
+    internal async Task<AutoAttachOutcome> ApplyAutoAttachAsync(CallToolResult result, AgentSessionState session, string toolName)
     {
         if (session.IsProxyClient)
         {
-            return result;
+            return new AutoAttachOutcome(result, Array.Empty<string>());
         }
 
         if (string.IsNullOrEmpty(toolName))
         {
-            return result;
+            return new AutoAttachOutcome(result, Array.Empty<string>());
         }
 
         var prefix = new List<ContentBlock>();
+        var attachedNames = new List<string>();
 
         if (_monitor.TryMarkServed(session, SessionStateMarker))
         {
             var stateBlocks = await BuildSessionStateBlocksAsync();
-            prefix.AddRange(stateBlocks);
+            foreach (var entry in stateBlocks)
+            {
+                prefix.Add(entry.Block);
+                attachedNames.Add(entry.Name);
+            }
         }
 
         var troubleshooterName = ExtractAndClearTroubleshooterMeta(result);
@@ -152,12 +182,13 @@ internal sealed class AgentResponseFilter
             if (!string.IsNullOrEmpty(body))
             {
                 prefix.Add(new TextContentBlock { Text = body });
+                attachedNames.Add(candidateName);
             }
         }
 
         if (prefix.Count == 0)
         {
-            return result;
+            return new AutoAttachOutcome(result, Array.Empty<string>());
         }
 
         var combinedCount = prefix.Count + (result.Content?.Count ?? 0);
@@ -168,48 +199,59 @@ internal sealed class AgentResponseFilter
             combined.AddRange(result.Content);
         }
 
-        return new CallToolResult
+        var attached = new CallToolResult
         {
             IsError = result.IsError,
             Content = combined,
             StructuredContent = result.StructuredContent,
             Meta = result.Meta,
         };
+        return new AutoAttachOutcome(attached, attachedNames);
     }
 
     /// <summary>
-    /// Builds the session-start state snapshot blocks: an app-state block
-    /// followed by an open-documents block. Each block is markdown-wrapped
-    /// JSON so the agent can identify the source. Document state is fetched
-    /// via the command queue; if the fetch fails the block is omitted
-    /// rather than failing the response.
+    /// One session-start snapshot block paired with the diagnostic name the
+    /// caller records on the invocation row. Pairing the name with the block
+    /// at construction time avoids inferring "which provider succeeded" from
+    /// list position or count downstream.
     /// </summary>
-    private async Task<IReadOnlyList<ContentBlock>> BuildSessionStateBlocksAsync()
+    internal record class SessionStateBlock(string Name, ContentBlock Block);
+
+    /// <summary>
+    /// Builds the session-start state snapshot blocks: an app-state block
+    /// and an open-documents block. Each block is markdown-wrapped JSON so
+    /// the agent can identify the source. Document state is fetched via the
+    /// command queue; if the fetch fails that entry is omitted rather than
+    /// failing the response.
+    /// </summary>
+    private async Task<IReadOnlyList<SessionStateBlock>> BuildSessionStateBlocksAsync()
     {
-        var blocks = new List<ContentBlock>(2);
+        var entries = new List<SessionStateBlock>(2);
 
         var appState = _appStateProvider.GetState();
         var appJson = JsonSerializer.Serialize(appState, StateSnapshotJsonOptions);
-        blocks.Add(new TextContentBlock
+        var appBlock = new TextContentBlock
         {
             Text = "# App state (session-start snapshot)\n\n"
                 + "Snapshot taken on the first tool call this session. Call `app_get_state` for current state.\n\n"
                 + "```json\n" + appJson + "\n```"
-        });
+        };
+        entries.Add(new SessionStateBlock(AppStateBlockName, appBlock));
 
         var documentStateResult = await _documentStateProvider.GetStateAsync();
         if (documentStateResult.IsSuccess)
         {
             var documentJson = JsonSerializer.Serialize(documentStateResult.Value, StateSnapshotJsonOptions);
-            blocks.Add(new TextContentBlock
+            var documentBlock = new TextContentBlock
             {
                 Text = "# Open documents (session-start snapshot)\n\n"
                     + "Snapshot taken on the first tool call this session. Call `document_get_state` for current state.\n\n"
                     + "```json\n" + documentJson + "\n```"
-            });
+            };
+            entries.Add(new SessionStateBlock(DocumentStateBlockName, documentBlock));
         }
 
-        return blocks;
+        return entries;
     }
 
     /// <summary>

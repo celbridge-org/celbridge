@@ -17,7 +17,7 @@ Per-tool, namespace, and concept guides ride along with your tool calls automati
 - The first call to a tool attaches its per-tool guide and the related concept and troubleshooter guides the tool author listed.
 - Errors that map to a category helper (`InvalidResourceKey`, `FeatureFlagDisabled`, `ResourceNotFound`) attach a focused troubleshooter guide on first occurrence.
 
-Each guide attaches once per session. There is no separate fetch step you need to make. If the host has compacted your context and you need a guide back, call `guides_read(["<name>"])` explicitly.
+Each auto-attached block opens with a `#` heading naming what it is (`# file_grep`, `# Resource keys`, `# App state`), and the broker attaches each at most once per MCP session — there is no separate fetch step you need to make. If you resume a conversation, the new MCP session has no memory of what you saw earlier, so guides and state snapshots you've already absorbed will re-attach on first use of each tool; when you spot a heading you already have in context, skim past the body. If your context has been compacted and you need a guide body back, call `guides_read(["<name>"])` explicitly.
 
 ## The conventions you will trip on
 

@@ -113,6 +113,54 @@ public class AgentMonitorTests
         }
     }
 
+    // GetOrCreateSession — session-id keyed dedup
+
+    [Test]
+    public void GetOrCreateSession_SameSessionId_ReturnsSameState()
+    {
+        var first = _monitor.GetOrCreateSession("session-A", "");
+        var second = _monitor.GetOrCreateSession("session-A", "");
+
+        first.Should().NotBeNull();
+        second.Should().BeSameAs(first);
+        first!.SessionId.Should().Be("session-A");
+    }
+
+    [Test]
+    public void GetOrCreateSession_DifferentSessionIds_ReturnDistinctStates()
+    {
+        var first = _monitor.GetOrCreateSession("session-A", "");
+        var second = _monitor.GetOrCreateSession("session-B", "");
+
+        first.Should().NotBeSameAs(second);
+        first!.SessionId.Should().Be("session-A");
+        second!.SessionId.Should().Be("session-B");
+    }
+
+    [Test]
+    public void GetOrCreateSession_NoSessionId_ReturnsNull()
+    {
+        var state = _monitor.GetOrCreateSession("", "");
+
+        state.Should().BeNull();
+    }
+
+    [Test]
+    public void GetOrCreateSession_ProxyClientName_FlagsSessionAsProxy()
+    {
+        var state = _monitor.GetOrCreateSession("session-A", AgentMonitor.ProxyClientName);
+
+        state!.IsProxyClient.Should().BeTrue();
+    }
+
+    [Test]
+    public void GetOrCreateSession_NonProxyClientName_DoesNotFlagSessionAsProxy()
+    {
+        var state = _monitor.GetOrCreateSession("session-A", "claude-code");
+
+        state!.IsProxyClient.Should().BeFalse();
+    }
+
     // RecordInvocation FIFO eviction
 
     [Test]
@@ -168,6 +216,23 @@ public class AgentMonitorTests
         act.Should().NotThrow();
     }
 
+    // FormatResponseBlocks — diagnostic-column rendering
+
+    [Test]
+    public void FormatResponseBlocks_NoAttachments_ReturnsResultSentinelOnly()
+    {
+        AgentMonitor.FormatResponseBlocks(Array.Empty<string>()).Should().Be("result");
+    }
+
+    [Test]
+    public void FormatResponseBlocks_WithAttachments_JoinsBeforeResultSentinel()
+    {
+        var attached = new[] { "app_state", "document_state", "agent_instructions", "file", "file_read" };
+
+        AgentMonitor.FormatResponseBlocks(attached)
+            .Should().Be("app_state; document_state; agent_instructions; file; file_read; result");
+    }
+
     private static ToolInvocationRecord BuildRecord(string toolName)
     {
         return new ToolInvocationRecord(
@@ -182,6 +247,6 @@ public class AgentMonitorTests
             ArgPayloadBytes: 0,
             ResultPayloadBytes: 0,
             ProxyClient: false,
-            CacheMiss: false);
+            ResponseBlocks: "result");
     }
 }

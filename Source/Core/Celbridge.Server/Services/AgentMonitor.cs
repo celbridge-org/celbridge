@@ -6,7 +6,9 @@ namespace Celbridge.Server.Services;
 
 /// <summary>
 /// One captured tool invocation. Field order matches the Invocations workbook
-/// column order.
+/// column order. ResponseBlocks lists the blocks the broker prepended ahead
+/// of the tool's own output (session-state markers, guide names) so duplicate
+/// auto-attaches are directly visible in the workbook.
 /// </summary>
 public record class ToolInvocationRecord(
     DateTimeOffset TimestampUtc,
@@ -20,21 +22,25 @@ public record class ToolInvocationRecord(
     long ArgPayloadBytes,
     long ResultPayloadBytes,
     bool ProxyClient,
-    bool CacheMiss);
+    string ResponseBlocks);
 
 /// <summary>
 /// Outcome fields the response filter observes for a single invocation.
+/// AttachedNames is the ordered list of names auto-attach prepended to the
+/// result (session-state markers and guide names); empty when nothing was
+/// prepended.
 /// </summary>
 internal record class InvocationOutcome(
     bool Success,
     string ErrorMessage,
     double DurationMilliseconds,
     long ArgPayloadBytes,
-    long ResultPayloadBytes);
+    long ResultPayloadBytes,
+    IReadOnlyList<string> AttachedNames);
 
 /// <summary>
-/// Per-MCP-session state owned by AgentMonitor: the served-guides set and the
-/// session id. Mutating members are safe to call concurrently.
+/// Per-MCP-session state owned by AgentMonitor: the served-guides set and
+/// the session id. Mutating members are safe to call concurrently.
 /// </summary>
 internal sealed class AgentSessionState
 {
@@ -73,7 +79,7 @@ internal sealed class AgentSessionState
 }
 
 /// <summary>
-/// Records per-invocation MCP tool monitoring data and per-MCP-session state.
+/// Records per-invocation MCP tool monitoring data and per-session state.
 /// Invocation rows are the source of truth for the agent report.
 /// </summary>
 public sealed class AgentMonitor
@@ -99,13 +105,22 @@ public sealed class AgentMonitor
     internal AgentSessionState? GetOrCreateSession(McpServer server)
     {
         var sessionId = server.SessionId;
-        if (string.IsNullOrEmpty(sessionId))
+        var clientName = server.ClientInfo?.Name ?? "";
+        return GetOrCreateSession(sessionId ?? "", clientName);
+    }
+
+    /// <summary>
+    /// Test seam over the McpServer-keyed overload. Looks up or creates the
+    /// per-session state keyed on the MCP session ID.
+    /// </summary>
+    internal AgentSessionState? GetOrCreateSession(string mcpSessionId, string clientName)
+    {
+        if (string.IsNullOrEmpty(mcpSessionId))
         {
             return null;
         }
 
-        var state = _sessionStates.GetOrAdd(sessionId, key => new AgentSessionState(key));
-        var clientName = server.ClientInfo?.Name ?? "";
+        var state = _sessionStates.GetOrAdd(mcpSessionId, key => new AgentSessionState(key));
         state.IsProxyClient = string.Equals(clientName, ProxyClientName, StringComparison.Ordinal);
         return state;
     }
@@ -133,11 +148,6 @@ public sealed class AgentMonitor
         state.MarkGuideRead(guideName);
     }
 
-    internal bool WasGuideReadInSession(AgentSessionState state, string guideName)
-    {
-        return state.WasGuideRead(guideName);
-    }
-
     public void RecordInvocation(ToolInvocationRecord record)
     {
         _invocations.Enqueue(record);
@@ -161,11 +171,6 @@ public sealed class AgentMonitor
         var clientName = clientInfo?.Name ?? "";
         var clientVersion = clientInfo?.Version ?? "";
 
-        // Cache-miss is only meaningful for non-proxy invocations: proxy
-        // callers are not expected to read guides before invoking.
-        var cacheMiss = !session.IsProxyClient
-            && !WasGuideReadInSession(session, toolName);
-
         var record = new ToolInvocationRecord(
             TimestampUtc: DateTimeOffset.UtcNow,
             SessionId: session.SessionId,
@@ -178,8 +183,22 @@ public sealed class AgentMonitor
             ArgPayloadBytes: outcome.ArgPayloadBytes,
             ResultPayloadBytes: outcome.ResultPayloadBytes,
             ProxyClient: session.IsProxyClient,
-            CacheMiss: cacheMiss);
+            ResponseBlocks: FormatResponseBlocks(outcome.AttachedNames));
         RecordInvocation(record);
+    }
+
+    /// <summary>
+    /// Renders the auto-attach prefix list for the Invocations workbook.
+    /// Always ends with a "result" sentinel so an empty cell can't be
+    /// confused with missing data.
+    /// </summary>
+    internal static string FormatResponseBlocks(IReadOnlyList<string> attachedNames)
+    {
+        if (attachedNames.Count == 0)
+        {
+            return "result";
+        }
+        return string.Join("; ", attachedNames) + "; result";
     }
 
     /// <summary>

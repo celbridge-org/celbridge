@@ -107,7 +107,6 @@ public class AgentReportBuilder
             telemetryByTool.TryGetValue(entry.Name, out var toolInvocations);
             var calls = toolInvocations?.Count ?? 0;
             var errors = toolInvocations?.Count(record => !record.Success) ?? 0;
-            var cacheMisses = toolInvocations?.Count(record => record.CacheMiss && !record.ProxyClient) ?? 0;
             var avgDuration = calls == 0 ? 0.0 : toolInvocations!.Average(record => record.DurationMilliseconds);
             var errorRate = calls == 0 ? 0.0 : (double)errors / calls;
 
@@ -119,7 +118,6 @@ public class AgentReportBuilder
                 Calls: calls,
                 Errors: errors,
                 ErrorRate: errorRate,
-                AgentCacheMisses: cacheMisses,
                 AvgDurationMilliseconds: avgDuration));
         }
 
@@ -217,7 +215,6 @@ public class AgentReportBuilder
         var errorCount = invocations.Count(record => !record.Success);
         var proxyCount = invocations.Count(record => record.ProxyClient);
         var agentCount = totalInvocations - proxyCount;
-        var cacheMissCount = invocations.Count(record => record.CacheMiss && !record.ProxyClient);
 
         var statRows = new (string Label, object Value)[]
         {
@@ -232,7 +229,6 @@ public class AgentReportBuilder
             ("Agent-client invocations", agentCount),
             ("Proxy-client invocations", proxyCount),
             ("Errors", errorCount),
-            ("Agent cache misses", cacheMissCount),
         };
 
         for (int statIndex = 0; statIndex < statRows.Length; statIndex++)
@@ -266,7 +262,6 @@ public class AgentReportBuilder
             "Calls",
             "Errors",
             "ErrorRate",
-            "AgentCacheMisses",
             "AvgDurationMs",
         ];
 
@@ -289,9 +284,8 @@ public class AgentReportBuilder
             sheet.Cell(sheetRow, 6).Value = row.Errors;
             sheet.Cell(sheetRow, 7).Value = row.ErrorRate;
             sheet.Cell(sheetRow, 7).Style.NumberFormat.Format = "0.0%";
-            sheet.Cell(sheetRow, 8).Value = row.AgentCacheMisses;
-            sheet.Cell(sheetRow, 9).Value = row.AvgDurationMilliseconds;
-            sheet.Cell(sheetRow, 9).Style.NumberFormat.Format = "0.0";
+            sheet.Cell(sheetRow, 8).Value = row.AvgDurationMilliseconds;
+            sheet.Cell(sheetRow, 8).Style.NumberFormat.Format = "0.0";
         }
 
         if (toolRows.Count > 0)
@@ -358,7 +352,7 @@ public class AgentReportBuilder
             "ArgPayloadBytes",
             "ResultPayloadBytes",
             "ProxyClient",
-            "CacheMiss",
+            "ResponseBlocks",
         ];
 
         for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
@@ -384,7 +378,7 @@ public class AgentReportBuilder
             sheet.Cell(sheetRow, 9).Value = record.ArgPayloadBytes;
             sheet.Cell(sheetRow, 10).Value = record.ResultPayloadBytes;
             sheet.Cell(sheetRow, 11).Value = record.ProxyClient;
-            sheet.Cell(sheetRow, 12).Value = record.CacheMiss;
+            sheet.Cell(sheetRow, 12).Value = record.ResponseBlocks;
         }
 
         if (rows.Count > 0)
@@ -406,7 +400,6 @@ public class AgentReportBuilder
         int Calls,
         int Errors,
         double ErrorRate,
-        int AgentCacheMisses,
         double AvgDurationMilliseconds);
 
     private record class NamespaceReportRow(

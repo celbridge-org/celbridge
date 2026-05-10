@@ -110,9 +110,9 @@ class CelProxy:
               * Summary    -- generated timestamp and headline counts.
               * Tools      -- one row per registered tool with payload chars
                               and tokens alongside calls, errors, error rate,
-                              agent cache misses, and avg duration. The pivot
-                              for spotting expensive tools that aren't being
-                              used and hot tools.
+                              and avg duration. The pivot for spotting
+                              expensive tools that aren't being used and hot
+                              tools.
               * Namespaces -- per-namespace aggregates of the above.
               * Invocations -- every captured tool call. The substrate for
                                ad-hoc analysis (pivot tables, charts, slicing
