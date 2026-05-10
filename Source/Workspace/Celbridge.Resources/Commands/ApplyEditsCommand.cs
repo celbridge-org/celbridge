@@ -39,6 +39,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
         var failedResources = new List<ResourceKey>();
+        var failureDetails = new List<string>();
         var appliedRanges = new List<AppliedEdit>();
 
         foreach (var fileEdit in Edits)
@@ -50,6 +51,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
                 failedResources.Add(resource);
+                failureDetails.Add($"{resource}: {applyResult.FirstErrorMessage}");
             }
             else
             {
@@ -59,7 +61,12 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
         if (failedResources.Count > 0)
         {
-            var errorMessage = $"Failed to apply edits to the following files: {string.Join(", ", failedResources)}";
+            // The headline names every failed resource; the detail block below
+            // names each failure's reason so the agent does not have to retry
+            // and read a separate log line to learn what the validator caught.
+            var headline = $"Failed to apply edits to: {string.Join(", ", failedResources)}";
+            var detail = string.Join(Environment.NewLine, failureDetails);
+            var errorMessage = $"{headline}{Environment.NewLine}{detail}";
             _logger.LogError(errorMessage);
 
             var alertTitle = _stringLocalizer.GetString("Documents_ApplyEditsFailedTitle");

@@ -6,7 +6,40 @@ Only fields present in each edit's `format` are applied — formatting outside t
 
 ## Format spec keys
 
-`textFormat`, `backgroundColor`, `borders`, `horizontalAlignment`, `verticalAlignment`, `wrapText`, `numberFormat`, `columnWidth`, `rowHeight`, `autoFitColumns`, `mergeRange`.
+Each `format` field's value shape is given below. Omit a field to leave that aspect untouched.
+
+| Key | Value shape | Example |
+|---|---|---|
+| `textFormat` | object: `{bold?, italic?, underline?, strikethrough?, fontFamily?, fontSize?, foregroundColor?}` | `{"bold": true, "foregroundColor": "#FF0000"}` |
+| `backgroundColor` | string CSS hex `#RRGGBB`, or `""` to clear | `"#FFFF00"` |
+| `borders` | object: `{top?, bottom?, left?, right?}`, each side `{style?, color?}` | `{"top": {"style": "SOLID", "color": "#000000"}}` |
+| `horizontalAlignment` | string: `LEFT`, `CENTER`, `RIGHT`, `GENERAL`, `JUSTIFY` | `"CENTER"` |
+| `verticalAlignment` | string: `TOP`, `MIDDLE`, `BOTTOM` | `"MIDDLE"` |
+| `wrapText` | bool | `true` |
+| `numberFormat` | string Excel format pattern (see "Common number formats" below) | `"$#,##0.00"` |
+| `columnWidth` | number in Excel character units; negative resets | `15` |
+| `rowHeight` | number in points; negative resets | `20` |
+| `autoFitColumns` | bool: when true, sizes the column to its content | `true` |
+| `mergeRange` | bool: `true` merges, `false` unmerges any existing merge | `true` |
+
+`textFormat.fontSize` accepts a non-positive value as a reset sentinel. Border `style` accepts `SOLID`, `DASHED`, `DOTTED`, `DOUBLE`, `NONE`, or any ClosedXML `XLBorderStyleValues` name.
+
+## Common number formats
+
+`numberFormat` takes a raw Excel format string. Reach for these first:
+
+| Goal | Pattern |
+|---|---|
+| Currency (USD) | `$#,##0.00` |
+| Currency with negatives in red | `$#,##0.00;[Red]-$#,##0.00` |
+| Percent (whole) | `0%` |
+| Percent (two decimals) | `0.00%` |
+| Date ISO | `yyyy-mm-dd` |
+| Date US | `m/d/yyyy` |
+| Date long | `mmm d, yyyy` |
+| Accounting (USD) | `_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)` |
+| Plain number with commas | `#,##0` |
+| Plain number with two decimals | `#,##0.00` |
 
 ## Units
 

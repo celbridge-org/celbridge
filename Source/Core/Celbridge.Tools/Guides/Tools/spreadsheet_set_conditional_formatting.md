@@ -8,8 +8,12 @@ Common cases: highlight cells over or under a threshold, top or bottom N items i
 
 Each rule has a `type` field plus the inputs that type needs, and (for non-color-scale rules) optional formatting fields applied to matched cells.
 
+The colour-scale types use the **arity-suffixed** names `colorScale2` and `colorScale3` — there is no plain `colorScale`. The validator rejects unsuffixed names with `Unknown rule type: 'colorScale'`.
+
 | Type | Inputs |
 |---|---|
+| `colorScale2` | `lowColor`, `highColor` |
+| `colorScale3` | `lowColor`, `midColor`, `highColor` |
 | `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`, `equal`, `notEqual` | `value` |
 | `between`, `notBetween` | `value`, `value2` |
 | `containsText`, `doesNotContainText`, `beginsWith`, `endsWith` | `text` |
@@ -17,8 +21,6 @@ Each rule has a `type` field plus the inputs that type needs, and (for non-color
 | `formula` | `formula` (Excel formula string with or without leading `=`) |
 | `top`, `bottom` | `value` (positive integer count) |
 | `topPercent`, `bottomPercent` | `value` (1-100) |
-| `colorScale2` | `lowColor`, `highColor` |
-| `colorScale3` | `lowColor`, `midColor`, `highColor` |
 
 ## Formatting fields (non-color-scale rules)
 

@@ -4,7 +4,7 @@ Appends rows to the end of a worksheet's used range in a single open/save cycle.
 
 ## rowsJson
 
-A JSON array of rows. Each row is itself an array of cell values starting at column A. Cell values may be numbers, booleans, strings, or `null` to leave a cell blank. Trailing missing values leave those cells blank.
+A JSON array of rows. Each row is itself an array of cell values starting at column A. Cell values may be numbers, booleans, strings, or `null` to leave a cell blank. Every row in the batch must have the same field count as the first row — ragged rows are rejected (`Row N has X fields, expected Y`). Pad shorter rows with `null` to keep the width uniform.
 
 ```json
 [

@@ -29,7 +29,11 @@ A JSON object with:
 
 When the edits array is empty the tool returns the literal string `"ok"` instead.
 
+## Appending past the last line
+
+`line` and `endLine` must point at existing lines. An edit at `line: lineCount + 1` fails with `Edit start line N is out of range (file has M lines)`. To append after the last line, replace the last line with itself plus the new content: read the last line first (`file_read` with `offset: lineCount, limit: 1`), then submit `line: lineCount, endLine: lineCount, newText: "<original last line>\n<new content>"`.
+
 ## Edge cases
 
-- Edits are validated and applied as a batch. If any edit is out of bounds or overlaps another, the whole call fails and nothing is written.
+- Edits are validated and applied as a batch. If any edit is out of bounds or overlaps another, the whole call fails and nothing is written. Failure messages name the offending line and the file's actual line count.
 - For deleting whole lines without a residual blank line, prefer `file_delete_lines` — `apply_edits` with empty `newText` over a full-line range still leaves the line terminator behind.
