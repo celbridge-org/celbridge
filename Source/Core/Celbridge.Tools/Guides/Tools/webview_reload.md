@@ -2,8 +2,6 @@
 
 Reloads the WebView associated with an open document so package code reinitialises against the latest files on disk. Call this after editing HTML, CSS, or JavaScript in a contribution package to see the changes.
 
-See `webview_devtools` for the full edit-reload-inspect loop, including which buffers (console, network) survive across reloads.
-
 ## Parameters
 
 - `resource` — resource key of an open document tab.
@@ -16,9 +14,3 @@ See `webview_devtools` for the full edit-reload-inspect loop, including which bu
 ## What gets discarded
 
 The reload is destructive by design. In-page state, transient editor selection, and Monaco's undo history (if any) are all wiped. Console and network buffers persist on the host so prior errors and requests remain readable through `webview_get_console` and `webview_get_network`.
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide.
-- `webview_get_console` — read parse errors immediately after a reload.
-- `webview_get_network` — observe sub-resource fetches after a reload.

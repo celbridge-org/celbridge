@@ -2,8 +2,6 @@
 
 Reads the WebView's accumulated console buffer. Each entry is a `console.log`/`info`/`warn`/`error` call, an uncaught exception, or an unhandled promise rejection. The buffer survives reloads, so errors logged before a `webview_reload` remain visible afterwards.
 
-See `webview_devtools` for the broader edit-reload-inspect loop.
-
 ## Parameters
 
 - `resource` — resource key of an open document tab.
@@ -26,9 +24,3 @@ JSON object with:
 2. Trigger an action (webview_click, webview_reload, ...).
 3. Call webview_get_console(resource, sinceTimestampMs: <prior max>) to read only new entries.
 ```
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide.
-- `webview_reload` — buffer survives across reloads.
-- `webview_get_network` — same buffer-survives-reload model for fetch/XHR.

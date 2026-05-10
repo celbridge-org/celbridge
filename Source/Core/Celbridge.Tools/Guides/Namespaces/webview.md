@@ -4,10 +4,10 @@ The `webview` namespace drives WebView-backed editors: HTML viewers and contribu
 
 ## Must-knows
 
-- **Most tools are gated by feature flags.** `webview_eval` requires `webview-dev-tools` and `webview-dev-tools-eval`; other tools require `webview-dev-tools`. Read `app_get_state` and check `featureFlags` before calling. If a flag is off, tell the user which flag is gating the action.
-- **The right editor must have opened the document.** `document_get_state` returns an `editorId` for each open document. If you opened a `.html` expecting the HTML viewer but `editorId` is the code editor, webview tools won't work against it. See `webview_devtools`.
-- **`webview_screenshot` requires the tab to be active.** WebView2 pauses rendering for inactive tabs, so an inactive tab cannot produce a frame. Activate the tab via `document_activate` first. See `webview_devtools`.
-- **Synthetic events have `isTrusted: false`.** Handlers gated on `event.isTrusted` will not fire from `webview_click`. If a click appears to do nothing, use `webview_eval` to confirm the handler ran.
+- **Most tools are gated by feature flags.** `webview_eval` requires `webview-dev-tools` and `webview-dev-tools-eval`; the rest require `webview-dev-tools`. Check `featureFlags` from `app_get_state` before calling.
+- **The right editor must have opened the document.** `document_get_state` returns an `editorId` per open document. If you opened a `.html` expecting the HTML viewer but `editorId` is the code editor, webview tools will not work against it. See `webview_devtools`.
+- **`webview_screenshot` requires the tab to be active.** WebView2 pauses rendering for inactive tabs. Activate via `document_activate` first.
+- **Synthetic events have `isTrusted: false`.** Handlers gated on `event.isTrusted` will not fire from `webview_click`. If a click appears to do nothing, use `webview_eval` to confirm.
 - **Canvas-painted UI is invisible to selectors.** Pages that draw controls to a `<canvas>` have no DOM elements to query or click. Drive interaction by dispatching a synthetic `MouseEvent` to the canvas via `webview_eval` at the page-expected coordinates.
 - **Console and network buffers survive reloads.** `webview_get_console` and `webview_get_network` return everything observed since the document opened, including across reloads.
 
@@ -34,10 +34,3 @@ The `webview` namespace drives WebView-backed editors: HTML viewers and contribu
 **Lifecycle.**
 
 - `webview_reload` — reload the document.
-
-## See also
-
-- `webview_devtools` — feature flags, editor binding, activation, settle-time semantics.
-- `webview_documents` — when to use a WebView-backed document and how the contribution-editor model works.
-- `document_get_state` — discover which editor opened the document.
-- `app_get_state` — feature-flag map.

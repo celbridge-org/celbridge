@@ -17,9 +17,3 @@ An inline image content block (the image itself, ready for the model to view) pl
 - `resource` — the resource key as supplied.
 - `mimeType` — one of `image/jpeg`, `image/png`, `image/gif`, `image/webp`.
 - `sizeBytes` — original file size on disk.
-
-## See also
-
-- `file_read_binary` — non-image binary content.
-- `webview_screenshot` — capture a sized screenshot of an open viewer.
-- `resource_keys`.

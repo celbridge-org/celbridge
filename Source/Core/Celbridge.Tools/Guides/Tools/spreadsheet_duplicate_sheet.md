@@ -1,6 +1,6 @@
 # spreadsheet_duplicate_sheet
 
-Duplicates an existing worksheet inside the same workbook. The copy preserves values, formulas, cell formatting, conditional formatting, freeze panes, column widths, row heights, and any other sheet-level state. Use this when scaffolding a "next quarter" sheet from an existing template, or capturing a snapshot of a sheet before destructive edits.
+Duplicates an existing worksheet inside the same workbook. The copy preserves values, formulas, cell formatting, conditional formatting, freeze panes, column widths, row heights, and any other sheet-level state. Use this to scaffold a "next quarter" sheet from a template, or capture a snapshot before destructive edits.
 
 ## Position
 
@@ -8,7 +8,7 @@ Duplicates an existing worksheet inside the same workbook. The copy preserves va
 
 ## Naming
 
-`newSheet` is the name to give the duplicate. Required, and must not collide with an existing sheet in the workbook.
+`newSheet` is the name to give the duplicate. Required, and must not collide with an existing sheet.
 
 ## What is copied
 

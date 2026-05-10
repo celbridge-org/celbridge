@@ -13,9 +13,3 @@ A JSON array of objects, one per package:
 - `uploadedAt` (datetime) — UTC timestamp of when the entry was uploaded.
 
 The array is in the order returned by the registry; it is not sorted alphabetically.
-
-## See also
-
-- `package_install` — download and extract a listed package.
-- `package_publish` — upload a package to the registry.
-- `packages_overview` — the registry workflow.

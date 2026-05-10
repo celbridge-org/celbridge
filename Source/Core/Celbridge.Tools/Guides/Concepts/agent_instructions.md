@@ -17,7 +17,7 @@ Per-tool, namespace, and concept guides ride along with your tool calls automati
 - The first call to a tool attaches its per-tool guide and the related concept and troubleshooter guides the tool author listed.
 - Errors that map to a category helper (`InvalidResourceKey`, `FeatureFlagDisabled`, `ResourceNotFound`) attach a focused troubleshooter guide on first occurrence.
 
-Each auto-attached block opens with a `#` heading naming what it is (`# file_grep`, `# Resource keys`, `# App state`), and the broker attaches each at most once per MCP session — there is no separate fetch step you need to make. If you resume a conversation, the new MCP session has no memory of what you saw earlier, so guides and state snapshots you've already absorbed will re-attach on first use of each tool; when you spot a heading you already have in context, skim past the body. If your context has been compacted and you need a guide body back, call `guides_read(["<name>"])` explicitly.
+Each auto-attached block opens with a `#` heading naming what it is (`# file_grep`, `# Resource keys`, `# App state`), and the broker attaches each at most once per MCP session — there is no separate fetch step you need to make. If you resume a conversation, the new MCP session has no memory of what you saw earlier, so guides and state snapshots you have already absorbed will re-attach on first use of each tool; when you spot a heading you already have in context, skim past the body. If your context has been compacted and you need a guide body back, call `guides_read(["<name>"])` explicitly.
 
 ## The conventions you will trip on
 
@@ -48,7 +48,7 @@ The dot-form alias used in manifests matches the MCP tool name after swapping th
 
 ## Command semantics
 
-All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns. You don't need to poll, you don't need to wait, and concurrent tool calls produce a defined order. Tools that drive user-facing dialogs (e.g. `package_publish` with `confirmWithUser: true`) wait for the user's response before returning — see `silent_vs_interactive` for which ones do.
+All tools that modify application state execute sequentially and wait for completion before returning. State is always fully applied when the tool call returns. You do not need to poll, you do not need to wait, and concurrent tool calls produce a defined order. Tools that drive user-facing dialogs (e.g. `package_publish` with `confirmWithUser: true`) wait for the user's response before returning — see `silent_vs_interactive` for which ones do.
 
 ## Python proxy conventions
 
@@ -63,7 +63,7 @@ cel.app.log("Processing complete")
 - **JSON results are returned as dicts.** Tools that return structured payloads (e.g. `app.get_state`, `document.get_state`) deserialise into native Python dicts.
 - **Errors raise `CelError`** with a message string. The REPL is configured to display these without a traceback so the message is the focus.
 - **Methods marked `-> ok`** return the string `'ok'` on success or raise `CelError`.
-- **Structured-parameter formats** like `edits_json`, `resources`, `files`, `file_resource` accept native Python lists and dicts; the proxy auto-serialises to JSON. You don't need to call `json.dumps`.
+- **Structured-parameter formats** like `edits_json`, `resources`, `files`, `file_resource` accept native Python lists and dicts; the proxy auto-serialises to JSON. You do not need to call `json.dumps`.
 
 Type `help(cel)` to list the namespaces, or `help(cel.file)` to see the methods on one. To make the dependency on the proxy explicit at the top of a script, import it: `from celbridge import cel`.
 
@@ -90,7 +90,7 @@ const tree = await cel.file.getTree("");
 
 ## Domain prep — namespace guides
 
-These auto-attach the first time you call a tool in their namespace, but you can also fetch them explicitly when planning ahead of a domain you haven't entered yet:
+These auto-attach the first time you call a tool in their namespace, but you can also fetch them explicitly when planning ahead of a domain you have not entered yet:
 
 - `app` — application state, logging, alerts, refresh.
 - `document` — open / close / activate editor tabs and snapshot editor state.

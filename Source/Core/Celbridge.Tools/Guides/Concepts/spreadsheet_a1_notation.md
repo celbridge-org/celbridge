@@ -17,7 +17,7 @@ Different `spreadsheet_*` tools accept different subsets — for example, `sprea
 
 ## Empty range
 
-Many tools accept `range: ""` to mean "the worksheet's used range" (for read tools) or "the entire sheet" (for `spreadsheet_clear`). The exact meaning is documented per tool. When in doubt, call `spreadsheet_get_info` to see the used range explicitly.
+Many tools accept `range: ""` to mean "the worksheet's used range" (for read tools) or "the entire sheet" (for `spreadsheet_clear`). The exact meaning is per tool. When in doubt, call `spreadsheet_get_info`.
 
 ## Creating a workbook
 

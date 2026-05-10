@@ -1,6 +1,6 @@
 # app
 
-The `app` namespace covers application-level concerns that aren't tied to a specific resource: querying workspace state, logging to the console panel, refreshing the file system view, and showing modal alerts. Most workspace tools require a loaded project, so `app_get_state` is typically the first call on a fresh session.
+The `app` namespace covers application-level concerns that are not tied to a specific resource: querying workspace state, logging to the console panel, refreshing the file system view, and showing modal alerts. Most workspace tools require a loaded project, so `app_get_state` is typically the first call on a fresh session.
 
 ## Must-knows
 
@@ -15,8 +15,3 @@ The `app` namespace covers application-level concerns that aren't tied to a spec
 - `app_log`, `app_log_warning`, `app_log_error` — write a message to the console panel at the named severity.
 - `app_refresh_files` — rescan the project's content folder for external changes.
 - `app_show_alert` — show a modal alert dialog and wait for the user to dismiss it.
-
-## See also
-
-- `workspace_panels` — what `focusedPanel` and `layoutMode` mean.
-- `silent_vs_interactive` — which tools block on user input.

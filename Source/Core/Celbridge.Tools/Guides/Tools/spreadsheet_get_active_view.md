@@ -20,7 +20,6 @@ The shape mirrors the parameters accepted by `spreadsheet_set_active_view`. Pass
 
 ```python
 view = spreadsheet.get_active_view(resource="data/sales.xlsx")
-# ... do work that may move the selection ...
 spreadsheet.set_active_view(
     resource="data/sales.xlsx",
     sheet=view["sheet"],
@@ -28,8 +27,3 @@ spreadsheet.set_active_view(
     active_cell=view["activeCell"],
     top_left_cell=view["topLeftCell"])
 ```
-
-## See also
-
-- `spreadsheet_set_active_view` for the writer side, including selection vs. active-cell vs. scroll-anchor semantics.
-- `spreadsheet_editor_division` for what is persisted in the workbook vs. owned by the SpreadJS editor.

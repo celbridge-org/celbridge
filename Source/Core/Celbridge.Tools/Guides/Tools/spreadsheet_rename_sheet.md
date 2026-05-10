@@ -18,5 +18,3 @@ A freshly created `.xlsx` workbook starts with `Sheet1`. Rename it before adding
 ```python
 spreadsheet.rename_sheet(resource="data/sales.xlsx", sheet="Sheet1", new_name="Q1")
 ```
-
-See `spreadsheet_workflows` for the full scaffolding pattern.

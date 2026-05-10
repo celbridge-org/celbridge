@@ -2,8 +2,6 @@
 
 Sets the value of a form control (or `contenteditable` element) inside an open WebView document and dispatches the bubbling `input` and `change` events that frameworks listen for. The native `HTMLInputElement` / `HTMLTextAreaElement` / `HTMLSelectElement` setter is used, so React's synthetic event system, Lit, Vue, and Svelte all observe the change.
 
-See `webview_devtools` for the edit-reload-inspect loop and the readiness contract.
-
 ## Parameters
 
 - `resource` — resource key of an open document tab.
@@ -17,9 +15,3 @@ JSON object with `selector`, `tag`, and the value read back after assignment. Co
 ## Supported targets
 
 Only `<input>`, `<textarea>`, `<select>`, and `contenteditable` elements are accepted. Any other selector causes the call to fail fast rather than silently no-op.
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide.
-- `webview_query` — locate the input first when the selector is uncertain.
-- `webview_click` — for non-text controls (buttons, checkboxes, radios).

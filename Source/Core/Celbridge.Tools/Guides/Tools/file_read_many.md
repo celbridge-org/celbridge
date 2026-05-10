@@ -6,7 +6,7 @@ Reads multiple text files in a single call. Each file is read independently, so 
 
 ### resources
 
-JSON array of resource keys, e.g. `["src/foo.cs", "src/bar.cs"]`. The array must be non-empty.
+JSON array of resource keys, e.g. `["src/foo.cs", "src/bar.cs"]`. Must be non-empty.
 
 ### offset / limit
 
@@ -21,9 +21,3 @@ A JSON object with a `files` array, one entry per resource key in the order supp
 - On failure: `error` (string) describing why this file could not be read.
 
 `content` and `error` are mutually exclusive within a single entry.
-
-## See also
-
-- `file_read` — single-file read with the same offset/limit semantics.
-- `file_grep` with `includeContent: true` — combined locate-and-read in one call.
-- `resource_keys`.

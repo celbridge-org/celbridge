@@ -1,6 +1,6 @@
 # spreadsheet_read_sheet
 
-Reads cell values from a sheet in an .xlsx workbook. By default returns row arrays from the sheet's used range. Cells round-trip with their Excel type preserved (see `spreadsheet_cell_typing`).
+Reads cell values from a sheet in an `.xlsx` workbook. By default returns row arrays from the sheet's used range. Cells round-trip with their Excel type preserved (see `spreadsheet_cell_typing`).
 
 ## Range
 

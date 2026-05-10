@@ -5,8 +5,3 @@ Reverses the most recent explorer file-system operation. The explorer undo stack
 ## Returns
 
 `"ok"` on success. If there is nothing to undo, the result is still success and nothing changes.
-
-## See also
-
-- `explorer_redo` — re-apply the most recently undone operation.
-- `undo_semantics` — which actions go on which stack and what is unrecoverable.

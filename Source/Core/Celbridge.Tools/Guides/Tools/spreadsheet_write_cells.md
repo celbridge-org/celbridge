@@ -12,7 +12,7 @@ Each edit is an object with:
 
 ## Formula vs. text
 
-Strings that begin with `=` are written as **text** by default. Set `isFormula: true` to write a formula. See `spreadsheet_cell_typing`.
+Strings beginning with `=` are written as **text** by default. Set `isFormula: true` to write a formula.
 
 ## Recalculation
 

@@ -11,7 +11,7 @@ The width of the range determines how many empty rows or columns are inserted:
 
 ## Original-coordinate semantics
 
-Indices are interpreted against the **original workbook state**, so an agent can specify "insert rows at 3 and at 10" without mentally shifting indices after earlier inserts. The implementation applies inserts in descending order to make the original-coordinate semantics work, and overlapping ranges are deduped.
+Indices are interpreted against the **original workbook state**, so you can specify "insert rows at 3 and at 10" without mentally shifting indices after earlier inserts. The implementation applies inserts in descending order to make the original-coordinate semantics work, and overlapping ranges are deduped.
 
 ## Shift direction
 
@@ -21,7 +21,3 @@ Indices are interpreted against the **original workbook state**, so an agent can
 ## Batch atomicity
 
 Formulas are recalculated as part of the save. If any operation fails, the whole batch fails and nothing is saved.
-
-## Mirror
-
-`spreadsheet_insert` and `spreadsheet_delete` are inverse structural operations.

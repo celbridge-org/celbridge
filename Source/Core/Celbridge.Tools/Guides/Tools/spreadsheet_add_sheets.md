@@ -12,14 +12,9 @@ New sheets are always appended after the existing sheets, in the order listed. T
 
 ## Renaming the default sheet
 
-A freshly created `.xlsx` workbook starts with a single `Sheet1` worksheet. The typical scaffolding pattern is to rename it first and then add the rest:
+A freshly created `.xlsx` workbook starts with a single `Sheet1`. The typical scaffolding pattern is to rename it first and then add the rest:
 
 ```python
 spreadsheet.rename_sheet(resource="data/sales.xlsx", sheet="Sheet1", new_name="Q1")
 spreadsheet.add_sheets(resource="data/sales.xlsx", sheets_json='["Q2", "Q3", "Q4"]')
 ```
-
-## See also
-
-- `spreadsheet_workflows` for the full multi-sheet scaffolding pattern.
-- `spreadsheet_remove_sheet`, `spreadsheet_rename_sheet`, `spreadsheet_move_sheet`, `spreadsheet_duplicate_sheet` for the rest of the sheet lifecycle.

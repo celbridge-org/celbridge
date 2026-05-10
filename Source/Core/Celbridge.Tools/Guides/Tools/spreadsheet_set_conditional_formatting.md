@@ -2,12 +2,7 @@
 
 Conditional formatting drives cell appearance based on cell values or a formula, so highlights stay correct as data changes (vs. `spreadsheet_format_ranges`, which sets static styles).
 
-Common cases:
-
-- Highlight cells over or under a threshold.
-- Top or bottom N items in a list.
-- Colour scale across a column of numbers.
-- Formula-based highlight for whole rows.
+Common cases: highlight cells over or under a threshold, top or bottom N items in a list, colour scale across a column of numbers, formula-based highlight for whole rows.
 
 ## Rule object shape
 

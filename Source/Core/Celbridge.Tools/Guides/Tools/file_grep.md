@@ -15,7 +15,7 @@ The text or pattern to search for. Plain strings without regex metacharacters wo
 
 ### useRegex
 
-When `true`, `searchTerm` is a .NET regex. See `regex_syntax` for flavour details (named groups, lookbehind, Unicode `\d`, etc.).
+When `true`, `searchTerm` is a .NET regex.
 
 ### matchCase
 
@@ -94,12 +94,4 @@ When `true`, returns the totals and per-file `matchCount` without materialising 
 }
 ```
 
-The cap exists so the agent harness never has to truncate or spill an oversize tool result on its own. When you hit it, the totals tell you the search's scale; rerun with `summaryOnly: true` to see per-file `matchCount` values, then narrow `resource`, `include`/`exclude`, or `files` until the full response fits. `summaryOnly` results almost never trip the cap.
-
-## See also
-
-- `regex_syntax` — .NET regex flavour and gotchas.
-- `file_search` — name-only search; cheaper when you don't need content.
-- `file_find_replace` — apply a substitution after locating matches.
-- `file_read`, `file_read_many` — read full content for files identified by grep.
-- `resource_keys`.
+When you hit the cap, the totals tell you the search's scale. Rerun with `summaryOnly: true` to see per-file `matchCount` values, then narrow `resource`, `include`/`exclude`, or `files` until the full response fits. `summaryOnly` results almost never trip the cap.

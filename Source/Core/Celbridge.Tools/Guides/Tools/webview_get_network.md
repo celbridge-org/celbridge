@@ -2,8 +2,6 @@
 
 Reads the WebView's accumulated network buffer of `fetch` and `XMLHttpRequest` activity. The default payload is a header- and body-free summary so casual polling stays cheap. The buffer survives reloads, mirroring `webview_get_console`.
 
-See `webview_devtools` for the broader edit-reload-inspect loop.
-
 ## Parameters
 
 - `resource` — resource key of an open document tab.
@@ -23,9 +21,3 @@ JSON object with:
 ## Payload control
 
 Bodies dominate context cost — opt in only when you need to read them. Headers are cheaper but still meaningful for chatty endpoints. A common pattern is to call without flags first, find the entry of interest by URL or status, then re-call with `includeHeaders` or `includeBodies` for the same time window.
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide.
-- `webview_get_console` — same buffer-survives-reload model for log output.
-- `webview_reload` — buffer persists across reloads.

@@ -5,16 +5,8 @@ Writes text content to a file, creating it if it does not exist. For existing fi
 ## Parameters
 
 - `fileResource` — resource key of the file. Created automatically if missing. Parent folders must already exist.
-- `content` — the new text content. Line endings in `content` are written verbatim; the tool does not normalise.
+- `content` — the new text content. Line endings are written verbatim; the tool does not normalise.
 
 ## Returns
 
 A JSON object with `lineCount` — the line count of the written content.
-
-## See also
-
-- `file_changes` — save model and how the editor reloads after the write.
-- `editing_documents` — when to pick `file_write` vs. targeted edits.
-- `file_apply_edits`, `file_find_replace`, `file_delete_lines` — partial-edit alternatives.
-- `file_write_binary` — non-text content.
-- `resource_keys`.

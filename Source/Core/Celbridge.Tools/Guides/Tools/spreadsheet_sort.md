@@ -6,13 +6,11 @@ Sorts the rows of a range by one or more columns. Sort keys are applied in prior
 
 A1 cell range to sort (e.g. `"A2:F100"`). Empty string sorts the worksheet's used range. Column-letter and row-number ranges are not accepted — sort needs a concrete rectangle.
 
-See `spreadsheet_a1_notation` for the full range syntax.
-
 ## sortByJson
 
 A JSON array of sort keys with at least one entry. Each key is an object with:
 
-- `column` — the absolute column reference, given as an A1 column letter (e.g. `"B"`) or a 1-based column number (e.g. `2`). Must lie within `range`.
+- `column` — absolute column reference, given as an A1 column letter (e.g. `"B"`) or a 1-based column number (e.g. `2`). Must lie within `range`.
 - `ascending` — bool. `true` sorts smallest-first, `false` sorts largest-first.
 
 ```json
@@ -22,11 +20,11 @@ A JSON array of sort keys with at least one entry. Each key is an object with:
 ]
 ```
 
-Columns are absolute references against the worksheet, not range-relative — so when `range` is `"B2:F100"`, the valid `column` values are `"B"` through `"F"` (or `2` through `6`), not `"A"`.
+Columns are absolute references against the worksheet, not range-relative — so when `range` is `"B2:F100"`, the valid `column` values are `"B"` through `"F"`, not `"A"`.
 
 ## hasHeaderRow
 
-When `true`, the first row of `range` is pinned in place and excluded from the sort. The response's `rowCount` reflects the rows that were re-ordered (so it excludes the header row in this case). Use this when the range starts with a header row that should stay at the top.
+When `true`, the first row of `range` is pinned in place and excluded from the sort. The response's `rowCount` reflects the rows that were re-ordered (so it excludes the header row in this case).
 
 ## matchCase
 

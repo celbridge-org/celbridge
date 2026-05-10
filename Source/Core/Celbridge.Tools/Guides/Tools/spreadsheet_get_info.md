@@ -31,8 +31,3 @@ Returns a workbook overview: every sheet with its name, tab position, used range
 ## Detecting an inflated used range
 
 If `usedRange` looks suspicious (e.g. `A1:XFD1`) or `columnCount` is much larger than expected, the sheet's used range has likely been inflated by a stray write to a far-right cell. `spreadsheet_read_sheet` clamps columns by default; compare its `totalColumnCount` against the value here to confirm.
-
-## See also
-
-- `spreadsheet_paging` for how to use `totalRowCount` and `totalColumnCount` to decide whether to page a sheet.
-- `spreadsheet_workflows` for the inspect-then-read pattern.

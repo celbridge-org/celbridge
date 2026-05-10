@@ -1,6 +1,6 @@
 # spreadsheet_freeze_panes
 
-Freezes the first `rows` rows and the first `columns` columns of a worksheet so they stay visible while the rest of the sheet scrolls. Use this after writing a header row that should remain in view, or to anchor a leftmost label column for wide tables.
+Freezes the first `rows` rows and the first `columns` columns of a worksheet so they stay visible while the rest scrolls. Use after writing a header row that should remain in view, or to anchor a leftmost label column for wide tables.
 
 ## rows and columns
 

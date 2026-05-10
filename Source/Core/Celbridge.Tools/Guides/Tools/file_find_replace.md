@@ -6,7 +6,7 @@ Finds and replaces text within a single file. Most appropriate when the change i
 
 ### searchText / replaceText
 
-The pattern to find and the text to substitute. Multi-line replacements may use `\n` line endings in `replaceText`; the tool normalises to whatever line ending the file actually uses on disk.
+The pattern to find and the text to substitute. Multi-line replacements may use `\n` line endings in `replaceText`; the tool normalises to whatever line ending the file uses on disk.
 
 ### matchCase
 
@@ -14,7 +14,7 @@ Defaults to `false` (case-insensitive). Ignored when `useRegex` is true — use 
 
 ### useRegex
 
-When `true`, `searchText` is a .NET regex and `replaceText` may use `$1`, `${name}`, etc. for back-references. See `regex_syntax` for flavour details.
+When `true`, `searchText` is a .NET regex and `replaceText` may use `$1`, `${name}`, etc. for back-references.
 
 ### fromLine / toLine
 
@@ -23,11 +23,3 @@ Restrict the replacement to a 1-based, inclusive line range. `0` on either side 
 ## Returns
 
 A JSON object with `replacementCount` — the number of matches replaced.
-
-## See also
-
-- `file_changes` — save model and how the editor reloads after the write.
-- `regex_syntax` — .NET regex flavour notes.
-- `editing_documents` — when to pick find/replace vs. apply_edits vs. write.
-- `file_grep` — locate matches across multiple files first.
-- `resource_keys`.

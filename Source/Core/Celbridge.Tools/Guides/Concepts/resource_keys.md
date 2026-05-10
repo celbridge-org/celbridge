@@ -13,7 +13,7 @@ All file and folder references in Celbridge tools use **resource keys**: forward
 
 - Forward slashes only. Backslashes are rejected.
 - No leading slash. `/readme.md` is invalid.
-- No absolute paths. The key is always relative to the project content root.
+- No absolute paths or drive letters. The key is always relative to the content root.
 - Case sensitivity follows the underlying filesystem; on Windows the system is case-preserving but case-insensitive.
 
-When in doubt about which keys exist in the current project, call `file_get_tree("")` to list the top level, or pass a folder key to list its contents.
+When in doubt about which keys exist, call `file_get_tree("")` to list the top level, or pass a folder key to list its contents.

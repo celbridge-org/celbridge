@@ -1,8 +1,6 @@
 # file_read
 
-Reads the text content of a file and returns it along with the file's total line count. The default reads the whole file; pass `offset` and `limit` to page large files. For multiple files in one call, use `file_read_many`.
-
-For very large files, call `file_get_info` first to check `lineCount` and `size` before deciding whether to page.
+Reads the text content of a file and returns it along with the file's total line count. The default reads the whole file; pass `offset` and `limit` to page large files. For multiple files in one call, use `file_read_many`. For very large files, call `file_get_info` first to check `lineCount` and `size` before deciding whether to page.
 
 ## Parameters
 
@@ -26,11 +24,3 @@ A JSON object with:
 - `totalLineCount` — line count of the entire file, not just the returned range.
 
 When `offset` is past the end of the file, `content` comes back as the empty string and `totalLineCount` still reflects the file.
-
-## See also
-
-- `file_read_many` — batch read several files in one call.
-- `file_read_binary`, `file_read_image` — non-text content.
-- `file_get_info` — size and line count without reading.
-- `file_grep` — read content alongside matches via `includeContent`.
-- `resource_keys`.

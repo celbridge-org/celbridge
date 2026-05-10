@@ -8,7 +8,7 @@ This is the general-purpose zip tool; it is not limited to Celbridge packages. F
 
 ### resource
 
-Resource key of the file or folder to archive. See `resource_keys`.
+Resource key of the file or folder to archive.
 
 ### archive
 
@@ -33,9 +33,3 @@ A JSON object:
 - `entries` (int) — number of files written into the zip.
 - `size` (long) — archive size in bytes.
 - `archive` (string) — resource key of the created archive.
-
-## See also
-
-- `package_unarchive` — extract a zip resource back into the project.
-- `package_publish` — package-specific upload that handles the registry workflow end-to-end.
-- `packages_overview` — the packages folder layout and registry workflow.

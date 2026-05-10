@@ -16,14 +16,14 @@ Explorer undo cannot reverse:
 
 The text editor maintains its own undo history per open document. `Ctrl+Z` reverses recent typing, paste, find-replace, etc.
 
-**Programmatic edits wipe Monaco's undo history** for the open document. `file_apply_edits`, `file_write`, `file_find_replace`, `file_delete_lines`, and `file_write_binary` write straight to disk; if the document is open, the buffer reloads from disk and the undo stack is cleared. The agent's edit cannot be reverted with Ctrl+Z. To undo an agent edit, apply a reverse edit with `file_apply_edits` or `file_delete_lines`.
+**Programmatic edits wipe Monaco's undo history** for the open document. `file_apply_edits`, `file_write`, `file_find_replace`, `file_delete_lines`, and `file_write_binary` write straight to disk; if the document is open, the buffer reloads and the undo stack is cleared. The agent's edit cannot be reverted with Ctrl+Z. To undo an agent edit, apply a reverse edit with `file_apply_edits` or `file_delete_lines`.
 
 ## Spreadsheet editor undo
 
-The SpreadJS editor maintains its own undo history for cells edited from the editor UI. **Programmatic spreadsheet writes** (any `spreadsheet_*` tool that modifies the workbook) trigger an external-reload path on an open workbook, which wipes the editor's undo history for that workbook. Agents that need to recover a pre-edit value should `spreadsheet_read_sheet` before writing.
+The SpreadJS editor maintains its own undo history for cells edited via the editor UI. Programmatic spreadsheet writes trigger an external-reload path on an open workbook, which wipes the editor's undo history for that workbook. Agents that need to recover a pre-edit value should `spreadsheet_read_sheet` before writing.
 
 ## What never has undo
 
-- Git or filesystem operations outside the project (Celbridge does not manage these).
+- Git or filesystem operations outside the project.
 - Tool calls that operate on external systems (e.g. publishing a package — destructive, gated by `confirmWithUser`).
-- Application state changes (focus, layout) — these are user-recoverable but not on an undo stack.
+- Application state changes (focus, layout) — user-recoverable but not on an undo stack.

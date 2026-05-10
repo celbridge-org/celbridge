@@ -6,8 +6,8 @@ The `explorer` namespace operates on the resource tree: it creates, renames, mov
 
 - **Resource keys are forward-slash paths relative to the project content root.** No backslashes, no absolute paths. `Scripts/hello.py` is a file; `Data` is a folder; the empty string is the project root. See `resource_keys`.
 - **Most explorer mutations participate in the undo stack.** `explorer_undo` and `explorer_redo` reverse the last user-driven or tool-driven action. The undo unit is the operation, not the keystroke.
-- **`explorer_rename` and `explorer_duplicate` are interactive.** They surface a dialog the user must confirm. See `silent_vs_interactive`. For non-interactive renames, use `explorer_move`.
-- **Resolve "the folder I'm looking at" against the explorer selection.** Call `explorer_get_state` to read the selected resource(s) and expanded folders before resorting to project-wide search. See `workspace_panels`.
+- **`explorer_rename` and `explorer_duplicate` are interactive.** They surface a dialog the user must confirm. For non-interactive renames, use `explorer_move`. See `silent_vs_interactive`.
+- **Resolve "the folder I'm looking at" against the explorer selection.** Call `explorer_get_state` to read selection and expanded folders before resorting to project-wide search. See `workspace_panels`.
 
 ## Tools
 
@@ -30,11 +30,3 @@ The `explorer` namespace operates on the resource tree: it creates, renames, mov
 **Undo / redo.**
 
 - `explorer_undo`, `explorer_redo` — step through the explorer undo stack.
-
-## See also
-
-- `resource_keys` — full resource-key syntax rules.
-- `workspace_panels` — resolving "this file" or "that folder" against panel state.
-- `silent_vs_interactive` — which tools block on user input.
-- `file` namespace — read or modify file contents.
-- `undo_semantics` — how undo / redo composes across explorer and file edits.

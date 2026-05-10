@@ -8,7 +8,7 @@
 | Read rows 1000-1999 | `offset=1000` |
 | Read all rows in one call | `limit=0` (use sparingly) |
 
-The response always includes `totalRowCount` — the total number of data rows in the requested range, **ignoring** `offset` and `limit`. This is the field to check before deciding whether to page.
+The response always includes `totalRowCount` — the total data rows in the requested range, **ignoring** `offset` and `limit`. Check it before deciding whether to page.
 
 ```python
 result = spreadsheet.read_sheet(resource="data/sales.xlsx", sheet="Q1")
@@ -19,6 +19,6 @@ if result["totalRowCount"] > len(result["rows"]):
 
 ## Choosing a paging strategy
 
-For agent tasks that summarise or scan a sheet, prefer `spreadsheet_get_info` first — it's a cheap call that returns sheet names, used ranges, row/column counts, frozen-pane counts, and any defined names. Page through only when `totalRowCount` indicates the data exceeds your needs.
+For agent tasks that summarise or scan a sheet, prefer `spreadsheet_get_info` first — a cheap call that returns sheet names, used ranges, row/column counts, frozen panes, and any defined names. Page through only when `totalRowCount` indicates the data exceeds your needs.
 
 For tasks that need to feed sheet contents into another tool (e.g. CSV export), use `spreadsheet_export_csv` with `destination` to write the bytes directly to disk and skip the inline payload entirely.

@@ -23,10 +23,3 @@ Filter by node type. `"file"` keeps only files (folders remain in the structure 
 ## Returns
 
 A JSON tree of nodes. Each folder node has `name`, `type: "folder"`, `children`, and an optional `truncated` flag. Each file node has `name` and `type: "file"`. The root node always uses the folder shape, even when the resource itself is the project root.
-
-## See also
-
-- `file_list_contents` — single-level listing.
-- `file_search` — name-only search across the project.
-- `file_get_info` — metadata for a specific resource.
-- `resource_keys`.

@@ -2,8 +2,6 @@
 
 Finds elements inside an open WebView document. The returned `selector` strings are stable enough to pass straight to `webview_inspect`, `webview_click`, or `webview_fill`. Pick the mode that best matches what you know about the target.
 
-See `webview_devtools` for the broader edit-reload-inspect loop.
-
 ## Modes — exactly one per call
 
 Pass exactly one of `role`, `text`, or `selector`. Passing zero or more than one is an error.
@@ -41,9 +39,3 @@ JSON object with:
 ## Zero-match results
 
 When `totalMatches` is `0` the response carries a guide pointer alongside the value. Common causes: the selector or role does not match the rendered DOM, the element is conditionally rendered and not mounted yet, the document has not finished its content-ready handshake, or the page paints its UI to a `<canvas>` (where there is no DOM to query — see the `webview` namespace guide).
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide.
-- `webview_inspect` — richer view of a single element by selector.
-- `webview_click`, `webview_fill` — drive interactions against the returned selectors.

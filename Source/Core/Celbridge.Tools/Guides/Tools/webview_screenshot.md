@@ -2,8 +2,6 @@
 
 Captures a PNG or JPEG of an open WebView document. By default the image is returned inline as an MCP image content block alongside a JSON metadata text block. The document must be the active tab — WebView2 pauses rendering for inactive tabs, so an inactive tab fails fast rather than hanging.
 
-See `webview_devtools` for the activation requirement, save-vs-return behaviour, format and `maxEdge` defaults, and when to pass `settleMs`. The detail below is parameter shape only — defer to that guide for the operational rules.
-
 ## Parameters
 
 - `resource` — resource key of an open document tab. Must be the active document.
@@ -22,9 +20,3 @@ When `returnImage` is `true`: an inline image content block plus a JSON text blo
 ## Save destination resolution
 
 Save resolution runs before capture, so a malformed `saveTo` fails before any work happens. The save itself routes through the binary write command, so capability gating, registry refresh, and path containment all apply.
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide; covers activation, save/return semantics, defaults, and `settleMs` rationale.
-- `file_read_image` — read an already-saved screenshot back into context.
-- `document_get_state` — confirm the tab is active before capture.

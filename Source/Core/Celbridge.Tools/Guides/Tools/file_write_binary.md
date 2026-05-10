@@ -10,10 +10,3 @@ Replaces the entire content of a binary file with bytes decoded from a base64 st
 ## Returns
 
 The literal string `"ok"` on success.
-
-## See also
-
-- `file_changes` — save model and how the editor reloads after the write.
-- `file_read_binary` — read binary content as base64 first when modifying.
-- `file_write` — text equivalent.
-- `resource_keys`.

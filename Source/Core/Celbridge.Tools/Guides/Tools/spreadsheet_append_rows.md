@@ -15,7 +15,7 @@ A JSON array of rows. Each row is itself an array of cell values starting at col
 
 ## Formulas are written as text
 
-Cell values starting with `=` are written as text, not formulas. Use `spreadsheet_write_cells` with `isFormula: true` for formula writes. See `spreadsheet_cell_typing`.
+Cell values starting with `=` are written as text, not formulas. Use `spreadsheet_write_cells` with `isFormula: true` for formula writes.
 
 ## Returned row numbers
 

@@ -4,9 +4,7 @@ Moves an existing worksheet to a new tab position. Use this to reorder a workboo
 
 ## Position
 
-`position` is a 1-based tab position. The valid range is `[1, sheetCount]`; values outside that range fail the call. Position `1` makes the sheet the leftmost tab; position equal to `sheetCount` makes it the rightmost.
-
-The position is the absolute target on the tab strip, not a relative offset, and the count includes the sheet being moved (so moving the only sheet to position `1` is a no-op).
+`position` is a 1-based tab position. The valid range is `[1, sheetCount]`; values outside fail the call. Position `1` makes the sheet the leftmost tab; `sheetCount` makes it the rightmost. The position is the absolute target on the tab strip, not a relative offset, and the count includes the sheet being moved (so moving the only sheet to position `1` is a no-op).
 
 ## Failure modes
 

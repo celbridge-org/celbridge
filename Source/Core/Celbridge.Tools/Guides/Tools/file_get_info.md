@@ -18,10 +18,3 @@ For files:
 For folders the result is just `type` and `modified`.
 
 The call fails with a "Resource not found" error if the resource does not exist.
-
-## See also
-
-- `file_get_tree` — recursive view of a folder.
-- `file_list_contents` — immediate children only.
-- `file_read` — read content after sizing the file.
-- `resource_keys`.

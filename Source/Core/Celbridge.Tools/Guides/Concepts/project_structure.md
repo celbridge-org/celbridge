@@ -1,8 +1,8 @@
 # Project structure
 
-A Celbridge project is a folder on disk. The folder contains a project file (extension `.celbridge`) plus any number of user content files and subfolders. The project file's parent folder is the **content root**: every resource key is relative to it.
+A Celbridge project is a folder on disk containing a `.celbridge` project file plus user content. The project file's parent folder is the **content root**: every resource key is relative to it.
 
-A typical project layout might look like:
+A typical layout:
 
 ```
 my-project/
@@ -20,11 +20,11 @@ my-project/
 
 ## Where tools operate
 
-- **`file_*` tools** read, write, search, and inspect any file or folder under the content root. Use `file_get_tree("")` to list the top level.
-- **`explorer_*` tools** create, move, rename, and delete project resources. They drive the same operations a user can perform in the explorer panel.
-- **`document_*` tools** open files in the editor area as tabs and inspect tab state.
-- **`spreadsheet_*` tools** target `.xlsx` workbooks specifically and bypass the editor when reading and modifying cell data.
-- **`webview_*` tools** drive WebView devtools against an open contribution editor or HTML viewer document.
-- **`package_*` tools** scaffold, publish, and install packages from the registry.
+- **`file_*`** — read, write, search, and inspect any file or folder under the content root.
+- **`explorer_*`** — create, move, rename, delete project resources (drives the same operations a user can perform in the explorer panel).
+- **`document_*`** — open files in the editor area as tabs and inspect tab state.
+- **`spreadsheet_*`** — target `.xlsx` workbooks; bypass the editor when reading and modifying cell data.
+- **`webview_*`** — drive WebView devtools against an open contribution editor or HTML viewer document.
+- **`package_*`** — scaffold, publish, and install packages from the registry.
 
-The project file itself (the `.celbridge` file) is not a resource agents normally edit; it stores project-level configuration and is managed by the application.
+The `.celbridge` file itself is not a resource agents normally edit; it stores project-level configuration and is managed by the application.

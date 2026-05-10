@@ -9,7 +9,7 @@ If the workbook is open in the spreadsheet editor, the new view state is applied
 ## range vs. rangesJson
 
 - `range` is a single A1 cell or range. Empty string leaves the sheet's selection unchanged.
-- `rangesJson` is a JSON array of A1 cells or ranges that together form a non-contiguous selection (e.g. `["A7:B8", "A12:B13"]`) — the Ctrl+click selection in Excel. When non-empty, it takes precedence over `range`.
+- `rangesJson` is a JSON array of A1 cells or ranges that together form a non-contiguous selection (e.g. `["A7:B8", "A12:B13"]`) — the Ctrl+click selection in Excel. When non-empty, takes precedence over `range`.
 
 Each entry must omit the sheet qualifier.
 
@@ -25,10 +25,10 @@ Must be a single cell, not a range.
 
 ## topLeftCell
 
-The cell anchored at the upper-left of the visible viewport on the target sheet. Empty string leaves the scroll position unchanged. Must be a single cell, not a range.
+The cell anchored at the upper-left of the visible viewport on the target sheet. Empty string leaves the scroll position unchanged. Must be a single cell.
 
 Scroll position is best-effort: frozen panes may clamp `topLeftCell`, and Excel or other host applications may reset it on open. A subsequent `spreadsheet_get_active_view` may report a different `topLeftCell` than the one written.
 
 ## Round-tripping a multi-range selection
 
-`spreadsheet_set_active_view` mirrors `spreadsheet_get_active_view`. Pass the `ranges` value from `get_active_view` back through `rangesJson` on `set_active_view` to round-trip a non-contiguous selection.
+The shape mirrors `spreadsheet_get_active_view`. Pass the `ranges` value from `get_active_view` back through `rangesJson` on `set_active_view` to round-trip a non-contiguous selection.

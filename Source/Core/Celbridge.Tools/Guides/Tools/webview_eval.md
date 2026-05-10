@@ -2,8 +2,6 @@
 
 Runs an arbitrary JavaScript expression in the WebView's main world and returns the JSON-encoded value. Useful for reading state that no other `webview_*` tool exposes, confirming side effects after `webview_click`, or invoking a function the editor exports on `window`.
 
-See `webview_devtools` for the edit-reload-inspect loop, the supported document targets, and the readiness contract.
-
 ## Feature flag gating
 
 `webview_eval` is gated by **two** feature flags, not one:
@@ -27,9 +25,3 @@ The JSON-serialised result of the expression. `null` is returned when the expres
 - The DevTools-only `getEventListeners()` helper does not exist in this context. Calling it raises a `ReferenceError`.
 - The expression body may contain sensitive output (cookies, storage values). The host logs only the resource and the expression length at info level. Treat the contents as you would any other arbitrary code execution path.
 - Only available from Python and from the MCP transport. The JavaScript proxy refuses `webview.*` calls from package code regardless of `requires_tools`. Do not declare `webview.*` in a package manifest.
-
-## See also
-
-- `webview_devtools` — cross-cutting concept guide, including the JS-proxy denial rule.
-- `app_get_state` — read the `featureFlags` map to confirm both flags are on.
-- `webview_inspect`, `webview_query`, `webview_get_html` — prefer these for routine DOM inspection.
