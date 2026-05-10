@@ -7,39 +7,27 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Writes a batch of single-cell edits to a worksheet. Each edit is an object with a "cell"
-    /// (A1 address), a "value" (number, boolean, string, or null to blank the cell), and an optional
-    /// "isFormula" flag. Strings beginning with '=' are written as text by default. Set isFormula true
-    /// to write a formula. Formulas are recalculated as part of the save, so a follow-up
-    /// spreadsheet_read_sheet returns fresh computed values. Other cells in the sheet, including
-    /// formatting on cells the edits do not touch, are preserved. Numeric values must be finite and
-    /// must have magnitude at most 1e+300; values outside that range are rejected because the
-    /// underlying serialiser rounds them to a string that overflows on reopen.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Name of the worksheet to write into. The sheet must already exist.</param>
-    /// <param name="editsJson">JSON array of edit objects, each with fields: cell (A1 string, required), value (number, boolean, string, or null), isFormula (bool, optional, default false).</param>
-    /// <returns>JSON object with field: cellCount (int, the number of edits applied).</returns>
+    /// <summary>Write per-cell value or formula edits to a worksheet, leaving other cells untouched.</summary>
     [McpServerTool(Name = "spreadsheet_write_cells")]
     [ToolAlias("spreadsheet.write_cells")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_cell_typing", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> WriteCells(string resource, string sheet, string editsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolError("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var parseResult = ParseCellEdits(editsJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var cellEdits = parseResult.Value;
 
@@ -52,12 +40,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<List<CellEdit>> ParseCellEdits(string editsJson)

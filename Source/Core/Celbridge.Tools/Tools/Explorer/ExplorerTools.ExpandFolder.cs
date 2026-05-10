@@ -5,19 +5,15 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Expands or collapses a folder in the explorer tree.
-    /// </summary>
-    /// <param name="resource">Resource key of the folder.</param>
-    /// <param name="expanded">If true, expand the folder. If false, collapse it.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Expand or collapse a single folder node in the explorer tree.</summary>
     [McpServerTool(Name = "explorer_expand_folder")]
     [ToolAlias("explorer.expand_folder")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ExpandFolder(string resource, bool expanded = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var expandResult = await ExecuteCommandAsync<IExpandFolderCommand>(command =>
@@ -27,9 +23,9 @@ public partial class ExplorerTools
         });
         if (expandResult.IsFailure)
         {
-            return ToolError(expandResult);
+            return ToolResponse.Error(expandResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

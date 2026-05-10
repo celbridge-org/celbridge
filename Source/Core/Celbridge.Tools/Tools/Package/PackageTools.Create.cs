@@ -15,19 +15,15 @@ public record class PackageCreateResult(string PackageName, string Resource, str
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Creates a new package in the project's packages folder with a stub manifest.
-    /// The package folder is created at packages/{packageName}/ with a package.toml file.
-    /// </summary>
-    /// <param name="packageName">Package name (lowercase alphanumeric and hyphens, e.g. "my-widget").</param>
-    /// <returns>JSON object with fields: packageName (string), resource (string), manifestPath (string).</returns>
+    /// <summary>Create a new package skeleton at packages/{packageName}/ with stub manifest.</summary>
     [McpServerTool(Name = "package_create", Destructive = true)]
     [ToolAlias("package.create")]
+    [RelatedGuides("packages_overview")]
     public partial CallToolResult Create(string packageName)
     {
         if (!IsValidPackageName(packageName))
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
@@ -41,13 +37,13 @@ public partial class PackageTools
         {
             var failure = Result.Fail("Failed to resolve path for package")
                 .WithErrors(resolveResult);
-            return ToolError(failure);
+            return ToolResponse.Error(failure);
         }
         var packageFolderPath = resolveResult.Value;
 
         if (Directory.Exists(packageFolderPath))
         {
-            return ToolError($"Package already exists: 'packages/{packageName}'");
+            return ToolResponse.Error($"Package already exists: 'packages/{packageName}'");
         }
 
         try
@@ -67,7 +63,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolError($"Failed to create package: {exception.Message}");
+            return ToolResponse.Error($"Failed to create package: {exception.Message}");
         }
 
         var result = new PackageCreateResult(
@@ -76,6 +72,6 @@ public partial class PackageTools
             $"packages/{packageName}/{ManifestFileName}");
 
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

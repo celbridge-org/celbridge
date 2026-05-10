@@ -19,22 +19,15 @@ public record class AffectedLineRange(int From, int To, List<string>? ContextLin
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Applies targeted text edits to a file at specific line and column positions.
-    /// Each edit specifies a range and replacement text, using 1-based line and column numbers.
-    /// Edits are written directly to disk. Any open document reloads its buffer from disk
-    /// after the write.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to edit.</param>
-    /// <param name="editsJson">JSON array of edit objects, each with fields: line (int), column (int, optional, default 1), endLine (int), endColumn (int, optional, default -1), newText (string). Line and column numbers are 1-based. column defaults to 1 and endColumn defaults to -1 (end of line), so whole-line replacements only require line, endLine, and newText.</param>
-    /// <returns>JSON object describing the file state after the edits are applied, with fields: affectedLines (array of objects with from (int), to (int), and contextLines (array of strings showing the post-edit content of the affected lines with one line of surrounding context on each side)), totalLineCount (int, post-edit line count). Use these fields to verify the edit landed without issuing a follow-up file_read.</returns>
+    /// <summary>Apply structured edits at 1-based line/column ranges to a text file.</summary>
     [McpServerTool(Name = "file_apply_edits")]
     [ToolAlias("file.apply_edits")]
+    [RelatedGuides("resource_keys", "editing_documents", "file_changes", "undo_semantics")]
     public async partial Task<CallToolResult> ApplyEdits(string fileResource, string editsJson)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         Result<List<TextEdit>> parseResult;
@@ -44,18 +37,18 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolError($"Invalid edits JSON: {ex.Message}");
+            return ToolResponse.Error($"Invalid edits JSON: {ex.Message}");
         }
 
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
 
         var textEdits = parseResult.Value;
         if (textEdits.Count == 0)
         {
-            return ToolSuccess("ok");
+            return ToolResponse.Success("ok");
         }
 
         var fileEdit = new FileEdit(fileResourceKey, textEdits);
@@ -67,7 +60,7 @@ public partial class FileTools
 
         if (applyEditsResult.IsFailure)
         {
-            return ToolError(applyEditsResult);
+            return ToolResponse.Error(applyEditsResult);
         }
 
         var appliedEdits = applyEditsResult.Value;
@@ -113,6 +106,6 @@ public partial class FileTools
 
         var result = new ApplyEditsResult(affectedLines, totalLineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

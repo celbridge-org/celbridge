@@ -12,12 +12,10 @@ public record class PackageListEntry(string PackageName, long Size, DateTime Upl
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Lists all packages available in the remote package registry.
-    /// </summary>
-    /// <returns>JSON array of objects with fields: packageName (string), size (long), uploadedAt (datetime).</returns>
+    /// <summary>List all packages available in the remote package registry.</summary>
     [McpServerTool(Name = "package_list", ReadOnly = true)]
     [ToolAlias("package.list")]
+    [RelatedGuides("packages_overview")]
     public async partial Task<CallToolResult> List()
     {
         var packageApiClient = GetRequiredService<IPackageApiClient>();
@@ -25,7 +23,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ToolError(listResult);
+            return ToolResponse.Error(listResult);
         }
 
         var packages = new List<PackageListEntry>();
@@ -42,6 +40,6 @@ public partial class PackageTools
         }
 
         var json = JsonSerializer.Serialize(packages, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

@@ -5,18 +5,15 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Duplicates a resource. Always shows an interactive dialog where the user can choose the new name.
-    /// </summary>
-    /// <param name="resource">Resource key of the item to duplicate.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Duplicate a resource in place via the interactive rename dialog (user picks the new name).</summary>
     [McpServerTool(Name = "explorer_duplicate")]
     [ToolAlias("explorer.duplicate")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Duplicate(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var duplicateResult = await ExecuteCommandAsync<IDuplicateResourceDialogCommand>(command =>
@@ -25,9 +22,9 @@ public partial class ExplorerTools
         });
         if (duplicateResult.IsFailure)
         {
-            return ToolError(duplicateResult);
+            return ToolResponse.Error(duplicateResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

@@ -7,36 +7,26 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Dispatches a programmatic mouse-click sequence (mousedown, mouseup, click) on
-    /// the element matched by a CSS selector. Events bubble but have isTrusted = false,
-    /// so handlers that gate on event.isTrusted will not fire. If a click appears to do
-    /// nothing, use webview_eval to verify the listener is registered before assuming
-    /// the click failed. Waits up to 5 seconds for the editor's content-ready signal
-    /// before dispatching. Requires the webview-dev-tools feature flag. Works on any
-    /// open document editor whose package has not opted out of devtools.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to target.</param>
-    /// <param name="selector">CSS selector identifying the element to click. The first match receives the click sequence.</param>
-    /// <returns>JSON object with `selector`, `tag`, `visible`, `rect`, and `isTrusted` (always false because the events are programmatic).</returns>
+    /// <summary>Dispatch a synthetic click on the first element matching a CSS selector.</summary>
     [McpServerTool(Name = "webview_click")]
     [ToolAlias("webview.click")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Click(string resource, string selector)
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolError("webview_click requires a non-empty selector.");
+            return ToolResponse.Error("webview_click requires a non-empty selector.");
         }
 
         Logger.LogInformation("webview_click resource={Resource} selector={Selector}", resourceKey, selector);
@@ -46,9 +36,9 @@ public partial class WebViewTools
         var clickResult = await toolBridge.ClickAsync(resourceKey, options);
         if (clickResult.IsFailure)
         {
-            return ToolError(clickResult);
+            return ToolResponse.Error(clickResult);
         }
 
-        return ToolSuccess(clickResult.Value);
+        return ToolResponse.Success(clickResult.Value);
     }
 }

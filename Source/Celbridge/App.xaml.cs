@@ -290,6 +290,7 @@ public partial class App : Application
         Modules.ServiceConfiguration.ConfigureServices(services);
         Projects.ServiceConfiguration.ConfigureServices(services);
         Settings.ServiceConfiguration.ConfigureServices(services);
+        Tools.ServiceConfiguration.ConfigureServices(services);
         UserInterface.ServiceConfiguration.ConfigureServices(services);
         Utilities.ServiceConfiguration.ConfigureServices(services);
         WebHost.ServiceConfiguration.ConfigureServices(services);
@@ -298,6 +299,7 @@ public partial class App : Application
 
     private void InitializeCoreServices()
     {
+        Tools.ServiceConfiguration.Initialize();
         UserInterface.ServiceConfiguration.Initialize();
         WebHost.ServiceConfiguration.Initialize();
         Workspace.ServiceConfiguration.Initialize();

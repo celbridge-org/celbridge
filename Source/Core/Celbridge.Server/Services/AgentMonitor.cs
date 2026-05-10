@@ -1,0 +1,208 @@
+using System.Collections.Concurrent;
+using Celbridge.Tools;
+using ModelContextProtocol.Server;
+
+namespace Celbridge.Server.Services;
+
+/// <summary>
+/// One captured tool invocation. Field order matches the Invocations workbook
+/// column order. ResponseBlocks lists the blocks the broker prepended ahead
+/// of the tool's own output (session-state markers, guide names) so duplicate
+/// auto-attaches are directly visible in the workbook.
+/// </summary>
+public record class ToolInvocationRecord(
+    DateTimeOffset TimestampUtc,
+    string SessionId,
+    string ClientName,
+    string ClientVersion,
+    string ToolName,
+    bool Success,
+    string ErrorMessage,
+    double DurationMilliseconds,
+    long ArgPayloadBytes,
+    long ResultPayloadBytes,
+    bool ProxyClient,
+    string ResponseBlocks);
+
+/// <summary>
+/// Outcome fields the response filter observes for a single invocation.
+/// AttachedNames is the ordered list of names auto-attach prepended to the
+/// result (session-state markers and guide names); empty when nothing was
+/// prepended.
+/// </summary>
+internal record class InvocationOutcome(
+    bool Success,
+    string ErrorMessage,
+    double DurationMilliseconds,
+    long ArgPayloadBytes,
+    long ResultPayloadBytes,
+    IReadOnlyList<string> AttachedNames);
+
+/// <summary>
+/// Per-MCP-session state owned by AgentMonitor: the served-guides set and
+/// the session id. Mutating members are safe to call concurrently.
+/// </summary>
+internal sealed class AgentSessionState
+{
+    // ConcurrentDictionary used as a set. HashSet<string> is not safe under
+    // concurrent Add and Contains, which happens when an agent issues parallel
+    // tool calls in the same turn.
+    private readonly ConcurrentDictionary<string, byte> _guidesServed = new(StringComparer.Ordinal);
+
+    public AgentSessionState(string sessionId)
+    {
+        SessionId = sessionId;
+    }
+
+    public string SessionId { get; }
+
+    public bool IsProxyClient { get; set; }
+
+    /// <summary>
+    /// Atomic check-and-set on the served-guides set. Returns true on first
+    /// observation of the name, false thereafter.
+    /// </summary>
+    public bool TryMarkServed(string guideName)
+    {
+        return _guidesServed.TryAdd(guideName, 0);
+    }
+
+    public void MarkGuideRead(string guideName)
+    {
+        _guidesServed.TryAdd(guideName, 0);
+    }
+
+    public bool WasGuideRead(string guideName)
+    {
+        return _guidesServed.ContainsKey(guideName);
+    }
+}
+
+/// <summary>
+/// Records per-invocation MCP tool monitoring data and per-session state.
+/// Invocation rows are the source of truth for the agent report.
+/// </summary>
+public sealed class AgentMonitor
+{
+    /// <summary>
+    /// Maximum number of invocation rows kept in memory before FIFO eviction.
+    /// </summary>
+    private const int MaxInvocationRows = 5_000;
+
+    /// <summary>
+    /// Client-info name used by McpToolBridge for proxy connections. Identifies
+    /// callers that bypass auto-attach.
+    /// </summary>
+    public const string ProxyClientName = "CelbridgeMcpToolBridge";
+
+    private readonly ConcurrentDictionary<string, AgentSessionState> _sessionStates = new(StringComparer.Ordinal);
+    private readonly ConcurrentQueue<ToolInvocationRecord> _invocations = new();
+
+    /// <summary>
+    /// Returns the per-session state for the given MCP server, or null when
+    /// the server has no SessionId yet.
+    /// </summary>
+    internal AgentSessionState? GetOrCreateSession(McpServer server)
+    {
+        var sessionId = server.SessionId;
+        var clientName = server.ClientInfo?.Name ?? "";
+        return GetOrCreateSession(sessionId ?? "", clientName);
+    }
+
+    /// <summary>
+    /// Test seam over the McpServer-keyed overload. Looks up or creates the
+    /// per-session state keyed on the MCP session ID.
+    /// </summary>
+    internal AgentSessionState? GetOrCreateSession(string mcpSessionId, string clientName)
+    {
+        if (string.IsNullOrEmpty(mcpSessionId))
+        {
+            return null;
+        }
+
+        var state = _sessionStates.GetOrAdd(mcpSessionId, key => new AgentSessionState(key));
+        state.IsProxyClient = string.Equals(clientName, ProxyClientName, StringComparison.Ordinal);
+        return state;
+    }
+
+    /// <summary>
+    /// Drops all per-session state. Captured invocation rows are retained so
+    /// the agent report can aggregate across the whole application session.
+    /// </summary>
+    public void ClearSessions()
+    {
+        _sessionStates.Clear();
+    }
+
+    /// <summary>
+    /// Atomic check-and-set on the per-session served-guides set; returns
+    /// true on first observation.
+    /// </summary>
+    internal bool TryMarkServed(AgentSessionState state, string guideName)
+    {
+        return state.TryMarkServed(guideName);
+    }
+
+    internal void MarkGuideRead(AgentSessionState state, string guideName)
+    {
+        state.MarkGuideRead(guideName);
+    }
+
+    public void RecordInvocation(ToolInvocationRecord record)
+    {
+        _invocations.Enqueue(record);
+
+        while (_invocations.Count > MaxInvocationRows && _invocations.TryDequeue(out _))
+        {
+        }
+    }
+
+    /// <summary>
+    /// Builds a ToolInvocationRecord from the filter's observation context
+    /// and records it.
+    /// </summary>
+    internal void RecordInvocation(
+        McpServer server,
+        AgentSessionState session,
+        string toolName,
+        InvocationOutcome outcome)
+    {
+        var clientInfo = server.ClientInfo;
+        var clientName = clientInfo?.Name ?? "";
+        var clientVersion = clientInfo?.Version ?? "";
+
+        var record = new ToolInvocationRecord(
+            TimestampUtc: DateTimeOffset.UtcNow,
+            SessionId: session.SessionId,
+            ClientName: clientName,
+            ClientVersion: clientVersion,
+            ToolName: toolName,
+            Success: outcome.Success,
+            ErrorMessage: outcome.ErrorMessage,
+            DurationMilliseconds: outcome.DurationMilliseconds,
+            ArgPayloadBytes: outcome.ArgPayloadBytes,
+            ResultPayloadBytes: outcome.ResultPayloadBytes,
+            ProxyClient: session.IsProxyClient,
+            ResponseBlocks: FormatResponseBlocks(outcome.AttachedNames));
+        RecordInvocation(record);
+    }
+
+    /// <summary>
+    /// Renders the auto-attach prefix list for the Invocations workbook.
+    /// Always ends with a "result" sentinel so an empty cell can't be
+    /// confused with missing data.
+    /// </summary>
+    internal static string FormatResponseBlocks(IReadOnlyList<string> attachedNames)
+    {
+        if (attachedNames.Count == 0)
+        {
+            return "result";
+        }
+        return string.Join("; ", attachedNames) + "; result";
+    }
+
+    /// <summary>
+    /// All captured invocation rows in observation order.
+    /// </summary>
+    public IReadOnlyList<ToolInvocationRecord> Invocations => _invocations.ToArray();
+}

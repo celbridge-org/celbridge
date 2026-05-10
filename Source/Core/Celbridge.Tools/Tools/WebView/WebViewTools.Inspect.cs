@@ -7,38 +7,26 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Returns metadata for a single element in the WebView matched by a CSS
-    /// selector: tag, attributes, curated computed styles (display, visibility,
-    /// font, color, layout), accessible role and name, bounding rectangle,
-    /// visibility flag, and a child preview. Use this after webview_query to
-    /// drill into a specific match. Waits up to 5 seconds for the editor's
-    /// content-ready signal before dispatching. Requires the webview-dev-tools
-    /// feature flag. Works on any open document editor whose package has not
-    /// opted out of devtools.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to query.</param>
-    /// <param name="selector">CSS selector identifying the element. The first match is described.</param>
-    /// <param name="childPreviewLimit">Number of children to include in the preview list. Default 5. The full child count is always reported separately.</param>
-    /// <returns>JSON object describing the element: tag, selector, role, accessibleName, attributes, visible, rect, computedStyles, and children (count plus first-N preview).</returns>
+    /// <summary>Read computed metadata (attributes, styles, role/name, rect, child preview) for one selector match.</summary>
     [McpServerTool(Name = "webview_inspect")]
     [ToolAlias("webview.inspect")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Inspect(string resource, string selector, int childPreviewLimit = 5)
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolError("webview_inspect requires a non-empty selector.");
+            return ToolResponse.Error("webview_inspect requires a non-empty selector.");
         }
 
         Logger.LogInformation("webview_inspect resource={Resource} selector={Selector} childPreviewLimit={ChildPreviewLimit}",
@@ -49,9 +37,9 @@ public partial class WebViewTools
         var inspectResult = await toolBridge.InspectAsync(resourceKey, options);
         if (inspectResult.IsFailure)
         {
-            return ToolError(inspectResult);
+            return ToolResponse.Error(inspectResult);
         }
 
-        return ToolSuccess(inspectResult.Value);
+        return ToolResponse.Success(inspectResult.Value);
     }
 }

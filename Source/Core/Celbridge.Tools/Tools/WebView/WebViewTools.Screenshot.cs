@@ -8,23 +8,10 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Captures a screenshot of the WebView. By default the image is returned
-    /// inline and not written to disk. Pass `saveTo` to also archive it as a
-    /// project resource. The target document must be open and the active tab —
-    /// call document_open first. Requires the webview-dev-tools feature flag.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to capture.</param>
-    /// <param name="saveTo">Where to save the captured image. Empty (default) skips the save. A trailing '/' or no extension is treated as a folder and an auto-named file is generated inside. A full key (e.g. "docs/output.png") writes to that resource. The extension must match `format`.</param>
-    /// <param name="returnImage">When true (default) the response includes the image inline. Pass false for save-only flows to avoid inline tokens. At least one of returnImage or saveTo must produce output.</param>
-    /// <param name="format">Image format: "jpeg" (default) or "png".</param>
-    /// <param name="quality">JPEG quality, 1-100. Default 70. Ignored for PNG.</param>
-    /// <param name="maxEdge">Maximum length of the longer image edge in pixels. Default 768. Bump to 1024 or higher to read fine on-screen text. Pass 0 to disable downscaling.</param>
-    /// <param name="selector">Optional CSS selector. When supplied, clips the screenshot to the matched element. Empty (default) captures the viewport.</param>
-    /// <param name="settleMs">Additional delay in milliseconds before the capture. Default 0. Bump to 500-1000 after layout-changing operations such as document_open if the editor signals content-ready before panels and async resources have settled.</param>
-    /// <returns>Inline image (when returnImage is true) plus JSON metadata: `format`, `width`, `height`, `sizeBytes`, `resource` (the saved key, or null), `imageReturned`.</returns>
+    /// <summary>Capture a visual screenshot of the WebView (returned inline and/or saved into the project tree).</summary>
     [McpServerTool(Name = "webview_screenshot")]
     [ToolAlias("webview.screenshot")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Screenshot(
         string resource,
         string saveTo = "",
@@ -38,18 +25,18 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var willSave = !string.IsNullOrEmpty(saveTo);
         if (!returnImage && !willSave)
         {
-            return ToolError(
+            return ToolResponse.Error(
                 "webview_screenshot was called with returnImage = false and no saveTo, " +
                 "which would discard the captured image. Either set returnImage = true to view the image inline, " +
                 "or provide a saveTo to archive it into the project tree.");
@@ -70,13 +57,13 @@ public partial class WebViewTools
             var projectFolderPath = resourceRegistry.ProjectFolderPath;
             if (string.IsNullOrEmpty(projectFolderPath))
             {
-                return ToolError("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
+                return ToolResponse.Error("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
             }
 
             var resolveResult = WebViewScreenshotResolver.Resolve(saveTo, format, projectFolderPath);
             if (resolveResult.IsFailure)
             {
-                return ToolError(resolveResult);
+                return ToolResponse.Error(resolveResult);
             }
             fileResource = resolveResult.Value;
         }
@@ -88,7 +75,7 @@ public partial class WebViewTools
         var screenshotResult = await toolBridge.ScreenshotAsync(resourceKey, options);
         if (screenshotResult.IsFailure)
         {
-            return ToolError(screenshotResult);
+            return ToolResponse.Error(screenshotResult);
         }
 
         var data = screenshotResult.Value;
@@ -111,7 +98,7 @@ public partial class WebViewTools
             {
                 var failure = Result.Fail($"Failed to save screenshot to resource '{fileResource}'")
                     .WithErrors(commandResult);
-                return ToolError(failure);
+                return ToolResponse.Error(failure);
             }
         }
 
@@ -128,10 +115,10 @@ public partial class WebViewTools
         if (returnImage)
         {
             var mimeType = data.Format == "png" ? "image/png" : "image/jpeg";
-            return ToolSuccessWithImage(data.Bytes, mimeType, metadataJson);
+            return ToolResponse.SuccessWithImage(data.Bytes, mimeType, metadataJson);
         }
 
-        return ToolSuccess(metadataJson);
+        return ToolResponse.Success(metadataJson);
     }
 
     private sealed record ScreenshotResponse(

@@ -7,35 +7,27 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Appends rows to the end of a worksheet's used range. Each row is an array of cell values
-    /// (number, boolean, string, or null) starting at column A. An empty sheet receives the rows
-    /// starting at A1. Cell values that begin with '=' are written as text. Use spreadsheet_write_cells
-    /// for formula writes. Formulas elsewhere in the workbook are recalculated as part of the save.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheet">Name of the worksheet to append to. The sheet must already exist.</param>
-    /// <param name="rowsJson">JSON array of rows. Each row is an array of cell values (number, boolean, string, or null) in column order starting from A.</param>
-    /// <returns>JSON object with fields: appendedRowCount (int), firstRow (int, 1-based), lastRow (int, 1-based).</returns>
+    /// <summary>Append rows of cell values to the end of a worksheet's used range.</summary>
     [McpServerTool(Name = "spreadsheet_append_rows")]
     [ToolAlias("spreadsheet.append_rows")]
+    [RelatedGuides("resource_keys", "spreadsheet_cell_typing", "spreadsheet_headers_mode", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rowsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolError("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var parseResult = ParseRows(rowsJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var parsedRows = parseResult.Value;
 
@@ -48,12 +40,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<List<IReadOnlyList<object?>>> ParseRows(string rowsJson)

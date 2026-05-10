@@ -34,10 +34,10 @@ class TestExplorer:
         explorer.create_file("TestExplorer/hello.txt")
         explorer.select("TestExplorer/hello.txt")
 
-    def test_get_context(self, explorer):
+    def test_get_state(self, explorer):
         explorer.create_file("TestExplorer/hello.txt")
         explorer.select("TestExplorer/hello.txt")
-        ctx = explorer.get_context()
+        ctx = explorer.get_state()
         assert "selectedResource" in ctx
         assert "expandedFolders" in ctx
 

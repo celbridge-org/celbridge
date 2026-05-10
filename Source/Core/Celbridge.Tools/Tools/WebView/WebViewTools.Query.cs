@@ -7,24 +7,10 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Locates elements in the WebView by ARIA role + accessible name, by visible
-    /// text content, or by CSS selector. Exactly one of role, text, or selector
-    /// must be supplied. Returns stable CSS selectors generated from each match,
-    /// along with bounding rectangles, visibility flags, and accessible names.
-    /// Waits up to 5 seconds for the editor's content-ready signal before
-    /// dispatching. Requires the webview-dev-tools feature flag. Works on any
-    /// open document editor whose package has not opted out of devtools.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to query.</param>
-    /// <param name="role">ARIA role to match. Combines explicit role attributes and the implicit role for the element's tag (e.g. button → button, h2 → heading). Pass an empty string when not querying by role.</param>
-    /// <param name="name">Accessible name substring used to filter role matches. Compared case-insensitively against aria-label, aria-labelledby, label-for, alt, title, placeholder, value, then text content. Ignored unless `role` is also provided.</param>
-    /// <param name="text">Visible text substring. Matches leaf elements whose collapsed text contains this substring (case-insensitive). Pass an empty string when not querying by text.</param>
-    /// <param name="selector">CSS selector. Matches the same set as document.querySelectorAll. Pass an empty string when not querying by selector.</param>
-    /// <param name="maxResults">Maximum number of matches to return. Default 20.</param>
-    /// <returns>JSON object with `mode` (the query mode that ran), `totalMatches`, `returned`, and `elements` (array of `{tag, selector, role, accessibleName, attributes, visible, rect}`). The selector returned for each element is suitable for passing to webview_inspect.</returns>
+    /// <summary>Find elements by ARIA role+name, visible text, or CSS selector (exactly one mode per call).</summary>
     [McpServerTool(Name = "webview_query")]
     [ToolAlias("webview.query")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Query(
         string resource,
         string role = "",
@@ -36,12 +22,12 @@ public partial class WebViewTools
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var modeCount = 0;
@@ -50,7 +36,7 @@ public partial class WebViewTools
         if (!string.IsNullOrEmpty(selector)) modeCount++;
         if (modeCount != 1)
         {
-            return ToolError("webview_query requires exactly one of role, text, or selector.");
+            return ToolResponse.Error("webview_query requires exactly one of role, text, or selector.");
         }
 
         Logger.LogInformation("webview_query resource={Resource} role={Role} name={Name} text={Text} selector={Selector} maxResults={MaxResults}",
@@ -76,9 +62,10 @@ public partial class WebViewTools
         var queryResult = await toolBridge.QueryAsync(resourceKey, options);
         if (queryResult.IsFailure)
         {
-            return ToolError(queryResult);
+            return ToolResponse.Error(queryResult);
         }
 
-        return ToolSuccess(queryResult.Value);
+        var queryJson = queryResult.Value;
+        return ToolResponse.Success(queryJson);
     }
 }

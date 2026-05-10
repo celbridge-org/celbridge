@@ -76,7 +76,7 @@ _WEBVIEW_TEST_HTML = """<!doctype html>
 
 @pytest.fixture(scope="class")
 def eval_enabled(app):
-    flags = app.get_status().get("featureFlags", {})
+    flags = app.get_state().get("featureFlags", {})
     return flags.get("webview-dev-tools-eval", False)
 
 

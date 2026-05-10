@@ -5,22 +5,18 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Undoes the most recent file system operation (create, delete, move, rename, copy).
-    /// This only affects explorer operations, not document text edits. To undo text edits,
-    /// apply a reverse edit using file_apply_edits or file_delete_lines.
-    /// </summary>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Undo the last explorer-domain operation (create/delete/move/rename/copy, not text edits).</summary>
     [McpServerTool(Name = "explorer_undo")]
     [ToolAlias("explorer.undo")]
+    [RelatedGuides("undo_semantics")]
     public async partial Task<CallToolResult> Undo()
     {
         var undoResult = await ExecuteCommandAsync<IUndoResourceCommand>();
         if (undoResult.IsFailure)
         {
-            return ToolError(undoResult);
+            return ToolResponse.Error(undoResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

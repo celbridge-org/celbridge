@@ -5,18 +5,15 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Shows the rename dialog for a resource. Renaming is always interactive.
-    /// </summary>
-    /// <param name="resource">Resource key of the item to rename.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Open the interactive rename dialog for a resource (user picks the new name).</summary>
     [McpServerTool(Name = "explorer_rename")]
     [ToolAlias("explorer.rename")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Rename(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var renameResult = await ExecuteCommandAsync<IRenameResourceDialogCommand>(command =>
@@ -25,9 +22,9 @@ public partial class ExplorerTools
         });
         if (renameResult.IsFailure)
         {
-            return ToolError(renameResult);
+            return ToolResponse.Error(renameResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

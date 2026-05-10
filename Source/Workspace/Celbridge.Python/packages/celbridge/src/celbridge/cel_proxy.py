@@ -19,6 +19,7 @@ from celbridge.tool_types import (
     build_inspect_signature,
     partition_tools_by_namespace,
     format_namespace_doc,
+    format_python_namespace_doc,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,12 +101,18 @@ class CelProxy:
             "Launch Claude Code CLI with sandboxed access to Celbridge MCP tools.\n"
             "Writes the .mcp.json config and starts Claude in the current terminal."
         )
+
+        def get_report() -> str:
+            """Write the agent report workbook."""
+            return self._client.call("diagnostics/get_agent_report")
+
+        agent_namespace.get_report = get_report
         object.__setattr__(self, "agent", agent_namespace)
 
         def run_test(class_filter=None):
             """Run the Celbridge MCP integration test suite.
 
-            Tests all tool namespaces: app, query, explorer, document, file, package, spreadsheet, webview.
+            Tests all tool namespaces: app, guides, explorer, document, file, package, spreadsheet, webview.
 
             Args:
                 class_filter: Optional. Restrict the run to a single test class
@@ -119,13 +126,14 @@ class CelProxy:
         object.__setattr__(self, "test", run_test)
 
     _namespace_descriptions = {
-        "app": "Application status, logging, and alerts",
+        "app": "Application state, logging, and alerts",
         "document": "Open, edit, and manage editor documents",
         "explorer": "File and folder operations in the project tree",
         "file": "Read files, search, and query project structure",
+        "guides": "Browse and search the agent guide library",
         "package": "Archive, publish, and install packages",
-        "query": "Agent context and Python API reference",
         "spreadsheet": "Read, modify, and format .xlsx workbooks",
+        "webview": "Devtools-style automation of HTML and contribution editors",
     }
 
     def _build_help_doc(self) -> str:
@@ -147,9 +155,10 @@ class CelProxy:
         lines.append("")
         lines.append("Built-in commands:")
         lines.append("")
-        lines.append("  cel.agent.claude()  Launch restricted Claude Code CLI")
-        lines.append("  cel.test([cls])     Run the MCP integration test suite (optional class filter)")
-        lines.append("  cel.tools()         Print raw tool descriptors as JSON")
+        lines.append("  cel.agent.claude()      Launch restricted Claude Code CLI")
+        lines.append("  cel.agent.get_report()  Write the agent report workbook")
+        lines.append("  cel.test([cls])         Run the MCP integration test suite (optional class filter)")
+        lines.append("  cel.tools()             Print raw tool descriptors as JSON")
 
         return "\n".join(lines)
 
@@ -160,14 +169,22 @@ class CelProxy:
         that `help(cel.app)` shows app-specific docs without aliasing every other
         namespace's docstring (which sharing the base ToolNamespace would cause,
         since pydoc reads the class docstring rather than the instance one).
+        Handles both MCP-driven namespaces (docs sourced from tool descriptors)
+        and Python-only namespaces such as cel.agent (docs introspected from the
+        callables registered on them).
         """
-        _, namespaced_tools = partition_tools_by_namespace(self._tools)
+        _, mcp_namespaced_tools = partition_tools_by_namespace(self._tools)
 
-        for namespace_name, tools in namespaced_tools.items():
+        for namespace_name in self._get_namespace_names():
             namespace = getattr(self, namespace_name, None)
             if namespace is None:
                 continue
-            namespace_doc = format_namespace_doc(namespace_name, tools)
+
+            if namespace_name in mcp_namespaced_tools:
+                namespace_doc = format_namespace_doc(namespace_name, mcp_namespaced_tools[namespace_name])
+            else:
+                namespace_doc = format_python_namespace_doc(namespace_name, namespace)
+
             namespace_class = type(namespace_name, (ToolNamespace,), {"__doc__": namespace_doc})
             namespace.__class__ = namespace_class
 

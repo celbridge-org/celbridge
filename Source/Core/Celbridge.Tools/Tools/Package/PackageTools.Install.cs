@@ -14,21 +14,15 @@ public record class PackageInstallResult(string PackageName, int Entries, string
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Installs a named package from the remote registry into the project's packages folder.
-    /// The package is downloaded and extracted to packages/{packageName}/ in the project root.
-    /// Always set confirmWithUser to true unless the user has explicitly asked for unattended operation.
-    /// </summary>
-    /// <param name="packageName">Name of the package to install.</param>
-    /// <param name="confirmWithUser">When true, shows a confirmation dialog before installing. Default is true.</param>
-    /// <returns>JSON object with fields: packageName (string), entries (int), destination (string).</returns>
+    /// <summary>Install a package from the remote registry into packages/{packageName}/.</summary>
     [McpServerTool(Name = "package_install", Destructive = true)]
     [ToolAlias("package.install")]
+    [RelatedGuides("packages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Install(string packageName, bool confirmWithUser = true)
     {
         if (!IsValidPackageName(packageName))
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
@@ -39,7 +33,7 @@ public partial class PackageTools
 
         if (listResult.IsFailure)
         {
-            return ToolError(listResult);
+            return ToolResponse.Error(listResult);
         }
 
         var expectedFileName = $"{packageName}.zip";
@@ -55,7 +49,7 @@ public partial class PackageTools
 
         if (matchingEntry is null)
         {
-            return ToolError($"Package not found in registry: '{packageName}'");
+            return ToolResponse.Error($"Package not found in registry: '{packageName}'");
         }
 
         if (confirmWithUser)
@@ -67,7 +61,7 @@ public partial class PackageTools
             var confirmed = await ConfirmActionAsync(title, message);
             if (!confirmed)
             {
-                return ToolError("Install cancelled by user.");
+                return ToolResponse.Error("Install cancelled by user.");
             }
         }
 
@@ -75,7 +69,7 @@ public partial class PackageTools
         var downloadResult = await packageApiClient.DownloadPackageAsync(matchingEntry.Id);
         if (downloadResult.IsFailure)
         {
-            return ToolError(downloadResult);
+            return ToolResponse.Error(downloadResult);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -88,7 +82,7 @@ public partial class PackageTools
         {
             var failure = Result.Fail("Failed to resolve temporary archive path")
                 .WithErrors(resolveTempResult);
-            return ToolError(failure);
+            return ToolResponse.Error(failure);
         }
         var tempArchivePath = resolveTempResult.Value;
 
@@ -104,7 +98,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolError($"Failed to write downloaded package: {exception.Message}");
+            return ToolResponse.Error($"Failed to write downloaded package: {exception.Message}");
         }
 
         var destinationResource = ResourceKey.Create($"packages/{packageName}");
@@ -120,13 +114,13 @@ public partial class PackageTools
 
             if (unarchiveResultWrapper.IsFailure)
             {
-                return ToolError(unarchiveResultWrapper);
+                return ToolResponse.Error(unarchiveResultWrapper);
             }
 
             var unarchiveResult = unarchiveResultWrapper.Value;
             var result = new PackageInstallResult(packageName, unarchiveResult.Entries, destinationResource.ToString());
             var json = JsonSerializer.Serialize(result, JsonOptions);
-            return ToolSuccess(json);
+            return ToolResponse.Success(json);
         }
         finally
         {

@@ -7,40 +7,31 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Evaluates a JavaScript expression in the WebView hosting the document.
-    /// The expression must produce a JSON-serialisable value. The result is
-    /// returned as a JSON string. Requires the webview-dev-tools and
-    /// webview-dev-tools-eval feature flags. If the target document is not
-    /// supported (wrong editor, external URL, or package opts out) the error
-    /// message names the specific reason.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to target.</param>
-    /// <param name="expression">JavaScript expression to evaluate. Must be a single expression — the returned value is the expression's JSON-serialised result. Multi-statement code (const/let declarations, if/else blocks, several statements in sequence) returns null because statements have no value. Wrap such code in an IIFE with an explicit return, for example: (function() { const x = f(); return x + 1; })()</param>
-    /// <returns>JSON-encoded value produced by the expression. Returns "null" when the expression evaluates to undefined or null.</returns>
+    /// <summary>Evaluate an arbitrary JavaScript expression in the WebView (gated by a separate feature flag).</summary>
     [McpServerTool(Name = "webview_eval")]
     [ToolAlias("webview.eval")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Eval(string resource, string expression)
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!webViewService.IsDevToolsEvalFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevToolsEval}' feature flag is disabled. webview_eval is gated separately because it is an arbitrary code execution primitive.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevToolsEval);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(expression))
         {
-            return ToolError("Expression must not be empty");
+            return ToolResponse.Error("Expression must not be empty");
         }
 
         // The expression body may contain sensitive output (e.g. document.cookie,
@@ -53,10 +44,10 @@ public partial class WebViewTools
         var evalResult = await toolBridge.EvalAsync(resourceKey, expression);
         if (evalResult.IsFailure)
         {
-            return ToolError(evalResult);
+            return ToolResponse.Error(evalResult);
         }
 
         var value = evalResult.Value;
-        return ToolSuccess(value);
+        return ToolResponse.Success(value);
     }
 }

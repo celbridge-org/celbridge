@@ -7,31 +7,22 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Applies a batch of format edits to one workbook in a single open/save cycle. Each edit specifies
-    /// a sheet, a range (A1 cell range, column letter or range, or row number or range), and a format
-    /// spec. Edits may target different sheets. Only fields present in each edit's format are applied,
-    /// preserving other formatting on cells the target does not cover. Edits run in order. If any edit
-    /// fails, the whole batch fails and nothing is saved. Call spreadsheet_get_context for the format
-    /// spec shape and supported values.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="editsJson">JSON array of edits. Each edit is an object with sheet (string), range (string), and format (object) fields. The format object accepts the same keys as spreadsheet_get_context describes for the format spec (textFormat, backgroundColor, borders, horizontalAlignment, verticalAlignment, wrapText, numberFormat, columnWidth, rowHeight, autoFitColumns, mergeRange). columnWidth is in Excel character units (NOT pixels): default is 8.43, typical column is 10 to 60, anything above 100 is almost certainly wrong. Use autoFitColumns: true to fit width to content automatically. rowHeight is in points: default is 15, typical row is 12 to 30. To clear a colour or reset a value back to the workbook default, pass the empty string for colour fields (backgroundColor, foregroundColor, border colour) or the empty string for fontFamily, a non-positive number for fontSize, a negative number for columnWidth or rowHeight, and false for mergeRange to unmerge an existing merge.</param>
-    /// <returns>JSON object with fields: editsApplied (int), propertiesApplied (int, summed across edits), autoFitApplied (bool, true if any edit triggered AdjustToContents).</returns>
+    /// <summary>Apply font, fill, border, alignment, and number-format edits to cell ranges.</summary>
     [McpServerTool(Name = "spreadsheet_format_ranges")]
     [ToolAlias("spreadsheet.format_ranges")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> FormatRanges(string resource, string editsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         var parseResult = ParseFormatEdits(editsJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var edits = parseResult.Value;
 
@@ -43,12 +34,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<IReadOnlyList<FormatEdit>> ParseFormatEdits(string editsJson)

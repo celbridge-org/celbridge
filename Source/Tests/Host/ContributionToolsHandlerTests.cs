@@ -15,7 +15,7 @@ public class ContributionToolsHandlerTests
         {
             Tools = new[]
             {
-                Descriptor("app_get_version", "app.get_version"),
+                Descriptor("app_get_state", "app.get_state"),
                 Descriptor("document_open",   "document.open"),
                 Descriptor("file_read",       "file.read")
             }
@@ -24,7 +24,7 @@ public class ContributionToolsHandlerTests
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_version", "document.open");
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state", "document.open");
     }
 
     [Test]
@@ -34,7 +34,7 @@ public class ContributionToolsHandlerTests
         {
             Tools = new[]
             {
-                Descriptor("app_get_version", "app.get_version"),
+                Descriptor("app_get_state", "app.get_state"),
                 Descriptor("webview_eval",    "webview.eval"),
                 Descriptor("webview_reload",  "webview.reload")
             }
@@ -43,7 +43,7 @@ public class ContributionToolsHandlerTests
 
         var result = await handler.ListToolsAsync();
 
-        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_version");
+        result.Select(t => t.Alias).Should().BeEquivalentTo("app.get_state");
     }
 
     [Test]
@@ -87,11 +87,11 @@ public class ContributionToolsHandlerTests
         };
         var handler = new ContributionToolsHandler(bridge, new[] { "app.*" });
 
-        var result = await handler.CallToolAsync("app.get_version", (JsonElement?)null);
+        var result = await handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be("0.2.5");
-        bridge.LastCallName.Should().Be("app.get_version");
+        bridge.LastCallName.Should().Be("app.get_state");
     }
 
     [Test]
@@ -135,7 +135,7 @@ public class ContributionToolsHandlerTests
         };
         var handler = new ContributionToolsHandler(bridge, new[] { "*" });
 
-        Func<Task> act = () => handler.CallToolAsync("app.get_version", (JsonElement?)null);
+        Func<Task> act = () => handler.CallToolAsync("app.get_state", (JsonElement?)null);
 
         act.Should()
             .ThrowAsync<LocalRpcException>()
@@ -183,6 +183,11 @@ public class ContributionToolsHandlerTests
             }
 
             return Task.FromResult(CallResult);
+        }
+
+        public Task<string> GetRawToolsListJsonAsync()
+        {
+            return Task.FromResult(string.Empty);
         }
     }
 }

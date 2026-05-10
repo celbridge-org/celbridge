@@ -5,19 +5,15 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Deletes a resource from the project. Pass show_dialog=true for a confirmation dialog.
-    /// </summary>
-    /// <param name="resource">Resource key of the item to delete.</param>
-    /// <param name="showDialog">If true, show a delete confirmation dialog.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Remove a resource from the project (file or folder); undoable via explorer_undo.</summary>
     [McpServerTool(Name = "explorer_delete", Destructive = true)]
     [ToolAlias("explorer.delete")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Delete(string resource, bool showDialog = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (showDialog)
@@ -28,10 +24,10 @@ public partial class ExplorerTools
             });
             if (dialogResult.IsFailure)
             {
-                return ToolError(dialogResult);
+                return ToolResponse.Error(dialogResult);
             }
 
-            return ToolSuccess("ok");
+            return ToolResponse.Success("ok");
         }
 
         var deleteResult = await ExecuteCommandAsync<IDeleteResourceCommand>(command =>
@@ -40,9 +36,9 @@ public partial class ExplorerTools
         });
         if (deleteResult.IsFailure)
         {
-            return ToolError(deleteResult);
+            return ToolResponse.Error(deleteResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

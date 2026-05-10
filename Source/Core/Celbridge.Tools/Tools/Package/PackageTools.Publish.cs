@@ -27,28 +27,20 @@ public partial class PackageTools
     private const string PackagesFolderPrefix = "packages/";
     private const string ManifestFileName = "package.toml";
 
-    /// <summary>
-    /// Publishes a folder as a named package to the remote package registry.
-    /// The folder must be inside the project's packages/ folder, the folder name must
-    /// match the package name, and the folder must contain a valid package.toml manifest.
-    /// Always set confirmWithUser to true unless the user has explicitly asked for unattended operation.
-    /// </summary>
-    /// <param name="resource">Resource key of the folder to publish (must be packages/{packageName}).</param>
-    /// <param name="packageName">Package name (lowercase alphanumeric and hyphens, e.g. "my-widget").</param>
-    /// <param name="confirmWithUser">When true, shows a confirmation dialog before publishing. Default is true.</param>
-    /// <returns>JSON object with fields: packageName (string), entries (int), size (long).</returns>
+    /// <summary>Publish packages/{packageName}/ to the remote registry (visible to other users).</summary>
     [McpServerTool(Name = "package_publish", Destructive = true)]
     [ToolAlias("package.publish")]
+    [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive")]
     public async partial Task<CallToolResult> Publish(string resource, string packageName, bool confirmWithUser = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (!IsValidPackageName(packageName))
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"Invalid package name: '{packageName}'. " +
                 "Package names must be lowercase alphanumeric with hyphens, 1-214 characters.");
         }
@@ -57,7 +49,7 @@ public partial class PackageTools
         var resourceString = resourceKey.ToString();
         if (!resourceString.StartsWith(PackagesFolderPrefix, StringComparison.OrdinalIgnoreCase))
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"Package must be inside the '{PackagesFolderPrefix}' folder. " +
                 $"Expected: '{PackagesFolderPrefix}{packageName}'");
         }
@@ -66,7 +58,7 @@ public partial class PackageTools
         var folderName = resourceString.Substring(PackagesFolderPrefix.Length).TrimEnd('/');
         if (!string.Equals(folderName, packageName, StringComparison.Ordinal))
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"Folder name '{folderName}' does not match package name '{packageName}'. " +
                 $"The package folder must be '{PackagesFolderPrefix}{packageName}'.");
         }
@@ -77,13 +69,13 @@ public partial class PackageTools
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveSourceResult.IsFailure)
         {
-            return ToolError($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var sourcePath = resolveSourceResult.Value;
 
         if (!Directory.Exists(sourcePath))
         {
-            return ToolError($"Folder not found: '{resource}'");
+            return ToolResponse.Error($"Folder not found: '{resource}'");
         }
 
         // Validate that the package manifest exists and is valid
@@ -91,7 +83,7 @@ public partial class PackageTools
         var validateResult = ValidatePackageManifest(manifestPath);
         if (validateResult.IsFailure)
         {
-            return ToolError(validateResult);
+            return ToolResponse.Error(validateResult);
         }
 
         if (confirmWithUser)
@@ -103,7 +95,7 @@ public partial class PackageTools
             var confirmed = await ConfirmActionAsync(title, message);
             if (!confirmed)
             {
-                return ToolError("Publish cancelled by user.");
+                return ToolResponse.Error("Publish cancelled by user.");
             }
         }
 
@@ -140,7 +132,7 @@ public partial class PackageTools
         }
         catch (System.IO.IOException exception)
         {
-            return ToolError($"Failed to create package archive: {exception.Message}");
+            return ToolResponse.Error($"Failed to create package archive: {exception.Message}");
         }
 
         var packageApiClient = GetRequiredService<IPackageApiClient>();
@@ -149,12 +141,12 @@ public partial class PackageTools
 
         if (uploadResult.IsFailure)
         {
-            return ToolError(uploadResult);
+            return ToolResponse.Error(uploadResult);
         }
 
         var result = new PackagePublishResult(packageName, entryCount, zipData.Length);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result ValidatePackageManifest(string manifestPath)

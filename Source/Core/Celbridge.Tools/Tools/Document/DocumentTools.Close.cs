@@ -12,16 +12,10 @@ public record class DocumentCloseResult(int Closed, int Failed, List<string> Err
 
 public partial class DocumentTools
 {
-    /// <summary>
-    /// Closes one or more documents in the editor.
-    /// Pass a single resource key or a JSON array of resource keys (e.g. ["foo.txt","scripts/bar.txt"]).
-    /// Documents are closed sequentially. If any close fails (e.g. user cancels a save prompt), the remaining documents are still attempted.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to close, or a JSON array of resource keys.</param>
-    /// <param name="forceClose">Force close without save confirmation.</param>
-    /// <returns>JSON object with fields: closed (int), failed (int), errors (array of strings).</returns>
+    /// <summary>Close one or more open documents; sequential, partial-success batch.</summary>
     [McpServerTool(Name = "document_close", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.close")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
         var resourceKeyStrings = ParseResourceKeys(fileResource);
@@ -31,7 +25,7 @@ public partial class DocumentTools
         {
             if (!ResourceKey.TryCreate(keyString, out var validatedKey))
             {
-                return ToolError($"Invalid resource key: '{keyString}'");
+                return ToolResponse.InvalidResourceKey(keyString);
             }
             validatedKeys.Add(validatedKey);
         }
@@ -62,9 +56,9 @@ public partial class DocumentTools
 
         if (errors.Count > 0)
         {
-            return ToolError(json);
+            return ToolResponse.Error(json);
         }
 
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

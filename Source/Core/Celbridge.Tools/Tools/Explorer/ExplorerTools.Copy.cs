@@ -5,23 +5,19 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Copies a resource to a new location in the project.
-    /// </summary>
-    /// <param name="sourceResource">Resource key of the source item.</param>
-    /// <param name="destinationResource">Resource key of the destination.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Copy a resource to a new destination key (source remains in place).</summary>
     [McpServerTool(Name = "explorer_copy")]
     [ToolAlias("explorer.copy")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Copy(string sourceResource, string destinationResource)
     {
         if (!ResourceKey.TryCreate(sourceResource, out var sourceResourceKey))
         {
-            return ToolError($"Invalid resource key: '{sourceResource}'");
+            return ToolResponse.InvalidResourceKey(sourceResource);
         }
         if (!ResourceKey.TryCreate(destinationResource, out var destinationResourceKey))
         {
-            return ToolError($"Invalid resource key: '{destinationResource}'");
+            return ToolResponse.InvalidResourceKey(destinationResource);
         }
 
         var copyResult = await ExecuteCommandAsync<ICopyResourceCommand>(command =>
@@ -32,9 +28,9 @@ public partial class ExplorerTools
         });
         if (copyResult.IsFailure)
         {
-            return ToolError(copyResult);
+            return ToolResponse.Error(copyResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

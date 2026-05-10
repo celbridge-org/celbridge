@@ -7,30 +7,21 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Reloads the WebView hosting the document. Page state is discarded by design.
-    /// The editor's package code reinitialises from scratch. Use this after writing
-    /// new package files (HTML, CSS, JS, manifest) so the WebView picks up the edits.
-    /// Requires the webview-dev-tools feature flag. If the target document is not
-    /// supported (wrong editor, external URL, or package opts out) the error message
-    /// names the specific reason.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to reload.</param>
-    /// <param name="clearCache">When true (default), clears the WebView's HTTP cache (in-memory and on-disk) before reloading so newly-edited package sub-resources (JS, CSS, images) are refetched instead of served stale. The cache clear evicts data for every document hosted in the same WebView profile, not just this one — pass false to skip the clear when you know no sub-resources have changed and want a slightly faster reload.</param>
-    /// <returns>"ok" on success, or an error message if the WebView is not registered or reload failed.</returns>
+    /// <summary>Reload the WebView page; clears the HTTP cache by default so edited sub-resources are refetched.</summary>
     [McpServerTool(Name = "webview_reload")]
     [ToolAlias("webview.reload")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Reload(string resource, bool clearCache = true)
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         Logger.LogInformation("webview_reload resource={Resource} clearCache={ClearCache}", resourceKey, clearCache);
@@ -39,9 +30,9 @@ public partial class WebViewTools
         var reloadResult = await toolBridge.ReloadAsync(resourceKey, clearCache);
         if (reloadResult.IsFailure)
         {
-            return ToolError(reloadResult);
+            return ToolResponse.Error(reloadResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

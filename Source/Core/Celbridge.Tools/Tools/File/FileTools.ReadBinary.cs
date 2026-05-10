@@ -11,18 +11,15 @@ public record class FileReadBinaryResult(string Base64, string MimeType, int Siz
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Reads a binary file and returns its content as base64 with MIME type.
-    /// </summary>
-    /// <param name="resource">Resource key of the file to read.</param>
-    /// <returns>JSON object with fields: base64 (string), mimeType (string), size (int).</returns>
+    /// <summary>Read any file as base64-encoded bytes plus MIME type. Use file_read_image for inline images.</summary>
     [McpServerTool(Name = "file_read_binary", ReadOnly = true)]
     [ToolAlias("file.read_binary")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ReadBinary(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -31,13 +28,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolError($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolError($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resource}'");
         }
 
         var bytes = await File.ReadAllBytesAsync(resourcePath);
@@ -46,6 +43,6 @@ public partial class FileTools
         var mimeType = GetMimeType(extension);
 
         var result = new FileReadBinaryResult(base64, mimeType, bytes.Length);
-        return ToolSuccess(SerializeJson(result));
+        return ToolResponse.Success(SerializeJson(result));
     }
 }

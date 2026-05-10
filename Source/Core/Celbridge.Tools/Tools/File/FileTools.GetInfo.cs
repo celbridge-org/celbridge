@@ -15,19 +15,15 @@ public record class FolderInfoResult(string Type, string Modified);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Gets metadata about a resource including type, size, modified date, extension, and text/binary indicator.
-    /// For text files, also returns the line count.
-    /// </summary>
-    /// <param name="resource">Resource key of the resource to inspect.</param>
-    /// <returns>JSON object with fields: type (string: "file" or "folder"), size (long, files only), modified (string, ISO 8601), extension (string, files only), isText (bool, files only), lineCount (int, text files only).</returns>
+    /// <summary>Get metadata for a single file or folder resource.</summary>
     [McpServerTool(Name = "file_get_info", ReadOnly = true)]
     [ToolAlias("file.get_info")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> GetInfo(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         // Route through the command queue so the snapshot observes state after all
@@ -37,13 +33,13 @@ public partial class FileTools
             command => command.Resource = resourceKey);
         if (getInfoResult.IsFailure)
         {
-            return ToolError(getInfoResult);
+            return ToolResponse.Error(getInfoResult);
         }
         var snapshot = getInfoResult.Value;
 
         if (!snapshot.Exists)
         {
-            return ToolError($"Resource not found: '{resource}'");
+            return ToolResponse.ResourceNotFound(resource);
         }
 
         if (snapshot.IsFile)
@@ -55,10 +51,10 @@ public partial class FileTools
                 snapshot.Extension,
                 snapshot.IsText,
                 snapshot.LineCount);
-            return ToolSuccess(SerializeJson(fileResult));
+            return ToolResponse.Success(SerializeJson(fileResult));
         }
 
         var folderResult = new FolderInfoResult("folder", snapshot.ModifiedUtc.ToString("o"));
-        return ToolSuccess(SerializeJson(folderResult));
+        return ToolResponse.Success(SerializeJson(folderResult));
     }
 }

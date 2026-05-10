@@ -11,23 +11,10 @@ public record class FindReplaceResult(int ReplacementCount);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Finds and replaces text within a file. Supports plain text and regex patterns.
-    /// Multi-line search and replace text may use \n line endings regardless of the file's
-    /// actual line endings — the tool normalises them automatically. Replacements are
-    /// written directly to disk. Any open document reloads its buffer from disk after
-    /// the write.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to perform find and replace on.</param>
-    /// <param name="searchText">The text to search for.</param>
-    /// <param name="replaceText">The replacement text.</param>
-    /// <param name="matchCase">If true, the search is case-sensitive.</param>
-    /// <param name="useRegex">If true, the search text is treated as a regular expression.</param>
-    /// <param name="fromLine">First line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no lower bound.</param>
-    /// <param name="toLine">Last line number (1-based, inclusive) to include in the replacement scope. Zero (default) means no upper bound.</param>
-    /// <returns>JSON object with field: replacementCount (int).</returns>
+    /// <summary>Replace literal or regex matches inside one file, optionally scoped to a line range.</summary>
     [McpServerTool(Name = "file_find_replace")]
     [ToolAlias("file.find_replace")]
+    [RelatedGuides("resource_keys", "regex_syntax", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> FindReplace(
         string fileResource,
         string searchText,
@@ -39,7 +26,7 @@ public partial class FileTools
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         var findReplaceResult = await ExecuteCommandAsync<IFindReplaceFileCommand, int>(command =>
@@ -55,12 +42,12 @@ public partial class FileTools
 
         if (findReplaceResult.IsFailure)
         {
-            return ToolError(findReplaceResult);
+            return ToolResponse.Error(findReplaceResult);
         }
 
         var replacementCount = findReplaceResult.Value;
         var result = new FindReplaceResult(replacementCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

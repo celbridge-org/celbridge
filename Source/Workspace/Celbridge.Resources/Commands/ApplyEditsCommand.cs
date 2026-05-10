@@ -39,6 +39,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
         var failedResources = new List<ResourceKey>();
+        var failureDetails = new List<string>();
         var appliedRanges = new List<AppliedEdit>();
 
         foreach (var fileEdit in Edits)
@@ -50,6 +51,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
                 failedResources.Add(resource);
+                failureDetails.Add($"{resource}: {applyResult.FirstErrorMessage}");
             }
             else
             {
@@ -59,7 +61,12 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
         if (failedResources.Count > 0)
         {
-            var errorMessage = $"Failed to apply edits to the following files: {string.Join(", ", failedResources)}";
+            // The headline names every failed resource; the detail block below
+            // names each failure's reason so the agent does not have to retry
+            // and read a separate log line to learn what the validator caught.
+            var headline = $"Failed to apply edits to: {string.Join(", ", failedResources)}";
+            var detail = string.Join(Environment.NewLine, failureDetails);
+            var errorMessage = $"{headline}{Environment.NewLine}{detail}";
             _logger.LogError(errorMessage);
 
             var alertTitle = _stringLocalizer.GetString("Documents_ApplyEditsFailedTitle");
@@ -112,8 +119,15 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         // at write time based on originalEndsWithNewline.
         var lines = LineEndingHelper.SplitToContentLines(originalContent);
 
+        // Capture the original file line count before any edits land. Append
+        // edits (line == endLine == -1) compute their post-edit ranges from
+        // this anchor plus the cumulative line delta of earlier edits.
+        var originalFileLineCount = lines.Count;
+
         // Sort edits in reverse order (bottom-to-top, right-to-left) so earlier edits
-        // don't shift the positions of later edits as we apply them.
+        // don't shift the positions of later edits as we apply them. Append edits
+        // (Line == -1) sort last and run after every in-range edit; since they only
+        // grow the tail of the file, ordering relative to other appends does not matter.
         var sortedEdits = edits
             .OrderByDescending(e => e.Line)
             .ThenByDescending(e => e.Column)
@@ -127,6 +141,22 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
         foreach (var edit in sortedEdits)
         {
+            // -1 in both Line and EndLine is the append sentinel: insert NewText
+            // (split into lines) after the current last line. No existing content
+            // is replaced.
+            if (edit.Line == -1 && edit.EndLine == -1)
+            {
+                var appendedLines = edit.NewText.Split('\n');
+                lines.AddRange(appendedLines);
+                applied.Add((edit, appendedLines.Length));
+                continue;
+            }
+
+            if (edit.Line == -1 || edit.EndLine == -1)
+            {
+                return Result<IReadOnlyList<AppliedEdit>>.Fail("Append sentinel requires both 'line' and 'endLine' to be -1");
+            }
+
             // Convert from 1-based to 0-based indices
             var startLine = edit.Line - 1;
             var startColumn = edit.Column - 1;
@@ -183,13 +213,31 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         }
 
         // Walk the applied edits in original (forward) order and accumulate
-        // the line-count delta to compute each edit's post-edit range.
+        // the line-count delta to compute each edit's post-edit range. Append
+        // edits use originalFileLineCount + 1 as their effective source line
+        // so they sort after every in-range edit and pick up the full
+        // accumulated delta.
         var ranges = new List<AppliedEdit>(applied.Count);
         var cumulativeDelta = 0;
-        foreach (var pair in applied.OrderBy(p => p.Edit.Line).ThenBy(p => p.Edit.Column))
+        var sortedApplied = applied
+            .OrderBy(p => p.Edit.Line == -1 ? originalFileLineCount + 1 : p.Edit.Line)
+            .ThenBy(p => p.Edit.Column);
+        foreach (var pair in sortedApplied)
         {
-            var originalLineCount = pair.Edit.EndLine - pair.Edit.Line + 1;
-            var postEditStart = pair.Edit.Line + cumulativeDelta;
+            int originalLineCount;
+            int sourceLine;
+            if (pair.Edit.Line == -1)
+            {
+                originalLineCount = 0;
+                sourceLine = originalFileLineCount + 1;
+            }
+            else
+            {
+                originalLineCount = pair.Edit.EndLine - pair.Edit.Line + 1;
+                sourceLine = pair.Edit.Line;
+            }
+
+            var postEditStart = sourceLine + cumulativeDelta;
             var postEditEnd = postEditStart + pair.NewLineCount - 1;
             ranges.Add(new AppliedEdit(resource, postEditStart, postEditEnd));
             cumulativeDelta += pair.NewLineCount - originalLineCount;

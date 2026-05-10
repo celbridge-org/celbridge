@@ -5,14 +5,10 @@ namespace Celbridge.Tools;
 
 public partial class AppTools
 {
-    /// <summary>
-    /// Forces an immediate refresh of the project file listing.
-    /// Only needed when non-Celbridge MCP tools have written files to the project folder directly.
-    /// Celbridge tools always keep the file listing up to date automatically.
-    /// </summary>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Rescan the project tree; only needed after non-Celbridge tools wrote files directly.</summary>
     [McpServerTool(Name = "app_refresh_files", ReadOnly = false, Idempotent = true)]
     [ToolAlias("app.refresh_files")]
+    [RelatedGuides]
     public partial CallToolResult RefreshFiles()
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -21,9 +17,9 @@ public partial class AppTools
         {
             var failure = Result.Fail("Failed to refresh file listing")
                 .WithErrors(result);
-            return ToolError(failure);
+            return ToolResponse.Error(failure);
         }
 
-        return ToolSuccess("File listing refreshed.");
+        return ToolResponse.Success("File listing refreshed.");
     }
 }

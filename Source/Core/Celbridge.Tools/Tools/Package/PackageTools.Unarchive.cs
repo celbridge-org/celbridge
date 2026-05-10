@@ -11,15 +11,10 @@ public record class PackageUnarchiveResult(int Entries, string Destination);
 
 public partial class PackageTools
 {
-    /// <summary>
-    /// Extracts a zip archive to a destination folder.
-    /// </summary>
-    /// <param name="archive">Resource key of the zip file to extract.</param>
-    /// <param name="destination">Resource key of the target folder.</param>
-    /// <param name="overwrite">Whether to overwrite existing files. Default is false.</param>
-    /// <returns>JSON object with fields: entries (int), destination (string).</returns>
+    /// <summary>Extract a zip archive into a destination folder in the project tree.</summary>
     [McpServerTool(Name = "package_unarchive")]
     [ToolAlias("package.unarchive")]
+    [RelatedGuides("resource_keys", "packages_overview")]
     public async partial Task<CallToolResult> Unarchive(
         string archive,
         string destination,
@@ -27,12 +22,12 @@ public partial class PackageTools
     {
         if (!ResourceKey.TryCreate(archive, out var archiveKey))
         {
-            return ToolError($"Invalid resource key: '{archive}'");
+            return ToolResponse.InvalidResourceKey(archive);
         }
 
         if (!ResourceKey.TryCreate(destination, out var destinationKey))
         {
-            return ToolError($"Invalid resource key: '{destination}'");
+            return ToolResponse.InvalidResourceKey(destination);
         }
 
         var unarchiveResultWrapper = await ExecuteCommandAsync<IUnarchiveResourceCommand, UnarchiveResult>(command =>
@@ -44,12 +39,12 @@ public partial class PackageTools
 
         if (unarchiveResultWrapper.IsFailure)
         {
-            return ToolError(unarchiveResultWrapper);
+            return ToolResponse.Error(unarchiveResultWrapper);
         }
 
         var unarchiveResult = unarchiveResultWrapper.Value;
         var result = new PackageUnarchiveResult(unarchiveResult.Entries, unarchiveResult.Destination);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

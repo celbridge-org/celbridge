@@ -7,28 +7,22 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Adds one or more empty worksheets to a workbook in a single open/save cycle. Sheets are appended
-    /// after the existing sheets, in the order given. Returns an error if any requested name collides
-    /// with an existing sheet or with another name in the same batch. In that case nothing is saved.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="sheetsJson">JSON array of sheet name strings (e.g. ["Q1", "Q2", "Q3"]). Names must be unique within the batch and must not collide with existing sheets in the workbook.</param>
-    /// <returns>JSON object with field: sheets (string[], the names added in append order).</returns>
+    /// <summary>Add empty worksheets to a workbook, appended in the given order.</summary>
     [McpServerTool(Name = "spreadsheet_add_sheets")]
     [ToolAlias("spreadsheet.add_sheets")]
+    [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> AddSheets(string resource, string sheetsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         var parseResult = ParseSheetNames(sheetsJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var sheetNames = parseResult.Value;
 
@@ -40,12 +34,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<IReadOnlyList<string>> ParseSheetNames(string sheetsJson)

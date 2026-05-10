@@ -234,6 +234,15 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
                 style = topBottomResult.Value;
                 break;
             default:
+                // Catch the most common confusion: the agent picks `colorScale`
+                // because every other rule reads as a single noun. The arity is
+                // baked into the type name here; surface a hint so they don't
+                // have to read the troubleshooter.
+                if (string.Equals(rule.Type, "colorScale", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Result.Fail(
+                        $"Unknown rule type: '{rule.Type}'. Did you mean 'colorScale2' (low + high) or 'colorScale3' (low + mid + high)?");
+                }
                 return Result.Fail($"Unknown rule type: '{rule.Type}'.");
         }
 

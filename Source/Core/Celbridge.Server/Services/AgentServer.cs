@@ -8,18 +8,43 @@ namespace Celbridge.Server.Services;
 /// Manages the MCP agent server: registers the MCP endpoint on the shared
 /// Kestrel instance so that MCP clients can connect to the server.
 /// </summary>
-public class AgentServer : IAgentServer
+internal class AgentServer : IAgentServer
 {
+    private readonly AgentMonitor _monitor;
+    private readonly IGuides _guides;
+    private readonly IAppStateProvider _appStateProvider;
+    private readonly IDocumentStateProvider _documentStateProvider;
+
+    public AgentServer(
+        AgentMonitor monitor,
+        IGuides guides,
+        IAppStateProvider appStateProvider,
+        IDocumentStateProvider documentStateProvider)
+    {
+        _monitor = monitor;
+        _guides = guides;
+        _appStateProvider = appStateProvider;
+        _documentStateProvider = documentStateProvider;
+    }
+
     /// <summary>
     /// Registers MCP SDK services and the tool assembly on the Kestrel
     /// service collection. Must be called during WebApplicationBuilder setup.
     /// </summary>
     public void ConfigureServices(IServiceCollection services)
     {
-        services
+        // Surface the application-scoped AgentMonitor singleton inside the
+        // server scope as well, so the response filter and the diagnostics
+        // RPC handler share one instance.
+        services.AddSingleton(_monitor);
+
+        var mcpBuilder = services
             .AddMcpServer()
             .WithHttpTransport()
             .WithToolsFromAssembly(typeof(AppTools).Assembly);
+
+        var responseFilter = new AgentResponseFilter(_monitor, _guides, _appStateProvider, _documentStateProvider);
+        mcpBuilder.WithRequestFilters(filterBuilder => filterBuilder.AddCallToolFilter(responseFilter.CreateFilter()));
     }
 
     /// <summary>

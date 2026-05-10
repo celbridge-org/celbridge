@@ -11,21 +11,15 @@ public record class WriteFileResult(int LineCount);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Writes text content to a file. Creates the file if it does not exist.
-    /// For existing files, replaces the entire content. Writes directly to disk.
-    /// Any open document reloads its buffer from disk after the write.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to write. The file is created automatically if it does not exist.</param>
-    /// <param name="content">The new text content for the file.</param>
-    /// <returns>JSON object with field: lineCount (int).</returns>
+    /// <summary>Wholesale-replace a text file with new content, creating it if missing.</summary>
     [McpServerTool(Name = "file_write")]
     [ToolAlias("file.write")]
+    [RelatedGuides("resource_keys", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> Write(string fileResource, string content)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
@@ -36,12 +30,12 @@ public partial class FileTools
 
         if (writeResult.IsFailure)
         {
-            return ToolError(writeResult);
+            return ToolResponse.Error(writeResult);
         }
 
         var lineCount = LineEndingHelper.CountLines(content);
         var result = new WriteFileResult(lineCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

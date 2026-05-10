@@ -58,16 +58,6 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void GetContext_ReturnsSpreadsheetContextMarkdown()
-    {
-        var tools = new SpreadsheetTools(_services);
-        var text = GetResultText(tools.GetContext());
-
-        text.Should().Contain("# Celbridge Spreadsheet Tools");
-        text.Should().Contain("A1 notation");
-    }
-
-    [Test]
     public void GetInfo_DispatchesToReaderAndReturnsJson()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
@@ -253,7 +243,9 @@ public class SpreadsheetToolTests
         var result = await tools.ExportCsv("data/sales.xlsx", "Q1", range: "", destination: "../escape.csv");
 
         result.IsError.Should().BeTrue();
-        GetResultText(result).Should().Contain("destination");
+        var text = GetResultText(result);
+        text.Should().Contain("Invalid resource key");
+        text.Should().Contain("../escape.csv");
     }
 
     [Test]

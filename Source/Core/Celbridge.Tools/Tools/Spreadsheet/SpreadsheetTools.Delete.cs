@@ -7,35 +7,22 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Deletes contiguous ranges of rows or columns from one or more sheets in a single open/save
-    /// cycle. Each operation specifies a sheet and a row range ("3" or "3:5") or column range
-    /// ("B" or "B:D"). Cell ranges (e.g. "A1:C3") are not accepted — Excel's "shift cells up/left"
-    /// is intentionally not exposed. Indices are interpreted against the original workbook state,
-    /// so an agent can specify "rows 3:5 and 10" without having to mentally shift indices after
-    /// earlier deletes; the implementation applies deletes in descending order to make the
-    /// original-coordinate semantics work, and overlapping ranges are deduped. Rows below a
-    /// deleted row range shift up; columns to the right of a deleted column range shift left.
-    /// Formulas are recalculated as part of the save. If any operation fails, the whole batch
-    /// fails and nothing is saved.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook.</param>
-    /// <param name="operationsJson">JSON array of operations. Each operation is an object with sheet (string) and range (string) fields. range is "3" or "3:5" for rows, "B" or "B:D" for columns. Do not include a sheet qualifier in range.</param>
-    /// <returns>JSON object with fields: operationsApplied (int), deletedRowCount (int), deletedColumnCount (int).</returns>
+    /// <summary>Delete entire rows or columns, shifting remaining cells to fill the gap.</summary>
     [McpServerTool(Name = "spreadsheet_delete")]
     [ToolAlias("spreadsheet.delete")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> Delete(string resource, string operationsJson)
     {
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
 
         var parseResult = ParseDeleteOperations(operationsJson);
         if (parseResult.IsFailure)
         {
-            return ToolError(parseResult);
+            return ToolResponse.Error(parseResult);
         }
         var operations = parseResult.Value;
 
@@ -47,12 +34,12 @@ public partial class SpreadsheetTools
         });
         if (commandResult.IsFailure)
         {
-            return ToolError(commandResult);
+            return ToolResponse.Error(commandResult);
         }
 
         var commandValue = commandResult.Value;
         var json = SerializeJson(commandValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 
     private static Result<IReadOnlyList<DeleteRangesOperation>> ParseDeleteOperations(string operationsJson)

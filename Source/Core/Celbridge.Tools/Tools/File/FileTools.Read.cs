@@ -10,23 +10,15 @@ public record class FileReadResult(string Content, int TotalLineCount);
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Reads the text content of a file. Always returns JSON with content and totalLineCount.
-    /// Supports optional line range via offset and limit.
-    /// For large files, use file_get_info first to check line count and size before reading.
-    /// </summary>
-    /// <param name="resource">Resource key of the file to read.</param>
-    /// <param name="offset">Starting line number (1-based). Use 0 to read from the beginning.</param>
-    /// <param name="limit">Maximum number of lines to return. Use 0 to read to the end.</param>
-    /// <param name="lineNumbers">When true, prefix each line in content with its 1-based line number (e.g. "1: first line"). Line numbers reflect actual positions in the file, even when using offset.</param>
-    /// <returns>JSON with fields: content (string), totalLineCount (int).</returns>
+    /// <summary>Read the text content of one file, with optional line offset, limit, and line-number prefixes.</summary>
     [McpServerTool(Name = "file_read", ReadOnly = true)]
     [ToolAlias("file.read")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> Read(string resource, int offset = 0, int limit = 0, bool lineNumbers = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -35,13 +27,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolError($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolError($"File not found: '{resource}'");
+            return ToolResponse.Error($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
         }
 
         var fileText = await File.ReadAllTextAsync(resourcePath);
@@ -63,7 +55,7 @@ public partial class FileTools
             }
 
             var wholeFileResult = new FileReadResult(content, totalLineCount);
-            return ToolSuccess(SerializeJson(wholeFileResult));
+            return ToolResponse.Success(SerializeJson(wholeFileResult));
         }
 
         var allLines = LineEndingHelper.SplitToContentLines(fileText);
@@ -74,7 +66,7 @@ public partial class FileTools
         if (startIndex >= allLines.Count)
         {
             var emptyResult = new FileReadResult(string.Empty, totalLineCount);
-            return ToolSuccess(SerializeJson(emptyResult));
+            return ToolResponse.Success(SerializeJson(emptyResult));
         }
 
         var selectedLines = allLines.Skip(startIndex).Take(count).ToList();
@@ -91,6 +83,6 @@ public partial class FileTools
         }
 
         var readResult = new FileReadResult(rangeContent, totalLineCount);
-        return ToolSuccess(SerializeJson(readResult));
+        return ToolResponse.Success(SerializeJson(readResult));
     }
 }

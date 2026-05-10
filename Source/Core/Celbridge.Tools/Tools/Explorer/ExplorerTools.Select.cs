@@ -5,19 +5,15 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Selects a resource in the explorer panel.
-    /// </summary>
-    /// <param name="resource">Resource key of the item to select.</param>
-    /// <param name="showExplorerPanel">Show the explorer panel if hidden.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Programmatically set the single selected resource in the explorer panel.</summary>
     [McpServerTool(Name = "explorer_select", ReadOnly = true, Idempotent = true)]
     [ToolAlias("explorer.select")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Select(string resource, bool showExplorerPanel = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var selectResult = await ExecuteCommandAsync<ISelectResourceCommand>(command =>
@@ -27,9 +23,9 @@ public partial class ExplorerTools
         });
         if (selectResult.IsFailure)
         {
-            return ToolError(selectResult);
+            return ToolResponse.Error(selectResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

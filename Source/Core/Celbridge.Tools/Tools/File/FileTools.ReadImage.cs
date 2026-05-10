@@ -24,20 +24,15 @@ public partial class FileTools
         [".webp"] = "image/webp"
     };
 
-    /// <summary>
-    /// Reads an image from the project tree and returns it inline so the
-    /// multimodal model can see it. Supported formats: JPEG, PNG, GIF, WebP.
-    /// For non-image binary content, use file_read_binary.
-    /// </summary>
-    /// <param name="resource">Resource key of the image file to read.</param>
-    /// <returns>Inline image content block plus JSON metadata with `resource`, `mimeType`, and `sizeBytes`.</returns>
+    /// <summary>Read a JPEG/PNG/GIF/WebP image as an inline multimodal content block for viewing.</summary>
     [McpServerTool(Name = "file_read_image", ReadOnly = true)]
     [ToolAlias("file.read_image")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ReadImage(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -46,19 +41,19 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolError($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolError($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resource}'");
         }
 
         var extension = Path.GetExtension(resourcePath).ToLowerInvariant();
         if (!SupportedImageMimeTypes.TryGetValue(extension, out var mimeType))
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"file_read_image does not support extension '{extension}'. " +
                 $"Supported formats: .jpg, .jpeg, .png, .gif, .webp. " +
                 $"For other binary content, use file_read_binary.");
@@ -67,7 +62,7 @@ public partial class FileTools
         var fileInfo = new FileInfo(resourcePath);
         if (fileInfo.Length > MaxInlineImageBytes)
         {
-            return ToolError(
+            return ToolResponse.Error(
                 $"Image '{resource}' is {fileInfo.Length} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
                 $"Resize or recompress the image (or capture a smaller screenshot via webview_screenshot with maxEdge) " +
                 $"before calling file_read_image.");
@@ -78,6 +73,6 @@ public partial class FileTools
         var metadata = new FileReadImageResult(resourceKey.ToString(), mimeType, bytes.Length);
         var metadataJson = JsonSerializer.Serialize(metadata, JsonOptions);
 
-        return ToolSuccessWithImage(bytes, mimeType, metadataJson);
+        return ToolResponse.SuccessWithImage(bytes, mimeType, metadataJson);
     }
 }

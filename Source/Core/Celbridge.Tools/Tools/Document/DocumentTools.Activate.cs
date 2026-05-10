@@ -6,19 +6,15 @@ namespace Celbridge.Tools;
 
 public partial class DocumentTools
 {
-    /// <summary>
-    /// Activates an open document, making it the active tab in the editor.
-    /// The document must already be open.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the document to activate.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Bring an already-open document to the foreground (make it the active tab).</summary>
     [McpServerTool(Name = "document_activate", ReadOnly = false, Idempotent = true)]
     [ToolAlias("document.activate")]
+    [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Activate(string fileResource)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         var activateResult = await ExecuteCommandAsync<IActivateDocumentCommand>(command =>
@@ -27,9 +23,9 @@ public partial class DocumentTools
         });
         if (activateResult.IsFailure)
         {
-            return ToolError(activateResult);
+            return ToolResponse.Error(activateResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

@@ -52,14 +52,14 @@ function descriptor(alias, parameters = []) {
 
 describe('matchesToolPattern', () => {
     it('matches literal alias exactly', () => {
-        expect(matchesToolPattern('app.get_version', 'app.get_version')).toBe(true);
-        expect(matchesToolPattern('app.get_version', 'app.version')).toBe(false);
+        expect(matchesToolPattern('app.get_state', 'app.get_state')).toBe(true);
+        expect(matchesToolPattern('app.get_state', 'app.version')).toBe(false);
     });
 
     it('matches namespace wildcards', () => {
-        expect(matchesToolPattern('app.get_version', 'app.*')).toBe(true);
+        expect(matchesToolPattern('app.get_state', 'app.*')).toBe(true);
         expect(matchesToolPattern('document.open', 'app.*')).toBe(false);
-        expect(matchesToolPattern('app.get_version', 'document.*')).toBe(false);
+        expect(matchesToolPattern('app.get_state', 'document.*')).toBe(false);
     });
 
     it('star matches all tools', () => {
@@ -67,21 +67,21 @@ describe('matchesToolPattern', () => {
     });
 
     it('does not treat prefix as wildcard without .*', () => {
-        // "app" is not a valid pattern for "app.get_version"; must be "app.*".
-        expect(matchesToolPattern('app.get_version', 'app')).toBe(false);
+        // "app" is not a valid pattern for "app.get_state"; must be "app.*".
+        expect(matchesToolPattern('app.get_state', 'app')).toBe(false);
     });
 });
 
 describe('isToolAllowed', () => {
     it('returns false for empty allowlist', () => {
-        expect(isToolAllowed('app.get_version', [])).toBe(false);
-        expect(isToolAllowed('app.get_version', null)).toBe(false);
+        expect(isToolAllowed('app.get_state', [])).toBe(false);
+        expect(isToolAllowed('app.get_state', null)).toBe(false);
     });
 
     it('matches any pattern in the list', () => {
-        const allowed = ['document.*', 'app.get_version'];
+        const allowed = ['document.*', 'app.get_state'];
         expect(isToolAllowed('document.open', allowed)).toBe(true);
-        expect(isToolAllowed('app.get_version', allowed)).toBe(true);
+        expect(isToolAllowed('app.get_state', allowed)).toBe(true);
         expect(isToolAllowed('file.read', allowed)).toBe(false);
     });
 });
@@ -95,13 +95,13 @@ describe('buildCelProxy', () => {
         };
         const proxy = buildCelProxy(
             [
-                descriptor('app.get_version'),
+                descriptor('app.get_state'),
                 descriptor('document.open', [{ name: 'fileResource', type: 'string' }])
             ],
             invoke
         );
 
-        expect(typeof proxy.app.getVersion).toBe('function');
+        expect(typeof proxy.app.getState).toBe('function');
         expect(typeof proxy.document.open).toBe('function');
 
         return proxy.document.open('readme.md').then(() => {
@@ -131,16 +131,16 @@ describe('buildCelProxy', () => {
 
     it('throws CelToolError(InvalidArgs) on arity overflow', () => {
         const proxy = buildCelProxy(
-            [descriptor('app.get_version', [])],
+            [descriptor('app.get_state', [])],
             () => Promise.resolve('ok')
         );
 
-        expect(() => proxy.app.getVersion('extra')).toThrow(CelToolError);
+        expect(() => proxy.app.getState('extra')).toThrow(CelToolError);
         try {
-            proxy.app.getVersion('extra');
+            proxy.app.getState('extra');
         } catch (error) {
             expect(error.code).toBe(CelToolErrorCode.InvalidArgs);
-            expect(error.message).toContain('cel.app.get_version');
+            expect(error.message).toContain('cel.app.get_state');
             expect(error.message).toContain('1 positional arguments');
         }
     });
@@ -220,10 +220,10 @@ describe('ToolsAPI', () => {
         const api = new ToolsAPI(
             { request: () => Promise.reject(new Error('should not fetch')) },
             ['*'],
-            [descriptor('app.get_version')]
+            [descriptor('app.get_state')]
         );
         expect(api.isReady).toBe(true);
-        expect(typeof api.cel.app.getVersion).toBe('function');
+        expect(typeof api.cel.app.getState).toBe('function');
     });
 
     it('call() rejects tools not in the allowlist with CEL_TOOL_DENIED', async () => {
@@ -244,11 +244,11 @@ describe('ToolsAPI', () => {
         };
         const api = new ToolsAPI(transport, ['app.*']);
 
-        const value = await api.call('app.get_version', { foo: 1 });
+        const value = await api.call('app.get_state', { foo: 1 });
 
         expect(value).toBe('0.2.5');
         expect(calls[0].method).toBe('tools/call');
-        expect(calls[0].params).toEqual({ name: 'app.get_version', arguments: { foo: 1 } });
+        expect(calls[0].params).toEqual({ name: 'app.get_state', arguments: { foo: 1 } });
     });
 
     it('call() surfaces tool failures as CEL_TOOL_FAILED', async () => {
@@ -327,9 +327,9 @@ describe('Celbridge.tools integration', () => {
 
     it('reads allowedTools from constructor context', () => {
         const { client } = createTestClient({
-            context: { allowedTools: ['app.get_version'], secrets: {} }
+            context: { allowedTools: ['app.get_state'], secrets: {} }
         });
-        expect(client.tools.allowedPatterns).toEqual(['app.get_version']);
+        expect(client.tools.allowedPatterns).toEqual(['app.get_state']);
     });
 
     it('reads and exposes secrets', () => {
@@ -349,7 +349,7 @@ describe('Celbridge.tools integration', () => {
 
     it('cel proxy dispatches via tools/call with positional arguments after initialize()', async () => {
         const { client, sentMessages, simulateResponse } = createTestClient({
-            context: { allowedTools: ['app.get_version'], secrets: {} }
+            context: { allowedTools: ['app.get_state'], secrets: {} }
         });
 
         // Kick off initialize() — it sends document/initialize, then tools/list,
@@ -370,17 +370,17 @@ describe('Celbridge.tools integration', () => {
         const listMessage = JSON.parse(sentMessages[1]);
         expect(listMessage.method).toBe('tools/list');
         simulateResponse(listMessage.id, [
-            descriptor('app.get_version', [])
+            descriptor('app.get_state', [])
         ]);
 
         await initPromise;
 
         // Now the proxy is built. Call via positional shape.
-        const callPromise = client.cel.app.getVersion();
+        const callPromise = client.cel.app.getState();
 
         const callMessage = JSON.parse(sentMessages[2]);
         expect(callMessage.method).toBe('tools/call');
-        expect(callMessage.params.name).toBe('app.get_version');
+        expect(callMessage.params.name).toBe('app.get_state');
         expect(callMessage.params.arguments).toEqual({});
 
         simulateResponse(callMessage.id, { isSuccess: true, value: '0.2.5' });
@@ -407,7 +407,7 @@ describe('cel globalThis exposure', () => {
         delete globalThis.cel;
 
         const { client, sentMessages, simulateResponse } = createTestClient({
-            context: { allowedTools: ['app.get_version'], secrets: {} }
+            context: { allowedTools: ['app.get_state'], secrets: {} }
         });
 
         const initPromise = client.initialize();
@@ -423,13 +423,13 @@ describe('cel globalThis exposure', () => {
 
         const toolsList = JSON.parse(sentMessages[1]);
         simulateResponse(toolsList.id, [
-            { name: 'app_get_version', alias: 'app.get_version', description: '', parameters: [] }
+            { name: 'app_get_state', alias: 'app.get_state', description: '', parameters: [] }
         ]);
 
         await initPromise;
 
         expect(globalThis.cel).toBeDefined();
-        expect(typeof globalThis.cel.app.getVersion).toBe('function');
+        expect(typeof globalThis.cel.app.getState).toBe('function');
 
         delete globalThis.cel;
     });

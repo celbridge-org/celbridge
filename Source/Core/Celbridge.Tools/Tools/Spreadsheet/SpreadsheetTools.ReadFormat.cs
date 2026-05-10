@@ -6,21 +6,10 @@ namespace Celbridge.Tools;
 
 public partial class SpreadsheetTools
 {
-    /// <summary>
-    /// Reads cell formatting from a sheet in an .xlsx workbook. Returns one FormatSpec object per cell
-    /// in the same shape accepted by spreadsheet_format_ranges, with most non-default properties included.
-    /// Cells with no fill emit backgroundColor as the empty string, and theme/auto colours emit as the empty
-    /// string, so feeding the output straight back into spreadsheet_format_ranges reproduces the source cell's
-    /// fill and colour state on the destination (the empty string is the explicit clear/reset sentinel).
-    /// Use this to inspect existing formatting or to capture formatting before copying it to another range or
-    /// sheet with spreadsheet_format_ranges.
-    /// </summary>
-    /// <param name="resource">Resource key of the .xlsx workbook to read.</param>
-    /// <param name="sheet">Name of the worksheet to read formatting from.</param>
-    /// <param name="range">A1-notation cell range to read (e.g. "A1:C3"). Empty string reads the sheet's used range. Do not include a sheet qualifier.</param>
-    /// <returns>JSON object with: range (string, sheet-qualified range that was read), rows (2D array of format spec objects, one per cell, with null fields omitted and empty-string colours indicating no fill or default colour).</returns>
+    /// <summary>Read per-cell formatting from a range as a 2D grid of format specs.</summary>
     [McpServerTool(Name = "spreadsheet_read_format", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_format")]
+    [RelatedGuides("resource_keys", "spreadsheet_a1_notation")]
     public partial CallToolResult ReadFormat(
         string resource,
         string sheet,
@@ -29,13 +18,13 @@ public partial class SpreadsheetTools
         var resolveResult = ResolveWorkbookPath(resource);
         if (resolveResult.IsFailure)
         {
-            return ToolError(resolveResult);
+            return ToolResponse.Error(resolveResult);
         }
         var workbookPath = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
-            return ToolError("Sheet name is required.");
+            return ToolResponse.Error("Sheet name is required.");
         }
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
@@ -44,11 +33,11 @@ public partial class SpreadsheetTools
         var readResult = reader.ReadFormat(workbookPath, sheet, rangeArgument);
         if (readResult.IsFailure)
         {
-            return ToolError(readResult);
+            return ToolResponse.Error(readResult);
         }
 
         var readValue = readResult.Value;
         var json = SerializeJson(readValue);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

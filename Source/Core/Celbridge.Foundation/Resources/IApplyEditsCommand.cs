@@ -13,6 +13,9 @@ namespace Celbridge.Resources;
 /// - Append to line: Set Column and EndColumn to one past the last character of the line.
 /// - Replace to end of line: Set EndColumn to -1 as a sentinel meaning "end of the line".
 ///   This eliminates the need to know the exact character count of the line being edited.
+/// - Append past last line: Set both Line and EndLine to -1 as a sentinel meaning "after the
+///   current last line". NewText is added as new lines at the end of the file. Column and
+///   EndColumn are ignored.
 /// </summary>
 public record TextEdit(
     int Line,

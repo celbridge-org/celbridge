@@ -7,38 +7,26 @@ namespace Celbridge.Tools;
 
 public partial class WebViewTools
 {
-    /// <summary>
-    /// Sets the value of an input, textarea, select, or contenteditable element matched
-    /// by a CSS selector and dispatches bubbling input and change events. Works for
-    /// most framework input bindings (vanilla JS, Lit, Vue, Svelte) because the value
-    /// is set through the native HTMLInputElement/HTMLTextAreaElement/HTMLSelectElement
-    /// setter so the framework's value-tracking observers fire. Waits up to 5 seconds
-    /// for the editor's content-ready signal before dispatching. Requires the
-    /// webview-dev-tools feature flag. Works on any open document editor whose package
-    /// has not opted out of devtools.
-    /// </summary>
-    /// <param name="resource">Resource key of the open document whose WebView to target.</param>
-    /// <param name="selector">CSS selector identifying the element to fill. The first match receives the value and events.</param>
-    /// <param name="value">String value to assign. For contenteditable elements this is set as textContent.</param>
-    /// <returns>JSON object with `selector`, `tag`, and `value` (the value read back from the element after the assignment).</returns>
+    /// <summary>Set the value of an input, textarea, select, or contenteditable element and fire input/change events.</summary>
     [McpServerTool(Name = "webview_fill")]
     [ToolAlias("webview.fill")]
+    [RelatedGuides("resource_keys", "webview_documents", "webview_devtools")]
     public async partial Task<CallToolResult> Fill(string resource, string selector, string value)
     {
         var webViewService = GetRequiredService<IWebViewService>();
         if (!webViewService.IsDevToolsFeatureEnabled())
         {
-            return ToolError($"The '{FeatureFlagConstants.WebViewDevTools}' feature flag is disabled. Enable it in the user .celbridge config to use the webview_* tools.");
+            return ToolResponse.FeatureFlagDisabled(FeatureFlagConstants.WebViewDevTools);
         }
 
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (string.IsNullOrEmpty(selector))
         {
-            return ToolError("webview_fill requires a non-empty selector.");
+            return ToolResponse.Error("webview_fill requires a non-empty selector.");
         }
 
         Logger.LogInformation("webview_fill resource={Resource} selector={Selector} valueLength={ValueLength}",
@@ -49,9 +37,9 @@ public partial class WebViewTools
         var fillResult = await toolBridge.FillAsync(resourceKey, options);
         if (fillResult.IsFailure)
         {
-            return ToolError(fillResult);
+            return ToolResponse.Error(fillResult);
         }
 
-        return ToolSuccess(fillResult.Value);
+        return ToolResponse.Success(fillResult.Value);
     }
 }

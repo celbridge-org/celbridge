@@ -12,34 +12,25 @@ public record class DeleteLinesResult(int DeletedFrom, int DeletedTo, int TotalL
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Deletes complete lines from a file, removing them entirely including their
-    /// line terminators. Unlike file_apply_edits with empty newText (which always
-    /// leaves a residual empty line), this tool cleanly removes the specified lines.
-    /// Writes directly to disk. Any open document reloads its buffer from disk after
-    /// the write.
-    /// </summary>
-    /// <param name="fileResource">Resource key of the file to delete lines from.</param>
-    /// <param name="startLine">First line to delete (1-based, inclusive).</param>
-    /// <param name="endLine">Last line to delete (1-based, inclusive).</param>
-    /// <returns>JSON with fields: deletedFrom (int), deletedTo (int), totalLineCount (int), contextLines (array of strings around the deletion point).</returns>
+    /// <summary>Delete a 1-based inclusive line range from a text file, including the line terminators.</summary>
     [McpServerTool(Name = "file_delete_lines")]
     [ToolAlias("file.delete_lines")]
+    [RelatedGuides("resource_keys", "editing_documents", "file_changes")]
     public async partial Task<CallToolResult> DeleteLines(string fileResource, int startLine, int endLine)
     {
         if (!ResourceKey.TryCreate(fileResource, out var fileResourceKey))
         {
-            return ToolError($"Invalid resource key: '{fileResource}'");
+            return ToolResponse.InvalidResourceKey(fileResource);
         }
 
         if (startLine < 1)
         {
-            return ToolError($"startLine must be at least 1, got {startLine}");
+            return ToolResponse.Error($"startLine must be at least 1, got {startLine}");
         }
 
         if (endLine < startLine)
         {
-            return ToolError($"endLine ({endLine}) must be greater than or equal to startLine ({startLine})");
+            return ToolResponse.Error($"endLine ({endLine}) must be greater than or equal to startLine ({startLine})");
         }
 
         var deleteResult = await ExecuteCommandAsync<IDeleteLinesCommand>(command =>
@@ -51,7 +42,7 @@ public partial class FileTools
 
         if (deleteResult.IsFailure)
         {
-            return ToolError(deleteResult);
+            return ToolResponse.Error(deleteResult);
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -82,6 +73,6 @@ public partial class FileTools
 
         var result = new DeleteLinesResult(startLine, endLine, totalLineCount, contextLines);
         var json = JsonSerializer.Serialize(result, JsonOptions);
-        return ToolSuccess(json);
+        return ToolResponse.Success(json);
     }
 }

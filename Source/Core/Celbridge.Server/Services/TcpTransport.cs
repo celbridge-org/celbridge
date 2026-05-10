@@ -33,15 +33,19 @@ public class TcpTransport : ITcpTransport
 
     public TcpTransport(
         ILogger<TcpTransport> logger,
-        IMcpToolBridge mcpToolBridge)
+        IMcpToolBridge mcpToolBridge,
+        AgentReportBuilderRpcHandler agentReportBuilderRpcHandler)
     {
         _logger = logger;
         _mcpToolBridge = mcpToolBridge;
+        _additionalTargets.Add(agentReportBuilderRpcHandler);
     }
 
     /// <summary>
     /// Registers an additional RPC target whose public methods will be exposed
-    /// to all connections. Must be called before StartListeningAsync.
+    /// to all connections. Must be called before StartListeningAsync. Used by
+    /// callers that own a non-DI handler instance and want it surfaced
+    /// alongside the broker's built-in targets.
     /// </summary>
     public void AddRpcTarget(object target)
     {

@@ -5,21 +5,15 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Creates an empty file in the project. Pass show_dialog=true for interactive mode where the user can choose the name and location.
-    /// Tip: file_write can create and write files in a single step, so you only need this tool
-    /// when you want an empty file or want the interactive dialog.
-    /// </summary>
-    /// <param name="resource">Resource key for the new file, or the parent folder when using the dialog.</param>
-    /// <param name="showDialog">If true, show the create file dialog for interactive naming.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Create an empty file (or open the new-file dialog); use file_write to also write content.</summary>
     [McpServerTool(Name = "explorer_create_file")]
     [ToolAlias("explorer.create_file")]
+    [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> CreateFile(string resource, bool showDialog = false)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         if (showDialog)
@@ -31,10 +25,10 @@ public partial class ExplorerTools
             });
             if (dialogResult.IsFailure)
             {
-                return ToolError(dialogResult);
+                return ToolResponse.Error(dialogResult);
             }
 
-            return ToolSuccess("ok");
+            return ToolResponse.Success("ok");
         }
 
         var addResult = await ExecuteCommandAsync<IAddResourceCommand>(command =>
@@ -44,9 +38,9 @@ public partial class ExplorerTools
         });
         if (addResult.IsFailure)
         {
-            return ToolError(addResult);
+            return ToolResponse.Error(addResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

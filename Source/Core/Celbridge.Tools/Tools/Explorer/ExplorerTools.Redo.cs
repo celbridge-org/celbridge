@@ -5,21 +5,18 @@ namespace Celbridge.Tools;
 
 public partial class ExplorerTools
 {
-    /// <summary>
-    /// Redoes the most recently undone file system operation.
-    /// This only affects explorer operations, not document text edits.
-    /// </summary>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Redo the last undone explorer-domain operation (file/folder ops only, not text edits).</summary>
     [McpServerTool(Name = "explorer_redo")]
     [ToolAlias("explorer.redo")]
+    [RelatedGuides("undo_semantics")]
     public async partial Task<CallToolResult> Redo()
     {
         var redoResult = await ExecuteCommandAsync<IRedoResourceCommand>();
         if (redoResult.IsFailure)
         {
-            return ToolError(redoResult);
+            return ToolResponse.Error(redoResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

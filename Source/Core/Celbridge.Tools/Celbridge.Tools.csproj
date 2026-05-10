@@ -26,7 +26,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\**\*" />
+    <EmbeddedResource Include="Guides\**\*.md" />
+    <!-- README.md documents the guide-authoring conventions for human contributors and must not be embedded into the agent guide library. -->
+    <EmbeddedResource Remove="Guides\README.md" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +39,10 @@
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Celbridge.Tests" />
   </ItemGroup>
 
 </Project>

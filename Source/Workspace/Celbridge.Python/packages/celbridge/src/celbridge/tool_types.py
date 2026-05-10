@@ -168,3 +168,38 @@ def format_namespace_doc(namespace_name: str, tools: list[dict]) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+def format_python_namespace_doc(namespace_name: str, namespace: object) -> str:
+    """Format a help doc section for a Python-only namespace by introspecting its callables.
+
+    Mirrors format_namespace_doc's layout (cel.<namespace> as the heading, indented
+    .<method>(<signature>) lines below) so help() reads consistently across MCP-driven
+    and Python-only namespaces. Only instance attributes are walked, so inherited
+    ToolNamespace methods like __init__ and __repr__ don't leak into the doc.
+    """
+    method_lines = []
+    for attr_name in sorted(vars(namespace).keys()):
+        if attr_name.startswith("_"):
+            continue
+        attribute = vars(namespace)[attr_name]
+        if not callable(attribute):
+            continue
+        method_lines.append((attr_name, attribute))
+
+    if not method_lines:
+        return f"cel.{namespace_name}"
+
+    lines = [f"cel.{namespace_name}"]
+    for attr_name, attribute in method_lines:
+        try:
+            signature = str(inspect.signature(attribute))
+        except (TypeError, ValueError):
+            signature = "()"
+        description_first_line = (attribute.__doc__ or "").strip().split("\n")[0]
+        lines.append(f"    .{attr_name}{signature}")
+        if description_first_line:
+            lines.append(f"        {description_first_line}")
+        lines.append("")
+
+    return "\n".join(lines)

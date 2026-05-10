@@ -22,38 +22,44 @@ public class DocumentToolTests
         _commandService = Substitute.For<ICommandService>();
 
         _services.GetRequiredService<ICommandService>().Returns(_commandService);
+
+        // DocumentTools.GetState resolves IDocumentStateProvider; the provider
+        // wraps the command service so the existing snapshot stubs still drive
+        // the full path.
+        _services.GetRequiredService<IDocumentStateProvider>().Returns(
+            new DocumentStateProvider(_commandService));
     }
 
     /// <summary>
     /// Configures the mocked command service to return the given snapshot when the
-    /// GetContext query command is executed. Returns Result.Ok(snapshot) so the tool
+    /// GetState query command is executed. Returns Result.Ok(snapshot) so the tool
     /// treats it as a successful query.
     /// </summary>
-    private void StubGetContextSnapshot(DocumentContextSnapshot snapshot)
+    private void StubGetStateSnapshot(DocumentStateSnapshot snapshot)
     {
         _commandService
-            .ExecuteAsync<IGetDocumentContextCommand, DocumentContextSnapshot>(
-                Arg.Any<Action<IGetDocumentContextCommand>?>(),
+            .ExecuteAsync<IGetDocumentStateCommand, DocumentStateSnapshot>(
+                Arg.Any<Action<IGetDocumentStateCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Result<DocumentContextSnapshot>.Ok(snapshot));
+            .Returns(Result<DocumentStateSnapshot>.Ok(snapshot));
     }
 
     [Test]
-    public async Task GetContext_ReturnsActiveDocument()
+    public async Task GetState_ReturnsActiveDocument()
     {
         var activeResource = new ResourceKey("notes/readme.md");
-        var snapshot = new DocumentContextSnapshot(
+        var snapshot = new DocumentStateSnapshot(
             activeResource,
             1,
             new List<OpenDocumentInfo>
             {
                 new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
             });
-        StubGetContextSnapshot(snapshot);
+        StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(await tools.GetContext());
+        var root = ParseResult(await tools.GetState());
 
         root.GetProperty("activeDocument").GetString().Should().Be("notes/readme.md");
         root.GetProperty("sectionCount").GetInt32().Should().Be(1);
@@ -67,11 +73,11 @@ public class DocumentToolTests
     }
 
     [Test]
-    public async Task GetContext_MultipleDocumentsAcrossSections()
+    public async Task GetState_MultipleDocumentsAcrossSections()
     {
         var activeResource = new ResourceKey("src/main.py");
         var otherResource = new ResourceKey("tests/test_main.py");
-        var snapshot = new DocumentContextSnapshot(
+        var snapshot = new DocumentStateSnapshot(
             activeResource,
             2,
             new List<OpenDocumentInfo>
@@ -79,10 +85,10 @@ public class DocumentToolTests
                 new(activeResource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty),
                 new(otherResource, new DocumentAddress(0, 1, 0), DocumentEditorId.Empty)
             });
-        StubGetContextSnapshot(snapshot);
+        StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(await tools.GetContext());
+        var root = ParseResult(await tools.GetState());
 
         root.GetProperty("sectionCount").GetInt32().Should().Be(2);
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(2);
@@ -98,56 +104,56 @@ public class DocumentToolTests
     }
 
     [Test]
-    public async Task GetContext_IncludesEditorIdForEachOpenDocument()
+    public async Task GetState_IncludesEditorIdForEachOpenDocument()
     {
         var resource = new ResourceKey("packages/widget/index.html");
-        var snapshot = new DocumentContextSnapshot(
+        var snapshot = new DocumentStateSnapshot(
             resource,
             1,
             new List<OpenDocumentInfo>
             {
                 new(resource, new DocumentAddress(0, 0, 0), new DocumentEditorId("celbridge.html-viewer"))
             });
-        StubGetContextSnapshot(snapshot);
+        StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(await tools.GetContext());
+        var root = ParseResult(await tools.GetState());
 
         var firstDocument = root.GetProperty("openDocuments")[0];
         firstDocument.GetProperty("editorId").GetString().Should().Be("celbridge.html-viewer");
     }
 
     [Test]
-    public async Task GetContext_EmitsEmptyEditorIdWhenUnbound()
+    public async Task GetState_EmitsEmptyEditorIdWhenUnbound()
     {
         var resource = new ResourceKey("notes/readme.md");
-        var snapshot = new DocumentContextSnapshot(
+        var snapshot = new DocumentStateSnapshot(
             resource,
             1,
             new List<OpenDocumentInfo>
             {
                 new(resource, new DocumentAddress(0, 0, 0), DocumentEditorId.Empty)
             });
-        StubGetContextSnapshot(snapshot);
+        StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(await tools.GetContext());
+        var root = ParseResult(await tools.GetState());
 
         var firstDocument = root.GetProperty("openDocuments")[0];
         firstDocument.GetProperty("editorId").GetString().Should().BeEmpty();
     }
 
     [Test]
-    public async Task GetContext_NoDocumentsOpen()
+    public async Task GetState_NoDocumentsOpen()
     {
-        var snapshot = new DocumentContextSnapshot(
+        var snapshot = new DocumentStateSnapshot(
             ResourceKey.Empty,
             1,
             new List<OpenDocumentInfo>());
-        StubGetContextSnapshot(snapshot);
+        StubGetStateSnapshot(snapshot);
 
         var tools = new DocumentTools(_services);
-        var root = ParseResult(await tools.GetContext());
+        var root = ParseResult(await tools.GetState());
 
         root.GetProperty("activeDocument").GetString().Should().BeEmpty();
         root.GetProperty("openDocuments").GetArrayLength().Should().Be(0);

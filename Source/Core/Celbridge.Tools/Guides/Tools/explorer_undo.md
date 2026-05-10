@@ -1,0 +1,7 @@
+# explorer_undo
+
+Reverses the most recent explorer file-system operation. The explorer undo stack is independent of the editor and spreadsheet undo stacks — read `undo_semantics` before relying on this to recover work, especially after programmatic file edits.
+
+## Returns
+
+`"ok"` on success. If there is nothing to undo, the result is still success and nothing changes.

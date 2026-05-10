@@ -12,9 +12,10 @@ namespace Celbridge.Tools;
 public record class GrepResult(int TotalMatches, int TotalFiles, bool Truncated, List<GrepFileResult> Files);
 
 /// <summary>
-/// Per-file result within a file_grep response. Content is included when includeContent is true.
+/// Per-file result within a file_grep response. MatchCount is always populated; Matches is empty
+/// when summaryOnly is true. Content is included when includeContent is true.
 /// </summary>
-public record class GrepFileResult(string Resource, string FileName, List<object> Matches, string? Content = null);
+public record class GrepFileResult(string Resource, string FileName, int MatchCount, List<object> Matches, string? Content = null);
 
 /// <summary>
 /// A single match within a file_grep result, without context lines.
@@ -26,27 +27,28 @@ public record class GrepMatch(int LineNumber, string LineText, int MatchStart, i
 /// </summary>
 public record class GrepMatchWithContext(int LineNumber, string LineText, int MatchStart, int MatchLength, List<string> ContextBefore, List<string> ContextAfter);
 
+/// <summary>
+/// Returned in place of a full GrepResult when the serialized response would
+/// exceed the per-call character cap. Carries totals so the agent can gauge
+/// scale, and a hint pointing at summaryOnly and scope-narrowing parameters.
+/// </summary>
+public record class GrepOversizeError(string Error, int TotalMatches, int TotalFiles, int ResponseChars, int LimitChars, string Hint);
+
 public partial class FileTools
 {
     /// <summary>
-    /// Searches file contents by text or regex, returning matches with line numbers and optional context lines.
-    /// Use the files parameter to search specific files directly, or use resource/include/exclude to scope by folder or glob.
+    /// Maximum serialized JSON length for a successful file_grep response. Sized
+    /// to sit comfortably below typical agent-harness truncation thresholds so
+    /// oversize results never get spilled to a side file by the harness; the
+    /// agent gets a clean GrepOversizeError instead.
     /// </summary>
-    /// <param name="searchTerm">The text or regular expression to search for in file contents.</param>
-    /// <param name="useRegex">If true, searchTerm is interpreted as a .NET regular expression.</param>
-    /// <param name="matchCase">If true, the search is case-sensitive. Ignored when useRegex is true (embed (?-i) in the pattern instead).</param>
-    /// <param name="wholeWord">If true, only match whole words. Ignored when useRegex is true (use \b in the pattern instead).</param>
-    /// <param name="include">Comma-separated glob patterns to restrict which files are searched (e.g. "*.cs,*.xaml"). When empty, all text files are searched.</param>
-    /// <param name="exclude">Comma-separated glob patterns to exclude files from the search (e.g. "*.generated.cs,*.g.cs"). Excluded files are skipped even if they match include.</param>
-    /// <param name="resource">Resource key of a folder to scope the search to. Only files within this folder are searched. When empty, all project files are searched.</param>
-    /// <param name="maxResults">Maximum number of matches to return. Default is 100.</param>
-    /// <param name="contextLines">Number of lines to include before and after each match (like grep -C). Default is 0.</param>
-    /// <param name="files">JSON array of resource key strings to search (e.g. ["src/foo.cs","src/bar.cs"]). When provided, only these files are searched and resource/include/exclude are ignored.</param>
-    /// <param name="includeContent">When true, each file entry in the result includes the full file content alongside the matches. Useful for collapsing a grep+read workflow into a single call.</param>
-    /// <returns>JSON object with fields: totalMatches (int), totalFiles (int), truncated (bool), files (array of objects with resource, fileName, matches array with lineNumber, lineText, matchStart, matchLength, contextBefore/contextAfter arrays when contextLines > 0, and content (string) when includeContent is true).</returns>
+    private const int MaxGrepResponseChars = 50_000;
+
+    /// <summary>Search file contents by text or regex across the project, with optional context lines.</summary>
     [McpServerTool(Name = "file_grep", ReadOnly = true)]
     [ToolAlias("file.grep")]
-    public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", string exclude = "", string resource = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false)
+    [RelatedGuides("resource_keys", "regex_syntax")]
+    public async partial Task<CallToolResult> Grep(string searchTerm, bool useRegex = false, bool matchCase = false, bool wholeWord = false, string include = "", string exclude = "", string resource = "", int maxResults = 100, int contextLines = 0, string files = "", bool includeContent = false, bool summaryOnly = false)
     {
         if (useRegex)
         {
@@ -56,7 +58,7 @@ public partial class FileTools
             }
             catch (ArgumentException ex)
             {
-                return ToolError($"Invalid regular expression: {ex.Message}");
+                return ToolResponse.Error($"Invalid regular expression: {ex.Message}");
             }
         }
 
@@ -65,7 +67,7 @@ public partial class FileTools
 
         if (!string.IsNullOrEmpty(files))
         {
-            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, resourceRegistry);
+            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceRegistry);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
@@ -88,62 +90,67 @@ public partial class FileTools
         var fileResults = new List<GrepFileResult>();
         foreach (var fileResult in results.FileResults)
         {
+            var matchCount = fileResult.Matches.Count;
             var matchList = new List<object>();
 
-            foreach (var match in fileResult.Matches)
+            if (!summaryOnly)
             {
-                if (contextLines > 0)
+                foreach (var match in fileResult.Matches)
                 {
-                    var resolveContextResult = resourceRegistry.ResolveResourcePath(fileResult.Resource);
-                    if (resolveContextResult.IsFailure)
+                    if (contextLines > 0)
                     {
-                        matchList.Add(new GrepMatch(match.LineNumber, match.LineText, match.MatchStart, match.MatchLength));
-                        continue;
-                    }
-                    var resourcePath = resolveContextResult.Value;
+                        var resolveContextResult = resourceRegistry.ResolveResourcePath(fileResult.Resource);
+                        if (resolveContextResult.IsFailure)
+                        {
+                            matchList.Add(new GrepMatch(match.LineNumber, match.LineText, match.MatchStart, match.MatchLength));
+                            continue;
+                        }
+                        var resourcePath = resolveContextResult.Value;
 
-                    if (!fileLineCache.TryGetValue(resourcePath, out var fileLines))
+                        if (!fileLineCache.TryGetValue(resourcePath, out var fileLines))
+                        {
+                            fileLines = File.Exists(resourcePath) ? await File.ReadAllLinesAsync(resourcePath) : Array.Empty<string>();
+                            fileLineCache[resourcePath] = fileLines;
+                        }
+
+                        var matchLineIndex = match.LineNumber - 1;
+                        var contextBeforeStart = Math.Max(0, matchLineIndex - contextLines);
+                        var contextAfterEnd = Math.Min(fileLines.Length - 1, matchLineIndex + contextLines);
+
+                        var contextBefore = new List<string>();
+                        for (int i = contextBeforeStart; i < matchLineIndex; i++)
+                        {
+                            contextBefore.Add(fileLines[i]);
+                        }
+
+                        var contextAfter = new List<string>();
+                        for (int i = matchLineIndex + 1; i <= contextAfterEnd; i++)
+                        {
+                            contextAfter.Add(fileLines[i]);
+                        }
+
+                        matchList.Add(new GrepMatchWithContext(
+                            match.LineNumber,
+                            match.LineText,
+                            match.MatchStart,
+                            match.MatchLength,
+                            contextBefore,
+                            contextAfter));
+                    }
+                    else
                     {
-                        fileLines = File.Exists(resourcePath) ? await File.ReadAllLinesAsync(resourcePath) : Array.Empty<string>();
-                        fileLineCache[resourcePath] = fileLines;
+                        matchList.Add(new GrepMatch(
+                            match.LineNumber,
+                            match.LineText,
+                            match.MatchStart,
+                            match.MatchLength));
                     }
-
-                    var matchLineIndex = match.LineNumber - 1;
-                    var contextBeforeStart = Math.Max(0, matchLineIndex - contextLines);
-                    var contextAfterEnd = Math.Min(fileLines.Length - 1, matchLineIndex + contextLines);
-
-                    var contextBefore = new List<string>();
-                    for (int i = contextBeforeStart; i < matchLineIndex; i++)
-                    {
-                        contextBefore.Add(fileLines[i]);
-                    }
-
-                    var contextAfter = new List<string>();
-                    for (int i = matchLineIndex + 1; i <= contextAfterEnd; i++)
-                    {
-                        contextAfter.Add(fileLines[i]);
-                    }
-
-                    matchList.Add(new GrepMatchWithContext(
-                        match.LineNumber,
-                        match.LineText,
-                        match.MatchStart,
-                        match.MatchLength,
-                        contextBefore,
-                        contextAfter));
-                }
-                else
-                {
-                    matchList.Add(new GrepMatch(
-                        match.LineNumber,
-                        match.LineText,
-                        match.MatchStart,
-                        match.MatchLength));
                 }
             }
 
             string? fileContent = null;
-            if (includeContent)
+            if (includeContent
+                && !summaryOnly)
             {
                 var resolveContentResult = resourceRegistry.ResolveResourcePath(fileResult.Resource);
                 if (resolveContentResult.IsSuccess && File.Exists(resolveContentResult.Value))
@@ -155,15 +162,44 @@ public partial class FileTools
             fileResults.Add(new GrepFileResult(
                 fileResult.Resource.ToString(),
                 fileResult.FileName,
+                matchCount,
                 matchList,
                 fileContent));
         }
 
         var grepResult = new GrepResult(results.TotalMatches, results.TotalFiles, truncated, fileResults);
-        return ToolSuccess(SerializeJson(grepResult));
+        return BuildGrepResponse(grepResult);
     }
 
-    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, IResourceRegistry resourceRegistry)
+    private static CallToolResult BuildGrepResponse(GrepResult grepResult)
+    {
+        var json = SerializeJson(grepResult);
+        if (json.Length <= MaxGrepResponseChars)
+        {
+            return ToolResponse.Success(json);
+        }
+
+        var oversizeError = new GrepOversizeError(
+            Error: "result_too_large",
+            TotalMatches: grepResult.TotalMatches,
+            TotalFiles: grepResult.TotalFiles,
+            ResponseChars: json.Length,
+            LimitChars: MaxGrepResponseChars,
+            Hint: "Re-run with summaryOnly:true to probe, then narrow scope via resource, include/exclude, or files.");
+
+        return new CallToolResult
+        {
+            IsError = true,
+            Content = [
+                new TextContentBlock
+                {
+                    Text = SerializeJson(oversizeError)
+                }
+            ],
+        };
+    }
+
+    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceRegistry resourceRegistry)
     {
         List<string>? fileKeyStrings;
         try
@@ -172,12 +208,12 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolError($"Invalid JSON array for files: {ex.Message}");
+            return ToolResponse.Error($"Invalid JSON array for files: {ex.Message}");
         }
 
         if (fileKeyStrings is null || fileKeyStrings.Count == 0)
         {
-            return ToolError("No resource keys provided in files parameter.");
+            return ToolResponse.Error("No resource keys provided in files parameter.");
         }
 
         var searchPattern = useRegex ? searchTerm : Regex.Escape(searchTerm);
@@ -219,6 +255,7 @@ public partial class FileTools
 
             var fileLines = await File.ReadAllLinesAsync(filePath);
             var matchList = new List<object>();
+            int fileMatchCount = 0;
 
             for (int lineIdx = 0; lineIdx < fileLines.Length && !truncated; lineIdx++)
             {
@@ -229,36 +266,40 @@ public partial class FileTools
                 {
                     var lineNumber = lineIdx + 1;
 
-                    if (contextLines > 0)
+                    if (!summaryOnly)
                     {
-                        var contextBeforeStart = Math.Max(0, lineIdx - contextLines);
-                        var contextAfterEnd = Math.Min(fileLines.Length - 1, lineIdx + contextLines);
-
-                        var contextBefore = new List<string>();
-                        for (int i = contextBeforeStart; i < lineIdx; i++)
+                        if (contextLines > 0)
                         {
-                            contextBefore.Add(fileLines[i]);
-                        }
+                            var contextBeforeStart = Math.Max(0, lineIdx - contextLines);
+                            var contextAfterEnd = Math.Min(fileLines.Length - 1, lineIdx + contextLines);
 
-                        var contextAfter = new List<string>();
-                        for (int i = lineIdx + 1; i <= contextAfterEnd; i++)
+                            var contextBefore = new List<string>();
+                            for (int i = contextBeforeStart; i < lineIdx; i++)
+                            {
+                                contextBefore.Add(fileLines[i]);
+                            }
+
+                            var contextAfter = new List<string>();
+                            for (int i = lineIdx + 1; i <= contextAfterEnd; i++)
+                            {
+                                contextAfter.Add(fileLines[i]);
+                            }
+
+                            matchList.Add(new GrepMatchWithContext(
+                                lineNumber,
+                                lineText,
+                                regexMatch.Index,
+                                regexMatch.Length,
+                                contextBefore,
+                                contextAfter));
+                        }
+                        else
                         {
-                            contextAfter.Add(fileLines[i]);
+                            matchList.Add(new GrepMatch(lineNumber, lineText, regexMatch.Index, regexMatch.Length));
                         }
-
-                        matchList.Add(new GrepMatchWithContext(
-                            lineNumber,
-                            lineText,
-                            regexMatch.Index,
-                            regexMatch.Length,
-                            contextBefore,
-                            contextAfter));
-                    }
-                    else
-                    {
-                        matchList.Add(new GrepMatch(lineNumber, lineText, regexMatch.Index, regexMatch.Length));
                     }
 
+                    fileMatchCount++;
                     totalMatches++;
                     if (totalMatches >= maxResults)
                     {
@@ -268,10 +309,11 @@ public partial class FileTools
                 }
             }
 
-            if (matchList.Count > 0)
+            if (fileMatchCount > 0)
             {
                 string? fileContent = null;
-                if (includeContent)
+                if (includeContent
+                    && !summaryOnly)
                 {
                     fileContent = string.Join(Environment.NewLine, fileLines);
                 }
@@ -279,12 +321,13 @@ public partial class FileTools
                 fileResults.Add(new GrepFileResult(
                     fileKeyString,
                     Path.GetFileName(filePath),
+                    fileMatchCount,
                     matchList,
                     fileContent));
             }
         }
 
         var grepResult = new GrepResult(totalMatches, fileResults.Count, truncated, fileResults);
-        return ToolSuccess(SerializeJson(grepResult));
+        return BuildGrepResponse(grepResult);
     }
 }

@@ -29,7 +29,7 @@ public class ExplorerToolTests
     }
 
     [Test]
-    public void GetContext_ReturnsSelectionAndExpandedFolders()
+    public void GetState_ReturnsSelectionAndExpandedFolders()
     {
         var explorerService = Substitute.For<IExplorerService>();
         var folderStateService = Substitute.For<IFolderStateService>();
@@ -43,7 +43,7 @@ public class ExplorerToolTests
         _workspaceService.ExplorerService.Returns(explorerService);
 
         var tools = new ExplorerTools(_services);
-        var root = ParseResult(tools.GetContext());
+        var root = ParseResult(tools.GetState());
 
         root.GetProperty("selectedResource").GetString().Should().Be("src/main.py");
 
@@ -58,7 +58,7 @@ public class ExplorerToolTests
     }
 
     [Test]
-    public void GetContext_NoSelectionNoExpandedFolders()
+    public void GetState_NoSelectionNoExpandedFolders()
     {
         var explorerService = Substitute.For<IExplorerService>();
         var folderStateService = Substitute.For<IFolderStateService>();
@@ -71,7 +71,7 @@ public class ExplorerToolTests
         _workspaceService.ExplorerService.Returns(explorerService);
 
         var tools = new ExplorerTools(_services);
-        var root = ParseResult(tools.GetContext());
+        var root = ParseResult(tools.GetState());
 
         root.GetProperty("selectedResource").GetString().Should().BeEmpty();
         root.GetProperty("selectedResources").GetArrayLength().Should().Be(0);
@@ -79,7 +79,7 @@ public class ExplorerToolTests
     }
 
     [Test]
-    public void GetContext_MultiSelect()
+    public void GetState_MultiSelect()
     {
         var explorerService = Substitute.For<IExplorerService>();
         var folderStateService = Substitute.For<IFolderStateService>();
@@ -94,7 +94,7 @@ public class ExplorerToolTests
         _workspaceService.ExplorerService.Returns(explorerService);
 
         var tools = new ExplorerTools(_services);
-        var root = ParseResult(tools.GetContext());
+        var root = ParseResult(tools.GetState());
 
         root.GetProperty("selectedResource").GetString().Should().Be("src/a.py");
         root.GetProperty("selectedResources").GetArrayLength().Should().Be(2);

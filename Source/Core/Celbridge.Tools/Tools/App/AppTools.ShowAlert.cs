@@ -5,14 +5,10 @@ namespace Celbridge.Tools;
 
 public partial class AppTools
 {
-    /// <summary>
-    /// Shows an alert dialog to the user with a message and optional title.
-    /// </summary>
-    /// <param name="message">The message to display in the alert dialog.</param>
-    /// <param name="title">Optional title for the alert dialog.</param>
-    /// <returns>"ok" on success, or an error message if the operation failed.</returns>
+    /// <summary>Show a modal alert dialog (always interactive; blocks until the user dismisses it).</summary>
     [McpServerTool(Name = "app_show_alert")]
     [ToolAlias("app.show_alert")]
+    [RelatedGuides("silent_vs_interactive")]
     public async partial Task<CallToolResult> ShowAlert(string message, string title = "")
     {
         var alertResult = await ExecuteCommandAsync<IAlertCommand>(command =>
@@ -22,9 +18,9 @@ public partial class AppTools
         });
         if (alertResult.IsFailure)
         {
-            return ToolError(alertResult);
+            return ToolResponse.Error(alertResult);
         }
 
-        return ToolSuccess("ok");
+        return ToolResponse.Success("ok");
     }
 }

@@ -16,20 +16,15 @@ public record class ListContentsFolderItem(string Name, string Type, string Modi
 
 public partial class FileTools
 {
-    /// <summary>
-    /// Lists the immediate children of a folder with their type, size, and modification date.
-    /// Optionally filters children by a glob pattern.
-    /// </summary>
-    /// <param name="resource">Resource key of the folder to list.</param>
-    /// <param name="glob">Optional glob pattern to filter children by name (e.g. "*.py", "readme*"). When empty, all children are returned.</param>
-    /// <returns>JSON array of objects with fields: name (string), type (string: "file" or "folder"), size (long, files only), modified (string, ISO 8601).</returns>
+    /// <summary>List the immediate (single-level) children of a folder, with optional glob filter.</summary>
     [McpServerTool(Name = "file_list_contents", ReadOnly = true)]
     [ToolAlias("file.list_contents")]
+    [RelatedGuides("resource_keys")]
     public async partial Task<CallToolResult> ListContents(string resource, string glob = "")
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
-            return ToolError($"Invalid resource key: '{resource}'");
+            return ToolResponse.InvalidResourceKey(resource);
         }
 
         // Route through the command queue so the snapshot observes state after all
@@ -40,7 +35,7 @@ public partial class FileTools
             command => command.Resource = resourceKey);
         if (listContentsResult.IsFailure)
         {
-            return ToolError(listContentsResult);
+            return ToolResponse.Error(listContentsResult);
         }
         var snapshot = listContentsResult.Value;
 
@@ -76,6 +71,6 @@ public partial class FileTools
             }
         }
 
-        return ToolSuccess(SerializeJson(items));
+        return ToolResponse.Success(SerializeJson(items));
     }
 }
