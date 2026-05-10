@@ -102,24 +102,8 @@ class CelProxy:
             "Writes the .mcp.json config and starts Claude in the current terminal."
         )
 
-        def get_report():
-            """Write the consolidated agent report to the project root.
-
-            Generates a multi-sheet .xlsx workbook joining tools/list payload
-            sizes with captured tool-invocation telemetry. Sheets:
-              * Summary    -- generated timestamp and headline counts.
-              * Tools      -- one row per registered tool with payload chars
-                              and tokens alongside calls, errors, error rate,
-                              and avg duration. The pivot for spotting
-                              expensive tools that aren't being used and hot
-                              tools.
-              * Namespaces -- per-namespace aggregates of the above.
-              * Invocations -- every captured tool call. The substrate for
-                               ad-hoc analysis (pivot tables, charts, slicing
-                               by session or client).
-            Returns the absolute path of the written workbook. Not exposed as
-            an MCP tool.
-            """
+        def get_report() -> str:
+            """Write the agent report workbook."""
             return self._client.call("diagnostics/get_agent_report")
 
         agent_namespace.get_report = get_report
@@ -172,7 +156,7 @@ class CelProxy:
         lines.append("Built-in commands:")
         lines.append("")
         lines.append("  cel.agent.claude()      Launch restricted Claude Code CLI")
-        lines.append("  cel.agent.get_report()  Write the consolidated agent report (xlsx) to the project root")
+        lines.append("  cel.agent.get_report()  Write the agent report workbook")
         lines.append("  cel.test([cls])         Run the MCP integration test suite (optional class filter)")
         lines.append("  cel.tools()             Print raw tool descriptors as JSON")
 
