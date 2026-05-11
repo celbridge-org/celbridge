@@ -221,3 +221,103 @@ class TestFileEdit:
         file.write("TestFileEdit/hello.txt", unicode_text)
         result = file.read("TestFileEdit/hello.txt")
         assert "Café" in result["content"]
+
+    def test_file_edit_replaces_unique_match(self, file):
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="Line 2",
+            new_string="Second Line",
+        )
+        assert result["matchCount"] == 1
+        assert len(result["affectedLines"]) == 1
+        assert result["affectedLines"][0]["from"] == 2
+        assert result["affectedLines"][0]["to"] == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert "Second Line" in disk["content"]
+        assert "Line 2" not in disk["content"]
+
+    def test_file_edit_multi_match_fails_unless_replace_all(self, file):
+        file.write(
+            "TestFileEdit/hello.txt",
+            "x\ny\nx\ny\nx\n",
+        )
+
+        # Without replace_all the call fails with a disambiguation hint.
+        with pytest.raises(CelError) as exc_info:
+            file.edit(
+                "TestFileEdit/hello.txt",
+                old_string="x",
+                new_string="X",
+            )
+        assert "3 occurrences" in str(exc_info.value)
+
+        # With replace_all every occurrence is replaced.
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="x",
+            new_string="X",
+            replace_all=True,
+        )
+        assert result["matchCount"] == 3
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "X\ny\nX\ny\nX\n"
+
+    def test_file_edit_append_via_last_line_anchor(self, file):
+        # Canonical append workflow: anchor against the existing last line and
+        # concatenate the new content in new_string. No coordinates needed.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "first\nlast line\n",
+        )
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="last line\n",
+            new_string="last line\nappended one\nappended two\n",
+        )
+        assert result["matchCount"] == 1
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "first\nlast line\nappended one\nappended two\n"
+
+    def test_file_multi_edit_atomic_batch(self, file):
+        # All edits land or none do. The failing batch leaves the file unchanged.
+        original = "alpha\nbeta\ngamma\n"
+        file.write("TestFileEdit/hello.txt", original)
+
+        edits = [
+            {"oldString": "alpha", "newString": "ALPHA"},
+            {"oldString": "does-not-exist", "newString": "X"},
+        ]
+        with pytest.raises(CelError) as exc_info:
+            file.multi_edit("TestFileEdit/hello.txt", json.dumps(edits))
+        assert "Edit 1" in str(exc_info.value)
+
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == original
+
+        # A clean batch applies both edits in order.
+        edits = [
+            {"oldString": "alpha", "newString": "ALPHA"},
+            {"oldString": "gamma", "newString": "GAMMA"},
+        ]
+        result = file.multi_edit("TestFileEdit/hello.txt", json.dumps(edits))
+        assert result["appliedCount"] == 2
+        assert len(result["affectedLines"]) == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "ALPHA\nbeta\nGAMMA\n"
+
+    def test_file_multi_edit_sequential_application(self, file):
+        # Edit 1 anchors against text produced by edit 0.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "foo()\nresult = foo()\n",
+        )
+        edits = [
+            {"oldString": "foo()", "newString": "bar()", "replaceAll": True},
+            {"oldString": "result = bar()", "newString": "result = bar() + 1"},
+        ]
+        result = file.multi_edit(
+            "TestFileEdit/hello.txt", json.dumps(edits)
+        )
+        assert result["appliedCount"] == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "bar()\nresult = bar() + 1\n"

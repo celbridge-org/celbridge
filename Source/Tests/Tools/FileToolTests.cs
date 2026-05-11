@@ -236,6 +236,182 @@ public class FileToolTests
     }
 
     [Test]
+    public async Task Edit_ReturnsAffectedLineRanges_WhenSuccessful()
+    {
+        var resource = new ResourceKey("notes/edit.md");
+        var path = Path.Combine(_tempFolder, "edit.md");
+        await File.WriteAllLinesAsync(path, new[] { "alpha", "BETA", "gamma" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IFileEditCommand? capturedCommand = null;
+        var affectedRanges = new List<FileEditAffectedRange>
+        {
+            new(2, 2)
+        };
+        _commandService
+            .ExecuteAsync<IFileEditCommand, FileEditResult>(
+                Arg.Any<Action<IFileEditCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IFileEditCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IFileEditCommand>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<FileEditResult>.Ok(new FileEditResult(1, affectedRanges)));
+            });
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.Edit("notes/edit.md", "beta", "BETA"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.OldString.Should().Be("beta");
+        capturedCommand.NewString.Should().Be("BETA");
+        capturedCommand.ReplaceAll.Should().BeFalse();
+
+        root.GetProperty("matchCount").GetInt32().Should().Be(1);
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("from").GetInt32().Should().Be(2);
+        affected[0].GetProperty("to").GetInt32().Should().Be(2);
+
+        var contextLines = affected[0].GetProperty("contextLines");
+        var collected = new List<string>();
+        for (var i = 0; i < contextLines.GetArrayLength(); i++)
+        {
+            collected.Add(contextLines[i].GetString()!);
+        }
+        collected.Should().Equal("alpha", "BETA", "gamma");
+    }
+
+    [Test]
+    public async Task Edit_ReturnsToolErrorWithMultiMatchHint_WhenMultipleOccurrences()
+    {
+        _commandService
+            .ExecuteAsync<IFileEditCommand, FileEditResult>(
+                Arg.Any<Action<IFileEditCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<FileEditResult>.Fail(
+                "oldString matched 3 occurrences; add surrounding context to disambiguate, or set replaceAll: true")));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Edit("notes/edit.md", "x", "y");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("3 occurrences");
+        text.Should().Contain("replaceAll");
+    }
+
+    [Test]
+    public async Task MultiEdit_ReturnsAppliedCountAndAffectedLines_WhenSuccessful()
+    {
+        var resource = new ResourceKey("notes/multi.md");
+        IFileMultiEditCommand? capturedCommand = null;
+        var affectedRanges = new List<FileEditAffectedRange>
+        {
+            new(1, 1),
+            new(3, 4)
+        };
+        _commandService
+            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
+                Arg.Any<Action<IFileMultiEditCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IFileMultiEditCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IFileMultiEditCommand>();
+                    capturedCommand.Edits = new List<FileEditOperation>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Ok(new FileMultiEditResult(2, affectedRanges)));
+            });
+
+        var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"b\",\"newString\":\"B\\nC\"}]";
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.MultiEdit("notes/multi.md", editsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.Edits.Should().HaveCount(2);
+        capturedCommand.Edits[0].OldString.Should().Be("a");
+        capturedCommand.Edits[0].NewString.Should().Be("A");
+        capturedCommand.Edits[1].OldString.Should().Be("b");
+        capturedCommand.Edits[1].NewString.Should().Be("B\nC");
+
+        root.GetProperty("appliedCount").GetInt32().Should().Be(2);
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(2);
+        affected[0].GetProperty("from").GetInt32().Should().Be(1);
+        affected[1].GetProperty("from").GetInt32().Should().Be(3);
+        // contextLines is omitted from file_multi_edit responses.
+        affected[0].TryGetProperty("contextLines", out _).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task MultiEdit_ReturnsToolErrorNamingFailingEditIndex_OnPartialFail()
+    {
+        _commandService
+            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
+                Arg.Any<Action<IFileMultiEditCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Fail(
+                "Edit 1: oldString not found in file. Tried to match: 'nope'")));
+
+        var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"nope\",\"newString\":\"x\"}]";
+
+        var tools = new FileTools(_services);
+        var result = await tools.MultiEdit("notes/multi.md", editsJson);
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("Edit 1");
+        text.Should().Contain("not found");
+    }
+
+    [Test]
+    public async Task MultiEdit_EmptyArray_SkipsCommandAndReturnsZeroAppliedCount()
+    {
+        var tools = new FileTools(_services);
+
+        IFileMultiEditCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
+                Arg.Any<Action<IFileMultiEditCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IFileMultiEditCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IFileMultiEditCommand>();
+                    capturedCommand.Edits = new List<FileEditOperation>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Ok(
+                    new FileMultiEditResult(0, new List<FileEditAffectedRange>())));
+            });
+
+        var root = ParseResult(await tools.MultiEdit("notes/multi.md", "[]"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Edits.Should().BeEmpty();
+        root.GetProperty("appliedCount").GetInt32().Should().Be(0);
+        root.GetProperty("affectedLines").GetArrayLength().Should().Be(0);
+    }
+
+    [Test]
     public async Task WriteBinary_DispatchesCommand_AndReturnsOk()
     {
         var resource = new ResourceKey("notes/data.bin");
