@@ -36,7 +36,7 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var findReplaceResult = await ExecuteCommandAsync<IFindReplaceFileCommand, FindReplaceResult>(command =>
+        var findReplaceResult = await ExecuteCommandAsync<IFileReplaceCommand, FileReplaceResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.SearchText = searchText;

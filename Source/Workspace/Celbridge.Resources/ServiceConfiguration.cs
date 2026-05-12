@@ -47,7 +47,7 @@ public static class ServiceConfiguration
         services.AddTransient<IApplyRangeEditsCommand, ApplyRangeEditsCommand>();
         services.AddTransient<IFileEditCommand, FileEditCommand>();
         services.AddTransient<IFileMultiEditCommand, FileMultiEditCommand>();
-        services.AddTransient<IFindReplaceFileCommand, FindReplaceFileCommand>();
+        services.AddTransient<IFileReplaceCommand, FileReplaceCommand>();
         services.AddTransient<IWriteFileCommand, WriteFileCommand>();
         services.AddTransient<IWriteBinaryFileCommand, WriteBinaryFileCommand>();
     }

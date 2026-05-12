@@ -93,26 +93,26 @@ public class FileToolTests
         await File.WriteAllLinesAsync(path, new[] { "first new", "second new" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        IFindReplaceFileCommand? capturedCommand = null;
+        IFileReplaceCommand? capturedCommand = null;
         var affectedRanges = new List<FileEditAffectedRange>
         {
             new(1, 1),
             new(2, 2)
         };
         _commandService
-            .ExecuteAsync<IFindReplaceFileCommand, FindReplaceResult>(
-                Arg.Any<Action<IFindReplaceFileCommand>?>(),
+            .ExecuteAsync<IFileReplaceCommand, FileReplaceResult>(
+                Arg.Any<Action<IFileReplaceCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFindReplaceFileCommand>?>();
+                var configure = callInfo.Arg<Action<IFileReplaceCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IFindReplaceFileCommand>();
+                    capturedCommand = Substitute.For<IFileReplaceCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<FindReplaceResult>.Ok(new FindReplaceResult(2, affectedRanges, false)));
+                return Task.FromResult(Celbridge.Core.Result<FileReplaceResult>.Ok(new FileReplaceResult(2, affectedRanges, false)));
             });
 
         var tools = new FileTools(_services);
@@ -144,11 +144,11 @@ public class FileToolTests
             new(1, 1), new(2, 2), new(3, 3), new(8, 8)
         };
         _commandService
-            .ExecuteAsync<IFindReplaceFileCommand, FindReplaceResult>(
-                Arg.Any<Action<IFindReplaceFileCommand>?>(),
+            .ExecuteAsync<IFileReplaceCommand, FileReplaceResult>(
+                Arg.Any<Action<IFileReplaceCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FindReplaceResult>.Ok(new FindReplaceResult(8, sampledRanges, true))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<FileReplaceResult>.Ok(new FileReplaceResult(8, sampledRanges, true))));
 
         var tools = new FileTools(_services);
         var root = ParseResult(await tools.Replace("notes/many.md", "x", "Y"));
@@ -178,11 +178,11 @@ public class FileToolTests
             new(1, 1, 3)
         };
         _commandService
-            .ExecuteAsync<IFindReplaceFileCommand, FindReplaceResult>(
-                Arg.Any<Action<IFindReplaceFileCommand>?>(),
+            .ExecuteAsync<IFileReplaceCommand, FileReplaceResult>(
+                Arg.Any<Action<IFileReplaceCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FindReplaceResult>.Ok(new FindReplaceResult(3, affectedRanges, false))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<FileReplaceResult>.Ok(new FileReplaceResult(3, affectedRanges, false))));
 
         var tools = new FileTools(_services);
         var root = ParseResult(await tools.Replace("notes/merged.md", "the", "THE"));
