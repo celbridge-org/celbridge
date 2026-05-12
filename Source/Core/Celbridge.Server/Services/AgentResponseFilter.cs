@@ -348,7 +348,8 @@ internal sealed class AgentResponseFilter
         var requested = ParseRequestedGuideNames(namesElement);
         foreach (var guideName in requested)
         {
-            monitor.MarkGuideRead(session, guideName);
+            // Consume the slot so auto-attach won't re-prepend the body.
+            _ = monitor.TryMarkServed(session, guideName);
         }
     }
 

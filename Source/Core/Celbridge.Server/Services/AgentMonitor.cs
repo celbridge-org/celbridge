@@ -67,11 +67,6 @@ internal sealed class AgentSessionState
         return _guidesServed.TryAdd(guideName, 0);
     }
 
-    public void MarkGuideRead(string guideName)
-    {
-        _guidesServed.TryAdd(guideName, 0);
-    }
-
     public bool WasGuideRead(string guideName)
     {
         return _guidesServed.ContainsKey(guideName);
@@ -141,11 +136,6 @@ public sealed class AgentMonitor
     internal bool TryMarkServed(AgentSessionState state, string guideName)
     {
         return state.TryMarkServed(guideName);
-    }
-
-    internal void MarkGuideRead(AgentSessionState state, string guideName)
-    {
-        state.MarkGuideRead(guideName);
     }
 
     public void RecordInvocation(ToolInvocationRecord record)

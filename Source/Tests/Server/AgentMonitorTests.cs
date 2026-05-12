@@ -50,23 +50,6 @@ public class AgentMonitorTests
         state.TryMarkServed("file_read").Should().BeTrue();
     }
 
-    [Test]
-    public void MarkGuideRead_RecordsNameInSessionSet()
-    {
-        var state = new AgentSessionState("session-1");
-        state.MarkGuideRead("file_grep");
-        state.WasGuideRead("file_grep").Should().BeTrue();
-    }
-
-    [Test]
-    public void MarkGuideRead_IsIdempotent()
-    {
-        var state = new AgentSessionState("session-1");
-        state.MarkGuideRead("file_grep");
-        state.MarkGuideRead("file_grep");
-        state.WasGuideRead("file_grep").Should().BeTrue();
-    }
-
     // AgentSessionState — concurrency
 
     [Test]
@@ -92,25 +75,6 @@ public class AgentMonitorTests
 
         trueCount.Should().Be(1);
         state.WasGuideRead("file").Should().BeTrue();
-    }
-
-    [Test]
-    public async Task MarkGuideRead_ConcurrentCallsAllRecorded()
-    {
-        var state = new AgentSessionState("session-1");
-
-        var tasks = new List<Task>();
-        for (int taskIndex = 0; taskIndex < 64; taskIndex++)
-        {
-            var capturedIndex = taskIndex;
-            tasks.Add(Task.Run(() => state.MarkGuideRead($"guide_{capturedIndex}")));
-        }
-        await Task.WhenAll(tasks);
-
-        for (int index = 0; index < 64; index++)
-        {
-            state.WasGuideRead($"guide_{index}").Should().BeTrue();
-        }
     }
 
     // GetOrCreateSession — session-id keyed dedup

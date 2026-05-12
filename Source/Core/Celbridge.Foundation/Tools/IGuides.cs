@@ -27,13 +27,7 @@ public record class GuideEntry(
 
 /// <summary>
 /// In-memory guide library backing the guides_read MCP tool and the
-/// auto-attach response filter. Loaded once at app startup from embedded
-/// markdown resources under Celbridge.Tools.Guides.*; the loader validates
-/// filename uniqueness, the requirement that every per-tool guide match a
-/// registered MCP tool alias and every namespace guide match a registered
-/// namespace, and the [RelatedGuides] / troubleshooter wiring. After
-/// construction the library is immutable for the life of the process —
-/// every method is an O(1) dictionary lookup.
+/// auto-attach response filter.
 /// </summary>
 public interface IGuides
 {
@@ -44,10 +38,8 @@ public interface IGuides
     GuideEntry? GetByName(string name);
 
     /// <summary>
-    /// Returns the [RelatedGuides] names declared on the tool method whose MCP
-    /// alias name (with the namespace separator as an underscore, e.g.
-    /// file_grep) is supplied. Returns an empty list when the tool name is not
-    /// registered or has no related guides.
+    /// Returns the [RelatedGuides] names declared on the tool with the given
+    /// MCP alias, or an empty list when the tool is unregistered or declares none.
     /// </summary>
     IReadOnlyList<string> GetRelatedGuides(string toolAliasName);
 }
