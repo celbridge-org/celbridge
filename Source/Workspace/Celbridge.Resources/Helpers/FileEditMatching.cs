@@ -7,7 +7,7 @@ internal record FileEditApplyResult(string NewContent, List<int> ReplacementStar
 internal record CappedRanges(IReadOnlyList<FileEditAffectedRange> Ranges, bool Truncated);
 
 /// <summary>
-/// Shared text-match helpers for FileEditCommand and FileMultiEditCommand.
+/// Shared text-match helpers for EditFileCommand and MultiEditFileCommand.
 /// Both work on a single string buffer with byte-equal matching after line
 /// ending normalisation has been applied by the caller.
 /// </summary>

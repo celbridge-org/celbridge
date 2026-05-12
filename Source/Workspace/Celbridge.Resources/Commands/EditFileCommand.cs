@@ -5,9 +5,9 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class FileEditCommand : CommandBase, IFileEditCommand
+public class EditFileCommand : CommandBase, IEditFileCommand
 {
-    private readonly ILogger<FileEditCommand> _logger;
+    private readonly ILogger<EditFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
@@ -15,10 +15,10 @@ public class FileEditCommand : CommandBase, IFileEditCommand
     public string NewString { get; set; } = string.Empty;
     public bool ReplaceAll { get; set; }
 
-    public FileEditResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);
+    public EditFileResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);
 
-    public FileEditCommand(
-        ILogger<FileEditCommand> logger,
+    public EditFileCommand(
+        ILogger<EditFileCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -84,7 +84,7 @@ public class FileEditCommand : CommandBase, IFileEditCommand
         var mergedRanges = FileEditMatching.MergeSameLineRanges(affectedRanges);
         var capped = FileEditMatching.CapVerboseRanges(mergedRanges);
 
-        ResultValue = new FileEditResult(matchPositions.Count, capped.Ranges, capped.Truncated);
+        ResultValue = new EditFileResult(matchPositions.Count, capped.Ranges, capped.Truncated);
 
         return Result.Ok();
     }

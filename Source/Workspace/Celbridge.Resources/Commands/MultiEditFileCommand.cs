@@ -5,21 +5,21 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
+public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
 {
-    private readonly ILogger<FileMultiEditCommand> _logger;
+    private readonly ILogger<MultiEditFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
     public List<FileEditOperation> Edits { get; set; } = new();
 
-    public FileMultiEditResult ResultValue { get; private set; } = new(
+    public MultiEditFileResult ResultValue { get; private set; } = new(
         0,
-        Array.Empty<FileMultiEditEditSummary>(),
-        Array.Empty<FileMultiEditAffectedRange>());
+        Array.Empty<MultiEditFileEditSummary>(),
+        Array.Empty<MultiEditFileAffectedRange>());
 
-    public FileMultiEditCommand(
-        ILogger<FileMultiEditCommand> logger,
+    public MultiEditFileCommand(
+        ILogger<MultiEditFileCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -30,10 +30,10 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
     {
         if (Edits.Count == 0)
         {
-            ResultValue = new FileMultiEditResult(
+            ResultValue = new MultiEditFileResult(
                 0,
-                Array.Empty<FileMultiEditEditSummary>(),
-                Array.Empty<FileMultiEditAffectedRange>());
+                Array.Empty<MultiEditFileEditSummary>(),
+                Array.Empty<MultiEditFileAffectedRange>());
             return Result.Ok();
         }
 
@@ -135,8 +135,8 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
             newStringByEdit[editIndex] = trackedNewStrings[i];
         }
 
-        var affectedRanges = new List<FileMultiEditAffectedRange>();
-        var editSummaries = new List<FileMultiEditEditSummary>(Edits.Count);
+        var affectedRanges = new List<MultiEditFileAffectedRange>();
+        var editSummaries = new List<MultiEditFileEditSummary>(Edits.Count);
 
         for (var editIndex = 0; editIndex < Edits.Count; editIndex++)
         {
@@ -155,15 +155,15 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
             var capped = FileEditMatching.CapVerboseRanges(mergedPerEditRanges);
             foreach (var range in capped.Ranges)
             {
-                affectedRanges.Add(new FileMultiEditAffectedRange(editIndex, range.FromLine, range.ToLine, range.MatchCount));
+                affectedRanges.Add(new MultiEditFileAffectedRange(editIndex, range.FromLine, range.ToLine, range.MatchCount));
             }
 
-            editSummaries.Add(new FileMultiEditEditSummary(perEditMatchCount[editIndex], capped.Truncated));
+            editSummaries.Add(new MultiEditFileEditSummary(perEditMatchCount[editIndex], capped.Truncated));
         }
 
         affectedRanges.Sort((a, b) => a.FromLine.CompareTo(b.FromLine));
 
-        ResultValue = new FileMultiEditResult(Edits.Count, editSummaries, affectedRanges);
+        ResultValue = new MultiEditFileResult(Edits.Count, editSummaries, affectedRanges);
 
         return Result.Ok();
     }

@@ -6,12 +6,12 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies that FileMultiEditCommand applies a batch of text-match edits
+/// Verifies that MultiEditFileCommand applies a batch of text-match edits
 /// atomically and sequentially, reporting per-edit summaries and post-batch
 /// line ranges tagged by edit index.
 /// </summary>
 [TestFixture]
-public class FileMultiEditCommandTests
+public class MultiEditFileCommandTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
@@ -20,7 +20,7 @@ public class FileMultiEditCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FileMultiEditCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(MultiEditFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -48,10 +48,10 @@ public class FileMultiEditCommandTests
         }
     }
 
-    private FileMultiEditCommand CreateCommand()
+    private MultiEditFileCommand CreateCommand()
     {
-        return new FileMultiEditCommand(
-            Substitute.For<ILogger<FileMultiEditCommand>>(),
+        return new MultiEditFileCommand(
+            Substitute.For<ILogger<MultiEditFileCommand>>(),
             _workspaceWrapper);
     }
 

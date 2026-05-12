@@ -7,9 +7,9 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
-public class FileReplaceCommand : CommandBase, IFileReplaceCommand
+public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
 {
-    private readonly ILogger<FileReplaceCommand> _logger;
+    private readonly ILogger<ReplaceFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public ResourceKey FileResource { get; set; }
@@ -20,10 +20,10 @@ public class FileReplaceCommand : CommandBase, IFileReplaceCommand
     public bool UseRegex { get; set; }
     public int FromLine { get; set; }
     public int ToLine { get; set; }
-    public FileReplaceResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);
+    public ReplaceFileResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);
 
-    public FileReplaceCommand(
-        ILogger<FileReplaceCommand> logger,
+    public ReplaceFileCommand(
+        ILogger<ReplaceFileCommand> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
@@ -95,7 +95,7 @@ public class FileReplaceCommand : CommandBase, IFileReplaceCommand
 
         var mergedRanges = FileEditMatching.MergeSameLineRanges(affectedRanges);
         var capped = FileEditMatching.CapVerboseRanges(mergedRanges);
-        ResultValue = new FileReplaceResult(replacementCount, capped.Ranges, capped.Truncated);
+        ResultValue = new ReplaceFileResult(replacementCount, capped.Ranges, capped.Truncated);
 
         return Result.Ok();
     }
@@ -275,7 +275,7 @@ public class FileReplaceCommand : CommandBase, IFileReplaceCommand
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IFileReplaceCommand>(command =>
+        commandService.Execute<IReplaceFileCommand>(command =>
         {
             command.FileResource = fileResource;
             command.SearchText = searchText;
@@ -287,7 +287,7 @@ public class FileReplaceCommand : CommandBase, IFileReplaceCommand
     {
         var commandService = ServiceLocator.AcquireService<ICommandService>();
 
-        commandService.Execute<IFileReplaceCommand>(command =>
+        commandService.Execute<IReplaceFileCommand>(command =>
         {
             command.FileResource = fileResource;
             command.SearchText = searchText;

@@ -6,12 +6,12 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies that FileEditCommand replaces text by exact-snippet match,
+/// Verifies that EditFileCommand replaces text by exact-snippet match,
 /// preserves the file's line-ending convention, and fails closed when the
 /// snippet is missing or non-unique.
 /// </summary>
 [TestFixture]
-public class FileEditCommandTests
+public class EditFileCommandTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
@@ -20,7 +20,7 @@ public class FileEditCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FileEditCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(EditFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -48,10 +48,10 @@ public class FileEditCommandTests
         }
     }
 
-    private FileEditCommand CreateCommand()
+    private EditFileCommand CreateCommand()
     {
-        return new FileEditCommand(
-            Substitute.For<ILogger<FileEditCommand>>(),
+        return new EditFileCommand(
+            Substitute.For<ILogger<EditFileCommand>>(),
             _workspaceWrapper);
     }
 

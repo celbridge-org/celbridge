@@ -93,26 +93,26 @@ public class FileToolTests
         await File.WriteAllLinesAsync(path, new[] { "first new", "second new" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        IFileReplaceCommand? capturedCommand = null;
+        IReplaceFileCommand? capturedCommand = null;
         var affectedRanges = new List<FileEditAffectedRange>
         {
             new(1, 1),
             new(2, 2)
         };
         _commandService
-            .ExecuteAsync<IFileReplaceCommand, FileReplaceResult>(
-                Arg.Any<Action<IFileReplaceCommand>?>(),
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFileReplaceCommand>?>();
+                var configure = callInfo.Arg<Action<IReplaceFileCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IFileReplaceCommand>();
+                    capturedCommand = Substitute.For<IReplaceFileCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<FileReplaceResult>.Ok(new FileReplaceResult(2, affectedRanges, false)));
+                return Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(2, affectedRanges, false)));
             });
 
         var tools = new FileTools(_services);
@@ -144,11 +144,11 @@ public class FileToolTests
             new(1, 1), new(2, 2), new(3, 3), new(8, 8)
         };
         _commandService
-            .ExecuteAsync<IFileReplaceCommand, FileReplaceResult>(
-                Arg.Any<Action<IFileReplaceCommand>?>(),
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileReplaceResult>.Ok(new FileReplaceResult(8, sampledRanges, true))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(8, sampledRanges, true))));
 
         var tools = new FileTools(_services);
         var root = ParseResult(await tools.Replace("notes/many.md", "x", "Y"));
@@ -178,11 +178,11 @@ public class FileToolTests
             new(1, 1, 3)
         };
         _commandService
-            .ExecuteAsync<IFileReplaceCommand, FileReplaceResult>(
-                Arg.Any<Action<IFileReplaceCommand>?>(),
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileReplaceResult>.Ok(new FileReplaceResult(3, affectedRanges, false))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(3, affectedRanges, false))));
 
         var tools = new FileTools(_services);
         var root = ParseResult(await tools.Replace("notes/merged.md", "the", "THE"));
@@ -201,25 +201,25 @@ public class FileToolTests
         await File.WriteAllLinesAsync(path, new[] { "alpha", "BETA", "gamma" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        IFileEditCommand? capturedCommand = null;
+        IEditFileCommand? capturedCommand = null;
         var affectedRanges = new List<FileEditAffectedRange>
         {
             new(2, 2)
         };
         _commandService
-            .ExecuteAsync<IFileEditCommand, FileEditResult>(
-                Arg.Any<Action<IFileEditCommand>?>(),
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFileEditCommand>?>();
+                var configure = callInfo.Arg<Action<IEditFileCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IFileEditCommand>();
+                    capturedCommand = Substitute.For<IEditFileCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<FileEditResult>.Ok(new FileEditResult(1, affectedRanges, false)));
+                return Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(1, affectedRanges, false)));
             });
 
         var tools = new FileTools(_services);
@@ -260,11 +260,11 @@ public class FileToolTests
             new(1, 1), new(2, 2), new(3, 3), new(8, 8)
         };
         _commandService
-            .ExecuteAsync<IFileEditCommand, FileEditResult>(
-                Arg.Any<Action<IFileEditCommand>?>(),
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileEditResult>.Ok(new FileEditResult(8, sampledRanges, true))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(8, sampledRanges, true))));
 
         var tools = new FileTools(_services);
         var root = ParseResult(await tools.Edit("notes/many.md", "x", "Y", replaceAll: true));
@@ -298,11 +298,11 @@ public class FileToolTests
             new(1, 1, 3)
         };
         _commandService
-            .ExecuteAsync<IFileEditCommand, FileEditResult>(
-                Arg.Any<Action<IFileEditCommand>?>(),
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileEditResult>.Ok(new FileEditResult(3, affectedRanges, false))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(3, affectedRanges, false))));
 
         var tools = new FileTools(_services);
         var root = ParseResult(await tools.Edit("notes/merged.md", "foo", "FOO", replaceAll: true));
@@ -318,11 +318,11 @@ public class FileToolTests
     public async Task Edit_ReturnsToolErrorWithMultiMatchHint_WhenMultipleOccurrences()
     {
         _commandService
-            .ExecuteAsync<IFileEditCommand, FileEditResult>(
-                Arg.Any<Action<IFileEditCommand>?>(),
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileEditResult>.Fail(
+            .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Fail(
                 "oldString matched 3 occurrences; add surrounding context to disambiguate, or set replaceAll: true")));
 
         var tools = new FileTools(_services);
@@ -342,32 +342,32 @@ public class FileToolTests
         await File.WriteAllLinesAsync(path, new[] { "A", "two", "B", "C", "five" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        IFileMultiEditCommand? capturedCommand = null;
-        var affectedRanges = new List<FileMultiEditAffectedRange>
+        IMultiEditFileCommand? capturedCommand = null;
+        var affectedRanges = new List<MultiEditFileAffectedRange>
         {
             new(0, 1, 1),
             new(1, 3, 4)
         };
-        var editSummaries = new List<FileMultiEditEditSummary>
+        var editSummaries = new List<MultiEditFileEditSummary>
         {
             new(1, false),
             new(1, false)
         };
         _commandService
-            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
-                Arg.Any<Action<IFileMultiEditCommand>?>(),
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFileMultiEditCommand>?>();
+                var configure = callInfo.Arg<Action<IMultiEditFileCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IFileMultiEditCommand>();
+                    capturedCommand = Substitute.For<IMultiEditFileCommand>();
                     capturedCommand.Edits = new List<FileEditOperation>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Ok(new FileMultiEditResult(2, editSummaries, affectedRanges)));
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(new MultiEditFileResult(2, editSummaries, affectedRanges)));
             });
 
         var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"b\",\"newString\":\"B\\nC\"}]";
@@ -404,29 +404,29 @@ public class FileToolTests
         await File.WriteAllLinesAsync(path, new[] { "FOO bar FOO" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var affectedRanges = new List<FileMultiEditAffectedRange>
+        var affectedRanges = new List<MultiEditFileAffectedRange>
         {
             new(0, 1, 1, 2)
         };
-        var editSummaries = new List<FileMultiEditEditSummary>
+        var editSummaries = new List<MultiEditFileEditSummary>
         {
             new(2, false)
         };
         _commandService
-            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
-                Arg.Any<Action<IFileMultiEditCommand>?>(),
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFileMultiEditCommand>?>();
+                var configure = callInfo.Arg<Action<IMultiEditFileCommand>?>();
                 if (configure is not null)
                 {
-                    var captured = Substitute.For<IFileMultiEditCommand>();
+                    var captured = Substitute.For<IMultiEditFileCommand>();
                     captured.Edits = new List<FileEditOperation>();
                     configure(captured);
                 }
-                return Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Ok(new FileMultiEditResult(1, editSummaries, affectedRanges)));
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(new MultiEditFileResult(1, editSummaries, affectedRanges)));
             });
 
         var editsJson = "[{\"oldString\":\"foo\",\"newString\":\"FOO\",\"replaceAll\":true}]";
@@ -448,20 +448,20 @@ public class FileToolTests
         await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var affectedRanges = new List<FileMultiEditAffectedRange>
+        var affectedRanges = new List<MultiEditFileAffectedRange>
         {
             new(0, 1, 1), new(0, 2, 2), new(0, 3, 3), new(0, 8, 8)
         };
-        var editSummaries = new List<FileMultiEditEditSummary>
+        var editSummaries = new List<MultiEditFileEditSummary>
         {
             new(8, true)
         };
         _commandService
-            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
-                Arg.Any<Action<IFileMultiEditCommand>?>(),
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Ok(new FileMultiEditResult(1, editSummaries, affectedRanges))));
+            .Returns(Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(new MultiEditFileResult(1, editSummaries, affectedRanges))));
 
         var editsJson = "[{\"oldString\":\"x\",\"newString\":\"Y\",\"replaceAll\":true}]";
 
@@ -486,11 +486,11 @@ public class FileToolTests
     public async Task MultiEdit_ReturnsToolErrorNamingFailingEditIndex_OnPartialFail()
     {
         _commandService
-            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
-                Arg.Any<Action<IFileMultiEditCommand>?>(),
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Fail(
+            .Returns(Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Fail(
                 "Edit 1: oldString not found in file. Tried to match: 'nope'")));
 
         var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"nope\",\"newString\":\"x\"}]";
@@ -509,23 +509,23 @@ public class FileToolTests
     {
         var tools = new FileTools(_services);
 
-        IFileMultiEditCommand? capturedCommand = null;
+        IMultiEditFileCommand? capturedCommand = null;
         _commandService
-            .ExecuteAsync<IFileMultiEditCommand, FileMultiEditResult>(
-                Arg.Any<Action<IFileMultiEditCommand>?>(),
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFileMultiEditCommand>?>();
+                var configure = callInfo.Arg<Action<IMultiEditFileCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IFileMultiEditCommand>();
+                    capturedCommand = Substitute.For<IMultiEditFileCommand>();
                     capturedCommand.Edits = new List<FileEditOperation>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<FileMultiEditResult>.Ok(
-                    new FileMultiEditResult(0, new List<FileMultiEditEditSummary>(), new List<FileMultiEditAffectedRange>())));
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(
+                    new MultiEditFileResult(0, new List<MultiEditFileEditSummary>(), new List<MultiEditFileAffectedRange>())));
             });
 
         var root = ParseResult(await tools.MultiEdit("notes/multi.md", "[]"));

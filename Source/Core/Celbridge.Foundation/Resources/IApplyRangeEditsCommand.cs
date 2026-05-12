@@ -54,7 +54,7 @@ public record FileRangeEdit(
 /// Applies coordinate-based batch edits across one or more files by writing
 /// directly to disk. Any open document reloads its buffer from disk after the
 /// write completes. The snippet-match counterparts for single-file edits are
-/// IFileEditCommand and IFileMultiEditCommand.
+/// IEditFileCommand and IMultiEditFileCommand.
 /// </summary>
 public interface IApplyRangeEditsCommand : IExecutableCommand
 {

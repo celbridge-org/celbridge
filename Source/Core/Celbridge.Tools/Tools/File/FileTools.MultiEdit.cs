@@ -30,7 +30,7 @@ public record class MultiEditPerEditSummary(int MatchCount, bool Truncated);
 /// each tagged with its originating EditIndex and (for non-truncated edits)
 /// ContextLines.
 /// </summary>
-public record class FileMultiEditToolResult(
+public record class MultiEditFileToolResult(
     int AppliedCount,
     List<MultiEditPerEditSummary> Edits,
     List<MultiEditAffectedLineRange> AffectedLines);
@@ -65,7 +65,7 @@ public partial class FileTools
 
         var edits = parseResult.Value;
 
-        var multiEditResult = await ExecuteCommandAsync<IFileMultiEditCommand, FileMultiEditResult>(command =>
+        var multiEditResult = await ExecuteCommandAsync<IMultiEditFileCommand, MultiEditFileResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.Edits = edits;
@@ -105,7 +105,7 @@ public partial class FileTools
             affectedLines.Add(new MultiEditAffectedLineRange(range.EditIndex, range.FromLine, range.ToLine, range.MatchCount, contextLines));
         }
 
-        var toolResult = new FileMultiEditToolResult(resultValue.AppliedCount, editSummaries, affectedLines);
+        var toolResult = new MultiEditFileToolResult(resultValue.AppliedCount, editSummaries, affectedLines);
         var json = JsonSerializer.Serialize(toolResult, JsonOptions);
         return ToolResponse.Success(json);
     }

@@ -3,13 +3,13 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Result returned by IFileReplaceCommand. ReplacementCount is the total
+/// Result returned by IReplaceFileCommand. ReplacementCount is the total
 /// number of matches replaced. AffectedRanges locates each replacement in the
 /// post-edit file, sorted by FromLine ascending. When ReplacementCount exceeds
 /// the verbose threshold AffectedRanges is capped to a first + last sample and
 /// Truncated is set to true; ReplacementCount still reflects the real total.
 /// </summary>
-public record FileReplaceResult(
+public record ReplaceFileResult(
     int ReplacementCount,
     IReadOnlyList<FileEditAffectedRange> AffectedRanges,
     bool Truncated = false);
@@ -18,7 +18,7 @@ public record FileReplaceResult(
 /// Find and replace text within a file. Replacements are written directly
 /// to disk. Any open document reloads its buffer from disk after the write.
 /// </summary>
-public interface IFileReplaceCommand : IExecutableCommand<FileReplaceResult>
+public interface IReplaceFileCommand : IExecutableCommand<ReplaceFileResult>
 {
     /// <summary>
     /// The resource key of the file to perform find and replace on.

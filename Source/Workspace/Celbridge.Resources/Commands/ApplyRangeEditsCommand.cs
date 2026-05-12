@@ -152,7 +152,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
             // Normalise NewText to a lone-\n separator so splitting on \n yields
             // clean content-only lines that can be joined back with the file's
             // existing separator without producing \r\r\n sequences. Same idiom
-            // as WriteFileCommand and FileReplaceCommand.
+            // as WriteFileCommand and ReplaceFileCommand.
             var normalisedNewText = LineEndingHelper.ConvertLineEndings(edit.NewText, "\n");
             var newContent = beforeEdit + normalisedNewText + afterEdit;
             var newLines = newContent.Split('\n');

@@ -12,14 +12,14 @@ namespace Celbridge.Resources;
 public record FileEditAffectedRange(int FromLine, int ToLine, int MatchCount = 1);
 
 /// <summary>
-/// Result returned by IFileEditCommand. MatchCount is the total number of
+/// Result returned by IEditFileCommand. MatchCount is the total number of
 /// occurrences of OldString that were replaced. AffectedRanges locates each
 /// replacement in the post-edit file, sorted by FromLine ascending. When the
 /// match count exceeds the verbose threshold the list is capped to a first +
 /// last sample and Truncated is set to true; MatchCount still reflects the
 /// real total.
 /// </summary>
-public record FileEditResult(
+public record EditFileResult(
     int MatchCount,
     IReadOnlyList<FileEditAffectedRange> AffectedRanges,
     bool Truncated = false);
@@ -29,7 +29,7 @@ public record FileEditResult(
 /// uniquely unless ReplaceAll is set. Writes directly to disk. Any open document
 /// reloads its buffer from disk after the write.
 /// </summary>
-public interface IFileEditCommand : IExecutableCommand<FileEditResult>
+public interface IEditFileCommand : IExecutableCommand<EditFileResult>
 {
     /// <summary>
     /// The resource key of the file to edit.

@@ -6,12 +6,12 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies that FileReplaceCommand applies replacements directly to
+/// Verifies that ReplaceFileCommand applies replacements directly to
 /// the file on disk and reports the replacement count, affected ranges, and
 /// truncation flag.
 /// </summary>
 [TestFixture]
-public class FileReplaceCommandTests
+public class ReplaceFileCommandTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
@@ -20,7 +20,7 @@ public class FileReplaceCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(FileReplaceCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ReplaceFileCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -48,10 +48,10 @@ public class FileReplaceCommandTests
         }
     }
 
-    private FileReplaceCommand CreateCommand()
+    private ReplaceFileCommand CreateCommand()
     {
-        return new FileReplaceCommand(
-            Substitute.For<ILogger<FileReplaceCommand>>(),
+        return new ReplaceFileCommand(
+            Substitute.For<ILogger<ReplaceFileCommand>>(),
             _workspaceWrapper);
     }
 

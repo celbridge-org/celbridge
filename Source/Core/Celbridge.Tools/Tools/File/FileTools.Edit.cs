@@ -20,7 +20,7 @@ public record class AffectedLineRange(int From, int To, int MatchCount = 1, List
 /// the verbose threshold AffectedLines is capped to a first + last sample and
 /// Truncated is set to true; MatchCount still reflects the real total.
 /// </summary>
-public record class FileEditToolResult(int MatchCount, List<AffectedLineRange> AffectedLines, bool Truncated);
+public record class EditFileToolResult(int MatchCount, List<AffectedLineRange> AffectedLines, bool Truncated);
 
 public partial class FileTools
 {
@@ -39,7 +39,7 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var editResult = await ExecuteCommandAsync<IFileEditCommand, FileEditResult>(command =>
+        var editResult = await ExecuteCommandAsync<IEditFileCommand, EditFileResult>(command =>
         {
             command.FileResource = fileResourceKey;
             command.OldString = oldString;
@@ -76,7 +76,7 @@ public partial class FileTools
             affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine, range.MatchCount, contextLines));
         }
 
-        var result = new FileEditToolResult(editValue.MatchCount, affectedLines, editValue.Truncated);
+        var result = new EditFileToolResult(editValue.MatchCount, affectedLines, editValue.Truncated);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
     }
