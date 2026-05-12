@@ -10,6 +10,15 @@ namespace Celbridge.Tests.Utilities;
 public class LineEndingHelperTests
 {
     [Test]
+    public void PlatformDefault_IsLf_RegardlessOfHost()
+    {
+        // The helper anchors new-file output to LF rather than the host
+        // platform's Environment.NewLine, so cross-platform agents and
+        // toolchains see a consistent default.
+        LineEndingHelper.PlatformDefault.Should().Be("\n");
+    }
+
+    [Test]
     public void DetectSeparatorOrDefault_EmptyContent_ReturnsPlatformDefault()
     {
         LineEndingHelper.DetectSeparatorOrDefault(string.Empty)

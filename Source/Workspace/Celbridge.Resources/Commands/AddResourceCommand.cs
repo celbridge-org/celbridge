@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Documents;
 using Celbridge.Explorer;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 

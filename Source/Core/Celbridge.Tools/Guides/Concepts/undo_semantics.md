@@ -16,7 +16,7 @@ Explorer undo cannot reverse:
 
 The text editor maintains its own undo history per open document. `Ctrl+Z` reverses recent typing, paste, find-replace, etc.
 
-**Programmatic edits wipe Monaco's undo history** for the open document. `file_apply_edits`, `file_write`, `file_find_replace`, `file_delete_lines`, and `file_write_binary` write straight to disk; if the document is open, the buffer reloads and the undo stack is cleared. The agent's edit cannot be reverted with Ctrl+Z. To undo an agent edit, apply a reverse edit with `file_apply_edits` or `file_delete_lines`.
+**Programmatic edits wipe Monaco's undo history** for the open document. `file_edit`, `file_multi_edit`, `file_replace`, `file_write`, and `file_write_binary` write straight to disk; if the document is open, the buffer reloads and the undo stack is cleared. The agent's edit cannot be reverted with Ctrl+Z. To undo an agent edit, apply a reverse edit with `file_edit` or `file_replace`.
 
 ## Spreadsheet editor undo
 

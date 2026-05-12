@@ -1,4 +1,5 @@
 using Celbridge.Resources.Commands;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 
 namespace Celbridge.Resources;
@@ -43,9 +44,10 @@ public static class ServiceConfiguration
         services.AddTransient<IGetFileTreeCommand, GetFileTreeCommand>();
         services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
 
-        services.AddTransient<IApplyEditsCommand, ApplyEditsCommand>();
-        services.AddTransient<IDeleteLinesCommand, DeleteLinesCommand>();
-        services.AddTransient<IFindReplaceFileCommand, FindReplaceFileCommand>();
+        services.AddTransient<IApplyRangeEditsCommand, ApplyRangeEditsCommand>();
+        services.AddTransient<IEditFileCommand, EditFileCommand>();
+        services.AddTransient<IMultiEditFileCommand, MultiEditFileCommand>();
+        services.AddTransient<IReplaceFileCommand, ReplaceFileCommand>();
         services.AddTransient<IWriteFileCommand, WriteFileCommand>();
         services.AddTransient<IWriteBinaryFileCommand, WriteBinaryFileCommand>();
     }

@@ -1,6 +1,7 @@
 global using Celbridge.Core;
 global using Celbridge.Messaging;
 global using Celbridge.Resources;
+global using Celbridge.Resources.Helpers;
 global using Celbridge.Resources.Services;
 global using Microsoft.Extensions.DependencyInjection;
 

@@ -3,17 +3,22 @@ namespace Celbridge.Utilities;
 /// <summary>
 /// Helpers for detecting line-ending conventions and counting logical lines.
 /// The strategy is to preserve the existing file's line endings on edit and
-/// use the platform default when creating new files. Line counting follows
-/// File.ReadAllLines semantics: a file is N lines if it has N content rows,
-/// regardless of whether it ends with a terminating newline.
+/// use LF when no convention can be detected (empty or single-line content,
+/// new files). Line counting follows File.ReadAllLines semantics: a file is
+/// N lines if it has N content rows, regardless of whether it ends with a
+/// terminating newline.
 /// </summary>
 public static class LineEndingHelper
 {
     /// <summary>
-    /// The platform line separator: CRLF on Windows, LF on Unix-like systems.
-    /// Used as the default for new files.
+    /// The line separator used when no convention can be detected. Always LF
+    /// regardless of host platform: matches what every cross-platform
+    /// toolchain (Git, Node, Python, Rust, Go, the .NET SDK on non-Windows
+    /// runners) defaults to, and what most coding agents produce. Modern
+    /// Windows tools (Visual Studio, VS Code, Notepad on Windows 10+, etc.)
+    /// handle LF without issue.
     /// </summary>
-    public static string PlatformDefault => Environment.NewLine;
+    public static string PlatformDefault => "\n";
 
     /// <summary>
     /// Returns the line separator that best represents the given content.

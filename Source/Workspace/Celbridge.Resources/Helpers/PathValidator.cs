@@ -1,6 +1,6 @@
 using FileAttributes = System.IO.FileAttributes;
 
-namespace Celbridge.Resources.Services;
+namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Validates that resolved resource paths stay within the project folder and do not traverse

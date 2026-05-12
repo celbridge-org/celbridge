@@ -32,67 +32,8 @@ class TestFileEdit:
         result = file.read("TestFileEdit/hello.txt")
         assert "Hello, World!" in result["content"]
 
-    def test_apply_edits(self, file):
-        edits = [
-            {
-                "line": 1,
-                "column": 8,
-                "endLine": 1,
-                "endColumn": 13,
-                "newText": "Celbridge",
-            }
-        ]
-        file.apply_edits("TestFileEdit/hello.txt", json.dumps(edits))
-        result = file.read("TestFileEdit/hello.txt")
-        assert "Celbridge" in result["content"]
-
-    def test_apply_edits_on_closed_document_writes_to_disk(self, file):
-        # Edits to a closed document write straight to disk and the disk
-        # immediately reflects the edit.
-        edits = [
-            {
-                "line": 1,
-                "column": 8,
-                "endLine": 1,
-                "endColumn": 13,
-                "newText": "Celbridge",
-            }
-        ]
-        file.apply_edits("TestFileEdit/hello.txt", json.dumps(edits))
-        disk = file.read("TestFileEdit/hello.txt")
-        assert "Celbridge" in disk["content"]
-
-    def test_apply_edits_open_document_persists_via_disk(self, file, document):
-        # When the document is open, edits land on disk and the open buffer
-        # reloads from disk. The response describes the post-edit document and
-        # the file on disk reflects it immediately.
-        document.open("TestFileEdit/hello.txt")
-        edits = [
-            {
-                "line": 1,
-                "column": 1,
-                "endLine": 1,
-                "endColumn": -1,
-                "newText": "Regression line 1\nRegression line 2",
-            }
-        ]
-        result = file.apply_edits(
-            "TestFileEdit/hello.txt", json.dumps(edits)
-        )
-
-        disk = file.read("TestFileEdit/hello.txt")
-        assert "Regression line 1" in disk["content"]
-        assert "Regression line 2" in disk["content"]
-
-        disk_line_count = len(disk["content"].splitlines())
-        assert result["totalLineCount"] == disk_line_count
-
-        affected = result["affectedLines"][0]
-        context_text = "\n".join(affected["contextLines"])
-        assert "Regression line 1" in context_text
-
-    def test_find_replace(self, file):
-        result = file.find_replace(
+    def test_replace(self, file):
+        result = file.replace(
             "TestFileEdit/hello.txt",
             search_text="Line 2",
             replace_text="Second Line",
@@ -101,12 +42,11 @@ class TestFileEdit:
         result = file.read("TestFileEdit/hello.txt")
         assert "Second Line" in result["content"]
 
-    def test_find_replace_open_document_followup_read_sees_replacement(self, file, document):
-        # When the document is open, find_replace writes to disk and a
-        # follow-up file_read must see the replacement, not the pre-replace
-        # editor buffer.
+    def test_replace_open_document_followup_read_sees_replacement(self, file, document):
+        # When the document is open, replace writes to disk and a follow-up
+        # file_read must see the replacement, not the pre-replace editor buffer.
         document.open("TestFileEdit/hello.txt")
-        result = file.find_replace(
+        result = file.replace(
             "TestFileEdit/hello.txt",
             search_text="Line 2",
             replace_text="Second Line",
@@ -114,16 +54,6 @@ class TestFileEdit:
         assert result["replacementCount"] >= 1
         disk = file.read("TestFileEdit/hello.txt")
         assert "Second Line" in disk["content"]
-
-    def test_delete_lines(self, file):
-        result = file.delete_lines(
-            "TestFileEdit/hello.txt", start_line=2, end_line=3
-        )
-        assert "deletedFrom" in result
-        assert "totalLineCount" in result
-        result = file.read("TestFileEdit/hello.txt")
-        assert "Line 2" not in result["content"]
-        assert "Line 3" not in result["content"]
 
     def test_write_binary(self, file):
         content = base64.b64encode(b"BINARY_TEST_DATA_12345").decode("ascii")
@@ -140,50 +70,16 @@ class TestFileEdit:
         disk = file.read("TestFileEdit/hello.txt")
         assert disk["content"].strip() == "completely new content"
 
-    def test_apply_edits_invalid_resource_key(self, file):
-        with pytest.raises(CelError):
-            file.apply_edits("\\invalid", "[]")
-
-    def test_apply_edits_invalid_json(self, file):
-        with pytest.raises(CelError):
-            file.apply_edits("TestFileEdit/hello.txt", "not json")
-
-    def test_apply_edits_empty_array(self, file):
-        # Empty edits should succeed without error.
-        file.apply_edits("TestFileEdit/hello.txt", "[]")
-
-    def test_apply_edits_auto_serialized_list(self, file):
-        edits = [{"line": 1, "endLine": 1, "newText": "Replaced first line"}]
-        file.apply_edits("TestFileEdit/hello.txt", edits)
-        result = file.read("TestFileEdit/hello.txt")
-        assert "Replaced first line" in result["content"]
-
-    def test_delete_lines_invalid_resource_key(self, file):
-        with pytest.raises(CelError):
-            file.delete_lines("\\invalid", start_line=1, end_line=1)
-
-    def test_delete_lines_start_less_than_one(self, file):
-        with pytest.raises(CelError):
-            file.delete_lines(
-                "TestFileEdit/hello.txt", start_line=0, end_line=1
-            )
-
-    def test_delete_lines_end_before_start(self, file):
-        with pytest.raises(CelError):
-            file.delete_lines(
-                "TestFileEdit/hello.txt", start_line=3, end_line=1
-            )
-
-    def test_find_replace_no_matches(self, file):
-        result = file.find_replace(
+    def test_replace_no_matches(self, file):
+        result = file.replace(
             "TestFileEdit/hello.txt",
             search_text="NONEXISTENT_STRING_XYZ",
             replace_text="replacement",
         )
         assert result["replacementCount"] == 0
 
-    def test_find_replace_regex(self, file):
-        result = file.find_replace(
+    def test_replace_regex(self, file):
+        result = file.replace(
             "TestFileEdit/hello.txt",
             search_text=r"Line \d+",
             replace_text="Replaced",
@@ -191,8 +87,8 @@ class TestFileEdit:
         )
         assert result["replacementCount"] >= 1
 
-    def test_find_replace_case_sensitive(self, file):
-        result = file.find_replace(
+    def test_replace_case_sensitive(self, file):
+        result = file.replace(
             "TestFileEdit/hello.txt",
             search_text="hello",
             replace_text="Goodbye",
@@ -221,3 +117,199 @@ class TestFileEdit:
         file.write("TestFileEdit/hello.txt", unicode_text)
         result = file.read("TestFileEdit/hello.txt")
         assert "Café" in result["content"]
+
+    def test_file_edit_replaces_unique_match(self, file):
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="Line 2",
+            new_string="Second Line",
+        )
+        assert result["matchCount"] == 1
+        assert len(result["affectedLines"]) == 1
+        assert result["affectedLines"][0]["from"] == 2
+        assert result["affectedLines"][0]["to"] == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert "Second Line" in disk["content"]
+        assert "Line 2" not in disk["content"]
+
+    def test_file_edit_multi_match_fails_unless_replace_all(self, file):
+        file.write(
+            "TestFileEdit/hello.txt",
+            "x\ny\nx\ny\nx\n",
+        )
+
+        # Without replace_all the call fails with a disambiguation hint.
+        with pytest.raises(CelError) as exc_info:
+            file.edit(
+                "TestFileEdit/hello.txt",
+                old_string="x",
+                new_string="X",
+            )
+        assert "3 occurrences" in str(exc_info.value)
+
+        # With replace_all every occurrence is replaced.
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="x",
+            new_string="X",
+            replace_all=True,
+        )
+        assert result["matchCount"] == 3
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "X\ny\nX\ny\nX\n"
+
+    def test_file_edit_append_via_last_line_anchor(self, file):
+        # Canonical append workflow: anchor against the existing last line and
+        # concatenate the new content in new_string. No coordinates needed.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "first\nlast line\n",
+        )
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="last line\n",
+            new_string="last line\nappended one\nappended two\n",
+        )
+        assert result["matchCount"] == 1
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "first\nlast line\nappended one\nappended two\n"
+
+    def test_file_multi_edit_atomic_batch(self, file):
+        # All edits land or none do. The failing batch leaves the file unchanged.
+        original = "alpha\nbeta\ngamma\n"
+        file.write("TestFileEdit/hello.txt", original)
+
+        edits = [
+            {"oldString": "alpha", "newString": "ALPHA"},
+            {"oldString": "does-not-exist", "newString": "X"},
+        ]
+        with pytest.raises(CelError) as exc_info:
+            file.multi_edit("TestFileEdit/hello.txt", json.dumps(edits))
+        assert "Edit 1" in str(exc_info.value)
+
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == original
+
+        # A clean batch applies both edits in order.
+        edits = [
+            {"oldString": "alpha", "newString": "ALPHA"},
+            {"oldString": "gamma", "newString": "GAMMA"},
+        ]
+        result = file.multi_edit("TestFileEdit/hello.txt", json.dumps(edits))
+        assert result["appliedCount"] == 2
+        assert len(result["affectedLines"]) == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "ALPHA\nbeta\nGAMMA\n"
+
+    def test_file_multi_edit_sequential_application(self, file):
+        # Edit 1 anchors against text produced by edit 0.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "foo()\nresult = foo()\n",
+        )
+        edits = [
+            {"oldString": "foo()", "newString": "bar()", "replaceAll": True},
+            {"oldString": "result = bar()", "newString": "result = bar() + 1"},
+        ]
+        result = file.multi_edit(
+            "TestFileEdit/hello.txt", json.dumps(edits)
+        )
+        assert result["appliedCount"] == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "bar()\nresult = bar() + 1\n"
+
+    def test_file_edit_same_line_replace_all_merges_with_match_count(self, file):
+        # Three hits of "foo" on a single line collapse into one affectedLines
+        # entry whose matchCount reports the per-line total. Top-level matchCount
+        # is still 3; the sum of per-entry matchCounts equals it.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "foo bar foo baz foo\nbeta\n",
+        )
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="foo",
+            new_string="FOO",
+            replace_all=True,
+        )
+        assert result["matchCount"] == 3
+        assert len(result["affectedLines"]) == 1
+        assert result["affectedLines"][0]["from"] == 1
+        assert result["affectedLines"][0]["to"] == 1
+        assert result["affectedLines"][0]["matchCount"] == 3
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "FOO bar FOO baz FOO\nbeta\n"
+
+    def test_file_replace_match_word(self, file):
+        # matchWord constrains literal matches to word boundaries. "log" hits the
+        # two standalone occurrences but leaves "logger" and "mylog" alone.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "log here\nlogger\nmylog\nlog end\n",
+        )
+        result = file.replace(
+            "TestFileEdit/hello.txt",
+            search_text="log",
+            replace_text="LOG",
+            match_word=True,
+        )
+        assert result["replacementCount"] == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "LOG here\nlogger\nmylog\nLOG end\n"
+
+    def test_file_replace_default_is_case_sensitive(self, file):
+        # The default for file.replace is matchCase: true — the right default
+        # for code editing. Without overriding, "hello" matches only the
+        # lowercase occurrence and leaves "Hello" / "HELLO" untouched.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "hello\nHello\nHELLO\n",
+        )
+        result = file.replace(
+            "TestFileEdit/hello.txt",
+            search_text="hello",
+            replace_text="HI",
+        )
+        assert result["replacementCount"] == 1
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "HI\nHello\nHELLO\n"
+
+    def test_file_multi_edit_edit_index_tags_disjoint_batch(self, file):
+        # Input order targets lines 5, 1, 9 (out of file order). affectedLines
+        # comes back sorted ascending by from, but each entry carries an
+        # editIndex pointing back to its position in the input batch, so the
+        # caller can attribute ranges without reverse-engineering the order.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "a\nb\nc\nd\ne\nf\ng\nh\ni\n",
+        )
+        edits = [
+            {"oldString": "e", "newString": "EEE"},
+            {"oldString": "a", "newString": "AAA"},
+            {"oldString": "i", "newString": "III"},
+        ]
+        result = file.multi_edit("TestFileEdit/hello.txt", json.dumps(edits))
+        assert result["appliedCount"] == 3
+        affected = result["affectedLines"]
+        assert len(affected) == 3
+        assert affected[0]["from"] == 1
+        assert affected[0]["editIndex"] == 1
+        assert affected[1]["from"] == 5
+        assert affected[1]["editIndex"] == 0
+        assert affected[2]["from"] == 9
+        assert affected[2]["editIndex"] == 2
+
+    def test_file_edit_affected_lines_include_context_lines(self, file):
+        # contextLines carries the post-edit content of the affected range plus
+        # one surrounding line on each side, so the caller can verify the edit
+        # without a follow-up file.read.
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="Line 3",
+            new_string="THIRD",
+        )
+        assert result["matchCount"] == 1
+        affected = result["affectedLines"][0]
+        assert affected["from"] == 3
+        assert affected["to"] == 3
+        assert affected["contextLines"] == ["Line 2", "THIRD", "Line 4"]

@@ -1,5 +1,6 @@
 using System.Text;
 using Celbridge.Projects;
+using Celbridge.Resources.Helpers;
 using Celbridge.UserInterface;
 
 namespace Celbridge.Resources.Services;

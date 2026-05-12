@@ -91,6 +91,31 @@ public class WriteFileCommandTests
     }
 
     [Test]
+    public async Task ExecuteAsync_PreservesCRLF_WhenOverwritingExistingCRLFFile()
+    {
+        // Existing file was written via file_write_binary (or any other path)
+        // with CRLF line endings. A subsequent file_write with LF content must
+        // detect the existing convention and re-encode to CRLF, so a Windows
+        // user editing the file does not see a "Mixed line endings" diff after
+        // a programmatic write.
+        var resource = new ResourceKey("notes/crlf.txt");
+        var path = Path.Combine(_tempFolder, "crlf.txt");
+        await File.WriteAllBytesAsync(path, "alpha\r\nbeta\r\ngamma\r\n"u8.ToArray());
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Content = "one\ntwo\nthree\n";
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be("one\r\ntwo\r\nthree\r\n");
+        content.Should().NotContain("\r\r");
+    }
+
+    [Test]
     public async Task ExecuteAsync_FailsWhenResolveResourcePathFails()
     {
         var resource = new ResourceKey("invalid/path.md");

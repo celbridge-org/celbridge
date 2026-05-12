@@ -6,7 +6,7 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// MCP tools for file and folder operations: read-only queries plus content writes
-/// (write, apply edits, find/replace, delete lines, write binary).
+/// (write, edit, multi-edit, replace, write binary).
 /// </summary>
 [McpServerToolType]
 public partial class FileTools : AgentToolBase
@@ -72,46 +72,48 @@ public partial class FileTools : AgentToolBase
         return JsonSerializer.Serialize(value, JsonOptions);
     }
 
-    private static Result<List<TextEdit>> ParseEditsJson(string editsJson)
+    /// <summary>
+    /// Reads the post-edit file content as lines so an edit tool can attach a
+    /// small surrounding-context window to each affected range. Returns null
+    /// when the resource cannot be resolved or the file no longer exists, so
+    /// the caller can fall back to ranges without context.
+    /// </summary>
+    private static async Task<string[]?> ReadFileLinesForContextAsync(IResourceRegistry resourceRegistry, ResourceKey fileResourceKey)
     {
-        var edits = new List<TextEdit>();
-        var jsonDocument = JsonDocument.Parse(editsJson);
-
-        if (jsonDocument.RootElement.ValueKind != JsonValueKind.Array)
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
+        if (resolveResult.IsFailure)
         {
-            return Result.Fail("Edits JSON must be an array of edit objects");
+            return null;
+        }
+        var resourcePath = resolveResult.Value;
+
+        if (!File.Exists(resourcePath))
+        {
+            return null;
         }
 
-        int index = 0;
-        foreach (var element in jsonDocument.RootElement.EnumerateArray())
+        return await File.ReadAllLinesAsync(resourcePath);
+    }
+
+    /// <summary>
+    /// Returns the affected lines plus one surrounding line on each side as a
+    /// contextLines window, or null when no file content is available. Uses
+    /// 1-based inclusive line numbers to match the range types in the
+    /// Foundation result records.
+    /// </summary>
+    private static List<string>? BuildContextLines(string[]? fileLines, int fromLine, int toLine)
+    {
+        if (fileLines is null)
         {
-            if (!element.TryGetProperty("line", out var lineElement))
-            {
-                return Result.Fail($"Edit at index {index}: missing required property 'line'");
-            }
-
-            var column = element.TryGetProperty("column", out var columnElement) ? columnElement.GetInt32() : 1;
-
-            if (!element.TryGetProperty("endLine", out var endLineElement))
-            {
-                return Result.Fail($"Edit at index {index}: missing required property 'endLine'");
-            }
-
-            var endColumn = element.TryGetProperty("endColumn", out var endColumnElement) ? endColumnElement.GetInt32() : -1;
-
-            if (!element.TryGetProperty("newText", out var newTextElement))
-            {
-                return Result.Fail($"Edit at index {index}: missing required property 'newText'");
-            }
-
-            var line = lineElement.GetInt32();
-            var endLine = endLineElement.GetInt32();
-            var newText = newTextElement.GetString() ?? string.Empty;
-
-            edits.Add(new TextEdit(line, column, endLine, endColumn, newText));
-            index++;
+            return null;
         }
 
-        return edits;
+        var contextStartIndex = Math.Max(0, fromLine - 2);
+        var contextEndIndex = Math.Min(fileLines.Length - 1, toLine);
+
+        return fileLines
+            .Skip(contextStartIndex)
+            .Take(contextEndIndex - contextStartIndex + 1)
+            .ToList();
     }
 }

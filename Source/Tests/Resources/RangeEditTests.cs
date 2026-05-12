@@ -3,12 +3,12 @@ using Celbridge.Resources;
 namespace Celbridge.Tests.Resources;
 
 [TestFixture]
-public class TextEditTests
+public class RangeEditTests
 {
     [Test]
     public void Insert_CreatesZeroWidthRange()
     {
-        var edit = TextEdit.Insert(line: 5, column: 10, text: "inserted");
+        var edit = RangeEdit.Insert(line: 5, column: 10, text: "inserted");
 
         edit.Line.Should().Be(5);
         edit.Column.Should().Be(10);
@@ -20,7 +20,7 @@ public class TextEditTests
     [Test]
     public void Delete_CreatesRangeWithEmptyText()
     {
-        var edit = TextEdit.Delete(line: 1, column: 1, endLine: 1, endColumn: 5);
+        var edit = RangeEdit.Delete(line: 1, column: 1, endLine: 1, endColumn: 5);
 
         edit.Line.Should().Be(1);
         edit.Column.Should().Be(1);
@@ -32,7 +32,7 @@ public class TextEditTests
     [Test]
     public void Replace_CreatesRangeWithNewText()
     {
-        var edit = TextEdit.Replace(line: 2, column: 3, endLine: 4, endColumn: 8, newText: "replacement");
+        var edit = RangeEdit.Replace(line: 2, column: 3, endLine: 4, endColumn: 8, newText: "replacement");
 
         edit.Line.Should().Be(2);
         edit.Column.Should().Be(3);
@@ -44,7 +44,7 @@ public class TextEditTests
     [Test]
     public void Constructor_CreatesEditDirectly()
     {
-        var edit = new TextEdit(Line: 1, Column: 1, EndLine: 2, EndColumn: 5, NewText: "text");
+        var edit = new RangeEdit(Line: 1, Column: 1, EndLine: 2, EndColumn: 5, NewText: "text");
 
         edit.Line.Should().Be(1);
         edit.Column.Should().Be(1);
@@ -54,16 +54,16 @@ public class TextEditTests
     }
 
     [Test]
-    public void FileEdit_ContainsResourceAndEdits()
+    public void FileRangeEdit_ContainsResourceAndEdits()
     {
         var resource = new ResourceKey("test/file.txt");
-        var edits = new List<TextEdit>
+        var edits = new List<RangeEdit>
         {
-            TextEdit.Insert(1, 1, "first"),
-            TextEdit.Replace(2, 1, 2, 10, "second")
+            RangeEdit.Insert(1, 1, "first"),
+            RangeEdit.Replace(2, 1, 2, 10, "second")
         };
 
-        var fileEdit = new FileEdit(resource, edits);
+        var fileEdit = new FileRangeEdit(resource, edits);
 
         fileEdit.Resource.Should().Be(resource);
         fileEdit.Edits.Should().HaveCount(2);
@@ -73,7 +73,7 @@ public class TextEditTests
     public void Insert_AtEndOfLine_UsesColumnAfterLastCharacter()
     {
         // To append to a line with 20 characters, insert at column 21
-        var edit = TextEdit.Insert(line: 3, column: 21, text: " appended");
+        var edit = RangeEdit.Insert(line: 3, column: 21, text: " appended");
 
         edit.Line.Should().Be(3);
         edit.Column.Should().Be(21);
@@ -85,7 +85,7 @@ public class TextEditTests
     public void Delete_MultipleLines_SpansLineRange()
     {
         // Delete from line 5 column 1 to line 8 column 1 (deletes lines 5-7 entirely)
-        var edit = TextEdit.Delete(line: 5, column: 1, endLine: 8, endColumn: 1);
+        var edit = RangeEdit.Delete(line: 5, column: 1, endLine: 8, endColumn: 1);
 
         edit.Line.Should().Be(5);
         edit.EndLine.Should().Be(8);

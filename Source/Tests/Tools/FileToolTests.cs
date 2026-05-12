@@ -54,89 +54,6 @@ public class FileToolTests
     }
 
     [Test]
-    public async Task ApplyEdits_DispatchesCommandAndReturnsAffectedLineRanges()
-    {
-        var resource = new ResourceKey("notes/edit.md");
-        var path = Path.Combine(_tempFolder, "edit.md");
-        await File.WriteAllLinesAsync(path, new[] { "First", "Replaced", "Third" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        IApplyEditsCommand? capturedCommand = null;
-        IReadOnlyList<AppliedEdit> appliedRanges = new[]
-        {
-            new AppliedEdit(resource, 2, 2)
-        };
-        _commandService
-            .ExecuteAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(
-                Arg.Any<Action<IApplyEditsCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(callInfo =>
-            {
-                var configure = callInfo.Arg<Action<IApplyEditsCommand>?>();
-                if (configure is not null)
-                {
-                    capturedCommand = Substitute.For<IApplyEditsCommand>();
-                    capturedCommand.Edits = new List<FileEdit>();
-                    configure(capturedCommand);
-                }
-                return Task.FromResult(Celbridge.Core.Result<IReadOnlyList<AppliedEdit>>.Ok(appliedRanges));
-            });
-
-        var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Replaced\"}]";
-
-        var tools = new FileTools(_services);
-        var root = ParseResult(await tools.ApplyEdits("notes/edit.md", editsJson));
-
-        capturedCommand.Should().NotBeNull();
-        capturedCommand!.Edits.Should().HaveCount(1);
-        var affected = root.GetProperty("affectedLines");
-        affected.GetArrayLength().Should().Be(1);
-        affected[0].GetProperty("from").GetInt32().Should().Be(2);
-        affected[0].GetProperty("to").GetInt32().Should().Be(2);
-    }
-
-    [Test]
-    public async Task ApplyEdits_ContextWindowCoversFullPostEditRange_ForLineExpandingEdit()
-    {
-        var resource = new ResourceKey("notes/expand.md");
-        var path = Path.Combine(_tempFolder, "expand.md");
-        // Post-edit content: line 2 was replaced with three lines (Two, Inserted, Three).
-        await File.WriteAllLinesAsync(path, new[] { "First", "Two", "Inserted", "Three", "Last" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        IReadOnlyList<AppliedEdit> appliedRanges = new[]
-        {
-            new AppliedEdit(resource, 2, 4)
-        };
-        _commandService
-            .ExecuteAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(
-                Arg.Any<Action<IApplyEditsCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<IReadOnlyList<AppliedEdit>>.Ok(appliedRanges)));
-
-        var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Two\\nInserted\\nThree\"}]";
-
-        var tools = new FileTools(_services);
-        var root = ParseResult(await tools.ApplyEdits("notes/expand.md", editsJson));
-
-        var affected = root.GetProperty("affectedLines");
-        affected.GetArrayLength().Should().Be(1);
-        affected[0].GetProperty("from").GetInt32().Should().Be(2);
-        affected[0].GetProperty("to").GetInt32().Should().Be(4);
-
-        // Context window = 1 line before + the 3 post-edit lines + 1 line after.
-        var contextLines = affected[0].GetProperty("contextLines");
-        var lines = new List<string>();
-        for (var i = 0; i < contextLines.GetArrayLength(); i++)
-        {
-            lines.Add(contextLines[i].GetString()!);
-        }
-        lines.Should().Equal("First", "Two", "Inserted", "Three", "Last");
-    }
-
-    [Test]
     public async Task Write_DispatchesCommand_AndReturnsLineCount()
     {
         var resource = new ResourceKey("notes/new.md");
@@ -169,70 +86,484 @@ public class FileToolTests
     }
 
     [Test]
-    public async Task FindReplace_DispatchesCommand_AndReturnsReplacementCount()
+    public async Task Replace_DispatchesCommand_AndReturnsCountAndAffectedLines()
     {
         var resource = new ResourceKey("notes/find.md");
-        IFindReplaceFileCommand? capturedCommand = null;
+        var path = Path.Combine(_tempFolder, "find.md");
+        await File.WriteAllLinesAsync(path, new[] { "first new", "second new" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IReplaceFileCommand? capturedCommand = null;
+        var affectedRanges = new List<FileEditAffectedRange>
+        {
+            new(1, 1),
+            new(2, 2)
+        };
         _commandService
-            .ExecuteAsync<IFindReplaceFileCommand, int>(
-                Arg.Any<Action<IFindReplaceFileCommand>?>(),
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IFindReplaceFileCommand>?>();
+                var configure = callInfo.Arg<Action<IReplaceFileCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IFindReplaceFileCommand>();
+                    capturedCommand = Substitute.For<IReplaceFileCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result<int>.Ok(7));
+                return Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(2, affectedRanges, false)));
             });
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.FindReplace("notes/find.md", "old", "new"));
+        var root = ParseResult(await tools.Replace("notes/find.md", "old", "new"));
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
         capturedCommand.SearchText.Should().Be("old");
         capturedCommand.ReplaceText.Should().Be("new");
-        root.GetProperty("replacementCount").GetInt32().Should().Be(7);
+        root.GetProperty("replacementCount").GetInt32().Should().Be(2);
+        root.GetProperty("truncated").GetBoolean().Should().BeFalse();
+
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(2);
+        affected[0].GetProperty("from").GetInt32().Should().Be(1);
+        affected[0].GetProperty("contextLines").GetArrayLength().Should().BeGreaterThan(0);
     }
 
     [Test]
-    public async Task DeleteLines_DispatchesCommand_AndReturnsDeletedRange()
+    public async Task Replace_SurfacesTruncatedFlag_AndKeepsContextLinesOnSamples_WhenCommandReportsTruncation()
     {
-        var resource = new ResourceKey("notes/lines.md");
-        var path = Path.Combine(_tempFolder, "lines.md");
-        await File.WriteAllLinesAsync(path, new[] { "Line one", "Line four" });
+        var resource = new ResourceKey("notes/many.md");
+        var path = Path.Combine(_tempFolder, "many.md");
+        await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        IDeleteLinesCommand? capturedCommand = null;
+        var sampledRanges = new List<FileEditAffectedRange>
+        {
+            new(1, 1), new(2, 2), new(3, 3), new(8, 8)
+        };
         _commandService
-            .ExecuteAsync<IDeleteLinesCommand>(
-                Arg.Any<Action<IDeleteLinesCommand>?>(),
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(8, sampledRanges, true))));
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.Replace("notes/many.md", "x", "Y"));
+
+        root.GetProperty("replacementCount").GetInt32().Should().Be(8);
+        root.GetProperty("truncated").GetBoolean().Should().BeTrue();
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(4);
+        // contextLines stays attached to the sample entries — they are the
+        // only verification signal a caller has for a truncated response.
+        affected[0].TryGetProperty("contextLines", out var firstContext).Should().BeTrue();
+        firstContext.GetArrayLength().Should().BeGreaterThan(0);
+        affected[3].TryGetProperty("contextLines", out var lastContext).Should().BeTrue();
+        lastContext.GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Test]
+    public async Task Replace_SurfacesMatchCount_OnMergedAffectedLineEntries()
+    {
+        var resource = new ResourceKey("notes/merged.md");
+        var path = Path.Combine(_tempFolder, "merged.md");
+        await File.WriteAllLinesAsync(path, new[] { "THE THE THE" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var affectedRanges = new List<FileEditAffectedRange>
+        {
+            new(1, 1, 3)
+        };
+        _commandService
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(new ReplaceFileResult(3, affectedRanges, false))));
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.Replace("notes/merged.md", "the", "THE"));
+
+        root.GetProperty("replacementCount").GetInt32().Should().Be(3);
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("matchCount").GetInt32().Should().Be(3);
+    }
+
+    [Test]
+    public async Task Edit_ReturnsAffectedLineRanges_WhenSuccessful()
+    {
+        var resource = new ResourceKey("notes/edit.md");
+        var path = Path.Combine(_tempFolder, "edit.md");
+        await File.WriteAllLinesAsync(path, new[] { "alpha", "BETA", "gamma" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IEditFileCommand? capturedCommand = null;
+        var affectedRanges = new List<FileEditAffectedRange>
+        {
+            new(2, 2)
+        };
+        _commandService
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
                 Arg.Any<string>(),
                 Arg.Any<int>())
             .Returns(callInfo =>
             {
-                var configure = callInfo.Arg<Action<IDeleteLinesCommand>?>();
+                var configure = callInfo.Arg<Action<IEditFileCommand>?>();
                 if (configure is not null)
                 {
-                    capturedCommand = Substitute.For<IDeleteLinesCommand>();
+                    capturedCommand = Substitute.For<IEditFileCommand>();
                     configure(capturedCommand);
                 }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
+                return Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(1, affectedRanges, false)));
             });
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.DeleteLines("notes/lines.md", 2, 3));
+        var root = ParseResult(await tools.Edit("notes/edit.md", "beta", "BETA"));
 
         capturedCommand.Should().NotBeNull();
-        capturedCommand!.Resource.Should().Be(resource);
-        capturedCommand.StartLine.Should().Be(2);
-        capturedCommand.EndLine.Should().Be(3);
-        root.GetProperty("deletedFrom").GetInt32().Should().Be(2);
-        root.GetProperty("deletedTo").GetInt32().Should().Be(3);
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.OldString.Should().Be("beta");
+        capturedCommand.NewString.Should().Be("BETA");
+        capturedCommand.ReplaceAll.Should().BeFalse();
+
+        root.GetProperty("matchCount").GetInt32().Should().Be(1);
+        root.GetProperty("truncated").GetBoolean().Should().BeFalse();
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("from").GetInt32().Should().Be(2);
+        affected[0].GetProperty("to").GetInt32().Should().Be(2);
+
+        var contextLines = affected[0].GetProperty("contextLines");
+        var collected = new List<string>();
+        for (var i = 0; i < contextLines.GetArrayLength(); i++)
+        {
+            collected.Add(contextLines[i].GetString()!);
+        }
+        collected.Should().Equal("alpha", "BETA", "gamma");
+    }
+
+    [Test]
+    public async Task Edit_SurfacesTruncatedFlag_AndKeepsContextLinesOnSamples_WhenCommandReportsTruncation()
+    {
+        var resource = new ResourceKey("notes/many.md");
+        var path = Path.Combine(_tempFolder, "many.md");
+        await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var sampledRanges = new List<FileEditAffectedRange>
+        {
+            new(1, 1), new(2, 2), new(3, 3), new(8, 8)
+        };
+        _commandService
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(8, sampledRanges, true))));
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.Edit("notes/many.md", "x", "Y", replaceAll: true));
+
+        root.GetProperty("matchCount").GetInt32().Should().Be(8);
+        root.GetProperty("truncated").GetBoolean().Should().BeTrue();
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(4);
+        // contextLines stays attached to the sample entries — they are the
+        // only verification signal for a truncated response.
+        affected[0].TryGetProperty("contextLines", out var firstContext).Should().BeTrue();
+        firstContext.GetArrayLength().Should().BeGreaterThan(0);
+        affected[3].TryGetProperty("contextLines", out var lastContext).Should().BeTrue();
+        lastContext.GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Test]
+    public async Task Edit_SurfacesMatchCount_OnMergedAffectedLineEntries()
+    {
+        // Command reports a merged range: three replaceAll hits on line 1
+        // collapsed into one entry with MatchCount=3. The envelope must
+        // surface that count on the affectedLines entry so the agent can
+        // distinguish "one line, three hits" from "one line, one hit".
+        var resource = new ResourceKey("notes/merged.md");
+        var path = Path.Combine(_tempFolder, "merged.md");
+        await File.WriteAllLinesAsync(path, new[] { "FOO bar FOO baz FOO" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var affectedRanges = new List<FileEditAffectedRange>
+        {
+            new(1, 1, 3)
+        };
+        _commandService
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(3, affectedRanges, false))));
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.Edit("notes/merged.md", "foo", "FOO", replaceAll: true));
+
+        root.GetProperty("matchCount").GetInt32().Should().Be(3);
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("from").GetInt32().Should().Be(1);
+        affected[0].GetProperty("matchCount").GetInt32().Should().Be(3);
+    }
+
+    [Test]
+    public async Task Edit_ReturnsToolErrorWithMultiMatchHint_WhenMultipleOccurrences()
+    {
+        _commandService
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<EditFileResult>.Fail(
+                "oldString matched 3 occurrences; add surrounding context to disambiguate, or set replaceAll: true")));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Edit("notes/edit.md", "x", "y");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("3 occurrences");
+        text.Should().Contain("replaceAll");
+    }
+
+    [Test]
+    public async Task MultiEdit_IncludesContextLines_ForNonTruncatedEdits()
+    {
+        var resource = new ResourceKey("notes/multi.md");
+        var path = Path.Combine(_tempFolder, "multi.md");
+        await File.WriteAllLinesAsync(path, new[] { "A", "two", "B", "C", "five" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        IMultiEditFileCommand? capturedCommand = null;
+        var affectedRanges = new List<MultiEditFileAffectedRange>
+        {
+            new(0, 1, 1),
+            new(1, 3, 4)
+        };
+        var editSummaries = new List<MultiEditFileEditSummary>
+        {
+            new(1, false),
+            new(1, false)
+        };
+        _commandService
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IMultiEditFileCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IMultiEditFileCommand>();
+                    capturedCommand.Edits = new List<FileEditOperation>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(new MultiEditFileResult(2, editSummaries, affectedRanges)));
+            });
+
+        var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"b\",\"newString\":\"B\\nC\"}]";
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.MultiEdit("notes/multi.md", editsJson));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.FileResource.Should().Be(resource);
+        capturedCommand.Edits.Should().HaveCount(2);
+
+        root.GetProperty("appliedCount").GetInt32().Should().Be(2);
+
+        var edits = root.GetProperty("edits");
+        edits.GetArrayLength().Should().Be(2);
+        edits[0].GetProperty("matchCount").GetInt32().Should().Be(1);
+        edits[0].GetProperty("truncated").GetBoolean().Should().BeFalse();
+
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(2);
+        affected[0].GetProperty("editIndex").GetInt32().Should().Be(0);
+        affected[1].GetProperty("editIndex").GetInt32().Should().Be(1);
+        // contextLines is included for non-truncated edits.
+        affected[0].TryGetProperty("contextLines", out var ctx0).Should().BeTrue();
+        ctx0.GetArrayLength().Should().BeGreaterThan(0);
+        affected[1].TryGetProperty("contextLines", out _).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task MultiEdit_SurfacesMatchCount_OnMergedAffectedLineEntries()
+    {
+        var resource = new ResourceKey("notes/merged.md");
+        var path = Path.Combine(_tempFolder, "merged.md");
+        await File.WriteAllLinesAsync(path, new[] { "FOO bar FOO" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var affectedRanges = new List<MultiEditFileAffectedRange>
+        {
+            new(0, 1, 1, 2)
+        };
+        var editSummaries = new List<MultiEditFileEditSummary>
+        {
+            new(2, false)
+        };
+        _commandService
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IMultiEditFileCommand>?>();
+                if (configure is not null)
+                {
+                    var captured = Substitute.For<IMultiEditFileCommand>();
+                    captured.Edits = new List<FileEditOperation>();
+                    configure(captured);
+                }
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(new MultiEditFileResult(1, editSummaries, affectedRanges)));
+            });
+
+        var editsJson = "[{\"oldString\":\"foo\",\"newString\":\"FOO\",\"replaceAll\":true}]";
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.MultiEdit("notes/merged.md", editsJson));
+
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(1);
+        affected[0].GetProperty("editIndex").GetInt32().Should().Be(0);
+        affected[0].GetProperty("matchCount").GetInt32().Should().Be(2);
+    }
+
+    [Test]
+    public async Task MultiEdit_KeepsContextLinesOnSamples_ForTruncatedEdits()
+    {
+        var resource = new ResourceKey("notes/multi.md");
+        var path = Path.Combine(_tempFolder, "multi.md");
+        await File.WriteAllLinesAsync(path, new[] { "Y", "Y", "Y", "Y", "Y", "Y", "Y", "Y" });
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var affectedRanges = new List<MultiEditFileAffectedRange>
+        {
+            new(0, 1, 1), new(0, 2, 2), new(0, 3, 3), new(0, 8, 8)
+        };
+        var editSummaries = new List<MultiEditFileEditSummary>
+        {
+            new(8, true)
+        };
+        _commandService
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(new MultiEditFileResult(1, editSummaries, affectedRanges))));
+
+        var editsJson = "[{\"oldString\":\"x\",\"newString\":\"Y\",\"replaceAll\":true}]";
+
+        var tools = new FileTools(_services);
+        var root = ParseResult(await tools.MultiEdit("notes/multi.md", editsJson));
+
+        root.GetProperty("appliedCount").GetInt32().Should().Be(1);
+        var edits = root.GetProperty("edits");
+        edits[0].GetProperty("truncated").GetBoolean().Should().BeTrue();
+
+        var affected = root.GetProperty("affectedLines");
+        affected.GetArrayLength().Should().Be(4);
+        // contextLines stays attached to sample entries — they are the only
+        // verification signal for a truncated edit's contribution.
+        affected[0].TryGetProperty("contextLines", out var firstContext).Should().BeTrue();
+        firstContext.GetArrayLength().Should().BeGreaterThan(0);
+        affected[3].TryGetProperty("contextLines", out var lastContext).Should().BeTrue();
+        lastContext.GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Test]
+    public async Task MultiEdit_ReturnsToolErrorNamingFailingEditIndex_OnPartialFail()
+    {
+        _commandService
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Fail(
+                "Edit 1: oldString not found in file. Tried to match: 'nope'")));
+
+        var editsJson = "[{\"oldString\":\"a\",\"newString\":\"A\"},{\"oldString\":\"nope\",\"newString\":\"x\"}]";
+
+        var tools = new FileTools(_services);
+        var result = await tools.MultiEdit("notes/multi.md", editsJson);
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("Edit 1");
+        text.Should().Contain("not found");
+    }
+
+    [Test]
+    public async Task MultiEdit_EmptyArray_SkipsCommandAndReturnsZeroAppliedCount()
+    {
+        var tools = new FileTools(_services);
+
+        IMultiEditFileCommand? capturedCommand = null;
+        _commandService
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                var configure = callInfo.Arg<Action<IMultiEditFileCommand>?>();
+                if (configure is not null)
+                {
+                    capturedCommand = Substitute.For<IMultiEditFileCommand>();
+                    capturedCommand.Edits = new List<FileEditOperation>();
+                    configure(capturedCommand);
+                }
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(
+                    new MultiEditFileResult(0, new List<MultiEditFileEditSummary>(), new List<MultiEditFileAffectedRange>())));
+            });
+
+        var root = ParseResult(await tools.MultiEdit("notes/multi.md", "[]"));
+
+        capturedCommand.Should().NotBeNull();
+        capturedCommand!.Edits.Should().BeEmpty();
+        root.GetProperty("appliedCount").GetInt32().Should().Be(0);
+        root.GetProperty("edits").GetArrayLength().Should().Be(0);
+        root.GetProperty("affectedLines").GetArrayLength().Should().Be(0);
+    }
+
+    [Test]
+    public async Task Grep_FilesParameter_RejectsGlobString_WithActionableError()
+    {
+        // Agent passed a glob string where a JSON array of resource keys is
+        // required. The error must name the expected shape and point at the
+        // include parameter for glob-based scoping; surfacing the raw
+        // JsonException ("'w' is an invalid start of a value") tells the
+        // caller something is wrong but not what to type instead.
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(searchTerm: "needle", files: "workspace/*.cs");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("files takes a JSON array");
+        text.Should().Contain("include");
+    }
+
+    [Test]
+    public async Task Grep_FilesParameter_RejectsMalformedJsonArray_WithExampleShape()
+    {
+        var tools = new FileTools(_services);
+        var result = await tools.Grep(searchTerm: "needle", files: "[\"folder/a.txt\",");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("Invalid JSON array for files");
+        text.Should().Contain("Expected a JSON array of resource keys");
     }
 
     [Test]

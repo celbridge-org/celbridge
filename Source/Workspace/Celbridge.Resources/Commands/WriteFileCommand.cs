@@ -35,8 +35,8 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
         var isNewFile = !File.Exists(resourcePath);
 
-        // Preserve existing line endings when overwriting. Use the platform
-        // default for new files.
+        // Preserve existing line endings when overwriting. Use LF for new
+        // files regardless of host platform (see LineEndingHelper).
         string targetSeparator;
         if (isNewFile)
         {

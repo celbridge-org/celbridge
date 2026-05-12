@@ -19,10 +19,10 @@ public partial class SearchPanelViewModel
 
         try
         {
-            var textEdits = BuildTextEditsForMatches(fileResult.Matches);
+            var textEdits = BuildRangeEditsForMatches(fileResult.Matches);
 
-            var fileEdit = new FileEdit(fileResult.Resource, textEdits);
-            var fileEdits = new List<FileEdit> { fileEdit };
+            var fileEdit = new FileRangeEdit(fileResult.Resource, textEdits);
+            var fileEdits = new List<FileRangeEdit> { fileEdit };
 
             await ApplyEditsAsync(fileEdits);
 
@@ -59,10 +59,10 @@ public partial class SearchPanelViewModel
         {
             var fileResult = matchLine.Parent;
 
-            var textEdit = CreateTextEditForMatch(matchLine);
+            var textEdit = CreateRangeEditForMatch(matchLine);
 
-            var fileEdit = new FileEdit(fileResult.Resource, new List<TextEdit> { textEdit });
-            var fileEdits = new List<FileEdit> { fileEdit };
+            var fileEdit = new FileRangeEdit(fileResult.Resource, new List<RangeEdit> { textEdit });
+            var fileEdits = new List<FileRangeEdit> { fileEdit };
 
             await ApplyEditsAsync(fileEdits);
 
@@ -96,12 +96,12 @@ public partial class SearchPanelViewModel
                 .GroupBy(m => m.Parent.Resource)
                 .ToList();
 
-            var fileEdits = new List<FileEdit>();
+            var fileEdits = new List<FileRangeEdit>();
 
             foreach (var fileGroup in matchesByFile)
             {
-                var textEdits = BuildTextEditsForMatches(fileGroup);
-                var fileEdit = new FileEdit(fileGroup.Key, textEdits);
+                var textEdits = BuildRangeEditsForMatches(fileGroup);
+                var fileEdit = new FileRangeEdit(fileGroup.Key, textEdits);
                 fileEdits.Add(fileEdit);
             }
 
@@ -170,7 +170,7 @@ public partial class SearchPanelViewModel
 
             progressToken = _dialogService.AcquireProgressDialog(progressTitle);
 
-            var fileEdits = BuildFileEditsForResults(allResults);
+            var fileEdits = BuildFileRangeEditsForResults(allResults);
 
             await ApplyEditsAsync(fileEdits);
 
@@ -186,25 +186,25 @@ public partial class SearchPanelViewModel
         }
     }
 
-    private List<TextEdit> BuildTextEditsForMatches(IEnumerable<SearchMatchLineViewModel> matches)
+    private List<RangeEdit> BuildRangeEditsForMatches(IEnumerable<SearchMatchLineViewModel> matches)
     {
         return matches
             .OrderByDescending(m => m.LineNumber)
             .ThenByDescending(m => m.OriginalMatchStart)
-            .Select(CreateTextEditForMatch)
+            .Select(CreateRangeEditForMatch)
             .ToList();
     }
 
-    private List<FileEdit> BuildFileEditsForResults(SearchResults results)
+    private List<FileRangeEdit> BuildFileRangeEditsForResults(SearchResults results)
     {
-        var fileEdits = new List<FileEdit>();
+        var fileEdits = new List<FileRangeEdit>();
 
         foreach (var fileResult in results.FileResults)
         {
             var textEdits = fileResult.Matches
                 .OrderByDescending(m => m.LineNumber)
                 .ThenByDescending(m => m.OriginalMatchStart)
-                .Select(m => new TextEdit(
+                .Select(m => new RangeEdit(
                     Line: m.LineNumber,
                     Column: m.OriginalMatchStart + 1,
                     EndLine: m.LineNumber,
@@ -212,16 +212,16 @@ public partial class SearchPanelViewModel
                     NewText: ReplaceText))
                 .ToList();
 
-            var fileEdit = new FileEdit(fileResult.Resource, textEdits);
+            var fileEdit = new FileRangeEdit(fileResult.Resource, textEdits);
             fileEdits.Add(fileEdit);
         }
 
         return fileEdits;
     }
 
-    private TextEdit CreateTextEditForMatch(SearchMatchLineViewModel match)
+    private RangeEdit CreateRangeEditForMatch(SearchMatchLineViewModel match)
     {
-        return new TextEdit(
+        return new RangeEdit(
             Line: match.LineNumber,
             Column: match.OriginalMatchStart + 1,
             EndLine: match.LineNumber,
@@ -229,9 +229,9 @@ public partial class SearchPanelViewModel
             NewText: ReplaceText);
     }
 
-    private async Task ApplyEditsAsync(List<FileEdit> fileEdits)
+    private async Task ApplyEditsAsync(List<FileRangeEdit> fileEdits)
     {
-        await _commandService.ExecuteAsync<IApplyEditsCommand>(command =>
+        await _commandService.ExecuteAsync<IApplyRangeEditsCommand>(command =>
         {
             command.Edits = fileEdits;
         });

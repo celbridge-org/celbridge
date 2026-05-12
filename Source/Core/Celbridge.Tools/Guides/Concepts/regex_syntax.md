@@ -1,6 +1,6 @@
 # Regex syntax
 
-Tools that accept regex patterns use **.NET `System.Text.RegularExpressions` syntax**. This applies to `file_grep` (with `useRegex: true`), `file_find_replace` (with `useRegex: true`), and any other tool that documents its `pattern` parameter as a regex.
+Tools that accept regex patterns use **.NET `System.Text.RegularExpressions` syntax**. This applies to `file_grep` (with `useRegex: true`), `file_replace` (with `useRegex: true`), and any other tool that documents its `pattern` parameter as a regex.
 
 ## Key differences from other flavours
 

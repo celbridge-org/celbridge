@@ -3,7 +3,6 @@ and trailing-newline state, and that file.write picks the platform default
 when creating a new file.
 """
 import json
-import os
 import re
 
 import pytest
@@ -26,15 +25,18 @@ def workspace(explorer, document):
 
 class TestFileLineEndings:
 
-    def test_apply_edits_preserves_crlf(self, file):
+    def test_edit_preserves_crlf(self, file):
         write_with_line_endings(
             file,
             "TestLineEndings/crlf.txt",
             "Line 1\nLine 2\nLine 3\n",
             "\r\n",
         )
-        edits = [{"line": 2, "endLine": 2, "newText": "Replaced"}]
-        file.apply_edits("TestLineEndings/crlf.txt", json.dumps(edits))
+        file.edit(
+            "TestLineEndings/crlf.txt",
+            old_string="Line 2",
+            new_string="Replaced",
+        )
 
         content = file.read("TestLineEndings/crlf.txt")["content"]
         assert "\r\n" in content
@@ -43,27 +45,30 @@ class TestFileLineEndings:
         # No lone \n alongside CRLF.
         assert not re.search(r"(?<!\r)\n", content)
 
-    def test_apply_edits_preserves_lf(self, file):
+    def test_edit_preserves_lf(self, file):
         write_with_line_endings(
             file,
             "TestLineEndings/lf.txt",
             "Line 1\nLine 2\nLine 3\n",
             "\n",
         )
-        edits = [{"line": 2, "endLine": 2, "newText": "Replaced"}]
-        file.apply_edits("TestLineEndings/lf.txt", json.dumps(edits))
+        file.edit(
+            "TestLineEndings/lf.txt",
+            old_string="Line 2",
+            new_string="Replaced",
+        )
 
         content = file.read("TestLineEndings/lf.txt")["content"]
         assert "\r" not in content
 
-    def test_find_replace_preserves_crlf(self, file):
+    def test_replace_preserves_crlf(self, file):
         write_with_line_endings(
             file,
             "TestLineEndings/crlf.txt",
             "alpha\nbeta\ngamma\n",
             "\r\n",
         )
-        file.find_replace(
+        file.replace(
             "TestLineEndings/crlf.txt",
             search_text="beta",
             replace_text="BETA",
@@ -74,47 +79,50 @@ class TestFileLineEndings:
         assert "\r\n" in content
         assert "\r\r" not in content
 
-    def test_delete_lines_preserves_crlf(self, file):
+    def test_multi_edit_preserves_crlf(self, file):
         write_with_line_endings(
             file,
             "TestLineEndings/crlf.txt",
             "one\ntwo\nthree\nfour\n",
             "\r\n",
         )
-        file.delete_lines(
-            "TestLineEndings/crlf.txt", start_line=2, end_line=3
+        edits = [
+            {"oldString": "two", "newString": "TWO"},
+            {"oldString": "four", "newString": "FOUR"},
+        ]
+        file.multi_edit(
+            "TestLineEndings/crlf.txt", json.dumps(edits)
         )
 
         content = file.read("TestLineEndings/crlf.txt")["content"]
-        assert "two" not in content
-        assert "three" not in content
+        assert "TWO" in content
+        assert "FOUR" in content
         assert "\r\n" in content
         assert "\r\r" not in content
 
-    def test_write_new_file_uses_platform_default(self, file):
-        # file.write with input that uses \n separators should write the
-        # host platform's line endings to a brand-new file.
+    def test_write_new_file_uses_lf(self, file):
+        # file.write defaults to LF for new files regardless of host platform.
+        # Matches cross-platform toolchain expectations and what most agents
+        # produce by default.
         file.write(
             "TestLineEndings/new.txt", "first\nsecond\nthird\n"
         )
 
         content = file.read("TestLineEndings/new.txt")["content"]
-        assert os.linesep in content
-        if os.linesep == "\r\n":
-            assert not re.search(r"(?<!\r)\n", content)
-        else:
-            assert "\r" not in content
+        assert "\n" in content
+        assert "\r" not in content
 
-    def test_apply_edits_preserves_no_trailing_newline(self, file):
+    def test_edit_preserves_no_trailing_newline(self, file):
         write_with_line_endings(
             file,
             "TestLineEndings/no_trailing.txt",
             "alpha\nbeta\ngamma",  # no trailing \n
             "\r\n",
         )
-        edits = [{"line": 2, "endLine": 2, "newText": "BETA"}]
-        file.apply_edits(
-            "TestLineEndings/no_trailing.txt", json.dumps(edits)
+        file.edit(
+            "TestLineEndings/no_trailing.txt",
+            old_string="beta",
+            new_string="BETA",
         )
 
         content = file.read("TestLineEndings/no_trailing.txt")["content"]
@@ -122,16 +130,17 @@ class TestFileLineEndings:
         assert not content.endswith("\r")
         assert "BETA" in content
 
-    def test_apply_edits_preserves_trailing_newline(self, file):
+    def test_edit_preserves_trailing_newline(self, file):
         write_with_line_endings(
             file,
             "TestLineEndings/with_trailing.txt",
             "alpha\nbeta\ngamma\n",  # trailing \n
             "\r\n",
         )
-        edits = [{"line": 2, "endLine": 2, "newText": "BETA"}]
-        file.apply_edits(
-            "TestLineEndings/with_trailing.txt", json.dumps(edits)
+        file.edit(
+            "TestLineEndings/with_trailing.txt",
+            old_string="beta",
+            new_string="BETA",
         )
 
         content = file.read("TestLineEndings/with_trailing.txt")["content"]

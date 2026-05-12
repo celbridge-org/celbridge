@@ -52,7 +52,7 @@ Recommended sections, in order. Drop any that does not apply:
 
 Per-tool guides do **not** carry a `## See also` section. Empirically the agent does not chase pointers — it reaches for what is already in context. Use `[RelatedGuides]` to attach the concepts and troubleshooters the agent will actually need, and rely on the namespace guide to introduce sibling tools.
 
-Match the structure of `file_grep.md`, `file_apply_edits.md`, or `spreadsheet_read_sheet.md` if in doubt.
+Match the structure of `file_grep.md`, `file_edit.md`, or `spreadsheet_read_sheet.md` if in doubt.
 
 ### Namespaces/
 
@@ -102,7 +102,7 @@ Renaming a guide file is a breaking change. Update every `[RelatedGuides]` refer
 
 Strong examples to copy structure from when authoring a new guide:
 
-- **Tools** — `file_grep.md` (parameter-heavy with response-size cap), `file_apply_edits.md` (batch shape with edge cases), `spreadsheet_read_sheet.md` (compact param sections, headers-mode interaction).
+- **Tools** — `file_grep.md` (parameter-heavy with response-size cap), `file_multi_edit.md` (batch shape with edge cases), `spreadsheet_read_sheet.md` (compact param sections, headers-mode interaction).
 - **Namespaces** — `file.md`, `spreadsheet.md`.
 - **Concepts** — `resource_keys.md`, `regex_syntax.md`, `spreadsheet_a1_notation.md`.
 - **Troubleshooters** — `troubleshoot_resource_key.md`.
