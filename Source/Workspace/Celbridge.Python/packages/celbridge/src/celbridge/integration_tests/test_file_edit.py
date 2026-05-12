@@ -217,3 +217,99 @@ class TestFileEdit:
         assert result["appliedCount"] == 2
         disk = file.read("TestFileEdit/hello.txt")
         assert disk["content"] == "bar()\nresult = bar() + 1\n"
+
+    def test_file_edit_same_line_replace_all_merges_with_match_count(self, file):
+        # Three hits of "foo" on a single line collapse into one affectedLines
+        # entry whose matchCount reports the per-line total. Top-level matchCount
+        # is still 3; the sum of per-entry matchCounts equals it.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "foo bar foo baz foo\nbeta\n",
+        )
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="foo",
+            new_string="FOO",
+            replace_all=True,
+        )
+        assert result["matchCount"] == 3
+        assert len(result["affectedLines"]) == 1
+        assert result["affectedLines"][0]["from"] == 1
+        assert result["affectedLines"][0]["to"] == 1
+        assert result["affectedLines"][0]["matchCount"] == 3
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "FOO bar FOO baz FOO\nbeta\n"
+
+    def test_file_replace_match_word(self, file):
+        # matchWord constrains literal matches to word boundaries. "log" hits the
+        # two standalone occurrences but leaves "logger" and "mylog" alone.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "log here\nlogger\nmylog\nlog end\n",
+        )
+        result = file.replace(
+            "TestFileEdit/hello.txt",
+            search_text="log",
+            replace_text="LOG",
+            match_word=True,
+        )
+        assert result["replacementCount"] == 2
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "LOG here\nlogger\nmylog\nLOG end\n"
+
+    def test_file_replace_default_is_case_sensitive(self, file):
+        # The default for file.replace is matchCase: true — the right default
+        # for code editing. Without overriding, "hello" matches only the
+        # lowercase occurrence and leaves "Hello" / "HELLO" untouched.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "hello\nHello\nHELLO\n",
+        )
+        result = file.replace(
+            "TestFileEdit/hello.txt",
+            search_text="hello",
+            replace_text="HI",
+        )
+        assert result["replacementCount"] == 1
+        disk = file.read("TestFileEdit/hello.txt")
+        assert disk["content"] == "HI\nHello\nHELLO\n"
+
+    def test_file_multi_edit_edit_index_tags_disjoint_batch(self, file):
+        # Input order targets lines 5, 1, 9 (out of file order). affectedLines
+        # comes back sorted ascending by from, but each entry carries an
+        # editIndex pointing back to its position in the input batch, so the
+        # caller can attribute ranges without reverse-engineering the order.
+        file.write(
+            "TestFileEdit/hello.txt",
+            "a\nb\nc\nd\ne\nf\ng\nh\ni\n",
+        )
+        edits = [
+            {"oldString": "e", "newString": "EEE"},
+            {"oldString": "a", "newString": "AAA"},
+            {"oldString": "i", "newString": "III"},
+        ]
+        result = file.multi_edit("TestFileEdit/hello.txt", json.dumps(edits))
+        assert result["appliedCount"] == 3
+        affected = result["affectedLines"]
+        assert len(affected) == 3
+        assert affected[0]["from"] == 1
+        assert affected[0]["editIndex"] == 1
+        assert affected[1]["from"] == 5
+        assert affected[1]["editIndex"] == 0
+        assert affected[2]["from"] == 9
+        assert affected[2]["editIndex"] == 2
+
+    def test_file_edit_affected_lines_include_context_lines(self, file):
+        # contextLines carries the post-edit content of the affected range plus
+        # one surrounding line on each side, so the caller can verify the edit
+        # without a follow-up file.read.
+        result = file.edit(
+            "TestFileEdit/hello.txt",
+            old_string="Line 3",
+            new_string="THIRD",
+        )
+        assert result["matchCount"] == 1
+        affected = result["affectedLines"][0]
+        assert affected["from"] == 3
+        assert affected["to"] == 3
+        assert affected["contextLines"] == ["Line 2", "THIRD", "Line 4"]
