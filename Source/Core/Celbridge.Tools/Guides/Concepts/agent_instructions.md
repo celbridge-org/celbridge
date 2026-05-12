@@ -22,7 +22,7 @@ Each auto-attached block opens with a `#` heading naming what it is (`# file_gre
 ## The conventions you will trip on
 
 - **Resource keys are forward-slash paths relative to the project content root**, never backslashes or absolute paths. `Scripts/hello.py` is a file; `Data` is a folder; the empty string is the project root. The `resource_keys` concept guide auto-attaches with most tools and carries the full rules.
-- **Edits write straight to disk.** `file_apply_edits`, `file_write`, `file_find_replace`, `file_delete_lines`, and `file_write_binary` save immediately. If the document is open, the editor reloads from disk and Monaco's undo history is wiped, so Ctrl+Z will not revert your edit. The `file_changes` and `editing_documents` guides are auto-attached on first use of those tools.
+- **Edits write straight to disk.** `file_edit`, `file_multi_edit`, `file_replace`, `file_write`, and `file_write_binary` save immediately. If the document is open, the editor reloads from disk and Monaco's undo history is wiped, so Ctrl+Z will not revert your edit. The `file_changes` and `editing_documents` guides are auto-attached on first use of those tools.
 - **Resolve ambiguous file references against the user's current view first**, not by searching the whole project. Active document via `document_get_state`, then other open documents, then the explorer selection via `explorer_get_state`. Only fall back to project-wide grep when these don't resolve. The `workspace_panels` concept guide carries the details.
 
 ## Silent-failure rules to watch for
@@ -39,10 +39,10 @@ A single tool method is exposed under three names — the MCP form, the Python f
 
 | Surface | Form | Example |
 |---|---|---|
-| MCP tool name (in `tools/list`) | `<namespace>_<snake_method>` | `file_apply_edits` |
-| Python REPL proxy (`cel.*`) | `cel.<namespace>.<snake_method>(...)` | `cel.file.apply_edits(...)` |
-| JavaScript call site (in a package) | `cel.<namespace>.<camelMethod>(...)` | `cel.file.applyEdits(...)` |
-| `requires_tools` manifest entry | `<namespace>.<snake_method>` | `"file.apply_edits"` |
+| MCP tool name (in `tools/list`) | `<namespace>_<snake_method>` | `file_replace` |
+| Python REPL proxy (`cel.*`) | `cel.<namespace>.<snake_method>(...)` | `cel.file.replace(...)` |
+| JavaScript call site (in a package) | `cel.<namespace>.<camelMethod>(...)` | `cel.file.replace(...)` |
+| `requires_tools` manifest entry | `<namespace>.<snake_method>` | `"file.replace"` |
 
 The dot-form alias used in manifests matches the MCP tool name after swapping the first underscore for a dot. The JavaScript proxy converts the method portion to camelCase at the call site automatically; the manifest does **not**.
 
@@ -59,7 +59,7 @@ cel.document.open("readme.md")
 cel.app.log("Processing complete")
 ```
 
-- **Parameters use snake_case.** `cel.file.apply_edits(...)`, not `applyEdits`.
+- **Parameters use snake_case.** `cel.file.multi_edit(...)`, not `multiEdit`.
 - **JSON results are returned as dicts.** Tools that return structured payloads (e.g. `app.get_state`, `document.get_state`) deserialise into native Python dicts.
 - **Errors raise `CelError`** with a message string. The REPL is configured to display these without a traceback so the message is the focus.
 - **Methods marked `-> ok`** return the string `'ok'` on success or raise `CelError`.

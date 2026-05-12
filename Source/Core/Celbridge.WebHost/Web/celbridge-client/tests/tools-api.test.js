@@ -112,7 +112,7 @@ describe('buildCelProxy', () => {
     it('maps positional arguments to parameter names in declaration order', () => {
         const calls = [];
         const proxy = buildCelProxy(
-            [descriptor('file.find_replace', [
+            [descriptor('file.replace', [
                 { name: 'fileResource', type: 'string' },
                 { name: 'searchText', type: 'string' },
                 { name: 'matchCase', type: 'boolean' }
@@ -120,7 +120,7 @@ describe('buildCelProxy', () => {
             (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
         );
 
-        return proxy.file.findReplace('a.md', 'foo', false).then(() => {
+        return proxy.file.replace('a.md', 'foo', false).then(() => {
             expect(calls[0].args).toEqual({
                 fileResource: 'a.md',
                 searchText: 'foo',
@@ -148,15 +148,15 @@ describe('buildCelProxy', () => {
     it('JSON-stringifies arrays passed to string-typed parameters', () => {
         const calls = [];
         const proxy = buildCelProxy(
-            [descriptor('file.apply_edits', [
+            [descriptor('file.multi_edit', [
                 { name: 'fileResource', type: 'string' },
                 { name: 'editsJson', type: 'string' }
             ])],
             (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
         );
 
-        const edits = [{ line: 1, endLine: 1, newText: 'hi' }];
-        return proxy.file.applyEdits('a.md', edits).then(() => {
+        const edits = [{ oldString: 'a', newString: 'A' }];
+        return proxy.file.multiEdit('a.md', edits).then(() => {
             expect(calls[0].args.editsJson).toBe(JSON.stringify(edits));
         });
     });

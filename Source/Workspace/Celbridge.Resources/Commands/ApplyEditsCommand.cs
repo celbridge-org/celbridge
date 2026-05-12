@@ -15,8 +15,6 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
     public List<FileEdit> Edits { get; set; } = new();
 
-    public IReadOnlyList<AppliedEdit> ResultValue { get; private set; } = Array.Empty<AppliedEdit>();
-
     public ApplyEditsCommand(
         ILogger<ApplyEditsCommand> logger,
         IStringLocalizer stringLocalizer,
@@ -40,7 +38,6 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
         var failedResources = new List<ResourceKey>();
         var failureDetails = new List<string>();
-        var appliedRanges = new List<AppliedEdit>();
 
         foreach (var fileEdit in Edits)
         {
@@ -52,10 +49,6 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
                 failedResources.Add(resource);
                 failureDetails.Add($"{resource}: {applyResult.FirstErrorMessage}");
-            }
-            else
-            {
-                appliedRanges.AddRange(applyResult.Value);
             }
         }
 
@@ -87,25 +80,24 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             return Result.Fail(errorMessage);
         }
 
-        ResultValue = appliedRanges;
         return Result.Ok();
     }
 
-    private static async Task<Result<IReadOnlyList<AppliedEdit>>> ApplyEditsToDisk(IResourceService resourceService, ResourceKey resource, List<TextEdit> edits)
+    private static async Task<Result> ApplyEditsToDisk(IResourceService resourceService, ResourceKey resource, List<TextEdit> edits)
     {
         var resourceRegistry = resourceService.Registry;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<IReadOnlyList<AppliedEdit>>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return Result<IReadOnlyList<AppliedEdit>>.Fail($"File not found: '{resource}'");
+            return Result.Fail($"File not found: '{resource}'");
         }
 
         // Read the file's existing content to capture its line-ending style and
@@ -119,44 +111,15 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         // at write time based on originalEndsWithNewline.
         var lines = LineEndingHelper.SplitToContentLines(originalContent);
 
-        // Capture the original file line count before any edits land. Append
-        // edits (line == endLine == -1) compute their post-edit ranges from
-        // this anchor plus the cumulative line delta of earlier edits.
-        var originalFileLineCount = lines.Count;
-
         // Sort edits in reverse order (bottom-to-top, right-to-left) so earlier edits
-        // don't shift the positions of later edits as we apply them. Append edits
-        // (Line == -1) sort last and run after every in-range edit; since they only
-        // grow the tail of the file, ordering relative to other appends does not matter.
+        // don't shift the positions of later edits as we apply them.
         var sortedEdits = edits
             .OrderByDescending(e => e.Line)
             .ThenByDescending(e => e.Column)
             .ToList();
 
-        // Track the post-edit line count produced by each edit. Pairing the edit
-        // with its newLineCount lets us derive each edit's post-edit line range
-        // by walking the edits in original (forward) order and accumulating the
-        // line-count delta from earlier edits.
-        var applied = new List<(TextEdit Edit, int NewLineCount)>(sortedEdits.Count);
-
         foreach (var edit in sortedEdits)
         {
-            // -1 in both Line and EndLine is the append sentinel: insert NewText
-            // (split into lines) after the current last line. No existing content
-            // is replaced.
-            if (edit.Line == -1 && edit.EndLine == -1)
-            {
-                var appendedLines = edit.NewText.Split('\n');
-                lines.AddRange(appendedLines);
-                applied.Add((edit, appendedLines.Length));
-                continue;
-            }
-
-            if (edit.Line == -1 || edit.EndLine == -1)
-            {
-                return Result<IReadOnlyList<AppliedEdit>>.Fail("Append sentinel requires both 'line' and 'endLine' to be -1");
-            }
-
             // Convert from 1-based to 0-based indices
             var startLine = edit.Line - 1;
             var startColumn = edit.Column - 1;
@@ -164,12 +127,12 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
             if (startLine < 0 || startLine >= lines.Count)
             {
-                return Result<IReadOnlyList<AppliedEdit>>.Fail($"Edit start line {edit.Line} is out of range (file has {lines.Count} lines)");
+                return Result.Fail($"Edit start line {edit.Line} is out of range (file has {lines.Count} lines)");
             }
 
             if (endLine < 0 || endLine >= lines.Count)
             {
-                return Result<IReadOnlyList<AppliedEdit>>.Fail($"Edit end line {edit.EndLine} is out of range (file has {lines.Count} lines)");
+                return Result.Fail($"Edit end line {edit.EndLine} is out of range (file has {lines.Count} lines)");
             }
 
             // EndColumn of -1 is a sentinel meaning "end of line": no text is preserved
@@ -186,17 +149,18 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
                 ? lines[endLine].Substring(endColumn)
                 : string.Empty;
 
-            // Combine: before + new text + after. NewText from MCP callers uses
-            // \n separators; splitting on \n produces the new logical lines.
-            var newContent = beforeEdit + edit.NewText + afterEdit;
+            // Normalise NewText to a lone-\n separator so splitting on \n yields
+            // clean content-only lines that can be joined back with the file's
+            // existing separator without producing \r\r\n sequences. Same idiom
+            // as WriteFileCommand and FindReplaceFileCommand.
+            var normalisedNewText = LineEndingHelper.ConvertLineEndings(edit.NewText, "\n");
+            var newContent = beforeEdit + normalisedNewText + afterEdit;
             var newLines = newContent.Split('\n');
 
             // Remove the original lines in the edit range and insert the new lines
             var lineCount = endLine - startLine + 1;
             lines.RemoveRange(startLine, lineCount);
             lines.InsertRange(startLine, newLines);
-
-            applied.Add((edit, newLines.Length));
         }
 
         var output = string.Join(originalSeparator, lines);
@@ -208,55 +172,10 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         var writeResult = await resourceService.FileWriter.WriteAllTextAsync(resource, output);
         if (writeResult.IsFailure)
         {
-            return Result<IReadOnlyList<AppliedEdit>>.Fail($"Failed to write edits to file: '{resource}'")
+            return Result.Fail($"Failed to write edits to file: '{resource}'")
                 .WithErrors(writeResult);
         }
 
-        // Walk the applied edits in original (forward) order and accumulate
-        // the line-count delta to compute each edit's post-edit range. Append
-        // edits use originalFileLineCount + 1 as their effective source line
-        // so they sort after every in-range edit and pick up the full
-        // accumulated delta.
-        var ranges = new List<AppliedEdit>(applied.Count);
-        var cumulativeDelta = 0;
-        var sortedApplied = applied
-            .OrderBy(p => p.Edit.Line == -1 ? originalFileLineCount + 1 : p.Edit.Line)
-            .ThenBy(p => p.Edit.Column);
-        foreach (var pair in sortedApplied)
-        {
-            int originalLineCount;
-            int sourceLine;
-            if (pair.Edit.Line == -1)
-            {
-                originalLineCount = 0;
-                sourceLine = originalFileLineCount + 1;
-            }
-            else
-            {
-                originalLineCount = pair.Edit.EndLine - pair.Edit.Line + 1;
-                sourceLine = pair.Edit.Line;
-            }
-
-            var postEditStart = sourceLine + cumulativeDelta;
-            var postEditEnd = postEditStart + pair.NewLineCount - 1;
-            ranges.Add(new AppliedEdit(resource, postEditStart, postEditEnd));
-            cumulativeDelta += pair.NewLineCount - originalLineCount;
-        }
-
-        return Result<IReadOnlyList<AppliedEdit>>.Ok(ranges);
-    }
-
-    //
-    // Static methods for scripting support.
-    //
-
-    public static void ApplyEdits(List<FileEdit> edits)
-    {
-        var commandService = ServiceLocator.AcquireService<ICommandService>();
-
-        commandService.Execute<IApplyEditsCommand>(command =>
-        {
-            command.Edits = edits;
-        });
+        return Result.Ok();
     }
 }

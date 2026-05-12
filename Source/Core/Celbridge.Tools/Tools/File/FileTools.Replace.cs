@@ -5,17 +5,17 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by file_find_replace with the number of replacements made.
+/// Result returned by file_replace with the number of replacements made.
 /// </summary>
-public record class FindReplaceResult(int ReplacementCount);
+public record class ReplaceResult(int ReplacementCount);
 
 public partial class FileTools
 {
-    /// <summary>Replace literal or regex matches inside one file, optionally scoped to a line range.</summary>
-    [McpServerTool(Name = "file_find_replace")]
-    [ToolAlias("file.find_replace")]
+    /// <summary>Find and replace text in a file using a literal or regex pattern, optionally within a line range.</summary>
+    [McpServerTool(Name = "file_replace")]
+    [ToolAlias("file.replace")]
     [RelatedGuides("resource_keys", "regex_syntax", "editing_documents", "file_changes")]
-    public async partial Task<CallToolResult> FindReplace(
+    public async partial Task<CallToolResult> Replace(
         string fileResource,
         string searchText,
         string replaceText,
@@ -46,7 +46,7 @@ public partial class FileTools
         }
 
         var replacementCount = findReplaceResult.Value;
-        var result = new FindReplaceResult(replacementCount);
+        var result = new ReplaceResult(replacementCount);
         var json = JsonSerializer.Serialize(result, JsonOptions);
         return ToolResponse.Success(json);
     }

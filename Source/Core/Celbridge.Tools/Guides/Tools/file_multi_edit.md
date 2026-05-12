@@ -49,7 +49,7 @@ Whichever edit fails, no part of the batch is written. The file on disk is uncha
 ## When to use a different tool
 
 - One surgical edit? Use `file_edit` — same shape without the array wrapping.
-- Regex or a line-range scope? Use `file_find_replace`.
+- Regex or a line-range scope? Use `file_replace`.
 - Whole-file rewrite? Use `file_write`.
 
 ## Gotchas

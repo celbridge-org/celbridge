@@ -14,7 +14,7 @@ Maximum number of lines to return. `0` (default) reads to the end of the file fr
 
 ### lineNumbers
 
-When `true`, each line in `content` is prefixed with its 1-based line number, e.g. `"42: ..."`. Numbers reflect the line's actual position in the file, so a paged read still shows true line numbers — convenient when you plan to follow up with `file_apply_edits` or `file_delete_lines`.
+When `true`, each line in `content` is prefixed with its 1-based line number, e.g. `"42: ..."`. Numbers reflect the line's actual position in the file, so a paged read still shows true line numbers — convenient when you plan to follow up with `file_replace` using `fromLine`/`toLine`.
 
 ## Returns
 

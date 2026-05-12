@@ -1,6 +1,6 @@
-# file_find_replace
+# file_replace
 
-Finds and replaces text within a single file. Most appropriate when the change is "replace every X with Y" — for targeted edits at known line numbers, prefer `file_apply_edits`. For multi-file find/replace, run `file_grep` first to enumerate matches, then call this tool per file.
+Finds and replaces text within a single file using a literal or regex pattern. Use this when the change is "replace every X with Y", when the pattern needs regex (capture groups, alternation, character classes), or when the substitution should be scoped to a line range. For a single surgical text-match edit, prefer `file_edit`; for multiple distinct edits that should land atomically, prefer `file_multi_edit`. For multi-file find/replace, run `file_grep` first to enumerate matches, then call this tool per file.
 
 ## Parameters
 

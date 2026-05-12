@@ -44,7 +44,6 @@ public static class ServiceConfiguration
         services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
 
         services.AddTransient<IApplyEditsCommand, ApplyEditsCommand>();
-        services.AddTransient<IDeleteLinesCommand, DeleteLinesCommand>();
         services.AddTransient<IFileEditCommand, FileEditCommand>();
         services.AddTransient<IFileMultiEditCommand, FileMultiEditCommand>();
         services.AddTransient<IFindReplaceFileCommand, FindReplaceFileCommand>();

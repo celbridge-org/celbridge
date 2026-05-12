@@ -13,9 +13,6 @@ namespace Celbridge.Resources;
 /// - Append to line: Set Column and EndColumn to one past the last character of the line.
 /// - Replace to end of line: Set EndColumn to -1 as a sentinel meaning "end of the line".
 ///   This eliminates the need to know the exact character count of the line being edited.
-/// - Append past last line: Set both Line and EndLine to -1 as a sentinel meaning "after the
-///   current last line". NewText is added as new lines at the end of the file. Column and
-///   EndColumn are ignored.
 /// </summary>
 public record TextEdit(
     int Line,
@@ -51,20 +48,10 @@ public record FileEdit(
     List<TextEdit> Edits);
 
 /// <summary>
-/// The post-edit line range occupied by an applied edit, in 1-based inclusive
-/// line numbers. When an edit changes the line count, FromLine and ToLine
-/// reflect the lines the new content occupies after the edit lands and after
-/// any earlier edits in the same call have shifted line numbers.
-/// </summary>
-public record AppliedEdit(ResourceKey Resource, int FromLine, int ToLine);
-
-/// <summary>
 /// Applies batch text edits to files by writing directly to disk.
 /// Any open document reloads its buffer from disk after the write completes.
-/// Returns the post-edit line range for each applied edit so callers can
-/// build a verification context without reapplying the edit math.
 /// </summary>
-public interface IApplyEditsCommand : IExecutableCommand<IReadOnlyList<AppliedEdit>>
+public interface IApplyEditsCommand : IExecutableCommand
 {
     /// <summary>
     /// The list of file edits to apply.

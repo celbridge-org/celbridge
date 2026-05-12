@@ -54,89 +54,6 @@ public class FileToolTests
     }
 
     [Test]
-    public async Task ApplyEdits_DispatchesCommandAndReturnsAffectedLineRanges()
-    {
-        var resource = new ResourceKey("notes/edit.md");
-        var path = Path.Combine(_tempFolder, "edit.md");
-        await File.WriteAllLinesAsync(path, new[] { "First", "Replaced", "Third" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        IApplyEditsCommand? capturedCommand = null;
-        IReadOnlyList<AppliedEdit> appliedRanges = new[]
-        {
-            new AppliedEdit(resource, 2, 2)
-        };
-        _commandService
-            .ExecuteAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(
-                Arg.Any<Action<IApplyEditsCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(callInfo =>
-            {
-                var configure = callInfo.Arg<Action<IApplyEditsCommand>?>();
-                if (configure is not null)
-                {
-                    capturedCommand = Substitute.For<IApplyEditsCommand>();
-                    capturedCommand.Edits = new List<FileEdit>();
-                    configure(capturedCommand);
-                }
-                return Task.FromResult(Celbridge.Core.Result<IReadOnlyList<AppliedEdit>>.Ok(appliedRanges));
-            });
-
-        var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Replaced\"}]";
-
-        var tools = new FileTools(_services);
-        var root = ParseResult(await tools.ApplyEdits("notes/edit.md", editsJson));
-
-        capturedCommand.Should().NotBeNull();
-        capturedCommand!.Edits.Should().HaveCount(1);
-        var affected = root.GetProperty("affectedLines");
-        affected.GetArrayLength().Should().Be(1);
-        affected[0].GetProperty("from").GetInt32().Should().Be(2);
-        affected[0].GetProperty("to").GetInt32().Should().Be(2);
-    }
-
-    [Test]
-    public async Task ApplyEdits_ContextWindowCoversFullPostEditRange_ForLineExpandingEdit()
-    {
-        var resource = new ResourceKey("notes/expand.md");
-        var path = Path.Combine(_tempFolder, "expand.md");
-        // Post-edit content: line 2 was replaced with three lines (Two, Inserted, Three).
-        await File.WriteAllLinesAsync(path, new[] { "First", "Two", "Inserted", "Three", "Last" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        IReadOnlyList<AppliedEdit> appliedRanges = new[]
-        {
-            new AppliedEdit(resource, 2, 4)
-        };
-        _commandService
-            .ExecuteAsync<IApplyEditsCommand, IReadOnlyList<AppliedEdit>>(
-                Arg.Any<Action<IApplyEditsCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(Task.FromResult(Celbridge.Core.Result<IReadOnlyList<AppliedEdit>>.Ok(appliedRanges)));
-
-        var editsJson = "[{\"line\": 2, \"endLine\": 2, \"newText\": \"Two\\nInserted\\nThree\"}]";
-
-        var tools = new FileTools(_services);
-        var root = ParseResult(await tools.ApplyEdits("notes/expand.md", editsJson));
-
-        var affected = root.GetProperty("affectedLines");
-        affected.GetArrayLength().Should().Be(1);
-        affected[0].GetProperty("from").GetInt32().Should().Be(2);
-        affected[0].GetProperty("to").GetInt32().Should().Be(4);
-
-        // Context window = 1 line before + the 3 post-edit lines + 1 line after.
-        var contextLines = affected[0].GetProperty("contextLines");
-        var lines = new List<string>();
-        for (var i = 0; i < contextLines.GetArrayLength(); i++)
-        {
-            lines.Add(contextLines[i].GetString()!);
-        }
-        lines.Should().Equal("First", "Two", "Inserted", "Three", "Last");
-    }
-
-    [Test]
     public async Task Write_DispatchesCommand_AndReturnsLineCount()
     {
         var resource = new ResourceKey("notes/new.md");
@@ -169,7 +86,7 @@ public class FileToolTests
     }
 
     [Test]
-    public async Task FindReplace_DispatchesCommand_AndReturnsReplacementCount()
+    public async Task Replace_DispatchesCommand_AndReturnsReplacementCount()
     {
         var resource = new ResourceKey("notes/find.md");
         IFindReplaceFileCommand? capturedCommand = null;
@@ -190,49 +107,13 @@ public class FileToolTests
             });
 
         var tools = new FileTools(_services);
-        var root = ParseResult(await tools.FindReplace("notes/find.md", "old", "new"));
+        var root = ParseResult(await tools.Replace("notes/find.md", "old", "new"));
 
         capturedCommand.Should().NotBeNull();
         capturedCommand!.FileResource.Should().Be(resource);
         capturedCommand.SearchText.Should().Be("old");
         capturedCommand.ReplaceText.Should().Be("new");
         root.GetProperty("replacementCount").GetInt32().Should().Be(7);
-    }
-
-    [Test]
-    public async Task DeleteLines_DispatchesCommand_AndReturnsDeletedRange()
-    {
-        var resource = new ResourceKey("notes/lines.md");
-        var path = Path.Combine(_tempFolder, "lines.md");
-        await File.WriteAllLinesAsync(path, new[] { "Line one", "Line four" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        IDeleteLinesCommand? capturedCommand = null;
-        _commandService
-            .ExecuteAsync<IDeleteLinesCommand>(
-                Arg.Any<Action<IDeleteLinesCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(callInfo =>
-            {
-                var configure = callInfo.Arg<Action<IDeleteLinesCommand>?>();
-                if (configure is not null)
-                {
-                    capturedCommand = Substitute.For<IDeleteLinesCommand>();
-                    configure(capturedCommand);
-                }
-                return Task.FromResult(Celbridge.Core.Result.Ok());
-            });
-
-        var tools = new FileTools(_services);
-        var root = ParseResult(await tools.DeleteLines("notes/lines.md", 2, 3));
-
-        capturedCommand.Should().NotBeNull();
-        capturedCommand!.Resource.Should().Be(resource);
-        capturedCommand.StartLine.Should().Be(2);
-        capturedCommand.EndLine.Should().Be(3);
-        root.GetProperty("deletedFrom").GetInt32().Should().Be(2);
-        root.GetProperty("deletedTo").GetInt32().Should().Be(3);
     }
 
     [Test]

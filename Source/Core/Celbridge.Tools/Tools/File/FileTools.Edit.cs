@@ -5,6 +5,14 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
+/// A line range affected by a file edit, using 1-based inclusive line numbers.
+/// ContextLines contains the post-edit content of the affected lines plus one
+/// surrounding line on each side, allowing immediate verification without a
+/// follow-up file_read call.
+/// </summary>
+public record class AffectedLineRange(int From, int To, List<string>? ContextLines = null);
+
+/// <summary>
 /// Result returned by file_edit with the count of matches replaced and the
 /// post-edit line ranges occupied by each replacement.
 /// </summary>

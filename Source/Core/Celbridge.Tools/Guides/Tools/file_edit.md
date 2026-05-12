@@ -27,7 +27,7 @@ A JSON object with:
 ## When to use a different tool
 
 - Multiple distinct surgical edits that should land atomically? Use `file_multi_edit` — the whole batch lands or none does.
-- Need regex (capture groups, character classes, alternation) or a line-range scope? Use `file_find_replace`.
+- Need regex (capture groups, character classes, alternation) or a line-range scope? Use `file_replace`.
 - Whole-file rewrite or a new file? Use `file_write`.
 
 ## Gotchas

@@ -92,15 +92,43 @@ public class ApplyEditsCommandTests
     }
 
     [Test]
-    public async Task ExecuteAsync_ReportsPostEditRange_WhenEditExpandsLines()
+    public async Task ExecuteAsync_WritesMultiFileBatch_WhenEditsTouchDifferentFiles()
     {
-        // Replacing one line with three lines should produce a post-edit range
-        // covering all three new lines.
-        var resource = new ResourceKey("notes/expand.md");
-        var path = Path.Combine(_tempFolder, "expand.md");
-        await File.WriteAllLinesAsync(path, new[] { "First", "Two", "Last" });
+        var resourceOne = new ResourceKey("notes/one.md");
+        var pathOne = Path.Combine(_tempFolder, "one.md");
+        await File.WriteAllLinesAsync(pathOne, new[] { "first", "second" });
+        _resourceRegistry.ResolveResourcePath(resourceOne).Returns(Result<string>.Ok(pathOne));
+
+        var resourceTwo = new ResourceKey("notes/two.md");
+        var pathTwo = Path.Combine(_tempFolder, "two.md");
+        await File.WriteAllLinesAsync(pathTwo, new[] { "alpha", "beta" });
+        _resourceRegistry.ResolveResourcePath(resourceTwo).Returns(Result<string>.Ok(pathTwo));
+
+        var command = CreateCommand();
+        command.Edits = new List<FileEdit>
+        {
+            new(resourceOne, new List<TextEdit> { new(1, 1, 1, -1, "FIRST") }),
+            new(resourceTwo, new List<TextEdit> { new(2, 1, 2, -1, "BETA") })
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        (await File.ReadAllLinesAsync(pathOne)).Should().Equal("FIRST", "second");
+        (await File.ReadAllLinesAsync(pathTwo)).Should().Equal("alpha", "BETA");
+    }
+
+    [Test]
+    public async Task ExecuteAsync_PreservesCrlf_WhenNewTextUsesLfSeparators()
+    {
+        var resource = new ResourceKey("notes/crlf.md");
+        var path = Path.Combine(_tempFolder, "crlf.md");
+        await File.WriteAllTextAsync(path, "Line one\r\nLine two\r\nLine three\r\n");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
+        // The agent supplies NewText with \n separators. The command must
+        // normalise so the file's CRLF style is preserved and no \r\r\n
+        // sequences land on disk.
         var edit = new TextEdit(2, 1, 2, -1, "Two\nInserted\nThree");
         var command = CreateCommand();
         command.Edits = new List<FileEdit>
@@ -111,140 +139,9 @@ public class ApplyEditsCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsSuccess.Should().BeTrue();
-        command.ResultValue.Should().HaveCount(1);
-        command.ResultValue[0].Resource.Should().Be(resource);
-        command.ResultValue[0].FromLine.Should().Be(2);
-        command.ResultValue[0].ToLine.Should().Be(4);
-    }
-
-    [Test]
-    public async Task ExecuteAsync_PostEditRanges_AccountForEarlierEditsInSameCall()
-    {
-        // Two edits in one call: an earlier one that adds 2 lines should shift
-        // a later edit's post-edit range by 2.
-        var resource = new ResourceKey("notes/multi.md");
-        var path = Path.Combine(_tempFolder, "multi.md");
-        await File.WriteAllLinesAsync(path, new[] { "A", "B", "C", "D", "E" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        // Replace line 2 with 3 lines (B → B1\nB2\nB3) and replace line 4 with 1 line (D → DD).
-        var edit1 = new TextEdit(2, 1, 2, -1, "B1\nB2\nB3");
-        var edit2 = new TextEdit(4, 1, 4, -1, "DD");
-        var command = CreateCommand();
-        command.Edits = new List<FileEdit>
-        {
-            new(resource, new List<TextEdit> { edit1, edit2 })
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        command.ResultValue.Should().HaveCount(2);
-        // First edit: line 2 → lines 2-4 (3 new lines)
-        command.ResultValue[0].FromLine.Should().Be(2);
-        command.ResultValue[0].ToLine.Should().Be(4);
-        // Second edit: original line 4, shifted by +2 from the first edit's expansion → line 6.
-        command.ResultValue[1].FromLine.Should().Be(6);
-        command.ResultValue[1].ToLine.Should().Be(6);
-    }
-
-    [Test]
-    public async Task ExecuteAsync_AppendSentinel_AddsLinesAtEnd()
-    {
-        var resource = new ResourceKey("notes/append.md");
-        var path = Path.Combine(_tempFolder, "append.md");
-        await File.WriteAllLinesAsync(path, new[] { "First", "Second" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        var append = new TextEdit(-1, 1, -1, 1, "Third\nFourth");
-        var command = CreateCommand();
-        command.Edits = new List<FileEdit>
-        {
-            new(resource, new List<TextEdit> { append })
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        var lines = await File.ReadAllLinesAsync(path);
-        lines.Should().Equal("First", "Second", "Third", "Fourth");
-        command.ResultValue.Should().HaveCount(1);
-        command.ResultValue[0].FromLine.Should().Be(3);
-        command.ResultValue[0].ToLine.Should().Be(4);
-    }
-
-    [Test]
-    public async Task ExecuteAsync_AppendSentinel_WorksOnEmptyFile()
-    {
-        var resource = new ResourceKey("notes/empty.md");
-        var path = Path.Combine(_tempFolder, "empty.md");
-        await File.WriteAllTextAsync(path, string.Empty);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        var append = new TextEdit(-1, 1, -1, 1, "Hello");
-        var command = CreateCommand();
-        command.Edits = new List<FileEdit>
-        {
-            new(resource, new List<TextEdit> { append })
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
         var content = await File.ReadAllTextAsync(path);
-        content.Should().Be("Hello");
-        command.ResultValue[0].FromLine.Should().Be(1);
-        command.ResultValue[0].ToLine.Should().Be(1);
-    }
-
-    [Test]
-    public async Task ExecuteAsync_AppendSentinel_PostEditRangeAccountsForEarlierEdit()
-    {
-        // An in-range edit that grows the file by 2 lines, plus an append, should
-        // place the append's post-edit range after the expanded content.
-        var resource = new ResourceKey("notes/mixed.md");
-        var path = Path.Combine(_tempFolder, "mixed.md");
-        await File.WriteAllLinesAsync(path, new[] { "A", "B", "C" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        var inRange = new TextEdit(2, 1, 2, -1, "B1\nB2\nB3");
-        var append = new TextEdit(-1, 1, -1, 1, "D");
-        var command = CreateCommand();
-        command.Edits = new List<FileEdit>
-        {
-            new(resource, new List<TextEdit> { inRange, append })
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsSuccess.Should().BeTrue();
-        var lines = await File.ReadAllLinesAsync(path);
-        lines.Should().Equal("A", "B1", "B2", "B3", "C", "D");
-        command.ResultValue.Should().HaveCount(2);
-        command.ResultValue[0].FromLine.Should().Be(2);
-        command.ResultValue[0].ToLine.Should().Be(4);
-        command.ResultValue[1].FromLine.Should().Be(6);
-        command.ResultValue[1].ToLine.Should().Be(6);
-    }
-
-    [Test]
-    public async Task ExecuteAsync_FailsWhenAppendSentinelMixesMinusOneWithRealLine()
-    {
-        var resource = new ResourceKey("notes/bad.md");
-        var path = Path.Combine(_tempFolder, "bad.md");
-        await File.WriteAllLinesAsync(path, new[] { "X" });
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
-
-        var bad = new TextEdit(-1, 1, 1, 1, "y");
-        var command = CreateCommand();
-        command.Edits = new List<FileEdit>
-        {
-            new(resource, new List<TextEdit> { bad })
-        };
-
-        var result = await command.ExecuteAsync();
-
-        result.IsFailure.Should().BeTrue();
+        content.Should().Be("Line one\r\nTwo\r\nInserted\r\nThree\r\nLine three\r\n");
+        content.Should().NotContain("\r\r");
     }
 
     [Test]
