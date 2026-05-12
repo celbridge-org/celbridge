@@ -33,7 +33,7 @@ internal static class FileEditMatching
     /// Collapses ranges that share the same (FromLine, ToLine) into a single
     /// entry whose MatchCount sums the per-match counts. A two-hit line under
     /// replaceAll becomes one entry with MatchCount=2 rather than two duplicate
-    /// entries. Returns a new list sorted ascending by FromLine; the input is
+    /// entries. Returns a new list sorted ascending by FromLine. The input is
     /// not mutated. Sorting is done internally because the merge needs
     /// (FromLine, ToLine) duplicates to be adjacent and tying that precondition
     /// to the caller is a silent footgun.
@@ -74,7 +74,7 @@ internal static class FileEditMatching
     /// <summary>
     /// Caps a sorted affected-range list to a first + last sample when its
     /// length exceeds VerboseRangeThreshold. The total match count stays
-    /// accurate via the caller's MatchCount field; the cap only affects the
+    /// accurate via the caller's MatchCount field. The cap only affects the
     /// returned range list size. Returns the original list unchanged when at
     /// or below the threshold.
     /// </summary>
@@ -178,7 +178,7 @@ internal static class FileEditMatching
             }
         }
 
-        // A trailing newline terminates the last content line; it does not
+        // A trailing newline terminates the last content line. It does not
         // open a new line whose content belongs to this replacement.
         if (newString[^1] == '\n')
         {

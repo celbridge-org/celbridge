@@ -71,4 +71,49 @@ public partial class FileTools : AgentToolBase
     {
         return JsonSerializer.Serialize(value, JsonOptions);
     }
+
+    /// <summary>
+    /// Reads the post-edit file content as lines so an edit tool can attach a
+    /// small surrounding-context window to each affected range. Returns null
+    /// when the resource cannot be resolved or the file no longer exists, so
+    /// the caller can fall back to ranges without context.
+    /// </summary>
+    private static async Task<string[]?> ReadFileLinesForContextAsync(IResourceRegistry resourceRegistry, ResourceKey fileResourceKey)
+    {
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
+        if (resolveResult.IsFailure)
+        {
+            return null;
+        }
+        var resourcePath = resolveResult.Value;
+
+        if (!File.Exists(resourcePath))
+        {
+            return null;
+        }
+
+        return await File.ReadAllLinesAsync(resourcePath);
+    }
+
+    /// <summary>
+    /// Returns the affected lines plus one surrounding line on each side as a
+    /// contextLines window, or null when no file content is available. Uses
+    /// 1-based inclusive line numbers to match the range types in the
+    /// Foundation result records.
+    /// </summary>
+    private static List<string>? BuildContextLines(string[]? fileLines, int fromLine, int toLine)
+    {
+        if (fileLines is null)
+        {
+            return null;
+        }
+
+        var contextStartIndex = Math.Max(0, fromLine - 2);
+        var contextEndIndex = Math.Min(fileLines.Length - 1, toLine);
+
+        return fileLines
+            .Skip(contextStartIndex)
+            .Take(contextEndIndex - contextStartIndex + 1)
+            .ToList();
+    }
 }

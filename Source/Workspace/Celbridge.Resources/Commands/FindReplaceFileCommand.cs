@@ -147,7 +147,7 @@ public class FindReplaceFileCommand : CommandBase, IFindReplaceFileCommand
         }
 
         // Normalise the search and replacement text to match the file's actual
-        // line endings. Agents typically construct strings with \n; files on
+        // line endings. Agents typically construct strings with \n. Files on
         // Windows use \r\n.
         var separator = LineEndingHelper.DetectSeparatorOrDefault(content);
         var searchText = LineEndingHelper.ConvertLineEndings(SearchText, separator);
@@ -185,11 +185,22 @@ public class FindReplaceFileCommand : CommandBase, IFindReplaceFileCommand
         var endsWithNewline = LineEndingHelper.EndsWithNewline(content);
         var lines = LineEndingHelper.SplitToContentLines(content);
 
+        // The scoped path matches line-by-line against content with line
+        // terminators stripped, so we normalise every variant of SearchText
+        // here (including the UseRegex case). A literal \n in a regex pattern
+        // could never fire against an isolated line anyway. The unscoped
+        // branch is different: it passes the regex pattern through verbatim
+        // so the caller keeps full control over \n vs \r\n semantics.
         var searchText = LineEndingHelper.ConvertLineEndings(SearchText, separator);
         var replaceText = LineEndingHelper.ConvertLineEndings(ReplaceText, separator);
         var comparison = MatchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         var regexOptions = MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-        var regex = ShouldRouteThroughRegex ? new Regex(BuildEffectiveRegexPattern(searchText), regexOptions) : null;
+
+        Regex? regex = null;
+        if (ShouldRouteThroughRegex)
+        {
+            regex = new Regex(BuildEffectiveRegexPattern(searchText), regexOptions);
+        }
 
         var newLines = new List<string>(lines.Count);
         var absoluteOffset = 0;

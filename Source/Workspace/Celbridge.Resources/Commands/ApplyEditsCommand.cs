@@ -54,7 +54,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
 
         if (failedResources.Count > 0)
         {
-            // The headline names every failed resource; the detail block below
+            // The headline names every failed resource. The detail block below
             // names each failure's reason so the agent does not have to retry
             // and read a separate log line to learn what the validator caught.
             var headline = $"Failed to apply edits to: {string.Join(", ", failedResources)}";

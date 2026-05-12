@@ -12,7 +12,7 @@ public record FileEditOperation(string OldString, string NewString, bool Replace
 /// The post-edit line range occupied by one or more matches from a single edit
 /// within a multi-edit batch. EditIndex identifies which edit in the input batch
 /// produced this range. MatchCount is the number of individual matches from that
-/// edit collapsed into this range; same-(FromLine, ToLine) hits within the
+/// edit collapsed into this range. Same-(FromLine, ToLine) hits within the
 /// edit's replaceAll pass merge into one entry with MatchCount summing the
 /// per-match total. Entries from different edits are never merged across edits,
 /// so the agent can group ranges back to their originating edit.
@@ -42,10 +42,10 @@ public record FileMultiEditResult(
 
 /// <summary>
 /// Applies an atomic batch of text-match edits to a single file. Edits apply
-/// sequentially against an in-memory buffer in array order; later edits anchor
+/// sequentially against an in-memory buffer in array order. Later edits anchor
 /// against the post-previous-edit state. If any edit fails its match or
 /// uniqueness check, the entire batch fails and nothing is written. Writes
-/// directly to disk; any open document reloads its buffer from disk after the
+/// directly to disk. Any open document reloads its buffer from disk after the
 /// write.
 /// </summary>
 public interface IFileMultiEditCommand : IExecutableCommand<FileMultiEditResult>

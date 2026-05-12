@@ -7,7 +7,7 @@ namespace Celbridge.Tools;
 /// <summary>
 /// A line range affected by a single edit within a multi-edit batch, tagged
 /// with the EditIndex of the input edit that produced it. MatchCount is the
-/// number of matches from that edit collapsed into this range; same-line hits
+/// number of matches from that edit collapsed into this range. Same-line hits
 /// from one edit's replaceAll merge into a single entry with MatchCount
 /// reporting the per-line total. Entries from different edits never merge.
 /// ContextLines is populated for ranges belonging to non-truncated edits
@@ -86,7 +86,7 @@ public partial class FileTools
 
         // Include contextLines for every returned range, including the
         // first/last sample entries from edits that hit the verbose cap. The
-        // cap bounds the payload by entry count; the sample entries are the
+        // cap bounds the payload by entry count. The sample entries are the
         // only verification signal a caller has for a truncated edit, so
         // stripping their context would leave bare positions with no evidence.
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
@@ -95,26 +95,13 @@ public partial class FileTools
         string[]? fileLines = null;
         if (resultValue.AffectedRanges.Count > 0)
         {
-            var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
-            if (resolveResult.IsSuccess && File.Exists(resolveResult.Value))
-            {
-                fileLines = await File.ReadAllLinesAsync(resolveResult.Value);
-            }
+            fileLines = await ReadFileLinesForContextAsync(resourceRegistry, fileResourceKey);
         }
 
         var affectedLines = new List<MultiEditAffectedLineRange>(resultValue.AffectedRanges.Count);
         foreach (var range in resultValue.AffectedRanges)
         {
-            List<string>? contextLines = null;
-            if (fileLines is not null)
-            {
-                var contextStartIndex = Math.Max(0, range.FromLine - 2);
-                var contextEndIndex = Math.Min(fileLines.Length - 1, range.ToLine);
-                contextLines = fileLines
-                    .Skip(contextStartIndex)
-                    .Take(contextEndIndex - contextStartIndex + 1)
-                    .ToList();
-            }
+            var contextLines = BuildContextLines(fileLines, range.FromLine, range.ToLine);
             affectedLines.Add(new MultiEditAffectedLineRange(range.EditIndex, range.FromLine, range.ToLine, range.MatchCount, contextLines));
         }
 

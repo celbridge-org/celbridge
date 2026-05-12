@@ -62,31 +62,18 @@ public partial class FileTools
 
         // ContextLines is included for every returned range, including the
         // first/last sample entries in a truncated response. The cap bounds
-        // the payload by entry count; the sample entries are the only
+        // the payload by entry count. The sample entries are the only
         // verification signal a caller has when truncated, so stripping their
         // context would leave bare positions with no evidence.
         string[]? fileLines = null;
         if (commandResult.AffectedRanges.Count > 0)
         {
-            var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
-            if (resolveResult.IsSuccess && File.Exists(resolveResult.Value))
-            {
-                fileLines = await File.ReadAllLinesAsync(resolveResult.Value);
-            }
+            fileLines = await ReadFileLinesForContextAsync(resourceRegistry, fileResourceKey);
         }
 
         foreach (var range in commandResult.AffectedRanges)
         {
-            List<string>? contextLines = null;
-            if (fileLines is not null)
-            {
-                var contextStartIndex = Math.Max(0, range.FromLine - 2);
-                var contextEndIndex = Math.Min(fileLines.Length - 1, range.ToLine);
-                contextLines = fileLines
-                    .Skip(contextStartIndex)
-                    .Take(contextEndIndex - contextStartIndex + 1)
-                    .ToList();
-            }
+            var contextLines = BuildContextLines(fileLines, range.FromLine, range.ToLine);
             affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine, range.MatchCount, contextLines));
         }
 

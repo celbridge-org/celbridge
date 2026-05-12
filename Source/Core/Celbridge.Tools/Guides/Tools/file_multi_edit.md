@@ -94,7 +94,7 @@ A JSON object with:
 
 If you expected to see an edit's range in `affectedLines` but it is missing, a later edit's region overlapped and overwrote it — the earlier edit's content no longer exists in the final buffer, so its range is dropped. The authoritative per-edit count is `edits[N].matchCount`, which records what the edit matched at its turn in the sequence regardless of whether the result survived the rest of the batch.
 
-An empty `editsJson` array (`"[]"`) succeeds as a no-op: `appliedCount` is `0`, `edits` and `affectedLines` are empty, and no disk write occurs.
+An empty `editsJson` array (`"[]"`) succeeds as a no-op: `appliedCount` is `0`, `edits` and `affectedLines` are empty, and no disk write occurs. The file is not opened or read in this case, so passing an empty batch against a missing resource also returns success — the call is short-circuited before any file I/O.
 
 ## Failure modes
 

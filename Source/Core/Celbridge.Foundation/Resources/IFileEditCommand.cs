@@ -6,7 +6,7 @@ namespace Celbridge.Resources;
 /// The post-edit line range occupied by one or more text-match edits, in 1-based
 /// inclusive line numbers locating the replacement within the final on-disk
 /// file. MatchCount is the number of individual matches collapsed into this
-/// range; same-(FromLine, ToLine) hits from a single replaceAll pass merge into
+/// range. Same-(FromLine, ToLine) hits from a single replaceAll pass merge into
 /// one entry with MatchCount summing the per-match total.
 /// </summary>
 public record FileEditAffectedRange(int FromLine, int ToLine, int MatchCount = 1);
@@ -26,7 +26,7 @@ public record FileEditResult(
 
 /// <summary>
 /// Replaces an exact text snippet inside a single file. The snippet must match
-/// uniquely unless ReplaceAll is set. Writes directly to disk; any open document
+/// uniquely unless ReplaceAll is set. Writes directly to disk. Any open document
 /// reloads its buffer from disk after the write.
 /// </summary>
 public interface IFileEditCommand : IExecutableCommand<FileEditResult>

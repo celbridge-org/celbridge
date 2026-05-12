@@ -131,6 +131,32 @@ public class FindReplaceFileCommandTests
     }
 
     [Test]
+    public async Task ExecuteAsync_ReturnsEmptyRanges_WhenRegexHasNoMatches()
+    {
+        var resource = new ResourceKey("notes/regex.md");
+        var path = Path.Combine(_tempFolder, "regex.md");
+        var original = "alpha\nbeta\ngamma\n";
+        await File.WriteAllTextAsync(path, original);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.SearchText = @"\d+";
+        command.ReplaceText = "X";
+        command.UseRegex = true;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.ReplacementCount.Should().Be(0);
+        command.ResultValue.AffectedRanges.Should().BeEmpty();
+        command.ResultValue.Truncated.Should().BeFalse();
+        // The file is not rewritten when the regex matches nothing.
+        var content = await File.ReadAllTextAsync(path);
+        content.Should().Be(original);
+    }
+
+    [Test]
     public async Task ExecuteAsync_TracksRangesForRegexBackReferences()
     {
         var resource = new ResourceKey("notes/regex.md");
