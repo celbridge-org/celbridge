@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;

@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using Celbridge.Commands;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 

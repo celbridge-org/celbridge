@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Celbridge.Resources.Services;
+using Celbridge.Resources.Helpers;
 
 namespace Celbridge.Tests.Archive;
 

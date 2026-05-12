@@ -1,6 +1,6 @@
 using Celbridge.Entities;
 
-namespace Celbridge.Resources.Services;
+namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Helper class for performing file operations that preserve associated entity data files.

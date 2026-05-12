@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 
-namespace Celbridge.Resources.Services;
+namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Static utility methods for creating and extracting zip archives.

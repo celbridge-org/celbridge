@@ -2,7 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Explorer;
 using Celbridge.Workspace;
 
-namespace Celbridge.Resources.Services;
+namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Helper class that encapsulates the core logic for adding resources to the project.

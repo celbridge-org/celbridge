@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Celbridge.Resources.Commands;
+namespace Celbridge.Resources.Helpers;
 
 internal record FileEditApplyResult(string NewContent, List<int> ReplacementStarts);
 
