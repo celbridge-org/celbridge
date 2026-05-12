@@ -106,12 +106,6 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         return Result.Ok();
     }
 
-    public virtual Task<Result> ApplyEditsAsync(IEnumerable<TextEdit> edits)
-    {
-        // Default implementation returns failure - only text editors support this
-        return Task.FromResult<Result>(Result.Fail("This document type does not support text editing"));
-    }
-
     public virtual async Task<bool> CanClose()
     {
         await Task.CompletedTask;

@@ -6,17 +6,17 @@ using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Resources.Commands;
 
-public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
+public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
 {
-    private readonly ILogger<ApplyEditsCommand> _logger;
+    private readonly ILogger<ApplyRangeEditsCommand> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IDialogService _dialogService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public List<FileEdit> Edits { get; set; } = new();
+    public List<FileRangeEdit> Edits { get; set; } = new();
 
-    public ApplyEditsCommand(
-        ILogger<ApplyEditsCommand> logger,
+    public ApplyRangeEditsCommand(
+        ILogger<ApplyRangeEditsCommand> logger,
         IStringLocalizer stringLocalizer,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper)
@@ -62,16 +62,16 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
             var errorMessage = $"{headline}{Environment.NewLine}{detail}";
             _logger.LogError(errorMessage);
 
-            var alertTitle = _stringLocalizer.GetString("Documents_ApplyEditsFailedTitle");
+            var alertTitle = _stringLocalizer.GetString("Documents_ApplyRangeEditsFailedTitle");
             string alertMessage;
             if (failedResources.Count == 1)
             {
                 var failedFile = failedResources[0].ToString();
-                alertMessage = _stringLocalizer.GetString("Documents_ApplyEditsFailedSingle", failedFile);
+                alertMessage = _stringLocalizer.GetString("Documents_ApplyRangeEditsFailedSingle", failedFile);
             }
             else
             {
-                alertMessage = _stringLocalizer.GetString("Documents_ApplyEditsFailedMultiple", failedResources.Count);
+                alertMessage = _stringLocalizer.GetString("Documents_ApplyRangeEditsFailedMultiple", failedResources.Count);
             }
 
             // Fire-and-forget to avoid blocking
@@ -83,7 +83,7 @@ public class ApplyEditsCommand : CommandBase, IApplyEditsCommand
         return Result.Ok();
     }
 
-    private static async Task<Result> ApplyEditsToDisk(IResourceService resourceService, ResourceKey resource, List<TextEdit> edits)
+    private static async Task<Result> ApplyEditsToDisk(IResourceService resourceService, ResourceKey resource, List<RangeEdit> edits)
     {
         var resourceRegistry = resourceService.Registry;
 

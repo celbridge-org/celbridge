@@ -453,13 +453,13 @@
   <data name="Documents_SaveDocumentFailedGeneric" xml:space="preserve">
     <value>An error occurred while attempting to save '{0}'.</value>
   </data>
-  <data name="Documents_ApplyEditsFailedTitle" xml:space="preserve">
+  <data name="Documents_ApplyRangeEditsFailedTitle" xml:space="preserve">
     <value>Text Replace Failed</value>
   </data>
-  <data name="Documents_ApplyEditsFailedSingle" xml:space="preserve">
+  <data name="Documents_ApplyRangeEditsFailedSingle" xml:space="preserve">
     <value>An error occurred while attempting to apply text replacements to '{0}'.</value>
   </data>
-  <data name="Documents_ApplyEditsFailedMultiple" xml:space="preserve">
+  <data name="Documents_ApplyRangeEditsFailedMultiple" xml:space="preserve">
     <value>An error occurred while attempting to apply text replacements to {0} file(s).</value>
   </data>
   <data name="Documents_UnsupportedFileFormatTitle" xml:space="preserve">

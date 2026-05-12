@@ -8,11 +8,11 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Verifies that ApplyEditsCommand writes edits directly to disk and never
+/// Verifies that ApplyRangeEditsCommand writes edits directly to disk and never
 /// routes through any editor channel.
 /// </summary>
 [TestFixture]
-public class ApplyEditsCommandTests
+public class ApplyRangeEditsCommandTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
@@ -21,7 +21,7 @@ public class ApplyEditsCommandTests
     [SetUp]
     public void Setup()
     {
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ApplyEditsCommandTests), Guid.NewGuid().ToString("N"));
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(ApplyRangeEditsCommandTests), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
@@ -49,10 +49,10 @@ public class ApplyEditsCommandTests
         }
     }
 
-    private ApplyEditsCommand CreateCommand()
+    private ApplyRangeEditsCommand CreateCommand()
     {
-        return new ApplyEditsCommand(
-            Substitute.For<ILogger<ApplyEditsCommand>>(),
+        return new ApplyRangeEditsCommand(
+            Substitute.For<ILogger<ApplyRangeEditsCommand>>(),
             Substitute.For<IStringLocalizer>(),
             Substitute.For<IDialogService>(),
             _workspaceWrapper);
@@ -66,11 +66,11 @@ public class ApplyEditsCommandTests
         await File.WriteAllLinesAsync(path, new[] { "Line one", "Line two", "Line three" });
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var edit = new TextEdit(2, 1, 2, -1, "Replaced");
+        var edit = new RangeEdit(2, 1, 2, -1, "Replaced");
         var command = CreateCommand();
-        command.Edits = new List<FileEdit>
+        command.Edits = new List<FileRangeEdit>
         {
-            new(resource, new List<TextEdit> { edit })
+            new(resource, new List<RangeEdit> { edit })
         };
 
         var result = await command.ExecuteAsync();
@@ -84,7 +84,7 @@ public class ApplyEditsCommandTests
     public async Task ExecuteAsync_ReturnsOk_WhenNoEdits()
     {
         var command = CreateCommand();
-        command.Edits = new List<FileEdit>();
+        command.Edits = new List<FileRangeEdit>();
 
         var result = await command.ExecuteAsync();
 
@@ -105,10 +105,10 @@ public class ApplyEditsCommandTests
         _resourceRegistry.ResolveResourcePath(resourceTwo).Returns(Result<string>.Ok(pathTwo));
 
         var command = CreateCommand();
-        command.Edits = new List<FileEdit>
+        command.Edits = new List<FileRangeEdit>
         {
-            new(resourceOne, new List<TextEdit> { new(1, 1, 1, -1, "FIRST") }),
-            new(resourceTwo, new List<TextEdit> { new(2, 1, 2, -1, "BETA") })
+            new(resourceOne, new List<RangeEdit> { new(1, 1, 1, -1, "FIRST") }),
+            new(resourceTwo, new List<RangeEdit> { new(2, 1, 2, -1, "BETA") })
         };
 
         var result = await command.ExecuteAsync();
@@ -129,11 +129,11 @@ public class ApplyEditsCommandTests
         // The agent supplies NewText with \n separators. The command must
         // normalise so the file's CRLF style is preserved and no \r\r\n
         // sequences land on disk.
-        var edit = new TextEdit(2, 1, 2, -1, "Two\nInserted\nThree");
+        var edit = new RangeEdit(2, 1, 2, -1, "Two\nInserted\nThree");
         var command = CreateCommand();
-        command.Edits = new List<FileEdit>
+        command.Edits = new List<FileRangeEdit>
         {
-            new(resource, new List<TextEdit> { edit })
+            new(resource, new List<RangeEdit> { edit })
         };
 
         var result = await command.ExecuteAsync();
@@ -152,9 +152,9 @@ public class ApplyEditsCommandTests
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(missingPath));
 
         var command = CreateCommand();
-        command.Edits = new List<FileEdit>
+        command.Edits = new List<FileRangeEdit>
         {
-            new(resource, new List<TextEdit> { new(1, 1, 1, -1, "x") })
+            new(resource, new List<RangeEdit> { new(1, 1, 1, -1, "x") })
         };
 
         var result = await command.ExecuteAsync();

@@ -3,8 +3,9 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// A single text edit to apply to a file.
-/// Uses 1-based line and column numbers (Monaco editor convention).
+/// A single coordinate-based edit to apply to a file. Uses 1-based line and
+/// column numbers (Monaco editor convention) rather than text-match anchoring,
+/// to distinguish it from the snippet-match edits used by the MCP file tools.
 ///
 /// Edit operations:
 /// - Replace: Specify a range spanning existing text. The range is replaced with NewText.
@@ -14,7 +15,7 @@ namespace Celbridge.Resources;
 /// - Replace to end of line: Set EndColumn to -1 as a sentinel meaning "end of the line".
 ///   This eliminates the need to know the exact character count of the line being edited.
 /// </summary>
-public record TextEdit(
+public record RangeEdit(
     int Line,
     int Column,
     int EndLine,
@@ -24,38 +25,42 @@ public record TextEdit(
     /// <summary>
     /// Creates an insert edit that inserts text at the specified position.
     /// </summary>
-    public static TextEdit Insert(int line, int column, string text)
+    public static RangeEdit Insert(int line, int column, string text)
         => new(line, column, line, column, text);
 
     /// <summary>
     /// Creates a delete edit that removes text in the specified range.
     /// </summary>
-    public static TextEdit Delete(int line, int column, int endLine, int endColumn)
+    public static RangeEdit Delete(int line, int column, int endLine, int endColumn)
         => new(line, column, endLine, endColumn, string.Empty);
 
     /// <summary>
     /// Creates a replace edit that replaces text in the specified range with new text.
     /// </summary>
-    public static TextEdit Replace(int line, int column, int endLine, int endColumn, string newText)
+    public static RangeEdit Replace(int line, int column, int endLine, int endColumn, string newText)
         => new(line, column, endLine, endColumn, newText);
 }
 
 /// <summary>
-/// A batch of text edits to apply to a single file.
+/// A batch of coordinate-based edits to apply to a single file. Distinct from
+/// FileEditOperation, which is the snippet-match edit shape used by the MCP
+/// file_edit and file_multi_edit tools.
 /// </summary>
-public record FileEdit(
+public record FileRangeEdit(
     ResourceKey Resource,
-    List<TextEdit> Edits);
+    List<RangeEdit> Edits);
 
 /// <summary>
-/// Applies batch text edits to files by writing directly to disk.
-/// Any open document reloads its buffer from disk after the write completes.
+/// Applies coordinate-based batch edits across one or more files by writing
+/// directly to disk. Any open document reloads its buffer from disk after the
+/// write completes. The snippet-match counterparts for single-file edits are
+/// IFileEditCommand and IFileMultiEditCommand.
 /// </summary>
-public interface IApplyEditsCommand : IExecutableCommand
+public interface IApplyRangeEditsCommand : IExecutableCommand
 {
     /// <summary>
-    /// The list of file edits to apply.
-    /// Each FileEdit contains a resource key and a list of text edits.
+    /// The list of file edits to apply. Each entry pairs a resource key with
+    /// a coordinate-based edit batch.
     /// </summary>
-    List<FileEdit> Edits { get; set; }
+    List<FileRangeEdit> Edits { get; set; }
 }
