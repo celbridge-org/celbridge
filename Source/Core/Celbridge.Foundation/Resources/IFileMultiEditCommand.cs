@@ -9,12 +9,36 @@ namespace Celbridge.Resources;
 public record FileEditOperation(string OldString, string NewString, bool ReplaceAll = false);
 
 /// <summary>
-/// Result returned by IFileMultiEditCommand. AppliedCount is the number of
-/// edits in the batch (all of them, since the batch is atomic). AffectedRanges
-/// locates each edit's replacement in the post-edit file, sorted by FromLine
-/// ascending.
+/// The post-edit line range occupied by one or more matches from a single edit
+/// within a multi-edit batch. EditIndex identifies which edit in the input batch
+/// produced this range. MatchCount is the number of individual matches from that
+/// edit collapsed into this range; same-(FromLine, ToLine) hits within the
+/// edit's replaceAll pass merge into one entry with MatchCount summing the
+/// per-match total. Entries from different edits are never merged across edits,
+/// so the agent can group ranges back to their originating edit.
 /// </summary>
-public record FileMultiEditResult(int AppliedCount, IReadOnlyList<FileEditAffectedRange> AffectedRanges);
+public record FileMultiEditAffectedRange(int EditIndex, int FromLine, int ToLine, int MatchCount = 1);
+
+/// <summary>
+/// Per-edit summary for a multi-edit batch. MatchCount is the total number of
+/// matches the edit found at its turn in the sequence (before any later edit
+/// could overwrite that region). Truncated is true when the edit's contribution
+/// to AffectedRanges was capped to a sample because it exceeded the verbose
+/// threshold.
+/// </summary>
+public record FileMultiEditEditSummary(int MatchCount, bool Truncated);
+
+/// <summary>
+/// Result returned by IFileMultiEditCommand. AppliedCount is the number of
+/// edits in the batch (all of them, since the batch is atomic). Edits carries
+/// per-edit MatchCount and Truncated, indexed by edit order in the input.
+/// AffectedRanges locates each match in the post-batch file, tagged with its
+/// EditIndex and sorted by FromLine ascending.
+/// </summary>
+public record FileMultiEditResult(
+    int AppliedCount,
+    IReadOnlyList<FileMultiEditEditSummary> Edits,
+    IReadOnlyList<FileMultiEditAffectedRange> AffectedRanges);
 
 /// <summary>
 /// Applies an atomic batch of text-match edits to a single file. Edits apply

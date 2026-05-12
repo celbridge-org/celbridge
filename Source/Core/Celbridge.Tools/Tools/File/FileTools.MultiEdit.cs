@@ -5,11 +5,35 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by file_multi_edit with the count of applied edits and the
-/// post-batch line ranges each replacement occupies. ContextLines is omitted
-/// from this surface to keep the payload bounded for large batches.
+/// A line range affected by a single edit within a multi-edit batch, tagged
+/// with the EditIndex of the input edit that produced it. MatchCount is the
+/// number of matches from that edit collapsed into this range; same-line hits
+/// from one edit's replaceAll merge into a single entry with MatchCount
+/// reporting the per-line total. Entries from different edits never merge.
+/// ContextLines is populated for ranges belonging to non-truncated edits
+/// (matching file_edit's verification ergonomics) and omitted for ranges from
+/// truncated edits (capped to keep the payload bounded).
 /// </summary>
-public record class FileMultiEditToolResult(int AppliedCount, List<AffectedLineRange> AffectedLines);
+public record class MultiEditAffectedLineRange(int EditIndex, int From, int To, int MatchCount = 1, List<string>? ContextLines = null);
+
+/// <summary>
+/// Per-edit summary inside a multi-edit response. MatchCount is the number of
+/// matches the edit found at its turn in the sequence; Truncated indicates
+/// the edit's contribution to AffectedLines was capped to a sample.
+/// </summary>
+public record class MultiEditPerEditSummary(int MatchCount, bool Truncated);
+
+/// <summary>
+/// Result returned by file_multi_edit. AppliedCount is the number of edits in
+/// the batch. Edits carries per-edit MatchCount and Truncated indexed by input
+/// edit order. AffectedLines is the flat sorted list of post-batch ranges,
+/// each tagged with its originating EditIndex and (for non-truncated edits)
+/// ContextLines.
+/// </summary>
+public record class FileMultiEditToolResult(
+    int AppliedCount,
+    List<MultiEditPerEditSummary> Edits,
+    List<MultiEditAffectedLineRange> AffectedLines);
 
 public partial class FileTools
 {
@@ -54,13 +78,47 @@ public partial class FileTools
 
         var resultValue = multiEditResult.Value;
 
-        var affectedLines = new List<AffectedLineRange>(resultValue.AffectedRanges.Count);
-        foreach (var range in resultValue.AffectedRanges)
+        var editSummaries = new List<MultiEditPerEditSummary>(resultValue.Edits.Count);
+        foreach (var summary in resultValue.Edits)
         {
-            affectedLines.Add(new AffectedLineRange(range.FromLine, range.ToLine));
+            editSummaries.Add(new MultiEditPerEditSummary(summary.MatchCount, summary.Truncated));
         }
 
-        var toolResult = new FileMultiEditToolResult(resultValue.AppliedCount, affectedLines);
+        // Include contextLines for every returned range, including the
+        // first/last sample entries from edits that hit the verbose cap. The
+        // cap bounds the payload by entry count; the sample entries are the
+        // only verification signal a caller has for a truncated edit, so
+        // stripping their context would leave bare positions with no evidence.
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+
+        string[]? fileLines = null;
+        if (resultValue.AffectedRanges.Count > 0)
+        {
+            var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
+            if (resolveResult.IsSuccess && File.Exists(resolveResult.Value))
+            {
+                fileLines = await File.ReadAllLinesAsync(resolveResult.Value);
+            }
+        }
+
+        var affectedLines = new List<MultiEditAffectedLineRange>(resultValue.AffectedRanges.Count);
+        foreach (var range in resultValue.AffectedRanges)
+        {
+            List<string>? contextLines = null;
+            if (fileLines is not null)
+            {
+                var contextStartIndex = Math.Max(0, range.FromLine - 2);
+                var contextEndIndex = Math.Min(fileLines.Length - 1, range.ToLine);
+                contextLines = fileLines
+                    .Skip(contextStartIndex)
+                    .Take(contextEndIndex - contextStartIndex + 1)
+                    .ToList();
+            }
+            affectedLines.Add(new MultiEditAffectedLineRange(range.EditIndex, range.FromLine, range.ToLine, range.MatchCount, contextLines));
+        }
+
+        var toolResult = new FileMultiEditToolResult(resultValue.AppliedCount, editSummaries, affectedLines);
         var json = JsonSerializer.Serialize(toolResult, JsonOptions);
         return ToolResponse.Success(json);
     }

@@ -1,4 +1,3 @@
-using System.Text;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Workspace;
@@ -15,7 +14,7 @@ public class FileEditCommand : CommandBase, IFileEditCommand
     public string NewString { get; set; } = string.Empty;
     public bool ReplaceAll { get; set; }
 
-    public FileEditResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>());
+    public FileEditResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>(), false);
 
     public FileEditCommand(
         ILogger<FileEditCommand> logger,
@@ -29,7 +28,7 @@ public class FileEditCommand : CommandBase, IFileEditCommand
     {
         if (string.IsNullOrEmpty(OldString))
         {
-            return Result.Fail("oldString must be non-empty; use file_write to overwrite a file or to create a new one");
+            return Result.Fail("oldString must be non-empty. To append to a file, anchor on the existing last line and concatenate the new content in newString. To overwrite or create a file, use file_write.");
         }
 
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
@@ -80,9 +79,11 @@ public class FileEditCommand : CommandBase, IFileEditCommand
         {
             affectedRanges.Add(FileEditMatching.RangeForReplacement(newContent, start, newString));
         }
-        affectedRanges.Sort((a, b) => a.FromLine.CompareTo(b.FromLine));
 
-        ResultValue = new FileEditResult(matchPositions.Count, affectedRanges);
+        var mergedRanges = FileEditMatching.MergeSameLineRanges(affectedRanges);
+        var capped = FileEditMatching.CapVerboseRanges(mergedRanges);
+
+        ResultValue = new FileEditResult(matchPositions.Count, capped.Ranges, capped.Truncated);
 
         return Result.Ok();
     }

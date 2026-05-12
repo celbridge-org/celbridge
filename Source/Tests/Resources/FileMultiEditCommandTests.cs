@@ -7,7 +7,8 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Verifies that FileMultiEditCommand applies a batch of text-match edits
-/// atomically and sequentially, reporting post-batch line ranges.
+/// atomically and sequentially, reporting per-edit summaries and post-batch
+/// line ranges tagged by edit index.
 /// </summary>
 [TestFixture]
 public class FileMultiEditCommandTests
@@ -74,9 +75,14 @@ public class FileMultiEditCommandTests
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.AppliedCount.Should().Be(2);
+        command.ResultValue.Edits.Should().HaveCount(2);
+        command.ResultValue.Edits[0].MatchCount.Should().Be(1);
+        command.ResultValue.Edits[1].MatchCount.Should().Be(1);
         command.ResultValue.AffectedRanges.Should().HaveCount(2);
         command.ResultValue.AffectedRanges[0].FromLine.Should().Be(1);
+        command.ResultValue.AffectedRanges[0].EditIndex.Should().Be(0);
         command.ResultValue.AffectedRanges[1].FromLine.Should().Be(3);
+        command.ResultValue.AffectedRanges[1].EditIndex.Should().Be(1);
         var content = await File.ReadAllTextAsync(path);
         content.Should().Be("ALPHA\nbeta\nGAMMA\n");
     }
@@ -109,8 +115,6 @@ public class FileMultiEditCommandTests
     [Test]
     public async Task MultiEdit_LaterEditCanAnchorAgainstEarlierEditsOutput()
     {
-        // Edit 0 renames the function in its definition. Edit 1 anchors against
-        // the renamed function in a call site that was changed by edit 0 too.
         var resource = new ResourceKey("notes/text.md");
         var path = Path.Combine(_tempFolder, "text.md");
         await File.WriteAllTextAsync(path, "foo()\nresult = foo()\n");
@@ -216,8 +220,119 @@ public class FileMultiEditCommandTests
 
         result.IsSuccess.Should().BeTrue();
         command.ResultValue.AppliedCount.Should().Be(0);
+        command.ResultValue.Edits.Should().BeEmpty();
         command.ResultValue.AffectedRanges.Should().BeEmpty();
         var content = await File.ReadAllTextAsync(path);
         content.Should().Be(original);
+    }
+
+    [Test]
+    public async Task MultiEdit_TagsRangesByEditIndex_WhenMixedReplaceAllAndSurgical()
+    {
+        // Edit 0 replaces 'x' (3 occurrences) with replaceAll. Edit 1 is a
+        // single surgical edit. The flat affectedLines list should carry an
+        // editIndex on every range so the agent can distinguish them.
+        var resource = new ResourceKey("notes/mixed.md");
+        var path = Path.Combine(_tempFolder, "mixed.md");
+        await File.WriteAllTextAsync(path, "x\nx\nMARKER\nx\n");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Edits = new List<FileEditOperation>
+        {
+            new("x", "Y", ReplaceAll: true),
+            new("MARKER", "TARGET")
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.AppliedCount.Should().Be(2);
+        command.ResultValue.Edits[0].MatchCount.Should().Be(3);
+        command.ResultValue.Edits[0].Truncated.Should().BeFalse();
+        command.ResultValue.Edits[1].MatchCount.Should().Be(1);
+        command.ResultValue.Edits[1].Truncated.Should().BeFalse();
+
+        command.ResultValue.AffectedRanges.Should().HaveCount(4);
+        var byEditIndex = command.ResultValue.AffectedRanges.GroupBy(r => r.EditIndex).ToDictionary(g => g.Key, g => g.ToList());
+        byEditIndex[0].Should().HaveCount(3);
+        byEditIndex[1].Should().HaveCount(1);
+        byEditIndex[1][0].FromLine.Should().Be(3);
+    }
+
+    [Test]
+    public async Task MultiEdit_MergesSameLineHitsWithinAnEdit_ButKeepsDifferentEditsSeparate()
+    {
+        // Edit 0 replaces "foo" with replaceAll on a line that has 3 "foo"
+        // hits, and on a second line with 1 "foo" hit. Edit 1 changes
+        // "marker" on line 3. Same-line hits within edit 0 should collapse
+        // into one entry with MatchCount=3; line 2 keeps its own entry.
+        // Edit 1's range stays separate even if it happened to share a line
+        // with edit 0 — different edits never merge.
+        var resource = new ResourceKey("notes/merge.md");
+        var path = Path.Combine(_tempFolder, "merge.md");
+        await File.WriteAllTextAsync(path, "foo bar foo foo\nfoo baz\nmarker\n");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Edits = new List<FileEditOperation>
+        {
+            new("foo", "FOO", ReplaceAll: true),
+            new("marker", "MARKER")
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.Edits[0].MatchCount.Should().Be(4);
+        command.ResultValue.Edits[0].Truncated.Should().BeFalse();
+        command.ResultValue.Edits[1].MatchCount.Should().Be(1);
+
+        var edit0Ranges = command.ResultValue.AffectedRanges.Where(r => r.EditIndex == 0).ToList();
+        edit0Ranges.Should().HaveCount(2);
+        edit0Ranges[0].FromLine.Should().Be(1);
+        edit0Ranges[0].MatchCount.Should().Be(3);
+        edit0Ranges[1].FromLine.Should().Be(2);
+        edit0Ranges[1].MatchCount.Should().Be(1);
+
+        var edit1Ranges = command.ResultValue.AffectedRanges.Where(r => r.EditIndex == 1).ToList();
+        edit1Ranges.Should().HaveCount(1);
+        edit1Ranges[0].FromLine.Should().Be(3);
+        edit1Ranges[0].MatchCount.Should().Be(1);
+    }
+
+    [Test]
+    public async Task MultiEdit_CapsPerEdit_WhenOneEditExceedsThreshold()
+    {
+        // Edit 0 has 8 matches (> 5 threshold) — should be capped to 4 ranges
+        // (first 3 + last 1) with Truncated=true. Edit 1 has 1 match — full
+        // list, Truncated=false. Verifies the cap is per-edit, not batch-wide.
+        var resource = new ResourceKey("notes/many.md");
+        var path = Path.Combine(_tempFolder, "many.md");
+        await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\nx\nx\nx\nMARKER\n");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.Edits = new List<FileEditOperation>
+        {
+            new("x", "Y", ReplaceAll: true),
+            new("MARKER", "TARGET")
+        };
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.Edits[0].MatchCount.Should().Be(8);
+        command.ResultValue.Edits[0].Truncated.Should().BeTrue();
+        command.ResultValue.Edits[1].MatchCount.Should().Be(1);
+        command.ResultValue.Edits[1].Truncated.Should().BeFalse();
+
+        var edit0Ranges = command.ResultValue.AffectedRanges.Where(r => r.EditIndex == 0).ToList();
+        var edit1Ranges = command.ResultValue.AffectedRanges.Where(r => r.EditIndex == 1).ToList();
+        edit0Ranges.Should().HaveCount(4);
+        edit1Ranges.Should().HaveCount(1);
     }
 }

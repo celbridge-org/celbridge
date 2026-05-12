@@ -5,7 +5,14 @@ Writes text content to a file, creating it if it does not exist. For existing fi
 ## Parameters
 
 - `fileResource` — resource key of the file. Created automatically if missing. Parent folders must already exist.
-- `content` — the new text content. Line endings are written verbatim; the tool does not normalise.
+- `content` — the new text content. Line endings are normalised before writing.
+
+## Line endings
+
+- **New files** are written with LF (`\n`) line endings regardless of host platform. This matches what most cross-platform toolchains expect and what coding agents naturally produce.
+- **Existing files** preserve their on-disk line-ending convention. If the file is CRLF the rewrite stays CRLF; if it is LF the rewrite stays LF. The convention is detected from the existing content before this write.
+
+Pass `\n` or `\r\n` in `content` indifferently; the tool converts to the chosen target. For exact byte-level control (e.g. mixed line endings, or LF in an otherwise-CRLF file), use `file_write_binary` and supply the bytes you want on disk.
 
 ## Returns
 

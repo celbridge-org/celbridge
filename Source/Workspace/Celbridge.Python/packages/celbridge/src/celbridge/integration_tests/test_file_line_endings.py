@@ -3,7 +3,6 @@ and trailing-newline state, and that file.write picks the platform default
 when creating a new file.
 """
 import json
-import os
 import re
 
 import pytest
@@ -101,19 +100,17 @@ class TestFileLineEndings:
         assert "\r\n" in content
         assert "\r\r" not in content
 
-    def test_write_new_file_uses_platform_default(self, file):
-        # file.write with input that uses \n separators should write the
-        # host platform's line endings to a brand-new file.
+    def test_write_new_file_uses_lf(self, file):
+        # file.write defaults to LF for new files regardless of host platform.
+        # Matches cross-platform toolchain expectations and what most agents
+        # produce by default.
         file.write(
             "TestLineEndings/new.txt", "first\nsecond\nthird\n"
         )
 
         content = file.read("TestLineEndings/new.txt")["content"]
-        assert os.linesep in content
-        if os.linesep == "\r\n":
-            assert not re.search(r"(?<!\r)\n", content)
-        else:
-            assert "\r" not in content
+        assert "\n" in content
+        assert "\r" not in content
 
     def test_edit_preserves_no_trailing_newline(self, file):
         write_with_line_endings(

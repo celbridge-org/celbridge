@@ -12,7 +12,10 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
     public ResourceKey FileResource { get; set; }
     public List<FileEditOperation> Edits { get; set; } = new();
 
-    public FileMultiEditResult ResultValue { get; private set; } = new(0, Array.Empty<FileEditAffectedRange>());
+    public FileMultiEditResult ResultValue { get; private set; } = new(
+        0,
+        Array.Empty<FileMultiEditEditSummary>(),
+        Array.Empty<FileMultiEditAffectedRange>());
 
     public FileMultiEditCommand(
         ILogger<FileMultiEditCommand> logger,
@@ -26,7 +29,10 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
     {
         if (Edits.Count == 0)
         {
-            ResultValue = new FileMultiEditResult(0, Array.Empty<FileEditAffectedRange>());
+            ResultValue = new FileMultiEditResult(
+                0,
+                Array.Empty<FileMultiEditEditSummary>(),
+                Array.Empty<FileMultiEditAffectedRange>());
             return Result.Ok();
         }
 
@@ -49,12 +55,14 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
         var separator = LineEndingHelper.DetectSeparatorOrDefault(originalContent);
 
         // Sequential application: each edit anchors against the buffer state
-        // produced by previous edits. We track previously-applied replacement
-        // positions through subsequent edits so the final affected-line ranges
-        // describe the post-batch document state, not mid-batch positions.
+        // produced by previous edits. Per-edit tracked positions let us cap
+        // each edit's range list independently and tag every surviving range
+        // with the originating edit index in the final response.
         var buffer = originalContent;
         var trackedPositions = new List<int>();
         var trackedNewStrings = new List<string>();
+        var trackedEditIndices = new List<int>();
+        var perEditMatchCount = new int[Edits.Count];
 
         for (var editIndex = 0; editIndex < Edits.Count; editIndex++)
         {
@@ -62,7 +70,7 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
 
             if (string.IsNullOrEmpty(edit.OldString))
             {
-                return Result.Fail($"Edit {editIndex}: oldString must be non-empty");
+                return Result.Fail($"Edit {editIndex}: oldString must be non-empty. To append to a file, anchor on the existing last line and concatenate the new content in newString. To overwrite or create a file, use file_write.");
             }
 
             var oldString = LineEndingHelper.ConvertLineEndings(edit.OldString, separator);
@@ -81,14 +89,17 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
                 return Result.Fail($"Edit {editIndex}: oldString matched {matchPositions.Count} occurrences; add surrounding context to disambiguate, or set replaceAll: true");
             }
 
+            perEditMatchCount[editIndex] = matchPositions.Count;
+
             var applyResult = FileEditMatching.ApplyMatches(buffer, matchPositions, oldString, newString);
 
-            UpdateTrackedPositions(trackedPositions, trackedNewStrings, matchPositions, oldString.Length, newString.Length);
+            UpdateTrackedPositions(trackedPositions, matchPositions, oldString.Length, newString.Length);
 
             foreach (var pos in applyResult.ReplacementStarts)
             {
                 trackedPositions.Add(pos);
                 trackedNewStrings.Add(newString);
+                trackedEditIndices.Add(editIndex);
             }
 
             buffer = applyResult.NewContent;
@@ -100,7 +111,17 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
             return writeResult;
         }
 
-        var affectedRanges = new List<FileEditAffectedRange>(trackedPositions.Count);
+        // Group surviving positions by their originating edit, then build the
+        // final ranges per edit so the verbose cap applies per-edit rather
+        // than across the whole batch. An edit whose matches were all
+        // overwritten by a later edit still gets a summary entry with its
+        // original match count.
+        var positionsByEdit = new List<int>[Edits.Count];
+        var newStringByEdit = new string[Edits.Count];
+        for (var i = 0; i < Edits.Count; i++)
+        {
+            positionsByEdit[i] = new List<int>();
+        }
         for (var i = 0; i < trackedPositions.Count; i++)
         {
             var position = trackedPositions[i];
@@ -108,11 +129,40 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
             {
                 continue;
             }
-            affectedRanges.Add(FileEditMatching.RangeForReplacement(buffer, position, trackedNewStrings[i]));
+            var editIndex = trackedEditIndices[i];
+            positionsByEdit[editIndex].Add(position);
+            newStringByEdit[editIndex] = trackedNewStrings[i];
         }
+
+        var affectedRanges = new List<FileMultiEditAffectedRange>();
+        var editSummaries = new List<FileMultiEditEditSummary>(Edits.Count);
+
+        for (var editIndex = 0; editIndex < Edits.Count; editIndex++)
+        {
+            var positions = positionsByEdit[editIndex];
+            var perEditRanges = new List<FileEditAffectedRange>(positions.Count);
+            if (positions.Count > 0)
+            {
+                var newString = newStringByEdit[editIndex];
+                foreach (var position in positions)
+                {
+                    perEditRanges.Add(FileEditMatching.RangeForReplacement(buffer, position, newString));
+                }
+            }
+
+            var mergedPerEditRanges = FileEditMatching.MergeSameLineRanges(perEditRanges);
+            var capped = FileEditMatching.CapVerboseRanges(mergedPerEditRanges);
+            foreach (var range in capped.Ranges)
+            {
+                affectedRanges.Add(new FileMultiEditAffectedRange(editIndex, range.FromLine, range.ToLine, range.MatchCount));
+            }
+
+            editSummaries.Add(new FileMultiEditEditSummary(perEditMatchCount[editIndex], capped.Truncated));
+        }
+
         affectedRanges.Sort((a, b) => a.FromLine.CompareTo(b.FromLine));
 
-        ResultValue = new FileMultiEditResult(Edits.Count, affectedRanges);
+        ResultValue = new FileMultiEditResult(Edits.Count, editSummaries, affectedRanges);
 
         return Result.Ok();
     }
@@ -126,7 +176,6 @@ public class FileMultiEditCommand : CommandBase, IFileMultiEditCommand
     /// </summary>
     private static void UpdateTrackedPositions(
         List<int> trackedPositions,
-        List<string> trackedNewStrings,
         List<int> currentMatches,
         int oldLen,
         int newLen)

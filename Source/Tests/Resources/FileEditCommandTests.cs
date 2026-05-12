@@ -211,7 +211,7 @@ public class FileEditCommandTests
     }
 
     [Test]
-    public async Task Edit_FailsForEmptyOldString_WithCreateFileHint()
+    public async Task Edit_FailsForEmptyOldString_WithAppendAndCreateHints()
     {
         var command = CreateCommand();
         command.FileResource = new ResourceKey("any.md");
@@ -221,7 +221,60 @@ public class FileEditCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
+        result.FirstErrorMessage.Should().Contain("append");
+        result.FirstErrorMessage.Should().Contain("anchor on the existing last line");
         result.FirstErrorMessage.Should().Contain("file_write");
+    }
+
+    [Test]
+    public async Task Edit_CapsAffectedRanges_AndSetsTruncated_WhenMatchCountExceedsThreshold()
+    {
+        // 8 matches > VerboseRangeThreshold (5). Expect the first 3 plus the
+        // last 1 to come back, with Truncated=true and MatchCount=8 unchanged.
+        var resource = new ResourceKey("notes/many.md");
+        var path = Path.Combine(_tempFolder, "many.md");
+        await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\nx\nx\nx\n");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.OldString = "x";
+        command.NewString = "Y";
+        command.ReplaceAll = true;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.MatchCount.Should().Be(8);
+        command.ResultValue.Truncated.Should().BeTrue();
+        command.ResultValue.AffectedRanges.Should().HaveCount(4);
+        command.ResultValue.AffectedRanges[0].FromLine.Should().Be(1);
+        command.ResultValue.AffectedRanges[1].FromLine.Should().Be(2);
+        command.ResultValue.AffectedRanges[2].FromLine.Should().Be(3);
+        command.ResultValue.AffectedRanges[3].FromLine.Should().Be(8);
+    }
+
+    [Test]
+    public async Task Edit_KeepsFullRangeList_WhenMatchCountAtOrBelowThreshold()
+    {
+        // 5 matches == threshold. Expect full list, Truncated=false.
+        var resource = new ResourceKey("notes/five.md");
+        var path = Path.Combine(_tempFolder, "five.md");
+        await File.WriteAllTextAsync(path, "x\nx\nx\nx\nx\n");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.OldString = "x";
+        command.NewString = "Y";
+        command.ReplaceAll = true;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.MatchCount.Should().Be(5);
+        command.ResultValue.Truncated.Should().BeFalse();
+        command.ResultValue.AffectedRanges.Should().HaveCount(5);
     }
 
     [Test]
@@ -311,6 +364,36 @@ public class FileEditCommandTests
         command.ResultValue.AffectedRanges[0].ToLine.Should().Be(7);
         var content = await File.ReadAllTextAsync(path);
         content.Should().Be("one\ntwo\nthree\nfour\nfive\nsix\nseven\n");
+    }
+
+    [Test]
+    public async Task Edit_MergesSameLineHits_WhenReplaceAllProducesMultipleMatchesOnSameLine()
+    {
+        // Two matches of "foo" on line 1, one on line 2. Same-(from,to) hits
+        // on line 1 collapse into a single entry with MatchCount=2; line 2
+        // keeps its own entry with MatchCount=1. Top-level MatchCount stays
+        // at the raw total of 3.
+        var resource = new ResourceKey("notes/dups.md");
+        var path = Path.Combine(_tempFolder, "dups.md");
+        await File.WriteAllTextAsync(path, "foo bar foo\nfoo baz\n");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var command = CreateCommand();
+        command.FileResource = resource;
+        command.OldString = "foo";
+        command.NewString = "FOO";
+        command.ReplaceAll = true;
+
+        var result = await command.ExecuteAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        command.ResultValue.MatchCount.Should().Be(3);
+        command.ResultValue.AffectedRanges.Should().HaveCount(2);
+        command.ResultValue.AffectedRanges[0].FromLine.Should().Be(1);
+        command.ResultValue.AffectedRanges[0].ToLine.Should().Be(1);
+        command.ResultValue.AffectedRanges[0].MatchCount.Should().Be(2);
+        command.ResultValue.AffectedRanges[1].FromLine.Should().Be(2);
+        command.ResultValue.AffectedRanges[1].MatchCount.Should().Be(1);
     }
 
     [Test]

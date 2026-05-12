@@ -15,12 +15,13 @@ Line endings are normalised at match time: pass `\n` or `\r\n` indifferently and
 
 A JSON object with:
 
-- `matchCount` — the number of occurrences replaced.
-- `affectedLines` — array of `{ from, to, contextLines }`. `contextLines` is the post-edit content of the affected range plus one surrounding line on each side, so you can verify the edit without a follow-up `file_read`. Ranges are 1-based inclusive line numbers in the post-edit file, sorted ascending by `from`.
+- `matchCount` — the total number of occurrences replaced.
+- `affectedLines` — array of `{ from, to, matchCount, contextLines }`. `contextLines` is the post-edit content of the affected range plus one surrounding line on each side, so you can verify the edit without a follow-up `file_read`. Ranges are 1-based inclusive line numbers in the post-edit file, sorted ascending by `from`. **Ranges are per-line, not per-match:** multiple matches on the same line (only possible under `replaceAll`) collapse into one entry whose `matchCount` reports the per-line hit total. The sum of `matchCount` across all entries equals the top-level `matchCount`. **`contextLines` is included on every returned entry, including the sample entries in a truncated response** — when the response is capped, the first/last sample is the only verification signal you have, so keeping its context attached is the point.
+- `truncated` — `true` when the response was capped because `matchCount` exceeded the verbose threshold (5). The first 3 ranges and the last 1 range are returned; `matchCount` still reflects the real total. `false` when the full list is returned.
 
 ## Failure modes
 
-- **Empty `oldString`** fails with `oldString must be non-empty; use file_write to overwrite a file or to create a new one`.
+- **Empty `oldString`** fails with a hint pointing at the two common alternatives: anchor on the existing last line to append, or use `file_write` to overwrite or create the file.
 - **Zero matches** fails with `oldString not found in file. Tried to match: '<quote>'` — the quote shows the first 80 characters of the normalised `oldString` with control characters escaped, so you can see what the file actually contains.
 - **Multiple matches when `replaceAll` is false** fails with `oldString matched N occurrences; add surrounding context to disambiguate, or set replaceAll: true`. Pick: either extend `oldString` to include enough surrounding context that it appears once in the file, or opt in to `replaceAll` if every occurrence really should change.
 
@@ -33,5 +34,6 @@ A JSON object with:
 ## Gotchas
 
 - Edits write straight to disk. If the file is open in an editor, the buffer reloads from disk and Monaco's undo history is wiped — the edit is not Ctrl-Z-revertable.
-- Deleting a whole line: include the trailing newline in `oldString` (`"my_old_line\n"`). If you delete only `"my_old_line"`, the empty line remains.
+- Deleting a whole line: include the trailing newline in `oldString` (`"my_old_line\n"`). If you delete only `"my_old_line"`, the empty line remains. The response's `contextLines` exposes this inline — a clean delete shows the lines above and below adjacent to each other, while a partial delete shows an empty string `""` between them. Check `contextLines` after every line deletion to catch the residual blank without a follow-up `file_read`.
 - Appending past end-of-file: anchor against a suffix of the existing file (typically its last line) and concatenate the appended text in `newString`. Quote enough of the suffix that it's unique in the file.
+- **`replaceAll: true` matches substrings, not whole words.** Replacing `the` with `THE` will hit `the` inside `other`, producing `oTHEr`. Matching is case-sensitive but not word-boundary-aware. When targeting a short token that could appear inside longer words, extend `oldString` with a leading or trailing space, punctuation, or newline so the match is naturally bounded. Or use `file_replace` with `useRegex: true` and `\b` word boundaries.

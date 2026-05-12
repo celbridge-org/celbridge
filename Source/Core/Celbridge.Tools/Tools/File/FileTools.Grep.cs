@@ -201,6 +201,18 @@ public partial class FileTools
 
     private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceRegistry resourceRegistry)
     {
+        // Detect the most common mis-use: a glob or single path passed where a
+        // JSON array is required. The raw JsonException for this case ("'w' is
+        // an invalid start of a value") tells the caller something is wrong
+        // but not what to type instead.
+        var trimmedFilesJson = filesJson.TrimStart();
+        if (!trimmedFilesJson.StartsWith('['))
+        {
+            return ToolResponse.Error(
+                "files takes a JSON array of resource keys, e.g. [\"folder/a.txt\",\"folder/b.txt\"]. " +
+                "For glob-based scoping, use the include parameter instead.");
+        }
+
         List<string>? fileKeyStrings;
         try
         {
@@ -208,7 +220,9 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolResponse.Error($"Invalid JSON array for files: {ex.Message}");
+            return ToolResponse.Error(
+                $"Invalid JSON array for files: {ex.Message}. " +
+                "Expected a JSON array of resource keys, e.g. [\"folder/a.txt\",\"folder/b.txt\"].");
         }
 
         if (fileKeyStrings is null || fileKeyStrings.Count == 0)
