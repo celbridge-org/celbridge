@@ -28,13 +28,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resourceKey}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolResponse.Error($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resourceKey}'");
         }
 
         var bytes = await File.ReadAllBytesAsync(resourcePath);

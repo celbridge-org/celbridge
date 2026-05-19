@@ -41,13 +41,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resourceKey}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolResponse.Error($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resourceKey}'");
         }
 
         var extension = Path.GetExtension(resourcePath).ToLowerInvariant();
@@ -63,7 +63,7 @@ public partial class FileTools
         if (fileInfo.Length > MaxInlineImageBytes)
         {
             return ToolResponse.Error(
-                $"Image '{resource}' is {fileInfo.Length} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
+                $"Image '{resourceKey}' is {fileInfo.Length} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
                 $"Resize or recompress the image (or capture a smaller screenshot via webview_screenshot with maxEdge) " +
                 $"before calling file_read_image.");
         }

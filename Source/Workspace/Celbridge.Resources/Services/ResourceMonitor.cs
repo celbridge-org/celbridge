@@ -28,12 +28,10 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     }
 
     private readonly ILogger<ResourceMonitor> _logger;
-    private readonly IProjectService _projectService;
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    private readonly string _projectFolderPath;
     private readonly object _updateLock = new();
 
     private readonly List<WatchedRoot> _watchedRoots = new();
@@ -43,20 +41,13 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     public ResourceMonitor(
         ILogger<ResourceMonitor> logger,
         IDispatcher dispatcher,
-        IProjectService projectService,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _dispatcher = dispatcher;
-        _projectService = projectService;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
-
-        var project = _projectService.CurrentProject;
-        Guard.IsNotNull(project);
-
-        _projectFolderPath = project.ProjectFolderPath;
     }
 
     public Result Initialize()
@@ -69,7 +60,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         try
         {
             // Spin up one FileSystemWatcher per registered root that opted in via Capabilities.IsWatched.
-            // The registry is expected to have all handlers registered before Initialize() runs.
+            // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
+            // returns the configured registry instance here.
             var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
             foreach (var handler in registry.RootHandlers.Values)
             {
@@ -147,7 +139,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             }
             _watchedRoots.Clear();
 
-            _logger.LogDebug($"Resource monitoring stopped for: {_projectFolderPath}");
+            _logger.LogDebug("Resource monitoring stopped");
         }
         catch (Exception ex)
         {

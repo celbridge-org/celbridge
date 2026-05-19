@@ -596,6 +596,43 @@ public class FileToolTests
         result.IsError.Should().NotBe(true);
     }
 
+    [Test]
+    public async Task Read_MissingFileUnderNonProjectRoot_EmitsCanonicalRootPath()
+    {
+        // Regression for vr-4: when a resource under a non-project root is missing, the
+        // error must echo the canonical "root:path" form so the agent can see which root
+        // failed. A bare path is reserved for the project root and is ambiguous otherwise.
+        var resourceKey = ResourceKey.Create("temp:missing/file.txt");
+        var resourcePath = Path.Combine(_tempFolder, "missing", "file.txt");
+        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Read("temp:missing/file.txt");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("temp:missing/file.txt");
+        text.Should().NotContain("'missing/file.txt'");
+    }
+
+    [Test]
+    public async Task Read_MissingFileUnderProjectRoot_EmitsBarePath()
+    {
+        // Counterpart to the temp: test: project-root keys must be reported as bare paths,
+        // never with the explicit "project:" prefix.
+        var resourceKey = ResourceKey.Create("Scripts/missing.py");
+        var resourcePath = Path.Combine(_tempFolder, "Scripts", "missing.py");
+        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Read("project:Scripts/missing.py");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("Scripts/missing.py");
+        text.Should().NotContain("project:Scripts/missing.py");
+    }
+
     private static JsonElement ParseResult(CallToolResult result)
     {
         var json = result.Content.OfType<TextContentBlock>().Single().Text;

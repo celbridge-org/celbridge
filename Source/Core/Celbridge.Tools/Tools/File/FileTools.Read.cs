@@ -27,13 +27,13 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error($"Failed to resolve path for resource: '{resourceKey}'");
         }
         var resourcePath = resolveResult.Value;
 
         if (!File.Exists(resourcePath))
         {
-            return ToolResponse.Error($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
+            return ToolResponse.Error($"Resource not found: '{resourceKey}'. file_read addresses resources by resource key, not arbitrary disk paths — only files under a registered root (e.g. 'project:', 'temp:', 'logs:') can be read.");
         }
 
         var fileText = await File.ReadAllTextAsync(resourcePath);

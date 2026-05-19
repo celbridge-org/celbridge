@@ -109,8 +109,19 @@ public class WorkspaceLoader
             // Restore previous state of expanded folders before populating resources
             await folderStateService.LoadAsync();
 
-            // Update resource registry immediately to ensure we are up to date
             var resourceService = workspaceService.ResourceService;
+
+            // Start file system watchers now that the wrapper is fully populated.
+            // The monitor cannot be initialized in ResourceService's constructor because
+            // it reaches into the workspace via IWorkspaceWrapper, which is only set up
+            // once construction completes.
+            var initMonitorResult = resourceService.Monitor.Initialize();
+            if (initMonitorResult.IsFailure)
+            {
+                _logger.LogWarning(initMonitorResult, "Failed to initialize resource monitor");
+            }
+
+            // Update resource registry immediately to ensure we are up to date
             var updateResult = resourceService.UpdateResources();
             if (updateResult.IsFailure)
             {

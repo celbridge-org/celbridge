@@ -49,17 +49,21 @@ public partial class FileTools
                 continue;
             }
 
+            // Echo the canonical form of the resource key in per-entry output so that
+            // entries for different roots are unambiguous regardless of how the agent typed them.
+            var canonicalResource = resourceKey.ToString();
+
             var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
             if (resolveResult.IsFailure)
             {
-                entries.Add(new ReadManyFileEntry(resourceString, Error: $"Failed to resolve path for resource: '{resourceString}'"));
+                entries.Add(new ReadManyFileEntry(canonicalResource, Error: $"Failed to resolve path for resource: '{canonicalResource}'"));
                 continue;
             }
             var resourcePath = resolveResult.Value;
 
             if (!File.Exists(resourcePath))
             {
-                entries.Add(new ReadManyFileEntry(resourceString, Error: $"File not found: '{resourceString}'"));
+                entries.Add(new ReadManyFileEntry(canonicalResource, Error: $"File not found: '{canonicalResource}'"));
                 continue;
             }
 
@@ -69,7 +73,7 @@ public partial class FileTools
             if (offset == 0 && limit == 0)
             {
                 // Preserve raw line endings as they exist on disk.
-                entries.Add(new ReadManyFileEntry(resourceString, Content: fileText, TotalLineCount: totalLineCount));
+                entries.Add(new ReadManyFileEntry(canonicalResource, Content: fileText, TotalLineCount: totalLineCount));
             }
             else
             {
@@ -81,13 +85,13 @@ public partial class FileTools
 
                 if (startIndex >= allLines.Count)
                 {
-                    entries.Add(new ReadManyFileEntry(resourceString, Content: string.Empty, TotalLineCount: totalLineCount));
+                    entries.Add(new ReadManyFileEntry(canonicalResource, Content: string.Empty, TotalLineCount: totalLineCount));
                 }
                 else
                 {
                     var selectedLines = allLines.Skip(startIndex).Take(count);
                     var content = string.Join(fileSeparator, selectedLines);
-                    entries.Add(new ReadManyFileEntry(resourceString, Content: content, TotalLineCount: totalLineCount));
+                    entries.Add(new ReadManyFileEntry(canonicalResource, Content: content, TotalLineCount: totalLineCount));
                 }
             }
         }

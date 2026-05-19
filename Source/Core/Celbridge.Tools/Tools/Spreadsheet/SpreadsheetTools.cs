@@ -35,13 +35,13 @@ public partial class SpreadsheetTools : AgentToolBase
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve path for resource: '{resource}'");
+            return Result.Fail($"Failed to resolve path for resource: '{resourceKey}'");
         }
         var workbookPath = resolveResult.Value;
 
         if (!File.Exists(workbookPath))
         {
-            return Result.Fail($"File not found: '{resource}'");
+            return Result.Fail($"File not found: '{resourceKey}'");
         }
 
         return workbookPath;

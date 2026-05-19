@@ -109,14 +109,9 @@ public class ResourceService : IResourceService, IDisposable
         Registry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder, handlerPathValidator));
         Registry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder, handlerPathValidator));
 
-        // Initialize the resource monitor to start watching for file system changes.
-        // Initialize runs after handler registration so the monitor sees the full set
-        // of registered roots and can create one watcher per IsWatched: true root.
-        var initResult = Monitor.Initialize();
-        if (initResult.IsFailure)
-        {
-            _logger.LogWarning(initResult, "Failed to initialize resource monitor");
-        }
+        // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
+        // the monitor looks up its registry through IWorkspaceWrapper, which is only populated
+        // once the WorkspaceService finishes constructing.
 
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
         _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnResourceUpdateRequestedMessage);

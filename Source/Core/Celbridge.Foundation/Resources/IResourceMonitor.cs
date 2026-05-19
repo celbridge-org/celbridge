@@ -6,7 +6,8 @@ namespace Celbridge.Resources;
 public interface IResourceMonitor
 {
     /// <summary>
-    /// Initializes the resource monitor and starts watching for file system changes.
+    /// Initializes the resource monitor and starts watching for file system changes
+    /// across every registered root whose Capabilities.IsWatched is true.
     /// </summary>
     Result Initialize();
 
