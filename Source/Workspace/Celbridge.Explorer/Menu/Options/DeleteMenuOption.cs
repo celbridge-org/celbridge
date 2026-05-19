@@ -36,13 +36,13 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canDelete = context.HasAnySelection && !context.SelectionContainsRootFolder;
+        var canDelete = context.HasAnySelection && !context.SelectionContainsProjectFolder;
         return new MenuItemState(IsVisible: true, IsEnabled: canDelete);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasAnySelection || context.SelectionContainsRootFolder)
+        if (!context.HasAnySelection || context.SelectionContainsProjectFolder)
         {
             return;
         }

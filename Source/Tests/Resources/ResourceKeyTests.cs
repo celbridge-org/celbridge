@@ -185,4 +185,122 @@ public class ResourceKeyTests
         emptyKey.IsEmpty.Should().BeTrue();
         emptyKey.ToString().Should().Be("");
     }
+
+    [Test]
+    public void ImplicitProjectRootRoundTripsCleanly()
+    {
+        // Regression guard: ResourceKey "project:foo" round-trips through the implicit
+        // string operator without throwing. Today's pre-redesign IsValidKey rejected the
+        // ':' character via Path.GetInvalidFileNameChars() on Windows.
+        ResourceKey rk = "project:foo";
+        rk.Root.Should().Be("project");
+        rk.Path.Should().Be("foo");
+        rk.FullKey.Should().Be("project:foo");
+        rk.ToString().Should().Be("foo");
+    }
+
+    [Test]
+    public void RootAccessorReturnsParsedOrDefaultRoot()
+    {
+        new ResourceKey("foo/bar").Root.Should().Be("project");
+        new ResourceKey("project:foo/bar").Root.Should().Be("project");
+        new ResourceKey("temp:staging/foo").Root.Should().Be("temp");
+        new ResourceKey("logs:session.log").Root.Should().Be("logs");
+        ResourceKey.Empty.Root.Should().Be("project");
+    }
+
+    [Test]
+    public void PathAccessorReturnsPathPortionOnly()
+    {
+        new ResourceKey("foo/bar").Path.Should().Be("foo/bar");
+        new ResourceKey("project:foo/bar").Path.Should().Be("foo/bar");
+        new ResourceKey("temp:staging/foo").Path.Should().Be("staging/foo");
+        new ResourceKey("temp:").Path.Should().Be("");
+        ResourceKey.Empty.Path.Should().Be("");
+    }
+
+    [Test]
+    public void FullKeyAlwaysCarriesRootPrefix()
+    {
+        new ResourceKey("foo/bar").FullKey.Should().Be("project:foo/bar");
+        new ResourceKey("project:foo/bar").FullKey.Should().Be("project:foo/bar");
+        new ResourceKey("temp:staging/foo").FullKey.Should().Be("temp:staging/foo");
+        new ResourceKey("temp:").FullKey.Should().Be("temp:");
+        ResourceKey.Empty.FullKey.Should().Be("project:");
+    }
+
+    [Test]
+    public void ToStringEmitsDisplayForm()
+    {
+        // The "project:" prefix is suppressed in display form; other roots are shown explicitly.
+        new ResourceKey("foo/bar").ToString().Should().Be("foo/bar");
+        new ResourceKey("project:foo/bar").ToString().Should().Be("foo/bar");
+        new ResourceKey("temp:staging/foo").ToString().Should().Be("temp:staging/foo");
+        new ResourceKey("temp:").ToString().Should().Be("temp:");
+    }
+
+    [Test]
+    public void ImplicitAndExplicitProjectRootKeysAreEqual()
+    {
+        // "", "project:", and ResourceKey.Empty are equivalent forms.
+        var bareEmpty = new ResourceKey("");
+        var explicitProject = new ResourceKey("project:");
+        bareEmpty.Should().Be(explicitProject);
+        bareEmpty.Should().Be(ResourceKey.Empty);
+
+        // "foo" and "project:foo" are equivalent forms.
+        new ResourceKey("foo").Should().Be(new ResourceKey("project:foo"));
+        new ResourceKey("foo/bar").GetHashCode().Should().Be(new ResourceKey("project:foo/bar").GetHashCode());
+    }
+
+    [Test]
+    public void InvalidRootsAreRejected()
+    {
+        // Empty root
+        ResourceKey.IsValidKey(":foo").Should().BeFalse();
+        // Uppercase root
+        ResourceKey.IsValidKey("Project:foo").Should().BeFalse();
+        // Single-character root
+        ResourceKey.IsValidKey("a:foo").Should().BeFalse();
+        // Root with leading digit
+        ResourceKey.IsValidKey("1ab:foo").Should().BeFalse();
+        // Root with invalid character
+        ResourceKey.IsValidKey("te-mp:foo").Should().BeFalse();
+
+        // Valid: lowercase letter followed by [a-z0-9_]+
+        ResourceKey.IsValidKey("temp:foo").Should().BeTrue();
+        ResourceKey.IsValidKey("logs:foo").Should().BeTrue();
+        ResourceKey.IsValidKey("a1:foo").Should().BeTrue();
+        ResourceKey.IsValidKey("a_b:foo").Should().BeTrue();
+    }
+
+    [Test]
+    public void CombineAndGetParentPreserveRoot()
+    {
+        var temp = new ResourceKey("temp:staging");
+        var combined = temp.Combine("file.txt");
+        combined.Root.Should().Be("temp");
+        combined.Path.Should().Be("staging/file.txt");
+        combined.ToString().Should().Be("temp:staging/file.txt");
+
+        var parent = combined.GetParent();
+        parent.Root.Should().Be("temp");
+        parent.Path.Should().Be("staging");
+        parent.ToString().Should().Be("temp:staging");
+    }
+
+    [Test]
+    public void IsDescendantOfRequiresSameRoot()
+    {
+        var tempFile = new ResourceKey("temp:staging/file.txt");
+        tempFile.IsDescendantOf(new ResourceKey("temp:staging")).Should().BeTrue();
+
+        // Different roots are never in a descendant relationship.
+        tempFile.IsDescendantOf(new ResourceKey("staging")).Should().BeFalse();
+        tempFile.IsDescendantOf(new ResourceKey("logs:staging")).Should().BeFalse();
+
+        // Project-root parent of project-root child still works.
+        new ResourceKey("foo/bar").IsDescendantOf(new ResourceKey("foo")).Should().BeTrue();
+        new ResourceKey("project:foo/bar").IsDescendantOf(new ResourceKey("foo")).Should().BeTrue();
+    }
 }

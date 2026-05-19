@@ -11,7 +11,7 @@ public sealed partial class ResourceTree
     {
         // If right-clicking on an already-selected item, preserve the multi-selection
         // If right-clicking on an unselected item, select only that item
-        // If right-clicking on root folder or empty space, track root as the clicked resource
+        // If right-clicking on the project folder or empty space, track the project folder as the clicked resource
         var position = e.GetPosition(ResourceListView);
         var clickedItem = FindItemAtPosition(position);
 
@@ -20,9 +20,9 @@ public sealed partial class ResourceTree
         {
             clickedResource = clickedItem.Resource;
 
-            if (clickedItem.IsRootFolder)
+            if (clickedItem.IsProjectFolder)
             {
-                // Root folder is not selectable, clear selection
+                // Project folder is not selectable, clear selection
                 ResourceListView.SelectedItems.Clear();
             }
             else
@@ -36,8 +36,8 @@ public sealed partial class ResourceTree
         }
         else
         {
-            // Right-clicking empty space - target root folder
-            clickedResource = ViewModel.RootFolder;
+            // Right-clicking empty space - target the project folder
+            clickedResource = ViewModel.ProjectFolder;
             ResourceListView.SelectedItems.Clear();
         }
 
@@ -69,8 +69,8 @@ public sealed partial class ResourceTree
     private async Task<ExplorerMenuContext> BuildMenuContext(IResource? clickedResource)
     {
         var selectedResources = ViewModel.GetSelectedResources();
-        var rootFolder = ViewModel.RootFolder;
-        var isRootFolderTargeted = clickedResource == rootFolder;
+        var projectFolder = ViewModel.ProjectFolder;
+        var isProjectFolderTargeted = clickedResource == projectFolder;
 
         // Check clipboard state
         var contentDescription = _dataTransferService.GetClipboardContentDescription();
@@ -79,8 +79,8 @@ public sealed partial class ResourceTree
         var context = new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
-            RootFolder: rootFolder,
-            IsRootFolderTargeted: isRootFolderTargeted,
+            ProjectFolder: projectFolder,
+            IsProjectFolderTargeted: isProjectFolderTargeted,
             HasClipboardData: hasClipboardData,
             ClipboardContentType: contentDescription.ContentType,
             ClipboardOperation: contentDescription.ContentOperation

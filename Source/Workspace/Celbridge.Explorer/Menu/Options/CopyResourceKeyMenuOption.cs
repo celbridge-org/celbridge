@@ -35,8 +35,8 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        // Don't show for root folder (it has an empty ResourceKey)
-        var canCopy = context.ClickedResource != null && context.ClickedResource != context.RootFolder;
+        // Don't show for project folder (it has an empty ResourceKey)
+        var canCopy = context.ClickedResource != null && context.ClickedResource != context.ProjectFolder;
         return new MenuItemState(
             IsVisible: context.ClickedResource != null,
             IsEnabled: canCopy);
@@ -44,7 +44,7 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.ClickedResource == null || context.ClickedResource == context.RootFolder)
+        if (context.ClickedResource == null || context.ClickedResource == context.ProjectFolder)
         {
             return;
         }

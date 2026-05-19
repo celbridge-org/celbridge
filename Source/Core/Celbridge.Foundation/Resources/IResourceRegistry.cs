@@ -11,9 +11,9 @@ public interface IResourceRegistry
     string ProjectFolderPath { get; set; }
 
     /// <summary>
-    /// The root folder resource that contains all the resources in the project.
+    /// The project folder resource that contains all the resources in the project.
     /// </summary>
-    IFolderResource RootFolder { get; }
+    IFolderResource ProjectFolder { get; }
 
     /// <summary>
     /// Returns the resource key for a resource.
@@ -77,7 +77,7 @@ public interface IResourceRegistry
     /// Returns the folder resource associated with the context menu item for a resource.
     /// If the resource is a folder, then the folder is returned.
     /// If the resource is a file, then the file's parent folder is returned.
-    /// If the resource is null, then the root folder is returned.
+    /// If the resource is null, then the project folder is returned.
     /// </summary>
     ResourceKey GetContextMenuItemFolder(IResource? resource);
 

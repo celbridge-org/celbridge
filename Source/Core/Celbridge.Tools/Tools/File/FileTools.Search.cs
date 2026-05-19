@@ -28,7 +28,7 @@ public partial class FileTools
         if (isFolderSearch)
         {
             var folderKeys = new List<ResourceKey>();
-            CollectFolderResources(resourceRegistry.RootFolder, resourceRegistry, folderKeys);
+            CollectFolderResources(resourceRegistry.ProjectFolder, resourceRegistry, folderKeys);
 
             var matchingFolders = folderKeys
                 .Where(key => regex.IsMatch(key.ToString()))

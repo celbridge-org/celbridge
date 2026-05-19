@@ -39,9 +39,9 @@ public partial class ResourceTreeViewModel : ObservableObject
     public List<ResourceViewItem> SelectedItems { get; private set; } = [];
 
     /// <summary>
-    /// The root folder resource.
+    /// The project folder resource.
     /// </summary>
-    public IFolderResource RootFolder => _resourceRegistry.RootFolder;
+    public IFolderResource ProjectFolder => _resourceRegistry.ProjectFolder;
 
     /// <summary>
     /// Raised when the view should update the selected resources.
@@ -157,22 +157,22 @@ public partial class ResourceTreeViewModel : ObservableObject
     private List<ResourceViewItem> BuildResourceViewItems()
     {
         var items = new List<ResourceViewItem>();
-        var rootFolder = _resourceRegistry.RootFolder;
+        var projectFolder = _resourceRegistry.ProjectFolder;
 
-        // Add the root folder as the first item (always expanded, never collapsible)
-        var hasChildren = rootFolder.Children.Count > 0;
+        // Add the project folder as the first item (always expanded, never collapsible)
+        var hasChildren = projectFolder.Children.Count > 0;
         var projectName = Path.GetFileName(_resourceRegistry.ProjectFolderPath);
-        var rootItem = new ResourceViewItem(
-            rootFolder,
+        var projectFolderItem = new ResourceViewItem(
+            projectFolder,
             indentLevel: 0,
             isExpanded: true,
             hasChildren,
-            isRootFolder: true,
+            isProjectFolder: true,
             displayName: projectName);
-        items.Add(rootItem);
+        items.Add(projectFolderItem);
 
-        // Add children at indent level 0 (root uses negative margin, so children at 0 align correctly)
-        BuildResourceViewItemsRecursive(rootFolder.Children, items, indentLevel: 0);
+        // Add children at indent level 0 (project folder uses negative margin, so children at 0 align correctly)
+        BuildResourceViewItemsRecursive(projectFolder.Children, items, indentLevel: 0);
 
         return items;
     }
@@ -296,12 +296,12 @@ public partial class ResourceTreeViewModel : ObservableObject
     //
 
     /// <summary>
-    /// Toggles the expansion state of a folder item (except root folder).
+    /// Toggles the expansion state of a folder item (except the project folder).
     /// </summary>
     public void ToggleExpand(ResourceViewItem item)
     {
-        // Don't allow toggling root folder expansion
-        if (!item.IsFolder || !item.HasChildren || item.IsRootFolder)
+        // Don't allow toggling project folder expansion
+        if (!item.IsFolder || !item.HasChildren || item.IsProjectFolder)
         {
             return;
         }
@@ -351,8 +351,8 @@ public partial class ResourceTreeViewModel : ObservableObject
     /// </summary>
     public void CollapseItem(ResourceViewItem item)
     {
-        // Don't allow collapsing the root folder
-        if (!item.IsFolder || !item.IsExpanded || item.IsRootFolder)
+        // Don't allow collapsing the project folder
+        if (!item.IsFolder || !item.IsExpanded || item.IsProjectFolder)
         {
             return;
         }
@@ -404,10 +404,10 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         foreach (var item in TreeItems.ToList())
         {
-            // Skip root folder - it should never be collapsed
+            // Skip the project folder - it should never be collapsed
             if (item.IsFolder &&
                 item.IsExpanded &&
-                !item.IsRootFolder)
+                !item.IsProjectFolder)
             {
                 item.IsExpanded = false;
                 if (item.Resource is IFolderResource folderResource)
@@ -548,13 +548,13 @@ public partial class ResourceTreeViewModel : ObservableObject
 
         // Determine the parent folder key:
         // - If an item is provided/selected, use its parent folder's key
-        // - If nothing is selected, use the root folder's key (for root-level items)
+        // - If nothing is selected, use the project folder's key (for project-level items)
         var targetParentKey = item != null
             ? GetParentKey(item.Resource.ParentFolder)
-            : _resourceRegistry.GetResourceKey(RootFolder);
+            : _resourceRegistry.GetResourceKey(ProjectFolder);
 
         return TreeItems
-            .Where(i => !i.IsRootFolder && GetParentKey(i.Resource.ParentFolder) == targetParentKey)
+            .Where(i => !i.IsProjectFolder && GetParentKey(i.Resource.ParentFolder) == targetParentKey)
             .ToList();
     }
 
@@ -562,6 +562,6 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         return parentFolder != null
             ? _resourceRegistry.GetResourceKey(parentFolder)
-            : _resourceRegistry.GetResourceKey(RootFolder);
+            : _resourceRegistry.GetResourceKey(ProjectFolder);
     }
 }

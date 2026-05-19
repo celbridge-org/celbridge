@@ -79,7 +79,7 @@ public class ResourceRegistryTests
         // Check the scanned resources match the files and folders we created earlier.
         //
 
-        var resources = resourceRegistry.RootFolder.Children;
+        var resources = resourceRegistry.ProjectFolder.Children;
         resources.Count.Should().Be(2);
 
         (resources[0] is FolderResource).Should().BeTrue();
@@ -126,7 +126,7 @@ public class ResourceRegistryTests
         expandedFoldersOut.Count.Should().Be(1);
         expandedFoldersOut[0].Should().Be(FolderNameA);
 
-        var folderResource = (resourceRegistry.RootFolder.Children[0] as FolderResource)!;
+        var folderResource = (resourceRegistry.ProjectFolder.Children[0] as FolderResource)!;
         var folderPath = resourceRegistry.GetResourceKey(folderResource);
         folderStateService.IsExpanded(folderPath).Should().BeTrue();
     }

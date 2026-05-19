@@ -13,9 +13,9 @@ public class ResourceRegistry : IResourceRegistry
 
     public string ProjectFolderPath { get; set; } = string.Empty;
 
-    private FolderResource _rootFolder = new FolderResource(string.Empty, null);
+    private FolderResource _projectFolder = new FolderResource(string.Empty, null);
 
-    public IFolderResource RootFolder => _rootFolder;
+    public IFolderResource ProjectFolder => _projectFolder;
 
     public ResourceRegistry(
         IMessengerService messengerService,
@@ -110,12 +110,12 @@ public class ResourceRegistry : IResourceRegistry
     {
         if (resource.IsEmpty)
         {
-            // An empty resource key refers to the root folder
-            return Result<IResource>.Ok(_rootFolder);
+            // An empty resource key refers to the project folder
+            return Result<IResource>.Ok(_projectFolder);
         }
 
         var segments = resource.ToString().Split('/');
-        var searchFolder = _rootFolder;
+        var searchFolder = _projectFolder;
 
         // Attempt to match each segment with the corresponding resource in the tree
         var segmentIndex = 0;
@@ -174,7 +174,7 @@ public class ResourceRegistry : IResourceRegistry
             {
                 if (destResource.IsEmpty)
                 {
-                    // Destination is the root folder
+                    // Destination is the project folder
                     output = sourceResource.ResourceName;
                 }
                 else
@@ -210,7 +210,7 @@ public class ResourceRegistry : IResourceRegistry
                 var filename = Path.GetFileName(sourcePath);
                 if (destResource.IsEmpty)
                 {
-                    // Destination is the root folder
+                    // Destination is the project folder
                     output = filename;
                 }
                 else
@@ -239,7 +239,7 @@ public class ResourceRegistry : IResourceRegistry
         }
         if (destFolder is null)
         {
-            destFolder = _rootFolder;
+            destFolder = _projectFolder;
         }
 
         return GetResourceKey(destFolder);
@@ -249,7 +249,7 @@ public class ResourceRegistry : IResourceRegistry
     {
         try
         {
-            // Build a fresh tree off to the side, then atomically swap _rootFolder.
+            // Build a fresh tree off to the side, then atomically swap _projectFolder.
             // Readers on other threads see either the old or the new tree, never a torn
             // intermediate state. Once a tree has been observed it is immutable, so
             // iterators on Children remain valid even if a swap happens during a read.
@@ -257,7 +257,7 @@ public class ResourceRegistry : IResourceRegistry
             // visible before the new reference (a no-op on x64, required on ARM64).
             var newRoot = new FolderResource(string.Empty, null);
             SynchronizeFolder(newRoot, ProjectFolderPath);
-            Volatile.Write(ref _rootFolder, newRoot);
+            Volatile.Write(ref _projectFolder, newRoot);
 
             _pathValidator.InvalidateCache();
 
@@ -290,9 +290,9 @@ public class ResourceRegistry : IResourceRegistry
     private void SynchronizeFolder(FolderResource folderResource, string folderPath)
     {
         // Get filtered lists of subfolders and files
-        bool isRootFolder = folderResource.ParentFolder is null;
+        bool isProjectFolder = folderResource.ParentFolder is null;
         var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
-        RemoveHiddenFolders(subFolderPaths, isRootFolder);
+        RemoveHiddenFolders(subFolderPaths, isProjectFolder);
 
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
         RemoveHiddenFiles(filePaths);
@@ -333,7 +333,7 @@ public class ResourceRegistry : IResourceRegistry
     public List<(ResourceKey Resource, string Path)> GetAllFileResources()
     {
         var fileResources = new List<(ResourceKey Resource, string Path)>();
-        CollectFileResources(_rootFolder, fileResources);
+        CollectFileResources(_projectFolder, fileResources);
 
         // Sort by path for stable ordering
         fileResources.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
@@ -469,7 +469,7 @@ public class ResourceRegistry : IResourceRegistry
     }
 
     // Remove hidden folders from a list of folder paths
-    private static void RemoveHiddenFolders(List<string> folderPaths, bool isRootFolder)
+    private static void RemoveHiddenFolders(List<string> folderPaths, bool isProjectFolder)
     {
         folderPaths.RemoveAll(path =>
         {
@@ -491,7 +491,7 @@ public class ResourceRegistry : IResourceRegistry
             var dirInfo = new DirectoryInfo(path);
 
             // Ignore the CelData folder
-            if (isRootFolder && dirInfo.Name == ProjectConstants.MetaDataFolder)
+            if (isProjectFolder && dirInfo.Name == ProjectConstants.MetaDataFolder)
             {
                 return true;
             }

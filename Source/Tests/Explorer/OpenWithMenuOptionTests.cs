@@ -56,12 +56,12 @@ public class OpenWithMenuOptionTests
 
     private static ExplorerMenuContext ContextFor(IResource? clickedResource)
     {
-        var rootFolder = Substitute.For<IFolderResource>();
+        var projectFolder = Substitute.For<IFolderResource>();
         return new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: clickedResource is null ? Array.Empty<IResource>() : new[] { clickedResource },
-            RootFolder: rootFolder,
-            IsRootFolderTargeted: false,
+            ProjectFolder: projectFolder,
+            IsProjectFolderTargeted: false,
             HasClipboardData: false,
             ClipboardContentType: ClipboardContentType.None,
             ClipboardOperation: ClipboardContentOperation.None);

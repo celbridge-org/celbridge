@@ -110,7 +110,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private List<ResourcePickerItem> BuildFlatList(IResourceRegistry registry)
     {
         var items = new List<ResourcePickerItem>();
-        CollectFileResources(registry.RootFolder, registry, items);
+        CollectFileResources(registry.ProjectFolder, registry, items);
         items.Sort((a, b) => string.Compare(a.DisplayText, b.DisplayText, StringComparison.OrdinalIgnoreCase));
         return items;
     }

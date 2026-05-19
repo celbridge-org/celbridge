@@ -2,24 +2,38 @@ namespace Celbridge.Core;
 
 /// <summary>
 /// A unique identifier for project resources.
-/// This key is based on the relative path of the resource in the project folder.
+/// A resource key has the optional URI-style form "root:path"; when no root prefix
+/// is supplied, the key resolves under the implicit "project" root.
 /// Construction validates the key format; invalid strings throw ArgumentException.
 /// Use TryCreate() for non-throwing validation of untrusted input.
 /// </summary>
 public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<ResourceKey>
 {
-    // As this is a struct, if a ResourceKey member variable is not explicitly initialized,
-    // the key here will be null regardless of any value we assign to it here or in the constructor.
-    // The safest approach is to make this member variable nullable.
-    private readonly string? _key;
+    /// <summary>
+    /// The implicit root name used when a resource key has no root prefix.
+    /// </summary>
+    public const string DefaultRoot = "project";
+
+    // _root is null when this key uses the default "project" root; this lets
+    // default(ResourceKey) round-trip with the same semantics as ResourceKey.Empty.
+    // _path is null/empty for a root-only key (e.g. "temp:" or the default "").
+    private readonly string? _root;
+    private readonly string? _path;
 
     public ResourceKey(string key)
     {
-        if (!IsValidKey(key))
+        if (!TryParse(key, out var parsedRoot, out var parsedPath))
         {
             throw new ArgumentException($"Invalid resource key: '{key}'", nameof(key));
         }
-        _key = key;
+        _root = parsedRoot;
+        _path = parsedPath;
+    }
+
+    private ResourceKey(string? root, string? path)
+    {
+        _root = root;
+        _path = path;
     }
 
     /// <summary>
@@ -43,24 +57,46 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// </summary>
     public static bool TryCreate(string key, out ResourceKey result)
     {
-        if (IsValidKey(key))
+        if (TryParse(key, out var parsedRoot, out var parsedPath))
         {
-            result = new ResourceKey(key);
+            result = new ResourceKey(parsedRoot, parsedPath);
             return true;
         }
         result = Empty;
         return false;
     }
 
+    /// <summary>
+    /// The root name for this key (e.g. "project", "temp", "logs"). Always non-empty;
+    /// defaults to "project" when the source string had no root prefix.
+    /// </summary>
+    public string Root => _root ?? DefaultRoot;
+
+    /// <summary>
+    /// The path portion of this key, with the root prefix stripped. May be empty for a root-only key.
+    /// </summary>
+    public string Path => _path ?? string.Empty;
+
+    /// <summary>
+    /// The canonical "root:path" form of this key. Always carries the explicit root prefix,
+    /// even for the default "project" root. Use for serialisation and unambiguous diagnostics.
+    /// </summary>
+    public string FullKey => (_root ?? DefaultRoot) + ":" + (_path ?? string.Empty);
+
     public override string ToString()
     {
-        return _key ?? string.Empty;
+        // Display form: bare path for the default "project" root, "root:path" otherwise.
+        if (_root is null)
+        {
+            return _path ?? string.Empty;
+        }
+        return _root + ":" + (_path ?? string.Empty);
     }
 
     /// <summary>
-    /// Returns true if the resource key is empty.
+    /// Returns true if the resource key's path portion is empty (root-only key).
     /// </summary>
-    public bool IsEmpty => string.IsNullOrEmpty(_key);
+    public bool IsEmpty => string.IsNullOrEmpty(_path);
 
     public override bool Equals(object? obj)
     {
@@ -71,17 +107,18 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     public bool Equals(ResourceKey other)
     {
-        return _key == other._key;
+        return Root == other.Root &&
+            Path == other.Path;
     }
 
     public override int GetHashCode()
     {
-        return ToString().GetHashCode();
+        return HashCode.Combine(Root, Path);
     }
 
     public int CompareTo(ResourceKey other)
     {
-        return string.Compare(_key, other._key, StringComparison.Ordinal);
+        return string.Compare(FullKey, other.FullKey, StringComparison.Ordinal);
     }
 
     public static bool operator ==(ResourceKey left, ResourceKey right)
@@ -106,24 +143,25 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     public static implicit operator string(ResourceKey resource) => resource.ToString();
 
     /// <summary>
-    /// Returns the resource name. This is the last segment of the resource key.
+    /// Returns the resource name. This is the last segment of the resource key's path.
     /// </summary>
     public string ResourceName
     {
         get
         {
-            if (string.IsNullOrEmpty(_key))
+            var path = _path;
+            if (string.IsNullOrEmpty(path))
             {
                 return string.Empty;
             }
 
-            int lastIndex = _key.LastIndexOf('/');
+            int lastIndex = path.LastIndexOf('/');
             if (lastIndex == -1)
             {
-                return _key;
+                return path;
             }
 
-            return _key.Substring(lastIndex + 1);
+            return path.Substring(lastIndex + 1);
         }
     }
 
@@ -147,44 +185,55 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     }
 
     /// <summary>
-    /// Returns the parent resource key for the specified resource key.
+    /// Returns the parent resource key for this key. The root is preserved; the path
+    /// loses its last segment. The parent of a root-only key is the same root-only key.
     /// </summary>
     public ResourceKey GetParent()
     {
-        if (string.IsNullOrEmpty(_key))
+        var path = _path;
+        if (string.IsNullOrEmpty(path))
         {
-            return Empty;
+            return new ResourceKey(_root, null);
         }
 
-        int lastSlashIndex = _key.LastIndexOf('/');
+        int lastSlashIndex = path.LastIndexOf('/');
         if (lastSlashIndex == -1)
         {
-            return Empty;
+            return new ResourceKey(_root, null);
         }
 
-        var parentKey = _key.Substring(0, lastSlashIndex);
-        return new ResourceKey(parentKey);
+        var parentPath = path.Substring(0, lastSlashIndex);
+        return new ResourceKey(_root, parentPath);
     }
 
     /// <summary>
     /// Returns true if this resource is a descendant of the specified folder.
-    /// A resource is a descendant if its path starts with the folder path followed by "/".
+    /// A resource is a descendant if it shares the same root and its path starts with
+    /// the folder path followed by "/". The root-only key (empty path) is the ancestor
+    /// of every non-empty key under the same root.
     /// </summary>
     public bool IsDescendantOf(ResourceKey folderKey)
     {
-        var folderPath = folderKey.ToString().TrimEnd('/');
+        if (Root != folderKey.Root)
+        {
+            return false;
+        }
+
+        var folderPath = (folderKey._path ?? string.Empty).TrimEnd('/');
 
         if (string.IsNullOrEmpty(folderPath))
         {
-            // Everything is a descendant of the root folder (except empty keys)
-            return !string.IsNullOrEmpty(_key);
+            // Everything under the same root is a descendant of the root-only key
+            // (except a root-only key itself, which has no path).
+            return !string.IsNullOrEmpty(_path);
         }
 
-        return _key?.StartsWith(folderPath + "/", StringComparison.Ordinal) ?? false;
+        return _path?.StartsWith(folderPath + "/", StringComparison.Ordinal) ?? false;
     }
 
     /// <summary>
     /// Returns a new ResourceKey that is the combination of the current key and the specified segment.
+    /// The root is preserved; the segment is appended to the path.
     /// </summary>
     public ResourceKey Combine(string segment)
     {
@@ -200,8 +249,8 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
             throw new ArgumentException($"Segment must not contain path separators: '{segment}'", nameof(segment));
         }
 
-        var combinedKey = string.IsNullOrEmpty(_key) ? segment : _key + "/" + segment;
-        return new ResourceKey(combinedKey);
+        var combinedPath = string.IsNullOrEmpty(_path) ? segment : _path + "/" + segment;
+        return new ResourceKey(_root, combinedPath);
     }
 
     /// <summary>
@@ -217,7 +266,7 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
         // The GetInvalidFileNameChars() method returns an array of characters that are not allowed in file names.
         // Unfortunately, this array is different on different platforms. For example, on Windows, ':' is not allowed.
         // On Linux, ':' is a valid character in a file name. This could cause problems for some cross-platform projects.
-        var invalidChars = Path.GetInvalidFileNameChars();
+        var invalidChars = System.IO.Path.GetInvalidFileNameChars();
 
         foreach (var c in segment)
         {
@@ -232,56 +281,132 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     /// <summary>
     /// Returns true if the string represents a valid resource key.
-    /// Resource keys look similar to regular file paths but with additional constraints:
-    /// - Specified relative to the project folder.
+    /// Resource keys have the optional form "root:path" with the following constraints:
+    /// - The optional root prefix matches "[a-z][a-z0-9_]+:" (at least two characters before the colon).
+    /// - The path is relative to the root's backing folder.
     /// - Absolute paths, parent and same directory references are not supported.
-    /// - '/' is used as the path separator on all platforms, backslashes are not allowed.
+    /// - '/' is used as the path separator on all platforms; backslashes are not allowed.
     /// </summary>
     public static bool IsValidKey(string key)
     {
+        return TryParse(key, out _, out _);
+    }
+
+    private static bool TryParse(string key, out string? root, out string? path)
+    {
+        root = null;
+        path = null;
+
         if (key.Length == 0)
         {
-            // An empty resource key is valid, and refers to the project folder.
+            // An empty resource key is valid (default "project" root, empty path).
             return true;
         }
 
+        // Strip an optional root prefix of the form "[a-z][a-z0-9_]+:".
+        // The shortest legal root is two characters (e.g. "ab:"). Empty roots,
+        // single-character roots, and uppercase roots are rejected.
+        var pathPortion = key;
+        var colonIndex = key.IndexOf(':');
+        if (colonIndex != -1)
+        {
+            var rootCandidate = key.Substring(0, colonIndex);
+            if (!IsValidRoot(rootCandidate))
+            {
+                return false;
+            }
+
+            if (rootCandidate != DefaultRoot)
+            {
+                root = rootCandidate;
+            }
+
+            pathPortion = key.Substring(colonIndex + 1);
+        }
+
+        if (pathPortion.Length == 0)
+        {
+            // Root-only form (e.g. "project:", "temp:") is valid; path is empty.
+            path = null;
+            return true;
+        }
+
+        if (!IsValidPath(pathPortion))
+        {
+            return false;
+        }
+
+        path = pathPortion;
+        return true;
+    }
+
+    private static bool IsValidRoot(string rootCandidate)
+    {
+        // [a-z][a-z0-9_]+ — first char must be a lowercase letter, total length at least 2.
+        if (rootCandidate.Length < 2)
+        {
+            return false;
+        }
+
+        var first = rootCandidate[0];
+        if (first < 'a' || first > 'z')
+        {
+            return false;
+        }
+
+        for (int i = 1; i < rootCandidate.Length; i++)
+        {
+            var c = rootCandidate[i];
+            bool isLower = c >= 'a' && c <= 'z';
+            bool isDigit = c >= '0' && c <= '9';
+            bool isUnderscore = c == '_';
+            if (!isLower && !isDigit && !isUnderscore)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsValidPath(string path)
+    {
         // Backslashes are not permitted
-        if (key.Contains("\\"))
+        if (path.Contains('\\'))
         {
             return false;
         }
 
         // Empty segments are not permitted
-        if (key.Contains("//"))
+        if (path.Contains("//"))
         {
             return false;
         }
 
         // Resource keys must represent a relative path
-        if (Path.IsPathRooted(key))
+        if (System.IO.Path.IsPathRooted(path))
         {
             return false;
         }
 
         // Resource keys may not contain parent or same directory references
-        if (key.Contains("..") ||
-            key.Contains("./") ||
-            key.Contains(".\\"))
+        if (path.Contains("..") ||
+            path.Contains("./"))
         {
             return false;
         }
 
         // Resource keys may not start or end with a separator character
-        if (key[0] == '/' || key[^1] == '/')
+        if (path[0] == '/' || path[^1] == '/')
         {
             return false;
         }
 
-        // Each segment in the resource key must be a valid filename
+        // Each segment in the resource key path must be a valid filename.
         // Note: This constraint may prove to be too restrictive for cross-platform projects which
         // work with exotic file names. If this proves to be a problem we could relax this constraint in the future.
-        var resourceKeySegments = key.Split('/');
-        foreach (var segment in resourceKeySegments)
+        var segments = path.Split('/');
+        foreach (var segment in segments)
         {
             if (!IsValidSegment(segment))
             {

@@ -37,13 +37,13 @@ public class CopyMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canCopy = context.HasAnySelection && !context.SelectionContainsRootFolder;
+        var canCopy = context.HasAnySelection && !context.SelectionContainsProjectFolder;
         return new MenuItemState(IsVisible: true, IsEnabled: canCopy);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasAnySelection || context.SelectionContainsRootFolder)
+        if (!context.HasAnySelection || context.SelectionContainsProjectFolder)
         {
             return;
         }

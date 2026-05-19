@@ -50,7 +50,7 @@ public sealed partial class ResourceTree
 
     private bool HandleRename(ResourceViewItem? selectedItem)
     {
-        if (selectedItem == null || selectedItem.IsRootFolder)
+        if (selectedItem == null || selectedItem.IsProjectFolder)
         {
             return false;
         }
@@ -122,7 +122,7 @@ public sealed partial class ResourceTree
 
     private bool HandleDuplicate(ResourceViewItem? selectedItem)
     {
-        if (selectedItem == null || selectedItem.IsRootFolder)
+        if (selectedItem == null || selectedItem.IsProjectFolder)
         {
             return false;
         }
