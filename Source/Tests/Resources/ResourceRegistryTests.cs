@@ -266,4 +266,116 @@ public class ResourceRegistryTests
             }
         }
     }
+
+    [Test]
+    public void ProjectRootHandlerIsRegisteredOnProjectFolderPathSet()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+
+        // Before ProjectFolderPath is set, no handler is registered.
+        resourceRegistry.RootHandlers.Should().BeEmpty();
+
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+
+        resourceRegistry.RootHandlers.Should().ContainKey(ResourceKey.DefaultRoot);
+        var handler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
+        handler.RootName.Should().Be(ResourceKey.DefaultRoot);
+        handler.BackingLocation.Should().Be(_resourceFolderPath);
+        handler.Capabilities.IsWritable.Should().BeTrue();
+        handler.Capabilities.IsWatched.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsResolvableReturnsTrueForProjectRootAndFalseForUnknownRoot()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+
+        resourceRegistry.IsResolvable(ResourceKey.Create("foo/bar")).Should().BeTrue();
+        resourceRegistry.IsResolvable(ResourceKey.Create("project:foo/bar")).Should().BeTrue();
+        resourceRegistry.IsResolvable(ResourceKey.Empty).Should().BeTrue();
+        resourceRegistry.IsResolvable(ResourceKey.Create("temp:foo/bar")).Should().BeFalse();
+        resourceRegistry.IsResolvable(ResourceKey.Create("unknown:foo")).Should().BeFalse();
+    }
+
+    [Test]
+    public void ResolveResourcePathFailsClearlyForUnregisteredRoot()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+
+        var resolveResult = resourceRegistry.ResolveResourcePath(
+            ResourceKey.Create("temp:foo/bar"));
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("'temp'");
+        resolveResult.FirstErrorMessage.Should().Contain("not registered");
+    }
+
+    [Test]
+    public void GetAllFileResourcesScopesToProjectRoot()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+        resourceRegistry.UpdateResourceRegistry();
+
+        // Default form enumerates the project tree.
+        var defaultResults = resourceRegistry.GetAllFileResources();
+        defaultResults.Should().NotBeEmpty();
+
+        // Explicit project root produces the same result.
+        var explicitProject = resourceRegistry.GetAllFileResources(ResourceKey.DefaultRoot);
+        explicitProject.Count.Should().Be(defaultResults.Count);
+
+        // Other roots return empty in vr-2 (no indexed tree state).
+        resourceRegistry.GetAllFileResources("temp").Should().BeEmpty();
+    }
+
+    [Test]
+    public void RegisterRootHandlerReplacesExistingHandler()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+
+        var originalHandler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
+
+        // Setting the path again replaces the handler with a new instance for the new path.
+        var alternatePath = Path.Combine(
+            Path.GetTempPath(), $"Celbridge/{nameof(ResourceRegistryTests)}_alt");
+        Directory.CreateDirectory(alternatePath);
+
+        try
+        {
+            resourceRegistry.ProjectFolderPath = alternatePath;
+            var newHandler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
+            newHandler.Should().NotBeSameAs(originalHandler);
+            newHandler.BackingLocation.Should().Be(alternatePath);
+        }
+        finally
+        {
+            if (Directory.Exists(alternatePath))
+            {
+                Directory.Delete(alternatePath, true);
+            }
+        }
+    }
 }

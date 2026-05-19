@@ -3,28 +3,33 @@ using FileAttributes = System.IO.FileAttributes;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Validates that resolved resource paths stay within the project folder and do not traverse
-/// through symlinks, junctions, or other reparse points. Maintains a cache of verified
-/// directory paths to avoid repeated filesystem stat calls.
+/// Validates that resolved resource paths stay within the backing folder of a given
+/// root and do not traverse through symlinks, junctions, or other reparse points.
+/// Maintains a per-root cache of verified directory paths to avoid repeated filesystem
+/// stat calls.
 /// </summary>
 public class PathValidator
 {
-    private readonly HashSet<string> _verifiedFolders;
+    private readonly StringComparer _pathComparer;
+
+    // Per-root cache of verified folder paths. Cache is scoped by root so two roots
+    // cannot share verification state, even when their backing locations are nested.
+    private readonly Dictionary<string, HashSet<string>> _verifiedFoldersByRoot;
 
     public PathValidator()
     {
-        var comparer = OperatingSystem.IsWindows()
+        _pathComparer = OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
 
-        _verifiedFolders = new HashSet<string>(comparer);
+        _verifiedFoldersByRoot = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
     }
 
     /// <summary>
-    /// Validates a resource key and resolves it to an absolute filesystem path within the
-    /// project folder. Returns a failure result if the key fails any validation check.
+    /// Validates a resource key and resolves it to an absolute filesystem path under the
+    /// specified backing location. Returns a failure result if the key fails any validation check.
     /// </summary>
-    public Result<string> ValidateAndResolve(string projectFolderPath, ResourceKey resource)
+    public Result<string> ValidateAndResolve(string rootName, string backingLocation, ResourceKey resource)
     {
         // Belt-and-suspenders format check. Should never fail since construction already
         // validated, but catches any bypass.
@@ -35,22 +40,26 @@ public class PathValidator
                 $"Resource key '{resource}' failed format validation.");
         }
 
-        var combinedPath = Path.Combine(projectFolderPath, resourceKeyString);
+        // Resolution operates on the path portion of the key; the root portion has
+        // already been used to select the handler and its backing location.
+        var pathPortion = resource.Path;
+
+        var combinedPath = Path.Combine(backingLocation, pathPortion);
         var resolvedPath = Path.GetFullPath(combinedPath);
 
-        var normalizedProjectFolder = NormalizeProjectFolder(projectFolderPath);
+        var normalizedBackingLocation = NormalizeBackingLocation(backingLocation);
 
-        var isProjectRoot = resolvedPath.Equals(
-            normalizedProjectFolder.TrimEnd(Path.DirectorySeparatorChar),
+        var isBackingRoot = resolvedPath.Equals(
+            normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar),
             GetPathComparison());
 
-        if (!isProjectRoot && !resolvedPath.StartsWith(normalizedProjectFolder, GetPathComparison()))
+        if (!isBackingRoot && !resolvedPath.StartsWith(normalizedBackingLocation, GetPathComparison()))
         {
             return Result<string>.Fail(
-                $"Resource key '{resource}' resolves to a path outside the project folder.");
+                $"Resource key '{resource}' resolves to a path outside the '{rootName}' root.");
         }
 
-        var reparseResult = CheckForReparsePoints(resolvedPath, normalizedProjectFolder);
+        var reparseResult = CheckForReparsePoints(rootName, resolvedPath, normalizedBackingLocation);
         if (reparseResult.IsFailure)
         {
             return Result<string>.Fail(reparseResult.FirstErrorMessage);
@@ -60,37 +69,38 @@ public class PathValidator
     }
 
     /// <summary>
-    /// Clears the cache of verified directory paths. Call this when the directory structure
-    /// may have changed (e.g. after ResourceMonitor triggers a registry sync).
+    /// Clears the cache of verified directory paths across all roots. Call this when the directory
+    /// structure may have changed (e.g. after ResourceMonitor triggers a registry sync).
     /// </summary>
     public void InvalidateCache()
     {
-        _verifiedFolders.Clear();
+        _verifiedFoldersByRoot.Clear();
     }
 
-    private Result CheckForReparsePoints(string resolvedPath, string normalizedProjectFolder)
+    private Result CheckForReparsePoints(string rootName, string resolvedPath, string normalizedBackingLocation)
     {
         var folderPath = GetFolderPath(resolvedPath);
+        var verifiedFolders = GetOrCreateVerifiedFolderSet(rootName);
 
-        if (_verifiedFolders.Contains(folderPath))
+        if (verifiedFolders.Contains(folderPath))
         {
             return Result.Ok();
         }
 
-        // When resolvedPath is the project folder itself, there's nothing to check
-        var projectFolderTrimmed = normalizedProjectFolder.TrimEnd(Path.DirectorySeparatorChar);
-        if (resolvedPath.Equals(projectFolderTrimmed, GetPathComparison()))
+        // When resolvedPath is the backing location itself, there's nothing to check
+        var backingTrimmed = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
+        if (resolvedPath.Equals(backingTrimmed, GetPathComparison()))
         {
-            _verifiedFolders.Add(folderPath);
+            verifiedFolders.Add(folderPath);
             return Result.Ok();
         }
 
-        var relativePart = resolvedPath.Substring(normalizedProjectFolder.Length);
+        var relativePart = resolvedPath.Substring(normalizedBackingLocation.Length);
         var segments = relativePart.Split(
             new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
             StringSplitOptions.RemoveEmptyEntries);
 
-        var currentPath = normalizedProjectFolder.TrimEnd(Path.DirectorySeparatorChar);
+        var currentPath = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
 
         foreach (var segment in segments)
         {
@@ -109,8 +119,18 @@ public class PathValidator
             }
         }
 
-        _verifiedFolders.Add(folderPath);
+        verifiedFolders.Add(folderPath);
         return Result.Ok();
+    }
+
+    private HashSet<string> GetOrCreateVerifiedFolderSet(string rootName)
+    {
+        if (!_verifiedFoldersByRoot.TryGetValue(rootName, out var verifiedFolders))
+        {
+            verifiedFolders = new HashSet<string>(_pathComparer);
+            _verifiedFoldersByRoot[rootName] = verifiedFolders;
+        }
+        return verifiedFolders;
     }
 
     private static string GetFolderPath(string resolvedPath)
@@ -124,9 +144,9 @@ public class PathValidator
         return folder ?? resolvedPath;
     }
 
-    private static string NormalizeProjectFolder(string projectFolderPath)
+    private static string NormalizeBackingLocation(string backingLocation)
     {
-        var normalized = Path.GetFullPath(projectFolderPath);
+        var normalized = Path.GetFullPath(backingLocation);
         if (!normalized.EndsWith(Path.DirectorySeparatorChar))
         {
             normalized += Path.DirectorySeparatorChar;

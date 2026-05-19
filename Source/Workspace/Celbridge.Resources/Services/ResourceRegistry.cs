@@ -1,6 +1,7 @@
 using System.Text;
 using Celbridge.Projects;
 using Celbridge.Resources.Helpers;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface;
 
 namespace Celbridge.Resources.Services;
@@ -10,12 +11,30 @@ public class ResourceRegistry : IResourceRegistry
     private readonly IMessengerService _messengerService;
     private readonly IFileIconService _fileIconService;
     private readonly PathValidator _pathValidator = new();
+    private readonly Dictionary<string, IResourceRootHandler> _rootHandlers = new(StringComparer.Ordinal);
 
-    public string ProjectFolderPath { get; set; } = string.Empty;
+    private string _projectFolderPath = string.Empty;
+
+    public string ProjectFolderPath
+    {
+        get => _projectFolderPath;
+        set
+        {
+            _projectFolderPath = value;
+            // Construct (or replace) the project root handler whenever the project folder
+            // path is set. ResolveResourcePath delegates to this handler for any project-root key.
+            if (!string.IsNullOrEmpty(value))
+            {
+                RegisterRootHandler(new ProjectRootHandler(value, _pathValidator));
+            }
+        }
+    }
 
     private FolderResource _projectFolder = new FolderResource(string.Empty, null);
 
     public IFolderResource ProjectFolder => _projectFolder;
+
+    public IReadOnlyDictionary<string, IResourceRootHandler> RootHandlers => _rootHandlers;
 
     public ResourceRegistry(
         IMessengerService messengerService,
@@ -23,6 +42,16 @@ public class ResourceRegistry : IResourceRegistry
     {
         _messengerService = messengerService;
         _fileIconService = fileIconService;
+    }
+
+    public void RegisterRootHandler(IResourceRootHandler handler)
+    {
+        _rootHandlers[handler.RootName] = handler;
+    }
+
+    public bool IsResolvable(ResourceKey key)
+    {
+        return _rootHandlers.ContainsKey(key.Root);
     }
 
     public ResourceKey GetResourceKey(IResource resource)
@@ -98,23 +127,35 @@ public class ResourceRegistry : IResourceRegistry
     public Result<string> ResolveResourcePath(IResource resource)
     {
         var resourceKey = GetResourceKey(resource);
-        return _pathValidator.ValidateAndResolve(ProjectFolderPath, resourceKey);
+        return ResolveResourcePath(resourceKey);
     }
 
     public Result<string> ResolveResourcePath(ResourceKey resource)
     {
-        return _pathValidator.ValidateAndResolve(ProjectFolderPath, resource);
+        if (!_rootHandlers.TryGetValue(resource.Root, out var handler))
+        {
+            return Result<string>.Fail(
+                $"Resource root '{resource.Root}' is not registered.");
+        }
+        return handler.Resolve(resource);
     }
 
     public Result<IResource> GetResource(ResourceKey resource)
     {
+        // The registry tracks only the project tree; other roots have no IResource nodes.
+        if (resource.Root != ResourceKey.DefaultRoot)
+        {
+            return Result<IResource>.Fail(
+                $"GetResource is scoped to the project tree; root '{resource.Root}' has no tracked resources.");
+        }
+
         if (resource.IsEmpty)
         {
             // An empty resource key refers to the project folder
             return Result<IResource>.Ok(_projectFolder);
         }
 
-        var segments = resource.ToString().Split('/');
+        var segments = resource.Path.Split('/');
         var searchFolder = _projectFolder;
 
         // Attempt to match each segment with the corresponding resource in the tree
@@ -332,6 +373,18 @@ public class ResourceRegistry : IResourceRegistry
 
     public List<(ResourceKey Resource, string Path)> GetAllFileResources()
     {
+        return GetAllFileResources(ResourceKey.DefaultRoot);
+    }
+
+    public List<(ResourceKey Resource, string Path)> GetAllFileResources(string root)
+    {
+        // Only the project root has an indexed tree in the registry.
+        // Other roots (e.g. temp:, logs:) are addressable but not enumerated here.
+        if (root != ResourceKey.DefaultRoot)
+        {
+            return new List<(ResourceKey Resource, string Path)>();
+        }
+
         var fileResources = new List<(ResourceKey Resource, string Path)>();
         CollectFileResources(_projectFolder, fileResources);
 

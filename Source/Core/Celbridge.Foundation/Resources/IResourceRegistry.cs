@@ -87,8 +87,32 @@ public interface IResourceRegistry
     Result UpdateResourceRegistry();
 
     /// <summary>
-    /// Returns all file resources in the registry with their resource keys and absolute paths.
+    /// Registers a handler for the specified root name. The handler takes effect
+    /// immediately; subsequent resolution calls for that root delegate to it.
+    /// Replaces any handler previously registered for the same root name.
+    /// </summary>
+    void RegisterRootHandler(IResourceRootHandler handler);
+
+    /// <summary>
+    /// The currently registered root handlers, keyed by root name.
+    /// </summary>
+    IReadOnlyDictionary<string, IResourceRootHandler> RootHandlers { get; }
+
+    /// <summary>
+    /// Returns true if the resource key's root is registered with this registry.
+    /// Use this for early validation at trust boundaries without performing a full resolve.
+    /// </summary>
+    bool IsResolvable(ResourceKey key);
+
+    /// <summary>
+    /// Returns all file resources for the project root with their resource keys and absolute paths.
     /// The results are sorted by path for stable ordering.
     /// </summary>
     List<(ResourceKey Resource, string Path)> GetAllFileResources();
+
+    /// <summary>
+    /// Returns all file resources for the specified root with their resource keys and absolute paths.
+    /// Returns an empty list for roots without indexed tree state.
+    /// </summary>
+    List<(ResourceKey Resource, string Path)> GetAllFileResources(string root);
 }
