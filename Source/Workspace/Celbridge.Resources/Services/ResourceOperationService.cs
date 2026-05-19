@@ -46,7 +46,7 @@ public class ResourceOperationService : IResourceOperationService
     /// Gets the path to the trash folder for soft-deleted files.
     /// </summary>
     private string TrashFolderPath =>
-        Path.Combine(ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+        Path.Combine(ProjectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.CelbridgeTrashFolder);
 
     public async Task<Result> CreateFileAsync(string path, byte[] content)
     {

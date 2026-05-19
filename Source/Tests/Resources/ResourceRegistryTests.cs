@@ -1,7 +1,9 @@
 using Celbridge.Explorer.Services;
 using Celbridge.Messaging.Services;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
 
@@ -377,5 +379,45 @@ public class ResourceRegistryTests
                 Directory.Delete(alternatePath, true);
             }
         }
+    }
+
+    [Test]
+    public void GetResourceKeyFromPathDispatchesToLongestPrefixRoot()
+    {
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+
+        // Register a temp root whose backing folder is nested inside the project folder.
+        // A path under the nested folder should match the temp root (longer prefix),
+        // not the project root (shorter prefix).
+        var tempBacking = Path.Combine(_resourceFolderPath, ".celbridge", "temp");
+        Directory.CreateDirectory(tempBacking);
+
+        var pathValidator = new PathValidator();
+        resourceRegistry.RegisterRootHandler(new TempRootHandler(tempBacking, pathValidator));
+
+        // A path under the project tree but outside .celbridge/temp/ goes to project.
+        var projectFilePath = Path.Combine(_resourceFolderPath, FileNameA);
+        var projectKeyResult = resourceRegistry.GetResourceKey(projectFilePath);
+        projectKeyResult.IsSuccess.Should().BeTrue();
+        projectKeyResult.Value.Root.Should().Be(ResourceKey.DefaultRoot);
+        projectKeyResult.Value.Path.Should().Be(FileNameA);
+
+        // A path under .celbridge/temp/ dispatches to the temp handler.
+        var tempFilePath = Path.Combine(tempBacking, "staging", "foo.txt");
+        var tempKeyResult = resourceRegistry.GetResourceKey(tempFilePath);
+        tempKeyResult.IsSuccess.Should().BeTrue();
+        tempKeyResult.Value.Root.Should().Be("temp");
+        tempKeyResult.Value.Path.Should().Be("staging/foo.txt");
+
+        // A path outside any registered root fails clearly.
+        var outsidePath = Path.Combine(Path.GetTempPath(), "somewhere_else", "file.txt");
+        var outsideKeyResult = resourceRegistry.GetResourceKey(outsidePath);
+        outsideKeyResult.IsFailure.Should().BeTrue();
+        outsideKeyResult.FirstErrorMessage.Should().Contain("not under any registered resource root");
     }
 }

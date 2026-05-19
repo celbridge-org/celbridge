@@ -36,4 +36,11 @@ public interface IResourceRootHandler
     /// Fails if the path escapes the backing location or traverses a reparse point.
     /// </summary>
     Result<string> Resolve(ResourceKey key);
+
+    /// <summary>
+    /// Builds the resource key that addresses an absolute filesystem path under this root.
+    /// Fails if the path is not under the backing location, or if the relative form
+    /// produces an invalid key segment.
+    /// </summary>
+    Result<ResourceKey> GetResourceKey(string absolutePath);
 }

@@ -160,7 +160,7 @@ public class PythonService : IPythonService, IDisposable
             var configuration = environmentInfo.Configuration;
             var celbridgeVersion = configuration == "Debug" ? $"{appVersion} (Debug)" : $"{appVersion}";
 
-            var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.LogsFolder);
+            var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.CelbridgeLogsFolder);
 
             // Find a free TCP port for JSON-RPC communication
             var rpcPort = GetAvailableTcpPort();

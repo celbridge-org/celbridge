@@ -45,4 +45,24 @@ public static class ProjectConstants
     /// File containing the workspace settings data.
     /// </summary>
     public const string WorkspaceSettingsFile = "workspace_settings.db";
+
+    /// <summary>
+    /// Hidden folder that contains all Celbridge-internal storage in the new layout.
+    /// </summary>
+    public const string CelbridgeFolder = ".celbridge";
+
+    /// <summary>
+    /// Sub-folder of .celbridge/ that backs the temp: virtual root.
+    /// </summary>
+    public const string CelbridgeTempFolder = "temp";
+
+    /// <summary>
+    /// Sub-folder of .celbridge/ that backs the logs: virtual root.
+    /// </summary>
+    public const string CelbridgeLogsFolder = "logs";
+
+    /// <summary>
+    /// Sub-folder of .celbridge/ for soft-deleted files. Cleared on every workspace load.
+    /// </summary>
+    public const string CelbridgeTrashFolder = "trash";
 }

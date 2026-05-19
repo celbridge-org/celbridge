@@ -6,12 +6,26 @@ using Timer = System.Timers.Timer;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Monitors file system changes in the project folder and schedules resource updates.
-/// Includes debouncing to coalesce rapid file system events and external update requests.
+/// Monitors file system changes across every registered root with the IsWatched
+/// capability and schedules resource updates. Each watched root gets its own
+/// FileSystemWatcher; all watchers feed into a single shared debounce timer so
+/// rapid bursts of events coalesce.
 /// </summary>
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
     private const int UpdateDebounceMs = 250;
+
+    private sealed class WatchedRoot
+    {
+        public IResourceRootHandler Handler { get; }
+        public FileSystemWatcher Watcher { get; }
+
+        public WatchedRoot(IResourceRootHandler handler, FileSystemWatcher watcher)
+        {
+            Handler = handler;
+            Watcher = watcher;
+        }
+    }
 
     private readonly ILogger<ResourceMonitor> _logger;
     private readonly IProjectService _projectService;
@@ -22,7 +36,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private readonly string _projectFolderPath;
     private readonly object _updateLock = new();
 
-    private FileSystemWatcher? _fileSystemWatcher;
+    private readonly List<WatchedRoot> _watchedRoots = new();
     private Timer? _updateDebounceTimer;
     private bool _isDisposed;
 
@@ -54,32 +68,29 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
-            if (!Directory.Exists(_projectFolderPath))
+            // Spin up one FileSystemWatcher per registered root that opted in via Capabilities.IsWatched.
+            // The registry is expected to have all handlers registered before Initialize() runs.
+            var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+            foreach (var handler in registry.RootHandlers.Values)
             {
-                return Result.Fail($"Project folder does not exist: {_projectFolderPath}");
+                if (!handler.Capabilities.IsWatched)
+                {
+                    continue;
+                }
+
+                if (!Directory.Exists(handler.BackingLocation))
+                {
+                    _logger.LogWarning(
+                        $"Backing folder for root '{handler.RootName}' does not exist: {handler.BackingLocation}");
+                    continue;
+                }
+
+                var watcher = CreateWatcher(handler);
+                _watchedRoots.Add(new WatchedRoot(handler, watcher));
+
+                _logger.LogDebug(
+                    $"Resource monitoring started for root '{handler.RootName}' at: {handler.BackingLocation}");
             }
-
-            /// Start monitoring the project folder for file system changes.
-            _fileSystemWatcher = new FileSystemWatcher(_projectFolderPath)
-            {
-                NotifyFilter = NotifyFilters.FileName
-                             | NotifyFilters.DirectoryName
-                             | NotifyFilters.LastWrite
-                             | NotifyFilters.Size,
-                IncludeSubdirectories = true,
-                EnableRaisingEvents = false
-            };
-
-            _fileSystemWatcher.Created += OnFileSystemCreated;
-            _fileSystemWatcher.Changed += OnFileSystemChanged;
-            _fileSystemWatcher.Deleted += OnFileSystemDeleted;
-            _fileSystemWatcher.Renamed += OnFileSystemRenamed;
-            _fileSystemWatcher.Error += OnFileSystemError;
-
-            // Start raising events once initialization has completed
-            _fileSystemWatcher.EnableRaisingEvents = true;
-
-            _logger.LogDebug($"Resource monitoring started for: {_projectFolderPath}");
 
             return Result.Ok();
         }
@@ -88,6 +99,29 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return Result.Fail("Failed to initialize resource monitor")
                 .WithException(ex);
         }
+    }
+
+    private FileSystemWatcher CreateWatcher(IResourceRootHandler handler)
+    {
+        var watcher = new FileSystemWatcher(handler.BackingLocation)
+        {
+            NotifyFilter = NotifyFilters.FileName
+                         | NotifyFilters.DirectoryName
+                         | NotifyFilters.LastWrite
+                         | NotifyFilters.Size,
+            IncludeSubdirectories = true,
+            EnableRaisingEvents = false
+        };
+
+        // Closures capture the handler so each event knows which root it belongs to.
+        watcher.Created += (sender, e) => OnFileSystemCreated(handler, e);
+        watcher.Changed += (sender, e) => OnFileSystemChanged(handler, e);
+        watcher.Deleted += (sender, e) => OnFileSystemDeleted(handler, e);
+        watcher.Renamed += (sender, e) => OnFileSystemRenamed(handler, e);
+        watcher.Error += OnFileSystemError;
+
+        watcher.EnableRaisingEvents = true;
+        return watcher;
     }
 
     public void Shutdown()
@@ -105,17 +139,13 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                 _updateDebounceTimer = null;
             }
 
-            if (_fileSystemWatcher != null)
+            foreach (var watchedRoot in _watchedRoots)
             {
-                _fileSystemWatcher.EnableRaisingEvents = false;
-                _fileSystemWatcher.Created -= OnFileSystemCreated;
-                _fileSystemWatcher.Changed -= OnFileSystemChanged;
-                _fileSystemWatcher.Deleted -= OnFileSystemDeleted;
-                _fileSystemWatcher.Renamed -= OnFileSystemRenamed;
-                _fileSystemWatcher.Error -= OnFileSystemError;
-                _fileSystemWatcher.Dispose();
-                _fileSystemWatcher = null;
+                var watcher = watchedRoot.Watcher;
+                watcher.EnableRaisingEvents = false;
+                watcher.Dispose();
             }
+            _watchedRoots.Clear();
 
             _logger.LogDebug($"Resource monitoring stopped for: {_projectFolderPath}");
         }
@@ -125,79 +155,85 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
     }
 
-    #region FileSystemWatcher Event Handlers
-
-    private void OnFileSystemCreated(object sender, FileSystemEventArgs e)
+    private void OnFileSystemCreated(IResourceRootHandler handler, FileSystemEventArgs e)
     {
-        if (ShouldIgnorePath(e.FullPath))
+        if (ShouldIgnorePath(handler, e.FullPath))
         {
             return;
         }
 
         // Send granular notification for listeners (e.g., document editors)
-        OnResourceCreated(e.FullPath);
+        OnResourceCreated(handler, e.FullPath);
 
         // Also notify as changed because some save patterns (atomic temp-write
         // followed by replace of an existing destination, used by the in-app
         // file writer and many external editors) surface as a Created event on
         // the destination rather than a Changed or Renamed event. Listeners
         // that watch for content changes need to react in that case too.
-        OnResourceChanged(e.FullPath);
+        OnResourceChanged(handler, e.FullPath);
 
-        ScheduleResourceUpdate();
+        ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
+    private void OnFileSystemChanged(IResourceRootHandler handler, FileSystemEventArgs e)
     {
-        if (ShouldIgnorePath(e.FullPath))
+        if (ShouldIgnorePath(handler, e.FullPath))
         {
             return;
         }
 
-        // Send granular notification for listeners (e.g., document editors)
-        OnResourceChanged(e.FullPath);
+        OnResourceChanged(handler, e.FullPath);
 
-        ScheduleResourceUpdate();
+        ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemDeleted(object sender, FileSystemEventArgs e)
+    private void OnFileSystemDeleted(IResourceRootHandler handler, FileSystemEventArgs e)
     {
-        if (ShouldIgnorePath(e.FullPath))
+        if (ShouldIgnorePath(handler, e.FullPath))
         {
             return;
         }
 
-        // Send granular notification for listeners (e.g., document editors)
-        OnResourceDeleted(e.FullPath);
+        OnResourceDeleted(handler, e.FullPath);
 
-        ScheduleResourceUpdate();
+        ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemRenamed(object sender, RenamedEventArgs e)
+    private void OnFileSystemRenamed(IResourceRootHandler handler, RenamedEventArgs e)
     {
         // Only check the new path for ignore rules. The old path may no longer exist on disk
         // (the rename has already completed), so File.GetAttributes would throw and cause the
         // event to be incorrectly ignored. This is critical for editors and coding agents that
         // use a "write temp, delete original, rename temp" save pattern.
-        if (ShouldIgnorePath(e.FullPath))
+        if (ShouldIgnorePath(handler, e.FullPath))
         {
             return;
         }
 
-        // Send granular notifications for listeners
-        OnResourceRenamed(e.OldFullPath, e.FullPath);
+        OnResourceRenamed(handler, e.OldFullPath, e.FullPath);
 
         // Also notify as changed since content may have been updated
         // (handles applications that use rename as part of save, e.g., Excel)
-        OnResourceChanged(e.FullPath);
+        OnResourceChanged(handler, e.FullPath);
 
-        ScheduleResourceUpdate();
+        ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
     private void OnFileSystemError(object sender, ErrorEventArgs e)
     {
         var exception = e.GetException();
         _logger.LogError($"File system watcher error: {exception?.Message ?? "Unknown error"}");
+    }
+
+    private void ScheduleResourceUpdateIfProjectRoot(IResourceRootHandler handler)
+    {
+        // The project tree sync (Registry.UpdateResourceRegistry) is project-scoped.
+        // Events from non-project roots (temp:, logs:) don't touch the project tree,
+        // so they skip the debounce.
+        if (handler.RootName == ResourceKey.DefaultRoot)
+        {
+            ScheduleResourceUpdate();
+        }
     }
 
     public void ScheduleResourceUpdate()
@@ -252,16 +288,14 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
-    #endregion
-
-    #region Change Notifications
-
-    private void OnResourceCreated(string fullPath)
+    private void OnResourceCreated(IResourceRootHandler handler, string fullPath)
     {
-        var resourceKey = GetResourceKey(fullPath);
-        if (resourceKey.IsEmpty)
+        var resourceKey = BuildResourceKey(handler, fullPath);
+        if (resourceKey.IsEmpty &&
+            handler.RootName == ResourceKey.DefaultRoot)
         {
-            // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
+            // Project root with no path means the event was outside the backing folder.
+            // For non-project roots, a root-only key is unusual but legal; only flag the project case.
             return;
         }
 
@@ -274,12 +308,12 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
-    private void OnResourceChanged(string fullPath)
+    private void OnResourceChanged(IResourceRootHandler handler, string fullPath)
     {
-        var resourceKey = GetResourceKey(fullPath);
-        if (resourceKey.IsEmpty)
+        var resourceKey = BuildResourceKey(handler, fullPath);
+        if (resourceKey.IsEmpty &&
+            handler.RootName == ResourceKey.DefaultRoot)
         {
-            // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
 
@@ -292,12 +326,12 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
-    private void OnResourceDeleted(string fullPath)
+    private void OnResourceDeleted(IResourceRootHandler handler, string fullPath)
     {
-        var resourceKey = GetResourceKey(fullPath);
-        if (resourceKey.IsEmpty)
+        var resourceKey = BuildResourceKey(handler, fullPath);
+        if (resourceKey.IsEmpty &&
+            handler.RootName == ResourceKey.DefaultRoot)
         {
-            // Path is not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
 
@@ -310,14 +344,14 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
-    private void OnResourceRenamed(string oldFullPath, string newFullPath)
+    private void OnResourceRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
     {
-        var oldResourceKey = GetResourceKey(oldFullPath);
-        var newResourceKey = GetResourceKey(newFullPath);
+        var oldResourceKey = BuildResourceKey(handler, oldFullPath);
+        var newResourceKey = BuildResourceKey(handler, newFullPath);
 
-        if (oldResourceKey.IsEmpty || newResourceKey.IsEmpty)
+        if ((oldResourceKey.IsEmpty || newResourceKey.IsEmpty) &&
+            handler.RootName == ResourceKey.DefaultRoot)
         {
-            // One or both paths are not in project folder - this shouldn't happen due to ShouldIgnorePath checks
             return;
         }
 
@@ -330,11 +364,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
-    #endregion
-
-    #region Helper Methods
-
-    private bool ShouldIgnorePath(string fullPath)
+    private bool ShouldIgnorePath(IResourceRootHandler handler, string fullPath)
     {
         var fileName = Path.GetFileName(fullPath);
 
@@ -384,20 +414,25 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             }
         }
 
-        // Check if path is directly under project root and matches ignored folders
-        var projectFolder = _projectFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var relativePath = fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase)
-            ? fullPath.Substring(projectFolder.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            : string.Empty;
-
-        if (!string.IsNullOrEmpty(relativePath))
+        // Only the project watcher needs to suppress the visible legacy "celbridge" folder
+        // and the new hidden ".celbridge" folder at the project root. Non-project watchers
+        // are already scoped inside their own backing location.
+        if (handler.RootName == ResourceKey.DefaultRoot)
         {
-            var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
+            var projectFolder = handler.BackingLocation.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var relativePath = fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase)
+                ? fullPath.Substring(projectFolder.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                : string.Empty;
 
-            // Only ignore "celbridge" folder if it's directly in the project root
-            if (firstSegment.Equals("celbridge", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(relativePath))
             {
-                return true;
+                var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
+
+                if (firstSegment.Equals(ProjectConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase) ||
+                    firstSegment.Equals(ProjectConstants.CelbridgeFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
             }
         }
 
@@ -415,21 +450,16 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         return false;
     }
 
-    private ResourceKey GetResourceKey(string fullPath)
+    private ResourceKey BuildResourceKey(IResourceRootHandler handler, string fullPath)
     {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var result = resourceRegistry.GetResourceKey(fullPath);
+        var result = handler.GetResourceKey(fullPath);
         if (result.IsFailure)
         {
-            _logger.LogWarning($"Path is not in project folder: {fullPath}");
+            _logger.LogWarning($"Could not build resource key for path: {fullPath} ({result.FirstErrorMessage})");
             return ResourceKey.Empty;
         }
         return result.Value;
     }
-
-    #endregion
-
-    #region IDisposable
 
     public void Dispose()
     {
@@ -454,6 +484,4 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     {
         Dispose(false);
     }
-
-    #endregion
 }

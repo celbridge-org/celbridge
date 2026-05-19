@@ -98,24 +98,44 @@ public class ResourceRegistry : IResourceRegistry
     {
         try
         {
+            // Cross-root dispatch: find the registered handler whose backing location is
+            // the longest prefix (left substring) of the absolute path. Longest-prefix-wins
+            // so that a path under .celbridge/temp/ matches the temp handler rather
+            // than the project handler (which has the shorter <project>/ prefix). e.g.
+            // C:\proj\ (project root, length 8)
+            // C:\proj\.celbridge\temp\ (temp root, length 23)
             var normalizedPath = Path.GetFullPath(resourcePath);
-            var normalizedProjectPath = Path.GetFullPath(ProjectFolderPath);
 
-            if (!normalizedPath.StartsWith(normalizedProjectPath))
+            var comparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+            IResourceRootHandler? bestHandler = null;
+            int bestPrefixLength = -1;
+
+            foreach (var handler in _rootHandlers.Values)
             {
-                return Result<ResourceKey>.Fail($"The path '{resourcePath}' is not in the project folder '{ProjectFolderPath}'.");
+                var backing = Path.GetFullPath(handler.BackingLocation)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                bool isBackingRoot = normalizedPath.Equals(backing, comparison);
+                bool isUnderBacking = normalizedPath.StartsWith(
+                    backing + Path.DirectorySeparatorChar, comparison);
+
+                if ((isBackingRoot || isUnderBacking) && backing.Length > bestPrefixLength)
+                {
+                    bestHandler = handler;
+                    bestPrefixLength = backing.Length;
+                }
             }
 
-            var relativeKey = normalizedPath.Substring(ProjectFolderPath.Length)
-                .Replace('\\', '/')
-                .Trim('/');
-
-            if (!ResourceKey.TryCreate(relativeKey, out var resourceKey))
+            if (bestHandler is null)
             {
-                return Result<ResourceKey>.Fail($"The path '{resourcePath}' produces an invalid resource key: '{relativeKey}'.");
+                return Result<ResourceKey>.Fail(
+                    $"The path '{resourcePath}' is not under any registered resource root.");
             }
 
-            return Result<ResourceKey>.Ok(resourceKey);
+            return bestHandler.GetResourceKey(normalizedPath);
         }
         catch (Exception ex)
         {
@@ -355,10 +375,10 @@ public class ResourceRegistry : IResourceRegistry
         {
             var fileName = Path.GetFileName(filePath);
             var fileExtension = Path.GetExtension(filePath).TrimStart('.');
-            
+
             var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
-            var iconDefinition = getIconResult.IsSuccess 
-                ? getIconResult.Value 
+            var iconDefinition = getIconResult.IsSuccess
+                ? getIconResult.Value
                 : _fileIconService.DefaultFileIcon;
 
             folderResource.AddChild(new FileResource(fileName, folderResource, iconDefinition));

@@ -1,6 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources.Helpers;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
@@ -49,18 +51,35 @@ public class ResourceService : IResourceService, IDisposable
         OperationService = resourceOperationService;
         FileWriter = resourceFileWriter;
 
-        // Set the project folder path on the registry
-        Registry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-
-        // Clean up the trash folder from previous sessions.
-        // The trash folder contains soft-deleted files and folders from previous delete operations.
+        // Set the project folder path on the registry. This also auto-registers the
+        // ProjectRootHandler for the project: root via the setter.
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-        var trashFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
-        if (Directory.Exists(trashFolderPath))
+        Registry.ProjectFolderPath = projectFolderPath;
+
+        // Build the new .celbridge/ hidden folder layout: temp/, logs/, trash/.
+        // These need to exist before downstream services start reading or watching them.
+        var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
+        var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTempFolder);
+        var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeLogsFolder);
+        var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTrashFolder);
+
+        Directory.CreateDirectory(celbridgeTempFolder);
+        Directory.CreateDirectory(celbridgeLogsFolder);
+
+        // Trash is cleared on every workspace load; undo history lives in memory only,
+        // so previous-session trash content has no live handles.
+        TryClearFolderContents(celbridgeTrashFolder);
+        Directory.CreateDirectory(celbridgeTrashFolder);
+
+        // Legacy <project>/celbridge/.trash/ from before this redesign: discard.
+        // The other legacy <project>/celbridge/.temp/, .cache/, .logs/ folders are
+        // left alone (no live data; they retire alongside the entity service).
+        var legacyTrashFolder = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+        if (Directory.Exists(legacyTrashFolder))
         {
             try
             {
-                Directory.Delete(trashFolderPath, true);
+                Directory.Delete(legacyTrashFolder, true);
             }
             catch
             {
@@ -68,8 +87,9 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Clean up the temp folder from previous sessions.
-        // The temp folder stages in-flight atomic writes; orphans here are from a prior crash.
+        // Clean up the legacy temp folder from previous sessions.
+        // ResourceFileWriter still stages in-flight atomic writes here; orphans are from a prior crash.
+        // (Moves to .celbridge/staging-fs/ when the FS-layer chokepoint lands.)
         var tempFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TempFolder);
         if (Directory.Exists(tempFolderPath))
         {
@@ -83,7 +103,15 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Initialize the resource monitor to start watching for file system changes
+        // Register the temp: and logs: root handlers. These share a single PathValidator
+        // instance so their reparse-point caches stay coherent across the two roots.
+        var handlerPathValidator = new PathValidator();
+        Registry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder, handlerPathValidator));
+        Registry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder, handlerPathValidator));
+
+        // Initialize the resource monitor to start watching for file system changes.
+        // Initialize runs after handler registration so the monitor sees the full set
+        // of registered roots and can create one watcher per IsWatched: true root.
         var initResult = Monitor.Initialize();
         if (initResult.IsFailure)
         {
@@ -152,7 +180,10 @@ public class ResourceService : IResourceService, IDisposable
 
                 // Clean up the trash folder on project close.
                 // This ensures deleted files don't persist after the project is closed.
-                var trashFolderPath = Path.Combine(Registry.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+                var trashFolderPath = Path.Combine(
+                    Registry.ProjectFolderPath,
+                    ProjectConstants.CelbridgeFolder,
+                    ProjectConstants.CelbridgeTrashFolder);
                 if (Directory.Exists(trashFolderPath))
                 {
                     try
@@ -173,5 +204,39 @@ public class ResourceService : IResourceService, IDisposable
     ~ResourceService()
     {
         Dispose(false);
+    }
+
+    // Removes every child item under the given folder while leaving the folder itself in place.
+    // Used to clear .celbridge/trash/ on every workspace load without disturbing the folder layout.
+    private static void TryClearFolderContents(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+        {
+            return;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folderPath))
+        {
+            try
+            {
+                File.Delete(file);
+            }
+            catch
+            {
+                // Best effort - ignore errors
+            }
+        }
+
+        foreach (var subFolder in Directory.EnumerateDirectories(folderPath))
+        {
+            try
+            {
+                Directory.Delete(subFolder, true);
+            }
+            catch
+            {
+                // Best effort - ignore errors
+            }
+        }
     }
 }
