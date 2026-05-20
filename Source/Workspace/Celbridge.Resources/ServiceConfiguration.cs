@@ -22,6 +22,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
         services.AddTransient<IResourceFileSystem, ResourceFileSystem>();
+        services.AddTransient<IResourceMetaData, ResourceMetaData>();
         services.AddTransient<AddResourceHelper>();
 
         //

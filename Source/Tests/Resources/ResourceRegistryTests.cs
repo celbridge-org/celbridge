@@ -71,7 +71,7 @@ public class ResourceRegistryTests
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
 
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
@@ -110,7 +110,7 @@ public class ResourceRegistryTests
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
 
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -140,7 +140,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(ResourceKey.Create(FileNameA));
@@ -156,7 +156,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(ResourceKey.Empty);
@@ -172,7 +172,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(
@@ -190,7 +190,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         // Non-existent files should still resolve without error
@@ -207,7 +207,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var filePath = Path.Combine(_resourceFolderPath, FileNameA);
@@ -248,7 +248,7 @@ public class ResourceRegistryTests
         {
             var messengerService = new MessengerService();
             var fileIconService = new FileIconService();
-            var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+            var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
             resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
             var resolveResult = resourceRegistry.ResolveResourcePath(
@@ -276,7 +276,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
 
         // Before ProjectFolderPath is set, no handler is registered.
         resourceRegistry.RootHandlers.Should().BeEmpty();
@@ -298,7 +298,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         resourceRegistry.IsResolvable(ResourceKey.Create("foo/bar")).Should().BeTrue();
@@ -315,7 +315,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(
@@ -332,7 +332,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
         resourceRegistry.UpdateResourceRegistry();
 
@@ -355,7 +355,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         var originalHandler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
@@ -388,7 +388,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         resourceRegistry.ProjectFolderPath = _resourceFolderPath;
 
         // Register a temp root whose backing folder is nested inside the project folder.

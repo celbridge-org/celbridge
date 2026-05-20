@@ -1,0 +1,174 @@
+using Celbridge.Explorer.Services;
+using Celbridge.Messaging.Services;
+using Celbridge.Resources;
+using Celbridge.Resources.Services;
+using Celbridge.UserInterface.Services;
+using Celbridge.Utilities;
+
+namespace Celbridge.Tests.Resources;
+
+[TestFixture]
+public class SidecarTrackingTests
+{
+    private string _projectFolderPath = null!;
+    private ResourceRegistry _registry = null!;
+
+    [SetUp]
+    public void Setup()
+    {
+        _projectFolderPath = Path.Combine(
+            Path.GetTempPath(),
+            "Celbridge",
+            nameof(SidecarTrackingTests),
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_projectFolderPath);
+
+        _registry = new ResourceRegistry(
+            Substitute.For<ILogger<ResourceRegistry>>(),
+            new MessengerService(),
+            new FileIconService());
+        _registry.ProjectFolderPath = _projectFolderPath;
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_projectFolderPath))
+        {
+            try
+            {
+                Directory.Delete(_projectFolderPath, true);
+            }
+            catch
+            {
+                // Best effort
+            }
+        }
+    }
+
+    [Test]
+    public void FileWithNoSidecar_HasNullSidecar()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var resourceResult = _registry.GetResource(new ResourceKey("foo.png"));
+        resourceResult.IsSuccess.Should().BeTrue();
+        var fileResource = resourceResult.Value as IFileResource;
+        fileResource!.Sidecar.Should().BeNull();
+    }
+
+    [Test]
+    public void HealthySidecar_IsPairedWithStatusHealthy()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "+++\ntags = [\"meeting\"]\n+++\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var resourceResult = _registry.GetResource(new ResourceKey("foo.png"));
+        resourceResult.IsSuccess.Should().BeTrue();
+        var fileResource = resourceResult.Value as IFileResource;
+        fileResource!.Sidecar.Should().NotBeNull();
+        fileResource.Sidecar!.Key.Should().Be(new ResourceKey("foo.png.cel"));
+        fileResource.Sidecar.Status.Should().Be(SidecarStatus.Healthy);
+
+        var parentResult = _registry.GetSidecarParent(new ResourceKey("foo.png.cel"));
+        parentResult.IsSuccess.Should().BeTrue();
+        parentResult.Value.Name.Should().Be("foo.png");
+    }
+
+    [Test]
+    public void GetSidecarParent_FailsForNonSidecarKey()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var result = _registry.GetSidecarParent(new ResourceKey("foo.png"));
+
+        result.IsSuccess.Should().BeFalse();
+        result.FirstErrorMessage.Should().Contain("not a sidecar key");
+    }
+
+    [Test]
+    public void OrphanSidecar_AppearsInReportOrphan()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "+++\ntags = [\"x\"]\n+++\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Orphan.Should().Contain(new ResourceKey("foo.png.cel"));
+    }
+
+    [Test]
+    public void CelCelFile_AppearsInReportBroken()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "+++\ntags = [\"a\"]\n+++\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel.cel"),
+            "+++\nshould = \"not be paired\"\n+++\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Broken.Should().Contain(new ResourceKey("foo.png.cel.cel"));
+
+        // foo.png.cel is still healthy and paired with foo.png; the .cel.cel
+        // file is not considered its sidecar.
+        report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
+        var fooPng = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        fooPng!.Sidecar!.Status.Should().Be(SidecarStatus.Healthy);
+    }
+
+    [Test]
+    public void UnparseableSidecar_AppearsInReportBroken()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "no fences here, just loose text");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
+
+        var parent = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        parent!.Sidecar!.Status.Should().Be(SidecarStatus.Broken);
+    }
+
+    [Test]
+    public void DeletingSidecar_FlipsParentToNullSidecar()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
+        File.WriteAllText(sidecarPath, "+++\ntags = [\"x\"]\n+++\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var parent1 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        parent1!.Sidecar!.Status.Should().Be(SidecarStatus.Healthy);
+
+        File.Delete(sidecarPath);
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var parent2 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        parent2!.Sidecar.Should().BeNull();
+    }
+
+    [Test]
+    public void BrokenOrphan_AppearsInBothBrokenAndOrphan()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "loose text, no fences");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Broken.Should().Contain(new ResourceKey("lonely.cel"));
+        report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
+    }
+}

@@ -128,6 +128,17 @@ public class WorkspaceLoader
                 return Result.Fail("Failed to update resources")
                     .WithErrors(updateResult);
             }
+
+            // Rebuild the metadata index synchronously before downstream steps
+            // (package discovery, activity service, Python init) get a chance to
+            // touch files on disk. Running concurrently risks scanning a file
+            // mid-write and recording stale references or mtime stamps.
+            var metaData = workspaceService.ResourceMetaData;
+            var rebuildResult = await metaData.RebuildAsync();
+            if (rebuildResult.IsFailure)
+            {
+                _logger.LogWarning(rebuildResult, "Failed to rebuild resource metadata index");
+            }
         }
         catch (Exception ex)
         {

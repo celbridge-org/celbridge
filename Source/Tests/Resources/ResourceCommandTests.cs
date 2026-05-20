@@ -46,7 +46,7 @@ public class ResourceCommandTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        _resourceRegistry = new ResourceRegistry(messengerService, fileIconService);
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
         _resourceRegistry.ProjectFolderPath = _projectFolderPath;
         _resourceRegistry.UpdateResourceRegistry();
 

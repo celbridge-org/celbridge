@@ -1,6 +1,21 @@
 namespace Celbridge.Resources;
 
 /// <summary>
+/// Snapshot of every .cel-shaped file the registry knows about, partitioned by
+/// parse state and orphan-ness. Used for project-load diagnostics and by
+/// metadata_check_project to surface attention states.
+///
+/// Parse state (Healthy / Broken) and orphan-ness are orthogonal dimensions:
+/// an orphan sidecar with malformed content appears in both Broken and Orphan.
+/// Files whose names end in .cel.cel are classified as Broken and never as a
+/// regular sidecar.
+/// </summary>
+public record SidecarReport(
+    IReadOnlyList<ResourceKey> Healthy,
+    IReadOnlyList<ResourceKey> Broken,
+    IReadOnlyList<ResourceKey> Orphan);
+
+/// <summary>
 /// A data structure representing the resources in the project folder.
 /// </summary>
 public interface IResourceRegistry
@@ -115,4 +130,19 @@ public interface IResourceRegistry
     /// Returns an empty list for roots without indexed tree state.
     /// </summary>
     List<(ResourceKey Resource, string Path)> GetAllFileResources(string root);
+
+    /// <summary>
+    /// Returns the parent file resource of a sidecar key, or a failure result
+    /// if the sidecar has no corresponding parent. Sidecars at "foo.png.cel"
+    /// resolve to "foo.png"; sidecars whose name ends in ".cel.cel" are invalid
+    /// and never have a parent.
+    /// </summary>
+    Result<IFileResource> GetSidecarParent(ResourceKey sidecar);
+
+    /// <summary>
+    /// Returns a snapshot of every sidecar the registry knows about, partitioned
+    /// by parse state, orphan-ness, and the .cel.cel invalid category. Used for
+    /// project-load diagnostics and by metadata_check_project.
+    /// </summary>
+    SidecarReport GetSidecarReport();
 }

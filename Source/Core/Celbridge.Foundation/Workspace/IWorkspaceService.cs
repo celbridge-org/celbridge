@@ -52,6 +52,12 @@ public interface IWorkspaceService
     IResourceFileSystem ResourceFileSystem { get; }
 
     /// <summary>
+    /// Returns the metadata service that maintains the reference graph and
+    /// frontmatter index for project resources.
+    /// </summary>
+    IResourceMetaData ResourceMetaData { get; }
+
+    /// <summary>
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }

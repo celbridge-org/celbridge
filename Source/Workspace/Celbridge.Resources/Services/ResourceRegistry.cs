@@ -1,4 +1,5 @@
 using System.Text;
+using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services.Roots;
@@ -8,10 +9,21 @@ namespace Celbridge.Resources.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {
+    private readonly ILogger<ResourceRegistry> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IFileIconService _fileIconService;
     private readonly PathValidator _pathValidator = new();
     private readonly Dictionary<string, IResourceRootHandler> _rootHandlers = new(StringComparer.Ordinal);
+
+    // Sidecar tracking state, refreshed on each UpdateResourceRegistry pass.
+    // The report is rebuilt atomically per pass so readers always see a coherent
+    // snapshot.
+    private readonly object _sidecarLock = new();
+    private SidecarReport _sidecarReport = new(
+        Healthy: Array.Empty<ResourceKey>(),
+        Broken: Array.Empty<ResourceKey>(),
+        Orphan: Array.Empty<ResourceKey>());
+    private readonly Dictionary<ResourceKey, ResourceKey> _sidecarToParent = new();
 
     private string _projectFolderPath = string.Empty;
 
@@ -37,9 +49,11 @@ public class ResourceRegistry : IResourceRegistry
     public IReadOnlyDictionary<string, IResourceRootHandler> RootHandlers => _rootHandlers;
 
     public ResourceRegistry(
+        ILogger<ResourceRegistry> logger,
         IMessengerService messengerService,
         IFileIconService fileIconService)
     {
+        _logger = logger;
         _messengerService = messengerService;
         _fileIconService = fileIconService;
     }
@@ -318,6 +332,7 @@ public class ResourceRegistry : IResourceRegistry
             // visible before the new reference (a no-op on x64, required on ARM64).
             var newRoot = new FolderResource(string.Empty, null);
             SynchronizeFolder(newRoot, ProjectFolderPath);
+            UpdateSidecarPairings(newRoot);
             Volatile.Write(ref _projectFolder, newRoot);
 
             _pathValidator.InvalidateCache();
@@ -435,6 +450,190 @@ public class ResourceRegistry : IResourceRegistry
             else if (child is IFolderResource childFolder)
             {
                 CollectFileResources(childFolder, fileResources);
+            }
+        }
+    }
+
+    public Result<IFileResource> GetSidecarParent(ResourceKey sidecar)
+    {
+        if (!sidecar.Path.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            return Result<IFileResource>.Fail(
+                $"Resource key '{sidecar}' is not a sidecar key (does not end in '{SidecarHelper.Extension}').");
+        }
+
+        lock (_sidecarLock)
+        {
+            if (!_sidecarToParent.TryGetValue(sidecar, out var parentKey))
+            {
+                return Result<IFileResource>.Fail(
+                    $"No parent file is paired with sidecar '{sidecar}'.");
+            }
+
+            var resourceResult = GetResource(parentKey);
+            if (resourceResult.IsFailure)
+            {
+                return Result<IFileResource>.Fail(
+                    $"Failed to resolve parent file '{parentKey}' for sidecar '{sidecar}'.")
+                    .WithErrors(resourceResult);
+            }
+
+            if (resourceResult.Value is not IFileResource fileResource)
+            {
+                return Result<IFileResource>.Fail(
+                    $"Parent of sidecar '{sidecar}' is not a file resource.");
+            }
+
+            return Result<IFileResource>.Ok(fileResource);
+        }
+    }
+
+    public SidecarReport GetSidecarReport()
+    {
+        lock (_sidecarLock)
+        {
+            return _sidecarReport;
+        }
+    }
+
+    // Walks the newly-built tree pairing parent files with their .cel sidecars.
+    // Runs after SynchronizeFolder so the tree shape is final; sets each
+    // FileResource.Sidecar in place and rebuilds the report snapshot.
+    private void UpdateSidecarPairings(FolderResource projectRoot)
+    {
+        var healthy = new List<ResourceKey>();
+        var broken = new List<ResourceKey>();
+        var orphan = new List<ResourceKey>();
+        var newSidecarToParent = new Dictionary<ResourceKey, ResourceKey>();
+
+        ProcessFolder(projectRoot);
+
+        var newReport = new SidecarReport(
+            Healthy: healthy,
+            Broken: broken,
+            Orphan: orphan);
+
+        lock (_sidecarLock)
+        {
+            _sidecarToParent.Clear();
+            foreach (var entry in newSidecarToParent)
+            {
+                _sidecarToParent[entry.Key] = entry.Value;
+            }
+            _sidecarReport = newReport;
+        }
+
+        void ProcessFolder(FolderResource folder)
+        {
+            // Build a name lookup for siblings so the pairing checks are O(1) per file.
+            var siblingByName = new Dictionary<string, IResource>(StringComparer.OrdinalIgnoreCase);
+            foreach (var child in folder.Children)
+            {
+                siblingByName[child.Name] = child;
+            }
+
+            foreach (var child in folder.Children)
+            {
+                if (child is FolderResource subFolder)
+                {
+                    ProcessFolder(subFolder);
+                    continue;
+                }
+
+                if (child is not FileResource fileResource)
+                {
+                    continue;
+                }
+
+                ClassifyFile(fileResource, siblingByName);
+            }
+        }
+
+        void ClassifyFile(
+            FileResource fileResource,
+            Dictionary<string, IResource> siblingByName)
+        {
+            var name = fileResource.Name;
+
+            // Files ending in .cel.cel are never paired with anything. They are
+            // surfaced as Broken so the user can resolve them.
+            if (name.EndsWith(".cel.cel", StringComparison.OrdinalIgnoreCase))
+            {
+                fileResource.Sidecar = null;
+                broken.Add(GetResourceKey(fileResource));
+                return;
+            }
+
+            if (name.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+            {
+                ClassifySidecarFile(fileResource, siblingByName);
+                return;
+            }
+
+            // Non-sidecar file: pair with the sibling <name>.cel if it exists.
+            var sidecarName = name + SidecarHelper.Extension;
+            if (siblingByName.TryGetValue(sidecarName, out var sibling)
+                && sibling is FileResource siblingFile
+                && !siblingFile.Name.EndsWith(".cel.cel", StringComparison.OrdinalIgnoreCase))
+            {
+                var sidecarKey = GetResourceKey(siblingFile);
+
+                // The sidecar's classification may not have run yet; populate a
+                // placeholder Healthy entry now and let ClassifySidecarFile
+                // overwrite it with the inspected status when it runs.
+                var existingStatus = fileResource.Sidecar?.Status ?? SidecarStatus.Healthy;
+                fileResource.Sidecar = new SidecarInfo(sidecarKey, existingStatus);
+                return;
+            }
+
+            fileResource.Sidecar = null;
+        }
+
+        void ClassifySidecarFile(
+            FileResource sidecarFile,
+            Dictionary<string, IResource> siblingByName)
+        {
+            var sidecarName = sidecarFile.Name;
+            var parentName = sidecarName.Substring(0, sidecarName.Length - SidecarHelper.Extension.Length);
+
+            var sidecarKey = GetResourceKey(sidecarFile);
+
+            // Inspect the .cel file's content to determine its status. Broken
+            // bytes are never modified on disk; the user repairs them by hand.
+            var resolveResult = ResolveResourcePath(sidecarKey);
+            SidecarStatus status;
+            if (resolveResult.IsFailure)
+            {
+                _logger.LogWarning($"sidecar pairing: failed to resolve path for '{sidecarKey}'");
+                status = SidecarStatus.Broken;
+            }
+            else
+            {
+                status = SidecarHelper.Inspect(resolveResult.Value, _logger);
+            }
+
+            // A .cel file has no sidecar of its own (sidecars don't have sidecars).
+            sidecarFile.Sidecar = null;
+
+            // Pair with the parent if present.
+            if (siblingByName.TryGetValue(parentName, out var parentSibling)
+                && parentSibling is FileResource parentFile)
+            {
+                newSidecarToParent[sidecarKey] = GetResourceKey(parentFile);
+                parentFile.Sidecar = new SidecarInfo(sidecarKey, status);
+            }
+            else
+            {
+                orphan.Add(sidecarKey);
+            }
+
+            if (status == SidecarStatus.Healthy)
+            {
+                healthy.Add(sidecarKey);
+            }
+            else
+            {
+                broken.Add(sidecarKey);
             }
         }
     }
