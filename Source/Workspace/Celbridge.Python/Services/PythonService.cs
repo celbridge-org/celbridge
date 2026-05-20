@@ -4,12 +4,13 @@ using System.Net.Sockets;
 using System.Runtime.Versioning;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
-using Celbridge.Server;
 using Celbridge.Console;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Logging;
+using Celbridge.Server;
 using Celbridge.Settings;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Python.Services;
@@ -35,6 +36,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IServerService _serverService;
     private readonly IMessengerService _messengerService;
     private readonly IFeatureFlags _featureFlags;
+    private readonly IPythonInstaller _pythonInstaller;
     private readonly ILogger<PythonService> _logger;
     private readonly ITcpTransport _tcpTransport;
     private CancellationTokenSource? _rpcCancellationTokenSource;
@@ -50,6 +52,7 @@ public class PythonService : IPythonService, IDisposable
         IServerService serverService,
         IMessengerService messengerService,
         IFeatureFlags featureFlags,
+        IPythonInstaller pythonInstaller,
         ILogger<PythonService> logger,
         ITcpTransport tcpTransport)
     {
@@ -59,6 +62,7 @@ public class PythonService : IPythonService, IDisposable
         _serverService = serverService;
         _messengerService = messengerService;
         _featureFlags = featureFlags;
+        _pythonInstaller = pythonInstaller;
         _logger = logger;
         _tcpTransport = tcpTransport;
     }
@@ -119,7 +123,7 @@ public class PythonService : IPythonService, IDisposable
                 DeleteInstalledVersionMarker(pythonFolderForCleanup);
             }
 
-            var installResult = await PythonInstaller.InstallPythonAsync(appVersion);
+            var installResult = await _pythonInstaller.InstallPythonAsync(appVersion);
             if (installResult.IsFailure)
             {
                 var errorMessage = new ConsoleErrorMessage(
@@ -213,11 +217,27 @@ public class PythonService : IPythonService, IDisposable
             }
 
             // Determine if we can use offline mode (no network required).
-            // The fingerprint includes the config and a hash of the wheel file contents.
-            // A change to any of these forces online mode to re-download everything.
+            // The fingerprint includes the config, a hash of the wheel file contents,
+            // and a structural hash of the stable parts of the AppData Python folder
+            // (uv binary + installed Python interpreter set). Volatile folders that
+            // uv writes to during normal operation (uv_cache, uv_tools, uv_bin, and
+            // per-interpreter __pycache__) are deliberately excluded so the hash is
+            // stable across sessions.
             var wheelHash = FileHashHelper.HashFileContents(celbridgeWheelPath);
-            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, wheelHash, pythonPackages);
+            var installStateHash = ComputeInstallStateHash(pythonFolder);
+            var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, wheelHash, pythonPackages, installStateHash);
             var useOfflineMode = currentFingerprint == savedFingerprint;
+
+            // Fingerprint values are logged at debug level so diagnosis of
+            // unexpected offline/online transitions does not require new code,
+            // while normal operation does not spam the info log.
+            _logger.LogDebug(
+                "Python fingerprint: wheelHash='{WheelHash}' installStateHash='{InstallStateHash}' current='{Current}' saved='{Saved}' useOfflineMode={Offline}",
+                wheelHash,
+                installStateHash,
+                currentFingerprint,
+                savedFingerprint ?? "<null>",
+                useOfflineMode);
 
             if (useOfflineMode)
             {
@@ -309,6 +329,38 @@ public class PythonService : IPythonService, IDisposable
                     _messengerService.Send(errorMessage);
                 }
             };
+
+            // Snapshot of the uv-managed Python install dir and the full uv command
+            // at launch time. Logged at debug level so a "Python REPL won't start"
+            // report can be correlated with what was actually on disk and what was
+            // passed to uv, without spamming the info log on every load.
+            try
+            {
+                if (Directory.Exists(uvPythonInstallDir))
+                {
+                    var installEntries = Directory.GetDirectories(uvPythonInstallDir)
+                        .Select(d => Path.GetFileName(d))
+                        .ToList();
+                    _logger.LogDebug(
+                        "uv_python_installs ('{Path}') contains [{Entries}]",
+                        uvPythonInstallDir,
+                        string.Join(", ", installEntries));
+                }
+                else
+                {
+                    _logger.LogDebug("uv_python_installs ('{Path}') does not exist at launch", uvPythonInstallDir);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to enumerate uv_python_installs at '{Path}'", uvPythonInstallDir);
+            }
+
+            _logger.LogDebug(
+                "Launching uv: UV_PYTHON_INSTALL_DIR='{InstallDir}' offlineMode={Offline} uvCommand={UvCommand}",
+                uvPythonInstallDir,
+                useOfflineMode,
+                uvCommand);
 
             // Start the terminal process with per-process environment variables
             terminal.Start(commandLine, workingDir, terminalEnvironment);
@@ -442,17 +494,86 @@ public class PythonService : IPythonService, IDisposable
     }
 
     /// <summary>
-    /// Computes a fingerprint of the current Python configuration.
-    /// Includes a hash of the wheel file contents so that any change to the app
-    /// version, wheel content, or dependencies causes a fingerprint mismatch
-    /// that forces online mode.
+    /// Computes a hash of the stable parts of the AppData Python folder. Mismatch
+    /// against a previously-saved value indicates the install has drifted and
+    /// offline mode is unsafe.
+    /// </summary>
+    private static string ComputeInstallStateHash(string pythonFolder)
+    {
+        var sb = new StringBuilder();
+
+        // uv binary file size catches an app update that bundles a new uv.
+        var uvExeName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
+        var uvExePath = Path.Combine(pythonFolder, uvExeName);
+        if (File.Exists(uvExePath))
+        {
+            try
+            {
+                sb.AppendLine($"uv|{new FileInfo(uvExePath).Length}");
+            }
+            catch
+            {
+                sb.AppendLine("uv|?");
+            }
+        }
+        else
+        {
+            sb.AppendLine("uv|missing");
+        }
+
+        // Depth 1 over uv_python_installs/ enumerates the interpreter folder names
+        // (e.g. cpython-3.13.6-windows-x86_64-none) without descending into Lib/
+        // where __pycache__ writes would destabilise the hash.
+        var installsHash = FileHashHelper.HashFolderStructure(
+            Path.Combine(pythonFolder, UVPythonInstallsFolderName),
+            maxDepth: 1);
+        sb.AppendLine($"installs|{installsHash}");
+
+        // Wheel cache lives under uv_cache/wheels-v<N>/, where the version suffix
+        // bumps with uv releases — hash each wheels-v* separately so a suffix
+        // change is also captured. Depth 3 reaches package-name granularity
+        // (wheels-v5/index/<src>/<pkg>/) without descending into per-version
+        // wheels, keeping the hash stable when uv touches deeper cache metadata.
+        // Other uv_cache subfolders (environments-v*, sdists-*, etc.) and the
+        // regenerated uv_tools / uv_bin are deliberately excluded as volatile.
+        var uvCacheDir = Path.Combine(pythonFolder, UVCacheFolderName);
+        if (Directory.Exists(uvCacheDir))
+        {
+            string[] wheelsFolders;
+            try
+            {
+                wheelsFolders = Directory.GetDirectories(uvCacheDir, "wheels-v*");
+                Array.Sort(wheelsFolders, StringComparer.Ordinal);
+            }
+            catch
+            {
+                wheelsFolders = Array.Empty<string>();
+            }
+
+            foreach (var wheelsFolder in wheelsFolders)
+            {
+                var folderName = Path.GetFileName(wheelsFolder);
+                var wheelsHash = FileHashHelper.HashFolderStructure(wheelsFolder, maxDepth: 3);
+                sb.AppendLine($"wheels|{folderName}|{wheelsHash}");
+            }
+        }
+
+        return FileHashHelper.HashString(sb.ToString());
+    }
+
+    /// <summary>
+    /// Computes a fingerprint of the current Python configuration combined with a
+    /// stable-state hash of the AppData Python folder. Any change to the app version,
+    /// wheel content, dependencies, or the installed interpreter set causes a
+    /// fingerprint mismatch that forces online mode.
     /// </summary>
     private static string ComputeConfigFingerprint(
         string appVersion,
         string pythonVersion,
         string celbridgeWheelPath,
         string wheelHash,
-        IReadOnlyList<string>? dependencies)
+        IReadOnlyList<string>? dependencies,
+        string installStateHash)
     {
         var sb = new StringBuilder();
         sb.AppendLine(appVersion);
@@ -467,6 +588,8 @@ public class PythonService : IPythonService, IDisposable
                 sb.AppendLine(dep);
             }
         }
+
+        sb.AppendLine(installStateHash);
 
         return FileHashHelper.HashString(sb.ToString());
     }

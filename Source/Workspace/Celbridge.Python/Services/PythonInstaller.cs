@@ -1,10 +1,11 @@
 using System.IO.Compression;
 using System.Runtime.Versioning;
+using Celbridge.Logging;
+using Celbridge.Utilities;
 
 namespace Celbridge.Python.Services;
 
-[SupportedOSPlatform("windows10.0.10240.0")]
-public static class PythonInstaller
+public class PythonInstaller : IPythonInstaller
 {
     private const string PythonFolderName = "Python";
     private const string PythonAssetsFolder = "Assets\\Python";
@@ -13,10 +14,15 @@ public static class PythonInstaller
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string UVTempFileName = "uv.zip";
 
-    /// <summary>
-    /// Installs Python support files if needed.
-    /// </summary>
-    public static async Task<Result<string>> InstallPythonAsync(string appVersion)
+    private readonly ILogger<PythonInstaller> _logger;
+
+    public PythonInstaller(ILogger<PythonInstaller> logger)
+    {
+        _logger = logger;
+    }
+
+    [SupportedOSPlatform("windows10.0.10240.0")]
+    public async Task<Result<string>> InstallPythonAsync(string appVersion)
     {
         try
         {
@@ -27,7 +33,9 @@ public static class PythonInstaller
 
             if (needsReinstall)
             {
+                _logger.LogInformation("Running full Python reinstall at {Path}", pythonFolderPath);
                 await ReinstallAsync(localFolder, pythonFolderPath, appVersion);
+                _logger.LogInformation("Python reinstall completed");
             }
 
             return Result<string>.Ok(pythonFolderPath);
@@ -39,11 +47,12 @@ public static class PythonInstaller
         }
     }
 
-    private static bool IsInstallRequired(string pythonFolderPath, string currentVersion)
+    private bool IsInstallRequired(string pythonFolderPath, string currentVersion)
     {
         // If the python folder doesn't exist, we need to install
         if (!Directory.Exists(pythonFolderPath))
         {
+            _logger.LogDebug("Python reinstall required: pythonFolder does not exist at {Path}", pythonFolderPath);
             return true;
         }
 
@@ -52,6 +61,7 @@ public static class PythonInstaller
         // If version file doesn't exist, we need to install
         if (!File.Exists(installedVersionPath))
         {
+            _logger.LogDebug("Python reinstall required: installed_version.txt missing at {Path}", installedVersionPath);
             return true;
         }
 
@@ -63,6 +73,10 @@ public static class PythonInstaller
 
         if (!string.Equals(expectedVersionContent, installedVersionContent, StringComparison.Ordinal))
         {
+            _logger.LogDebug(
+                "Python reinstall required: installed_version.txt mismatch. Installed='{Installed}' Expected='{Expected}'",
+                installedVersionContent.Replace("\n", "\\n"),
+                expectedVersionContent.Replace("\n", "\\n"));
             return true;
         }
 
@@ -97,6 +111,7 @@ public static class PythonInstaller
         return $"{appVersion}\n{wheelHash}";
     }
 
+    [SupportedOSPlatform("windows10.0.10240.0")]
     private static async Task ReinstallAsync(StorageFolder localFolder, string pythonFolderPath, string currentVersion)
     {
         // Delete existing folder if it exists (handles upgrade scenario).
