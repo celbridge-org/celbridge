@@ -1,9 +1,7 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Directory = System.IO.Directory;
 using File = System.IO.File;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
 
@@ -73,9 +71,12 @@ public partial class PackageTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var workspaceService = workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
-        // Write the downloaded zip to a temporary cache file in the project
+        // Write the downloaded zip to a temporary cache file in the project.
+        // The FS layer ensures the parent folder exists and writes atomically.
         var tempArchiveResource = ResourceKey.Create($".celbridge/.cache/{packageName}.zip");
         var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
         if (resolveTempResult.IsFailure)
@@ -86,19 +87,10 @@ public partial class PackageTools
         }
         var tempArchivePath = resolveTempResult.Value;
 
-        var tempFolder = Path.GetDirectoryName(tempArchivePath);
-        if (!string.IsNullOrEmpty(tempFolder) && !Directory.Exists(tempFolder))
+        var writeArchiveResult = await fileSystem.WriteAllBytesAsync(tempArchiveResource, downloadResult.Value);
+        if (writeArchiveResult.IsFailure)
         {
-            Directory.CreateDirectory(tempFolder);
-        }
-
-        try
-        {
-            await File.WriteAllBytesAsync(tempArchivePath, downloadResult.Value);
-        }
-        catch (System.IO.IOException exception)
-        {
-            return ToolResponse.Error($"Failed to write downloaded package: {exception.Message}");
+            return ToolResponse.Error($"Failed to write downloaded package: {writeArchiveResult.FirstErrorMessage}");
         }
 
         var destinationResource = ResourceKey.Create($"packages/{packageName}");

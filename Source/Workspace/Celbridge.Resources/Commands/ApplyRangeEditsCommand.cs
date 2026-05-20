@@ -34,7 +34,9 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
             return Result.Ok();
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
         var failedResources = new List<ResourceKey>();
         var failureDetails = new List<string>();
@@ -43,7 +45,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         {
             var resource = fileEdit.Resource;
 
-            var applyResult = await ApplyEditsToDisk(resourceService, resource, fileEdit.Edits);
+            var applyResult = await ApplyEditsToDisk(resourceRegistry, fileSystem, resource, fileEdit.Edits);
             if (applyResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
@@ -83,10 +85,12 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         return Result.Ok();
     }
 
-    private static async Task<Result> ApplyEditsToDisk(IResourceService resourceService, ResourceKey resource, List<RangeEdit> edits)
+    private static async Task<Result> ApplyEditsToDisk(
+        IResourceRegistry resourceRegistry,
+        IResourceFileSystem fileSystem,
+        ResourceKey resource,
+        List<RangeEdit> edits)
     {
-        var resourceRegistry = resourceService.Registry;
-
         var resolveResult = resourceRegistry.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -169,7 +173,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
             output += originalSeparator;
         }
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(resource, output);
+        var writeResult = await fileSystem.WriteAllTextAsync(resource, output);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to write edits to file: '{resource}'")

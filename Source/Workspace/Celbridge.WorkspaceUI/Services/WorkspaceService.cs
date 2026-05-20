@@ -23,6 +23,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
+    public IResourceFileSystem ResourceFileSystem { get; }
     public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
@@ -57,6 +58,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
+        ResourceFileSystem = serviceProvider.GetRequiredService<IResourceFileSystem>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();

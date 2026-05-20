@@ -23,7 +23,6 @@ public class ResourceService : IResourceService, IDisposable
     public IResourceMonitor Monitor { get; }
     public IResourceTransferService TransferService { get; }
     public IResourceOperationService OperationService { get; }
-    public IResourceFileWriter FileWriter { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
@@ -34,8 +33,7 @@ public class ResourceService : IResourceService, IDisposable
         IResourceRegistry resourceRegistry,
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
-        IResourceOperationService resourceOperationService,
-        IResourceFileWriter resourceFileWriter)
+        IResourceOperationService resourceOperationService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -49,19 +47,20 @@ public class ResourceService : IResourceService, IDisposable
         Monitor = resourceMonitor;
         TransferService = resourceTransferService;
         OperationService = resourceOperationService;
-        FileWriter = resourceFileWriter;
 
         // Set the project folder path on the registry. This also auto-registers the
         // ProjectRootHandler for the project: root via the setter.
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         Registry.ProjectFolderPath = projectFolderPath;
 
-        // Build the new .celbridge/ hidden folder layout: temp/, logs/, trash/.
-        // These need to exist before downstream services start reading or watching them.
+        // Build the new .celbridge/ hidden folder layout: temp/, logs/, trash/,
+        // staging-fs/. These need to exist before downstream services start reading
+        // or watching them.
         var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
         var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTempFolder);
         var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeLogsFolder);
         var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTrashFolder);
+        var celbridgeStagingFsFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeStagingFsFolder);
 
         Directory.CreateDirectory(celbridgeTempFolder);
         Directory.CreateDirectory(celbridgeLogsFolder);
@@ -71,8 +70,14 @@ public class ResourceService : IResourceService, IDisposable
         TryClearFolderContents(celbridgeTrashFolder);
         Directory.CreateDirectory(celbridgeTrashFolder);
 
+        // staging-fs/ holds in-flight temp files for the resource file-system
+        // chokepoint. Wipe orphans from a prior session crash before downstream
+        // services start writing.
+        TryClearFolderContents(celbridgeStagingFsFolder);
+        Directory.CreateDirectory(celbridgeStagingFsFolder);
+
         // Legacy <project>/celbridge/.trash/ from before this redesign: discard.
-        // The other legacy <project>/celbridge/.temp/, .cache/, .logs/ folders are
+        // The other legacy <project>/celbridge/.cache/, .logs/ folders are
         // left alone (no live data; they retire alongside the entity service).
         var legacyTrashFolder = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
         if (Directory.Exists(legacyTrashFolder))
@@ -87,15 +92,15 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Clean up the legacy temp folder from previous sessions.
-        // ResourceFileWriter still stages in-flight atomic writes here; orphans are from a prior crash.
-        // (Moves to .celbridge/staging-fs/ when the FS-layer chokepoint lands.)
-        var tempFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TempFolder);
-        if (Directory.Exists(tempFolderPath))
+        // Clean up the legacy temp folder from previous sessions. The atomic-write
+        // staging area has moved to .celbridge/staging-fs/; any orphans here are
+        // from before the chokepoint landed.
+        var legacyTempFolder = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TempFolder);
+        if (Directory.Exists(legacyTempFolder))
         {
             try
             {
-                Directory.Delete(tempFolderPath, true);
+                Directory.Delete(legacyTempFolder, true);
             }
             catch
             {

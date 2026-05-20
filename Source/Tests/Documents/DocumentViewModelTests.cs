@@ -16,7 +16,7 @@ namespace Celbridge.Tests.Documents;
 public class DocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
-    private IResourceFileWriter _fileWriter = null!;
+    private IResourceFileSystem _fileSystem = null!;
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
@@ -32,9 +32,9 @@ public class DocumentViewModelTests
         _tempFilePath = Path.Combine(_tempFolder, "test.md");
         File.WriteAllText(_tempFilePath, string.Empty);
 
-        // Wire a real ResourceFileWriter over a substituted workspace hierarchy
+        // Wire a real ResourceFileSystem over a substituted workspace hierarchy
         // whose registry maps the test's resource key to the temp file path. The
-        // writer's atomic write + retry semantics are exercised directly against
+        // layer's atomic write + retry semantics are exercised directly against
         // the temp folder.
         var resourceRegistry = Substitute.For<IResourceRegistry>();
         resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
@@ -49,14 +49,15 @@ public class DocumentViewModelTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _fileWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), workspaceWrapper);
+        _fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(_fileSystem);
 
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
         services.AddSingleton(workspaceWrapper);
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
-        _vm = new TestDocumentViewModel(_fileWriter);
+        _vm = new TestDocumentViewModel(_fileSystem);
         _vm.FileResource = new ResourceKey("test.md");
         _vm.FilePath = _tempFilePath;
     }
@@ -135,9 +136,9 @@ public class DocumentViewModelTests
         var failingWrapper = Substitute.For<IWorkspaceWrapper>();
         failingWrapper.WorkspaceService.Returns(failingWorkspaceService);
 
-        var failingWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), failingWrapper);
+        var failingFileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), failingWrapper);
 
-        var failingVm = new TestDocumentViewModel(failingWriter)
+        var failingVm = new TestDocumentViewModel(failingFileSystem)
         {
             FileResource = new ResourceKey("test.md"),
             FilePath = _tempFilePath
@@ -234,7 +235,7 @@ public class DocumentViewModelTests
         // immediately after we call WriteAllBytesAsync but before
         // UpdateFileTrackingInfo runs.
         var externalContent = "external content that overrode our save";
-        var savingVm = new ExternalWriteDocumentViewModel(_fileWriter, _tempFilePath, externalContent);
+        var savingVm = new ExternalWriteDocumentViewModel(_fileSystem, _tempFilePath, externalContent);
         savingVm.FileResource = new ResourceKey("interleave.md");
         savingVm.FilePath = _tempFilePath;
 
@@ -255,11 +256,11 @@ public class DocumentViewModelTests
     /// </summary>
     private sealed class TestDocumentViewModel : DocumentViewModel
     {
-        private readonly IResourceFileWriter _writer;
+        private readonly IResourceFileSystem _fileSystem;
 
-        public TestDocumentViewModel(IResourceFileWriter writer)
+        public TestDocumentViewModel(IResourceFileSystem fileSystem)
         {
-            _writer = writer;
+            _fileSystem = fileSystem;
             EnableFileChangeMonitoring();
         }
 
@@ -281,7 +282,7 @@ public class DocumentViewModelTests
             SaveTimer = SaveDelay;
         }
 
-        protected override IResourceFileWriter GetFileWriter() => _writer;
+        protected override IResourceFileSystem GetFileSystem() => _fileSystem;
     }
 
     /// <summary>
@@ -293,14 +294,14 @@ public class DocumentViewModelTests
     /// </summary>
     private sealed class ExternalWriteDocumentViewModel : DocumentViewModel
     {
-        private readonly IResourceFileWriter _writer;
+        private readonly IResourceFileSystem _fileSystem;
         private readonly string _injectedFilePath;
         private readonly string _externalContent;
         private bool _hasInjected;
 
-        public ExternalWriteDocumentViewModel(IResourceFileWriter writer, string filePath, string externalContent)
+        public ExternalWriteDocumentViewModel(IResourceFileSystem fileSystem, string filePath, string externalContent)
         {
-            _writer = writer;
+            _fileSystem = fileSystem;
             _injectedFilePath = filePath;
             _externalContent = externalContent;
             EnableFileChangeMonitoring();
@@ -313,7 +314,7 @@ public class DocumentViewModelTests
             return SaveTextToFileAsync(text);
         }
 
-        protected override IResourceFileWriter GetFileWriter() => _writer;
+        protected override IResourceFileSystem GetFileSystem() => _fileSystem;
 
         protected override void UpdateFileTrackingInfo()
         {

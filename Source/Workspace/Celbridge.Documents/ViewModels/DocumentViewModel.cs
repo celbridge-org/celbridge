@@ -177,7 +177,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Routes the save through IResourceFileWriter (atomic write + bounded retry
+    /// Routes the save through IResourceFileSystem (atomic write + bounded retry
     /// on transient IO) and raises ReloadRequested when external interleaving is
     /// detected either before the write (pre-write hash check) or between the
     /// write completing and our tracking-hash read (post-write check). Updates
@@ -192,8 +192,8 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result.Ok();
         }
 
-        var writer = GetFileWriter();
-        var writeResult = await writer.WriteAllBytesAsync(FileResource, bytes);
+        var fileSystem = GetFileSystem();
+        var writeResult = await fileSystem.WriteAllBytesAsync(FileResource, bytes);
         if (writeResult.IsFailure)
         {
             return writeResult;
@@ -253,14 +253,14 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Acquires the resource file writer. Overridable so tests can substitute
-    /// a writer wired to a temp folder without going through the workspace
-    /// service hierarchy.
+    /// Acquires the resource file-system layer. Overridable so tests can
+    /// substitute a layer wired to a temp folder without going through the
+    /// workspace service hierarchy.
     /// </summary>
-    protected virtual IResourceFileWriter GetFileWriter()
+    protected virtual IResourceFileSystem GetFileSystem()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        return workspaceWrapper.WorkspaceService.ResourceService.FileWriter;
+        return workspaceWrapper.WorkspaceService.ResourceFileSystem;
     }
 
     /// <summary>

@@ -36,8 +36,8 @@ public class ApplyRangeEditsCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), _workspaceWrapper);
-        resourceService.FileWriter.Returns(fileWriter);
+        var fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), _workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(fileSystem);
     }
 
     [TearDown]

@@ -47,6 +47,11 @@ public interface IWorkspaceService
     IResourceService ResourceService { get; }
 
     /// <summary>
+    /// Returns the chokepoint file-system layer for project resources.
+    /// </summary>
+    IResourceFileSystem ResourceFileSystem { get; }
+
+    /// <summary>
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }

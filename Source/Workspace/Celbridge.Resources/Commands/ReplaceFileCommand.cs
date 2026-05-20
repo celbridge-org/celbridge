@@ -37,9 +37,11 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
             return Result.Fail("Search text cannot be empty");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
-        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
@@ -52,10 +54,10 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        return await ReplaceOnDisk(resourceService, resourcePath);
+        return await ReplaceOnDisk(fileSystem, resourcePath);
     }
 
-    private async Task<Result> ReplaceOnDisk(IResourceService resourceService, string resourcePath)
+    private async Task<Result> ReplaceOnDisk(IResourceFileSystem fileSystem, string resourcePath)
     {
         var content = await File.ReadAllTextAsync(resourcePath);
 
@@ -80,7 +82,7 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
 
         if (replacementCount > 0)
         {
-            var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, newContent);
+            var writeResult = await fileSystem.WriteAllTextAsync(FileResource, newContent);
             if (writeResult.IsFailure)
             {
                 return writeResult;

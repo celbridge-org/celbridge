@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,6 +17,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly IWebViewService _webViewService;
 
     [ObservableProperty]
@@ -72,6 +74,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
         _stringLocalizer = stringLocalizer;
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
         _webViewService = webViewService;
 
         _messengerService.Register<WebViewNavigationStateChangedMessage>(this, OnWebViewNavigationStateChanged);
@@ -172,18 +175,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
         else if (e.PropertyName == nameof(SourceUrl) && !_suppressSaving)
         {
-            var resolveSaveResult = _resourceRegistry.ResolveResourcePath(Resource);
-            if (resolveSaveResult.IsFailure)
-            {
-                _logger.LogError(resolveSaveResult, $"Failed to resolve path for resource: '{Resource}'");
-                return;
-            }
-            var saveResult = SaveWebView(resolveSaveResult.Value, SourceUrl);
-            if (saveResult.IsFailure)
-            {
-                _logger.LogError(saveResult, $"Failed to save .webview file: {resolveSaveResult.Value}");
-                return;
-            }
+            _ = SaveWebViewAsync(Resource, SourceUrl);
         }
     }
 
@@ -220,7 +212,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
         }
     }
 
-    private Result SaveWebView(string webFilePath, string sourceUrl)
+    private async Task SaveWebViewAsync(ResourceKey resource, string sourceUrl)
     {
         try
         {
@@ -229,14 +221,15 @@ public partial class WebInspectorViewModel : InspectorViewModel
                 ["sourceUrl"] = sourceUrl
             };
 
-            File.WriteAllText(webFilePath, jsonObject.ToJsonString());
-
-            return Result.Ok();
+            var writeResult = await _resourceFileSystem.WriteAllTextAsync(resource, jsonObject.ToJsonString());
+            if (writeResult.IsFailure)
+            {
+                _logger.LogError(writeResult, $"Failed to save .webview file: '{resource}'");
+            }
         }
         catch (Exception ex)
         {
-            return Result.Fail($"An exception occurred when saving .webview file: {webFilePath}")
-                .WithException(ex);
+            _logger.LogError(ex, $"An exception occurred when saving .webview file: '{resource}'");
         }
     }
 }

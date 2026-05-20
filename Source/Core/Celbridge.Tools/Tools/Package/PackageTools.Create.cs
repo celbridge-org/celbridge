@@ -3,8 +3,6 @@ using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Directory = System.IO.Directory;
-using File = System.IO.File;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
 
@@ -19,7 +17,7 @@ public partial class PackageTools
     [McpServerTool(Name = "package_create", Destructive = true)]
     [ToolAlias("package.create")]
     [RelatedGuides("packages_overview")]
-    public partial CallToolResult Create(string packageName)
+    public async partial Task<CallToolResult> Create(string packageName)
     {
         if (!IsValidPackageName(packageName))
         {
@@ -29,7 +27,9 @@ public partial class PackageTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var workspaceService = workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
         var packageResource = ResourceKey.Create($"packages/{packageName}");
         var resolveResult = resourceRegistry.ResolveResourcePath(packageResource);
@@ -46,24 +46,19 @@ public partial class PackageTools
             return ToolResponse.Error($"Package already exists: 'packages/{packageName}'");
         }
 
-        try
-        {
-            Directory.CreateDirectory(packageFolderPath);
+        var manifestContent = new StringBuilder();
+        manifestContent.AppendLine("[package]");
+        manifestContent.AppendLine($"id = \"{packageName}\"");
+        manifestContent.AppendLine($"name = \"{packageName}\"");
+        manifestContent.AppendLine("version = \"1.0.0\"");
+        manifestContent.AppendLine();
+        manifestContent.AppendLine("[contributes]");
 
-            var manifestContent = new StringBuilder();
-            manifestContent.AppendLine("[package]");
-            manifestContent.AppendLine($"id = \"{packageName}\"");
-            manifestContent.AppendLine($"name = \"{packageName}\"");
-            manifestContent.AppendLine("version = \"1.0.0\"");
-            manifestContent.AppendLine();
-            manifestContent.AppendLine("[contributes]");
-
-            var manifestPath = Path.Combine(packageFolderPath, ManifestFileName);
-            File.WriteAllText(manifestPath, manifestContent.ToString());
-        }
-        catch (System.IO.IOException exception)
+        var manifestResource = ResourceKey.Create($"packages/{packageName}/{ManifestFileName}");
+        var writeManifestResult = await fileSystem.WriteAllTextAsync(manifestResource, manifestContent.ToString());
+        if (writeManifestResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to create package: {exception.Message}");
+            return ToolResponse.Error($"Failed to create package: {writeManifestResult.FirstErrorMessage}");
         }
 
         var result = new PackageCreateResult(

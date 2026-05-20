@@ -22,8 +22,9 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
@@ -50,7 +51,7 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
         var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, contentToWrite);
+        var writeResult = await fileSystem.WriteAllTextAsync(FileResource, contentToWrite);
         if (writeResult.IsFailure)
         {
             return writeResult;

@@ -21,7 +21,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
-        services.AddTransient<IResourceFileWriter, ResourceFileWriter>();
+        services.AddTransient<IResourceFileSystem, ResourceFileSystem>();
         services.AddTransient<AddResourceHelper>();
 
         //

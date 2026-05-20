@@ -37,9 +37,11 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
             return Result.Ok();
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
-        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
@@ -106,7 +108,7 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
             buffer = applyResult.NewContent;
         }
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, buffer);
+        var writeResult = await fileSystem.WriteAllTextAsync(FileResource, buffer);
         if (writeResult.IsFailure)
         {
             return writeResult;

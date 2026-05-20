@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Celbridge.Logging;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 using Path = System.IO.Path;
 
@@ -66,8 +67,7 @@ public class SearchService : ISearchService, IDisposable
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var projectFolder = resourceRegistry.ProjectFolderPath;
 
-        if (string.IsNullOrEmpty(projectFolder) ||
-            !Directory.Exists(projectFolder))
+        if (string.IsNullOrEmpty(projectFolder))
         {
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
@@ -283,7 +283,9 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceResult(false, 0);
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
         var resolveReplaceResult = resourceRegistry.ResolveResourcePath(resource);
         if (resolveReplaceResult.IsFailure)
         {
@@ -293,13 +295,15 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            return await Task.Run(() => ReplaceInFile(
+            return await ReplaceInFileAsync(
+                resource,
                 filePath,
+                fileSystem,
                 searchText,
                 replaceText,
                 matchCase,
                 wholeWord,
-                cancellationToken), cancellationToken);
+                cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -317,8 +321,10 @@ public class SearchService : ISearchService, IDisposable
         }
     }
 
-    private ReplaceResult ReplaceInFile(
+    private async Task<ReplaceResult> ReplaceInFileAsync(
+        ResourceKey resource,
         string filePath,
+        IResourceFileSystem fileSystem,
         string searchText,
         string replaceText,
         bool matchCase,
@@ -349,11 +355,8 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceResult(true, 0);
         }
 
-        try
-        {
-            File.WriteAllText(filePath, newContent);
-        }
-        catch (IOException)
+        var writeResult = await fileSystem.WriteAllTextAsync(resource, newContent);
+        if (writeResult.IsFailure)
         {
             return new ReplaceResult(false, 0);
         }
@@ -381,7 +384,9 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceMatchResult(false);
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
         var resolveMatchResult = resourceRegistry.ResolveResourcePath(resource);
         if (resolveMatchResult.IsFailure)
         {
@@ -391,15 +396,17 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            return await Task.Run(() => ReplaceMatch(
+            return await ReplaceMatchAsync(
+                resource,
                 filePath,
+                fileSystem,
                 searchText,
                 replaceText,
                 lineNumber,
                 originalMatchStart,
                 matchCase,
                 wholeWord,
-                cancellationToken), cancellationToken);
+                cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -417,8 +424,10 @@ public class SearchService : ISearchService, IDisposable
         }
     }
 
-    private ReplaceMatchResult ReplaceMatch(
+    private async Task<ReplaceMatchResult> ReplaceMatchAsync(
+        ResourceKey resource,
         string filePath,
+        IResourceFileSystem fileSystem,
         string searchText,
         string replaceText,
         int lineNumber,
@@ -453,11 +462,8 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceMatchResult(false);
         }
 
-        try
-        {
-            File.WriteAllText(filePath, newContent);
-        }
-        catch (IOException)
+        var writeResult = await fileSystem.WriteAllTextAsync(resource, newContent);
+        if (writeResult.IsFailure)
         {
             return new ReplaceMatchResult(false);
         }

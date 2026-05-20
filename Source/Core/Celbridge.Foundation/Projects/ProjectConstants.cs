@@ -65,4 +65,11 @@ public static class ProjectConstants
     /// Sub-folder of .celbridge/ for soft-deleted files. Cleared on every workspace load.
     /// </summary>
     public const string CelbridgeTrashFolder = "trash";
+
+    /// <summary>
+    /// Sub-folder of .celbridge/ that stages in-flight temp files for atomic
+    /// writes performed by the resource file-system chokepoint. Wiped on
+    /// workspace load to clear orphans left by previous crashes.
+    /// </summary>
+    public const string CelbridgeStagingFsFolder = "staging-fs";
 }

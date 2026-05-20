@@ -32,9 +32,11 @@ public class EditFileCommand : CommandBase, IEditFileCommand
             return Result.Fail("oldString must be non-empty. To append to a file, anchor on the existing last line and concatenate the new content in newString. To overwrite or create a file, use file_write.");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
-        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
+        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
@@ -69,7 +71,7 @@ public class EditFileCommand : CommandBase, IEditFileCommand
         var newContent = buildResult.NewContent;
         var replacementStarts = buildResult.ReplacementStarts;
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, newContent);
+        var writeResult = await fileSystem.WriteAllTextAsync(FileResource, newContent);
         if (writeResult.IsFailure)
         {
             return writeResult;

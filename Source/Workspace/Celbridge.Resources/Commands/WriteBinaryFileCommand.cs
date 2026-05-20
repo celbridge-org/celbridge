@@ -32,8 +32,9 @@ public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
             return Result.Fail("Invalid base64 content");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
         if (resolveResult.IsFailure)
@@ -43,7 +44,7 @@ public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
         }
         var isNewFile = !File.Exists(resolveResult.Value);
 
-        var writeResult = await resourceService.FileWriter.WriteAllBytesAsync(FileResource, bytes);
+        var writeResult = await fileSystem.WriteAllBytesAsync(FileResource, bytes);
         if (writeResult.IsFailure)
         {
             return writeResult;
