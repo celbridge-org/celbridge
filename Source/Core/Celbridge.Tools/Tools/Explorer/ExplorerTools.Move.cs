@@ -34,21 +34,37 @@ public partial class ExplorerTools
 
         var detail = moveResult.Value;
 
-        // For the typical case (clean rename with no skipped referencers and no
-        // failed resources), return the simple "ok" so the response stays compact.
-        // Surface a structured JSON payload only when there is actionable
-        // information for the agent: skipped referencers (the cascade left a
-        // stale reference because the file was read-only or locked) or failed
-        // resources (the move itself didn't apply for a resource in the batch).
-        if (detail.SkippedReferencers.Count == 0
+        // The compact "ok" response is reserved for the no-side-effect case: a
+        // move that touched no references, had no skipped referencers, and no
+        // failed resources. Whenever the move actually cascaded references or
+        // produced any structured outcome the agent might want to act on, emit
+        // the JSON payload — including the list of referencers that were
+        // rewritten so the agent can report what changed without a follow-up
+        // grep.
+        if (detail.UpdatedReferencers.Count == 0
+            && detail.SkippedReferencers.Count == 0
             && detail.FailedResources.Count == 0)
         {
             return ToolResponse.Success("ok");
         }
 
+        string status;
+        if (detail.FailedResources.Count > 0)
+        {
+            status = "partial_failure";
+        }
+        else if (detail.SkippedReferencers.Count > 0)
+        {
+            status = "ok_with_skipped_referencers";
+        }
+        else
+        {
+            status = "ok";
+        }
+
         var payload = new
         {
-            status = detail.FailedResources.Count == 0 ? "ok_with_skipped_referencers" : "partial_failure",
+            status,
             updatedReferencers = detail.UpdatedReferencers.Select(r => r.ToString()).ToArray(),
             skippedReferencers = detail.SkippedReferencers.Select(s => new
             {

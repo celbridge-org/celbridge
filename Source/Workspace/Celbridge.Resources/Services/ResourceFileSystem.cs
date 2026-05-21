@@ -70,14 +70,16 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             path => File.ReadAllTextAsync(path));
     }
 
-    public Task<Result<Stream>> OpenReadAsync(ResourceKey resource)
+    public async Task<Result<Stream>> OpenReadAsync(ResourceKey resource)
     {
+        await Task.CompletedTask;
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
             var failure = Result<Stream>.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
-            return Task.FromResult(failure);
+            return failure;
         }
         var resourcePath = resolveResult.Value;
 
@@ -90,13 +92,13 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 FileShare.Read,
                 StreamBufferSize,
                 useAsync: true);
-            return Task.FromResult(Result<Stream>.Ok(stream));
+            return Result<Stream>.Ok(stream);
         }
         catch (Exception ex)
         {
             var failure = Result<Stream>.Fail($"Failed to open read stream for resource: '{resource}'")
                 .WithException(ex);
-            return Task.FromResult(failure);
+            return failure;
         }
     }
 
@@ -111,23 +113,23 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         return WriteWithRetryAsync(resource, bytes);
     }
 
-    public Task<Result<Stream>> OpenWriteAsync(ResourceKey resource)
+    public async Task<Result<Stream>> OpenWriteAsync(ResourceKey resource)
     {
+        await Task.CompletedTask;
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
             var failure = Result<Stream>.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
-            return Task.FromResult(failure);
+            return failure;
         }
         var resourcePath = resolveResult.Value;
 
         var ensureParentResult = EnsureParentFolderExists(resourcePath, resource);
         if (ensureParentResult.IsFailure)
         {
-            var failure = Result<Stream>.Fail(ensureParentResult.FirstErrorMessage)
-                .WithErrors(ensureParentResult);
-            return Task.FromResult(failure);
+            return Result.Fail(ensureParentResult);
         }
 
         try
@@ -143,13 +145,13 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 FileShare.None,
                 StreamBufferSize,
                 useAsync: true);
-            return Task.FromResult(Result<Stream>.Ok(stream));
+            return Result<Stream>.Ok(stream);
         }
         catch (Exception ex)
         {
             var failure = Result<Stream>.Fail($"Failed to open write stream for resource: '{resource}'")
                 .WithException(ex);
-            return Task.FromResult(failure);
+            return failure;
         }
     }
 
@@ -206,8 +208,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             var rewriteResult = await RewriteReferencesForMoveAsync(source, destination, sourceIsFolder, updatedReferencers, skippedReferencers);
             if (rewriteResult.IsFailure)
             {
-                return Result<MoveResult>.Fail(rewriteResult.FirstErrorMessage)
-                    .WithErrors(rewriteResult);
+                return Result.Fail(rewriteResult);
             }
         }
 

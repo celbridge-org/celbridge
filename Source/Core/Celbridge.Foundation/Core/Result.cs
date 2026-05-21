@@ -220,6 +220,18 @@ public abstract class Result
     }
 
     /// <summary>
+    /// Creates a failure result that propagates the errors of an inner result.
+    /// Use this to bubble a failure up across differing generic payloads
+    /// (e.g. Result<A> -> Result<B>) without restating the first error.
+    /// </summary>
+    public static FailureResult Fail(Result inner)
+    {
+        var failure = new FailureResult(string.Empty, string.Empty, 0);
+        failure.WithErrors(inner);
+        return failure;
+    }
+
+    /// <summary>
     /// Creates a success result.
     /// </summary>
     public static Result Ok()

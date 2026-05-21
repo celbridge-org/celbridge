@@ -167,21 +167,22 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             // above keeps the typed ResourceKey list for programmatic callers.
             var failedDisplayNames = failedResources.Select(r => r.ResourceName).ToList();
             var failedList = string.Join(", ", failedDisplayNames);
-            var operation = TransferMode == DataTransferMode.Copy ? "copy" : "move";
             _logger.LogWarning($"CopyResourceCommand completed with failures: {failedList}");
 
             // Notify the UI about the failure
             var operationType = TransferMode == DataTransferMode.Copy
                 ? ResourceOperationType.Copy
                 : ResourceOperationType.Move;
-            var message = new ResourceOperationFailedMessage(operationType, failedDisplayNames);
-            _messengerService.Send(message);
+            var failedMessage = new ResourceOperationFailedMessage(operationType, failedDisplayNames);
+            _messengerService.Send(failedMessage);
 
             // Propagate every per-resource failure into the bubble-up Result so
             // the agent sees the FS-layer's specific message (e.g.
-            // "Destination already exists: '<key>'") via MessageChain rather
-            // than just the resource name.
-            var aggregated = Result.Fail($"Failed to {operation}: {failedList}");
+            // "Destination already exists: '<key>'") via MessageChain. No outer
+            // wrapper is added; the inner messages already identify which
+            // resource(s) failed, and a generic summary string at the top would
+            // duplicate that detail.
+            var aggregated = Result.Fail();
             foreach (var failedOutcome in failedOutcomes)
             {
                 aggregated.WithErrors(failedOutcome);

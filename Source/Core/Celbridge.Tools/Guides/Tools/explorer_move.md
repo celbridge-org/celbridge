@@ -13,13 +13,11 @@ Resolved against the source:
 
 ## Returns
 
-For a clean move (no skipped referencers, no resource-level failures), returns `"ok"`.
-
-When the cascade was incomplete or a resource failed, returns a JSON payload with this shape:
+The compact `"ok"` is reserved for the no-side-effect case: the move touched no references, no referencers were skipped, and no resources failed mechanically. Whenever the move actually rewrote references, left a cascade incomplete, or had a per-resource failure, the response is the JSON payload below — so an agent that needs to report what changed gets the rewritten-referencer list without a follow-up grep.
 
 ```json
 {
-  "status": "ok_with_skipped_referencers" | "partial_failure",
+  "status": "ok" | "ok_with_skipped_referencers" | "partial_failure",
   "updatedReferencers": ["project:doc.md", ...],
   "skippedReferencers": [
     { "resource": "project:locked.md", "reason": "ReadOnly", "message": "file is read-only" },
@@ -29,7 +27,10 @@ When the cascade was incomplete or a resource failed, returns a JSON payload wit
 }
 ```
 
-- `status` is `"ok_with_skipped_referencers"` when the move itself completed but the cascade left some references stale; `"partial_failure"` when one or more resources in the batch failed mechanically.
+- `status`:
+  - `"ok"` — every cascade step succeeded; `updatedReferencers` may be non-empty.
+  - `"ok_with_skipped_referencers"` — the move itself completed but the cascade left some references stale (see `skippedReferencers`).
+  - `"partial_failure"` — one or more resources in the batch failed mechanically (see `failedResources`).
 - `updatedReferencers` lists the files whose references were rewritten.
 - `skippedReferencers` lists the files the cascade couldn't update. `reason` is one of `ReadFailed` / `WriteFailed` / `ReadOnly` / `PermissionDenied`. `ReadOnly` is the DOS read-only attribute (trivially clearable); `PermissionDenied` is an ACL / POSIX denial (needs the right account or admin). The reference is left as-is and will surface via `metadata_check_project` (Phase 5). Re-running the move after the blocker clears (clear the read-only flag, grant write access, close the editor that holds the lock) completes the cascade idempotently.
 - `failedResources` lists source resources whose bytes operation failed.

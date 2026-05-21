@@ -46,7 +46,7 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
         var snapshotResult = await _commandService.ExecuteAsync<IGetDocumentStateCommand, DocumentStateSnapshot>();
         if (snapshotResult.IsFailure)
         {
-            return Result.Fail().WithErrors(snapshotResult);
+            return Result.Fail(snapshotResult);
         }
         var snapshot = snapshotResult.Value;
 

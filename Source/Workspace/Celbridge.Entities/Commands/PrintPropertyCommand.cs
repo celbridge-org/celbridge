@@ -27,7 +27,7 @@ public class PrintPropertyCommand : CommandBase, IPrintPropertyCommand
         var getResult = entityService.GetProperty(ComponentKey, PropertyPath);
         if (getResult.IsFailure)
         {
-            return Result.Fail().WithErrors(getResult);
+            return Result.Fail(getResult);
         }
 
         var valueJSON = getResult.Value;

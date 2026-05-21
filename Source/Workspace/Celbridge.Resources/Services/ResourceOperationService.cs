@@ -114,8 +114,7 @@ public class ResourceOperationService : IResourceOperationService
         var keyResult = ResolveOperationKeys(sourcePath, destPath);
         if (keyResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(keyResult.FirstErrorMessage)
-                .WithErrors(keyResult);
+            return Result.Fail(keyResult);
         }
         var fileSystem = FileSystem;
         if (fileSystem is null)
@@ -135,8 +134,7 @@ public class ResourceOperationService : IResourceOperationService
 
         if (execResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
-                .WithErrors(execResult);
+            return Result.Fail(execResult);
         }
 
         AddOperation(operation);
@@ -149,8 +147,7 @@ public class ResourceOperationService : IResourceOperationService
         var execResult = await operation.ExecuteAsync();
         if (execResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
-                .WithErrors(execResult);
+            return Result.Fail(execResult);
         }
         AddOperation(operation);
         return Result<CopyResult>.Ok(EmptyCopyResult);
@@ -162,8 +159,7 @@ public class ResourceOperationService : IResourceOperationService
         var execResult = await operation.ExecuteAsync();
         if (execResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
-                .WithErrors(execResult);
+            return Result.Fail(execResult);
         }
         AddOperation(operation);
         return Result<CopyResult>.Ok(EmptyCopyResult);
@@ -191,8 +187,7 @@ public class ResourceOperationService : IResourceOperationService
         var keyResult = ResolveOperationKeys(sourcePath, destPath);
         if (keyResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(keyResult.FirstErrorMessage)
-                .WithErrors(keyResult);
+            return Result.Fail(keyResult);
         }
         var fileSystem = FileSystem;
         if (fileSystem is null)
@@ -212,8 +207,7 @@ public class ResourceOperationService : IResourceOperationService
 
         if (execResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(execResult.FirstErrorMessage)
-                .WithErrors(execResult);
+            return Result.Fail(execResult);
         }
 
         AddOperation(operation);
@@ -310,8 +304,7 @@ public class ResourceOperationService : IResourceOperationService
         var keyResult = ResolveOperationKeys(sourcePath, destPath);
         if (keyResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(keyResult.FirstErrorMessage)
-                .WithErrors(keyResult);
+            return Result.Fail(keyResult);
         }
         var fileSystem = FileSystem;
         if (fileSystem is null)
@@ -331,8 +324,7 @@ public class ResourceOperationService : IResourceOperationService
 
         if (execResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
-                .WithErrors(execResult);
+            return Result.Fail(execResult);
         }
 
         AddOperation(operation);
@@ -347,8 +339,7 @@ public class ResourceOperationService : IResourceOperationService
         var keyResult = ResolveOperationKeys(sourcePath, destPath);
         if (keyResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(keyResult.FirstErrorMessage)
-                .WithErrors(keyResult);
+            return Result.Fail(keyResult);
         }
         var fileSystem = FileSystem;
         if (fileSystem is null)
@@ -368,8 +359,7 @@ public class ResourceOperationService : IResourceOperationService
 
         if (execResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(execResult.FirstErrorMessage)
-                .WithErrors(execResult);
+            return Result.Fail(execResult);
         }
 
         AddOperation(operation);

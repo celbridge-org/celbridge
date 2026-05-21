@@ -99,8 +99,7 @@ internal class CopyFileOperation : FileOperation
         var copyResult = await _fileSystem.CopyAsync(_sourceKey, _destKey);
         if (copyResult.IsFailure)
         {
-            return Result.Fail(copyResult.FirstErrorMessage)
-                .WithErrors(copyResult);
+            return Result.Fail(copyResult);
         }
 
         LastCopyResult = copyResult.Value;
@@ -114,8 +113,7 @@ internal class CopyFileOperation : FileOperation
         var deleteResult = await _fileSystem.DeleteAsync(_destKey);
         if (deleteResult.IsFailure)
         {
-            return Result.Fail(deleteResult.FirstErrorMessage)
-                .WithErrors(deleteResult);
+            return Result.Fail(deleteResult);
         }
 
         return Result.Ok();
@@ -164,8 +162,7 @@ internal class MoveFileOperation : FileOperation
         var moveResult = await _fileSystem.MoveAsync(_sourceKey, _destKey);
         if (moveResult.IsFailure)
         {
-            return Result.Fail(moveResult.FirstErrorMessage)
-                .WithErrors(moveResult);
+            return Result.Fail(moveResult);
         }
 
         LastMoveResult = moveResult.Value;
@@ -179,8 +176,7 @@ internal class MoveFileOperation : FileOperation
         var moveResult = await _fileSystem.MoveAsync(_destKey, _sourceKey);
         if (moveResult.IsFailure)
         {
-            return Result.Fail(moveResult.FirstErrorMessage)
-                .WithErrors(moveResult);
+            return Result.Fail(moveResult);
         }
 
         return Result.Ok();
@@ -386,8 +382,7 @@ internal class CopyFolderOperation : FileOperation
         var copyResult = await _fileSystem.CopyAsync(_sourceKey, _destKey);
         if (copyResult.IsFailure)
         {
-            return Result.Fail(copyResult.FirstErrorMessage)
-                .WithErrors(copyResult);
+            return Result.Fail(copyResult);
         }
 
         _entityHelper.CopyFolderEntityDataFiles(_sourcePath, _destPath);
@@ -403,8 +398,7 @@ internal class CopyFolderOperation : FileOperation
         var deleteResult = await _fileSystem.DeleteAsync(_destKey);
         if (deleteResult.IsFailure)
         {
-            return Result.Fail(deleteResult.FirstErrorMessage)
-                .WithErrors(deleteResult);
+            return Result.Fail(deleteResult);
         }
 
         return Result.Ok();
@@ -452,8 +446,7 @@ internal class MoveFolderOperation : FileOperation
         var moveResult = await _fileSystem.MoveAsync(_sourceKey, _destKey);
         if (moveResult.IsFailure)
         {
-            return Result.Fail(moveResult.FirstErrorMessage)
-                .WithErrors(moveResult);
+            return Result.Fail(moveResult);
         }
 
         LastMoveResult = moveResult.Value;
@@ -468,8 +461,7 @@ internal class MoveFolderOperation : FileOperation
         var moveResult = await _fileSystem.MoveAsync(_destKey, _sourceKey);
         if (moveResult.IsFailure)
         {
-            return Result.Fail(moveResult.FirstErrorMessage)
-                .WithErrors(moveResult);
+            return Result.Fail(moveResult);
         }
 
         return Result.Ok();

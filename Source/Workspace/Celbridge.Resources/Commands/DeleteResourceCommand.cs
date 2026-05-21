@@ -109,25 +109,25 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 }
             }
 
-            var externalOnly = new List<ResourceKey>();
-            var seen = new HashSet<ResourceKey>();
+            // Emit one entry per specifically-referenced key (the folder key
+            // itself or any descendant). Agents that act on a recursive folder
+            // delete need to know which individual descendant file has external
+            // references — collapsing to a single entry under the folder key
+            // loses that granularity.
             foreach (var key in keysToCheck)
             {
+                var perKeyReferencers = new List<ResourceKey>();
                 foreach (var referencer in metaData.GetReferencers(key))
                 {
-                    if (IsInsideBatch(referencer))
+                    if (!IsInsideBatch(referencer))
                     {
-                        continue;
-                    }
-                    if (seen.Add(referencer))
-                    {
-                        externalOnly.Add(referencer);
+                        perKeyReferencers.Add(referencer);
                     }
                 }
-            }
-            if (externalOnly.Count > 0)
-            {
-                externalReferencers[resource] = externalOnly;
+                if (perKeyReferencers.Count > 0)
+                {
+                    externalReferencers[key] = perKeyReferencers;
+                }
             }
         }
 

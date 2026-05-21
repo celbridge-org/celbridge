@@ -80,8 +80,7 @@ public static class SidecarHelper
         var parseResult = ParseFrontmatterToml(frontmatterToml);
         if (parseResult.IsFailure)
         {
-            return Result<SidecarParseResult>.Fail(parseResult.FirstErrorMessage)
-                .WithErrors(parseResult);
+            return Result.Fail(parseResult);
         }
 
         return Result<SidecarParseResult>.Ok(new SidecarParseResult(parseResult.Value, body));
