@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
@@ -50,6 +51,7 @@ public class ResourceFileSystemTests
 
         _fileSystem = new ResourceFileSystem(
             Substitute.For<ILogger<ResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
             workspaceWrapper);
     }
 

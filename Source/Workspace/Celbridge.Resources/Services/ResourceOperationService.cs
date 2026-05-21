@@ -274,6 +274,20 @@ public class ResourceOperationService : IResourceOperationService
         if (result.IsSuccess)
         {
             AddOperation(operation);
+
+            // Announce the removal synchronously so subscribers update before
+            // control returns. The watcher's own delete event still arrives
+            // later via UI-thread dispatch; subscribers must treat these
+            // messages as idempotent.
+            if (ResourceRegistry is not null)
+            {
+                var keyResult = ResourceRegistry.GetResourceKey(path);
+                if (keyResult.IsSuccess)
+                {
+                    var removedMessage = new ResourceDeletedMessage(keyResult.Value);
+                    _messengerService.Send(removedMessage);
+                }
+            }
         }
 
         return result;
@@ -409,12 +423,46 @@ public class ResourceOperationService : IResourceOperationService
             }
         }
 
+        // Capture descendant keys (folders only) before the disk delete so the
+        // post-delete eager-notify can drop their stale entries too.
+        var descendantKeys = new List<ResourceKey>();
+        if (!wasEmpty && ResourceRegistry is not null)
+        {
+            foreach (var filePath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+            {
+                var keyResult = ResourceRegistry.GetResourceKey(filePath);
+                if (keyResult.IsSuccess)
+                {
+                    descendantKeys.Add(keyResult.Value);
+                }
+            }
+        }
+
         var operation = new DeleteFolderOperation(path, trashPath, wasEmpty, entityDataFiles);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
         {
             AddOperation(operation);
+
+            // Announce the removal synchronously so subscribers update before
+            // control returns. The folder key and every captured descendant are
+            // broadcast; the watcher events still arrive later via UI-thread
+            // dispatch and are idempotent against the prior notification.
+            if (ResourceRegistry is not null)
+            {
+                var folderKeyResult = ResourceRegistry.GetResourceKey(path);
+                if (folderKeyResult.IsSuccess)
+                {
+                    var folderRemovedMessage = new ResourceDeletedMessage(folderKeyResult.Value);
+                    _messengerService.Send(folderRemovedMessage);
+                }
+                foreach (var key in descendantKeys)
+                {
+                    var descendantRemovedMessage = new ResourceDeletedMessage(key);
+                    _messengerService.Send(descendantRemovedMessage);
+                }
+            }
         }
 
         return result;

@@ -76,7 +76,7 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     /// <summary>
     /// Enables file-change monitoring for this document.
-    /// Registers for MonitoredResourceChangedMessage and DocumentSaveCompletedMessage.
+    /// Registers for ResourceChangedMessage and DocumentSaveCompletedMessage.
     /// Call this in the ViewModel constructor for editors that need external file change detection.
     /// </summary>
     protected void EnableFileChangeMonitoring()
@@ -94,11 +94,11 @@ public abstract partial class DocumentViewModel : ObservableObject
             // Logger may not be available in test environments
         }
 
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
     }
 
-    private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
         if (message.Resource != FileResource)
         {

@@ -45,21 +45,25 @@ public record SelectedResourceChangedMessage(ResourceKey Resource);
 public record ResourceOperationFailedMessage(ResourceOperationType OperationType, List<string> FailedItems);
 
 /// <summary>
-/// A message sent when a monitored resource has been created in the file system.
+/// Broadcast when a resource has appeared at the given key. Fired by the
+/// filesystem watcher and by structural operations that have already applied
+/// the change on disk.
 /// </summary>
-public record MonitoredResourceCreatedMessage(ResourceKey Resource);
+public record ResourceCreatedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a monitored resource has been modified in the file system.
+/// Broadcast when an existing resource's bytes have changed.
 /// </summary>
-public record MonitoredResourceChangedMessage(ResourceKey Resource);
+public record ResourceChangedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a monitored resource has been deleted from the file system.
+/// Broadcast when a resource has been removed from the given key. Fired by the
+/// filesystem watcher and by structural operations that have already applied
+/// the change on disk.
 /// </summary>
-public record MonitoredResourceDeletedMessage(ResourceKey Resource);
+public record ResourceDeletedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a monitored resource has been renamed or moved in the file system.
+/// Broadcast when a resource has moved from one key to another.
 /// </summary>
-public record MonitoredResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);
+public record ResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);

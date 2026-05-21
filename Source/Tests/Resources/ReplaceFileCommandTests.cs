@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
@@ -35,7 +36,7 @@ public class ReplaceFileCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), _workspaceWrapper);
+        var fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
         workspaceService.ResourceFileSystem.Returns(fileSystem);
     }
 

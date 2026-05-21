@@ -365,7 +365,7 @@ public class ResourceMetaDataTests
             // While the file is locked, send a change event. The worker will
             // attempt to read source.md, fail with an IOException, and classify
             // the failure as transient.
-            _messengerService.Send(new MonitoredResourceChangedMessage(sourceKey));
+            _messengerService.Send(new ResourceChangedMessage(sourceKey));
             await _metaData.WaitForPendingUpdatesAsync();
             await Task.Delay(150);
 

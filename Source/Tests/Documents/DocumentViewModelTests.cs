@@ -49,7 +49,7 @@ public class DocumentViewModelTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), workspaceWrapper);
+        _fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), _messengerService, workspaceWrapper);
         workspaceService.ResourceFileSystem.Returns(_fileSystem);
 
         var services = new ServiceCollection();
@@ -136,7 +136,7 @@ public class DocumentViewModelTests
         var failingWrapper = Substitute.For<IWorkspaceWrapper>();
         failingWrapper.WorkspaceService.Returns(failingWorkspaceService);
 
-        var failingFileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), failingWrapper);
+        var failingFileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), _messengerService, failingWrapper);
 
         var failingVm = new TestDocumentViewModel(failingFileSystem)
         {
@@ -161,37 +161,37 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public void MonitoredResourceChanged_TriggersReload_WhenFileChangedExternally()
+    public void ResourceChanged_TriggersReload_WhenFileChangedExternally()
     {
         // With no prior load/save the hash is null, so any change is treated as external
         var reloadRequested = false;
         _vm.ReloadRequested += (_, _) => reloadRequested = true;
 
-        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        var message = new ResourceChangedMessage(_vm.FileResource);
         _messengerService.Send(message);
 
         reloadRequested.Should().BeTrue();
     }
 
     [Test]
-    public void OnMonitoredResourceChanged_ResetsSaveTimer_WhenExternalChangeArrives()
+    public void OnResourceChanged_ResetsSaveTimer_WhenExternalChangeArrives()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 0.5;
 
-        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        var message = new ResourceChangedMessage(_vm.FileResource);
         _messengerService.Send(message);
 
         _vm.SaveTimer.Should().Be(0);
     }
 
     [Test]
-    public void OnMonitoredResourceChanged_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
+    public void OnResourceChanged_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 0.5;
 
-        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        var message = new ResourceChangedMessage(_vm.FileResource);
         _messengerService.Send(message);
 
         _vm.HasUnsavedChanges.Should().BeFalse();

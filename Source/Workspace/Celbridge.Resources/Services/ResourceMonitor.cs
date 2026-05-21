@@ -295,7 +295,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         _dispatcher.TryEnqueue(() =>
         {
-            var message = new MonitoredResourceCreatedMessage(resourceKey);
+            var message = new ResourceCreatedMessage(resourceKey);
             _messengerService.Send(message);
         });
     }
@@ -313,7 +313,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         _dispatcher.TryEnqueue(() =>
         {
-            var message = new MonitoredResourceChangedMessage(resourceKey);
+            var message = new ResourceChangedMessage(resourceKey);
             _messengerService.Send(message);
         });
     }
@@ -331,7 +331,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         _dispatcher.TryEnqueue(() =>
         {
-            var message = new MonitoredResourceDeletedMessage(resourceKey);
+            var message = new ResourceDeletedMessage(resourceKey);
             _messengerService.Send(message);
         });
     }
@@ -351,7 +351,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         _dispatcher.TryEnqueue(() =>
         {
-            var message = new MonitoredResourceRenamedMessage(oldResourceKey, newResourceKey);
+            var message = new ResourceRenamedMessage(oldResourceKey, newResourceKey);
             _messengerService.Send(message);
         });
     }

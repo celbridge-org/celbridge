@@ -96,7 +96,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
 
         // Register for resource change messages to monitor project file changes
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
 
         // Register for console maximized state changes
         _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
@@ -217,7 +217,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         });
     }
 
-    private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
         // Check if the changed resource is the .celbridge project file
         var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;

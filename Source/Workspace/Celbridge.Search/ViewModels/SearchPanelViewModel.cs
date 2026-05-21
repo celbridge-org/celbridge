@@ -174,30 +174,31 @@ public partial class SearchPanelViewModel : ObservableObject
         // Listen for workspace loaded to load search/replace history from workspace settings
         _messengerService.Register<WorkspaceLoadedMessage>(this, OnWorkspaceLoaded);
 
-        // Listen for file system changes to refresh search results
-        // This catches all modifications: user edits, external editors, scripts, agents, etc.
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnResourceChanged);
-        _messengerService.Register<MonitoredResourceCreatedMessage>(this, OnResourceCreated);
-        _messengerService.Register<MonitoredResourceDeletedMessage>(this, OnResourceDeleted);
-        _messengerService.Register<MonitoredResourceRenamedMessage>(this, OnResourceRenamed);
+        // Listen for resource lifecycle events to refresh search results.
+        // Catches every source of modification: the filesystem watcher (user
+        // edits, external editors) and explicit operations (commands, agents).
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
+        _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
+        _messengerService.Register<ResourceDeletedMessage>(this, OnResourceDeleted);
+        _messengerService.Register<ResourceRenamedMessage>(this, OnResourceRenamed);
     }
 
-    private void OnResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
         ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
     }
 
-    private void OnResourceCreated(object recipient, MonitoredResourceCreatedMessage message)
+    private void OnResourceCreated(object recipient, ResourceCreatedMessage message)
     {
         ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
     }
 
-    private void OnResourceDeleted(object recipient, MonitoredResourceDeletedMessage message)
+    private void OnResourceDeleted(object recipient, ResourceDeletedMessage message)
     {
         ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
     }
 
-    private void OnResourceRenamed(object recipient, MonitoredResourceRenamedMessage message)
+    private void OnResourceRenamed(object recipient, ResourceRenamedMessage message)
     {
         ScheduleSearch(preserveExpandedState: true, raiseRefreshEvents: true);
     }

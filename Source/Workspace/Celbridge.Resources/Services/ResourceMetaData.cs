@@ -69,10 +69,10 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
         _workspaceWrapper = workspaceWrapper;
         _textBinarySniffer = textBinarySniffer;
 
-        _messengerService.Register<MonitoredResourceCreatedMessage>(this, OnResourceCreated);
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnResourceChanged);
-        _messengerService.Register<MonitoredResourceDeletedMessage>(this, OnResourceDeleted);
-        _messengerService.Register<MonitoredResourceRenamedMessage>(this, OnResourceRenamed);
+        _messengerService.Register<ResourceCreatedMessage>(this, OnResourceCreated);
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
+        _messengerService.Register<ResourceDeletedMessage>(this, OnResourceDeleted);
+        _messengerService.Register<ResourceRenamedMessage>(this, OnResourceRenamed);
 
         _workerTask = Task.Run(WorkerLoopAsync);
     }
@@ -480,24 +480,26 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
         }
     }
 
-    private void OnResourceCreated(object recipient, MonitoredResourceCreatedMessage message)
+    private void OnResourceCreated(object recipient, ResourceCreatedMessage message)
     {
-        // A fresh watcher event means the file's state is changing; reset the
-        // retry budget so a file that previously gave up after MaxScanRetryAttempts
-        // gets re-scanned with full budget on its next legitimate change.
+        // A fresh lifecycle event means the file's state is changing; reset
+        // the retry budget so a file that previously gave up after
+        // MaxScanRetryAttempts gets re-scanned with full budget on its next
+        // legitimate change.
         _transientFailureCounts.TryRemove(message.Resource, out _);
         QueueRescan(message.Resource);
     }
 
-    private void OnResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
         _transientFailureCounts.TryRemove(message.Resource, out _);
         QueueRescan(message.Resource);
     }
 
-    private void OnResourceDeleted(object recipient, MonitoredResourceDeletedMessage message)
+    private void OnResourceDeleted(object recipient, ResourceDeletedMessage message)
     {
-        if (message.Resource.Root != ResourceKey.DefaultRoot)
+        if (message.Resource.Root != ResourceKey.DefaultRoot
+            || message.Resource.IsEmpty)
         {
             return;
         }
@@ -505,7 +507,7 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
         _transientFailureCounts.TryRemove(message.Resource, out _);
     }
 
-    private void OnResourceRenamed(object recipient, MonitoredResourceRenamedMessage message)
+    private void OnResourceRenamed(object recipient, ResourceRenamedMessage message)
     {
         if (message.OldResource.Root == ResourceKey.DefaultRoot)
         {

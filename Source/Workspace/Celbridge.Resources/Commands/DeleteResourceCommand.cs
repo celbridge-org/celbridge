@@ -61,18 +61,68 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
 
         // Phase A: aggregate referencers external to the batch. References
         // from one doomed resource to another are filtered out so an internal
-        // dependency doesn't block the batch.
+        // dependency doesn't block the batch. Folder resources expand to every
+        // descendant key the reference graph knows about, so a folder delete
+        // surfaces incoming references to anything inside the folder, not just
+        // references to the folder key itself (which are usually none).
         var batchSet = new HashSet<ResourceKey>(Resources);
+        var folderResources = new List<ResourceKey>();
+        foreach (var resource in Resources)
+        {
+            if (IsFolderResource(resourceRegistry, resource))
+            {
+                folderResources.Add(resource);
+            }
+        }
+        bool IsInsideBatch(ResourceKey candidate)
+        {
+            if (batchSet.Contains(candidate))
+            {
+                return true;
+            }
+            foreach (var folder in folderResources)
+            {
+                if (candidate.IsDescendantOf(folder))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         var externalReferencers = new Dictionary<ResourceKey, IReadOnlyList<ResourceKey>>();
         foreach (var resource in Resources)
         {
-            var referencers = metaData.GetReferencers(resource);
-            var externalOnly = new List<ResourceKey>();
-            foreach (var referencer in referencers)
+            var keysToCheck = new List<ResourceKey> { resource };
+            if (folderResources.Contains(resource))
             {
-                if (!batchSet.Contains(referencer))
+                // The reference graph keys descendants by file, not by folder.
+                // Walk every indexed target and pull in those that live under
+                // this folder so we surface every incoming reference that the
+                // recursive delete will leave dangling.
+                foreach (var target in metaData.GetAllReferencedTargets())
                 {
-                    externalOnly.Add(referencer);
+                    if (target.IsDescendantOf(resource))
+                    {
+                        keysToCheck.Add(target);
+                    }
+                }
+            }
+
+            var externalOnly = new List<ResourceKey>();
+            var seen = new HashSet<ResourceKey>();
+            foreach (var key in keysToCheck)
+            {
+                foreach (var referencer in metaData.GetReferencers(key))
+                {
+                    if (IsInsideBatch(referencer))
+                    {
+                        continue;
+                    }
+                    if (seen.Add(referencer))
+                    {
+                        externalOnly.Add(referencer);
+                    }
                 }
             }
             if (externalOnly.Count > 0)
@@ -258,6 +308,16 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
 
         return (DeleteResourceOutcome.IOFailure, deleteResult.FirstErrorMessage);
+    }
+
+    private static bool IsFolderResource(IResourceRegistry registry, ResourceKey resource)
+    {
+        var resolveResult = registry.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return false;
+        }
+        return Directory.Exists(resolveResult.Value);
     }
 
     private static bool SidecarExistsForResource(IResourceRegistry registry, ResourceKey resource)

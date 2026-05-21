@@ -20,6 +20,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
     private const int StreamBufferSize = 4096;
 
     private readonly ILogger<ResourceFileSystem> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     // The resource registry is workspace-scoped and transient: a constructor-
@@ -29,9 +30,11 @@ public sealed class ResourceFileSystem : IResourceFileSystem
     // at call time.
     public ResourceFileSystem(
         ILogger<ResourceFileSystem> logger,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -208,6 +211,14 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             }
         }
 
+        // Capture descendant keys (folders only) before the disk move so the
+        // post-move eager-notify can drop their stale source-side index
+        // entries. After Directory.Move the source path is gone and the
+        // enumeration is no longer possible.
+        var sourceDescendantKeys = sourceIsFolder
+            ? EnumerateDescendantKeys(registry, sourcePath)
+            : Array.Empty<ResourceKey>();
+
         try
         {
             var destParent = Path.GetDirectoryName(destPath);
@@ -245,6 +256,17 @@ public sealed class ResourceFileSystem : IResourceFileSystem
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
+            // Announce the source removal synchronously so subscribers update
+            // before control returns. The watcher's own delete event still
+            // arrives later via UI-thread dispatch; subscribers must treat
+            // these messages as idempotent.
+            var sourceRemovedMessage = new ResourceDeletedMessage(source);
+            _messengerService.Send(sourceRemovedMessage);
+            foreach (var key in sourceDescendantKeys)
+            {
+                var descendantRemovedMessage = new ResourceDeletedMessage(key);
+                _messengerService.Send(descendantRemovedMessage);
+            }
             var metaData = _workspaceWrapper.WorkspaceService.ResourceMetaData;
             await metaData.WaitForPendingUpdatesAsync();
         }
@@ -353,6 +375,12 @@ public sealed class ResourceFileSystem : IResourceFileSystem
 
         var sidecarOutcome = TryCascadeSidecarDelete(source);
 
+        // Capture descendant keys (folders only) before the disk delete so the
+        // post-delete eager-notify can drop their stale index entries too.
+        var descendantKeys = sourceIsFolder
+            ? EnumerateDescendantKeys(registry, sourcePath)
+            : Array.Empty<ResourceKey>();
+
         try
         {
             if (sourceIsFile)
@@ -384,11 +412,48 @@ public sealed class ResourceFileSystem : IResourceFileSystem
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
+            // Announce the removal synchronously so subscribers update before
+            // control returns. The watcher's own delete event still arrives
+            // later via UI-thread dispatch; subscribers must treat these
+            // messages as idempotent.
+            var sourceRemovedMessage = new ResourceDeletedMessage(source);
+            _messengerService.Send(sourceRemovedMessage);
+            foreach (var key in descendantKeys)
+            {
+                var descendantRemovedMessage = new ResourceDeletedMessage(key);
+                _messengerService.Send(descendantRemovedMessage);
+            }
             var metaData = _workspaceWrapper.WorkspaceService.ResourceMetaData;
             await metaData.WaitForPendingUpdatesAsync();
         }
 
         return Result<DeleteResult>.Ok(new DeleteResult(sidecarOutcome));
+    }
+
+    // Returns the resource keys of every file inside a folder that exists on
+    // disk. Used to capture descendant keys before a recursive delete or move
+    // so eager-notify can drop their stale entries from the reference index.
+    private static IReadOnlyList<ResourceKey> EnumerateDescendantKeys(IResourceRegistry registry, string folderPath)
+    {
+        var keys = new List<ResourceKey>();
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(folderPath, "*", SearchOption.AllDirectories))
+            {
+                var keyResult = registry.GetResourceKey(file);
+                if (keyResult.IsSuccess)
+                {
+                    keys.Add(keyResult.Value);
+                }
+            }
+        }
+        catch
+        {
+            // Best effort. A failure here just means descendant keys won't be
+            // eager-notified; the watcher events still arrive eventually and
+            // clean up the index.
+        }
+        return keys;
     }
 
     public Task<Result<bool>> ExistsAsync(ResourceKey resource)

@@ -90,6 +90,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         resourceOpService.BeginBatch();
 
         List<ResourceKey> failedResources = new();
+        List<Result> failedOutcomes = new();
         List<ResourceKey> copiedFolders = new();
         List<ResourceKey> aggregatedUpdated = new();
         List<SkippedReferencer> aggregatedSkipped = new();
@@ -105,6 +106,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 {
                     _logger.LogError(outcome.Result.DiagnosticReport);
                     failedResources.Add(sourceResource);
+                    failedOutcomes.Add(outcome.Result);
                 }
                 else if (outcome.ParentFolder.HasValue)
                 {
@@ -175,7 +177,16 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             var message = new ResourceOperationFailedMessage(operationType, failedDisplayNames);
             _messengerService.Send(message);
 
-            return Result.Fail($"Failed to {operation}: {failedList}");
+            // Propagate every per-resource failure into the bubble-up Result so
+            // the agent sees the FS-layer's specific message (e.g.
+            // "Destination already exists: '<key>'") via MessageChain rather
+            // than just the resource name.
+            var aggregated = Result.Fail($"Failed to {operation}: {failedList}");
+            foreach (var failedOutcome in failedOutcomes)
+            {
+                aggregated.WithErrors(failedOutcome);
+            }
+            return aggregated;
         }
 
         return Result.Ok();
