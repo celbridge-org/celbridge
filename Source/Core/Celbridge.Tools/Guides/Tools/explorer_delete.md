@@ -49,7 +49,7 @@ The JSON shape is:
 ```
 
 - `batchOutcome` summarises the whole batch. `DeletedAll` and `DeletedSome` mean execution ran (the policy gate passed); `CancelledByUser` and `BlockedByReferences` mean the gate refused before any filesystem changes. `DeletedSome` also covers the rare edge where every resource in the batch failed mechanically — inspect `resourceResults` for the per-resource detail in any non-`DeletedAll` case.
-- `resourceResults` carries one entry per input resource. `outcome` is typed so the agent can branch on the cause without parsing strings:
+- `resourceResults` carries one entry per input resource — for a folder delete that means one entry for the folder itself, not one entry per descendant file. The per-descendant breakdown of external references lives in `referencers` (see below). `outcome` is typed so the agent can branch on the cause without parsing strings:
   - `NotFound` — the resource was already gone on disk. Treat as success — the user's intent is already satisfied.
   - `Locked` — another process holds the file (open editor, antivirus, indexer). The fix is usually to close the holding process and re-run.
   - `PermissionDenied` — an ACL / POSIX denial. The DOS read-only attribute is cleared before delete, so this is a genuine permissions problem that needs the right account or admin.
