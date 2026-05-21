@@ -22,11 +22,39 @@ public enum SidecarOutcome
 }
 
 /// <summary>
+/// Why a referencer could not be rewritten during a move's cascade.
+/// ReadOnly is the DOS read-only attribute (trivially clearable);
+/// PermissionDenied is an ACL / POSIX denial (needs the right account or admin).
+/// ReadFailed and WriteFailed are catch-alls. Inspect SkippedReferencer.Message
+/// for the specific cause.
+/// </summary>
+public enum ReferencerSkipReason
+{
+    ReadFailed,
+    WriteFailed,
+    ReadOnly,
+    PermissionDenied,
+}
+
+/// <summary>
+/// A referencer the move could not rewrite. The reference is left stale and
+/// will surface via metadata_check_project; a re-run of the rename after the
+/// underlying issue clears (close the editor, remove the read-only attribute)
+/// picks up the residual rewrite because the FS layer is idempotent.
+/// </summary>
+public record SkippedReferencer(
+    ResourceKey Resource,
+    ReferencerSkipReason Reason,
+    string Message);
+
+/// <summary>
 /// Result of an integrity-aware move: the list of resources whose references
-/// were rewritten and the outcome of the paired-sidecar cascade.
+/// were rewritten, the list of referencers the cascade had to skip (with a
+/// reason for each), and the outcome of the paired-sidecar cascade.
 /// </summary>
 public record MoveResult(
     IReadOnlyList<ResourceKey> UpdatedReferencers,
+    IReadOnlyList<SkippedReferencer> SkippedReferencers,
     SidecarOutcome Sidecar);
 
 /// <summary>

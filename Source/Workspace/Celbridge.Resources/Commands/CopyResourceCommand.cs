@@ -7,6 +7,17 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
+// Per-resource outcome of CopySingleResourceAsync. ParentFolder is the
+// expandable parent of the destination (null when nothing should expand).
+// CopiedFolder is set when a folder was copied and the caller wants to track
+// it for end-of-batch expansion. MoveDetail carries the FS-layer's structured
+// result when the operation was a move; null for copy operations.
+internal record CopyResourceOutcome(
+    Result Result,
+    ResourceKey? ParentFolder,
+    ResourceKey? CopiedFolder,
+    MoveResult? MoveDetail);
+
 public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 {
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
@@ -15,6 +26,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     public ResourceKey DestResource { get; set; }
     public DataTransferMode TransferMode { get; set; }
     public bool ExpandCopiedFolder { get; set; }
+
+    public CopyCommandResult ResultValue { get; private set; } = new(
+        Array.Empty<ResourceKey>(),
+        Array.Empty<SkippedReferencer>(),
+        Array.Empty<ResourceKey>());
 
     private readonly ILogger<CopyResourceCommand> _logger;
     private readonly IMessengerService _messengerService;
@@ -57,6 +73,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             return Result.Fail("Project folder path is empty.");
         }
 
+        // Hoist the workspace-scoped service lookups out of the per-resource
+        // loop. Acquiring them inside ExecuteAsync (rather than via constructor
+        // injection) honours the workspace-scoped DI rule — the workspace can
+        // be swapped between executions, but it cannot change while a single
+        // command runs, so caching for the duration of this call is safe.
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
@@ -68,29 +89,37 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // Begin batch for single undo operation
         resourceOpService.BeginBatch();
 
-        List<string> failedItems = new();
+        List<ResourceKey> failedResources = new();
         List<ResourceKey> copiedFolders = new();
+        List<ResourceKey> aggregatedUpdated = new();
+        List<SkippedReferencer> aggregatedSkipped = new();
         ResourceKey? lastParentFolder = null;
 
         try
         {
             foreach (var sourceResource in filteredResources)
             {
-                var (result, parentFolder) = await CopySingleResourceAsync(
-                    sourceResource,
-                    projectFolderPath,
-                    resourceRegistry,
-                    resourceOpService,
-                    copiedFolders);
+                var outcome = await CopySingleResourceAsync(sourceResource, projectFolderPath, resourceRegistry, resourceOpService);
 
-                if (result.IsFailure)
+                if (outcome.Result.IsFailure)
                 {
-                    _logger.LogError(result.DiagnosticReport);
-                    failedItems.Add(sourceResource.ResourceName);
+                    _logger.LogError(outcome.Result.DiagnosticReport);
+                    failedResources.Add(sourceResource);
                 }
-                else if (parentFolder.HasValue)
+                else if (outcome.ParentFolder.HasValue)
                 {
-                    lastParentFolder = parentFolder;
+                    lastParentFolder = outcome.ParentFolder;
+                }
+
+                if (outcome.CopiedFolder.HasValue)
+                {
+                    copiedFolders.Add(outcome.CopiedFolder.Value);
+                }
+
+                if (outcome.MoveDetail is not null)
+                {
+                    aggregatedUpdated.AddRange(outcome.MoveDetail.UpdatedReferencers);
+                    aggregatedSkipped.AddRange(outcome.MoveDetail.SkippedReferencers);
                 }
             }
         }
@@ -99,6 +128,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             // Always commit batch - partial success is acceptable
             resourceOpService.CommitBatch();
         }
+
+        ResultValue = new CopyCommandResult(
+            aggregatedUpdated,
+            aggregatedSkipped,
+            failedResources);
 
         // Expand destination folder once at end (not per-item)
         if (lastParentFolder.HasValue && !lastParentFolder.Value.IsEmpty)
@@ -123,9 +157,14 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             }
         }
 
-        if (failedItems.Count > 0)
+        if (failedResources.Count > 0)
         {
-            var failedList = string.Join(", ", failedItems);
+            // ResourceOperationFailedMessage is a UI display channel and takes
+            // a list of strings for the toast/banner. Convert from typed keys
+            // to display names at this boundary; the structured CopyCommandResult
+            // above keeps the typed ResourceKey list for programmatic callers.
+            var failedDisplayNames = failedResources.Select(r => r.ResourceName).ToList();
+            var failedList = string.Join(", ", failedDisplayNames);
             var operation = TransferMode == DataTransferMode.Copy ? "copy" : "move";
             _logger.LogWarning($"CopyResourceCommand completed with failures: {failedList}");
 
@@ -133,7 +172,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             var operationType = TransferMode == DataTransferMode.Copy
                 ? ResourceOperationType.Copy
                 : ResourceOperationType.Move;
-            var message = new ResourceOperationFailedMessage(operationType, failedItems);
+            var message = new ResourceOperationFailedMessage(operationType, failedDisplayNames);
             _messengerService.Send(message);
 
             return Result.Fail($"Failed to {operation}: {failedList}");
@@ -142,12 +181,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         return Result.Ok();
     }
 
-    private async Task<(Result result, ResourceKey? parentFolder)> CopySingleResourceAsync(
+    private async Task<CopyResourceOutcome> CopySingleResourceAsync(
         ResourceKey sourceResource,
         string projectFolderPath,
         IResourceRegistry resourceRegistry,
-        IResourceOperationService resourceOpService,
-        List<ResourceKey> copiedFolders)
+        IResourceOperationService resourceOpService)
     {
         // Resolve destination to handle folder drops
         var resolvedDestResource = resourceRegistry.ResolveDestinationResource(sourceResource, DestResource);
@@ -162,10 +200,15 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
         if (!isFile && !isFolder)
         {
-            return (Result.Fail($"Resource does not exist: {sourcePath}"), null);
+            return new CopyResourceOutcome(
+                Result.Fail($"Resource does not exist: {sourcePath}"),
+                ParentFolder: null,
+                CopiedFolder: null,
+                MoveDetail: null);
         }
 
         Result result;
+        MoveResult? moveDetail = null;
 
         if (isFile)
         {
@@ -175,7 +218,12 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             }
             else
             {
-                result = await resourceOpService.MoveFileAsync(sourcePath, destPath);
+                var moveResult = await resourceOpService.MoveFileAsync(sourcePath, destPath);
+                result = moveResult;
+                if (moveResult.IsSuccess)
+                {
+                    moveDetail = moveResult.Value;
+                }
             }
         }
         else
@@ -186,16 +234,17 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             }
             else
             {
-                result = await resourceOpService.MoveFolderAsync(sourcePath, destPath);
-            }
-
-            if (result.IsSuccess)
-            {
-                copiedFolders.Add(resolvedDestResource);
+                var moveResult = await resourceOpService.MoveFolderAsync(sourcePath, destPath);
+                result = moveResult;
+                if (moveResult.IsSuccess)
+                {
+                    moveDetail = moveResult.Value;
+                }
             }
         }
 
         ResourceKey? parentFolder = null;
+        ResourceKey? copiedFolder = null;
         if (result.IsSuccess)
         {
             // Track the parent folder for expansion at the end
@@ -204,9 +253,13 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             {
                 parentFolder = newParentFolder;
             }
+            if (isFolder)
+            {
+                copiedFolder = resolvedDestResource;
+            }
         }
 
-        return (result, parentFolder);
+        return new CopyResourceOutcome(result, parentFolder, copiedFolder, moveDetail);
     }
 
     /// <summary>

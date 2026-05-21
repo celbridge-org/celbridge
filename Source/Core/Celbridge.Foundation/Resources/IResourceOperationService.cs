@@ -20,12 +20,12 @@ public interface IResourceOperationService
     /// <summary>
     /// Copy a file from source to destination path.
     /// </summary>
-    Task<Result> CopyFileAsync(string sourcePath, string destPath);
+    Task<Result<CopyResult>> CopyFileAsync(string sourcePath, string destPath);
 
     /// <summary>
     /// Move a file from source to destination path.
     /// </summary>
-    Task<Result> MoveFileAsync(string sourcePath, string destPath);
+    Task<Result<MoveResult>> MoveFileAsync(string sourcePath, string destPath);
 
     /// <summary>
     /// Delete a file at the specified path.
@@ -35,12 +35,12 @@ public interface IResourceOperationService
     /// <summary>
     /// Copy a folder from source to destination path.
     /// </summary>
-    Task<Result> CopyFolderAsync(string sourcePath, string destPath);
+    Task<Result<CopyResult>> CopyFolderAsync(string sourcePath, string destPath);
 
     /// <summary>
     /// Move a folder from source to destination path.
     /// </summary>
-    Task<Result> MoveFolderAsync(string sourcePath, string destPath);
+    Task<Result<MoveResult>> MoveFolderAsync(string sourcePath, string destPath);
 
     /// <summary>
     /// Delete a folder at the specified path.

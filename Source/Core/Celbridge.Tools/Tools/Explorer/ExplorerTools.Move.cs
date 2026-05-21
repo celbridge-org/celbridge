@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -20,17 +21,44 @@ public partial class ExplorerTools
             return ToolResponse.InvalidResourceKey(destinationResource);
         }
 
-        var copyResult = await ExecuteCommandAsync<ICopyResourceCommand>(command =>
+        var moveResult = await ExecuteCommandAsync<ICopyResourceCommand, CopyCommandResult>(command =>
         {
             command.SourceResources = new List<ResourceKey> { sourceResourceKey };
             command.DestResource = destinationResourceKey;
             command.TransferMode = DataTransferMode.Move;
         });
-        if (copyResult.IsFailure)
+        if (moveResult.IsFailure)
         {
-            return ToolResponse.Error(copyResult);
+            return ToolResponse.Error(moveResult);
         }
 
-        return ToolResponse.Success("ok");
+        var detail = moveResult.Value;
+
+        // For the typical case (clean rename with no skipped referencers and no
+        // failed resources), return the simple "ok" so the response stays compact.
+        // Surface a structured JSON payload only when there is actionable
+        // information for the agent: skipped referencers (the cascade left a
+        // stale reference because the file was read-only or locked) or failed
+        // resources (the move itself didn't apply for a resource in the batch).
+        if (detail.SkippedReferencers.Count == 0
+            && detail.FailedResources.Count == 0)
+        {
+            return ToolResponse.Success("ok");
+        }
+
+        var payload = new
+        {
+            status = detail.FailedResources.Count == 0 ? "ok_with_skipped_referencers" : "partial_failure",
+            updatedReferencers = detail.UpdatedReferencers.Select(r => r.ToString()).ToArray(),
+            skippedReferencers = detail.SkippedReferencers.Select(s => new
+            {
+                resource = s.Resource.ToString(),
+                reason = s.Reason.ToString(),
+                message = s.Message,
+            }).ToArray(),
+            failedResources = detail.FailedResources.Select(r => r.ToString()).ToArray(),
+        };
+
+        return ToolResponse.Success(JsonSerializer.Serialize(payload, JsonOptions));
     }
 }

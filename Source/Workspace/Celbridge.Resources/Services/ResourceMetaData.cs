@@ -13,16 +13,22 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
     // Files larger than this byte budget are skipped during the scan.
     private const long MaxScanFileSizeBytes = 10 * 1024 * 1024;
 
-    // Characters that cannot legally appear inside a resource key; the scanner
-    // stops accumulating candidate-key bytes at the first one it sees.
-    // Whitespace and control chars are handled separately via char.IsWhiteSpace
-    // and char.IsControl so this set only enumerates the printable terminators.
-    private static readonly HashSet<char> KeyTerminators = new()
+    // Re-queue delays for a transient rescan failure (file locked by external
+    // writer, antivirus, etc.). The retry attempt counter resets when any
+    // watcher event arrives for the resource, so normal user activity always
+    // gets a fresh budget. After MaxScanRetryAttempts consecutive transient
+    // failures the rescan is dropped (logged) until the next watcher event.
+    private const int MaxScanRetryAttempts = 3;
+    private static readonly TimeSpan[] ScanRetryDelays =
     {
-        '"', '\'', '`', '(', ')', '<', '>', ',', ';', ']', '}',
+        TimeSpan.FromMilliseconds(500),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5),
     };
 
-    private const string ReferenceMarker = "project:";
+    // Delimiter and boundary rules live in ReferenceLiteralRules so the scanner
+    // and the rewrite cascade in ResourceFileSystem cannot drift on what
+    // constitutes a valid reference.
 
     private readonly ILogger<ResourceMetaData> _logger;
     private readonly IMessengerService _messengerService;
@@ -39,6 +45,11 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
     private readonly ConcurrentQueue<ResourceKey> _pendingRescans = new();
     private readonly SemaphoreSlim _workerSignal = new(0);
     private Task? _workerTask;
+
+    // Per-resource counter for consecutive transient rescan failures.
+    // Cleared on a successful scan, a permanent exclusion, or a new watcher
+    // event. Used by ScheduleRetryAfterTransientFailure to cap the retry chain.
+    private readonly ConcurrentDictionary<ResourceKey, int> _transientFailureCounts = new();
 
     private TaskCompletionSource<bool> _readyCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _isReady;
@@ -102,6 +113,7 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
 
             var newReferencersByTarget = new Dictionary<ResourceKey, HashSet<ResourceKey>>();
             var newReferencesBySource = new Dictionary<ResourceKey, HashSet<ResourceKey>>();
+            var transientFailures = new List<ResourceKey>();
 
             int filesScanned = 0;
             int filesSkipped = 0;
@@ -110,21 +122,28 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
             foreach (var (resourceKey, absolutePath) in files)
             {
                 var scanResult = await ScanTextFileAsync(resourceKey, absolutePath);
-                if (scanResult.WasSkipped)
+                switch (scanResult.Outcome)
                 {
-                    filesSkipped++;
-                    continue;
+                    case ScanOutcome.TransientFailure:
+                        // Re-queue once the swap below is complete so the worker
+                        // picks it up. Don't include in the new index yet.
+                        transientFailures.Add(resourceKey);
+                        filesSkipped++;
+                        continue;
+
+                    case ScanOutcome.ExcludedPermanently:
+                        filesSkipped++;
+                        continue;
+
+                    case ScanOutcome.Indexed:
+                        filesScanned++;
+                        if (scanResult.References.Count > 0)
+                        {
+                            referencesFound += scanResult.References.Count;
+                            ApplyReferences(newReferencersByTarget, newReferencesBySource, resourceKey, scanResult.References);
+                        }
+                        break;
                 }
-
-                filesScanned++;
-
-                if (scanResult.References.Count == 0)
-                {
-                    continue;
-                }
-
-                referencesFound += scanResult.References.Count;
-                ApplyReferences(newReferencersByTarget, newReferencesBySource, resourceKey, scanResult.References);
             }
 
             lock (_indexLock)
@@ -143,6 +162,14 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
 
             stopwatch.Stop();
 
+            // Enqueue the transient failures after the index swap so the
+            // worker's retry attempts mutate the freshly-installed index, not
+            // the prior one.
+            foreach (var failed in transientFailures)
+            {
+                QueueRescan(failed);
+            }
+
             MarkReady();
 
             // FrontmatterEntries is always zero because frontmatter scanning is
@@ -154,7 +181,7 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
                 FrontmatterEntries: 0,
                 Elapsed: stopwatch.Elapsed);
 
-            _logger.LogDebug($"Metadata rebuild complete: {filesScanned} scanned, {filesSkipped} skipped, {referencesFound} references in {stopwatch.ElapsedMilliseconds}ms");
+            _logger.LogDebug($"Metadata rebuild complete: {filesScanned} scanned, {filesSkipped} skipped ({transientFailures.Count} transient retries queued), {referencesFound} references in {stopwatch.ElapsedMilliseconds}ms");
 
             return Result<MetaDataScanReport>.Ok(report);
         }
@@ -237,8 +264,10 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
         throw new NotImplementedException("The frontmatter index is not yet implemented.");
     }
 
-    // Walks file text for "project:" candidate references. Returns the unique set
-    // of valid keys found; invalid candidates are silently dropped.
+    // Walks file text for "project:" candidate references. Returns the unique
+    // set of valid keys found; invalid candidates are silently dropped. Parsing
+    // logic is delegated to ReferenceLiteralRules so the scanner and the
+    // rewrite cascade share one definition of what counts as a reference.
     public static HashSet<ResourceKey> ScanTextForReferences(string text)
     {
         var references = new HashSet<ResourceKey>();
@@ -246,91 +275,122 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
 
         while (true)
         {
-            int markerIndex = text.IndexOf(ReferenceMarker, searchStart, StringComparison.Ordinal);
+            int markerIndex = text.IndexOf(ReferenceLiteralRules.ReferenceMarker, searchStart, StringComparison.Ordinal);
             if (markerIndex < 0)
             {
                 break;
             }
 
-            int keyStart = markerIndex + ReferenceMarker.Length;
-            int keyEnd = keyStart;
-            while (keyEnd < text.Length)
+            var parsed = ReferenceLiteralRules.TryParseReferenceAt(text, markerIndex);
+            if (parsed is not null)
             {
-                var current = text[keyEnd];
-                if (char.IsWhiteSpace(current)
-                    || char.IsControl(current)
-                    || KeyTerminators.Contains(current))
-                {
-                    break;
-                }
-                keyEnd++;
+                references.Add(parsed.Key);
+                searchStart = parsed.EndIndex;
             }
-
-            if (keyEnd > keyStart)
+            else
             {
-                var candidate = text.Substring(markerIndex, keyEnd - markerIndex);
-                if (ResourceKey.TryCreate(candidate, out var key))
-                {
-                    references.Add(key);
-                }
+                searchStart = markerIndex + ReferenceLiteralRules.ReferenceMarker.Length;
             }
-
-            searchStart = keyEnd > markerIndex ? keyEnd : markerIndex + ReferenceMarker.Length;
         }
 
         return references;
     }
 
-    private record FileScanResult(bool WasSkipped, HashSet<ResourceKey> References);
+    private enum ScanOutcome
+    {
+        // Scan succeeded; References reflects what the file contains right now.
+        Indexed,
+
+        // File is deliberately not indexable in its current shape (deleted,
+        // oversize, binary). Prior index entries should be dropped.
+        ExcludedPermanently,
+
+        // Scan failed in a way that may resolve itself (file locked by another
+        // process, transient IO error). Prior index entries should be preserved
+        // and the rescan should be retried after a short delay.
+        TransientFailure,
+    }
+
+    private record FileScanResult(ScanOutcome Outcome, HashSet<ResourceKey> References);
+
+    private static readonly HashSet<ResourceKey> EmptyReferenceSet = new();
 
     private async Task<FileScanResult> ScanTextFileAsync(ResourceKey resourceKey, string absolutePath)
     {
+        FileInfo fileInfo;
         try
         {
-            var fileInfo = new FileInfo(absolutePath);
+            fileInfo = new FileInfo(absolutePath);
             if (!fileInfo.Exists)
             {
-                return new FileScanResult(WasSkipped: true, References: new HashSet<ResourceKey>());
+                return new FileScanResult(ScanOutcome.ExcludedPermanently, EmptyReferenceSet);
             }
-
             if (fileInfo.Length > MaxScanFileSizeBytes)
             {
                 _logger.LogInformation($"metadata scan: skipping {resourceKey} (size {fileInfo.Length} bytes exceeds limit)");
-                return new FileScanResult(WasSkipped: true, References: new HashSet<ResourceKey>());
+                return new FileScanResult(ScanOutcome.ExcludedPermanently, EmptyReferenceSet);
             }
-
-            var extension = Path.GetExtension(absolutePath);
-            if (!string.IsNullOrEmpty(extension)
-                && _textBinarySniffer.IsBinaryExtension(extension))
-            {
-                return new FileScanResult(WasSkipped: true, References: new HashSet<ResourceKey>());
-            }
-
-            var isTextResult = _textBinarySniffer.IsTextFile(absolutePath);
-            if (isTextResult.IsFailure || !isTextResult.Value)
-            {
-                return new FileScanResult(WasSkipped: true, References: new HashSet<ResourceKey>());
-            }
-
-            string text;
-            try
-            {
-                text = await File.ReadAllTextAsync(absolutePath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, $"metadata scan: failed to read {resourceKey}");
-                return new FileScanResult(WasSkipped: true, References: new HashSet<ResourceKey>());
-            }
-
-            var references = ScanTextForReferences(text);
-            return new FileScanResult(WasSkipped: false, References: references);
+        }
+        catch (Exception ex) when (IsTransientIoFailure(ex))
+        {
+            _logger.LogDebug($"metadata scan: transient stat failure for {resourceKey} ({ex.GetType().Name}): {ex.Message}");
+            return new FileScanResult(ScanOutcome.TransientFailure, EmptyReferenceSet);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, $"metadata scan: failed to process {resourceKey}");
-            return new FileScanResult(WasSkipped: true, References: new HashSet<ResourceKey>());
+            _logger.LogWarning(ex, $"metadata scan: failed to stat {resourceKey}");
+            return new FileScanResult(ScanOutcome.ExcludedPermanently, EmptyReferenceSet);
         }
+
+        var extension = Path.GetExtension(absolutePath);
+        if (!string.IsNullOrEmpty(extension)
+            && _textBinarySniffer.IsBinaryExtension(extension))
+        {
+            return new FileScanResult(ScanOutcome.ExcludedPermanently, EmptyReferenceSet);
+        }
+
+        var isTextResult = _textBinarySniffer.IsTextFile(absolutePath);
+        if (isTextResult.IsFailure)
+        {
+            // The sniffer's failure surface doesn't distinguish locked-file from
+            // genuinely-unreadable. Treat as transient: a real permanent failure
+            // exhausts MaxScanRetryAttempts and gets dropped; a transient one
+            // succeeds on retry. Worst case is three short retries.
+            _logger.LogDebug($"metadata scan: sniffer failure for {resourceKey} - treating as transient");
+            return new FileScanResult(ScanOutcome.TransientFailure, EmptyReferenceSet);
+        }
+        if (!isTextResult.Value)
+        {
+            return new FileScanResult(ScanOutcome.ExcludedPermanently, EmptyReferenceSet);
+        }
+
+        string text;
+        try
+        {
+            text = await File.ReadAllTextAsync(absolutePath);
+        }
+        catch (Exception ex) when (IsTransientIoFailure(ex))
+        {
+            _logger.LogDebug($"metadata scan: transient read failure for {resourceKey} ({ex.GetType().Name}): {ex.Message}");
+            return new FileScanResult(ScanOutcome.TransientFailure, EmptyReferenceSet);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, $"metadata scan: failed to read {resourceKey}");
+            return new FileScanResult(ScanOutcome.ExcludedPermanently, EmptyReferenceSet);
+        }
+
+        var references = ScanTextForReferences(text);
+        return new FileScanResult(ScanOutcome.Indexed, references);
+    }
+
+    // IOException covers file-locked, sharing-violation, network-share blip;
+    // UnauthorizedAccessException can fire transiently on Windows while an
+    // antivirus or backup product holds the file. Both are worth retrying.
+    private static bool IsTransientIoFailure(Exception ex)
+    {
+        return ex is IOException
+            || ex is UnauthorizedAccessException;
     }
 
     private static void ApplyReferences(
@@ -422,11 +482,16 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
 
     private void OnResourceCreated(object recipient, MonitoredResourceCreatedMessage message)
     {
+        // A fresh watcher event means the file's state is changing; reset the
+        // retry budget so a file that previously gave up after MaxScanRetryAttempts
+        // gets re-scanned with full budget on its next legitimate change.
+        _transientFailureCounts.TryRemove(message.Resource, out _);
         QueueRescan(message.Resource);
     }
 
     private void OnResourceChanged(object recipient, MonitoredResourceChangedMessage message)
     {
+        _transientFailureCounts.TryRemove(message.Resource, out _);
         QueueRescan(message.Resource);
     }
 
@@ -437,6 +502,7 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
             return;
         }
         RemoveSourceFromIndexes(message.Resource);
+        _transientFailureCounts.TryRemove(message.Resource, out _);
     }
 
     private void OnResourceRenamed(object recipient, MonitoredResourceRenamedMessage message)
@@ -444,7 +510,9 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
         if (message.OldResource.Root == ResourceKey.DefaultRoot)
         {
             RemoveSourceFromIndexes(message.OldResource);
+            _transientFailureCounts.TryRemove(message.OldResource, out _);
         }
+        _transientFailureCounts.TryRemove(message.NewResource, out _);
         QueueRescan(message.NewResource);
     }
 
@@ -516,6 +584,7 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
             if (resolveResult.IsFailure)
             {
                 RemoveSourceFromIndexes(resource);
+                _transientFailureCounts.TryRemove(resource, out _);
                 return;
             }
             var absolutePath = resolveResult.Value;
@@ -523,22 +592,58 @@ public sealed class ResourceMetaData : IResourceMetaData, IDisposable
             if (!File.Exists(absolutePath))
             {
                 RemoveSourceFromIndexes(resource);
+                _transientFailureCounts.TryRemove(resource, out _);
                 return;
             }
 
             var scanResult = await ScanTextFileAsync(resource, absolutePath);
-            if (scanResult.WasSkipped)
+            switch (scanResult.Outcome)
             {
-                RemoveSourceFromIndexes(resource);
-                return;
-            }
+                case ScanOutcome.Indexed:
+                    UpdateSourceInIndexes(resource, scanResult.References);
+                    _transientFailureCounts.TryRemove(resource, out _);
+                    break;
 
-            UpdateSourceInIndexes(resource, scanResult.References);
+                case ScanOutcome.ExcludedPermanently:
+                    RemoveSourceFromIndexes(resource);
+                    _transientFailureCounts.TryRemove(resource, out _);
+                    break;
+
+                case ScanOutcome.TransientFailure:
+                    // Preserve existing index entries; the file is briefly
+                    // unreadable but the prior data is still our best guess.
+                    ScheduleRetryAfterTransientFailure(resource);
+                    break;
+            }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, $"metadata scan: failed to rescan {resource}");
         }
+    }
+
+    private void ScheduleRetryAfterTransientFailure(ResourceKey resource)
+    {
+        var attempt = _transientFailureCounts.AddOrUpdate(resource, 1, (_, previous) => previous + 1);
+        if (attempt > MaxScanRetryAttempts)
+        {
+            _logger.LogWarning($"metadata scan: giving up on {resource} after {MaxScanRetryAttempts} transient failures. The next watcher event for this file will reset the retry budget.");
+            _transientFailureCounts.TryRemove(resource, out _);
+            return;
+        }
+
+        var delay = ScanRetryDelays[attempt - 1];
+
+        // Detached background continuation; nothing awaits this task. If the
+        // service is disposed mid-delay the worker exits early via _isShuttingDown.
+        _ = Task.Delay(delay).ContinueWith(_ =>
+        {
+            if (_isShuttingDown)
+            {
+                return;
+            }
+            QueueRescan(resource);
+        }, TaskScheduler.Default);
     }
 
     private void MarkReady()

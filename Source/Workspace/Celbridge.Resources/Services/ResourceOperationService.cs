@@ -2,6 +2,7 @@ using Celbridge.DataTransfer;
 using Celbridge.Entities;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -38,6 +39,9 @@ public class ResourceOperationService : IResourceOperationService
 
     private IResourceRegistry? ResourceRegistry =>
         _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceService.Registry : null;
+
+    private IResourceFileSystem? FileSystem =>
+        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceFileSystem : null;
 
     private string ProjectFolderPath =>
         _workspaceWrapper.IsWorkspacePageLoaded ? ResourceRegistry!.ProjectFolderPath : string.Empty;
@@ -78,39 +82,146 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result> CopyFileAsync(string sourcePath, string destPath)
+    // Default outcome returned when the FS-layer cascade did not run (e.g.
+    // external import via the path-based fallback). Callers treating the empty
+    // structure as "no cascade work was applicable" stay symmetric with the
+    // real-cascade case.
+    private static readonly CopyResult EmptyCopyResult = new(SidecarOutcome.NotPresent);
+    private static readonly MoveResult EmptyMoveResult = new(
+        Array.Empty<ResourceKey>(),
+        Array.Empty<SkippedReferencer>(),
+        SidecarOutcome.NotPresent);
+
+    public async Task<Result<CopyResult>> CopyFileAsync(string sourcePath, string destPath)
     {
         sourcePath = Path.GetFullPath(sourcePath);
         destPath = Path.GetFullPath(destPath);
 
-        var operation = new CopyFileOperation(sourcePath, destPath, EntityService, ResourceRegistry);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
+        // External-import callers (TransferResourcesCommand.AddExternalResourceAsync,
+        // AddResourceHelper) supply a source path outside the project folder. The
+        // FS-layer cascade does not apply: the implicit "<source>.cel" sidecar
+        // lookup is rooted in resource keys and can't address external paths, and
+        // external bytes have no inbound references in this project. Sidecars that
+        // are explicitly selected (file-by-file) or contained in a copied folder
+        // come along as ordinary bytes via the path-based fallback; the registry's
+        // pairing pass picks them up on the next sync. Stale "project:" references
+        // inside imported sidecar bodies surface via metadata_check_project (ri-2).
+        if (!IsInProjectFolder(sourcePath))
         {
-            AddOperation(operation);
+            return await CopyExternalFileAsync(sourcePath, destPath);
         }
 
-        return result;
+        var keyResult = ResolveOperationKeys(sourcePath, destPath);
+        if (keyResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail(keyResult.FirstErrorMessage)
+                .WithErrors(keyResult);
+        }
+        var fileSystem = FileSystem;
+        if (fileSystem is null)
+        {
+            return Result<CopyResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
+        }
+
+        var operation = new CopyFileOperation(
+            sourcePath,
+            destPath,
+            keyResult.Value.Source,
+            keyResult.Value.Destination,
+            EntityService,
+            ResourceRegistry,
+            fileSystem);
+        var execResult = await operation.ExecuteAsync();
+
+        if (execResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
+                .WithErrors(execResult);
+        }
+
+        AddOperation(operation);
+        return Result<CopyResult>.Ok(operation.LastCopyResult ?? EmptyCopyResult);
     }
 
-    public async Task<Result> MoveFileAsync(string sourcePath, string destPath)
+    private async Task<Result<CopyResult>> CopyExternalFileAsync(string sourcePath, string destPath)
+    {
+        var operation = new CopyExternalFileOperation(sourcePath, destPath);
+        var execResult = await operation.ExecuteAsync();
+        if (execResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
+                .WithErrors(execResult);
+        }
+        AddOperation(operation);
+        return Result<CopyResult>.Ok(EmptyCopyResult);
+    }
+
+    private async Task<Result<CopyResult>> CopyExternalFolderAsync(string sourcePath, string destPath)
+    {
+        var operation = new CopyExternalFolderOperation(sourcePath, destPath);
+        var execResult = await operation.ExecuteAsync();
+        if (execResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
+                .WithErrors(execResult);
+        }
+        AddOperation(operation);
+        return Result<CopyResult>.Ok(EmptyCopyResult);
+    }
+
+    private bool IsInProjectFolder(string absolutePath)
+    {
+        var projectFolderPath = ProjectFolderPath;
+        if (string.IsNullOrEmpty(projectFolderPath))
+        {
+            return false;
+        }
+
+        var normalizedProject = Path.GetFullPath(projectFolderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedPath = Path.GetFullPath(absolutePath);
+        return normalizedPath.StartsWith(normalizedProject + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalizedPath, normalizedProject, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public async Task<Result<MoveResult>> MoveFileAsync(string sourcePath, string destPath)
     {
         sourcePath = Path.GetFullPath(sourcePath);
         destPath = Path.GetFullPath(destPath);
 
-        var operation = new MoveFileOperation(sourcePath, destPath, EntityService, ResourceRegistry);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
+        var keyResult = ResolveOperationKeys(sourcePath, destPath);
+        if (keyResult.IsFailure)
         {
-            AddOperation(operation);
-
-            // Notify opened documents that the file has moved
-            SendResourceKeyChangedMessage(sourcePath, destPath);
+            return Result<MoveResult>.Fail(keyResult.FirstErrorMessage)
+                .WithErrors(keyResult);
+        }
+        var fileSystem = FileSystem;
+        if (fileSystem is null)
+        {
+            return Result<MoveResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
         }
 
-        return result;
+        var operation = new MoveFileOperation(
+            sourcePath,
+            destPath,
+            keyResult.Value.Source,
+            keyResult.Value.Destination,
+            EntityService,
+            ResourceRegistry,
+            fileSystem);
+        var execResult = await operation.ExecuteAsync();
+
+        if (execResult.IsFailure)
+        {
+            return Result<MoveResult>.Fail(execResult.FirstErrorMessage)
+                .WithErrors(execResult);
+        }
+
+        AddOperation(operation);
+
+        // Notify opened documents that the file has moved
+        SendResourceKeyChangedMessage(sourcePath, destPath);
+
+        return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
     }
 
     public async Task<Result> DeleteFileAsync(string path)
@@ -145,7 +256,19 @@ public class ResourceOperationService : IResourceOperationService
             }
         }
 
-        var operation = new DeleteFileOperation(path, trashPath, entityDataPath, entityDataTrashPath);
+        // Pre-compute sidecar paths so the cascade can land in the same trash
+        // batch as the parent file. The sibling lookup is a pure filename check
+        // (matches the FS-layer cascade rule); it does not consult the registry.
+        string? sidecarPath = null;
+        string? sidecarTrashPath = null;
+        var siblingSidecar = path + SidecarHelper.Extension;
+        if (File.Exists(siblingSidecar))
+        {
+            sidecarPath = siblingSidecar;
+            sidecarTrashPath = trashPath + SidecarHelper.Extension;
+        }
+
+        var operation = new DeleteFileOperation(path, trashPath, entityDataPath, entityDataTrashPath, sidecarPath, sidecarTrashPath);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -156,39 +279,91 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result> CopyFolderAsync(string sourcePath, string destPath)
+    public async Task<Result<CopyResult>> CopyFolderAsync(string sourcePath, string destPath)
     {
         sourcePath = Path.GetFullPath(sourcePath);
         destPath = Path.GetFullPath(destPath);
 
-        var operation = new CopyFolderOperation(sourcePath, destPath, EntityService, ResourceRegistry);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
+        // External-import callers supply a source folder outside the project.
+        // The FS-layer cascade does not apply (see CopyFileAsync for the full
+        // rationale). Sidecars inside the source folder come along as ordinary
+        // bytes via the recursive copy; the registry pairing pass picks them up.
+        if (!IsInProjectFolder(sourcePath))
         {
-            AddOperation(operation);
+            return await CopyExternalFolderAsync(sourcePath, destPath);
         }
 
-        return result;
+        var keyResult = ResolveOperationKeys(sourcePath, destPath);
+        if (keyResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail(keyResult.FirstErrorMessage)
+                .WithErrors(keyResult);
+        }
+        var fileSystem = FileSystem;
+        if (fileSystem is null)
+        {
+            return Result<CopyResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
+        }
+
+        var operation = new CopyFolderOperation(
+            sourcePath,
+            destPath,
+            keyResult.Value.Source,
+            keyResult.Value.Destination,
+            EntityService,
+            ResourceRegistry,
+            fileSystem);
+        var execResult = await operation.ExecuteAsync();
+
+        if (execResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail(execResult.FirstErrorMessage)
+                .WithErrors(execResult);
+        }
+
+        AddOperation(operation);
+        return Result<CopyResult>.Ok(operation.LastCopyResult ?? EmptyCopyResult);
     }
 
-    public async Task<Result> MoveFolderAsync(string sourcePath, string destPath)
+    public async Task<Result<MoveResult>> MoveFolderAsync(string sourcePath, string destPath)
     {
         sourcePath = Path.GetFullPath(sourcePath);
         destPath = Path.GetFullPath(destPath);
 
-        var operation = new MoveFolderOperation(sourcePath, destPath, EntityService, ResourceRegistry);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
+        var keyResult = ResolveOperationKeys(sourcePath, destPath);
+        if (keyResult.IsFailure)
         {
-            AddOperation(operation);
-
-            // Notify opened documents that resources in this folder have moved
-            SendFolderResourceKeyChangedMessages(sourcePath, destPath);
+            return Result<MoveResult>.Fail(keyResult.FirstErrorMessage)
+                .WithErrors(keyResult);
+        }
+        var fileSystem = FileSystem;
+        if (fileSystem is null)
+        {
+            return Result<MoveResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
         }
 
-        return result;
+        var operation = new MoveFolderOperation(
+            sourcePath,
+            destPath,
+            keyResult.Value.Source,
+            keyResult.Value.Destination,
+            EntityService,
+            ResourceRegistry,
+            fileSystem);
+        var execResult = await operation.ExecuteAsync();
+
+        if (execResult.IsFailure)
+        {
+            return Result<MoveResult>.Fail(execResult.FirstErrorMessage)
+                .WithErrors(execResult);
+        }
+
+        AddOperation(operation);
+
+        // Notify opened documents that resources in this folder have moved
+        SendFolderResourceKeyChangedMessages(sourcePath, destPath);
+
+        return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
     }
 
     public async Task<Result> DeleteFolderAsync(string path)
@@ -345,6 +520,35 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         return result;
+    }
+
+    // Maps a pair of project-folder absolute paths to ResourceKey form so the
+    // FS-layer-backed operations can address sources and destinations via key.
+    // The registry returns generated keys even for destinations that don't exist
+    // on disk yet, which is exactly the move/copy case.
+    private Result<(ResourceKey Source, ResourceKey Destination)> ResolveOperationKeys(string sourcePath, string destPath)
+    {
+        var registry = ResourceRegistry;
+        if (registry is null)
+        {
+            return Result<(ResourceKey, ResourceKey)>.Fail("Workspace is not loaded; resource registry is unavailable.");
+        }
+
+        var sourceKeyResult = registry.GetResourceKey(sourcePath);
+        if (sourceKeyResult.IsFailure)
+        {
+            return Result<(ResourceKey, ResourceKey)>.Fail($"Failed to compute resource key for source path: '{sourcePath}'")
+                .WithErrors(sourceKeyResult);
+        }
+
+        var destKeyResult = registry.GetResourceKey(destPath);
+        if (destKeyResult.IsFailure)
+        {
+            return Result<(ResourceKey, ResourceKey)>.Fail($"Failed to compute resource key for destination path: '{destPath}'")
+                .WithErrors(destKeyResult);
+        }
+
+        return Result<(ResourceKey, ResourceKey)>.Ok((sourceKeyResult.Value, destKeyResult.Value));
     }
 
     private void AddOperation(FileOperation operation)

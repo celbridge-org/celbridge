@@ -363,7 +363,27 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         // Cross-platform: Unix hidden files start with '.'
         if (fileName.StartsWith(".") ||
             fileName.StartsWith("~") ||
-            fileName.EndsWith(".tmp"))
+            fileName.EndsWith(".tmp") ||
+            fileName.EndsWith("~"))    // Emacs/many editors' backup files (e.g. "foo.md~")
+        {
+            return true;
+        }
+
+        // External-editor atomic-write temp files commonly use the shape
+        // "<original>.tmp.<pid>.<random>" (e.g. "foo.md.tmp.5912.c2e6892eb512" from
+        // Claude Code's editor). EndsWith(".tmp") above doesn't catch these, so
+        // match ".tmp." anywhere in the filename.
+        if (fileName.Contains(".tmp.", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Common editor swap/lock/partial-download patterns from other tools.
+        if (fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase) ||  // Vim swap
+            fileName.EndsWith(".swo", StringComparison.OrdinalIgnoreCase) ||  // Vim swap (second)
+            fileName.EndsWith(".swn", StringComparison.OrdinalIgnoreCase) ||  // Vim swap (third)
+            fileName.EndsWith(".crdownload", StringComparison.OrdinalIgnoreCase) || // Chrome/Edge partial download
+            fileName.EndsWith(".part", StringComparison.OrdinalIgnoreCase))   // Firefox/wget partial download
         {
             return true;
         }
