@@ -136,7 +136,7 @@ public class FileToolsReadImageTests
 
         var metadataJson = result.Content.OfType<TextContentBlock>().Single().Text;
         var metadata = JsonDocument.Parse(metadataJson).RootElement;
-        metadata.GetProperty("resource").GetString().Should().Be("captures/sample.jpg");
+        metadata.GetProperty("resource").GetString().Should().Be("project:captures/sample.jpg");
         metadata.GetProperty("mimeType").GetString().Should().Be("image/jpeg");
         metadata.GetProperty("sizeBytes").GetInt32().Should().Be(MinimalJpegBytes.Length);
     }

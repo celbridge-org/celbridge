@@ -235,6 +235,30 @@ public class SidecarHelperTests
     }
 
     [Test]
+    public void Compose_NormalisesTomlFrontmatterToLfLineEndings()
+    {
+        // Tomlyn emits Environment.NewLine (CRLF on Windows) for the
+        // frontmatter section. Compose normalises to LF so the whole sidecar
+        // file uses a single line ending convention, matching the LF literals
+        // used for fence lines and content terminators.
+        var frontmatter = new Dictionary<string, object>
+        {
+            ["editor"] = "celbridge.test",
+            ["tags"] = new List<object> { "alpha", "beta" },
+        };
+        var blocks = new List<SidecarBlock>
+        {
+            new("test.block", "body"),
+        };
+
+        var composed = SidecarHelper.Compose(frontmatter, blocks);
+
+        composed.Should().NotContain("\r\n");
+        composed.Should().NotContain("\r");
+        composed.Should().Contain("\n");
+    }
+
+    [Test]
     public void Parse_CRLFBlockContentTerminatorIsStripped()
     {
         // A CRLF-terminated block content line yields the same logical content

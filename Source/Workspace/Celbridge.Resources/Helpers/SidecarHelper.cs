@@ -229,10 +229,18 @@ public static class SidecarHelper
             }
 
             var tomlText = Toml.FromModel(tomlTable);
+            // Tomlyn emits Environment.NewLine internally (CRLF on Windows).
+            // The rest of Compose uses LF literals (fence lines, block-content
+            // terminators), so normalise to LF here for a single-line-ending
+            // file on every platform. Without this normalisation a sidecar
+            // with TOML frontmatter plus blocks ends up CRLF in the frontmatter
+            // section and LF in the block section, which surprises tools that
+            // round-trip the bytes.
+            tomlText = tomlText.Replace("\r\n", "\n");
             // Toml.FromModel emits a trailing newline. Trim it so the join with
             // the first fence (if any) is predictable; we add an explicit
             // separator below.
-            tomlText = tomlText.TrimEnd('\r', '\n');
+            tomlText = tomlText.TrimEnd('\n');
             builder.Append(tomlText);
         }
 

@@ -79,18 +79,24 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
 
     /// <summary>
     /// The canonical "root:path" form of this key. Always carries the explicit root prefix,
-    /// even for the default "project" root. Use for serialisation and unambiguous diagnostics.
+    /// even for the default "project" root. Equivalent to ToString(); retained as an explicit
+    /// accessor for sites where intent benefits from being explicit.
     /// </summary>
     public string FullKey => (_root ?? DefaultRoot) + ":" + (_path ?? string.Empty);
 
+    /// <summary>
+    /// Canonical serialised form: always "root:path", including the explicit "project:" prefix
+    /// for the default root. Matches the literal form the reference scanner detects in file
+    /// content, so any resource key surfaced through ToString (tool responses, log messages,
+    /// error text, debugger views) can be round-tripped or copy-pasted directly into a quoted
+    /// reference without forgetting the prefix.
+    ///
+    /// For UI surfaces or other display contexts that explicitly want the bare path without
+    /// the root prefix, use the <see cref="Path"/> accessor instead.
+    /// </summary>
     public override string ToString()
     {
-        // Display form: bare path for the default "project" root, "root:path" otherwise.
-        if (_root is null)
-        {
-            return _path ?? string.Empty;
-        }
-        return _root + ":" + (_path ?? string.Empty);
+        return (_root ?? DefaultRoot) + ":" + (_path ?? string.Empty);
     }
 
     /// <summary>

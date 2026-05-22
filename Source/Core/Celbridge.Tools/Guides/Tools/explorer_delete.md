@@ -48,6 +48,8 @@ The JSON shape is:
 }
 ```
 
+Resource keys appear in their canonical `root:path` form (with the explicit `project:` prefix for project-rooted resources), matching the literal form the reference scanner detects in tracked content.
+
 - `batchOutcome` summarises the whole batch. `DeletedAll` and `DeletedSome` mean execution ran (the policy gate passed); `CancelledByUser` and `BlockedByReferences` mean the gate refused before any filesystem changes. `DeletedSome` also covers the rare edge where every resource in the batch failed mechanically — inspect `resourceResults` for the per-resource detail in any non-`DeletedAll` case.
 - `resourceResults` carries one entry per input resource — for a folder delete that means one entry for the folder itself, not one entry per descendant file. The per-descendant breakdown of external references lives in `referencers` (see below). `outcome` is typed so the agent can branch on the cause without parsing strings:
   - `NotFound` — the resource was already gone on disk. Treat as success — the user's intent is already satisfied.

@@ -53,12 +53,12 @@ public static class WebViewScreenshotResolver
         // A trailing slash means "auto-name in this folder". A path without
         // an extension is also treated as a folder, since screenshot files
         // always carry an extension.
-        if (endsWithSlash || !HasExtension(key.ToString()))
+        if (endsWithSlash || !HasExtension(key.Path))
         {
-            var folderResourceKey = key.ToString();
-            var folderAbsolutePath = ResolveAbsoluteUnderProject(projectFolderPath, folderResourceKey);
+            var folderPath = key.Path;
+            var folderAbsolutePath = ResolveAbsoluteUnderProject(projectFolderPath, folderPath);
             var fileName = GenerateAutoName(extension, folderAbsolutePath);
-            var combined = string.IsNullOrEmpty(folderResourceKey) ? fileName : folderResourceKey + "/" + fileName;
+            var combined = string.IsNullOrEmpty(folderPath) ? fileName : folderPath + "/" + fileName;
             if (!ResourceKey.TryCreate(combined, out var fileKey))
             {
                 return Result.Fail($"Failed to construct resource key for auto-named screenshot in folder '{saveTo}'");
@@ -70,7 +70,7 @@ public static class WebViewScreenshotResolver
         // Treat as exact resource key path. Validate the extension matches
         // the requested format so the saved bytes are consistent with the
         // filename.
-        var actualExtension = Path.GetExtension(key.ToString()).TrimStart('.').ToLowerInvariant();
+        var actualExtension = Path.GetExtension(key.Path).TrimStart('.').ToLowerInvariant();
         if (!ExtensionMatchesFormat(actualExtension, format))
         {
             return Result.Fail(

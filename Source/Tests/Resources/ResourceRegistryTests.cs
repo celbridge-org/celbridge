@@ -126,7 +126,8 @@ public class ResourceRegistryTests
 
         var expandedFoldersOut = folderStateService.ExpandedFolders;
         expandedFoldersOut.Count.Should().Be(1);
-        expandedFoldersOut[0].Should().Be(FolderNameA);
+        // ExpandedFolders stores resource keys in their canonical (prefixed) string form.
+        expandedFoldersOut[0].Should().Be("project:" + FolderNameA);
 
         var folderResource = (resourceRegistry.ProjectFolder.Children[0] as FolderResource)!;
         var folderPath = resourceRegistry.GetResourceKey(folderResource);

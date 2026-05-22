@@ -41,7 +41,10 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
                     return string.Empty;
                 }
 
-                return $"https://{ProjectVirtualHost}/{FileResource}";
+                // URL path is the bare resource path; the "project:" prefix that
+                // ResourceKey.ToString() now emits is for serialised diagnostics,
+                // not URL construction.
+                return $"https://{ProjectVirtualHost}/{FileResource.Path}";
             }
 
             return SourceUrl;

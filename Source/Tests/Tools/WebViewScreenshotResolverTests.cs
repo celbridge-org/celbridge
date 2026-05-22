@@ -29,11 +29,13 @@ public class WebViewScreenshotResolverTests
         var result = WebViewScreenshotResolver.Resolve(saveTo: "", format: "jpeg", _projectFolder);
 
         result.IsSuccess.Should().BeTrue();
-        var key = result.Value.ToString();
-        key.Should().StartWith("screenshots/screenshot-");
-        key.Should().EndWith(".jpg");
+        // Assert against the bare path portion (without the project: prefix)
+        // because these checks are about the path shape the resolver picked.
+        var path = result.Value.Path;
+        path.Should().StartWith("screenshots/screenshot-");
+        path.Should().EndWith(".jpg");
         // No collision in a fresh folder, so the unsuffixed form should be used.
-        key.Should().NotContain(".jpg-").And.MatchRegex(@"screenshots/screenshot-\d{8}-\d{6}\.jpg$");
+        path.Should().NotContain(".jpg-").And.MatchRegex(@"screenshots/screenshot-\d{8}-\d{6}\.jpg$");
     }
 
     [Test]
@@ -42,7 +44,7 @@ public class WebViewScreenshotResolverTests
         var result = WebViewScreenshotResolver.Resolve(saveTo: "", format: "png", _projectFolder);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.ToString().Should().EndWith(".png");
+        result.Value.Path.Should().EndWith(".png");
     }
 
     [Test]
@@ -51,7 +53,7 @@ public class WebViewScreenshotResolverTests
         var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.png", format: "png", _projectFolder);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.ToString().Should().Be("docs/output.png");
+        result.Value.ToString().Should().Be("project:docs/output.png");
     }
 
     [Test]
@@ -60,7 +62,7 @@ public class WebViewScreenshotResolverTests
         var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.jpg", format: "jpeg", _projectFolder);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.ToString().Should().Be("docs/output.jpg");
+        result.Value.ToString().Should().Be("project:docs/output.jpg");
     }
 
     [Test]
@@ -96,9 +98,9 @@ public class WebViewScreenshotResolverTests
         var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/", format: "jpeg", _projectFolder);
 
         result.IsSuccess.Should().BeTrue();
-        var key = result.Value.ToString();
-        key.Should().StartWith("docs/screenshot-");
-        key.Should().EndWith(".jpg");
+        var path = result.Value.Path;
+        path.Should().StartWith("docs/screenshot-");
+        path.Should().EndWith(".jpg");
     }
 
     [Test]
@@ -109,9 +111,9 @@ public class WebViewScreenshotResolverTests
         var result = WebViewScreenshotResolver.Resolve(saveTo: "captures", format: "png", _projectFolder);
 
         result.IsSuccess.Should().BeTrue();
-        var key = result.Value.ToString();
-        key.Should().StartWith("captures/screenshot-");
-        key.Should().EndWith(".png");
+        var path = result.Value.Path;
+        path.Should().StartWith("captures/screenshot-");
+        path.Should().EndWith(".png");
     }
 
     [Test]
@@ -124,9 +126,10 @@ public class WebViewScreenshotResolverTests
         var first = WebViewScreenshotResolver.Resolve(saveTo: "screenshots/", format: "jpeg", _projectFolder);
         first.IsSuccess.Should().BeTrue();
 
-        // Materialise the first name so the next probe collides.
-        var firstResourceKey = first.Value.ToString();
-        var firstAbsolute = Path.Combine(_projectFolder, firstResourceKey.Replace('/', Path.DirectorySeparatorChar));
+        // Materialise the first name so the next probe collides. Use the bare
+        // path (no root prefix) because we're constructing a filesystem path.
+        var firstPath = first.Value.Path;
+        var firstAbsolute = Path.Combine(_projectFolder, firstPath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(firstAbsolute)!);
         File.WriteAllBytes(firstAbsolute, new byte[] { 0 });
 
@@ -137,9 +140,9 @@ public class WebViewScreenshotResolverTests
         // should carry a -1 suffix. If they straddled a second boundary, the
         // names will differ in the timestamp and neither carries a suffix —
         // both outcomes are correct, so the assertion accepts either form.
-        var secondKey = second.Value.ToString();
-        secondKey.Should().NotBe(firstResourceKey);
-        secondKey.Should().MatchRegex(@"screenshots/screenshot-\d{8}-\d{6}(-\d+)?\.jpg$");
+        var secondPath = second.Value.Path;
+        secondPath.Should().NotBe(firstPath);
+        secondPath.Should().MatchRegex(@"screenshots/screenshot-\d{8}-\d{6}(-\d+)?\.jpg$");
     }
 
     [Test]

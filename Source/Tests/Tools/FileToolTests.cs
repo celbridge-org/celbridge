@@ -616,10 +616,11 @@ public class FileToolTests
     }
 
     [Test]
-    public async Task Read_MissingFileUnderProjectRoot_EmitsBarePath()
+    public async Task Read_MissingFileUnderProjectRoot_EmitsCanonicalRootPath()
     {
-        // Counterpart to the temp: test: project-root keys must be reported as bare paths,
-        // never with the explicit "project:" prefix.
+        // Counterpart to the temp: test: project-root keys are reported in their canonical
+        // "project:" form to match the cascade scanner's tracked-reference literal and to
+        // stay symmetric with non-default roots.
         var resourceKey = ResourceKey.Create("Scripts/missing.py");
         var resourcePath = Path.Combine(_tempFolder, "Scripts", "missing.py");
         _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
@@ -629,8 +630,7 @@ public class FileToolTests
 
         result.IsError.Should().BeTrue();
         var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("Scripts/missing.py");
-        text.Should().NotContain("project:Scripts/missing.py");
+        text.Should().Contain("project:Scripts/missing.py");
     }
 
     private static JsonElement ParseResult(CallToolResult result)

@@ -834,7 +834,11 @@ public sealed class ResourceFileSystem : IResourceFileSystem
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
         var result = sidecarService.GetSidecarKey(key);
-        return result.IsSuccess ? result.Value : null;
+        if (result.IsSuccess)
+        {
+            return result.Value;
+        }
+        return null;
     }
 
     // Clears the read-only attribute from a file before the FS layer performs

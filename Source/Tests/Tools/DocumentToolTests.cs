@@ -61,14 +61,14 @@ public class DocumentToolTests
         var tools = new DocumentTools(_services);
         var root = ParseResult(await tools.GetState());
 
-        root.GetProperty("activeDocument").GetString().Should().Be("notes/readme.md");
+        root.GetProperty("activeDocument").GetString().Should().Be("project:notes/readme.md");
         root.GetProperty("sectionCount").GetInt32().Should().Be(1);
 
         var openDocuments = root.GetProperty("openDocuments");
         openDocuments.GetArrayLength().Should().Be(1);
 
         var firstDocument = openDocuments[0];
-        firstDocument.GetProperty("resource").GetString().Should().Be("notes/readme.md");
+        firstDocument.GetProperty("resource").GetString().Should().Be("project:notes/readme.md");
         firstDocument.GetProperty("isActive").GetBoolean().Should().BeTrue();
     }
 
@@ -95,11 +95,11 @@ public class DocumentToolTests
 
         var documents = root.GetProperty("openDocuments");
         var activeDoc = documents.EnumerateArray().First(d => d.GetProperty("isActive").GetBoolean());
-        activeDoc.GetProperty("resource").GetString().Should().Be("src/main.py");
+        activeDoc.GetProperty("resource").GetString().Should().Be("project:src/main.py");
         activeDoc.GetProperty("sectionIndex").GetInt32().Should().Be(0);
 
         var inactiveDoc = documents.EnumerateArray().First(d => !d.GetProperty("isActive").GetBoolean());
-        inactiveDoc.GetProperty("resource").GetString().Should().Be("tests/test_main.py");
+        inactiveDoc.GetProperty("resource").GetString().Should().Be("project:tests/test_main.py");
         inactiveDoc.GetProperty("sectionIndex").GetInt32().Should().Be(1);
     }
 

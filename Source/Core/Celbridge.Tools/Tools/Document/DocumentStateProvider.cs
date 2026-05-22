@@ -63,8 +63,13 @@ internal sealed class DocumentStateProvider : IDocumentStateProvider
                 document.EditorId.ToString()));
         }
 
+        // An empty active document key (no document open) serialises as the
+        // empty string rather than the canonical "project:" form, so the
+        // response field is a clean signal that nothing is active.
+        var activeDocumentString = activeDocument.IsEmpty ? string.Empty : activeDocument.ToString();
+
         return new DocumentStateResult(
-            activeDocument.ToString(),
+            activeDocumentString,
             snapshot.SectionCount,
             documents);
     }

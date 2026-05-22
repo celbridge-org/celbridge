@@ -180,10 +180,10 @@ public class DataCheckProjectTests
             .Select(r => (r.MissingTarget.ToString(), r.Source.ToString()))
             .ToList();
 
-        keys[0].Item1.Should().Be("aaa.md");
-        keys[1].Item1.Should().Be("zzz.md");
-        keys[2].Item1.Should().Be("zzz.md");
-        keys[1].Item2.Should().Be("a.md");
-        keys[2].Item2.Should().Be("b.md");
+        keys[0].Item1.Should().Be("project:aaa.md");
+        keys[1].Item1.Should().Be("project:zzz.md");
+        keys[2].Item1.Should().Be("project:zzz.md");
+        keys[1].Item2.Should().Be("project:a.md");
+        keys[2].Item2.Should().Be("project:b.md");
     }
 }

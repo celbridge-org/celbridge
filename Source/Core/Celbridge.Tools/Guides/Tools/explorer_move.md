@@ -15,6 +15,8 @@ Resolved against the source:
 
 The compact `"ok"` is reserved for the no-side-effect case: the move touched no references, no referencers were skipped, and no resources failed mechanically. Whenever the move actually rewrote references, left a cascade incomplete, or had a per-resource failure, the response is the JSON payload below — so an agent that needs to report what changed gets the rewritten-referencer list without a follow-up grep.
 
+Both the compact `"ok"` string and the JSON `{"status":"ok", ...}` object indicate overall success — the difference is that the compact form means zero observable side effects, while the JSON form means at least one reference was rewritten or one cascade step ran. An agent that only branches on `response.status == "ok"` misses the compact-vs-JSON distinction; branch on the response shape (string vs object) first.
+
 ```json
 {
   "status": "ok" | "ok_with_skipped_referencers" | "partial_failure",
@@ -26,6 +28,8 @@ The compact `"ok"` is reserved for the no-side-effect case: the move touched no 
   "failedResources": ["project:source.txt", ...]
 }
 ```
+
+Resource keys appear in their canonical `root:path` form (with the explicit `project:` prefix for project-rooted resources), matching the literal form the reference scanner detects in tracked content.
 
 - `status`:
   - `"ok"` — every cascade step succeeded; `updatedReferencers` may be non-empty.
