@@ -18,6 +18,6 @@ Response shape:
 }
 ```
 
-Returns `{ "fields": {}, "blocks": [] }` when the resource has no sidecar. Errors with a clear message when the sidecar exists but is broken; use `file_read` for raw inspection in that case, or `data_check_project` for the system-level view.
+Returns `{ "fields": {}, "blocks": [] }` when the resource has no sidecar — and that same empty success is returned when the *parent* resource doesn't exist either (the tool only inspects the sidecar file, it does not check whether the parent file is on disk). Use `file_get_info` first if you need to verify the parent exists before reading its data. Errors with a clear message when the sidecar exists but is broken; use `file_read` for raw inspection in that case, or `data_check_project` for the system-level view.
 
 `size` is the UTF-8 byte count of the block's semantic content (matching what `data_read_block` returns). Block content is line-oriented: the terminator that separates one block from the next on disk is not part of the content, so a block's `size` is stable as adjacent blocks are added or removed.
