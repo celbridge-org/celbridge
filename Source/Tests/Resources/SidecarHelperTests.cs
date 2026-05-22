@@ -1,3 +1,4 @@
+using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
 
 namespace Celbridge.Tests.Resources;
@@ -6,9 +7,9 @@ namespace Celbridge.Tests.Resources;
 public class SidecarHelperTests
 {
     [Test]
-    public void Parse_RoundTripsFrontmatterPlusBody()
+    public void Parse_RoundTripsFrontmatterOnlyFile()
     {
-        var text = "+++\ntags = [\"a\", \"b\"]\npriority = \"high\"\n+++\n# Body\n\nContent here.";
+        var text = "tags = [\"a\", \"b\"]\npriority = \"high\"\n";
 
         var result = SidecarHelper.Parse(text);
 
@@ -16,37 +17,77 @@ public class SidecarHelperTests
         var parsed = result.Value;
         parsed.Frontmatter.Should().ContainKey("priority");
         parsed.Frontmatter["priority"].Should().Be("high");
-        parsed.Body.Should().StartWith("# Body");
+        parsed.Blocks.Should().BeEmpty();
     }
 
     [Test]
-    public void Parse_AcceptsFrontmatterOnlyFile()
+    public void Parse_AcceptsEmptyFile()
     {
-        var text = "+++\ntags = [\"meeting\"]\n+++\n";
+        var result = SidecarHelper.Parse(string.Empty);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Frontmatter.Should().BeEmpty();
+        result.Value.Blocks.Should().BeEmpty();
+    }
+
+    [Test]
+    public void Parse_AcceptsFileWithSingleNamedBlock()
+    {
+        var text = "tags = [\"meeting\"]\n+++ \"celbridge.notes.note-document.content\"\n# Meeting Notes\n\nBody text.";
 
         var result = SidecarHelper.Parse(text);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Frontmatter.Should().ContainKey("tags");
-        result.Value.Body.Should().Be(string.Empty);
+        result.Value.Blocks.Should().HaveCount(1);
+        result.Value.Blocks[0].Name.Should().Be("celbridge.notes.note-document.content");
+        result.Value.Blocks[0].Content.Should().Contain("# Meeting Notes");
+        result.Value.Blocks[0].Content.Should().Contain("Body text.");
     }
 
     [Test]
-    public void Parse_AcceptsFrontmatterOnlyWithoutTrailingNewline()
+    public void Parse_PreservesOrderOfMultipleBlocks()
     {
-        var text = "+++\nkey = \"value\"\n+++";
+        var text = "tags = [\"pixel-art\"]\n+++ \"celbridge.piskel.canvas\"\nfirst block content\n+++ \"celbridge.piskel.layers\"\nsecond block content";
 
         var result = SidecarHelper.Parse(text);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Frontmatter["key"].Should().Be("value");
-        result.Value.Body.Should().Be(string.Empty);
+        result.Value.Blocks.Should().HaveCount(2);
+        result.Value.Blocks[0].Name.Should().Be("celbridge.piskel.canvas");
+        result.Value.Blocks[1].Name.Should().Be("celbridge.piskel.layers");
+        result.Value.Blocks[0].Content.Should().Contain("first block content");
+        result.Value.Blocks[1].Content.Should().Contain("second block content");
     }
 
     [Test]
-    public void Parse_RejectsContentWithoutOpeningFence()
+    public void Parse_AcceptsFileWithBlocksAndNoFrontmatter()
     {
-        var text = "just a body, no fence at all";
+        var text = "+++ \"only.block\"\njust the block, no frontmatter";
+
+        var result = SidecarHelper.Parse(text);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Frontmatter.Should().BeEmpty();
+        result.Value.Blocks.Should().HaveCount(1);
+        result.Value.Blocks[0].Content.Should().Contain("just the block");
+    }
+
+    [Test]
+    public void Parse_RejectsDuplicateBlockNames()
+    {
+        var text = "+++ \"a\"\nfirst\n+++ \"a\"\nsecond";
+
+        var result = SidecarHelper.Parse(text);
+
+        result.IsSuccess.Should().BeFalse();
+        result.FirstErrorMessage.Should().Contain("duplicate block name");
+    }
+
+    [Test]
+    public void Parse_RejectsMalformedFrontmatterToml()
+    {
+        var text = "not valid toml at all = !!!";
 
         var result = SidecarHelper.Parse(text);
 
@@ -54,9 +95,12 @@ public class SidecarHelperTests
     }
 
     [Test]
-    public void Parse_RejectsContentWithoutClosingFence()
+    public void Parse_DoesNotTreatUppercaseFenceAsFence()
     {
-        var text = "+++\nkey = \"value\"\nno closing fence here";
+        // A line "+++ \"Block\"" with uppercase B doesn't match the regex, so
+        // it remains part of the frontmatter, which causes the TOML parse to
+        // fail and the file classifies as broken.
+        var text = "+++ \"Block\"\nbody";
 
         var result = SidecarHelper.Parse(text);
 
@@ -64,61 +108,144 @@ public class SidecarHelperTests
     }
 
     [Test]
-    public void Parse_TreatsBodyVerbatimIncludingInternalFences()
-    {
-        // Only the *first* closing +++ terminates the frontmatter. Any further
-        // +++ lines belong to the body verbatim.
-        var text = "+++\nkey = \"value\"\n+++\nbody line 1\n+++\nbody line 2";
-
-        var result = SidecarHelper.Parse(text);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Body.Should().Contain("body line 1");
-        result.Value.Body.Should().Contain("+++");
-        result.Value.Body.Should().Contain("body line 2");
-    }
-
-    [Test]
-    public void Compose_OutputRoundTripsThroughParse()
+    public void Compose_RoundTripsFrontmatterOnly()
     {
         var frontmatter = new Dictionary<string, object>
         {
             ["title"] = "My Notes",
             ["tags"] = new List<object> { "meeting", "todo" },
         };
-        var body = "# Meeting notes\n\nDecisions here.";
 
-        var composed = SidecarHelper.Compose(frontmatter, body);
+        var composed = SidecarHelper.Compose(frontmatter, Array.Empty<SidecarBlock>());
         var parseResult = SidecarHelper.Parse(composed);
 
         parseResult.IsSuccess.Should().BeTrue();
         parseResult.Value.Frontmatter["title"].Should().Be("My Notes");
-        parseResult.Value.Body.TrimEnd().Should().Be(body.TrimEnd());
+        parseResult.Value.Blocks.Should().BeEmpty();
     }
 
     [Test]
-    public void Compose_HandlesEmptyBody()
+    public void Compose_RoundTripsFrontmatterPlusBlocks()
     {
         var frontmatter = new Dictionary<string, object>
         {
-            ["editor_id"] = "celbridge.notes",
+            ["editor"] = "celbridge.notes.note-document",
+            ["tags"] = new List<object> { "meeting" },
+        };
+        var blocks = new List<SidecarBlock>
+        {
+            new("celbridge.notes.note-document.content", "# Meeting Notes\n\nBody.\n"),
+            new("celbridge.notes.note-document.revisions", "rev-1\nrev-2\n"),
         };
 
-        var composed = SidecarHelper.Compose(frontmatter, string.Empty);
+        var composed = SidecarHelper.Compose(frontmatter, blocks);
         var parseResult = SidecarHelper.Parse(composed);
 
         parseResult.IsSuccess.Should().BeTrue();
-        parseResult.Value.Body.Should().Be(string.Empty);
+        parseResult.Value.Frontmatter["editor"].Should().Be("celbridge.notes.note-document");
+        parseResult.Value.Blocks.Should().HaveCount(2);
+        parseResult.Value.Blocks[0].Name.Should().Be("celbridge.notes.note-document.content");
+        parseResult.Value.Blocks[0].Content.Should().Contain("# Meeting Notes");
+        parseResult.Value.Blocks[1].Name.Should().Be("celbridge.notes.note-document.revisions");
+        parseResult.Value.Blocks[1].Content.Should().Contain("rev-1");
     }
 
     [Test]
     public void Compose_HandlesEmptyFrontmatter()
     {
-        var composed = SidecarHelper.Compose(new Dictionary<string, object>(), "hello body");
+        var blocks = new List<SidecarBlock>
+        {
+            new("just.block", "hello body"),
+        };
+
+        var composed = SidecarHelper.Compose(new Dictionary<string, object>(), blocks);
         var parseResult = SidecarHelper.Parse(composed);
 
         parseResult.IsSuccess.Should().BeTrue();
         parseResult.Value.Frontmatter.Should().BeEmpty();
-        parseResult.Value.Body.Should().Contain("hello body");
+        parseResult.Value.Blocks.Should().HaveCount(1);
+        parseResult.Value.Blocks[0].Content.Should().Contain("hello body");
+    }
+
+    [Test]
+    public void Compose_RejectsInvalidBlockName()
+    {
+        var blocks = new List<SidecarBlock>
+        {
+            new("Bad Name", "content"),
+        };
+
+        var act = () => SidecarHelper.Compose(new Dictionary<string, object>(), blocks);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Test]
+    public void Parse_TreatsBlockContentWithoutTrailingNewlineAsEquivalent()
+    {
+        // Writing "three" and writing "three\n" both store as the same on-disk
+        // bytes and parse back to the same SidecarBlock.Content value. The
+        // trailing newline is a between-blocks separator, not part of content.
+        var blocksA = new List<SidecarBlock>
+        {
+            new("test.alpha", "three"),
+        };
+        var blocksB = new List<SidecarBlock>
+        {
+            new("test.alpha", "three\n"),
+        };
+
+        var composedA = SidecarHelper.Compose(new Dictionary<string, object>(), blocksA);
+        var composedB = SidecarHelper.Compose(new Dictionary<string, object>(), blocksB);
+
+        composedA.Should().Be(composedB);
+
+        var parsedA = SidecarHelper.Parse(composedA).Value;
+        var parsedB = SidecarHelper.Parse(composedB).Value;
+
+        parsedA.Blocks[0].Content.Should().Be("three");
+        parsedB.Blocks[0].Content.Should().Be("three");
+    }
+
+    [Test]
+    public void Parse_BlockContentSizeIsStableAcrossAdjacentAppends()
+    {
+        // After appending a second block, the first block's byte count must
+        // not change. Previously the first block "gained" a trailing newline
+        // when it stopped being the last block, shifting reported sizes.
+        var singleBlock = new List<SidecarBlock>
+        {
+            new("test.alpha", "three"),
+        };
+        var twoBlocks = new List<SidecarBlock>
+        {
+            new("test.alpha", "three"),
+            new("test.beta", "four"),
+        };
+
+        var composedSingle = SidecarHelper.Compose(new Dictionary<string, object>(), singleBlock);
+        var composedTwo = SidecarHelper.Compose(new Dictionary<string, object>(), twoBlocks);
+
+        var parsedSingle = SidecarHelper.Parse(composedSingle).Value;
+        var parsedTwo = SidecarHelper.Parse(composedTwo).Value;
+
+        parsedSingle.Blocks[0].Content.Should().Be("three");
+        parsedTwo.Blocks[0].Content.Should().Be("three");
+        parsedTwo.Blocks[0].Content.Length.Should().Be(parsedSingle.Blocks[0].Content.Length);
+    }
+
+    [Test]
+    public void Parse_CRLFBlockContentTerminatorIsStripped()
+    {
+        // A CRLF-terminated block content line yields the same logical content
+        // value as an LF-terminated one. Round-trip preserves the line bytes
+        // but does not leak the separator into Content.
+        var text = "+++ \"test.alpha\"\r\nline-one\r\n+++ \"test.beta\"\r\nline-two\r\n";
+
+        var result = SidecarHelper.Parse(text);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Blocks[0].Content.Should().Be("line-one");
+        result.Value.Blocks[1].Content.Should().Be("line-two");
     }
 }

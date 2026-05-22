@@ -16,7 +16,7 @@ public class ResourceFileSystemTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
-    private IResourceMetaData _resourceMetaData = null!;
+    private IResourceScanner _resourceScanner = null!;
     private ResourceFileSystem _fileSystem = null!;
 
     [SetUp]
@@ -33,21 +33,22 @@ public class ResourceFileSystemTests
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
         _resourceRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
 
-        _resourceMetaData = Substitute.For<IResourceMetaData>();
-        _resourceMetaData.WaitUntilReadyAsync().Returns(Task.CompletedTask);
-        _resourceMetaData.WaitForPendingUpdatesAsync().Returns(Task.CompletedTask);
-        _resourceMetaData.GetReferencers(Arg.Any<ResourceKey>()).Returns(Array.Empty<ResourceKey>());
-        _resourceMetaData.GetAllReferencedTargets().Returns(Array.Empty<ResourceKey>());
+        _resourceScanner = Substitute.For<IResourceScanner>();
+        _resourceScanner.FindReferencersAsync(Arg.Any<ResourceKey>()).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
+        _resourceScanner.FindAllReferencedTargetsAsync().Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourceMetaData.Returns(_resourceMetaData);
+        workspaceService.ResourceScanner.Returns(_resourceScanner);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var sidecarService = new SidecarService(workspaceWrapper);
+        workspaceService.SidecarService.Returns(sidecarService);
 
         _fileSystem = new ResourceFileSystem(
             Substitute.For<ILogger<ResourceFileSystem>>(),
@@ -401,7 +402,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceMetaData.GetReferencers(sourceKey).Returns(new[] { referencerKey });
+        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
         var result = await _fileSystem.MoveAsync(sourceKey, destKey);
 
@@ -441,7 +442,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("source.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("dest.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceMetaData.GetReferencers(sourceKey).Returns(new[] { referencerKey });
+        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
         var result = await _fileSystem.MoveAsync(sourceKey, destKey);
 
@@ -478,7 +479,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("My Document.md.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("My Renamed Document.md.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceMetaData.GetReferencers(sourceKey).Returns(new[] { referencerKey });
+        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
         var result = await _fileSystem.MoveAsync(sourceKey, destKey);
 
@@ -512,7 +513,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("foo.md.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("bar.md.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        _resourceMetaData.GetReferencers(sourceKey).Returns(new[] { referencerKey });
+        _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
         var result = await _fileSystem.MoveAsync(sourceKey, destKey);
 
@@ -670,7 +671,7 @@ public class ResourceFileSystemTests
             _resourceRegistry.ResolveResourcePath(new ResourceKey("target2.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
             _resourceRegistry.ResolveResourcePath(new ResourceKey("doc.md")).Returns(Result<string>.Ok(referencerPath));
 
-            _resourceMetaData.GetReferencers(sourceKey).Returns(new[] { referencerKey });
+            _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
             var result = await _fileSystem.MoveAsync(sourceKey, destKey);
 

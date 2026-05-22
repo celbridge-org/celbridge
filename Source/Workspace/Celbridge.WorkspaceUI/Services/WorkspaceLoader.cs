@@ -17,6 +17,7 @@ public class WorkspaceLoader
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
+    private readonly ProjectCheckReporter _projectCheckReporter;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -24,7 +25,8 @@ public class WorkspaceLoader
         IUserInterfaceService userInterfaceService,
         IFeatureFlags featureFlags,
         IProjectService projectService,
-        IServerService serverService)
+        IServerService serverService,
+        ProjectCheckReporter projectCheckReporter)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -32,6 +34,7 @@ public class WorkspaceLoader
         _featureFlags = featureFlags;
         _projectService = projectService;
         _serverService = serverService;
+        _projectCheckReporter = projectCheckReporter;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -130,21 +133,10 @@ public class WorkspaceLoader
                     .WithErrors(updateResult);
             }
 
-            // Rebuild the metadata index synchronously before downstream steps
-            // (package discovery, activity service, Python init) get a chance to
-            // touch files on disk. Running concurrently risks scanning a file
-            // mid-write and recording stale references or mtime stamps.
-            var metaData = workspaceService.ResourceMetaData;
-            var rebuildResult = await metaData.RebuildAsync();
-            if (rebuildResult.IsFailure)
-            {
-                _logger.LogWarning(rebuildResult, "Failed to rebuild resource metadata index");
-            }
-
             // Fire-and-forget the project-health check so banner-worthy findings
             // surface in the host log without blocking workspace load. The
-            // command awaits the metadata index internally and then walks the
-            // reference graph; on a clean project the result is empty.
+            // command scans the project's text files on demand; on a clean
+            // project the result is empty.
             _ = Task.Run(() => RunProjectCheckAsync());
         }
         catch (Exception ex)
@@ -238,10 +230,10 @@ public class WorkspaceLoader
         return Result.Ok();
     }
 
-    // Runs metadata_check_project in the background and writes a one-line
-    // summary per non-empty category to the host log. The check is read-only
-    // and does not repair anything; surfacing the issues here lets the user
-    // notice them without having to invoke the MCP tool by hand.
+    // Runs data_check_project in the background and delegates formatting and
+    // dispatch of the report to ProjectCheckReporter. Failure to execute the
+    // command or any unexpected exception is logged but never propagated, so
+    // a broken check cannot tear down the workspace load path.
     private async Task RunProjectCheckAsync()
     {
         try
@@ -253,27 +245,11 @@ public class WorkspaceLoader
                 _logger.LogWarning(reportResult, "Project consistency check failed.");
                 return;
             }
-            var report = reportResult.Value;
 
-            if (report.BrokenReferences.Count > 0)
-            {
-                _logger.LogWarning(
-                    $"Project consistency check: {report.BrokenReferences.Count} broken project: reference(s). Run metadata_check_project for the full list.");
-            }
-            if (report.OrphanSidecars.Count > 0)
-            {
-                _logger.LogWarning(
-                    $"Project consistency check: {report.OrphanSidecars.Count} orphan sidecar(s). Run metadata_check_project for the full list.");
-            }
-            if (report.BrokenSidecars.Count > 0)
-            {
-                _logger.LogWarning(
-                    $"Project consistency check: {report.BrokenSidecars.Count} broken sidecar(s). Run metadata_check_project for the full list.");
-            }
+            _projectCheckReporter.Report(reportResult.Value);
         }
         catch (Exception ex)
         {
-            // Never let the background check tear down the workspace load path.
             _logger.LogWarning(ex, "Project consistency check threw an unexpected exception.");
         }
     }

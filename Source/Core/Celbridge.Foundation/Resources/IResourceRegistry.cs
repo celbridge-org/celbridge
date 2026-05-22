@@ -3,7 +3,7 @@ namespace Celbridge.Resources;
 /// <summary>
 /// Snapshot of every .cel-shaped file the registry knows about, partitioned by
 /// parse state and orphan-ness. Used for project-load diagnostics and by
-/// metadata_check_project to surface attention states.
+/// data_check_project to surface attention states.
 ///
 /// Parse state (Healthy / Broken) and orphan-ness are orthogonal dimensions:
 /// an orphan sidecar with malformed content appears in both Broken and Orphan.
@@ -142,7 +142,7 @@ public interface IResourceRegistry
     /// <summary>
     /// Returns a snapshot of every sidecar the registry knows about, partitioned
     /// by parse state, orphan-ness, and the .cel.cel invalid category. Used for
-    /// project-load diagnostics and by metadata_check_project.
+    /// project-load diagnostics and by data_check_project.
     /// </summary>
     SidecarReport GetSidecarReport();
 }

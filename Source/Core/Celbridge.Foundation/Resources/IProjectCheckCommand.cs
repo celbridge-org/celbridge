@@ -37,7 +37,7 @@ public record ProjectCheckReport(
 /// <summary>
 /// Read-only check that surfaces dangling project: references and any sidecar
 /// in an attention state (orphan, broken). Invoked at workspace load and
-/// exposed as the metadata_check_project MCP tool.
+/// exposed as the data_check_project MCP tool.
 /// </summary>
 public interface IProjectCheckCommand : IExecutableCommand<ProjectCheckReport>
 {

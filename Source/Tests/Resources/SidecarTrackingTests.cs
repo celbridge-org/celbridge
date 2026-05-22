@@ -64,7 +64,7 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "+++\ntags = [\"meeting\"]\n+++\n");
+            "tags = [\"meeting\"]\n");
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -96,7 +96,7 @@ public class SidecarTrackingTests
     public void OrphanSidecar_AppearsInReportOrphan()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "+++\ntags = [\"x\"]\n+++\n");
+            "tags = [\"x\"]\n");
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -109,9 +109,9 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "+++\ntags = [\"a\"]\n+++\n");
+            "tags = [\"a\"]\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel.cel"),
-            "+++\nshould = \"not be paired\"\n+++\n");
+            "should = \"not be paired\"\n");
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -130,7 +130,7 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "no fences here, just loose text");
+            "not = valid = toml = !!!");
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -146,7 +146,7 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
-        File.WriteAllText(sidecarPath, "+++\ntags = [\"x\"]\n+++\n");
+        File.WriteAllText(sidecarPath, "tags = [\"x\"]\n");
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -163,7 +163,7 @@ public class SidecarTrackingTests
     [Test]
     public void BrokenOrphan_AppearsInBothBrokenAndOrphan()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "loose text, no fences");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "loose = invalid toml here = !!!");
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 

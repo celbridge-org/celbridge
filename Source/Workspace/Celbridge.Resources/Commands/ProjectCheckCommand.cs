@@ -4,8 +4,10 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Commands;
 
 /// <summary>
-/// Builds a ProjectCheckReport from the metadata service's reference graph and
-/// the registry's sidecar pairing snapshot. Pure read; no FS mutation.
+/// Builds a ProjectCheckReport via on-demand scanning of the project's text
+/// files plus the registry's sidecar pairing snapshot. Pure read; no FS
+/// mutation. Performance is bounded by scan time; there is no precomputed
+/// reference index waiting in memory.
 /// </summary>
 public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
 {
@@ -25,22 +27,17 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var registry = workspaceService.ResourceService.Registry;
-        var metaData = workspaceService.ResourceMetaData;
-
-        // Reference graph and sidecar report are both in-memory after the
-        // initial rebuild completes. Block the call on readiness so the check
-        // never returns a partial view of the project.
-        await metaData.WaitUntilReadyAsync();
+        var scanner = workspaceService.ResourceScanner;
 
         var brokenReferences = new List<BrokenReference>();
-        foreach (var target in metaData.GetAllReferencedTargets())
+        foreach (var target in await scanner.FindAllReferencedTargetsAsync())
         {
             var resourceResult = registry.GetResource(target);
             if (resourceResult.IsSuccess)
             {
                 continue;
             }
-            foreach (var source in metaData.GetReferencers(target))
+            foreach (var source in await scanner.FindReferencersAsync(target))
             {
                 brokenReferences.Add(new BrokenReference(source, target));
             }

@@ -24,7 +24,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
     public IResourceFileSystem ResourceFileSystem { get; }
-    public IResourceMetaData ResourceMetaData { get; }
+    public IResourceScanner ResourceScanner { get; }
+    public ISidecarService SidecarService { get; }
     public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
@@ -60,7 +61,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         ResourceFileSystem = serviceProvider.GetRequiredService<IResourceFileSystem>();
-        ResourceMetaData = serviceProvider.GetRequiredService<IResourceMetaData>();
+        ResourceScanner = serviceProvider.GetRequiredService<IResourceScanner>();
+        SidecarService = serviceProvider.GetRequiredService<ISidecarService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
@@ -188,7 +190,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
                 // Dispose resource service first to stop file system monitoring
                 (ResourceService as IDisposable)?.Dispose();
-                (ResourceMetaData as IDisposable)?.Dispose();
                 (WorkspaceSettingsService as IDisposable)!.Dispose();
                 (PythonService as IDisposable)!.Dispose();
                 (ConsoleService as IDisposable)!.Dispose();

@@ -105,7 +105,7 @@ public class ResourceOperationService : IResourceOperationService
         // are explicitly selected (file-by-file) or contained in a copied folder
         // come along as ordinary bytes via the path-based fallback; the registry's
         // pairing pass picks them up on the next sync. Stale "project:" references
-        // inside imported sidecar bodies surface via metadata_check_project (ri-2).
+        // inside imported sidecar bodies surface via data_check_project.
         if (!IsInProjectFolder(sourcePath))
         {
             return await CopyExternalFileAsync(sourcePath, destPath);

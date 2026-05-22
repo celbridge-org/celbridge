@@ -7,7 +7,7 @@ namespace Celbridge.Tools;
 public partial class ExplorerTools
 {
     /// <summary>Remove a resource from the project (file or folder); undoable via explorer_undo.</summary>
-    [McpServerTool(Name = "explorer_delete", Destructive = true)]
+    [McpServerTool(Name = "explorer_delete", Destructive = true, Idempotent = true)]
     [ToolAlias("explorer.delete")]
     [RelatedGuides("resource_keys", "undo_semantics")]
     public async partial Task<CallToolResult> Delete(string resource, bool showDialog = false, string referencePolicy = "require_confirmation")

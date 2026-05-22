@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -55,9 +56,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var metaData = workspaceService.ResourceMetaData;
-
-        await metaData.WaitUntilReadyAsync();
+        var scanner = workspaceService.ResourceScanner;
 
         // Phase A: aggregate referencers external to the batch. References
         // from one doomed resource to another are filtered out so an internal
@@ -96,11 +95,11 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             var keysToCheck = new List<ResourceKey> { resource };
             if (folderResources.Contains(resource))
             {
-                // The reference graph keys descendants by file, not by folder.
-                // Walk every indexed target and pull in those that live under
+                // The reference scanner keys descendants by file, not by folder.
+                // Walk every referenced target and pull in those that live under
                 // this folder so we surface every incoming reference that the
                 // recursive delete will leave dangling.
-                foreach (var target in metaData.GetAllReferencedTargets())
+                foreach (var target in await scanner.FindAllReferencedTargetsAsync())
                 {
                     if (target.IsDescendantOf(resource))
                     {
@@ -117,7 +116,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             foreach (var key in keysToCheck)
             {
                 var perKeyReferencers = new List<ResourceKey>();
-                foreach (var referencer in metaData.GetReferencers(key))
+                foreach (var referencer in await scanner.FindReferencersAsync(key))
                 {
                     if (!IsInsideBatch(referencer))
                     {
@@ -190,7 +189,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 }
                 var resourcePath = resolveResult.Value;
 
-                bool sidecarPresent = SidecarExistsForResource(resourceRegistry, resource);
+                bool sidecarPresent = SidecarExistsForResource(workspaceService, resource);
 
                 Result deleteResult;
                 if (File.Exists(resourcePath))
@@ -320,15 +319,15 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         return Directory.Exists(resolveResult.Value);
     }
 
-    private static bool SidecarExistsForResource(IResourceRegistry registry, ResourceKey resource)
+    private static bool SidecarExistsForResource(IWorkspaceService workspaceService, ResourceKey resource)
     {
-        if (resource.IsEmpty)
+        var sidecarKeyResult = workspaceService.SidecarService.GetSidecarKey(resource);
+        if (sidecarKeyResult.IsFailure)
         {
             return false;
         }
 
-        var sidecarKey = new ResourceKey(resource.Root + ":" + resource.Path + Helpers.SidecarHelper.Extension);
-        var resolveResult = registry.ResolveResourcePath(sidecarKey);
+        var resolveResult = workspaceService.ResourceService.Registry.ResolveResourcePath(sidecarKeyResult.Value);
         if (resolveResult.IsFailure)
         {
             return false;

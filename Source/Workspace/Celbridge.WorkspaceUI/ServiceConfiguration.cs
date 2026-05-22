@@ -21,6 +21,7 @@ public static class ServiceConfiguration
         services.AddTransient<IWorkspaceService, WorkspaceService>();
         services.AddTransient<IDataTransferService, DataTransferService>();
         services.AddTransient<WorkspaceLoader>();
+        services.AddTransient<ProjectCheckReporter>();
 
         //
         // Register panels

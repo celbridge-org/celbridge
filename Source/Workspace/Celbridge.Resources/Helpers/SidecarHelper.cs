@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using Celbridge.Logging;
 using Tomlyn;
 using Tomlyn.Model;
@@ -5,130 +7,302 @@ using Tomlyn.Model;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// The parsed result of a sidecar file: the frontmatter dictionary and the body string.
-/// </summary>
-public record SidecarParseResult(
-    IReadOnlyDictionary<string, object> Frontmatter,
-    string Body);
-
-/// <summary>
-/// Parse, compose, and on-disk inspection for the TOML-frontmatter-plus-body
-/// sidecar format used by .cel files. The frontmatter is fenced by lines
-/// containing only +++; the body that follows is opaque text.
+/// Parse, compose, and on-disk inspection for the .cel sidecar format: TOML
+/// frontmatter at the top, optionally followed by zero-or-more named content
+/// blocks delimited by lines of the form '+++ "block-name"'. Format constants
+/// and pure utility helpers used by the rest of the resources subsystem live
+/// here; the workspace-scoped ISidecarService exposes the surface that crosses
+/// project boundaries.
 /// </summary>
 public static class SidecarHelper
 {
     /// <summary>
-    /// The file extension for sidecar files.
+    /// The file extension used for sidecar files.
     /// </summary>
     public const string Extension = ".cel";
 
     /// <summary>
-    /// The fence delimiter for the frontmatter section.
+    /// The standardised list-of-string frontmatter field that the data tools
+    /// surface as tags.
     /// </summary>
-    public const string Delimiter = "+++";
+    public const string TagsFieldName = "tags";
+
+    // Fence line: '+++' then one space, then a double-quoted block name, with
+    // optional trailing whitespace. The block name is lowercase letters and
+    // digits with optional dotted segments separated by '.', and hyphens
+    // permitted inside a segment.
+    private static readonly Regex FenceLineRegex = new(
+        @"^\+\+\+\s+""([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*)""\s*$",
+        RegexOptions.Compiled);
+
+    // Block name regex: same shape as the fence's capture group, applied to
+    // candidate names at write time so a malformed block ID is caught before
+    // it lands on disk.
+    private static readonly Regex BlockNameRegex = new(
+        @"^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*$",
+        RegexOptions.Compiled);
 
     /// <summary>
-    /// Parses sidecar content into its frontmatter dictionary and body string.
-    /// Frontmatter is parsed as TOML; the body is returned verbatim.
-    /// Fails if the leading +++ fence is missing or no closing fence is found.
+    /// True when the candidate string matches the block-naming rules
+    /// (lowercase letters, digits, hyphens, dotted segments).
     /// </summary>
-    public static Result<SidecarParseResult> Parse(string text)
+    public static bool IsValidBlockName(string name)
+    {
+        return !string.IsNullOrEmpty(name)
+            && BlockNameRegex.IsMatch(name);
+    }
+
+    /// <summary>
+    /// True when the value can be written through the structured frontmatter
+    /// surface: scalars (string, numeric, bool, datetime) and lists of those.
+    /// Nested objects and mixed lists are rejected.
+    /// </summary>
+    public static bool IsIndexableValue(object? value)
+    {
+        if (value is null)
+        {
+            return false;
+        }
+        if (IsScalar(value))
+        {
+            return true;
+        }
+        if (value is System.Collections.IEnumerable enumerable
+            && value is not string)
+        {
+            foreach (var item in enumerable)
+            {
+                if (item is null
+                    || !IsScalar(item))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Extracts a string list from a frontmatter value (e.g. the tags field).
+    /// Returns an empty list when the value is missing or not a list-of-string.
+    /// </summary>
+    public static IReadOnlyList<string> ExtractStringList(object? value)
+    {
+        var result = new List<string>();
+        if (value is null
+            || value is string)
+        {
+            return result;
+        }
+        if (value is System.Collections.IEnumerable enumerable)
+        {
+            foreach (var item in enumerable)
+            {
+                if (item is string s)
+                {
+                    result.Add(s);
+                }
+            }
+        }
+        return result;
+    }
+
+    private static bool IsScalar(object value)
+    {
+        return value is string
+            || value is bool
+            || value is long
+            || value is int
+            || value is double
+            || value is float
+            || value is decimal
+            || value is DateTime
+            || value is DateTimeOffset
+            || value is DateOnly
+            || value is TimeOnly;
+    }
+
+    /// <summary>
+    /// Parses sidecar content into its frontmatter dictionary and ordered
+    /// block list. Frontmatter is parsed as TOML; block bodies are opaque text.
+    /// Fails if the TOML prefix is malformed or any block name appears twice.
+    /// </summary>
+    public static Result<SidecarContent> Parse(string text)
     {
         if (text is null)
         {
-            return Result<SidecarParseResult>.Fail("Sidecar content is null.");
+            return Result<SidecarContent>.Fail("Sidecar content is null.");
         }
 
-        // Strip an optional UTF-8 BOM so the fence detector sees the +++ on the
-        // first byte. Tomlyn is BOM-tolerant; this normalises the body too.
+        // Strip an optional UTF-8 BOM so the first byte is the first content
+        // character. Tomlyn is BOM-tolerant; this normalises the block split.
         if (text.Length > 0
             && text[0] == '﻿')
         {
             text = text.Substring(1);
         }
 
-        // Find the opening fence. The fence must be the first non-empty content
-        // in the file; leading whitespace before the fence is not permitted.
-        var openingFenceLineEnd = FindFenceLineEnd(text, startIndex: 0);
-        if (openingFenceLineEnd < 0)
+        var lines = SplitLines(text);
+
+        // Walk the lines once and record the index of every fence line. The
+        // frontmatter spans lines [0, firstFence); each block spans the lines
+        // from (fence + 1) to the next fence (or end of input).
+        var fenceIndexes = new List<int>();
+        var fenceNames = new List<string>();
+        for (int i = 0; i < lines.Count; i++)
         {
-            return Result<SidecarParseResult>.Fail("Sidecar content does not start with a '+++' fence line.");
+            var match = FenceLineRegex.Match(lines[i].Text);
+            if (match.Success)
+            {
+                fenceIndexes.Add(i);
+                fenceNames.Add(match.Groups[1].Value);
+            }
         }
 
-        // The frontmatter starts immediately after the opening fence's line terminator.
-        var frontmatterStart = openingFenceLineEnd;
-        var closingFenceStart = FindClosingFence(text, frontmatterStart);
-        if (closingFenceStart < 0)
-        {
-            return Result<SidecarParseResult>.Fail("Sidecar content has no closing '+++' fence.");
-        }
+        var frontmatterEnd = fenceIndexes.Count > 0 ? fenceIndexes[0] : lines.Count;
+        var frontmatterText = JoinLines(lines, 0, frontmatterEnd);
 
-        var frontmatterToml = text.Substring(frontmatterStart, closingFenceStart - frontmatterStart);
-
-        // Advance past the closing fence line to find the body start.
-        var closingFenceLineEnd = FindFenceLineEnd(text, closingFenceStart);
-        if (closingFenceLineEnd < 0)
-        {
-            // The closing fence is the final line of the file with no trailing
-            // line terminator. The body is empty.
-            closingFenceLineEnd = text.Length;
-        }
-
-        var body = text.Substring(closingFenceLineEnd);
-
-        var parseResult = ParseFrontmatterToml(frontmatterToml);
+        var parseResult = ParseFrontmatterToml(frontmatterText);
         if (parseResult.IsFailure)
         {
             return Result.Fail(parseResult);
         }
+        var frontmatter = parseResult.Value;
 
-        return Result<SidecarParseResult>.Ok(new SidecarParseResult(parseResult.Value, body));
+        var blocks = new List<SidecarBlock>(fenceIndexes.Count);
+        var seenNames = new HashSet<string>(StringComparer.Ordinal);
+        for (int b = 0; b < fenceIndexes.Count; b++)
+        {
+            var name = fenceNames[b];
+            if (!seenNames.Add(name))
+            {
+                return Result<SidecarContent>.Fail($"Sidecar contains duplicate block name '{name}'.");
+            }
+
+            var contentStart = fenceIndexes[b] + 1;
+            var contentEnd = b + 1 < fenceIndexes.Count ? fenceIndexes[b + 1] : lines.Count;
+            var content = JoinLines(lines, contentStart, contentEnd);
+
+            // Block content is line-oriented: the terminator that follows the
+            // last content line is a separator (between blocks or to EOF), not
+            // part of the block's semantic content. Stripping a single trailing
+            // \n or \r\n makes the SidecarBlock.Content value position-
+            // independent so its byte count is stable as adjacent blocks are
+            // added or removed.
+            content = StripTrailingTerminator(content);
+            blocks.Add(new SidecarBlock(name, content));
+        }
+
+        return Result<SidecarContent>.Ok(new SidecarContent(frontmatter, blocks));
     }
 
     /// <summary>
-    /// Composes a sidecar text from a frontmatter dictionary and a body string.
-    /// The frontmatter is emitted as TOML between '+++' fence lines; the body
-    /// follows the closing fence.
+    /// Composes a sidecar text from the frontmatter dictionary and named blocks.
+    /// The output is the inverse of Parse for any cleanly-parsed input.
     /// </summary>
-    public static string Compose(IReadOnlyDictionary<string, object> frontmatter, string body)
+    public static string Compose(SidecarContent content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        return Compose(content.Frontmatter, content.Blocks);
+    }
+
+    /// <summary>
+    /// Composes a sidecar text from a frontmatter dictionary and an ordered
+    /// list of named blocks.
+    /// </summary>
+    public static string Compose(
+        IReadOnlyDictionary<string, object> frontmatter,
+        IReadOnlyList<SidecarBlock> blocks)
     {
         ArgumentNullException.ThrowIfNull(frontmatter);
-        body ??= string.Empty;
+        blocks ??= Array.Empty<SidecarBlock>();
 
-        var tomlTable = new TomlTable();
-        foreach (var (key, value) in frontmatter)
+        var builder = new StringBuilder();
+
+        if (frontmatter.Count > 0)
         {
-            tomlTable[key] = ConvertToTomlValue(value);
+            var tomlTable = new TomlTable();
+            foreach (var (key, value) in frontmatter)
+            {
+                tomlTable[key] = ConvertToTomlValue(value);
+            }
+
+            var tomlText = Toml.FromModel(tomlTable);
+            // Toml.FromModel emits a trailing newline. Trim it so the join with
+            // the first fence (if any) is predictable; we add an explicit
+            // separator below.
+            tomlText = tomlText.TrimEnd('\r', '\n');
+            builder.Append(tomlText);
         }
 
-        var tomlText = Toml.FromModel(tomlTable);
-
-        // Toml.FromModel emits a trailing newline; trim trailing whitespace so
-        // the composed output has predictable fence-line spacing.
-        tomlText = tomlText.TrimEnd('\r', '\n');
-
-        var separator = "\n";
-        var hasBody = body.Length > 0;
-
-        var composed = Delimiter + separator;
-        if (tomlText.Length > 0)
+        for (int i = 0; i < blocks.Count; i++)
         {
-            composed += tomlText + separator;
-        }
-        composed += Delimiter + separator;
-        if (hasBody)
-        {
-            composed += body;
+            var block = blocks[i];
+            if (!IsValidBlockName(block.Name))
+            {
+                throw new ArgumentException($"Block name '{block.Name}' does not match the block-naming rules.");
+            }
+
+            // Each fence line starts on its own line. If we already wrote
+            // frontmatter or a prior block, ensure a newline before this fence.
+            if (builder.Length > 0
+                && builder[builder.Length - 1] != '\n')
+            {
+                builder.Append('\n');
+            }
+
+            builder.Append("+++ \"");
+            builder.Append(block.Name);
+            builder.Append("\"\n");
+            builder.Append(block.Content);
+
+            // Ensure each non-empty block contributes a trailing newline so
+            // the next fence (or EOF) starts on its own line and so the
+            // block's on-disk byte footprint is independent of position.
+            // Parse strips this terminator back off, restoring round-trip
+            // equivalence between "X" and "X\n" input.
+            if (block.Content.Length > 0
+                && block.Content[block.Content.Length - 1] != '\n')
+            {
+                builder.Append('\n');
+            }
         }
 
-        return composed;
+        // When only frontmatter is present, leave a single trailing newline so
+        // the file ends on a newline boundary. When blocks are present, each
+        // block now guarantees its own terminator (see the per-block append
+        // above), so the file already ends on \n.
+        if (blocks.Count == 0
+            && builder.Length > 0
+            && builder[builder.Length - 1] != '\n')
+        {
+            builder.Append('\n');
+        }
+
+        return builder.ToString();
+    }
+
+    // Removes a single trailing line terminator (\r\n or \n) from a block
+    // content slice extracted by Parse. The terminator is the separator
+    // between blocks (or to EOF), not part of the block's content.
+    private static string StripTrailingTerminator(string content)
+    {
+        if (content.EndsWith("\r\n", StringComparison.Ordinal))
+        {
+            return content.Substring(0, content.Length - 2);
+        }
+        if (content.EndsWith("\n", StringComparison.Ordinal))
+        {
+            return content.Substring(0, content.Length - 1);
+        }
+        return content;
     }
 
     /// <summary>
     /// Reads a sidecar file at absolutePath and classifies it as Healthy
-    /// (frontmatter parses cleanly) or Broken (any parse or read failure).
-    /// The bytes on disk are never modified.
+    /// (parses cleanly) or Broken (any parse or read failure). The bytes on
+    /// disk are never modified.
     /// </summary>
     public static SidecarStatus Inspect(string absolutePath, ILogger logger)
     {
@@ -146,115 +320,75 @@ public static class SidecarHelper
         var parseResult = Parse(text);
         if (parseResult.IsFailure)
         {
-            logger.LogWarning($"sidecar pairing: '{absolutePath}' has unparseable frontmatter");
+            logger.LogWarning($"sidecar pairing: '{absolutePath}' has unparseable content");
             return SidecarStatus.Broken;
         }
 
         return SidecarStatus.Healthy;
     }
 
-    // Returns the position immediately after the line terminator of the fence
-    // line that starts at startIndex, or -1 if no fence line is found there.
-    // A fence line is "+++" followed by an optional line terminator.
-    private static int FindFenceLineEnd(string text, int startIndex)
+    // One physical line plus the line terminator that follows it. The
+    // terminator is preserved so JoinLines reproduces the original bytes.
+    private readonly record struct PhysicalLine(string Text, string Terminator);
+
+    private static List<PhysicalLine> SplitLines(string text)
     {
-        if (startIndex < 0
-            || startIndex > text.Length)
+        var lines = new List<PhysicalLine>();
+        int start = 0;
+        int i = 0;
+        while (i < text.Length)
         {
-            return -1;
-        }
-
-        if (startIndex + Delimiter.Length > text.Length)
-        {
-            return -1;
-        }
-
-        if (string.CompareOrdinal(text, startIndex, Delimiter, 0, Delimiter.Length) != 0)
-        {
-            return -1;
-        }
-
-        int after = startIndex + Delimiter.Length;
-
-        // Allow trailing whitespace on the fence line up to but not including a
-        // line terminator. Anything else after the +++ is not a fence line.
-        while (after < text.Length)
-        {
-            var current = text[after];
-            if (current == '\r'
-                || current == '\n')
+            var c = text[i];
+            if (c == '\r')
             {
-                break;
-            }
-            if (current == ' '
-                || current == '\t')
-            {
-                after++;
+                var lineText = text.Substring(start, i - start);
+                string terminator;
+                if (i + 1 < text.Length
+                    && text[i + 1] == '\n')
+                {
+                    terminator = "\r\n";
+                    i += 2;
+                }
+                else
+                {
+                    terminator = "\r";
+                    i += 1;
+                }
+                lines.Add(new PhysicalLine(lineText, terminator));
+                start = i;
                 continue;
             }
-            return -1;
-        }
-
-        if (after >= text.Length)
-        {
-            return after;
-        }
-
-        if (text[after] == '\r')
-        {
-            after++;
-            if (after < text.Length
-                && text[after] == '\n')
+            if (c == '\n')
             {
-                after++;
+                var lineText = text.Substring(start, i - start);
+                lines.Add(new PhysicalLine(lineText, "\n"));
+                i += 1;
+                start = i;
+                continue;
             }
-            return after;
+            i++;
         }
-
-        if (text[after] == '\n')
+        if (start < text.Length)
         {
-            after++;
-            return after;
+            lines.Add(new PhysicalLine(text.Substring(start), string.Empty));
         }
-
-        return after;
+        return lines;
     }
 
-    // Returns the start position of the next fence line at column 0, or -1 if
-    // no closing fence is found.
-    private static int FindClosingFence(string text, int searchStart)
+    private static string JoinLines(List<PhysicalLine> lines, int startInclusive, int endExclusive)
     {
-        int lineStart = searchStart;
-        while (lineStart < text.Length)
+        if (startInclusive >= endExclusive)
         {
-            if (FindFenceLineEnd(text, lineStart) >= 0)
-            {
-                return lineStart;
-            }
-
-            // Advance to the next line.
-            int newlineIndex = text.IndexOfAny(new[] { '\r', '\n' }, lineStart);
-            if (newlineIndex < 0)
-            {
-                return -1;
-            }
-
-            if (text[newlineIndex] == '\r')
-            {
-                if (newlineIndex + 1 < text.Length
-                    && text[newlineIndex + 1] == '\n')
-                {
-                    lineStart = newlineIndex + 2;
-                    continue;
-                }
-                lineStart = newlineIndex + 1;
-                continue;
-            }
-
-            lineStart = newlineIndex + 1;
+            return string.Empty;
         }
 
-        return -1;
+        var builder = new StringBuilder();
+        for (int i = startInclusive; i < endExclusive; i++)
+        {
+            builder.Append(lines[i].Text);
+            builder.Append(lines[i].Terminator);
+        }
+        return builder.ToString();
     }
 
     private static Result<IReadOnlyDictionary<string, object>> ParseFrontmatterToml(string tomlText)

@@ -52,10 +52,16 @@ public interface IWorkspaceService
     IResourceFileSystem ResourceFileSystem { get; }
 
     /// <summary>
-    /// Returns the metadata service that maintains the reference graph and
-    /// frontmatter index for project resources.
+    /// Returns the on-demand scanner over project text and sidecar files,
+    /// used by the rename cascade, tag queries, and the project-health check.
     /// </summary>
-    IResourceMetaData ResourceMetaData { get; }
+    IResourceScanner ResourceScanner { get; }
+
+    /// <summary>
+    /// Returns the sidecar service: validation helpers plus read / mutate /
+    /// write operations over .cel sidecar files via the file-system chokepoint.
+    /// </summary>
+    ISidecarService SidecarService { get; }
 
     /// <summary>
     /// Returns the Explorer Service associated with the workspace.

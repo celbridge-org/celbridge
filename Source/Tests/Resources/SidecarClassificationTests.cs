@@ -58,11 +58,11 @@ public class SidecarClassificationTests
     }
 
     [Test]
-    public void NoFences_ClassifiedAsBroken_BytesUntouched()
+    public void MalformedTomlPrefix_ClassifiedAsBroken_BytesUntouched()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
-        var originalContent = "loose body text with no fences at all";
+        var originalContent = "not = valid = toml = !!!";
         File.WriteAllText(sidecarPath, originalContent);
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
@@ -72,25 +72,11 @@ public class SidecarClassificationTests
     }
 
     [Test]
-    public void MissingClosingFence_ClassifiedAsBroken_BytesUntouched()
+    public void UnterminatedTomlString_ClassifiedAsBroken_BytesUntouched()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
-        var originalContent = "+++\nkey = \"value\"\nno closing fence";
-        File.WriteAllText(sidecarPath, originalContent);
-
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
-
-        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Broken);
-        File.ReadAllText(sidecarPath).Should().Be(originalContent);
-    }
-
-    [Test]
-    public void MalformedToml_ClassifiedAsBroken_BytesUntouched()
-    {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
-        var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
-        var originalContent = "+++\nkey = \"unterminated\nstring = true\n+++\nbody";
+        var originalContent = "key = \"unterminated\nstring = true\n";
         File.WriteAllText(sidecarPath, originalContent);
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
@@ -105,13 +91,11 @@ public class SidecarClassificationTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
         var originalContent =
-            "+++\n" +
             "<<<<<<< HEAD\n" +
             "tags = [\"theirs\"]\n" +
             "=======\n" +
             "tags = [\"ours\"]\n" +
-            ">>>>>>> branch\n" +
-            "+++\n";
+            ">>>>>>> branch\n";
         File.WriteAllText(sidecarPath, originalContent);
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
@@ -122,11 +106,28 @@ public class SidecarClassificationTests
     }
 
     [Test]
+    public void DuplicateBlockNames_ClassifiedAsBroken_BytesUntouched()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
+        var originalContent =
+            "tags = [\"x\"]\n" +
+            "+++ \"a\"\nfirst\n" +
+            "+++ \"a\"\nsecond";
+        File.WriteAllText(sidecarPath, originalContent);
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Broken);
+        File.ReadAllText(sidecarPath).Should().Be(originalContent);
+    }
+
+    [Test]
     public void BomAndCrlf_ClassifiedAsHealthy()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
-        var content = "﻿+++\r\nkey = \"value\"\r\n+++\r\n";
+        var content = "﻿key = \"value\"\r\n";
         File.WriteAllText(sidecarPath, content);
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
@@ -139,11 +140,11 @@ public class SidecarClassificationTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "good.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "good.png.cel"),
-            "+++\ntags = [\"x\"]\n+++\n");
+            "tags = [\"x\"]\n");
 
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.png.cel"),
-            "+++\nmalformed = \n+++\n");
+            "malformed = \n");
 
         var result = _registry.UpdateResourceRegistry();
         result.IsSuccess.Should().BeTrue();

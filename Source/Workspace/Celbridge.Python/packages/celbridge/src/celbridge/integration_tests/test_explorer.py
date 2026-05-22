@@ -64,7 +64,7 @@ class TestExplorer:
         assert "moved.txt" in names
         assert "original.txt" not in names
 
-    def test_move_preserves_referential_integrity(self, explorer, file, metadata):
+    def test_move_preserves_referential_integrity(self, explorer, file, data):
         # The reference-rewrite cascade in IResourceFileSystem.MoveAsync must
         # leave no broken project: references after a move.
         file.write(
@@ -76,7 +76,7 @@ class TestExplorer:
         explorer.move("TestExplorer/target.md", "TestExplorer/renamed.md")
 
         # No project: reference in our test folder should be broken after the move.
-        report = metadata.check_project()
+        report = data.check_project()
         broken = [
             entry for entry in report.get("brokenReferences", [])
             if entry["source"].startswith("TestExplorer/")
@@ -84,9 +84,9 @@ class TestExplorer:
         ]
         assert broken == [], f"Move broke references: {broken}"
 
-    def test_delete_with_break_references_leaves_dangling_reference(self, explorer, file, metadata):
+    def test_delete_with_break_references_leaves_dangling_reference(self, explorer, file, data):
         # Deleting a referenced resource under break_references should leave
-        # the reference dangling, surfaced by metadata_check_project.
+        # the reference dangling, surfaced by data_check_project.
         file.write(
             "TestExplorer/has_ref.md",
             "Refers to \"project:TestExplorer/will_delete.md\".\n",
@@ -98,7 +98,7 @@ class TestExplorer:
             reference_policy="break_references",
         )
 
-        report = metadata.check_project()
+        report = data.check_project()
         broken_targets = {
             entry["missingTarget"]
             for entry in report.get("brokenReferences", [])

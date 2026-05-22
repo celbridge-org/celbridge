@@ -268,11 +268,12 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 var descendantRemovedMessage = new ResourceDeletedMessage(key);
                 _messengerService.Send(descendantRemovedMessage);
             }
-            var metaData = _workspaceWrapper.WorkspaceService.ResourceMetaData;
-            await metaData.WaitForPendingUpdatesAsync();
         }
 
-        return Result<MoveResult>.Ok(new MoveResult(updatedReferencers, skippedReferencers, sidecarOutcome));
+        await Task.CompletedTask;
+
+        var moveResult = new MoveResult(updatedReferencers, skippedReferencers, sidecarOutcome);
+        return moveResult;
     }
 
     public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination)
@@ -340,13 +341,10 @@ public sealed class ResourceFileSystem : IResourceFileSystem
 
         var sidecarOutcome = TryCascadeSidecarCopy(source, destination);
 
-        if (destination.Root == ResourceKey.DefaultRoot)
-        {
-            var metaData = _workspaceWrapper.WorkspaceService.ResourceMetaData;
-            await metaData.WaitForPendingUpdatesAsync();
-        }
+        await Task.CompletedTask;
 
-        return Result<CopyResult>.Ok(new CopyResult(sidecarOutcome));
+        var copyResult = new CopyResult(sidecarOutcome);
+        return copyResult;
     }
 
     public async Task<Result<DeleteResult>> DeleteAsync(ResourceKey source)
@@ -424,11 +422,12 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 var descendantRemovedMessage = new ResourceDeletedMessage(key);
                 _messengerService.Send(descendantRemovedMessage);
             }
-            var metaData = _workspaceWrapper.WorkspaceService.ResourceMetaData;
-            await metaData.WaitForPendingUpdatesAsync();
         }
 
-        return Result<DeleteResult>.Ok(new DeleteResult(sidecarOutcome));
+        await Task.CompletedTask;
+
+        var deleteResult = new DeleteResult(sidecarOutcome);
+        return deleteResult;
     }
 
     // Returns the resource keys of every file inside a folder that exists on
@@ -499,18 +498,10 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         List<ResourceKey> updatedReferencers,
         List<SkippedReferencer> skippedReferencers)
     {
-        var metaData = _workspaceWrapper.WorkspaceService.ResourceMetaData;
-        await metaData.WaitUntilReadyAsync();
-
-        // Drain any watcher events queued by prior operations (e.g. the delete
-        // half of an undone copy) before reading the referencer list. Without
-        // this, GetReferencers can return a stale entry for a file that was
-        // just deleted; the cascade then tries to read it and surfaces a
-        // phantom ReadFailed in SkippedReferencers.
-        await metaData.WaitForPendingUpdatesAsync();
+        var scanner = _workspaceWrapper.WorkspaceService.ResourceScanner;
 
         var referencerSet = new HashSet<ResourceKey>();
-        foreach (var referencer in metaData.GetReferencers(source))
+        foreach (var referencer in await scanner.FindReferencersAsync(source))
         {
             referencerSet.Add(referencer);
         }
@@ -520,11 +511,11 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             // Children of source contribute prefix-form references; gather every
             // referencer of every descendant target so the prefix rewrite reaches
             // each file that names a child key.
-            foreach (var target in metaData.GetAllReferencedTargets())
+            foreach (var target in await scanner.FindAllReferencedTargetsAsync())
             {
                 if (target.IsDescendantOf(source))
                 {
-                    foreach (var referencer in metaData.GetReferencers(target))
+                    foreach (var referencer in await scanner.FindReferencersAsync(target))
                     {
                         referencerSet.Add(referencer);
                     }
@@ -542,19 +533,18 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         // Per-referencer failures (typically file locked by an external editor
         // for a moment, or marked read-only by the user) are logged and skipped
         // rather than aborting the whole move. The parent move still completes;
-        // metadata_check_project (Phase 5) surfaces any references that
-        // remained stale, and a subsequent rerun of the rename picks up the
-        // residual rewrites because the FS layer is idempotent under partial
-        // completion (the source bytes are still in place between the rewrite
-        // loop and the parent move, and the reference graph re-derives on the
-        // next watcher event).
+        // data_check_project surfaces any references that remained stale, and a
+        // subsequent rerun of the rename picks up the residual rewrites because
+        // the FS layer is idempotent under partial completion (the source bytes
+        // are still in place between the rewrite loop and the parent move, and
+        // the next scanner call re-derives the referencer set).
         foreach (var referencer in orderedReferencers)
         {
             var readResult = await ReadAllTextAsync(referencer);
             if (readResult.IsFailure)
             {
                 var message = $"read failed for '{referencer}'";
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {message}. The reference is left as-is and will surface via metadata_check_project.");
+                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {message}. The reference is left as-is and will surface via data_check_project.");
                 skippedReferencers.Add(new SkippedReferencer(referencer, ReferencerSkipReason.ReadFailed, message));
                 continue;
             }
@@ -575,7 +565,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 // the user (or the calling agent) knows exactly why and can
                 // decide whether to fix the permissions and rerun the rename.
                 var classification = ClassifyReferencerWriteFailure(referencer, writeResult);
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {classification.Message}. The reference is left as-is and will surface via metadata_check_project.");
+                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {classification.Message}. The reference is left as-is and will surface via data_check_project.");
                 skippedReferencers.Add(new SkippedReferencer(referencer, classification.Reason, classification.Message));
                 continue;
             }
@@ -837,16 +827,14 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         }
     }
 
-    // Returns a new ResourceKey with ".cel" appended to the path portion, or
-    // null for a root-only key (no path to append to).
-    private static ResourceKey? AppendSidecarSuffix(ResourceKey key)
+    // Returns the sidecar resource key for the given parent, or null when no
+    // valid sidecar key can be derived (root-only key, or the parent itself
+    // is already a sidecar key — in which case there is nothing to cascade).
+    private ResourceKey? AppendSidecarSuffix(ResourceKey key)
     {
-        if (key.IsEmpty)
-        {
-            return null;
-        }
-
-        return new ResourceKey(key.Root + ":" + key.Path + SidecarHelper.Extension);
+        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var result = sidecarService.GetSidecarKey(key);
+        return result.IsSuccess ? result.Value : null;
     }
 
     // Clears the read-only attribute from a file before the FS layer performs

@@ -11,7 +11,7 @@ public sealed partial record ParsedReference(int StartIndex, int EndIndex, Resou
 
 /// <summary>
 /// Shared rules for parsing "project:" reference literals in text. The
-/// detection pass in <see cref="ResourceMetaData"/> and the rewrite cascade in
+/// detection pass in <see cref="ResourceScanner"/> and the rewrite cascade in
 /// <see cref="ResourceFileSystem"/> both consume this module so they cannot
 /// drift on what constitutes a valid reference. A symmetry test in
 /// Celbridge.Tests asserts that every position the scanner records is a

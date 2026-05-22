@@ -48,6 +48,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     private string _migrationBannerMessage = string.Empty;
 
     [ObservableProperty]
+    private bool _isProjectCheckBannerVisible;
+
+    [ObservableProperty]
+    private string _projectCheckBannerTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _projectCheckBannerMessage = string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreGlyph))]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreTooltip))]
     [NotifyPropertyChangedFor(nameof(IsMaximizeButtonHighlighted))]
@@ -189,6 +198,18 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorMessage");
                 break;
 
+            case ConsoleErrorType.ProjectCheckError:
+                // Project check findings are advisory, not blocking — the
+                // project loaded fine. Route to the dismissable warning
+                // banner rather than the non-dismissable error banner, and
+                // return early so the error-banner side effects below do
+                // not fire.
+                ProjectCheckBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectCheckFindingsTitle");
+                ProjectCheckBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectCheckFindingsMessage", configFile);
+                IsProjectCheckBannerVisible = true;
+                ShowConsolePanel();
+                return;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -198,6 +219,11 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         // Hide project change banner when error banner is shown
         IsProjectChangeBannerVisible = false;
+    }
+
+    public void OnProjectCheckBannerClosed()
+    {
+        IsProjectCheckBannerVisible = false;
     }
 
     public void OnReloadProjectClicked()

@@ -48,5 +48,5 @@ def spreadsheet():
 
 
 @pytest.fixture(scope="session")
-def metadata():
-    return celbridge.metadata
+def data():
+    return celbridge.data

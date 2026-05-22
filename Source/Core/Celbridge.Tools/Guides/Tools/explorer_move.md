@@ -32,7 +32,7 @@ The compact `"ok"` is reserved for the no-side-effect case: the move touched no 
   - `"ok_with_skipped_referencers"` — the move itself completed but the cascade left some references stale (see `skippedReferencers`).
   - `"partial_failure"` — one or more resources in the batch failed mechanically (see `failedResources`).
 - `updatedReferencers` lists the files whose references were rewritten.
-- `skippedReferencers` lists the files the cascade couldn't update. `reason` is one of `ReadFailed` / `WriteFailed` / `ReadOnly` / `PermissionDenied`. `ReadOnly` is the DOS read-only attribute (trivially clearable); `PermissionDenied` is an ACL / POSIX denial (needs the right account or admin). The reference is left as-is and will surface via `metadata_check_project` (Phase 5). Re-running the move after the blocker clears (clear the read-only flag, grant write access, close the editor that holds the lock) completes the cascade idempotently.
+- `skippedReferencers` lists the files the cascade couldn't update. `reason` is one of `ReadFailed` / `WriteFailed` / `ReadOnly` / `PermissionDenied`. `ReadOnly` is the DOS read-only attribute (trivially clearable); `PermissionDenied` is an ACL / POSIX denial (needs the right account or admin). The reference is left as-is and will surface via `data_check_project`. Re-running the move after the blocker clears (clear the read-only flag, grant write access, close the editor that holds the lock) completes the cascade idempotently.
 - `failedResources` lists source resources whose bytes operation failed.
 
 ## Gotchas
