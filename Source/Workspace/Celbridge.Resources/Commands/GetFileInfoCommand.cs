@@ -21,7 +21,9 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             ModifiedUtc: DateTime.MinValue,
             Extension: string.Empty,
             IsText: false,
-            LineCount: null);
+            LineCount: null,
+            SidecarKey: null,
+            SidecarStatus: null);
 
     public GetFileInfoCommand(
         IWorkspaceWrapper workspaceWrapper,
@@ -55,6 +57,20 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 lineCount = File.ReadAllLines(resourcePath).Length;
             }
 
+            // Surface the paired sidecar's key and current parse state when
+            // the registry has recorded one for this file. Sidecars belong to
+            // file resources only; folders don't have their own sidecars in v1.
+            string? sidecarKey = null;
+            SidecarStatus? sidecarStatus = null;
+            var resourceResult = resourceRegistry.GetResource(Resource);
+            if (resourceResult.IsSuccess
+                && resourceResult.Value is IFileResource fileResource
+                && fileResource.Sidecar is not null)
+            {
+                sidecarKey = fileResource.Sidecar.Key.ToString();
+                sidecarStatus = fileResource.Sidecar.Status;
+            }
+
             ResultValue = new FileInfoSnapshot(
                 Exists: true,
                 IsFile: true,
@@ -62,7 +78,9 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 ModifiedUtc: fileInfo.LastWriteTimeUtc,
                 Extension: fileInfo.Extension,
                 IsText: isText,
-                LineCount: lineCount);
+                LineCount: lineCount,
+                SidecarKey: sidecarKey,
+                SidecarStatus: sidecarStatus);
 
             return Result.Ok();
         }
@@ -78,7 +96,9 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 ModifiedUtc: directoryInfo.LastWriteTimeUtc,
                 Extension: string.Empty,
                 IsText: false,
-                LineCount: null);
+                LineCount: null,
+                SidecarKey: null,
+                SidecarStatus: null);
 
             return Result.Ok();
         }

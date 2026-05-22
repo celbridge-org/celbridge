@@ -72,4 +72,17 @@ public static class ProjectConstants
     /// workspace load to clear orphans left by previous crashes.
     /// </summary>
     public const string CelbridgeStagingFsFolder = "staging-fs";
+
+    /// <summary>
+    /// Sub-folder of .celbridge/ that holds host-private caches. Files in this
+    /// folder are managed directly by their owning services (e.g. the metadata
+    /// cache) rather than through IResourceFileSystem.
+    /// </summary>
+    public const string CelbridgeCacheFolder = "cache";
+
+    /// <summary>
+    /// Filename of the resource-metadata cache inside CelbridgeCacheFolder.
+    /// JSON document; mtime + size validated per-entry on load.
+    /// </summary>
+    public const string MetaDataCacheFileName = "metadata.json";
 }

@@ -51,6 +51,14 @@ public class ResourceMetaDataTests
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
+        // The mutation tools route writes through IResourceFileSystem, so the
+        // fixture wires a real implementation against the temp project folder.
+        var fileSystem = new ResourceFileSystem(
+            Substitute.For<ILogger<ResourceFileSystem>>(),
+            _messengerService,
+            _workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(fileSystem);
+
         _metaData = new ResourceMetaData(
             Substitute.For<ILogger<ResourceMetaData>>(),
             _messengerService,
@@ -329,15 +337,127 @@ public class ResourceMetaDataTests
     }
 
     [Test]
-    public void FrontmatterMethods_ThrowNotImplementedException()
+    public async Task RebuildAsync_IndexesSidecarFrontmatter()
     {
-        // The frontmatter index methods are not yet implemented and throw.
-        var resource = new ResourceKey("foo.md");
+        // A .cel sidecar contributes its top-level frontmatter to the
+        // per-resource snapshot keyed against the parent file.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes body.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
+            "+++\ntags = [\"meeting\", \"follow-up\"]\npriority = \"high\"\n+++\n");
 
-        Assert.Throws<NotImplementedException>(() => _metaData.GetFrontmatter(resource));
-        Assert.Throws<NotImplementedException>(() => _metaData.FindByMetaData("tags", "x"));
-        Assert.Throws<NotImplementedException>(() => _metaData.GetTags(resource));
-        Assert.Throws<NotImplementedException>(() => _metaData.FindByTag("x"));
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        var rebuildResult = await _metaData.RebuildAsync();
+
+        rebuildResult.IsSuccess.Should().BeTrue();
+        rebuildResult.Value.FrontmatterEntries.Should().Be(1);
+
+        var parent = new ResourceKey("notes.md");
+        var frontmatterResult = _metaData.GetFrontmatter(parent);
+        frontmatterResult.IsSuccess.Should().BeTrue();
+        frontmatterResult.Value["priority"].Should().Be("high");
+
+        _metaData.GetTags(parent).Should().Contain("meeting").And.Contain("follow-up");
+
+        _metaData.FindByMetaData("priority", "high").Should().Contain(parent);
+        _metaData.FindByTag("meeting").Should().Contain(parent);
+    }
+
+    [Test]
+    public async Task RebuildAsync_BrokenSidecar_ProducesNoFrontmatterEntries()
+    {
+        // Frontmatter that fails to parse is dropped silently — the registry's
+        // pairing pass classifies the sidecar as Broken via SidecarReport and
+        // the metadata service simply records no index entries for it.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Notes body.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
+            "+++\nthis is not valid toml === yikes\n+++\n");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        var rebuildResult = await _metaData.RebuildAsync();
+
+        rebuildResult.IsSuccess.Should().BeTrue();
+        rebuildResult.Value.FrontmatterEntries.Should().Be(0);
+
+        var parent = new ResourceKey("notes.md");
+        _metaData.GetFrontmatter(parent).IsFailure.Should().BeTrue();
+        _metaData.GetTags(parent).Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task RebuildAsync_SidecarWithReferencesAndFrontmatter_ContributesToBothIndexes()
+    {
+        // A .cel file can carry both project: references inside its frontmatter
+        // (e.g. a "related" field) and indexable scalar fields. Both indexes
+        // must reflect the file.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md"), "Doc body.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "target.md"), "Target.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md.cel"),
+            "+++\npriority = \"high\"\nrelated = \"project:target.md\"\n+++\nBody text.");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        await _metaData.RebuildAsync();
+
+        var parent = new ResourceKey("doc.md");
+        var sidecarKey = new ResourceKey("doc.md.cel");
+
+        // The frontmatter index keys against the parent.
+        _metaData.FindByMetaData("priority", "high").Should().Contain(parent);
+
+        // The reference graph indexes the sidecar as a source (it's the file
+        // that contains the literal), pointing at target.md.
+        _metaData.GetReferencers(new ResourceKey("target.md")).Should().Contain(sidecarKey);
+    }
+
+    [Test]
+    public async Task FindByMetaData_ListField_MatchesByContains()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "a.md"), "Body A.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "b.md"), "Body B.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "a.md.cel"),
+            "+++\ntags = [\"alpha\", \"beta\"]\n+++\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "b.md.cel"),
+            "+++\ntags = [\"alpha\", \"gamma\"]\n+++\n");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        await _metaData.RebuildAsync();
+
+        _metaData.FindByMetaData("tags", "alpha")
+            .Should().Contain(new ResourceKey("a.md"))
+            .And.Contain(new ResourceKey("b.md"));
+
+        _metaData.FindByMetaData("tags", "beta")
+            .Should().Contain(new ResourceKey("a.md"))
+            .And.NotContain(new ResourceKey("b.md"));
+    }
+
+    [Test]
+    public async Task FindByMetaData_NumericQuery_FindsLongTypedScalar()
+    {
+        // TOML integers parse as long; the query must canonicalise an int
+        // argument into the same key form so the lookup succeeds.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "task.md"), "Task body.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "task.md.cel"),
+            "+++\nestimate = 42\n+++\n");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        await _metaData.RebuildAsync();
+
+        _metaData.FindByMetaData("estimate", 42).Should().Contain(new ResourceKey("task.md"));
+        _metaData.FindByMetaData("estimate", (long)42).Should().Contain(new ResourceKey("task.md"));
+    }
+
+    [Test]
+    public async Task RebuildAsync_InvalidSidecarFile_DoesNotIndexFrontmatter()
+    {
+        // A file ending in .cel.cel is the invalid-sidecar marker; the registry
+        // refuses to pair it and the metadata service must follow suit.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "weird.png.cel.cel"),
+            "+++\ntags = [\"should-not-index\"]\n+++\n");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        await _metaData.RebuildAsync();
+
+        _metaData.FindByMetaData("tags", "should-not-index").Should().BeEmpty();
     }
 
     [Test]
@@ -372,5 +492,118 @@ public class ResourceMetaDataTests
             // The existing index entry for source.md → target.md must survive.
             _metaData.GetReferencers(targetKey).Should().Contain(sourceKey);
         }
+    }
+
+    [Test]
+    public async Task SetFrontmatterField_UpdatesIndex_BeforeWatcherEventDelivers()
+    {
+        // The file watcher delivers ResourceChangedMessage asynchronously via
+        // the UI dispatcher, so the post-write index update must run inline
+        // inside the mutation path. Otherwise an agent that calls set followed
+        // by get on the same call sees a stale "no frontmatter indexed" error.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Body.");
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _metaData.RebuildAsync()).IsSuccess.Should().BeTrue();
+
+        var resource = new ResourceKey("notes.md");
+        var setResult = await _metaData.SetFrontmatterFieldAsync(resource, "priority", "high");
+        setResult.IsSuccess.Should().BeTrue();
+
+        // No WaitForPendingUpdatesAsync / Task.Delay here — the index must
+        // reflect the write the moment SetFrontmatterFieldAsync returns.
+        var frontmatterResult = _metaData.GetFrontmatter(resource);
+        frontmatterResult.IsSuccess.Should().BeTrue();
+        frontmatterResult.Value.Should().ContainKey("priority");
+        frontmatterResult.Value["priority"].Should().Be("high");
+
+        _metaData.FindByMetaData("priority", "high").Should().Contain(resource);
+    }
+
+    [Test]
+    public async Task AddTag_UpdatesIndex_BeforeWatcherEventDelivers()
+    {
+        // Same race as Set, exercised through the tag-specific surface. The
+        // FindByTag lookup is a thin alias for FindByMetaData against "tags",
+        // so this also covers the list-of-scalar indexing path.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Body.");
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _metaData.RebuildAsync()).IsSuccess.Should().BeTrue();
+
+        var resource = new ResourceKey("notes.md");
+        var addResult = await _metaData.AddTagAsync(resource, "flagged");
+        addResult.IsSuccess.Should().BeTrue();
+
+        _metaData.GetTags(resource).Should().Contain("flagged");
+        _metaData.FindByTag("flagged").Should().Contain(resource);
+    }
+
+    [Test]
+    public async Task SpuriousDeleteEvent_DoesNotClearIndex_WhenFileStillOnDisk()
+    {
+        // Third race: ResourceFileSystem.WriteAtomicAsync uses
+        // File.Move(overwrite: true) to replace existing files, which on
+        // Windows fires a FileSystemWatcher delete event for the
+        // destination followed by a create event. If OnResourceDeleted
+        // clears the index unconditionally, the synchronous entry from
+        // MutateSidecarFrontmatterAsync gets clobbered in the window
+        // before the rescan reads the file back. Sending a delete event
+        // for a file that is still on disk simulates the spurious case.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Body.");
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _metaData.RebuildAsync()).IsSuccess.Should().BeTrue();
+
+        var resource = new ResourceKey("notes.md");
+        (await _metaData.AddTagAsync(resource, "alpha")).IsSuccess.Should().BeTrue();
+        (await _metaData.AddTagAsync(resource, "beta")).IsSuccess.Should().BeTrue();
+
+        // The sidecar file is on disk and the index has both tags. Fire a
+        // delete event for the sidecar key while the file still exists —
+        // this is the shape WriteAtomicAsync's overwrite produces.
+        var sidecarKey = new ResourceKey("notes.md.cel");
+        _messengerService.Send(new ResourceDeletedMessage(sidecarKey));
+
+        // The index must still reflect both tags. The companion create
+        // event would normally arrive next; we don't send it here, since
+        // the assertion target is that the spurious delete alone does
+        // not clear the entry.
+        var frontmatterResult = _metaData.GetFrontmatter(resource);
+        frontmatterResult.IsSuccess.Should().BeTrue();
+        var tags = (System.Collections.IEnumerable)frontmatterResult.Value["tags"];
+        tags.Cast<object>().Select(t => t?.ToString()).Should().Contain(new[] { "alpha", "beta" });
+    }
+
+    [Test]
+    public async Task WatcherRescan_DoesNotClobberFreshIndex_WhenRegistryLags()
+    {
+        // Second race: after MutateSidecarFrontmatterAsync writes a new
+        // sidecar and synchronously seeds the index, the file watcher's
+        // ResourceCreatedMessage arrives at the worker. If the worker
+        // looked up the sidecar's parent via the registry, the lookup would
+        // fail (the registry's pairing table is only refreshed by
+        // UpdateResourceRegistry, which lags the watcher) and the fresh
+        // index entry would be dropped. The fix derives the parent key by
+        // stripping ".cel" directly so the worker can refresh the entry
+        // without depending on the registry catching up.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "Body.");
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _metaData.RebuildAsync()).IsSuccess.Should().BeTrue();
+
+        var resource = new ResourceKey("notes.md");
+        (await _metaData.SetFrontmatterFieldAsync(resource, "priority", "high")).IsSuccess.Should().BeTrue();
+
+        // Deliberately skip UpdateResourceRegistry so the registry still
+        // does not know about notes.md.cel. Send the watcher event the
+        // way ResourceMonitor would have.
+        var sidecarKey = new ResourceKey("notes.md.cel");
+        _messengerService.Send(new ResourceCreatedMessage(sidecarKey));
+        await _metaData.WaitForPendingUpdatesAsync();
+        await Task.Delay(50);
+
+        // The frontmatter entry seeded by SetFrontmatterFieldAsync must
+        // survive the rescan, even though the registry has not paired the
+        // sidecar yet.
+        var frontmatterResult = _metaData.GetFrontmatter(resource);
+        frontmatterResult.IsSuccess.Should().BeTrue();
+        frontmatterResult.Value["priority"].Should().Be("high");
     }
 }

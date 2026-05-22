@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -139,6 +140,12 @@ public class WorkspaceLoader
             {
                 _logger.LogWarning(rebuildResult, "Failed to rebuild resource metadata index");
             }
+
+            // Fire-and-forget the project-health check so banner-worthy findings
+            // surface in the host log without blocking workspace load. The
+            // command awaits the metadata index internally and then walks the
+            // reference graph; on a clean project the result is empty.
+            _ = Task.Run(() => RunProjectCheckAsync());
         }
         catch (Exception ex)
         {
@@ -229,6 +236,46 @@ public class WorkspaceLoader
         }
 
         return Result.Ok();
+    }
+
+    // Runs metadata_check_project in the background and writes a one-line
+    // summary per non-empty category to the host log. The check is read-only
+    // and does not repair anything; surfacing the issues here lets the user
+    // notice them without having to invoke the MCP tool by hand.
+    private async Task RunProjectCheckAsync()
+    {
+        try
+        {
+            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
+            var reportResult = await commandService.ExecuteAsync<IProjectCheckCommand, ProjectCheckReport>();
+            if (reportResult.IsFailure)
+            {
+                _logger.LogWarning(reportResult, "Project consistency check failed.");
+                return;
+            }
+            var report = reportResult.Value;
+
+            if (report.BrokenReferences.Count > 0)
+            {
+                _logger.LogWarning(
+                    $"Project consistency check: {report.BrokenReferences.Count} broken project: reference(s). Run metadata_check_project for the full list.");
+            }
+            if (report.OrphanSidecars.Count > 0)
+            {
+                _logger.LogWarning(
+                    $"Project consistency check: {report.OrphanSidecars.Count} orphan sidecar(s). Run metadata_check_project for the full list.");
+            }
+            if (report.BrokenSidecars.Count > 0)
+            {
+                _logger.LogWarning(
+                    $"Project consistency check: {report.BrokenSidecars.Count} broken sidecar(s). Run metadata_check_project for the full list.");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Never let the background check tear down the workspace load path.
+            _logger.LogWarning(ex, "Project consistency check threw an unexpected exception.");
+        }
     }
 
     private async Task TryInitializePythonAsync(IWorkspaceService workspaceService)

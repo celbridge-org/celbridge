@@ -5,7 +5,9 @@ namespace Celbridge.Resources;
 /// <summary>
 /// Snapshot of metadata for a single file or folder resource, produced by IGetFileInfoCommand.
 /// Exists is false when the resource cannot be resolved. IsFile distinguishes file from folder
-/// when Exists is true. IsText and LineCount are only populated for text files.
+/// when Exists is true. IsText and LineCount are only populated for text files. Sidecar* fields
+/// describe the paired .cel sidecar when one is registered on the parent file; they remain null
+/// for files without a sidecar and for folders.
 /// </summary>
 public record class FileInfoSnapshot(
     bool Exists,
@@ -14,7 +16,9 @@ public record class FileInfoSnapshot(
     DateTime ModifiedUtc,
     string Extension,
     bool IsText,
-    int? LineCount);
+    int? LineCount,
+    string? SidecarKey,
+    SidecarStatus? SidecarStatus);
 
 /// <summary>
 /// Read-only query that captures metadata for a single file or folder resource in a snapshot.

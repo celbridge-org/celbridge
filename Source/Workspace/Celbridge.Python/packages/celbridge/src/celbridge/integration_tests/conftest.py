@@ -45,3 +45,8 @@ def webview():
 @pytest.fixture(scope="session")
 def spreadsheet():
     return celbridge.spreadsheet
+
+
+@pytest.fixture(scope="session")
+def metadata():
+    return celbridge.metadata
