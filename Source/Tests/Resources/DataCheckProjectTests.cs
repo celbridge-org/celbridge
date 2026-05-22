@@ -86,9 +86,12 @@ public class DataCheckProjectTests
     [Test]
     public async Task CleanProject_AllReportListsAreEmpty()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "a.md"), "Body A.");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "b.md"),
-            "Refers to \"project:a.md\".");
+        // Fixture uses .txt because reference scanning excludes documentation
+        // file types (.md). See ResourceScanner.ExcludedExtensions for the
+        // rationale.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "a.txt"), "Body A.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "b.txt"),
+            "Refers to \"project:a.txt\".");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -102,8 +105,8 @@ public class DataCheckProjectTests
     [Test]
     public async Task BrokenReference_IsReportedWithSourceAndTarget()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "source.md"),
-            "Refers to \"project:missing.md\" which is not present.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.txt"),
+            "Refers to \"project:missing.txt\" which is not present.");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -111,8 +114,48 @@ public class DataCheckProjectTests
 
         _command.ResultValue.BrokenReferences.Should().HaveCount(1);
         var entry = _command.ResultValue.BrokenReferences[0];
-        entry.Source.Should().Be(new ResourceKey("source.md"));
-        entry.MissingTarget.Should().Be(new ResourceKey("missing.md"));
+        entry.Source.Should().Be(new ResourceKey("source.txt"));
+        entry.MissingTarget.Should().Be(new ResourceKey("missing.txt"));
+    }
+
+    [Test]
+    public async Task MarkdownReferences_AreExcludedFromScan()
+    {
+        // Markdown is documentation, not data. A "project:..." literal inside
+        // a .md file is a descriptive mention, not an active reference, so the
+        // scanner deliberately skips .md files for both cascade rewrites and
+        // broken-reference detection. This test guards that exclusion.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"),
+            "This documentation mentions \"project:missing.md\" but it should NOT be tracked.");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        _command.ResultValue.BrokenReferences.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task SidecarOfExcludedParent_IsStillScanned()
+    {
+        // A .cel sidecar attached to an excluded parent (e.g. notes.md.cel
+        // next to notes.md) carries the .cel extension under
+        // Path.GetExtension, NOT the parent's .md extension. The exclusion
+        // policy excludes by file extension, not by parent — sidecars are
+        // data regardless of what they're paired with, so they continue to
+        // participate in reference scanning even when their parent file is
+        // a documentation type.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"),
+            "Body.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
+            "editor = \"celbridge.notes\"\nlink = \"project:missing.txt\"\n");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        _command.ResultValue.BrokenReferences.Should().ContainSingle()
+            .Which.Source.Should().Be(new ResourceKey("notes.md.cel"));
     }
 
     [Test]
@@ -163,16 +206,16 @@ public class DataCheckProjectTests
     [Test]
     public async Task MultipleBrokenReferences_OrderedDeterministically()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "a.md"),
-            "Refers \"project:zzz.md\" and \"project:aaa.md\".");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "b.md"),
-            "Also refers \"project:zzz.md\".");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "a.txt"),
+            "Refers \"project:zzz.txt\" and \"project:aaa.txt\".");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "b.txt"),
+            "Also refers \"project:zzz.txt\".");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        // Three entries: aaa.md from a.md; zzz.md from a.md and b.md.
+        // Three entries: aaa.txt from a.txt; zzz.txt from a.txt and b.txt.
         // The ordering is by missingTarget then by source.
         _command.ResultValue.BrokenReferences.Should().HaveCount(3);
 
@@ -180,10 +223,10 @@ public class DataCheckProjectTests
             .Select(r => (r.MissingTarget.ToString(), r.Source.ToString()))
             .ToList();
 
-        keys[0].Item1.Should().Be("project:aaa.md");
-        keys[1].Item1.Should().Be("project:zzz.md");
-        keys[2].Item1.Should().Be("project:zzz.md");
-        keys[1].Item2.Should().Be("project:a.md");
-        keys[2].Item2.Should().Be("project:b.md");
+        keys[0].Item1.Should().Be("project:aaa.txt");
+        keys[1].Item1.Should().Be("project:zzz.txt");
+        keys[2].Item1.Should().Be("project:zzz.txt");
+        keys[1].Item2.Should().Be("project:a.txt");
+        keys[2].Item2.Should().Be("project:b.txt");
     }
 }

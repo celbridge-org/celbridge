@@ -270,6 +270,11 @@ public sealed class ResourceScanner : IResourceScanner
         ConcurrentDictionary<string, bool> textSniffCache)
     {
         var extension = Path.GetExtension(absolutePath);
+        if (ResourceScanRules.IsExcludedExtension(extension))
+        {
+            return false;
+        }
+
         if (!string.IsNullOrEmpty(extension)
             && _textBinarySniffer.IsBinaryExtension(extension))
         {
