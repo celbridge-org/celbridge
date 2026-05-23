@@ -17,18 +17,18 @@ A resource key has the optional `root:path` form. When no root prefix is given, 
 
 ## Roots
 
-- `project:` — the visible project tree. The default root; the prefix is optional in input and omitted in output. Use for all user content.
+- `project:` — the visible project tree. The default root; the prefix is optional in input but always present in output. Use for all user content.
 - `temp:` — host scratch space (`.celbridge/temp/`). Hidden from the resource tree. Used by host tools, scripts, and agents for transient artifacts and staging output. Contents are not version-controlled. Conventional sub-folders include `temp:staging/...`, `temp:scratch/...`, and `temp:cache/...`.
 - `logs:` — host diagnostic logs (`.celbridge/logs/`). Hidden from the resource tree. Used by the host engine, Python scripts, agents, and Console panel session loggers.
 
 ## Output canonical form
 
-When a tool reports a resource key in its result or in an error message, it uses the canonical form:
+When a tool reports a resource key in its result or in an error message, it always carries the explicit root prefix:
 
-- `project:` keys are reported as bare paths (e.g. `Scripts/hello.py`), never with the explicit `project:` prefix.
+- `project:` keys are reported as `project:Scripts/hello.py`, never bare `Scripts/hello.py`.
 - Non-`project:` keys are reported with their full root prefix (e.g. `temp:staging/pkg/file.txt`).
 
-So `file_read` against a missing `temp:foo/bar` reports `temp:foo/bar` in the error, never bare `foo/bar`.
+This form matches the literal that the reference scanner detects in file content, so a key copied from a tool response can be pasted straight into a quoted reference without forgetting the prefix.
 
 ## Rules
 

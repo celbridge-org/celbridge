@@ -13,12 +13,32 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 
     public abstract IReadOnlyList<string> SupportedExtensions { get; }
 
+    public virtual IReadOnlyList<string> SupportedFilenames { get; } = Array.Empty<string>();
+
     public virtual EditorPriority Priority => EditorPriority.Specialized;
 
     public virtual bool CanHandleResource(ResourceKey fileResource, string filePath)
     {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-        return SupportedExtensions.Contains(extension);
+        var fileName = Path.GetFileName(fileResource.ToString());
+
+        foreach (var supportedFilename in SupportedFilenames)
+        {
+            if (string.Equals(fileName, supportedFilename, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        var lowerFileName = fileName.ToLowerInvariant();
+        foreach (var supportedExtension in SupportedExtensions)
+        {
+            if (lowerFileName.EndsWith(supportedExtension, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public abstract Result<IDocumentView> CreateDocumentView(ResourceKey fileResource);

@@ -3,6 +3,9 @@ using Celbridge.Core.Components;
 using Celbridge.Documents;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Resources;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Core;
 
@@ -26,7 +29,12 @@ public class Module : IModule
 
     public IReadOnlyList<IDocumentEditorFactory> CreateDocumentEditorFactories(IServiceProvider serviceProvider)
     {
-        return [];
+        var stringLocalizer = serviceProvider.GetRequiredService<IStringLocalizer>();
+        return
+        [
+            new ProjectFileFactory(stringLocalizer),
+            new ModManifestFactory(stringLocalizer),
+        ];
     }
 
     public Result<IActivity> CreateActivity(string activityName)

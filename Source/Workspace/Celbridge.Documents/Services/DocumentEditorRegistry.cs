@@ -9,6 +9,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     private bool _disposed;
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
+    private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<DocumentEditorId> _registeredEditorIds = new();
     private readonly Dictionary<DocumentEditorId, IDocumentEditorFactory> _idToFactory = new();
 
@@ -19,9 +20,17 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     {
         Guard.IsNotNull(factory);
 
-        if (factory.SupportedExtensions.Count == 0)
+        // NSubstitute stubs return null for collection properties that are
+        // never explicitly configured, so treat null as empty here rather than
+        // pushing the burden to every test setup.
+        var supportedExtensions = factory.SupportedExtensions ?? Array.Empty<string>();
+        var supportedFilenames = factory.SupportedFilenames ?? Array.Empty<string>();
+
+        var supportsAnything = supportedExtensions.Count > 0
+            || supportedFilenames.Count > 0;
+        if (!supportsAnything)
         {
-            return Result.Fail("Factory must support at least one extension");
+            return Result.Fail("Factory must support at least one extension or filename");
         }
 
         if (!_registeredEditorIds.Add(factory.EditorId))
@@ -35,8 +44,10 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         _idToFactory[factory.EditorId] = factory;
         _factories.Add(factory);
 
-        // Index the factory by each supported extension
-        foreach (var extension in factory.SupportedExtensions)
+        // Index the factory by each supported extension.
+        // Multi-part extensions such as ".project.cel" are indexed as-is; the
+        // longest-suffix walk in GetFactory tries the most specific form first.
+        foreach (var extension in supportedExtensions)
         {
             var normalizedExtension = extension.ToLowerInvariant();
 
@@ -52,6 +63,20 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         }
 
+        // Index the factory by each supported exact filename. Filename matches
+        // are tried before any extension match in GetFactory.
+        foreach (var filename in supportedFilenames)
+        {
+            if (!_filenameToFactories.TryGetValue(filename, out var factoryList))
+            {
+                factoryList = new List<IDocumentEditorFactory>();
+                _filenameToFactories[filename] = factoryList;
+            }
+
+            factoryList.Add(factory);
+            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        }
+
         return Result.Ok();
     }
 
@@ -61,17 +86,38 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     /// </summary>
     public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource, string filePath)
     {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        // Use ResourceKey.ResourceName directly rather than Path.GetFileName on
+        // the key's string form. Path.GetFileName treats the "project:" prefix
+        // inconsistently across platforms (volume separator on Windows), so it
+        // would split "project:package.toml" differently from a real path.
+        var fileName = fileResource.ResourceName;
 
-        // Check factories registered for this specific extension
-        if (_extensionToFactories.TryGetValue(extension, out var factoryList))
+        // 1. Try exact-filename match first. A factory that claims "package.toml"
+        //    by filename wins over a generic ".toml" extension factory.
+        if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
         {
-            // Find the first factory (sorted by priority) that can handle the resource
-            foreach (var factory in factoryList)
+            foreach (var factory in byFilename)
             {
                 if (factory.CanHandleResource(fileResource, filePath))
                 {
                     return Result<IDocumentEditorFactory>.Ok(factory);
+                }
+            }
+        }
+
+        // 2. Try multi-part extension suffixes from longest to shortest, so a
+        //    ".project.cel" factory beats a generic ".cel" factory on the same file.
+        var lowerFileName = fileName.ToLowerInvariant();
+        foreach (var suffix in GetExtensionSuffixes(lowerFileName))
+        {
+            if (_extensionToFactories.TryGetValue(suffix, out var factoryList))
+            {
+                foreach (var factory in factoryList)
+                {
+                    if (factory.CanHandleResource(fileResource, filePath))
+                    {
+                        return Result<IDocumentEditorFactory>.Ok(factory);
+                    }
                 }
             }
         }
@@ -158,6 +204,35 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return _extensionToFactories.Keys.ToList().AsReadOnly();
     }
 
+    // Yields the extension suffixes of a filename from longest to shortest.
+    // "foo.project.cel" produces ".project.cel" then ".cel"; "foo.md" produces
+    // ".md"; "Makefile" produces nothing. A leading dot (".gitignore") is
+    // skipped so the file's full name is not treated as an extension.
+    private static IEnumerable<string> GetExtensionSuffixes(string fileName)
+    {
+        int searchFrom = 0;
+
+        // Skip a leading '.' on dotfiles so the first yielded suffix is anchored
+        // on an interior dot rather than the leading one.
+        if (fileName.Length > 0
+            && fileName[0] == '.')
+        {
+            searchFrom = 1;
+        }
+
+        while (searchFrom < fileName.Length)
+        {
+            int dotIndex = fileName.IndexOf('.', searchFrom);
+            if (dotIndex < 0)
+            {
+                yield break;
+            }
+
+            yield return fileName.Substring(dotIndex);
+            searchFrom = dotIndex + 1;
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -178,6 +253,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
         _factories.Clear();
         _extensionToFactories.Clear();
+        _filenameToFactories.Clear();
         _registeredEditorIds.Clear();
         _idToFactory.Clear();
     }

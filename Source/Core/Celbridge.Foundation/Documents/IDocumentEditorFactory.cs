@@ -34,9 +34,19 @@ public interface IDocumentEditorFactory
 
     /// <summary>
     /// The file extensions this factory handles (e.g., ".md", ".txt", ".cs").
-    /// Extensions should be lowercase with leading dot.
+    /// Extensions should be lowercase with leading dot. Multi-part forms such as
+    /// ".project.cel" are also accepted; the registry resolves longest match
+    /// first when a file's name matches more than one registered suffix.
     /// </summary>
     IReadOnlyList<string> SupportedExtensions { get; }
+
+    /// <summary>
+    /// Exact file names this factory handles (e.g., "package.toml"). Filename
+    /// matches are tried before extension matches. Names are compared
+    /// case-insensitively. Defaults to an empty list when the factory matches
+    /// purely by extension.
+    /// </summary>
+    IReadOnlyList<string> SupportedFilenames { get; }
 
     /// <summary>
     /// Priority for conflict resolution when multiple factories support the same extension.

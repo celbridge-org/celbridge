@@ -3,6 +3,7 @@ using Celbridge.ContextMenu;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Logging;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -146,6 +147,18 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
                 command.EditorId = selectedFactory.EditorId;
             });
         }
+
+        // Persist the user's explicit per-file choice in the sidecar's `editor`
+        // field, creating the sidecar if needed. The KISS rule: every "Open
+        // With X" invocation writes the chosen editor, even when it matches
+        // the per-extension default - a redundant entry is less surprising
+        // than an auto-removal the user did not request.
+        _commandService.Execute<ISetFieldCommand>(command =>
+        {
+            command.Resource = resourceKey;
+            command.Field = "editor";
+            command.Value = selectedFactory.EditorId.ToString();
+        });
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {

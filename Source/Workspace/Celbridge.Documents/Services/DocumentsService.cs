@@ -4,6 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -726,6 +727,38 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
         var filePath = resolveResult.Value;
 
+        // Step 0: consult the file's sidecar for a per-file editor preference.
+        // The sidecar's `editor` field records the user's last explicit
+        // "Open With X" choice for this file and wins over the per-extension
+        // workspace preference and the priority-based fallback. A stale or
+        // unregistered id falls through to the existing chain rather than
+        // failing the open.
+        if (documentEditorId.IsEmpty)
+        {
+            var sidecarEditorResult = await TryReadEditorFromSidecarAsync(fileResource);
+            if (sidecarEditorResult.IsSuccess
+                && !sidecarEditorResult.Value.IsEmpty)
+            {
+                var sidecarEditorId = sidecarEditorResult.Value;
+                var sidecarFactoryResult = _documentEditorRegistry.GetFactoryById(sidecarEditorId);
+                if (sidecarFactoryResult.IsSuccess)
+                {
+                    var sidecarFactory = sidecarFactoryResult.Value;
+                    if (sidecarFactory.CanHandleResource(fileResource, filePath))
+                    {
+                        var sidecarCreateResult = sidecarFactory.CreateDocumentView(fileResource);
+                        if (sidecarCreateResult.IsSuccess)
+                        {
+                            return sidecarCreateResult;
+                        }
+
+                        _logger.LogWarning(sidecarCreateResult,
+                            $"Sidecar editor '{sidecarEditorId}' failed to create view for '{fileResource}'; falling through");
+                    }
+                }
+            }
+        }
+
         // If a specific editor was requested, use it directly. Do not fall through to priority-based
         // resolution on failure: silently opening a different editor than the one the caller asked for
         // is confusing and hides real problems (e.g., "Open With..." handing a file to a factory that
@@ -825,6 +858,51 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
 
         return Result.Fail($"Failed to create document view for file: '{fileResource}'");
+    }
+
+    // Read the file's sidecar (if any) and return the parsed `editor` field as
+    // a DocumentEditorId. Returns success with Empty when no sidecar exists,
+    // the sidecar has no `editor` field, or the field value does not parse as
+    // a DocumentEditorId. Returns failure only on unexpected sidecar service
+    // errors (so the caller can fall through gracefully on the success path).
+    private async Task<Result<DocumentEditorId>> TryReadEditorFromSidecarAsync(ResourceKey fileResource)
+    {
+        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        if (sidecarService.IsSidecarKey(fileResource))
+        {
+            // The sidecar file itself does not have a sidecar pairing of its
+            // own; nothing to consult.
+            return DocumentEditorId.Empty;
+        }
+
+        var readResult = await sidecarService.ReadAsync(fileResource);
+        if (readResult.IsFailure)
+        {
+            return Result<DocumentEditorId>.Fail($"Failed to read sidecar for '{fileResource}'")
+                .WithErrors(readResult);
+        }
+
+        var sidecar = readResult.Value;
+        if (sidecar.Outcome != SidecarReadOutcome.Healthy
+            || sidecar.Content is null)
+        {
+            return DocumentEditorId.Empty;
+        }
+
+        if (!sidecar.Content.Frontmatter.TryGetValue("editor", out var editorValue)
+            || editorValue is not string editorIdString
+            || string.IsNullOrWhiteSpace(editorIdString))
+        {
+            return DocumentEditorId.Empty;
+        }
+
+        if (!DocumentEditorId.TryParse(editorIdString, out var editorId))
+        {
+            _logger.LogDebug($"Sidecar for '{fileResource}' has malformed editor value '{editorIdString}'");
+            return DocumentEditorId.Empty;
+        }
+
+        return editorId;
     }
 
     private void OnDocumentResourceChangedMessage(object recipient, DocumentResourceChangedMessage message)
