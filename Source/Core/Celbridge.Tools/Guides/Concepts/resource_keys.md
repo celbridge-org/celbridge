@@ -140,29 +140,34 @@ Strict matching means surrounding whitespace inside the wrapping quotes is part 
 ### Known limitations
 
 - **Unicode "smart quotes" (curly forms of `"` and `'`) are not recognised** — only the ASCII forms (`"` U+0022 and `'` U+0027) count. Pasted content from Word, chat apps, or auto-formatting editors may carry visually-identical curly quotes that the scanner ignores; check the raw bytes if a reference silently fails to track.
-- **JSON `\/` escape**: a reference written as `"project:foo\/bar.md"` (representing `project:foo/bar.md`) is not tracked — the scanner sees the literal `\` and treats it as a key boundary. JSON serialisers almost never emit `\/`; write `/` directly.
-- **References inside `.md` files**: not tracked at all (see the "Excluded extensions" section below). Markdown is documentation; references inside it are mentions for human readers, not active links. Rename them manually when a referenced resource moves.
+- **JSON `\/` escape**: a reference written as `"project:foo\/bar.json"` (representing `project:foo/bar.json`) is not tracked — the scanner sees the literal `\` and treats it as a key boundary. JSON serialisers almost never emit `\/`; write `/` directly.
+- **References inside non-allowlisted file types**: not tracked at all (see the "Where the scanner looks" section below). The scanner only walks a fixed set of data-bearing extensions — references inside other file types are mentions for human readers, not active links. Rename them manually when a referenced resource moves.
 
 ## Where the scanner looks
 
-The reference scanner reads the full text of every text file in the project (skipping binary files via extension and content sniffing) — *except* for the deliberately excluded extensions below. Quoted `project:` references are tracked wherever they appear in scanned files:
+The reference scanner walks an explicit **allowlist** of data-bearing file extensions. A file's extension determines whether it participates; nothing else (parent file, location, content sniffing) overrides that gate. Quoted `project:` references inside an allowlisted file are tracked; quoted `project:` references inside any other file type are ignored.
 
-- **Plain text and source files** — code, TOML/JSON/YAML configs, plain `.txt` files, etc.
-- **Sidecar (`.cel`) frontmatter** — quoted `project:` references in the TOML frontmatter of a sidecar are tracked the same as anywhere else.
-- **Sidecar (`.cel`) body** — and so is the opaque body section. Either location works equally for editor data that needs to track resources.
+The current allowlist:
 
-### Excluded extensions
+| Category | Extensions |
+|---|---|
+| Sidecars | `.cel` |
+| Scripts | `.js`, `.py`, `.ipy`, `.ipynb` |
+| Tabular data | `.csv`, `.tsv` |
+| Structured data and configuration | `.json`, `.jsonl`, `.ndjson`, `.yaml`, `.yml`, `.toml`, `.xml` |
 
-**Markdown (`.md`) files are deliberately excluded from reference scanning.** A quoted `"project:..."` literal inside a `.md` file is treated as descriptive prose, not as an active reference. Documentation, READMEs, runbooks, and test prompts can mention resource keys in their canonical form for the reader's benefit without participating in cascades or `data_check_project`'s broken-reference detection.
+A `.cel` sidecar attached to a parent whose extension is NOT on the list (e.g. `notes.md.cel` next to `notes.md`) is still scanned — the sidecar carries the `.cel` extension under `Path.GetExtension`, not the parent's `.md`. Sidecars are data regardless of what they're paired with.
 
-Consequences of the exclusion:
+### Files that are NOT scanned
 
-- **Cascade does not rewrite references inside `.md` files on rename.** If you move `foo.md` and a doc file references it as `"project:foo.md"`, that mention stays as written. You (or an agent) need to update the doc manually — same as you would under any GUID-style addressing scheme where doc mentions are never machine-rewritten.
-- **`data_check_project` does not report references inside `.md` files as broken.** A `"project:gone.md"` mention in a README won't surface as a finding even if `gone.md` is missing — the system can't reliably tell "agent meant a tracked reference but used the wrong extension" from "this paragraph describes what `gone.md` used to be." Doc accuracy is the author's responsibility.
-- **Markdown files can still BE referenced.** Other (scanned) files referring to a `.md` via `"project:notes.md"` ARE tracked normally. The exclusion is about what happens to references *inside* `.md` content, not what can be referenced.
+Every extension not in the allowlist is skipped. The most common implications:
 
-Other file types not currently scanned:
+- **Markdown (`.md`)** — documentation, READMEs, runbooks, agent-prompt files. Quoted `"project:..."` literals inside `.md` are descriptive prose; they don't cascade and they don't show up as broken references.
+- **Plain text (`.txt`)** — fixtures and notes. If you need cascade tracking for a fixture, use `.json` (or attach a `.cel` sidecar with the reference in frontmatter).
+- **Source code outside the listed languages** — e.g. `.cs`, `.ts`, `.cpp`. Add the extension to the allowlist if you need cascade support there.
+- **HTML and CSS** — HTML uses `href`-shaped references that don't follow the `"project:..."` form; CSS doesn't address resources by key at all.
+- **Binary files** (PNG, XLSX, PDF, etc.) — never scanned. A reference baked into a binary asset won't participate in the cascade — those workflows must use sidecar frontmatter or a paired text file instead.
 
-- **Binary files** (PNG, XLSX, PDF, etc.). A reference baked into a binary asset won't participate in the cascade — those workflows must use sidecar frontmatter or a paired text file instead.
+Files that are not scanned can still BE referenced. The allowlist gates what gets *read for references*, not what can appear *as a target*. A `.json` referencer pointing at a `.md` document is fully tracked; renaming the `.md` cascades through the `.json`.
 
-The exclusion list is intentionally narrow: only `.md` today. Other documentation formats (`.rst`, `.adoc`, `.org`) may be added if concrete need emerges. Plain `.txt` stays scannable — it's the natural extension for fixtures and config-like data files where embedded references should track.
+If you find yourself reaching for a file type that isn't on the list, add the extension to `ScannableExtensions` (or open a follow-up if the use-case is shared across projects).

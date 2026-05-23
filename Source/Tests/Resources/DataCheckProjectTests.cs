@@ -60,8 +60,7 @@ public class DataCheckProjectTests
 
         var scanner = new ResourceScanner(
             Substitute.For<ILogger<ResourceScanner>>(),
-            _workspaceWrapper,
-            new TextBinarySniffer());
+            _workspaceWrapper);
         workspaceService.ResourceScanner.Returns(scanner);
 
         _command = new ProjectCheckCommand(_workspaceWrapper);
@@ -86,12 +85,11 @@ public class DataCheckProjectTests
     [Test]
     public async Task CleanProject_AllReportListsAreEmpty()
     {
-        // Fixture uses .txt because reference scanning excludes documentation
-        // file types (.md). See ResourceScanner.ExcludedExtensions for the
-        // rationale.
-        File.WriteAllText(Path.Combine(_projectFolderPath, "a.txt"), "Body A.");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "b.txt"),
-            "Refers to \"project:a.txt\".");
+        // Fixture uses .json because the scanner only walks allowlisted
+        // data-bearing extensions. See ResourceScanRules.ScannableExtensions.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "a.json"), "{}");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "b.json"),
+            "{ \"target\": \"project:a.json\" }");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -105,8 +103,8 @@ public class DataCheckProjectTests
     [Test]
     public async Task BrokenReference_IsReportedWithSourceAndTarget()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "source.txt"),
-            "Refers to \"project:missing.txt\" which is not present.");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{ \"target\": \"project:missing.json\" }");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -114,19 +112,21 @@ public class DataCheckProjectTests
 
         _command.ResultValue.BrokenReferences.Should().HaveCount(1);
         var entry = _command.ResultValue.BrokenReferences[0];
-        entry.Source.Should().Be(new ResourceKey("source.txt"));
-        entry.MissingTarget.Should().Be(new ResourceKey("missing.txt"));
+        entry.Source.Should().Be(new ResourceKey("source.json"));
+        entry.MissingTarget.Should().Be(new ResourceKey("missing.json"));
     }
 
     [Test]
-    public async Task MarkdownReferences_AreExcludedFromScan()
+    public async Task NonAllowlistedExtensions_AreExcludedFromScan()
     {
-        // Markdown is documentation, not data. A "project:..." literal inside
-        // a .md file is a descriptive mention, not an active reference, so the
-        // scanner deliberately skips .md files for both cascade rewrites and
-        // broken-reference detection. This test guards that exclusion.
+        // .md is not on the allowlist (along with .txt, .rst, .yaml, and every
+        // other extension not enumerated in ResourceScanRules.ScannableExtensions).
+        // A "project:..." literal inside an off-allowlist file is treated as
+        // descriptive prose, not as an active reference — no cascade rewrite,
+        // no broken-reference detection. This test guards the allowlist gate
+        // using markdown as a representative example.
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"),
-            "This documentation mentions \"project:missing.md\" but it should NOT be tracked.");
+            "This documentation mentions \"project:missing.json\" but it should NOT be tracked.");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -136,19 +136,19 @@ public class DataCheckProjectTests
     }
 
     [Test]
-    public async Task SidecarOfExcludedParent_IsStillScanned()
+    public async Task SidecarOfNonAllowlistedParent_IsStillScanned()
     {
-        // A .cel sidecar attached to an excluded parent (e.g. notes.md.cel
-        // next to notes.md) carries the .cel extension under
-        // Path.GetExtension, NOT the parent's .md extension. The exclusion
-        // policy excludes by file extension, not by parent — sidecars are
-        // data regardless of what they're paired with, so they continue to
-        // participate in reference scanning even when their parent file is
-        // a documentation type.
+        // A .cel sidecar attached to a parent whose extension is NOT on the
+        // allowlist (e.g. notes.md.cel next to notes.md) carries the .cel
+        // extension under Path.GetExtension, NOT the parent's .md extension.
+        // The allowlist is keyed on file extension, not on parent — sidecars
+        // are data regardless of what they're paired with, so they continue
+        // to participate in reference scanning even when their parent file
+        // would be skipped on its own.
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"),
             "Body.");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
-            "editor = \"celbridge.notes\"\nlink = \"project:missing.txt\"\n");
+            "editor = \"celbridge.notes\"\nlink = \"project:missing.json\"\n");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
@@ -206,16 +206,16 @@ public class DataCheckProjectTests
     [Test]
     public async Task MultipleBrokenReferences_OrderedDeterministically()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "a.txt"),
-            "Refers \"project:zzz.txt\" and \"project:aaa.txt\".");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "b.txt"),
-            "Also refers \"project:zzz.txt\".");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "a.json"),
+            "{ \"a\": \"project:zzz.json\", \"b\": \"project:aaa.json\" }");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "b.json"),
+            "{ \"target\": \"project:zzz.json\" }");
 
         _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        // Three entries: aaa.txt from a.txt; zzz.txt from a.txt and b.txt.
+        // Three entries: aaa.json from a.json; zzz.json from a.json and b.json.
         // The ordering is by missingTarget then by source.
         _command.ResultValue.BrokenReferences.Should().HaveCount(3);
 
@@ -223,10 +223,10 @@ public class DataCheckProjectTests
             .Select(r => (r.MissingTarget.ToString(), r.Source.ToString()))
             .ToList();
 
-        keys[0].Item1.Should().Be("project:aaa.txt");
-        keys[1].Item1.Should().Be("project:zzz.txt");
-        keys[2].Item1.Should().Be("project:zzz.txt");
-        keys[1].Item2.Should().Be("project:a.txt");
-        keys[2].Item2.Should().Be("project:b.txt");
+        keys[0].Item1.Should().Be("project:aaa.json");
+        keys[1].Item1.Should().Be("project:zzz.json");
+        keys[2].Item1.Should().Be("project:zzz.json");
+        keys[1].Item2.Should().Be("project:a.json");
+        keys[2].Item2.Should().Be("project:b.json");
     }
 }

@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Celbridge.Logging;
-using Celbridge.Projects;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -34,20 +33,17 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     private readonly ILogger<CopyResourceCommand> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
     public CopyResourceCommand(
         ILogger<CopyResourceCommand> logger,
         IMessengerService messengerService,
-        IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService)
     {
         _logger = logger;
         _messengerService = messengerService;
-        _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
     }
@@ -62,15 +58,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         if (SourceResources.Count == 0)
         {
             return Result.Ok();
-        }
-
-        var project = _projectService.CurrentProject;
-        Guard.IsNotNull(project);
-
-        var projectFolderPath = project.ProjectFolderPath;
-        if (string.IsNullOrEmpty(projectFolderPath))
-        {
-            return Result.Fail("Project folder path is empty.");
         }
 
         // Hoist the workspace-scoped service lookups out of the per-resource
@@ -100,7 +87,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             foreach (var sourceResource in filteredResources)
             {
-                var outcome = await CopySingleResourceAsync(sourceResource, projectFolderPath, resourceRegistry, resourceOpService);
+                var outcome = await CopySingleResourceAsync(sourceResource, resourceRegistry, resourceOpService);
 
                 if (outcome.Result.IsFailure)
                 {
@@ -195,16 +182,38 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     private async Task<CopyResourceOutcome> CopySingleResourceAsync(
         ResourceKey sourceResource,
-        string projectFolderPath,
         IResourceRegistry resourceRegistry,
         IResourceOperationService resourceOpService)
     {
         // Resolve destination to handle folder drops
         var resolvedDestResource = resourceRegistry.ResolveDestinationResource(sourceResource, DestResource);
 
-        // Convert resource keys to paths
-        var sourcePath = Path.GetFullPath(Path.Combine(projectFolderPath, sourceResource));
-        var destPath = Path.GetFullPath(Path.Combine(projectFolderPath, resolvedDestResource));
+        // Convert resource keys to absolute paths via the registry so root prefixes
+        // (project:, temp:, logs:) are stripped correctly. Path.Combine with the bare
+        // ResourceKey would incorporate the prefix as a literal directory component.
+        var resolveSourceResult = resourceRegistry.ResolveResourcePath(sourceResource);
+        if (resolveSourceResult.IsFailure)
+        {
+            return new CopyResourceOutcome(
+                Result.Fail($"Failed to resolve path for source resource: '{sourceResource}'")
+                    .WithErrors(resolveSourceResult),
+                ParentFolder: null,
+                CopiedFolder: null,
+                MoveDetail: null);
+        }
+        var sourcePath = resolveSourceResult.Value;
+
+        var resolveDestResult = resourceRegistry.ResolveResourcePath(resolvedDestResource);
+        if (resolveDestResult.IsFailure)
+        {
+            return new CopyResourceOutcome(
+                Result.Fail($"Failed to resolve path for destination resource: '{resolvedDestResource}'")
+                    .WithErrors(resolveDestResult),
+                ParentFolder: null,
+                CopiedFolder: null,
+                MoveDetail: null);
+        }
+        var destPath = resolveDestResult.Value;
 
         // Determine resource type
         bool isFile = File.Exists(sourcePath);

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Tomlyn.Model;
 
@@ -18,18 +17,44 @@ public sealed class ResourceScanner : IResourceScanner
 {
     private const string TagsField = "tags";
 
+    // File extensions that participate in reference scanning. Add an entry here
+    // when a workflow needs cascade support for a new file type, and update the
+    // resource_keys guide's "Where the scanner looks" section to match.
+    private static readonly HashSet<string> ScannableExtensions
+        = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Sidecars.
+            ".cel",
+
+            // Scripts.
+            ".js",
+            ".py",
+            ".ipy",
+            ".ipynb",
+
+            // Tabular.
+            ".csv",
+            ".tsv",
+
+            // Structured data and configuration.
+            ".json",
+            ".jsonl",
+            ".ndjson",
+            ".yaml",
+            ".yml",
+            ".toml",
+            ".xml",
+        };
+
     private readonly ILogger<ResourceScanner> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly ITextBinarySniffer _textBinarySniffer;
 
     public ResourceScanner(
         ILogger<ResourceScanner> logger,
-        IWorkspaceWrapper workspaceWrapper,
-        ITextBinarySniffer textBinarySniffer)
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _textBinarySniffer = textBinarySniffer;
     }
 
     public async Task<IReadOnlyList<ResourceKey>> FindReferencersAsync(ResourceKey target)
@@ -207,20 +232,18 @@ public sealed class ResourceScanner : IResourceScanner
     // Walks all project: text files in parallel, invoking the visitor for
     // each. Reads the registry's snapshot directly; mutation commands carry
     // CommandFlags.UpdateResources so the snapshot reflects the latest disk
-    // state by the time a tool that consults the scanner runs. Binary files
-    // are skipped via the extension sniffer; unknown extensions trigger a
-    // one-time content sniff cached for the scan's duration.
+    // state by the time a tool that consults the scanner runs. Files are
+    // filtered through ResourceScanRules.ScannableExtensions — only the
+    // allowlisted data-bearing extensions participate.
     private async Task EnumerateProjectTextFilesAsync(Func<ResourceKey, string, Task> visit)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var files = registry.GetAllFileResources(ResourceKey.DefaultRoot);
 
-        var textSniffCache = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-
         await Parallel.ForEachAsync(files, async (file, _) =>
         {
             var (resourceKey, absolutePath) = file;
-            if (!IsScannableTextFile(absolutePath, textSniffCache))
+            if (!IsScannableFile(absolutePath))
             {
                 return;
             }
@@ -265,35 +288,9 @@ public sealed class ResourceScanner : IResourceScanner
         });
     }
 
-    private bool IsScannableTextFile(
-        string absolutePath,
-        ConcurrentDictionary<string, bool> textSniffCache)
+    private static bool IsScannableFile(string absolutePath)
     {
-        var extension = Path.GetExtension(absolutePath);
-        if (ResourceScanRules.IsExcludedExtension(extension))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrEmpty(extension)
-            && _textBinarySniffer.IsBinaryExtension(extension))
-        {
-            return false;
-        }
-
-        // Unknown-extension files: content-sniff once per scan. The cache is
-        // local to this scan; we don't keep it across calls because the
-        // registry rebuilds frequently and the per-scan cost is small.
-        if (string.IsNullOrEmpty(extension))
-        {
-            return textSniffCache.GetOrAdd(absolutePath, path =>
-            {
-                var sniff = _textBinarySniffer.IsTextFile(path);
-                return sniff.IsSuccess && sniff.Value;
-            });
-        }
-
-        return true;
+        return ScannableExtensions.Contains(Path.GetExtension(absolutePath));
     }
 
     private static bool IsSidecarPath(string absolutePath)

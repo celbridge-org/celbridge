@@ -388,11 +388,11 @@ public class ResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("source.txt");
         var destKey = new ResourceKey("dest.txt");
-        var referencerKey = new ResourceKey("doc.md");
+        var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
         var destPath = Path.Combine(_tempFolder, "dest.txt");
-        var referencerPath = Path.Combine(_tempFolder, "doc.md");
+        var referencerPath = Path.Combine(_tempFolder, "doc.json");
         await File.WriteAllTextAsync(sourcePath, "data");
         await File.WriteAllTextAsync(referencerPath, "See \"project:source.txt\" for details.");
 
@@ -422,11 +422,11 @@ public class ResourceFileSystemTests
         // rewrote unquoted byte sequences.
         var sourceKey = new ResourceKey("source.txt");
         var destKey = new ResourceKey("dest.txt");
-        var referencerKey = new ResourceKey("doc.md");
+        var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "source.txt");
         var destPath = Path.Combine(_tempFolder, "dest.txt");
-        var referencerPath = Path.Combine(_tempFolder, "doc.md");
+        var referencerPath = Path.Combine(_tempFolder, "doc.json");
         await File.WriteAllTextAsync(sourcePath, "data");
 
         // The file contains the literal "project:source.txt" at three positions:
@@ -464,11 +464,11 @@ public class ResourceFileSystemTests
         // detection.
         var sourceKey = new ResourceKey("My Document.md");
         var destKey = new ResourceKey("My Renamed Document.md");
-        var referencerKey = new ResourceKey("doc.md");
+        var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "My Document.md");
         var destPath = Path.Combine(_tempFolder, "My Renamed Document.md");
-        var referencerPath = Path.Combine(_tempFolder, "doc.md");
+        var referencerPath = Path.Combine(_tempFolder, "doc.json");
         await File.WriteAllTextAsync(sourcePath, "data");
         await File.WriteAllTextAsync(referencerPath,
             "See \"project:My Document.md\" and also 'project:My Document.md' as well.");
@@ -653,11 +653,11 @@ public class ResourceFileSystemTests
     {
         var sourceKey = new ResourceKey("target.txt");
         var destKey = new ResourceKey("target2.txt");
-        var referencerKey = new ResourceKey("doc.md");
+        var referencerKey = new ResourceKey("doc.json");
 
         var sourcePath = Path.Combine(_tempFolder, "target.txt");
         var destPath = Path.Combine(_tempFolder, "target2.txt");
-        var referencerPath = Path.Combine(_tempFolder, "doc.md");
+        var referencerPath = Path.Combine(_tempFolder, "doc.json");
         await File.WriteAllTextAsync(sourcePath, "data");
         await File.WriteAllTextAsync(referencerPath, "See \"project:target.txt\" for details.");
         new FileInfo(referencerPath).IsReadOnly = true;
@@ -669,7 +669,7 @@ public class ResourceFileSystemTests
             _resourceRegistry.ResolveResourcePath(referencerKey).Returns(Result<string>.Ok(referencerPath));
             _resourceRegistry.ResolveResourcePath(new ResourceKey("target.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
             _resourceRegistry.ResolveResourcePath(new ResourceKey("target2.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
-            _resourceRegistry.ResolveResourcePath(new ResourceKey("doc.md")).Returns(Result<string>.Ok(referencerPath));
+            _resourceRegistry.ResolveResourcePath(new ResourceKey("doc.json")).Returns(Result<string>.Ok(referencerPath));
 
             _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
