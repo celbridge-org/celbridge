@@ -56,7 +56,7 @@ public partial class FileTools
             var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
             if (resolveResult.IsFailure)
             {
-                entries.Add(new ReadManyFileEntry(canonicalResource, Error: $"Failed to resolve path for resource: '{canonicalResource}'"));
+                entries.Add(new ReadManyFileEntry(canonicalResource, Error: resolveResult.FirstErrorMessage));
                 continue;
             }
             var resourcePath = resolveResult.Value;

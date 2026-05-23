@@ -35,7 +35,7 @@ public partial class SpreadsheetTools : AgentToolBase
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve path for resource: '{resourceKey}'");
+            return Result.Fail(resolveResult.FirstErrorMessage);
         }
         var workbookPath = resolveResult.Value;
 

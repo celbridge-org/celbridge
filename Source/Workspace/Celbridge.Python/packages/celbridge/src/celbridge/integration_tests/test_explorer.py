@@ -66,10 +66,12 @@ class TestExplorer:
 
     def test_move_preserves_referential_integrity(self, explorer, file, data):
         # The reference-rewrite cascade in IResourceFileSystem.MoveAsync must
-        # leave no broken project: references after a move.
+        # leave no broken project: references after a move. The referencer is
+        # .json (an allowlisted scanner extension) so the cascade actually
+        # walks it; .md would be invisible to the scanner.
         file.write(
-            "TestExplorer/source.md",
-            "Refers to \"project:TestExplorer/target.md\".\n",
+            "TestExplorer/source.json",
+            "{\"target\": \"project:TestExplorer/target.md\"}",
         )
         file.write("TestExplorer/target.md", "Target body.\n")
 
@@ -79,8 +81,8 @@ class TestExplorer:
         report = data.check_project()
         broken = [
             entry for entry in report.get("brokenReferences", [])
-            if entry["source"].startswith("TestExplorer/")
-                or entry["missingTarget"].startswith("TestExplorer/")
+            if entry["source"].startswith("project:TestExplorer/")
+                or entry["missingTarget"].startswith("project:TestExplorer/")
         ]
         assert broken == [], f"Move broke references: {broken}"
 
@@ -88,8 +90,8 @@ class TestExplorer:
         # Deleting a referenced resource under break_references should leave
         # the reference dangling, surfaced by data_check_project.
         file.write(
-            "TestExplorer/has_ref.md",
-            "Refers to \"project:TestExplorer/will_delete.md\".\n",
+            "TestExplorer/has_ref.json",
+            "{\"target\": \"project:TestExplorer/will_delete.md\"}",
         )
         file.write("TestExplorer/will_delete.md", "Doomed.\n")
 
@@ -103,7 +105,7 @@ class TestExplorer:
             entry["missingTarget"]
             for entry in report.get("brokenReferences", [])
         }
-        assert "TestExplorer/will_delete.md" in broken_targets
+        assert "project:TestExplorer/will_delete.md" in broken_targets
 
     def test_undo_redo(self, explorer):
         explorer.create_file("TestExplorer/undo_test.txt")

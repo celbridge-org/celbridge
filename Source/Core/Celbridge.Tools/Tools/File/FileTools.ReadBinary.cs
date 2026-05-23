@@ -28,7 +28,7 @@ public partial class FileTools
         var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resourceKey}'");
+            return ToolResponse.Error(resolveResult.FirstErrorMessage);
         }
         var resourcePath = resolveResult.Value;
 

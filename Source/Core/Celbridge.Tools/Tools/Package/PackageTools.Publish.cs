@@ -69,7 +69,7 @@ public partial class PackageTools
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveSourceResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resourceKey}'");
+            return ToolResponse.Error(resolveSourceResult.FirstErrorMessage);
         }
         var sourcePath = resolveSourceResult.Value;
 

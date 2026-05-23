@@ -88,7 +88,8 @@ class TestFile:
     def test_read_image_returns_metadata(self, file):
         # The proxy drops the typed image block; only metadata reaches Python.
         result = file.read_image("TestFile/sample.jpg")
-        assert result["resource"] == "TestFile/sample.jpg"
+        # Tool responses emit resource keys in canonical "root:path" form.
+        assert result["resource"] == "project:TestFile/sample.jpg"
         assert result["mimeType"] == "image/jpeg"
         assert result["sizeBytes"] == len(_MINIMAL_JPEG_BYTES)
 
@@ -171,9 +172,10 @@ class TestFile:
         result = file.read_many(["TestFile/hello.txt", "TestFile/does_not_exist.txt"])
         entries = result["files"]
         assert len(entries) == 2
-        valid_entry = next(e for e in entries if e["resource"] == "TestFile/hello.txt")
+        # Tool responses emit resource keys in canonical "root:path" form.
+        valid_entry = next(e for e in entries if e["resource"] == "project:TestFile/hello.txt")
         assert "content" in valid_entry
-        invalid_entry = next(e for e in entries if e["resource"] == "TestFile/does_not_exist.txt")
+        invalid_entry = next(e for e in entries if e["resource"] == "project:TestFile/does_not_exist.txt")
         assert "error" in invalid_entry
 
     def test_grep_no_matches(self, file):

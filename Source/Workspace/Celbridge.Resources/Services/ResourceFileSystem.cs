@@ -556,6 +556,22 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 continue;
             }
 
+            // Honor the DOS read-only attribute as a "do not modify" hint
+            // BEFORE attempting the write. The atomic temp+rename path would
+            // surface this as a write failure on Windows (MoveFileEx checks
+            // the target's read-only bit) but silently succeed on Linux
+            // (rename only checks write permission on the parent directory,
+            // not on the target). Pre-checking closes that cross-platform
+            // gap so the user's "don't touch this file" intent is honored
+            // identically on every platform.
+            if (IsReferencerReadOnly(referencer))
+            {
+                const string readOnlyMessage = "file is read-only";
+                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {readOnlyMessage}. The reference is left as-is and will surface via data_check_project.");
+                skippedReferencers.Add(new SkippedReferencer(referencer, ReferencerSkipReason.ReadOnly, readOnlyMessage));
+                continue;
+            }
+
             var writeResult = await WriteAllTextAsync(referencer, rewritten);
             if (writeResult.IsFailure)
             {
@@ -574,6 +590,26 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         }
 
         return Result.Ok();
+    }
+
+    private bool IsReferencerReadOnly(ResourceKey referencer)
+    {
+        var resolveResult = ResolvePath(referencer);
+        if (resolveResult.IsFailure)
+        {
+            return false;
+        }
+
+        try
+        {
+            var info = new FileInfo(resolveResult.Value);
+            return info.Exists
+                && info.IsReadOnly;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private (ReferencerSkipReason Reason, string Message) ClassifyReferencerWriteFailure(ResourceKey referencer, Result writeResult)

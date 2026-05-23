@@ -31,15 +31,16 @@ class TestDocument:
         assert "activeDocument" in ctx
         assert "openDocuments" in ctx
         assert "sectionCount" in ctx
+        # Tool responses emit resource keys in canonical "root:path" form.
         resources = [d["resource"] for d in ctx["openDocuments"]]
-        assert "TestDocument/hello.txt" in resources
+        assert "project:TestDocument/hello.txt" in resources
 
     def test_close(self, document):
         document.open("TestDocument/hello.txt")
         document.close("TestDocument/hello.txt", force_close=True)
         ctx = document.get_state()
         resources = [d["resource"] for d in ctx["openDocuments"]]
-        assert "TestDocument/hello.txt" not in resources
+        assert "project:TestDocument/hello.txt" not in resources
 
     def test_close_multiple_documents(self, document, file):
         file.write("TestDocument/new_file.txt", "temp")
@@ -51,8 +52,8 @@ class TestDocument:
         )
         ctx = document.get_state()
         resources = [d["resource"] for d in ctx["openDocuments"]]
-        assert "TestDocument/hello.txt" not in resources
-        assert "TestDocument/new_file.txt" not in resources
+        assert "project:TestDocument/hello.txt" not in resources
+        assert "project:TestDocument/new_file.txt" not in resources
 
     def test_open_invalid_resource_key(self, document):
         with pytest.raises(CelError):

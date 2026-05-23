@@ -64,7 +64,7 @@ public partial class SpreadsheetTools
         }
 
         var byteCount = Encoding.UTF8.GetByteCount(csv.Csv);
-        var metadata = new ExportCsvFileResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
+        var metadata = new ExportCsvFileResult(csv.RowCount, csv.ColumnCount, byteCount, destinationResourceKey.ToString());
         var json = SerializeJson(metadata);
         return ToolResponse.Success(json);
     }

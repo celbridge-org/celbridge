@@ -185,6 +185,55 @@ public class ResourceRegistryTests
     }
 
     [Test]
+    public void ResolveResourcePathRejectsWrongCaseKey_WhenFileExistsOnDisk()
+    {
+        // Windows is case-insensitive at the filesystem layer (would happily
+        // resolve "filea.txt" to the on-disk "FileA.txt"), but the registry
+        // tree and the cascade scanner are Ordinal-case-sensitive. To keep
+        // the abstraction internally consistent, ResolveResourcePath rejects
+        // wrong-case keys whose resolved path resolves to an existing file
+        // and names the canonical key in the error message.
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+        resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        // FileA.txt exists on disk (created in Setup); request it as "filea.txt".
+        var wrongCaseKey = ResourceKey.Create(FileNameA.ToLowerInvariant());
+        var resolveResult = resourceRegistry.ResolveResourcePath(wrongCaseKey);
+
+        resolveResult.IsFailure.Should().BeTrue();
+        resolveResult.FirstErrorMessage.Should().Contain("does not match the on-disk case");
+        resolveResult.FirstErrorMessage.Should().Contain($"project:{FileNameA}");
+    }
+
+    [Test]
+    public void ResolveResourcePathAcceptsKeyForNonExistentResource()
+    {
+        // The strict case check only fires when the resolved path exists on
+        // disk. Keys for resources that don't yet exist (create flows) pass
+        // through unchanged so the file gets created at the case the caller
+        // supplied.
+        Guard.IsNotNull(_resourceFolderPath);
+
+        var messengerService = new MessengerService();
+        var fileIconService = new FileIconService();
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
+        resourceRegistry.ProjectFolderPath = _resourceFolderPath;
+        resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var newKey = ResourceKey.Create("NewResource.json");
+        var resolveResult = resourceRegistry.ResolveResourcePath(newKey);
+
+        resolveResult.IsSuccess.Should().BeTrue();
+        var expectedPath = Path.GetFullPath(Path.Combine(_resourceFolderPath, "NewResource.json"));
+        resolveResult.Value.Should().Be(expectedPath);
+    }
+
+    [Test]
     public void ResolveResourcePathAcceptsNonExistentPath()
     {
         Guard.IsNotNull(_resourceFolderPath);

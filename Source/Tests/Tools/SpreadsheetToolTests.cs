@@ -229,7 +229,8 @@ public class SpreadsheetToolTests
         root.GetProperty("rowCount").GetInt32().Should().Be(3);
         root.GetProperty("columnCount").GetInt32().Should().Be(2);
         root.GetProperty("byteCount").GetInt32().Should().Be(System.Text.Encoding.UTF8.GetByteCount(csv));
-        root.GetProperty("destination").GetString().Should().Be("exports/sales_q1.csv");
+        // Tool responses surface resource keys in canonical "root:path" form.
+        root.GetProperty("destination").GetString().Should().Be("project:exports/sales_q1.csv");
     }
 
     [Test]

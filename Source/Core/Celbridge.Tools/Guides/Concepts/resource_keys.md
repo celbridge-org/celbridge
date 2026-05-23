@@ -37,7 +37,7 @@ So `file_read` against a missing `temp:foo/bar` reports `temp:foo/bar` in the er
 - No absolute paths or drive letters. The key is always relative to its root's backing folder.
 - Root prefixes are lowercase and match `[a-z][a-z0-9_]+`. Single-character roots and uppercase roots are rejected.
 - An undeclared root (e.g. `unknown:foo`) is an error, not a missing-file failure.
-- Case sensitivity follows the underlying filesystem; on Windows the system is case-preserving but case-insensitive.
+- Resource keys are case-sensitive on every platform — including Windows, where the filesystem itself is case-insensitive. A key whose case doesn't match the on-disk canonical case is rejected at the resolve boundary, with the canonical form named in the error message. Take resource keys from tool responses (file listings, search results, tool outputs) rather than typing them by memory to keep the case correct.
 
 When in doubt about which keys exist, call `file_get_tree("")` to list the top level of the project tree, or pass a folder key to list its contents.
 

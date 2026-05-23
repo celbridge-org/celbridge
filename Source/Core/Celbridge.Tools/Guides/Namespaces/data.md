@@ -9,6 +9,7 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 - **Field values are JSON-encoded.** `data_set_field` accepts the value as a JSON string so types pass through cleanly: `"high"`, `42`, `true`, `["a", "b"]`. Nested objects are rejected at write time.
 - **Tags are the only structured cross-resource query.** Use `data_add_tag` / `data_remove_tag` for atomic mutation and `data_find_tag` to enumerate resources carrying a tag. The `tag:value` convention (`priority:high`, `status:draft`) covers most "search by field" needs.
 - **Content blocks are opaque text.** Block IDs follow `[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*` (lowercase, dotted, hyphens). By convention each editor namespaces its blocks under its own ID (`celbridge.notes.note-document.content`).
+- **A broken sidecar blocks all `data_*` mutations.** When the sidecar fails to parse (invalid TOML, unterminated string, garbled fence line), `data_set_field`, `data_add_tag`, `data_write_block`, and their siblings refuse with a `Cannot mutate sidecar '...': TOML parse error(s): ...` message rather than silently overwriting the bad content. Repair by hand with `file_write` against one of the three on-disk shapes below, then retry the mutation. `data_check_project` surfaces broken sidecars project-wide for batch triage.
 
 ## Tools
 

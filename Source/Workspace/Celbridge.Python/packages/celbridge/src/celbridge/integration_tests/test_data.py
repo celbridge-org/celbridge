@@ -111,13 +111,14 @@ class TestData:
     def test_find_tag_returns_resource(self, data):
         data.add_tag("TestData/notes.md", "flagged")
         matches = data.find_tag("flagged")
-        assert "TestData/notes.md" in matches
+        # Tool responses emit resource keys in canonical "root:path" form.
+        assert "project:TestData/notes.md" in matches
 
     def test_remove_tag_drops_entry(self, data):
         data.add_tag("TestData/notes.md", "flagged")
         data.remove_tag("TestData/notes.md", "flagged")
         matches = data.find_tag("flagged")
-        assert "TestData/notes.md" not in matches
+        assert "project:TestData/notes.md" not in matches
 
     def test_remove_tag_idempotent_when_missing(self, data):
         # No sidecar yet; removing a tag is a no-op success.
@@ -187,7 +188,9 @@ class TestDataCheckProject:
         # Create a source that references a target, then delete the target
         # under break_references so the reference is left dangling. The check
         # tool reports the resulting broken reference.
-        file.write("TestData/source.md", "Refers to \"project:TestData/target.md\".\n")
+        # The referencer is .json because the scanner walks an allowlist of
+        # data-bearing extensions; .md is excluded (documentation, not data).
+        file.write("TestData/source.json", "{\"target\": \"project:TestData/target.md\"}")
         file.write("TestData/target.md", "Target body.\n")
 
         explorer.delete("TestData/target.md", reference_policy="break_references")
@@ -195,10 +198,10 @@ class TestDataCheckProject:
         report = data.check_project()
         broken = [
             entry for entry in report.get("brokenReferences", [])
-            if entry["missingTarget"] == "TestData/target.md"
+            if entry["missingTarget"] == "project:TestData/target.md"
         ]
         assert len(broken) == 1
-        assert broken[0]["source"] == "TestData/source.md"
+        assert broken[0]["source"] == "project:TestData/source.json"
 
     def test_orphan_sidecar_detected_when_parent_missing(self, data, file):
         # Write a sidecar whose parent does not exist on disk. The pairing
@@ -208,18 +211,21 @@ class TestDataCheckProject:
             "tags = [\"orphan\"]\n",
         )
         report = data.check_project()
-        assert "TestData/orphaned.png.cel" in report.get("orphanSidecars", [])
+        assert "project:TestData/orphaned.png.cel" in report.get("orphanSidecars", [])
 
     def test_broken_sidecar_detected_when_frontmatter_unparseable(self, data, file):
         # Write a sidecar whose frontmatter is malformed TOML.
         file.write("TestData/notes.md.cel", "this is not = valid // toml")
         report = data.check_project()
-        assert "TestData/notes.md.cel" in report.get("brokenSidecars", [])
+        assert "project:TestData/notes.md.cel" in report.get("brokenSidecars", [])
 
     def test_move_preserves_invariant(self, data, explorer, file):
         # A reference rewrite during a move must leave the project in a
-        # consistent state — no broken references remain.
-        file.write("TestData/src.md", "Refers to \"project:TestData/old.md\".\n")
+        # consistent state — no broken references remain. The referencer is
+        # .json (an allowlisted extension) so the cascade actually scans and
+        # rewrites the literal; a .md referencer would be invisible to the
+        # scanner.
+        file.write("TestData/src.json", "{\"target\": \"project:TestData/old.md\"}")
         file.write("TestData/old.md", "Old body.\n")
 
         explorer.move("TestData/old.md", "TestData/new.md")
@@ -227,8 +233,8 @@ class TestDataCheckProject:
         report = data.check_project()
         broken = [
             entry for entry in report.get("brokenReferences", [])
-            if entry["source"].startswith("TestData/")
-                or entry["missingTarget"].startswith("TestData/")
+            if entry["source"].startswith("project:TestData/")
+                or entry["missingTarget"].startswith("project:TestData/")
         ]
         assert broken == [], f"Move broke references: {broken}"
 
@@ -241,6 +247,6 @@ class TestDataCheckProject:
         report = data.check_project()
         broken = [
             entry for entry in report.get("brokenReferences", [])
-            if entry["missingTarget"].startswith("TestData/")
+            if entry["missingTarget"].startswith("project:TestData/")
         ]
         assert broken == []

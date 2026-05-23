@@ -171,7 +171,82 @@ public class ResourceRegistry : IResourceRegistry
             return Result<string>.Fail(
                 $"Resource root '{resource.Root}' is not registered.");
         }
-        return handler.Resolve(resource);
+
+        var resolveResult = handler.Resolve(resource);
+        if (resolveResult.IsFailure)
+        {
+            return resolveResult;
+        }
+        var absolutePath = resolveResult.Value;
+
+        // Strict case enforcement for the project root: if the resolved path
+        // exists on disk, the supplied key must match disk-canonical case.
+        // Without this guard a Windows user can resolve a wrong-case key
+        // (Windows IO is case-insensitive) but the in-memory tree and cascade
+        // scanner (both Ordinal-case-sensitive) would treat it as a separate
+        // resource, leaving the project in an inconsistent state.
+        if (resource.Root == ResourceKey.DefaultRoot)
+        {
+            var caseCheck = EnsureProjectKeyCaseMatchesDisk(resource, absolutePath);
+            if (caseCheck.IsFailure)
+            {
+                return Result<string>.Fail(caseCheck.FirstErrorMessage);
+            }
+        }
+
+        return absolutePath;
+    }
+
+    // Cheap path: if the registry tree already has a node for this exact key,
+    // the case is canonical by construction (the tree was built from disk-
+    // preserved names). Only when the tree lookup misses do we go to disk to
+    // disambiguate "case is wrong" from "resource is new and being created".
+    private Result EnsureProjectKeyCaseMatchesDisk(ResourceKey resource, string absolutePath)
+    {
+        if (resource.IsEmpty)
+        {
+            return Result.Ok();
+        }
+
+        var treeLookup = GetResource(resource);
+        if (treeLookup.IsSuccess)
+        {
+            return Result.Ok();
+        }
+
+        // Tree miss. Either the resource is new (not on disk yet — pass
+        // through for create flows) or the case is wrong. Check disk to find
+        // out which.
+        if (!File.Exists(absolutePath)
+            && !Directory.Exists(absolutePath))
+        {
+            return Result.Ok();
+        }
+
+        var realPathResult = GetRealPath(absolutePath);
+        if (realPathResult.IsFailure)
+        {
+            // Couldn't determine disk-canonical case for some reason; don't
+            // block the operation on the diagnostic.
+            return Result.Ok();
+        }
+
+        if (string.Equals(realPathResult.Value, absolutePath, StringComparison.Ordinal))
+        {
+            // Disk case already matches the supplied case — the tree miss is
+            // a registry-rebuild lag, not a case mismatch.
+            return Result.Ok();
+        }
+
+        var canonicalKeyResult = GetResourceKey(realPathResult.Value);
+        if (canonicalKeyResult.IsFailure)
+        {
+            return Result.Fail(
+                $"Resource key '{resource}' does not match the on-disk case.");
+        }
+
+        return Result.Fail(
+            $"Resource key '{resource}' does not match the on-disk case. Canonical form is '{canonicalKeyResult.Value}'.");
     }
 
     public Result<IResource> GetResource(ResourceKey resource)

@@ -15,10 +15,16 @@ def delete_if_exists(explorer, resource):
 
 
 def close_if_open(document, resource):
-    """Close a document if it is currently open."""
+    """Close a document if it is currently open.
+
+    Tool responses emit resource keys in canonical "root:path" form, so accept
+    both the bare path the caller typed and the prefixed form the document
+    state will report.
+    """
+    canonical = resource if ":" in resource else f"project:{resource}"
     try:
         ctx = document.get_state()
-        if any(d["resource"] == resource for d in ctx.get("openDocuments", [])):
+        if any(d["resource"] == canonical for d in ctx.get("openDocuments", [])):
             document.close(resource, force_close=True)
     except Exception:
         pass
