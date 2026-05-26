@@ -2,7 +2,7 @@
 
 Creates a copy of a resource alongside the original. Silent by default — picks a unique name like `"foo - Copy.md"` (or `"foo - Copy (2).md"`, etc. on collision) in the same folder, performs the copy, and returns the new resource key. Pass `showDialog: true` for the interactive form where the rename dialog opens preseeded and the user confirms or types a different name.
 
-The copy runs the same cascade as `explorer_copy` — a paired `.cel` sidecar is copied alongside the parent. References inside the duplicated content are *not* rewritten; they keep pointing at the original targets.
+A paired `.cel` sidecar on the source is duplicated alongside the parent under the matching new name (`foo.md` + `foo.md.cel` → `foo - Copy.md` + `foo - Copy.md.cel`), matching the sidecar-pairing behaviour of `explorer_move` and `explorer_delete`. References inside the duplicated content are *not* rewritten; they keep pointing at the original targets — same contract as `explorer_copy`.
 
 ## showDialog
 

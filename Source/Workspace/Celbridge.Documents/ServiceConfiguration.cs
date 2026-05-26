@@ -15,10 +15,6 @@ public static class ServiceConfiguration
 
         services.AddTransient<IDocumentsService, DocumentsService>();
 
-        // FileTypeHelper must be singleton because it's initialized by DocumentsService
-        // and shared across all document editor factories
-        services.AddSingleton<FileTypeHelper>();
-
         //
         // Register views
         //

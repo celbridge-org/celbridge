@@ -3,7 +3,6 @@ using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.UserInterface.Services;
-using Celbridge.Utilities;
 
 namespace Celbridge.Tests.Resources;
 
@@ -26,8 +25,10 @@ public class SidecarTrackingTests
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
-            new FileIconService());
-        _registry.ProjectFolderPath = _projectFolderPath;
+            new ProjectTreeBuilder(new FileIconService()),
+            SidecarPairingTestHelper.BuildPairingServiceWithNoFactories(),
+            new RootHandlerRegistry());
+        _registry.InitializeProjectRoot(_projectFolderPath);
     }
 
     [TearDown]
@@ -171,4 +172,8 @@ public class SidecarTrackingTests
         report.Broken.Should().Contain(new ResourceKey("lonely.cel"));
         report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
     }
+
+    // Standalone .cel form recognition (package.cel, foo.webview.cel) and the
+    // editor-registry hookup live in SidecarPairingServiceTests, which targets
+    // the pairing service directly.
 }

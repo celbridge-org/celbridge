@@ -1,7 +1,10 @@
+using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -46,8 +49,8 @@ public class ResourceCommandTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, fileIconService);
-        _resourceRegistry.ProjectFolderPath = _projectFolderPath;
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
         _resourceRegistry.UpdateResourceRegistry();
 
         var resourceService = Substitute.For<IResourceService>();
@@ -58,6 +61,15 @@ public class ResourceCommandTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        // ListFolderContentsCommand and GetFileTreeCommand route through the
+        // ResourceFileSystem chokepoint, so the workspace needs a real instance
+        // (a Substitute would return null for EnumerateFolderAsync).
+        var fileSystem = new ResourceFileSystem(
+            Substitute.For<ILogger<ResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
+            _workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(fileSystem);
     }
 
     [TearDown]
@@ -256,5 +268,88 @@ public class ResourceCommandTests
         var root = command.ResultValue.Root;
         Guard.IsNotNull(root);
         root.Children.Should().OnlyContain(childNode => !childNode.IsFolder);
+    }
+
+    // ---- Non-project root coverage --------------------------------------------------------
+
+    // Registers a logs: root backed by a fresh temp folder pre-populated with the
+    // supplied entries (string == file with that name; ending in "/" == folder).
+    // Returns the backing path so the caller can clean up.
+    private string SetupLogsRoot(params string[] entries)
+    {
+        var logsBacking = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceCommandTests)}_logs/{Guid.NewGuid():N}");
+        Directory.CreateDirectory(logsBacking);
+        foreach (var entry in entries)
+        {
+            var fullPath = Path.Combine(logsBacking, entry);
+            if (entry.EndsWith('/'))
+            {
+                Directory.CreateDirectory(fullPath);
+            }
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+                File.WriteAllText(fullPath, "log content");
+            }
+        }
+        _resourceRegistry.RegisterRootHandler(new LogsRootHandler(logsBacking, new PathValidator()));
+        return logsBacking;
+    }
+
+    [Test]
+    public async Task ListFolderContents_ForLogsRoot_ReturnsBackingFolderChildren()
+    {
+        // Regression for the logs: enumeration bug. Before the fix, this returned
+        // "Resource not found" because the in-memory tree is project-only.
+        var logsBacking = SetupLogsRoot("session.log", "errors/", "errors/today.log");
+        try
+        {
+            var command = new ListFolderContentsCommand(_workspaceWrapper)
+            {
+                Resource = new ResourceKey("logs:")
+            };
+
+            var result = await command.ExecuteAsync();
+
+            result.IsSuccess.Should().BeTrue();
+            var entries = command.ResultValue.Entries;
+            entries.Select(entry => entry.Name).Should().BeEquivalentTo(new[] { "session.log", "errors" });
+
+            var errorsEntry = entries.Single(entry => entry.Name == "errors");
+            errorsEntry.IsFolder.Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(logsBacking, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task GetFileTree_ForLogsRoot_WalksBackingFolderRecursively()
+    {
+        var logsBacking = SetupLogsRoot("session.log", "errors/", "errors/today.log", "errors/yesterday.log");
+        try
+        {
+            var command = new GetFileTreeCommand(_workspaceWrapper)
+            {
+                Resource = new ResourceKey("logs:"),
+                Depth = 3
+            };
+
+            var result = await command.ExecuteAsync();
+
+            result.IsSuccess.Should().BeTrue();
+            var root = command.ResultValue.Root;
+            Guard.IsNotNull(root);
+
+            var errorsNode = root.Children.Single(childNode => childNode.Name == "errors");
+            errorsNode.IsFolder.Should().BeTrue();
+            errorsNode.Children.Select(childNode => childNode.Name)
+                .Should().BeEquivalentTo(new[] { "today.log", "yesterday.log" });
+        }
+        finally
+        {
+            Directory.Delete(logsBacking, recursive: true);
+        }
     }
 }

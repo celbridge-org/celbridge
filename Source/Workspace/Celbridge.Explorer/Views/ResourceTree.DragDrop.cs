@@ -150,7 +150,7 @@ public sealed partial class ResourceTree
         foreach (var resource in resources)
         {
             var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var resolvedDestResource = _resourceRegistry.ResolveDestinationResource(sourceResource, destResource);
+            var resolvedDestResource = _resourceTransferService.ResolveDestinationResource(sourceResource, destResource);
 
             if (sourceResource == resolvedDestResource)
             {

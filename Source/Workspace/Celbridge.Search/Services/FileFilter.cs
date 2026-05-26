@@ -13,7 +13,7 @@ public class FileFilter
 
     private readonly HashSet<string> _metadataExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".webview",
+        ".cel",
         ".celbridge"
     };
 

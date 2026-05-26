@@ -23,20 +23,7 @@ public sealed class RemoveBlockCommand : CommandBase, IRemoveBlockCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var blockId = BlockId;
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
-        return await sidecarService.MutateBlocksAsync(
-            Resource,
-            blocks =>
-            {
-                for (int i = blocks.Count - 1; i >= 0; i--)
-                {
-                    if (string.Equals(blocks[i].Name, blockId, StringComparison.Ordinal))
-                    {
-                        blocks.RemoveAt(i);
-                    }
-                }
-            },
-            createIfMissing: false);
+        return await sidecarService.RemoveBlockAsync(Resource, BlockId);
     }
 }

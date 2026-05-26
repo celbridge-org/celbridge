@@ -53,7 +53,7 @@ public class EntityRegistry
 
     public string GetEntityDataPath(ResourceKey resource)
     {
-        var entityDataPath = Path.Combine(GetEntitiesFolderPath(), resource) + ".json";
+        var entityDataPath = Path.Combine(GetEntitiesFolderPath(), resource.Path) + ".json";
         entityDataPath = Path.GetFullPath(entityDataPath);
         return entityDataPath;
     }

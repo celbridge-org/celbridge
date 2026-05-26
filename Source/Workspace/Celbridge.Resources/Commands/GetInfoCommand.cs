@@ -16,7 +16,8 @@ public sealed class GetInfoCommand : CommandBase, IGetInfoCommand
 
     public GetInfoResult ResultValue { get; private set; } = new GetInfoResult(
         new Dictionary<string, object>(),
-        Array.Empty<SidecarBlockDescriptor>());
+        Array.Empty<SidecarBlockDescriptor>(),
+        HasSidecar: false);
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -53,7 +54,7 @@ public sealed class GetInfoCommand : CommandBase, IGetInfoCommand
             .Select(b => new SidecarBlockDescriptor(b.Name, Encoding.UTF8.GetByteCount(b.Content)))
             .ToList();
 
-        ResultValue = new GetInfoResult(fields, blocks);
+        ResultValue = new GetInfoResult(fields, blocks, HasSidecar: true);
         return Result.Ok();
     }
 }

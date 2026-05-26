@@ -8,7 +8,7 @@ public static class ExplorerConstants
     /// <summary>
     /// File extension for web view file resources.
     /// </summary>
-    public const string WebViewExtension = ".webview";
+    public const string WebViewExtension = ".webview.cel";
 
     /// <summary>
     /// File extension for markdown file resources.

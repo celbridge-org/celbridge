@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Celbridge.Commands;
 
 namespace Celbridge.Tools;
@@ -11,10 +12,15 @@ namespace Celbridge.Tools;
 /// </summary>
 public abstract class AgentToolBase
 {
+    // UnmappedMemberHandling.Disallow makes typed deserialisation reject unknown
+    // fields. Agents that typo a property name (e.g. minColor vs lowColor on a
+    // conditional formatting rule) get a clear error instead of silently running
+    // with defaults for the field they meant to set.
     protected static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
     private readonly IApplicationServiceProvider _services;

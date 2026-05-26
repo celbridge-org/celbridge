@@ -85,10 +85,12 @@ public class InspectorFactory : IInspectorFactory
 
     private Result<IInspector> CreateFileInspector(ResourceKey resource)
     {
-        var fileExtension = Path.GetExtension(resource);
+        // WebViewExtension is multi-part (.webview.cel) so Path.GetExtension
+        // would return only the final suffix. Match on the resource string instead.
+        var resourceString = resource.ToString();
 
         IInspector? inspector = null;
-        if (fileExtension == ExplorerConstants.WebViewExtension)
+        if (resourceString.EndsWith(ExplorerConstants.WebViewExtension, StringComparison.OrdinalIgnoreCase))
         {
             // WebInspector uses XAML with a parameterless constructor
             inspector = new WebInspector

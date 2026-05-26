@@ -33,6 +33,7 @@ public partial class DataTools
         var report = commandResult.Value;
         var payload = new
         {
+            hasSidecar = report.HasSidecar,
             fields = report.Fields,
             blocks = report.Blocks
                 .Select(b => new

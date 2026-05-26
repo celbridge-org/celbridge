@@ -275,15 +275,15 @@ public class PackageServiceDocumentTypeTests
         var packageId = $"test.{dirName}";
         var featureFlagLine = featureFlag is not null ? $"\nfeature_flag = \"{featureFlag}\"" : "";
 
-        // Write package.toml
-        File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
+        // Write package.cel
+        File.WriteAllText(Path.Combine(packageDir, "package.cel"), $"""
             [package]
             id = "{packageId}"
             name = "{packageName}"
             version = "1.0.0"{featureFlagLine}
 
             [contributes]
-            document_editors = ["editor.document.toml"]
+            document_editors = ["editor.document.cel"]
             """);
 
         var fileTypesToml = string.Join("\n", fileTypes.Select(ft => $"""
@@ -304,7 +304,7 @@ public class PackageServiceDocumentTypeTests
                 """));
         }
 
-        File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
+        File.WriteAllText(Path.Combine(packageDir, "editor.document.cel"), $"""
             [document]
             id = "{packageId}-doc"
             type = "custom"

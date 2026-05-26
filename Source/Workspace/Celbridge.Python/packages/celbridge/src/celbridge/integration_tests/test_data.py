@@ -14,7 +14,7 @@ from celbridge.cel_proxy import CelError
 from .helpers import delete_if_exists
 
 
-def assert_project_clean(extra_broken_references=None, extra_orphan_sidecars=None):
+def assert_project_clean(extra_broken_references=None, extra_orphan_cel_files=None):
     """Run data_check_project and assert no unexpected attention items.
 
     Pass ``extra_*`` for entries the caller knows about (e.g. a deliberate
@@ -24,7 +24,7 @@ def assert_project_clean(extra_broken_references=None, extra_orphan_sidecars=Non
     report = celbridge.data.check_project()
 
     extra_broken = set(extra_broken_references or [])
-    extra_orphan = set(extra_orphan_sidecars or [])
+    extra_orphan = set(extra_orphan_cel_files or [])
 
     actual_broken = {
         (entry["source"], entry["missingTarget"])
@@ -35,15 +35,15 @@ def assert_project_clean(extra_broken_references=None, extra_orphan_sidecars=Non
         f"Unexpected broken references: {unexpected_broken}; expected only {extra_broken}"
     )
 
-    actual_orphan = set(report.get("orphanSidecars", []))
+    actual_orphan = set(report.get("orphanCelFiles", []))
     unexpected_orphan = actual_orphan - extra_orphan
     assert not unexpected_orphan, (
-        f"Unexpected orphan sidecars: {unexpected_orphan}; expected only {extra_orphan}"
+        f"Unexpected orphan .cel files: {unexpected_orphan}; expected only {extra_orphan}"
     )
 
-    broken_sidecars = report.get("brokenSidecars", [])
-    assert broken_sidecars == [], (
-        f"Unexpected broken sidecars: {broken_sidecars}"
+    broken_cel_files = report.get("brokenCelFiles", [])
+    assert broken_cel_files == [], (
+        f"Unexpected broken .cel files: {broken_cel_files}"
     )
 
 
@@ -130,7 +130,7 @@ class TestData:
 
     def test_get_info_returns_empty_when_no_sidecar(self, data):
         result = data.get_info("TestData/notes.md")
-        assert result == {"fields": {}, "blocks": []}
+        assert result == {"hasSidecar": False, "fields": {}, "blocks": []}
 
     def test_set_field_visible_through_file_read(self, data, file):
         data.set_field("TestData/notes.md", "priority", json.dumps("high"))
@@ -181,8 +181,8 @@ class TestDataCheckProject:
         # too; we assert only the report shape so the test is robust to other
         # content in the demo project.
         assert isinstance(report.get("brokenReferences"), list)
-        assert isinstance(report.get("orphanSidecars"), list)
-        assert isinstance(report.get("brokenSidecars"), list)
+        assert isinstance(report.get("orphanCelFiles"), list)
+        assert isinstance(report.get("brokenCelFiles"), list)
 
     def test_broken_reference_detected_after_target_deleted_with_break_references(self, data, file, explorer):
         # Create a source that references a target, then delete the target
@@ -203,7 +203,7 @@ class TestDataCheckProject:
         assert len(broken) == 1
         assert broken[0]["source"] == "project:TestData/source.json"
 
-    def test_orphan_sidecar_detected_when_parent_missing(self, data, file):
+    def test_orphan_cel_file_detected_when_parent_missing(self, data, file):
         # Write a sidecar whose parent does not exist on disk. The pairing
         # pass classifies it as an orphan.
         file.write(
@@ -211,13 +211,13 @@ class TestDataCheckProject:
             "tags = [\"orphan\"]\n",
         )
         report = data.check_project()
-        assert "project:TestData/orphaned.png.cel" in report.get("orphanSidecars", [])
+        assert "project:TestData/orphaned.png.cel" in report.get("orphanCelFiles", [])
 
-    def test_broken_sidecar_detected_when_frontmatter_unparseable(self, data, file):
+    def test_broken_cel_file_detected_when_frontmatter_unparseable(self, data, file):
         # Write a sidecar whose frontmatter is malformed TOML.
         file.write("TestData/notes.md.cel", "this is not = valid // toml")
         report = data.check_project()
-        assert "project:TestData/notes.md.cel" in report.get("brokenSidecars", [])
+        assert "project:TestData/notes.md.cel" in report.get("brokenCelFiles", [])
 
     def test_move_preserves_invariant(self, data, explorer, file):
         # A reference rewrite during a move must leave the project in a

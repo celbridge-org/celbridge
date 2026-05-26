@@ -16,7 +16,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IFileTemplateService, FileTemplateService>();
 
         services.AddTransient<IResourceService, ResourceService>();
-        services.AddTransient<IResourceRegistry, ResourceRegistry>();
         services.AddTransient<IResourceTransferService, ResourceTransferService>();
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
@@ -24,6 +23,8 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceFileSystem, ResourceFileSystem>();
         services.AddTransient<IResourceScanner, ResourceScanner>();
         services.AddTransient<ISidecarService, SidecarService>();
+        services.AddTransient<ISidecarPairingService, SidecarPairingService>();
+        services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();
         services.AddTransient<AddResourceHelper>();
 
         //

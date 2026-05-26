@@ -29,7 +29,8 @@ public partial class FileTools
         }
         catch (JsonException ex)
         {
-            return ToolResponse.Error($"Invalid JSON array: {ex.Message}");
+            return ToolResponse.Error(
+                $"resources must be a JSON array of resource keys, e.g. [\"project:notes/a.md\", \"project:notes/b.md\"]. Parse error: {ex.Message}");
         }
 
         if (resourceKeys is null || resourceKeys.Count == 0)

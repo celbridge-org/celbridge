@@ -42,6 +42,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
+        var transferService = workspaceService.ResourceService.TransferService;
 
         // Filter out any items where the destination resource already exists
         TransferItems.RemoveAll(item => resourceRegistry.GetResource(item.DestResource).IsSuccess);
@@ -60,7 +61,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         {
             foreach (var item in TransferItems)
             {
-                var result = await TransferSingleItemAsync(item, resourceRegistry, resourceOpService);
+                var result = await TransferSingleItemAsync(item, resourceRegistry, transferService, resourceOpService);
                 if (result.IsFailure)
                 {
                     failedItems.Add(item.DestResource.ResourceName);
@@ -96,6 +97,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private async Task<Result> TransferSingleItemAsync(
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
+        IResourceTransferService transferService,
         IResourceOperationService resourceOpService)
     {
         if (item.SourceResource.IsEmpty)
@@ -106,7 +108,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         else
         {
             // Resource is inside the project folder - copy/move it
-            return await CopyInternalResourceAsync(item, resourceRegistry, resourceOpService);
+            return await CopyInternalResourceAsync(item, resourceRegistry, transferService, resourceOpService);
         }
     }
 
@@ -148,9 +150,10 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private async Task<Result> CopyInternalResourceAsync(
         ResourceTransferItem item,
         IResourceRegistry resourceRegistry,
+        IResourceTransferService transferService,
         IResourceOperationService resourceOpService)
     {
-        var resolvedDestResource = resourceRegistry.ResolveDestinationResource(item.SourceResource, item.DestResource);
+        var resolvedDestResource = transferService.ResolveDestinationResource(item.SourceResource, item.DestResource);
 
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(item.SourceResource);
         if (resolveSourceResult.IsFailure)

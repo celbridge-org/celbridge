@@ -34,7 +34,7 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 
 **Project-wide health.**
 
-- `data_check_project` — report broken `project:` references, orphan sidecars, and any sidecar that fails to parse cleanly.
+- `data_check_project` — report broken `project:` references, orphan `.cel` files, and any `.cel` file that fails to parse cleanly.
 
 ## When to use which surface
 

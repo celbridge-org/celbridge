@@ -6,7 +6,7 @@ namespace Celbridge.Resources;
 /// data_check_project to surface attention states.
 ///
 /// Parse state (Healthy / Broken) and orphan-ness are orthogonal dimensions:
-/// an orphan sidecar with malformed content appears in both Broken and Orphan.
+/// an orphan .cel file with malformed content appears in both Broken and Orphan.
 /// Files whose names end in .cel.cel are classified as Broken and never as a
 /// regular sidecar.
 /// </summary>
@@ -21,9 +21,14 @@ public record SidecarReport(
 public interface IResourceRegistry
 {
     /// <summary>
-    /// The path of the project folder.
+    /// The path of the project folder. Empty until InitializeProjectRoot is called.
     /// </summary>
-    string ProjectFolderPath { get; set; }
+    string ProjectFolderPath { get; }
+
+    /// <summary>
+    /// Sets the project folder path and registers the project root handler.
+    /// </summary>
+    void InitializeProjectRoot(string projectFolderPath);
 
     /// <summary>
     /// The project folder resource that contains all the resources in the project.
@@ -73,28 +78,6 @@ public interface IResourceRegistry
     /// Fails if no resource matching the resource key is found in the project.
     /// </summary>
     Result<IResource> GetResource(ResourceKey resource);
-
-    /// <summary>
-    /// Returns a resolved destination resource key for a resource transfer.
-    /// If destResource specifies an existing folder in the project, then the name of the source resource is
-    /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
-    /// </summary>
-    ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
-
-    /// <summary>
-    /// Returns a resolved destination resource key for a resource transfer from a source path to a destination resource.
-    /// If destResource specifies an existing folder in the project, then the name of the source resource is
-    /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
-    /// </summary>
-    ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource);
-
-    /// <summary>
-    /// Returns the folder resource associated with the context menu item for a resource.
-    /// If the resource is a folder, then the folder is returned.
-    /// If the resource is a file, then the file's parent folder is returned.
-    /// If the resource is null, then the project folder is returned.
-    /// </summary>
-    ResourceKey GetContextMenuItemFolder(IResource? resource);
 
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.

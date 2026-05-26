@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
@@ -20,17 +19,20 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IProjectService _projectService;
 
     public IResourceRegistry Registry { get; }
+    public IRootHandlerRegistry RootHandlerRegistry { get; }
     public IResourceMonitor Monitor { get; }
     public IResourceTransferService TransferService { get; }
     public IResourceOperationService OperationService { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
+        ILogger<ResourceRegistry> registryLogger,
         ICommandService commandService,
         IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IResourceRegistry resourceRegistry,
+        IProjectTreeBuilder projectTreeBuilder,
+        ISidecarPairingService sidecarPairingService,
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
         IResourceOperationService resourceOperationService)
@@ -43,15 +45,24 @@ public class ResourceService : IResourceService, IDisposable
         _messengerService = messengerService;
         _projectService = projectService;
 
-        Registry = resourceRegistry;
+        // RootHandlerRegistry and ResourceRegistry are constructed together so
+        // they share the same root-handler instance
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        RootHandlerRegistry = rootHandlerRegistry;
+
+        Registry = new ResourceRegistry(
+            registryLogger,
+            messengerService,
+            projectTreeBuilder,
+            sidecarPairingService,
+            rootHandlerRegistry);
+
         Monitor = resourceMonitor;
         TransferService = resourceTransferService;
         OperationService = resourceOperationService;
 
-        // Set the project folder path on the registry. This also auto-registers the
-        // ProjectRootHandler for the project: root via the setter.
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-        Registry.ProjectFolderPath = projectFolderPath;
+        Registry.InitializeProjectRoot(projectFolderPath);
 
         // Build the new .celbridge/ hidden folder layout: temp/, logs/, trash/,
         // staging-fs/. These need to exist before downstream services start reading
@@ -108,11 +119,12 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Register the temp: and logs: root handlers. These share a single PathValidator
-        // instance so their reparse-point caches stay coherent across the two roots.
-        var handlerPathValidator = new PathValidator();
-        Registry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder, handlerPathValidator));
-        Registry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder, handlerPathValidator));
+        // Register the temp: and logs: root handlers against the shared
+        // PathValidator owned by the root handler registry so a single
+        // InvalidatePathCache call covers project + temp + logs together.
+        var sharedPathValidator = rootHandlerRegistry.PathValidator;
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder, sharedPathValidator));
+        rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder, sharedPathValidator));
 
         // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
         // the monitor looks up its registry through IWorkspaceWrapper, which is only populated

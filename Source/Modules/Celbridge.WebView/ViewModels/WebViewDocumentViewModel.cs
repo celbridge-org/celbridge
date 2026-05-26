@@ -1,9 +1,10 @@
-using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
+using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.WebView.Services;
+using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Celbridge.WebView.ViewModels;
@@ -11,9 +12,11 @@ namespace Celbridge.WebView.ViewModels;
 public partial class WebViewDocumentViewModel : DocumentViewModel
 {
     private const string ProjectVirtualHost = "project.celbridge";
+    private const string SourceUrlFieldName = "source_url";
 
     private readonly ICommandService _commandService;
     private readonly IWebViewService _webViewService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     [ObservableProperty]
     private string _sourceUrl = string.Empty;
@@ -21,12 +24,12 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Selects how LoadContent and NavigateUrl interpret the backing resource. Set
     /// by the view before the first LoadContent call. Defaults to ExternalUrl, which
-    /// matches the .webview document behaviour assumed by the parameterless code-gen flow.
+    /// matches the .webview.cel document behaviour assumed by the parameterless code-gen flow.
     /// </summary>
     public WebViewDocumentRole Role { get; set; }
 
     /// <summary>
-    /// The URL the view should navigate to. For .webview documents this is the configured
+    /// The URL the view should navigate to. For .webview.cel documents this is the configured
     /// source URL verbatim; for the HTML viewer it is the project virtual-host URL derived
     /// from FileResource.
     /// </summary>
@@ -59,10 +62,12 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
     public WebViewDocumentViewModel(
         ICommandService commandService,
-        IWebViewService webViewService)
+        IWebViewService webViewService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _commandService = commandService;
         _webViewService = webViewService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public async Task<Result> LoadContent()
@@ -75,31 +80,36 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
             return Result.Ok();
         }
 
-        string sourceUrl;
-        try
+        // The .webview.cel file is a standalone .cel form: SidecarService.ReadAsync
+        // treats the resource itself as the storage, parses the TOML frontmatter
+        // through SidecarHelper, and routes IO via the chokepoint so this read
+        // coordinates with concurrent writes from the inspector panel.
+        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var readResult = await sidecarService.ReadAsync(FileResource);
+        if (readResult.IsFailure)
         {
-            var text = await File.ReadAllTextAsync(FilePath);
-
-            if (string.IsNullOrEmpty(text))
-            {
-                SourceUrl = string.Empty;
-                return Result.Ok();
-            }
-
-            using var document = JsonDocument.Parse(text);
-            if (!document.RootElement.TryGetProperty("sourceUrl", out var urlElement))
-            {
-                return Result.Fail($"Failed to load content from .webview file: {FileResource}");
-            }
-
-            sourceUrl = urlElement.GetString()?.Trim() ?? string.Empty;
+            return Result.Fail($"Failed to read '.webview.cel' file '{FileResource}'")
+                .WithErrors(readResult);
         }
-        catch (Exception ex)
+        var read = readResult.Value;
+
+        if (read.Outcome == SidecarReadOutcome.Broken)
         {
-            return Result.Fail($"An exception occurred when loading document from file: {FilePath}")
-                .WithException(ex);
+            return Result.Fail($"Failed to parse '.webview.cel' file '{FileResource}': {read.FailureMessage ?? "parse failed"}");
         }
 
+        if (read.Outcome == SidecarReadOutcome.NoSidecar
+            || read.Content is null
+            || !read.Content.Frontmatter.TryGetValue(SourceUrlFieldName, out var urlObject)
+            || urlObject is not string urlValue)
+        {
+            // No file, no frontmatter, or no source_url. Treat as a blank URL so
+            // the view shows nothing rather than failing the open.
+            SourceUrl = string.Empty;
+            return Result.Ok();
+        }
+
+        var sourceUrl = urlValue.Trim();
         if (string.IsNullOrEmpty(sourceUrl))
         {
             SourceUrl = string.Empty;
@@ -108,7 +118,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
         if (!_webViewService.IsExternalUrl(sourceUrl))
         {
-            return Result.Fail($".webview documents only support external http/https URLs. Configured URL: '{sourceUrl}'");
+            return Result.Fail($".webview.cel documents only support external http/https URLs. Configured URL: '{sourceUrl}'");
         }
 
         SourceUrl = sourceUrl;

@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Celbridge.Explorer;
 
-namespace Celbridge.Documents.Services;
+namespace Celbridge.Documents.Helpers;
 
 public class FileTypeHelper
 {
@@ -42,14 +42,17 @@ public class FileTypeHelper
     }
 
     /// <summary>
-    /// Gets the document view type based on the file extension.
+    /// Returns the document view type for a file. Detects multi-part extensions
+    /// like .webview.cel before falling back to the single-part suffix.
     /// </summary>
-    public DocumentViewType GetDocumentViewType(string fileExtension)
+    public DocumentViewType GetDocumentViewType(string fileName)
     {
-        if (fileExtension == ExplorerConstants.WebViewExtension)
+        if (fileName.EndsWith(ExplorerConstants.WebViewExtension, StringComparison.OrdinalIgnoreCase))
         {
             return DocumentViewType.WebViewDocument;
         }
+
+        var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
 
         if (fileExtension == ExplorerConstants.MarkdownExtension)
         {
@@ -97,34 +100,37 @@ public class FileTypeHelper
     }
 
     /// <summary>
-    /// Determines if a file extension is recognized (either as a text editor type or a supported binary type).
+    /// Determines if a file is recognized (either as a text editor type or a supported binary type).
+    /// Detects multi-part extensions like .webview.cel before falling back to the single-part suffix.
     /// </summary>
-    public bool IsRecognizedExtension(string fileExtension)
+    public bool IsRecognizedExtension(string fileName)
     {
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return false;
+        }
+
+        if (fileName.EndsWith(ExplorerConstants.WebViewExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (string.IsNullOrEmpty(fileExtension))
         {
             return false;
         }
 
-        // Check for web view extension
-        if (fileExtension == ExplorerConstants.WebViewExtension)
-        {
-            return true;
-        }
-
-        // Check for markdown extension (handled by the WYSIWYG editor)
         if (fileExtension == ExplorerConstants.MarkdownExtension)
         {
             return true;
         }
 
-        // Check if it's a known text editor type (via registered factories)
         if (_documentEditorRegistry?.IsExtensionSupported(fileExtension) == true)
         {
             return true;
         }
 
-        // Check if it's a supported binary type
         if (_binaryFileExtensions.Contains(fileExtension))
         {
             return true;

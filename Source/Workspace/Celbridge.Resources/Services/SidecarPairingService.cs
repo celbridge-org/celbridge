@@ -1,0 +1,178 @@
+using Celbridge.Documents;
+using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
+using Celbridge.Workspace;
+
+namespace Celbridge.Resources.Services;
+
+public sealed class SidecarPairingService : ISidecarPairingService
+{
+    private readonly ILogger<SidecarPairingService> _logger;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+
+    public SidecarPairingService(
+        ILogger<SidecarPairingService> logger,
+        IWorkspaceWrapper workspaceWrapper)
+    {
+        _logger = logger;
+        _workspaceWrapper = workspaceWrapper;
+    }
+
+    public SidecarPairingResult ComputePairings(IFolderResource projectRoot, IRootHandlerRegistry rootHandlerRegistry)
+    {
+        var healthy = new List<ResourceKey>();
+        var broken = new List<ResourceKey>();
+        var orphan = new List<ResourceKey>();
+        var sidecarToParent = new Dictionary<ResourceKey, ResourceKey>();
+
+        var editorRegistry = ResolveEditorRegistry();
+
+        ProcessFolder(projectRoot);
+
+        var report = new SidecarReport(
+            Healthy: healthy,
+            Broken: broken,
+            Orphan: orphan);
+
+        return new SidecarPairingResult(report, sidecarToParent);
+
+        void ProcessFolder(IFolderResource folder)
+        {
+            // Sibling name lookup keeps the per-file pairing checks O(1).
+            var siblingByName = new Dictionary<string, IResource>(StringComparer.OrdinalIgnoreCase);
+            foreach (var child in folder.Children)
+            {
+                siblingByName[child.Name] = child;
+            }
+
+            foreach (var child in folder.Children)
+            {
+                if (child is IFolderResource subFolder)
+                {
+                    ProcessFolder(subFolder);
+                    continue;
+                }
+
+                if (child is not FileResource fileResource)
+                {
+                    continue;
+                }
+
+                ClassifyFile(fileResource, siblingByName);
+            }
+        }
+
+        void ClassifyFile(FileResource fileResource, Dictionary<string, IResource> siblingByName)
+        {
+            var name = fileResource.Name;
+
+            // Files ending in .cel.cel are never paired with anything. They are
+            // surfaced as Broken so the user can resolve them.
+            if (name.EndsWith(".cel.cel", StringComparison.OrdinalIgnoreCase))
+            {
+                fileResource.Sidecar = null;
+                broken.Add(ResourceTreeNavigator.BuildKey(fileResource));
+                return;
+            }
+
+            if (name.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+            {
+                ClassifySidecarFile(fileResource, siblingByName);
+                return;
+            }
+
+            var sidecarName = name + SidecarHelper.Extension;
+            if (siblingByName.TryGetValue(sidecarName, out var sibling)
+                && sibling is FileResource siblingFile
+                && !siblingFile.Name.EndsWith(".cel.cel", StringComparison.OrdinalIgnoreCase))
+            {
+                var sidecarKey = ResourceTreeNavigator.BuildKey(siblingFile);
+
+                // The sidecar's classification may not have run yet; populate a
+                // placeholder Healthy entry now and let ClassifySidecarFile
+                // overwrite it with the inspected status when it runs.
+                var existingStatus = fileResource.Sidecar?.Status ?? SidecarStatus.Healthy;
+                fileResource.Sidecar = new SidecarInfo(sidecarKey, existingStatus);
+                return;
+            }
+
+            fileResource.Sidecar = null;
+        }
+
+        void ClassifySidecarFile(FileResource sidecarFile, Dictionary<string, IResource> siblingByName)
+        {
+            var sidecarName = sidecarFile.Name;
+            var parentName = sidecarName.Substring(0, sidecarName.Length - SidecarHelper.Extension.Length);
+            var sidecarKey = ResourceTreeNavigator.BuildKey(sidecarFile);
+
+            // Inspect the .cel file's content to determine its parse state.
+            // Path resolution goes through the root handler registry so a
+            // sidecar that resolves through a symlink or junction is rejected
+            // by the same check that protects every other resource operation.
+            // A failed resolve is treated as Broken — the bytes might still be
+            // readable, but the rest of the system refuses to operate on them
+            // and the user needs to see the file flagged for repair.
+            SidecarStatus status;
+            var resolveResult = rootHandlerRegistry.ResolveResourcePath(sidecarKey);
+            if (resolveResult.IsFailure)
+            {
+                _logger.LogWarning($"sidecar pairing: failed to resolve path for '{sidecarKey}': {resolveResult.FirstErrorMessage}");
+                status = SidecarStatus.Broken;
+            }
+            else
+            {
+                status = SidecarHelper.Inspect(resolveResult.Value, _logger);
+            }
+
+            // A .cel file has no sidecar of its own.
+            sidecarFile.Sidecar = null;
+
+            if (siblingByName.TryGetValue(parentName, out var parentSibling)
+                && parentSibling is FileResource parentFile)
+            {
+                sidecarToParent[sidecarKey] = ResourceTreeNavigator.BuildKey(parentFile);
+                parentFile.Sidecar = new SidecarInfo(sidecarKey, status);
+            }
+            else
+            {
+                // No parent: either a registered standalone .cel form (package.cel,
+                // foo.webview.cel, foo.document.cel) or a true orphan. Standalone
+                // forms are matched via the editor registry and must not appear
+                // in the orphan list.
+                if (!IsRegisteredStandaloneCelForm(sidecarKey, editorRegistry))
+                {
+                    orphan.Add(sidecarKey);
+                }
+            }
+
+            if (status == SidecarStatus.Healthy)
+            {
+                healthy.Add(sidecarKey);
+            }
+            else
+            {
+                broken.Add(sidecarKey);
+            }
+        }
+    }
+
+    private IDocumentEditorRegistry ResolveEditorRegistry()
+    {
+        // WorkspaceService is populated before the page UI loads, so this is safe
+        // during workspace load. The property throws if no service is present.
+        return _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
+    }
+
+    // Checks whether a parentless .cel file is claimed by a registered factory.
+    // Delegates to GetFactory so filename-only registrations (e.g. package.cel)
+    // and multi-part extensions (e.g. foo.webview.cel) are matched the same way
+    // the editor open path matches them.
+    private static bool IsRegisteredStandaloneCelForm(
+        ResourceKey sidecarKey,
+        IDocumentEditorRegistry editorRegistry)
+    {
+        var factoryResult = editorRegistry.GetFactory(sidecarKey);
+        return factoryResult.IsSuccess;
+    }
+
+}

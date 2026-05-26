@@ -10,8 +10,7 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Explorer.Menu.Options;
 
 /// <summary>
-/// Menu option to open a document with a specific editor chosen by the user.
-/// Only visible when multiple editors are registered for the file's extension.
+/// Menu option that lets the user pick which editor opens the clicked file.
 /// </summary>
 public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 {
@@ -51,12 +50,19 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
             return new MenuItemState(IsVisible: false, IsEnabled: false);
         }
 
-        var extension = Path.GetExtension(clickedFile.Name).ToLowerInvariant();
-        var registry = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
-        var factories = registry.GetFactoriesForFileExtension(extension);
+        var candidates = GetCandidateFactories(clickedFile);
 
-        bool hasMultipleEditors = factories.Count >= 2;
+        bool hasMultipleEditors = candidates.Count >= 2;
         return new MenuItemState(IsVisible: hasMultipleEditors, IsEnabled: hasMultipleEditors);
+    }
+
+    private IReadOnlyList<IDocumentEditorFactory> GetCandidateFactories(IFileResource clickedFile)
+    {
+        var registry = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
+
+        return registry.GetUserPickableFactoriesForResource(resourceKey);
     }
 
     public async void Execute(ExplorerMenuContext context)
@@ -82,8 +88,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
 
         var extension = Path.GetExtension(clickedFile.Name).ToLowerInvariant();
-        var editorRegistry = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+        var factories = GetCandidateFactories(clickedFile);
 
         if (factories.Count < 2)
         {
@@ -106,9 +111,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
         if (currentEditorId.IsEmpty)
         {
-            // GetEditorPreferenceAsync validates the stored value and returns Empty if a
-            // persisted preference references an editor that has since been renamed or uninstalled.
-            currentEditorId = await documentsService.GetEditorPreferenceAsync(extension);
+            currentEditorId = await documentsService.GetPreferredEditorAsync(resourceKey);
         }
 
         int defaultIndex = 0;
@@ -148,16 +151,18 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
             });
         }
 
-        // Persist the user's explicit per-file choice in the sidecar's `editor`
+        // Persist the user's explicit per-file choice in the sidecar's editor
         // field, creating the sidecar if needed. The KISS rule: every "Open
         // With X" invocation writes the chosen editor, even when it matches
         // the per-extension default - a redundant entry is less surprising
-        // than an auto-removal the user did not request.
+        // than an auto-removal the user did not request. For standalone .cel
+        // files the SidecarService writes the field directly into the file's
+        // own frontmatter (the .cel file is its own metadata).
         _commandService.Execute<ISetFieldCommand>(command =>
         {
             command.Resource = resourceKey;
-            command.Field = "editor";
-            command.Value = selectedFactory.EditorId.ToString();
+            command.Field = DocumentConstants.SidecarEditorFieldName;
+            command.Value = selectedFactory.EditorId;
         });
 
         _commandService.Execute<IOpenDocumentCommand>(command =>

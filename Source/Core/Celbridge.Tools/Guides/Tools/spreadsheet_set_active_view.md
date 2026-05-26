@@ -29,7 +29,7 @@ The cell anchored at the upper-left of the visible viewport on the target sheet.
 
 Scroll position is best-effort: frozen panes may clamp `topLeftCell`, and Excel or other host applications may reset it on open. A subsequent `spreadsheet_get_active_view` may report a different `topLeftCell` than the one written.
 
-The response echoes what was submitted, so an empty `topLeftCell` in the write response is the "unchanged" sentinel — not the resolved viewport. Call `spreadsheet_get_active_view` to read the resolved value.
+**Response semantics:** the write response echoes the *submitted* values, not the resolved ones. If you pass `topLeftCell: ""` (the "unchanged" sentinel), the response also returns `topLeftCell: ""` — even though the sheet has a real top-left cell. To read the resolved viewport, call `spreadsheet_get_active_view` afterwards.
 
 ## Round-tripping a multi-range selection
 

@@ -17,7 +17,9 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
 
     public virtual EditorPriority Priority => EditorPriority.Specialized;
 
-    public virtual bool CanHandleResource(ResourceKey fileResource, string filePath)
+    public virtual bool IsPlaceholder => false;
+
+    public virtual bool CanHandleResource(ResourceKey fileResource)
     {
         var fileName = Path.GetFileName(fileResource.ToString());
 

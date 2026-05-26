@@ -53,10 +53,13 @@ public class FileFilterTests
     }
 
     [Test]
-    public void ShouldSearchFile_WebviewExtension_ReturnsFalse()
+    public void ShouldSearchFile_CelExtension_ReturnsFalse()
     {
-        var filePath = Path.Combine(_testDir, "test.webview");
-        File.WriteAllText(filePath, "webview data");
+        // .cel files (sidecars and standalone manifests) are excluded from
+        // plain-text search because their content is editor-owned and a
+        // plain-text replace would corrupt the file structure.
+        var filePath = Path.Combine(_testDir, "test.webview.cel");
+        File.WriteAllText(filePath, "source_url = \"https://example.com\"\n");
 
         _filter.ShouldSearchFile(filePath).Should().BeFalse();
     }

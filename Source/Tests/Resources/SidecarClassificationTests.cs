@@ -31,8 +31,10 @@ public class SidecarClassificationTests
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
-            new FileIconService());
-        _registry.ProjectFolderPath = _projectFolderPath;
+            new ProjectTreeBuilder(new FileIconService()),
+            SidecarPairingTestHelper.BuildPairingServiceWithNoFactories(),
+            new RootHandlerRegistry());
+        _registry.InitializeProjectRoot(_projectFolderPath);
     }
 
     [TearDown]

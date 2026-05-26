@@ -146,7 +146,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
         var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+        var factories = editorRegistry.GetFactoriesForExtension(extension);
 
         if (!documentEditorId.IsEmpty)
         {
@@ -160,12 +160,9 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
         if (factories.Count >= 2)
         {
-            var resolveResult = ResolveResourcePath(fileResource);
-            var filePath = resolveResult.IsSuccess ? resolveResult.Value : string.Empty;
-
             foreach (var factory in factories)
             {
-                if (factory.CanHandleResource(fileResource, filePath))
+                if (factory.CanHandleResource(fileResource))
                 {
                     return new EditorDisplayInfo(factory.EditorId, factory.DisplayName);
                 }
@@ -187,7 +184,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public EditorChoiceInfo? GetChoicesForFileExtension(string extension, DocumentEditorId currentEditorId)
     {
         var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+        var factories = editorRegistry.GetFactoriesForExtension(extension);
 
         if (factories.Count < 2)
         {

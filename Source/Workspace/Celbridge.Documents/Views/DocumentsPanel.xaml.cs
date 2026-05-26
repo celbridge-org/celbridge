@@ -306,9 +306,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var existingSection = existingLocation.Section;
             var existingTab = existingLocation.Tab;
 
-            // If a different editor was requested, close and reopen with the new editor
+            // Honor an explicit editor request even when the existing tab's EditorId is Empty.
             bool isDifferentEditor = !effectiveOptions.EditorId.IsEmpty &&
-                !existingTab.ViewModel.EditorId.IsEmpty &&
                 effectiveOptions.EditorId != existingTab.ViewModel.EditorId;
 
             if (isDifferentEditor)

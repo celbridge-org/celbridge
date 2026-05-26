@@ -73,7 +73,9 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     public string Root => _root ?? DefaultRoot;
 
     /// <summary>
-    /// The path portion of this key, with the root prefix stripped. May be empty for a root-only key.
+    /// The path portion only, no root prefix; empty for root-only keys. Use this in any
+    /// external context (filesystem paths, URLs, etc.) — the canonical "root:path" form
+    /// returned by ToString() is only meaningful to Celbridge's resource APIs.
     /// </summary>
     public string Path => _path ?? string.Empty;
 
@@ -91,8 +93,8 @@ public readonly struct ResourceKey : IEquatable<ResourceKey>, IComparable<Resour
     /// error text, debugger views) can be round-tripped or copy-pasted directly into a quoted
     /// reference without forgetting the prefix.
     ///
-    /// For UI surfaces or other display contexts that explicitly want the bare path without
-    /// the root prefix, use the <see cref="Path"/> accessor instead.
+    /// This form is only meaningful to Celbridge's resource APIs. For any external context
+    /// (filesystem paths, URLs, etc.) use the <see cref="Path"/> accessor instead.
     /// </summary>
     public override string ToString()
     {

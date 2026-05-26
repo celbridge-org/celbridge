@@ -125,6 +125,18 @@ public class WorkspaceLoader
                 _logger.LogWarning(initMonitorResult, "Failed to initialize resource monitor");
             }
 
+            // Register packages before the first resource scan so the sidecar
+            // pairing pass sees package-contributed document-editor factories.
+            try
+            {
+                var packageService = workspaceService.PackageService;
+                packageService.RegisterPackages(projectFolderPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
+            }
+
             // Update resource registry immediately to ensure we are up to date
             var updateResult = resourceService.UpdateResources();
             if (updateResult.IsFailure)
@@ -132,12 +144,6 @@ public class WorkspaceLoader
                 return Result.Fail("Failed to update resources")
                     .WithErrors(updateResult);
             }
-
-            // Fire-and-forget the project-health check so banner-worthy findings
-            // surface in the host log without blocking workspace load. The
-            // command scans the project's text files on demand; on a clean
-            // project the result is empty.
-            _ = Task.Run(() => RunProjectCheckAsync());
         }
         catch (Exception ex)
         {
@@ -165,19 +171,7 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Register all packages before restoring documents so that restored documents can use editors
-        // defined in packages.
-        try
-        {
-            var packageService = workspaceService.PackageService;
-            packageService.RegisterPackages(projectFolderPath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
-        }
-
-        // Open previous opened documents in the Documents Panel
+        // Open previous opened documents in the Documents Panel.
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
@@ -199,6 +193,10 @@ public class WorkspaceLoader
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
+
+        // Run the project-health check after WorkspaceLoadedMessage so it sees
+        // the fully-initialised workspace. Fire-and-forget; never blocks load.
+        _ = Task.Run(() => RunProjectCheckAsync());
 
         //
         // Initialize terminal window and Python scripting
@@ -230,10 +228,8 @@ public class WorkspaceLoader
         return Result.Ok();
     }
 
-    // Runs data_check_project in the background and delegates formatting and
-    // dispatch of the report to ProjectCheckReporter. Failure to execute the
-    // command or any unexpected exception is logged but never propagated, so
-    // a broken check cannot tear down the workspace load path.
+    // Runs the project consistency check and hands the report to ProjectCheckReporter.
+    // Errors are logged, never thrown — a broken check must not fail workspace load.
     private async Task RunProjectCheckAsync()
     {
         try

@@ -971,8 +971,11 @@ Do you wish to continue?</value>
   <data name="DocumentEditor_ProjectFile" xml:space="preserve">
     <value>Project File</value>
   </data>
-  <data name="DocumentEditor_ModManifest" xml:space="preserve">
-    <value>Mod Manifest</value>
+  <data name="DocumentEditor_PackageManifest" xml:space="preserve">
+    <value>Package Manifest</value>
+  </data>
+  <data name="DocumentEditor_DocumentContribution" xml:space="preserve">
+    <value>Document Contribution</value>
   </data>
   <data name="WebView_NavigationPrompt_Title" xml:space="preserve">
     <value>Open external link</value>

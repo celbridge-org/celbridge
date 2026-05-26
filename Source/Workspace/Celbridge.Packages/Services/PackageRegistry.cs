@@ -11,7 +11,7 @@ namespace Celbridge.Packages;
 public class PackageRegistry
 {
     private const string PackagesFolderName = "packages";
-    private const string ManifestFileName = "package.toml";
+    private const string ManifestFileName = "package.cel";
     private const string ReservedIdPrefix = "celbridge.";
 
     // Editors like the code editor can handle 150+ extensions; listing them all

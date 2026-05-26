@@ -24,32 +24,7 @@ public sealed class WriteBlockCommand : CommandBase, IWriteBlockCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var blockId = BlockId;
-        var content = Content;
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
-        return await sidecarService.MutateBlocksAsync(
-            Resource,
-            blocks =>
-            {
-                var index = -1;
-                for (int i = 0; i < blocks.Count; i++)
-                {
-                    if (string.Equals(blocks[i].Name, blockId, StringComparison.Ordinal))
-                    {
-                        index = i;
-                        break;
-                    }
-                }
-
-                var updated = new SidecarBlock(blockId, content);
-                if (index >= 0)
-                {
-                    blocks[index] = updated;
-                }
-                else
-                {
-                    blocks.Add(updated);
-                }
-            });
+        return await sidecarService.WriteBlockAsync(Resource, BlockId, Content);
     }
 }

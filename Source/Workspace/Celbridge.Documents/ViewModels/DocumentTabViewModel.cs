@@ -115,7 +115,7 @@ public partial class DocumentTabViewModel : ObservableObject
 
         var extension = Path.GetExtension(FileResource.ToString()).ToLowerInvariant();
         var factories = _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry
-            .GetFactoriesForFileExtension(extension);
+            .GetFactoriesForExtension(extension);
 
         return factories.Count >= 2;
     }

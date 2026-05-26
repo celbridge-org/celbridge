@@ -23,9 +23,6 @@ public sealed class RemoveFieldCommand : CommandBase, IRemoveFieldCommand
     public override async Task<Result> ExecuteAsync()
     {
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
-        return await sidecarService.MutateFrontmatterAsync(
-            Resource,
-            dict => dict.Remove(Field),
-            createIfMissing: false);
+        return await sidecarService.RemoveFieldAsync(Resource, Field);
     }
 }

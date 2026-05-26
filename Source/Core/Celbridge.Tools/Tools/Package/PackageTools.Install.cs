@@ -1,7 +1,6 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using File = System.IO.File;
 
 namespace Celbridge.Tools;
 
@@ -72,21 +71,11 @@ public partial class PackageTools
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileSystem = workspaceService.ResourceFileSystem;
 
-        // Write the downloaded zip to a temporary cache file in the project.
-        // The FS layer ensures the parent folder exists and writes atomically.
-        var tempArchiveResource = ResourceKey.Create($".celbridge/.cache/{packageName}.zip");
-        var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
-        if (resolveTempResult.IsFailure)
-        {
-            var failure = Result.Fail("Failed to resolve temporary archive path")
-                .WithErrors(resolveTempResult);
-            return ToolResponse.Error(failure);
-        }
-        var tempArchivePath = resolveTempResult.Value;
-
+        // Stage the downloaded zip under temp: so it lives in .celbridge/temp/
+        // (created at workspace load) and is reachable through the chokepoint.
+        var tempArchiveResource = new ResourceKey($"temp:{packageName}.zip");
         var writeArchiveResult = await fileSystem.WriteAllBytesAsync(tempArchiveResource, downloadResult.Value);
         if (writeArchiveResult.IsFailure)
         {
@@ -116,10 +105,9 @@ public partial class PackageTools
         }
         finally
         {
-            if (File.Exists(tempArchivePath))
-            {
-                File.Delete(tempArchivePath);
-            }
+            // Best-effort cleanup of the staged archive; a failure here does
+            // not change the install outcome the caller sees.
+            await fileSystem.DeleteAsync(tempArchiveResource);
         }
     }
 }

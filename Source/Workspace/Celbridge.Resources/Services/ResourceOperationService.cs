@@ -138,7 +138,7 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         AddOperation(operation);
-        return Result<CopyResult>.Ok(operation.LastCopyResult ?? EmptyCopyResult);
+        return operation.LastCopyResult ?? EmptyCopyResult;
     }
 
     private async Task<Result<CopyResult>> CopyExternalFileAsync(string sourcePath, string destPath)
@@ -150,7 +150,7 @@ public class ResourceOperationService : IResourceOperationService
             return Result.Fail(execResult);
         }
         AddOperation(operation);
-        return Result<CopyResult>.Ok(EmptyCopyResult);
+        return EmptyCopyResult;
     }
 
     private async Task<Result<CopyResult>> CopyExternalFolderAsync(string sourcePath, string destPath)
@@ -162,7 +162,7 @@ public class ResourceOperationService : IResourceOperationService
             return Result.Fail(execResult);
         }
         AddOperation(operation);
-        return Result<CopyResult>.Ok(EmptyCopyResult);
+        return EmptyCopyResult;
     }
 
     private bool IsInProjectFolder(string absolutePath)

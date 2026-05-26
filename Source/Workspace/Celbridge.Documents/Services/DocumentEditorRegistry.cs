@@ -7,11 +7,17 @@ namespace Celbridge.Documents.Services;
 public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
     private bool _disposed;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<DocumentEditorId> _registeredEditorIds = new();
     private readonly Dictionary<DocumentEditorId, IDocumentEditorFactory> _idToFactory = new();
+
+    public DocumentEditorRegistry(ITextBinarySniffer textBinarySniffer)
+    {
+        _textBinarySniffer = textBinarySniffer;
+    }
 
     /// <summary>
     /// Registers a document editor factory.
@@ -84,29 +90,38 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     /// Gets the factory for the specified file resource.
     /// Returns the highest priority factory that can handle the resource.
     /// </summary>
-    public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource, string filePath)
+    public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource)
     {
-        // Use ResourceKey.ResourceName directly rather than Path.GetFileName on
-        // the key's string form. Path.GetFileName treats the "project:" prefix
-        // inconsistently across platforms (volume separator on Windows), so it
-        // would split "project:package.toml" differently from a real path.
-        var fileName = fileResource.ResourceName;
+        var candidates = GetFactoriesForResource(fileResource);
+        if (candidates.Count == 0)
+        {
+            return Result<IDocumentEditorFactory>.Fail($"No registered factory can handle resource: '{fileResource}'");
+        }
+        return Result<IDocumentEditorFactory>.Ok(candidates[0]);
+    }
 
-        // 1. Try exact-filename match first. A factory that claims "package.toml"
-        //    by filename wins over a generic ".toml" extension factory.
+    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource)
+    {
+        // Match order: exact filename first, then multi-part extension suffixes
+        // longest first. Dedupe by editor id so a factory registered against
+        // both a filename and an extension does not appear twice in the
+        // "Open with..." dialog.
+        var fileName = fileResource.ResourceName;
+        var seenEditorIds = new HashSet<DocumentEditorId>();
+        var candidates = new List<IDocumentEditorFactory>();
+
         if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
         {
             foreach (var factory in byFilename)
             {
-                if (factory.CanHandleResource(fileResource, filePath))
+                if (factory.CanHandleResource(fileResource)
+                    && seenEditorIds.Add(factory.EditorId))
                 {
-                    return Result<IDocumentEditorFactory>.Ok(factory);
+                    candidates.Add(factory);
                 }
             }
         }
 
-        // 2. Try multi-part extension suffixes from longest to shortest, so a
-        //    ".project.cel" factory beats a generic ".cel" factory on the same file.
         var lowerFileName = fileName.ToLowerInvariant();
         foreach (var suffix in GetExtensionSuffixes(lowerFileName))
         {
@@ -114,15 +129,40 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             {
                 foreach (var factory in factoryList)
                 {
-                    if (factory.CanHandleResource(fileResource, filePath))
+                    if (factory.CanHandleResource(fileResource)
+                        && seenEditorIds.Add(factory.EditorId))
                     {
-                        return Result<IDocumentEditorFactory>.Ok(factory);
+                        candidates.Add(factory);
                     }
                 }
             }
         }
 
-        return Result<IDocumentEditorFactory>.Fail($"No registered factory can handle resource: '{fileResource}'");
+        return candidates;
+    }
+
+    public IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForResource(ResourceKey fileResource)
+    {
+        var candidates = GetFactoriesForResource(fileResource)
+            .Where(factory => !factory.IsPlaceholder)
+            .ToList();
+
+        var extension = Path.GetExtension(fileResource.ResourceName).ToLowerInvariant();
+        if (_textBinarySniffer.IsBinaryExtension(extension))
+        {
+            return candidates;
+        }
+
+        // Text-shaped files always get the code editor as a "view as text" option,
+        // even if no factory claims the extension. Skip if already in the list.
+        var codeEditorResult = GetFactoryById(DocumentConstants.CodeEditorId);
+        if (codeEditorResult.IsSuccess
+            && !candidates.Any(factory => factory.EditorId == codeEditorResult.Value.EditorId))
+        {
+            candidates.Add(codeEditorResult.Value);
+        }
+
+        return candidates;
     }
 
     /// <summary>
@@ -145,7 +185,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     /// <summary>
     /// Gets all factories that can handle the specified extension, sorted by priority.
     /// </summary>
-    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForFileExtension(string fileExtension)
+    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
 

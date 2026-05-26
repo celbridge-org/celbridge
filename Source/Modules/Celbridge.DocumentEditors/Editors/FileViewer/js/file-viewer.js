@@ -1,17 +1,15 @@
 // File viewer initialization for Celbridge WebView integration.
 // Renders an image, audio, video, or PDF file by loading it from the
-// project virtual host (https://project.celbridge/{resourceKey}).
+// project virtual host.
 
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import { ContentLoadedReason, projectUrl } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 if (!window.isWebView) {
     console.log('Not running in WebView, skipping client initialization');
 }
 
 const client = celbridge;
-
-const PROJECT_HOST = 'https://project.celbridge/';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico']);
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.ogg', '.flac', '.m4a']);
@@ -38,7 +36,7 @@ function getExtension(fileName) {
 function buildResourceUrl(resourceKey) {
     // Cache-bust on every load so external changes immediately replace the rendered media.
     const cacheBuster = Date.now();
-    return `${PROJECT_HOST}${resourceKey}?t=${cacheBuster}`;
+    return `${projectUrl(resourceKey)}?t=${cacheBuster}`;
 }
 
 function renderFile(metadata) {

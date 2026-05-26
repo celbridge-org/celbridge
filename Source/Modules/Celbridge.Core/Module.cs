@@ -33,7 +33,8 @@ public class Module : IModule
         return
         [
             new ProjectFileFactory(stringLocalizer),
-            new ModManifestFactory(stringLocalizer),
+            new PackageManifestFactory(stringLocalizer),
+            new DocumentContributionFactory(stringLocalizer),
         ];
     }
 

@@ -55,9 +55,17 @@ public interface IDocumentEditorFactory
     EditorPriority Priority { get; }
 
     /// <summary>
+    /// True for factories that exist solely to register an extension so the
+    /// resources subsystem recognizes the form (e.g. package.cel, *.celbridge,
+    /// *.document.cel). Placeholders do not produce real document views and
+    /// are hidden from user-facing pickers such as the "Open with..." menu.
+    /// </summary>
+    bool IsPlaceholder { get; }
+
+    /// <summary>
     /// Determines if this factory can handle the given file resource.
     /// </summary>
-    bool CanHandleResource(ResourceKey fileResource, string filePath);
+    bool CanHandleResource(ResourceKey fileResource);
 
     /// <summary>
     /// Creates a document view for the specified file resource.

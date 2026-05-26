@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -23,33 +22,7 @@ public sealed class RemoveTagCommand : CommandBase, IRemoveTagCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var tag = Tag;
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
-        return await sidecarService.MutateFrontmatterAsync(
-            Resource,
-            dict =>
-            {
-                if (!dict.TryGetValue(SidecarHelper.TagsFieldName, out var value))
-                {
-                    return;
-                }
-
-                var existing = SidecarHelper.ExtractStringList(value);
-                if (!existing.Contains(tag, StringComparer.Ordinal))
-                {
-                    return;
-                }
-
-                var updated = existing.Where(t => !string.Equals(t, tag, StringComparison.Ordinal)).ToList();
-                if (updated.Count == 0)
-                {
-                    dict.Remove(SidecarHelper.TagsFieldName);
-                }
-                else
-                {
-                    dict[SidecarHelper.TagsFieldName] = updated;
-                }
-            },
-            createIfMissing: false);
+        return await sidecarService.RemoveTagAsync(Resource, Tag);
     }
 }

@@ -68,7 +68,7 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
                     $"Path '{absolutePath}' produces an invalid resource key: '{keyString}'.");
             }
 
-            return Result<ResourceKey>.Ok(resourceKey);
+            return resourceKey;
         }
         catch (Exception ex)
         {

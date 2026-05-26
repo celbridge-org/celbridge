@@ -3,7 +3,9 @@ using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
+using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -19,6 +21,7 @@ namespace Celbridge.Tests.Resources;
 public class DataCheckProjectTests
 {
     private string _projectFolderPath = null!;
+    private string _logsBackingFolder = null!;
     private ResourceRegistry _resourceRegistry = null!;
     private IMessengerService _messengerService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -34,13 +37,27 @@ public class DataCheckProjectTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
+        _logsBackingFolder = Path.Combine(
+            Path.GetTempPath(),
+            "Celbridge",
+            nameof(DataCheckProjectTests) + "_logs",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_logsBackingFolder);
+
         _messengerService = new MessengerService();
         var fileIconService = new FileIconService();
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            fileIconService);
-        _resourceRegistry.ProjectFolderPath = _projectFolderPath;
+            new ProjectTreeBuilder(fileIconService),
+            SidecarPairingTestHelper.BuildPairingServiceWithNoFactories(),
+            new RootHandlerRegistry());
+        _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
+
+        // ProjectCheckCommand writes its latest report to logs:project-check.log,
+        // so the chokepoint needs a logs: root or the write step fails.
+        _resourceRegistry.RegisterRootHandler(
+            new LogsRootHandler(_logsBackingFolder, new PathValidator()));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -63,7 +80,9 @@ public class DataCheckProjectTests
             _workspaceWrapper);
         workspaceService.ResourceScanner.Returns(scanner);
 
-        _command = new ProjectCheckCommand(_workspaceWrapper);
+        _command = new ProjectCheckCommand(
+            Substitute.For<ILogger<ProjectCheckCommand>>(),
+            _workspaceWrapper);
     }
 
     [TearDown]
@@ -74,6 +93,17 @@ public class DataCheckProjectTests
             try
             {
                 Directory.Delete(_projectFolderPath, true);
+            }
+            catch
+            {
+                // Best effort
+            }
+        }
+        if (Directory.Exists(_logsBackingFolder))
+        {
+            try
+            {
+                Directory.Delete(_logsBackingFolder, true);
             }
             catch
             {
@@ -96,8 +126,8 @@ public class DataCheckProjectTests
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
         _command.ResultValue.BrokenReferences.Should().BeEmpty();
-        _command.ResultValue.OrphanSidecars.Should().BeEmpty();
-        _command.ResultValue.BrokenSidecars.Should().BeEmpty();
+        _command.ResultValue.OrphanCelFiles.Should().BeEmpty();
+        _command.ResultValue.BrokenCelFiles.Should().BeEmpty();
     }
 
     [Test]
@@ -159,7 +189,7 @@ public class DataCheckProjectTests
     }
 
     [Test]
-    public async Task OrphanSidecar_AppearsInReport()
+    public async Task OrphanCelFile_AppearsInReport()
     {
         // foo.png is the would-be parent; only the sidecar exists.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
@@ -169,12 +199,12 @@ public class DataCheckProjectTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        _command.ResultValue.OrphanSidecars
-            .Should().Contain(o => o.Sidecar == new ResourceKey("foo.png.cel"));
+        _command.ResultValue.OrphanCelFiles
+            .Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
     [Test]
-    public async Task BrokenSidecar_AppearsInReport()
+    public async Task BrokenCelFile_AppearsInReport()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md"), "Body.");
         File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md.cel"),
@@ -184,12 +214,12 @@ public class DataCheckProjectTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        _command.ResultValue.BrokenSidecars
-            .Should().Contain(b => b.Sidecar == new ResourceKey("doc.md.cel"));
+        _command.ResultValue.BrokenCelFiles
+            .Should().Contain(new ResourceKey("doc.md.cel"));
     }
 
     [Test]
-    public async Task InvalidSidecarSuffix_AppearsInBrokenList()
+    public async Task InvalidCelSuffix_AppearsInBrokenList()
     {
         // .cel.cel files are classified Broken per the sidecar pairing rules.
         File.WriteAllText(Path.Combine(_projectFolderPath, "weird.cel.cel"),
@@ -199,8 +229,8 @@ public class DataCheckProjectTests
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
-        _command.ResultValue.BrokenSidecars
-            .Should().Contain(b => b.Sidecar == new ResourceKey("weird.cel.cel"));
+        _command.ResultValue.BrokenCelFiles
+            .Should().Contain(new ResourceKey("weird.cel.cel"));
     }
 
     [Test]
@@ -228,5 +258,49 @@ public class DataCheckProjectTests
         keys[2].Item1.Should().Be("project:zzz.json");
         keys[1].Item2.Should().Be("project:a.json");
         keys[2].Item2.Should().Be("project:b.json");
+    }
+
+    [Test]
+    public async Task ReportFile_IsWrittenToLogsRoot_WithFindings()
+    {
+        // The report file is the durable artifact the UI will eventually link
+        // to from the project-check warning banner; the command rewrites it on
+        // every run.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
+            "{ \"target\": \"project:missing.json\" }");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "tags = [\"orphaned\"]\n");
+
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var reportPath = Path.Combine(_logsBackingFolder, "project-check.log");
+        File.Exists(reportPath).Should().BeTrue();
+
+        var reportText = File.ReadAllText(reportPath);
+        reportText.Should().Contain("Project consistency check");
+        reportText.Should().Contain("Broken references (1):");
+        reportText.Should().Contain("project:source.json");
+        reportText.Should().Contain("project:missing.json");
+        reportText.Should().Contain("Orphan .cel files (1):");
+        reportText.Should().Contain("project:foo.png.cel");
+    }
+
+    [Test]
+    public async Task ReportFile_IsWrittenToLogsRoot_NoFindings()
+    {
+        // Clean projects still produce a file so the eventual "open report"
+        // button is never broken.
+        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
+
+        var reportPath = Path.Combine(_logsBackingFolder, "project-check.log");
+        File.Exists(reportPath).Should().BeTrue();
+
+        var reportText = File.ReadAllText(reportPath);
+        reportText.Should().Contain("Project consistency check");
+        reportText.Should().Contain("No findings.");
     }
 }

@@ -4,11 +4,9 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Factory that claims ownership of Celbridge project files. Currently matches
-/// the legacy .celbridge extension; the next migration phase switches to the
-/// .project.cel multi-part extension. Registering through the standard factory
-/// surface consolidates project-file identity in the same registry that other
-/// document editors use.
+/// Factory that claims ownership of Celbridge project files via the .celbridge
+/// extension. Registering through the standard factory surface consolidates
+/// project-file identity in the same registry that other document editors use.
 /// </summary>
 public class ProjectFileFactory : DocumentEditorFactoryBase
 {
@@ -19,6 +17,8 @@ public class ProjectFileFactory : DocumentEditorFactoryBase
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_ProjectFile");
 
     public override IReadOnlyList<string> SupportedExtensions { get; } = [".celbridge"];
+
+    public override bool IsPlaceholder => true;
 
     public ProjectFileFactory(IStringLocalizer stringLocalizer)
     {

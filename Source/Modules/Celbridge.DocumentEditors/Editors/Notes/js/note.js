@@ -4,7 +4,7 @@
 import { Editor, StarterKit, Link, Placeholder, TaskList, TaskItem, CellSelection, TableMap } from '../lib/tiptap.js';
 import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
 import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
-import { ContentLoadedReason } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
+import { ContentLoadedReason, PROJECT_HOST_URL, projectUrl } from 'https://shared.celbridge/celbridge-client/api/document-api.js';
 
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
@@ -451,11 +451,11 @@ async function initializeEditor() {
         await client.initializeDocument({
             onContent: async (content, metadata) => {
                 // Set base URLs for resolving relative paths
-                projectBaseUrl = 'https://project.celbridge/';
+                projectBaseUrl = PROJECT_HOST_URL;
                 const resourceKey = metadata?.resourceKey || '';
                 const lastSlash = resourceKey.lastIndexOf('/');
                 documentBaseUrl = lastSlash >= 0
-                    ? `${projectBaseUrl}${resourceKey.substring(0, lastSlash + 1)}`
+                    ? projectUrl(resourceKey.substring(0, lastSlash + 1))
                     : projectBaseUrl;
 
                 // Localization is auto-loaded by celbridge.js during initialize()

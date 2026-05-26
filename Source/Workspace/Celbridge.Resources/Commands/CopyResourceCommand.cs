@@ -68,6 +68,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
+        var transferService = workspaceService.ResourceService.TransferService;
 
         // Filter out resources whose parent folders are also selected.
         // This prevents duplicate operations when both a folder and its contents are selected.
@@ -87,7 +88,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             foreach (var sourceResource in filteredResources)
             {
-                var outcome = await CopySingleResourceAsync(sourceResource, resourceRegistry, resourceOpService);
+                var outcome = await CopySingleResourceAsync(sourceResource, resourceRegistry, transferService, resourceOpService);
 
                 if (outcome.Result.IsFailure)
                 {
@@ -183,10 +184,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private async Task<CopyResourceOutcome> CopySingleResourceAsync(
         ResourceKey sourceResource,
         IResourceRegistry resourceRegistry,
+        IResourceTransferService transferService,
         IResourceOperationService resourceOpService)
     {
         // Resolve destination to handle folder drops
-        var resolvedDestResource = resourceRegistry.ResolveDestinationResource(sourceResource, DestResource);
+        var resolvedDestResource = transferService.ResolveDestinationResource(sourceResource, DestResource);
 
         // Convert resource keys to absolute paths via the registry so root prefixes
         // (project:, temp:, logs:) are stripped correctly. Path.Combine with the bare

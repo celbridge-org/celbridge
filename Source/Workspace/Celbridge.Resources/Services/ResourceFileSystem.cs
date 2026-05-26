@@ -92,7 +92,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 FileShare.Read,
                 StreamBufferSize,
                 useAsync: true);
-            return Result<Stream>.Ok(stream);
+            return stream;
         }
         catch (Exception ex)
         {
@@ -145,7 +145,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 FileShare.None,
                 StreamBufferSize,
                 useAsync: true);
-            return Result<Stream>.Ok(stream);
+            return stream;
         }
         catch (Exception ex)
         {
@@ -188,7 +188,8 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             return Result<MoveResult>.Fail($"Source resource does not exist: '{source}'");
         }
 
-        if (!IsRootWritable(registry, destination))
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        if (!IsRootWritable(rootHandlerRegistry, destination))
         {
             return Result<MoveResult>.Fail($"Root '{destination.Root}' is read-only.");
         }
@@ -217,7 +218,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         // entries. After Directory.Move the source path is gone and the
         // enumeration is no longer possible.
         var sourceDescendantKeys = sourceIsFolder
-            ? EnumerateDescendantKeys(registry, sourcePath)
+            ? EnumerateDescendantKeys(rootHandlerRegistry, sourcePath)
             : Array.Empty<ResourceKey>();
 
         try
@@ -304,7 +305,8 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             return Result<CopyResult>.Fail($"Source resource does not exist: '{source}'");
         }
 
-        if (!IsRootWritable(registry, destination))
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        if (!IsRootWritable(rootHandlerRegistry, destination))
         {
             return Result<CopyResult>.Fail($"Root '{destination.Root}' is read-only.");
         }
@@ -367,7 +369,8 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             return Result<DeleteResult>.Fail($"Resource does not exist: '{source}'");
         }
 
-        if (!IsRootWritable(registry, source))
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        if (!IsRootWritable(rootHandlerRegistry, source))
         {
             return Result<DeleteResult>.Fail($"Root '{source.Root}' is read-only.");
         }
@@ -377,7 +380,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         // Capture descendant keys (folders only) before the disk delete so the
         // post-delete eager-notify can drop their stale index entries too.
         var descendantKeys = sourceIsFolder
-            ? EnumerateDescendantKeys(registry, sourcePath)
+            ? EnumerateDescendantKeys(rootHandlerRegistry, sourcePath)
             : Array.Empty<ResourceKey>();
 
         try
@@ -433,14 +436,14 @@ public sealed class ResourceFileSystem : IResourceFileSystem
     // Returns the resource keys of every file inside a folder that exists on
     // disk. Used to capture descendant keys before a recursive delete or move
     // so eager-notify can drop their stale entries from the reference index.
-    private static IReadOnlyList<ResourceKey> EnumerateDescendantKeys(IResourceRegistry registry, string folderPath)
+    private static IReadOnlyList<ResourceKey> EnumerateDescendantKeys(IRootHandlerRegistry rootHandlerRegistry, string folderPath)
     {
         var keys = new List<ResourceKey>();
         try
         {
             foreach (var file in Directory.EnumerateFiles(folderPath, "*", SearchOption.AllDirectories))
             {
-                var keyResult = registry.GetResourceKey(file);
+                var keyResult = rootHandlerRegistry.GetResourceKey(file);
                 if (keyResult.IsSuccess)
                 {
                     keys.Add(keyResult.Value);
@@ -456,19 +459,66 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         return keys;
     }
 
-    public Task<Result<bool>> ExistsAsync(ResourceKey resource)
+    public async Task<Result<bool>> ExistsAsync(ResourceKey resource)
     {
+        await Task.CompletedTask;
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            var failure = Result<bool>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result<bool>.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
-            return Task.FromResult(failure);
         }
         var resourcePath = resolveResult.Value;
 
         var exists = File.Exists(resourcePath) || Directory.Exists(resourcePath);
-        return Task.FromResult(Result<bool>.Ok(exists));
+        return exists;
+    }
+
+    public async Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder)
+    {
+        await Task.CompletedTask;
+
+        var resolveResult = ResolvePath(folder);
+        if (resolveResult.IsFailure)
+        {
+            return Result<IReadOnlyList<FolderItem>>.Fail($"Failed to resolve path for resource: '{folder}'")
+                .WithErrors(resolveResult);
+        }
+        var folderPath = resolveResult.Value;
+
+        if (!Directory.Exists(folderPath))
+        {
+            return Result<IReadOnlyList<FolderItem>>.Fail($"Resource is not a folder: '{folder}'");
+        }
+
+        try
+        {
+            // EnumerateFileSystemInfos populates each entry's metadata in the
+            // single OS directory listing, avoiding a separate stat per child.
+            var directoryInfo = new DirectoryInfo(folderPath);
+            var entries = new List<FolderItem>();
+            foreach (var info in directoryInfo.EnumerateFileSystemInfos())
+            {
+                var childKey = folder.Combine(info.Name);
+
+                bool isFolder = info is DirectoryInfo;
+                long size = info is FileInfo file ? file.Length : 0;
+
+                entries.Add(new FolderItem(
+                    Resource: childKey,
+                    IsFolder: isFolder,
+                    Size: size,
+                    ModifiedUtc: info.LastWriteTimeUtc));
+            }
+
+            return Result<IReadOnlyList<FolderItem>>.Ok(entries);
+        }
+        catch (Exception ex)
+        {
+            return Result<IReadOnlyList<FolderItem>>.Fail($"Failed to enumerate folder: '{folder}'")
+                .WithException(ex);
+        }
     }
 
     private Result<string> ResolvePath(ResourceKey resource)
@@ -479,9 +529,9 @@ public sealed class ResourceFileSystem : IResourceFileSystem
 
     // Roots that don't have a registered handler are assumed writable — the
     // default project root falls into this category and is always writable.
-    private static bool IsRootWritable(IResourceRegistry registry, ResourceKey key)
+    private static bool IsRootWritable(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
     {
-        return !registry.RootHandlers.TryGetValue(key.Root, out var handler)
+        return !rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
             || handler.Capabilities.IsWritable;
     }
 

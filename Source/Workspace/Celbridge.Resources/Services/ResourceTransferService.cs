@@ -101,7 +101,7 @@ public class ResourceTransferService : IResourceTransferService
                     var checkSourcePathResult = ResourceRegistry.ResolveResourcePath(sourceResource);
                     Guard.IsTrue(checkSourcePathResult.IsSuccess && sourcePath == checkSourcePathResult.Value);
 
-                    var destResource = ResourceRegistry.ResolveDestinationResource(sourceResource, destFolderResource);
+                    var destResource = ResolveDestinationResource(sourceResource, destFolderResource);
 
                     var item = new ResourceTransferItem(resourceType, sourcePath, sourceResource, destResource);
                     transferItems.Add(item);
@@ -145,6 +145,89 @@ public class ResourceTransferService : IResourceTransferService
         });
 
         return Result.Ok();
+    }
+
+    public ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
+    {
+        string output = destResource;
+
+        var getResult = ResourceRegistry.GetResource(destResource);
+        if (getResult.IsSuccess)
+        {
+            var resource = getResult.Value;
+            if (resource is IFolderResource)
+            {
+                if (destResource.IsEmpty)
+                {
+                    // Destination is the project folder.
+                    output = sourceResource.ResourceName;
+                }
+                else
+                {
+                    if (sourceResource == destResource)
+                    {
+                        // Source and destination are the same folder. Allowed
+                        // because the user may duplicate a folder by copying
+                        // and pasting it to the same destination.
+                        output = destResource;
+                    }
+                    else
+                    {
+                        // Destination is a folder, so append the source resource name to it.
+                        output = destResource.Combine(sourceResource.ResourceName);
+                    }
+                }
+            }
+        }
+
+        return output;
+    }
+
+    public ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource)
+    {
+        string output = destResource;
+
+        var getResult = ResourceRegistry.GetResource(destResource);
+        if (getResult.IsSuccess)
+        {
+            var resource = getResult.Value;
+            if (resource is IFolderResource)
+            {
+                var filename = Path.GetFileName(sourcePath);
+                if (destResource.IsEmpty)
+                {
+                    // Destination is the project folder.
+                    output = filename;
+                }
+                else
+                {
+                    // Destination is a folder, so append the source filename to it.
+                    output = destResource.Combine(filename);
+                }
+            }
+        }
+
+        return output;
+    }
+
+    public ResourceKey GetContextMenuItemFolder(IResource? resource)
+    {
+        IFolderResource? destFolder = null;
+        switch (resource)
+        {
+            case IFolderResource folder:
+                destFolder = folder;
+                break;
+            case IFileResource file:
+                destFolder = file.ParentFolder;
+                break;
+        }
+        if (destFolder is null)
+        {
+            destFolder = ResourceRegistry.ProjectFolder;
+        }
+
+        return ResourceRegistry.GetResourceKey(destFolder);
     }
 
     private static bool PathContainsSubPath(string path, string subPath)

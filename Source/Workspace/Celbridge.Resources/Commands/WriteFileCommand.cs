@@ -6,6 +6,12 @@ namespace Celbridge.Resources.Commands;
 
 public class WriteFileCommand : CommandBase, IWriteFileCommand
 {
+    // Force a registry update so sidecar classification refreshes on every
+    // write. Without this, overwriting an existing .cel file with broken TOML
+    // would leave data_check_project returning the stale "Healthy" status
+    // while data_get_field correctly rejects the file at read time.
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+
     private readonly ILogger<WriteFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -34,14 +40,14 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
         }
         var resourcePath = resolveResult.Value;
 
-        var isNewFile = !File.Exists(resourcePath);
-
-        // Preserve existing line endings when overwriting. Use LF for new
-        // files regardless of host platform (see LineEndingHelper).
+        // Preserve existing line endings when overwriting. For a new file,
+        // honour whatever endings the caller's content already uses (so a CSV
+        // exporter emitting CRLF lands as CRLF on disk); fall back to the
+        // platform default when the content has no line endings to detect.
         string targetSeparator;
-        if (isNewFile)
+        if (!File.Exists(resourcePath))
         {
-            targetSeparator = LineEndingHelper.PlatformDefault;
+            targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(Content);
         }
         else
         {
@@ -55,12 +61,6 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
         if (writeResult.IsFailure)
         {
             return writeResult;
-        }
-
-        if (isNewFile)
-        {
-            // Update the resource registry so the new file is immediately visible
-            resourceRegistry.UpdateResourceRegistry();
         }
 
         return Result.Ok();

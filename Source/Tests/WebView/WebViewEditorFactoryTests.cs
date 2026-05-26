@@ -17,9 +17,15 @@ public class WebViewEditorFactoryTests
     }
 
     [Test]
-    public void SupportedExtensions_IncludesDotWebview()
+    public void SupportedExtensions_IncludesDotWebviewCel()
     {
-        _factory.SupportedExtensions.Should().Contain(".webview");
+        _factory.SupportedExtensions.Should().Contain(".webview.cel");
+    }
+
+    [Test]
+    public void SupportedExtensions_DoesNotIncludeLegacyDotWebview()
+    {
+        _factory.SupportedExtensions.Should().NotContain(".webview");
     }
 
     [Test]

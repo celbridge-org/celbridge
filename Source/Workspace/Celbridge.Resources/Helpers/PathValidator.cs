@@ -65,7 +65,7 @@ public class PathValidator
             return Result<string>.Fail(reparseResult.FirstErrorMessage);
         }
 
-        return Result<string>.Ok(resolvedPath);
+        return resolvedPath;
     }
 
     /// <summary>

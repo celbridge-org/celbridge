@@ -70,6 +70,15 @@ public record DeleteResult(
     SidecarOutcome Sidecar);
 
 /// <summary>
+/// One immediate child of a folder, returned by EnumerateFolderAsync.
+/// </summary>
+public record FolderItem(
+    ResourceKey Resource,
+    bool IsFolder,
+    long Size,
+    DateTime ModifiedUtc);
+
+/// <summary>
 /// The chokepoint for disk reads, writes, and structural operations on project
 /// resources. Callers pass a ResourceKey; the layer resolves it through
 /// IResourceRegistry so containment and symlink validation run automatically.
@@ -138,4 +147,11 @@ public interface IResourceFileSystem
     /// Returns true if a file or folder exists at the resolved path of the resource key.
     /// </summary>
     Task<Result<bool>> ExistsAsync(ResourceKey resource);
+
+    /// <summary>
+    /// Returns the immediate children of a folder resource as FolderItem records.
+    /// Works for any registered root. Single-level only; recursive callers walk per-level.
+    /// Fails when the resource does not resolve to an existing folder.
+    /// </summary>
+    Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder);
 }

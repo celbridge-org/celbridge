@@ -66,3 +66,4 @@ class TestDocument:
     def test_activate_invalid_resource_key(self, document):
         with pytest.raises(CelError):
             document.activate("\\invalid")
+

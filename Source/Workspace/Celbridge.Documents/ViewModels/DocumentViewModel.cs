@@ -59,11 +59,11 @@ public abstract partial class DocumentViewModel : ObservableObject
             if (SaveTimer <= 0)
             {
                 SaveTimer = 0;
-                return Result<bool>.Ok(true);
+                return true;
             }
         }
 
-        return Result<bool>.Ok(false);
+        return false;
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         {
             var text = await File.ReadAllTextAsync(FilePath);
             UpdateFileTrackingInfo();
-            return Result<string>.Ok(text);
+            return text;
         }
         catch (Exception ex)
         {

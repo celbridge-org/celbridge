@@ -48,7 +48,7 @@ public enum ConsoleErrorType
 
     /// <summary>
     /// The workspace-load project consistency check returned non-empty
-    /// findings (broken references, orphan sidecars, or broken sidecars).
+    /// findings (broken references, orphan .cel files, or broken .cel files).
     /// The ConsoleErrorMessage.ConfigFileName field carries the summary text.
     /// </summary>
     ProjectCheckError,

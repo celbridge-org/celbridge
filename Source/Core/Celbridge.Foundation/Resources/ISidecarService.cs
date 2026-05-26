@@ -47,11 +47,9 @@ public sealed record SidecarReadResult(
     string? FailureMessage);
 
 /// <summary>
-/// Workspace-scoped service for reading, mutating, and writing .cel sidecar
-/// files plus the validation helpers that surround them. IO goes through
-/// IResourceFileSystem so the chokepoint's atomic-write + retry behaviour
-/// applies uniformly. The TOML + named-blocks parser lives in the workspace
-/// implementation so Foundation does not carry the Tomlyn dependency.
+/// Workspace-scoped service for reading and editing .cel sidecar files.
+/// Exposes typed operations (set field, add tag, write block, etc.) over the
+/// frontmatter and named-blocks model.
 /// </summary>
 public interface ISidecarService
 {
@@ -81,31 +79,50 @@ public interface ISidecarService
     bool IsIndexableValue(object? value);
 
     /// <summary>
-    /// Reads and parses the sidecar for the parent resource. Returns the
-    /// NoSidecar outcome when the file does not exist, Broken when it exists
-    /// but does not parse, and Healthy with parsed content otherwise. Fails
-    /// when the parent key itself is invalid (empty or sidecar-shaped).
+    /// Reads and parses the sidecar storage for the given resource. For a regular
+    /// file the storage is the sibling .cel sidecar; for a standalone .cel file
+    /// the resource itself is the storage. Returns NoSidecar when the storage
+    /// file does not exist, Broken when it exists but does not parse, and Healthy
+    /// with parsed content otherwise.
     /// </summary>
-    Task<Result<SidecarReadResult>> ReadAsync(ResourceKey parent);
+    Task<Result<SidecarReadResult>> ReadAsync(ResourceKey resource);
 
     /// <summary>
-    /// Applies the mutator to the parent resource's sidecar frontmatter. If the
-    /// sidecar is missing and createIfMissing is true, the helper creates an
-    /// empty sidecar; if createIfMissing is false, missing sidecars short-
-    /// circuit as a successful no-op. The blocks list is preserved verbatim.
+    /// Sets a single frontmatter field, creating the sidecar if it does not
+    /// already exist. The value must pass IsIndexableValue (scalar or list of
+    /// scalars); other shapes are rejected at the service boundary.
     /// </summary>
-    Task<Result> MutateFrontmatterAsync(
-        ResourceKey parent,
-        Action<Dictionary<string, object>> mutate,
-        bool createIfMissing = true);
+    Task<Result> SetFieldAsync(ResourceKey resource, string field, object value);
 
     /// <summary>
-    /// Applies the mutator to the parent resource's named blocks list. If the
-    /// sidecar is missing and createIfMissing is true, an empty sidecar is
-    /// created before the mutation runs.
+    /// Removes a single frontmatter field. No-op when the field or the sidecar
+    /// is absent; the sidecar file is not created just to record an absence.
     /// </summary>
-    Task<Result> MutateBlocksAsync(
-        ResourceKey parent,
-        Action<List<SidecarBlock>> mutate,
-        bool createIfMissing = true);
+    Task<Result> RemoveFieldAsync(ResourceKey resource, string field);
+
+    /// <summary>
+    /// Appends a tag to the sidecar's tags list, creating the sidecar if it
+    /// does not already exist. Idempotent: adding a tag that is already present
+    /// neither changes the list nor rewrites the file.
+    /// </summary>
+    Task<Result> AddTagAsync(ResourceKey resource, string tag);
+
+    /// <summary>
+    /// Removes a tag from the sidecar's tags list. Idempotent. Dropping the
+    /// final tag removes the tags field entirely. No-op when the sidecar is
+    /// absent.
+    /// </summary>
+    Task<Result> RemoveTagAsync(ResourceKey resource, string tag);
+
+    /// <summary>
+    /// Creates or overwrites a named content block, creating the sidecar if it
+    /// does not already exist. The block id must pass IsValidBlockName.
+    /// </summary>
+    Task<Result> WriteBlockAsync(ResourceKey resource, string blockId, string content);
+
+    /// <summary>
+    /// Removes a named content block. No-op when the block or the sidecar is
+    /// absent.
+    /// </summary>
+    Task<Result> RemoveBlockAsync(ResourceKey resource, string blockId);
 }

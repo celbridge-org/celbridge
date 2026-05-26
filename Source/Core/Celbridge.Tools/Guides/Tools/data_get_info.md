@@ -6,6 +6,7 @@ Response shape:
 
 ```json
 {
+  "hasSidecar": true,
   "fields": {
     "editor": "celbridge.notes.note-document",
     "tags": ["meeting"],
@@ -18,6 +19,10 @@ Response shape:
 }
 ```
 
-Returns `{ "fields": {}, "blocks": [] }` when the resource has no sidecar — and that same empty success is returned when the *parent* resource doesn't exist either (the tool only inspects the sidecar file, it does not check whether the parent file is on disk). Use `file_get_info` first if you need to verify the parent exists before reading its data. Errors with a clear message when the sidecar exists but is broken; use `file_read` for raw inspection in that case, or `data_check_project` for the system-level view.
+`hasSidecar` distinguishes the two empty-result cases:
+- `hasSidecar: false`, empty fields and blocks → the resource has no sidecar on disk. This is also what you get when the *parent* resource itself doesn't exist (the tool only inspects the sidecar file, not the parent). Use `file_get_info` first if you need to confirm the parent exists.
+- `hasSidecar: true`, empty fields and blocks → the sidecar file exists but is genuinely empty (zero-byte canonical empty form).
+
+Errors with a clear message when the sidecar exists but is broken; use `file_read` for raw inspection in that case, or `data_check_project` for the system-level view.
 
 `size` is the UTF-8 byte count of the block's semantic content (matching what `data_read_block` returns). Block content is line-oriented: the terminator that separates one block from the next on disk is not part of the content, so a block's `size` is stable as adjacent blocks are added or removed.

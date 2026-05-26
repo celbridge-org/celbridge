@@ -48,28 +48,28 @@ public sealed class ProjectCheckReporter
                 $"Project consistency check: {entries.Count} broken project: reference(s).",
                 entries);
         }
-        if (report.OrphanSidecars.Count > 0)
+        if (report.OrphanCelFiles.Count > 0)
         {
-            var entries = report.OrphanSidecars
-                .Select(o => $"'{o.Sidecar.FullKey}'")
+            var entries = report.OrphanCelFiles
+                .Select(o => $"'{o.FullKey}'")
                 .ToList();
             LogFindingsCategory(
-                $"Project consistency check: {entries.Count} orphan sidecar(s).",
+                $"Project consistency check: {entries.Count} orphan .cel file(s).",
                 entries);
         }
-        if (report.BrokenSidecars.Count > 0)
+        if (report.BrokenCelFiles.Count > 0)
         {
-            var entries = report.BrokenSidecars
-                .Select(b => $"'{b.Sidecar.FullKey}'")
+            var entries = report.BrokenCelFiles
+                .Select(b => $"'{b.FullKey}'")
                 .ToList();
             LogFindingsCategory(
-                $"Project consistency check: {entries.Count} broken sidecar(s).",
+                $"Project consistency check: {entries.Count} broken .cel file(s).",
                 entries);
         }
 
         var totalFindings = report.BrokenReferences.Count
-            + report.OrphanSidecars.Count
-            + report.BrokenSidecars.Count;
+            + report.OrphanCelFiles.Count
+            + report.BrokenCelFiles.Count;
         if (totalFindings > 0)
         {
             var message = new ConsoleErrorMessage(

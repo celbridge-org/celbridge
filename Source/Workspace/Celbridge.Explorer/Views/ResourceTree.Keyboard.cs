@@ -169,7 +169,7 @@ public sealed partial class ResourceTree
 
     private bool HandlePaste(ResourceViewItem? selectedItem)
     {
-        var destFolderResource = _resourceRegistry.GetContextMenuItemFolder(selectedItem?.Resource);
+        var destFolderResource = _resourceTransferService.GetContextMenuItemFolder(selectedItem?.Resource);
         _commandService.Execute<IPasteResourceFromClipboardCommand>(command =>
         {
             command.DestFolderResource = destFolderResource;

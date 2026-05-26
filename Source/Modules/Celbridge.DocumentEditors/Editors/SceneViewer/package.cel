@@ -4,4 +4,4 @@ name = "SceneViewer_Package_Name"
 version = "1.0.0"
 
 [contributes]
-document_editors = ["scene.document.toml"]
+document_editors = ["scene.document.cel"]

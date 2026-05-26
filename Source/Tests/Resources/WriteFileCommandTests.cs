@@ -69,11 +69,13 @@ public class WriteFileCommandTests
         result.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
         (await File.ReadAllTextAsync(path)).Should().Be("fresh content");
-        _resourceRegistry.Received(1).UpdateResourceRegistry();
+        // Registry refresh is driven by CommandFlags.UpdateResources, processed
+        // by the command service framework after the command body returns;
+        // ExecuteAsync itself does not call the registry directly.
     }
 
     [Test]
-    public async Task ExecuteAsync_OverwritesExistingFile_WithoutRefreshingRegistry()
+    public async Task ExecuteAsync_OverwritesExistingFile()
     {
         var resource = new ResourceKey("notes/existing.md");
         var path = Path.Combine(_tempFolder, "existing.md");
@@ -88,7 +90,6 @@ public class WriteFileCommandTests
 
         result.IsSuccess.Should().BeTrue();
         (await File.ReadAllTextAsync(path)).Should().Be("new content");
-        _resourceRegistry.DidNotReceive().UpdateResourceRegistry();
     }
 
     [Test]

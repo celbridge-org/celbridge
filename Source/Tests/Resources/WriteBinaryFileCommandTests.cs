@@ -70,7 +70,6 @@ public class WriteBinaryFileCommandTests
         result.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
         (await File.ReadAllBytesAsync(path)).Should().Equal(bytes);
-        _resourceRegistry.Received(1).UpdateResourceRegistry();
     }
 
     [Test]

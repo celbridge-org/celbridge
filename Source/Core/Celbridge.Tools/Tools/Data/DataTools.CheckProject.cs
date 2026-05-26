@@ -5,7 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class DataTools
 {
-    /// <summary>Report broken project: references, orphan sidecars, and any sidecar that fails to parse cleanly.</summary>
+    /// <summary>Report broken project: references, orphan .cel files, and any .cel file that fails to parse cleanly.</summary>
     [McpServerTool(Name = "data_check_project", ReadOnly = true)]
     [ToolAlias("data.check_project")]
     [RelatedGuides("resource_keys")]
@@ -27,11 +27,11 @@ public partial class DataTools
                     missingTarget = b.MissingTarget.ToString(),
                 })
                 .ToArray(),
-            orphanSidecars = report.OrphanSidecars
-                .Select(o => o.Sidecar.ToString())
+            orphanCelFiles = report.OrphanCelFiles
+                .Select(o => o.ToString())
                 .ToArray(),
-            brokenSidecars = report.BrokenSidecars
-                .Select(b => b.Sidecar.ToString())
+            brokenCelFiles = report.BrokenCelFiles
+                .Select(b => b.ToString())
                 .ToArray(),
         };
 

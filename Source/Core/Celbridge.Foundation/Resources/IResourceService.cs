@@ -12,6 +12,13 @@ public interface IResourceService
     IResourceRegistry Registry { get; }
 
     /// <summary>
+    /// Returns the registry of resource root handlers for the current project.
+    /// Use this rather than IResourceRegistry when only cross-root path/key
+    /// dispatch is required.
+    /// </summary>
+    IRootHandlerRegistry RootHandlerRegistry { get; }
+
+    /// <summary>
     /// Returns the Resource Monitor associated with the current project.
     /// </summary>
     IResourceMonitor Monitor { get; }

@@ -26,20 +26,18 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(Resource);
-        if (getResult.IsFailure)
+        // EnumerateFolderAsync at the root surfaces a missing-or-not-a-folder
+        // error to the caller; deeper recursion silently skips unreadable
+        // subfolders to match the existing tree-walk behavior.
+        var rootEntriesResult = await fileSystem.EnumerateFolderAsync(Resource);
+        if (rootEntriesResult.IsFailure)
         {
-            return Result.Fail($"Resource not found: '{Resource}'");
+            return Result.Fail($"Resource not found: '{Resource}'")
+                .WithErrors(rootEntriesResult);
         }
-
-        if (getResult.Value is not IFolderResource folderResource)
-        {
-            return Result.Fail($"Resource is not a folder: '{Resource}'");
-        }
+        var rootEntries = rootEntriesResult.Value;
 
         Regex? globRegex = null;
         if (!string.IsNullOrEmpty(Glob))
@@ -47,14 +45,25 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
             globRegex = new Regex(GlobHelper.GlobToRegex(Glob), RegexOptions.IgnoreCase);
         }
 
-        var rootNode = BuildSnapshot(folderResource, Depth, globRegex, TypeFilter);
+        var folderName = Resource.IsEmpty
+            ? Resource.Root
+            : Resource.ResourceName;
+
+        var rootNode = await BuildSnapshotAsync(
+            fileSystem, folderName, rootEntries, Depth, globRegex, TypeFilter);
         ResultValue = new FileTreeSnapshot(rootNode);
 
         return Result.Ok();
     }
 
-    private static FileTreeSnapshotNode? BuildSnapshot(
-        IFolderResource folder,
+    // Returns the snapshot node for the folder with the supplied entries, or
+    // null when a non-empty glob filters every child out and the folder itself
+    // is therefore irrelevant to the result. Subfolder enumeration failures are
+    // swallowed so a single unreadable directory doesn't break the whole tree.
+    private static async Task<FileTreeSnapshotNode?> BuildSnapshotAsync(
+        IResourceFileSystem fileSystem,
+        string folderName,
+        IReadOnlyList<FolderItem> entries,
         int remainingDepth,
         Regex? globRegex,
         string typeFilter)
@@ -67,11 +76,19 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
             var showFiles = !string.Equals(typeFilter, "folder", StringComparison.OrdinalIgnoreCase);
             var showFolders = !string.Equals(typeFilter, "file", StringComparison.OrdinalIgnoreCase);
 
-            foreach (var child in folder.Children)
+            foreach (var entry in entries)
             {
-                if (child is IFolderResource childFolder)
+                if (entry.IsFolder)
                 {
-                    var childNode = BuildSnapshot(childFolder, remainingDepth - 1, globRegex, typeFilter);
+                    var childEntriesResult = await fileSystem.EnumerateFolderAsync(entry.Resource);
+                    if (childEntriesResult.IsFailure)
+                    {
+                        continue;
+                    }
+
+                    var childNode = await BuildSnapshotAsync(
+                        fileSystem, entry.Resource.ResourceName, childEntriesResult.Value,
+                        remainingDepth - 1, globRegex, typeFilter);
                     if (childNode is not null && showFolders)
                     {
                         children.Add(childNode);
@@ -79,19 +96,20 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
                 }
                 else if (showFiles)
                 {
-                    if (globRegex is not null && !globRegex.IsMatch(child.Name))
+                    var fileName = entry.Resource.ResourceName;
+                    if (globRegex is not null && !globRegex.IsMatch(fileName))
                     {
                         continue;
                     }
                     children.Add(new FileTreeSnapshotNode(
-                        child.Name,
+                        fileName,
                         IsFolder: false,
                         Children: Array.Empty<FileTreeSnapshotNode>(),
                         Truncated: false));
                 }
             }
         }
-        else if (folder.Children.Any())
+        else if (entries.Count > 0)
         {
             isTruncated = true;
         }
@@ -102,7 +120,7 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
         }
 
         return new FileTreeSnapshotNode(
-            folder.Name,
+            folderName,
             IsFolder: true,
             Children: children,
             Truncated: isTruncated);

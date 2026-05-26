@@ -65,6 +65,13 @@ public interface IDocumentsService
     Task<DocumentEditorId> GetEditorPreferenceAsync(string extension);
 
     /// <summary>
+    /// Returns the editor that would open this file: the sidecar's 'editor'
+    /// field when set, otherwise the per-extension preference, otherwise
+    /// DocumentEditorId.Empty.
+    /// </summary>
+    Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource);
+
+    /// <summary>
     /// Stores the user's preferred editor for a file extension. Pass DocumentEditorId.Empty
     /// to clear the preference.
     /// </summary>

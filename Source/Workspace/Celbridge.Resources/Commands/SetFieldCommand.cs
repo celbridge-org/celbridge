@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -31,14 +30,8 @@ public sealed class SetFieldCommand : CommandBase, ISetFieldCommand
         {
             return Result.Fail("Value is null.");
         }
-        if (!SidecarHelper.IsIndexableValue(Value))
-        {
-            return Result.Fail($"Field '{Field}' value is not indexable. Only scalar (string/number/bool) and list-of-scalar values are supported.");
-        }
 
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
-        return await sidecarService.MutateFrontmatterAsync(
-            Resource,
-            dict => dict[Field] = Value!);
+        return await sidecarService.SetFieldAsync(Resource, Field, Value);
     }
 }
