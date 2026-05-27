@@ -76,7 +76,7 @@ public class ResourceRegistryTests
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
-        updateResult.IsSuccess.Should().BeTrue();
+        updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
 
         //
         // Check the scanned resources match the files and folders we created earlier.
@@ -119,7 +119,7 @@ public class ResourceRegistryTests
         folderStateService.SetExpanded(FolderNameA, true);
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
-        updateResult.IsSuccess.Should().BeTrue();
+        updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
 
         //
         // Check that the folder resource expanded state is tracked correctly.
@@ -186,6 +186,7 @@ public class ResourceRegistryTests
     }
 
     [Test]
+    [Platform("Win", Reason = "Asserts the registry rejects wrong-case keys that the OS would otherwise case-fold to an on-disk file. On case-sensitive filesystems (Linux CI) the wrong-case path simply does not exist, so there is nothing for the registry to reject.")]
     public void ResolveResourcePathRejectsWrongCaseKey_WhenFileExistsOnDisk()
     {
         // Windows is case-insensitive at the filesystem layer (would happily
@@ -200,7 +201,8 @@ public class ResourceRegistryTests
         var fileIconService = new FileIconService();
         var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
-        resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        var updateResult = resourceRegistry.UpdateResourceRegistry();
+        updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
 
         // FileA.txt exists on disk (created in Setup); request it as "filea.txt".
         var wrongCaseKey = ResourceKey.Create(FileNameA.ToLowerInvariant());
@@ -224,7 +226,8 @@ public class ResourceRegistryTests
         var fileIconService = new FileIconService();
         var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
-        resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        var updateResult = resourceRegistry.UpdateResourceRegistry();
+        updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
 
         var newKey = ResourceKey.Create("NewResource.json");
         var resolveResult = resourceRegistry.ResolveResourcePath(newKey);
