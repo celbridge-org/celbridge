@@ -2415,6 +2415,12 @@
 			"fontId": "fi",
 			"fontSize": "107%"
 		},
+		"_cog_medium-green": {
+			"fontCharacter": "\\f013",
+			"fontColor": "#90a959",
+			"fontId": "fa",
+			"fontSize": "107%"
+		},
 		"_coffee_dark-maroon": {
 			"fontCharacter": "\\f0f4",
 			"fontColor": "#7c4426",
@@ -4333,6 +4339,12 @@
 		"_gears_dark-orange": {
 			"fontCharacter": "\\f085",
 			"fontColor": "#a35f27",
+			"fontId": "fa",
+			"fontSize": "107%"
+		},
+		"_gears_medium-green": {
+			"fontCharacter": "\\f085",
+			"fontColor": "#90a959",
 			"fontId": "fa",
 			"fontSize": "107%"
 		},
@@ -12161,7 +12173,8 @@
     "cdr": "_coreldraw_medium-green",
     "cdrx": "_coreldraw_medium-green",
     "cdt": "_coreldraw_medium-green",
-    "celbridge": "_database_dark-cyan",
+    "cel": "_gears_medium-green",
+    "celbridge": "_cog_medium-green",
     "ceylon": "_ceylon_medium-orange",
     "cf": "_bnf_dark-yellow",
     "cfc": "_cf_light-cyan",
