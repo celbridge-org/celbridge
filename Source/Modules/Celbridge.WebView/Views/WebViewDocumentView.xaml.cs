@@ -218,6 +218,9 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             _webView = await _webViewFactory.AcquireAsync();
             AppWebViewContainer.Children.Add(_webView);
 
+            _webView.GotFocus -= WebView_GotFocus;
+            _webView.GotFocus += WebView_GotFocus;
+
             _webView.CoreWebView2.Settings.AreDevToolsEnabled = _webViewService.IsDevToolsFeatureEnabled();
 
             if (Options.Role == WebViewDocumentRole.HtmlViewer)
@@ -392,6 +395,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
         if (_webView is not null)
         {
+            _webView.GotFocus -= WebView_GotFocus;
             AppWebViewContainer.Children.Remove(_webView);
             _webView.Close();
             _webView = null;
@@ -604,6 +608,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         {
             ViewModel.OpenBrowser(url);
         }
+    }
+
+    private void WebView_GotFocus(object sender, RoutedEventArgs e)
+    {
+        var message = new DocumentViewFocusedMessage(FileResource);
+        _messengerService.Send(message);
     }
 
     public override async Task PrepareToClose()
