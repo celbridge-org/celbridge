@@ -43,6 +43,7 @@ public abstract class DocumentEditorFactoryBase : IDocumentEditorFactory
         return false;
     }
 
+    // Implementations must set view.EditorId = EditorId on the returned view.
     public abstract Result<IDocumentView> CreateDocumentView(ResourceKey fileResource);
 
     public virtual string? GetLanguageForExtension(string extension) => null;

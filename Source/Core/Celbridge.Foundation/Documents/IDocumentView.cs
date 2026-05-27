@@ -12,6 +12,11 @@ public interface IDocumentView
     ResourceKey FileResource { get; }
 
     /// <summary>
+    /// Id of the factory that produced this view. Immutable for the view's lifetime.
+    /// </summary>
+    DocumentEditorId EditorId { get; }
+
+    /// <summary>
     /// Sets the file resource for the document view.
     /// Fails if the resource does not exist in the resource registry or in the file system.
     /// </summary>

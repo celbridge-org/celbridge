@@ -33,6 +33,24 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public virtual ResourceKey FileResource => DocumentViewModel.FileResource;
 
+    private DocumentEditorId _editorId = DocumentEditorId.Empty;
+
+    // Set once by the constructing factory; throws on any subsequent set.
+    public DocumentEditorId EditorId
+    {
+        get => _editorId;
+        set
+        {
+            if (!_editorId.IsEmpty)
+            {
+                throw new InvalidOperationException(
+                    $"DocumentView.EditorId is set once and immutable thereafter. " +
+                    $"Current value: '{_editorId}'; attempted to set: '{value}'.");
+            }
+            _editorId = value;
+        }
+    }
+
     /// <summary>
     /// Sets the file resource for the document view.
     /// Validates the resource exists in the registry and on disk, then sets the ViewModel properties.

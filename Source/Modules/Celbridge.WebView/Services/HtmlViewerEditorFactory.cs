@@ -34,6 +34,7 @@ public class HtmlViewerEditorFactory : DocumentEditorFactoryBase
         view.Options = new WebViewDocumentOptions(
             WebViewDocumentRole.HtmlViewer,
             InterceptTopFrameNavigation: true);
+        view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);
     }

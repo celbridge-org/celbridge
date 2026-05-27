@@ -106,6 +106,7 @@ public class DocumentViewFactoryTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(sidecarView);
+        result.Value.EditorId.Should().Be(sidecarEditorId);
     }
 
     [Test]
@@ -375,6 +376,9 @@ public class DocumentViewFactoryTests
         EditorPriority priority = EditorPriority.Specialized,
         bool canHandle = true)
     {
+        // Production factories stamp view.EditorId themselves; mocks don't, so stub it.
+        view.EditorId.Returns(editorId);
+
         var factory = Substitute.For<IDocumentEditorFactory>();
         factory.EditorId.Returns(editorId);
         factory.DisplayName.Returns(editorId.ToString());

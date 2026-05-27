@@ -34,10 +34,9 @@ public interface IDocumentsService
     IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
 
     /// <summary>
-    /// Create a document view for the specified file resource.
-    /// The type of document view created is based on the file extension.
-    /// When documentEditorId is specified, uses that specific editor instead of the default.
-    /// Fails if the file resource does not exist.
+    /// Creates a document view for the given file resource. When editorId is
+    /// non-empty, uses that specific editor instead of the default resolution
+    /// chain. Fails if the resource does not exist.
     /// </summary>
     Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId editorId = default);
 

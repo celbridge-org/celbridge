@@ -31,6 +31,7 @@ public class WebViewEditorFactory : DocumentEditorFactoryBase
         view.Options = new WebViewDocumentOptions(
             WebViewDocumentRole.ExternalUrl,
             InterceptTopFrameNavigation: false);
+        view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);
     }

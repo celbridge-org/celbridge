@@ -226,6 +226,14 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
         var documentView = createResult.Value;
 
+        // Factories must set view.EditorId before returning; catch a missed stamp here.
+        if (documentView.EditorId.IsEmpty)
+        {
+            return Result.Fail(
+                $"Document view for '{fileResource}' was returned with an empty EditorId. " +
+                "The factory that produced it must set view.EditorId before returning.");
+        }
+
         //
         // Load the content from the document file
         //

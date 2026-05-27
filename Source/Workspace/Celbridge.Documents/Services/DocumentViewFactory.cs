@@ -35,17 +35,19 @@ public class DocumentViewFactory
 
     /// <summary>
     /// Selects an editor for the given resource and constructs its document view.
-    /// The view is returned without content being loaded; the caller drives
+    /// The view is returned without content loaded; the caller drives
     /// SetFileResource and LoadContent.
     /// </summary>
     public async Task<Result<IDocumentView>> CreateAsync(
         ResourceKey fileResource,
         DocumentEditorId requestedEditorId)
     {
-        var pathFailure = CheckResourcePathResolves(fileResource);
-        if (pathFailure is not null)
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
+        if (resolveResult.IsFailure)
         {
-            return pathFailure;
+            return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
         }
 
         if (!requestedEditorId.IsEmpty)
@@ -56,47 +58,33 @@ public class DocumentViewFactory
             return CreateForRequestedEditor(fileResource, requestedEditorId);
         }
 
-        var sidecarChoice = await TryCreateFromSidecarPreferenceAsync(fileResource);
-        if (sidecarChoice is not null)
+        var sidecarView = await CreateFromSidecarPreferenceAsync(fileResource);
+        if (sidecarView is not null)
         {
-            return sidecarChoice;
+            return sidecarView.OkResult<IDocumentView>();
         }
 
-        var extensionChoice = await TryCreateFromExtensionPreferenceAsync(fileResource);
-        if (extensionChoice is not null)
+        var extensionView = await CreateFromExtensionPreferenceAsync(fileResource);
+        if (extensionView is not null)
         {
-            return extensionChoice;
+            return extensionView.OkResult<IDocumentView>();
         }
 
-        var factoryChoice = TryCreateFromPriorityFactory(fileResource);
-        if (factoryChoice is not null)
+        var factoryView = CreateFromPriorityFactory(fileResource);
+        if (factoryView is not null)
         {
-            return factoryChoice;
+            return factoryView.OkResult<IDocumentView>();
         }
 
         return CreateTextFallback(fileResource);
     }
 
-    // Confirms the resource maps to a real backing path before any preference or
-    // factory lookup runs. Returns null on success; the resolved path itself is
-    // not used downstream.
-    private Result<IDocumentView>? CheckResourcePathResolves(ResourceKey fileResource)
-    {
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveResult = resourceRegistry.ResolveResourcePath(fileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result<IDocumentView>.Fail($"Failed to resolve path for resource: '{fileResource}'")
-                .WithErrors(resolveResult);
-        }
-
-        return null;
-    }
-
-    // The sidecar's 'editor' field records the user's last explicit "Open With X"
-    // choice and wins over the per-extension preference and the priority fallback.
-    // A stale or unregistered id returns null so the caller falls through.
-    private async Task<Result<IDocumentView>?> TryCreateFromSidecarPreferenceAsync(ResourceKey fileResource)
+    // Sidecar 'editor' field — the user's per-file "Open With X" choice. Wins
+    // over per-extension preference and priority fallback. Returns the view
+    // on success; null when no preference is set, the editor is unregistered,
+    // it cannot handle the resource, or construction fails (logged before
+    // fall-through).
+    private async Task<IDocumentView?> CreateFromSidecarPreferenceAsync(ResourceKey fileResource)
     {
         var sidecarEditorResult = await _preferenceStore.GetSidecarPreferenceAsync(fileResource);
         if (sidecarEditorResult.IsFailure
@@ -122,7 +110,7 @@ public class DocumentViewFactory
         var createResult = sidecarFactory.CreateDocumentView(fileResource);
         if (createResult.IsSuccess)
         {
-            return createResult;
+            return createResult.Value;
         }
 
         _logger.LogWarning(createResult,
@@ -130,7 +118,8 @@ public class DocumentViewFactory
         return null;
     }
 
-    private async Task<Result<IDocumentView>?> TryCreateFromExtensionPreferenceAsync(ResourceKey fileResource)
+    // Per-extension preference: same fall-through contract as sidecar.
+    private async Task<IDocumentView?> CreateFromExtensionPreferenceAsync(ResourceKey fileResource)
     {
         var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
         var preferredEditorId = await _preferenceStore.GetExtensionPreferenceAsync(extension);
@@ -154,18 +143,16 @@ public class DocumentViewFactory
         var createResult = preferredFactory.CreateDocumentView(fileResource);
         if (createResult.IsSuccess)
         {
-            return createResult;
+            return createResult.Value;
         }
 
         return null;
     }
 
-    // Priority-based factory resolution. Placeholder factories (package.cel,
-    // *.celbridge, *.document.cel) exist only for extension reservation and
-    // never produce a view, so they are skipped here; the text fallback below
-    // catches the open and routes it to the code editor without logging a
-    // spurious "factory failed" warning.
-    private Result<IDocumentView>? TryCreateFromPriorityFactory(ResourceKey fileResource)
+    // Highest-priority factory for the resource. Placeholder factories
+    // (package.cel, *.celbridge, *.document.cel) reserve extensions but
+    // never produce a view, so they are skipped here.
+    private IDocumentView? CreateFromPriorityFactory(ResourceKey fileResource)
     {
         var factoryResult = _documentEditorRegistry.GetFactory(fileResource);
         if (factoryResult.IsFailure
@@ -178,7 +165,7 @@ public class DocumentViewFactory
         var createResult = factory.CreateDocumentView(fileResource);
         if (createResult.IsSuccess)
         {
-            return createResult;
+            return createResult.Value;
         }
 
         _logger.LogWarning(createResult, $"Factory failed to create document view for: '{fileResource}'");
@@ -211,11 +198,9 @@ public class DocumentViewFactory
         }
         var requestedFactory = getFactoryResult.Value;
 
-        // The code editor is the universal "view as text" option offered through
-        // "Open with...". The user can pick it for any text file, including ones
-        // whose extension the code editor does not claim, so the extension match
-        // is bypassed for this one editor id. Every other editor still goes
-        // through CanHandleResource so wrong-editor requests fail loudly.
+        // The code editor is the "view as text" option in Open With and may be
+        // requested for any file; skip the extension check for that one id.
+        // Other editors still go through CanHandleResource.
         if (!IsCodeEditor(requestedEditorId)
             && !requestedFactory.CanHandleResource(fileResource))
         {
@@ -269,10 +254,11 @@ public class DocumentViewFactory
                 $"Code editor '{DocumentConstants.CodeEditorId}' failed to create view for '{fileResource}'; using TextBoxDocumentView");
         }
 
-        // Last-resort fallback: the cross-platform plain TextBox. Kept for
-        // non-Windows hosts (Monaco runs in WebView2, which is Windows-only)
-        // and for the case where the code editor factory failed to construct.
+        // Last-resort fallback. Used on non-Windows hosts (Monaco runs in
+        // Windows-only WebView2) and when the code editor factory fails.
+        // Stamped here because the TextBox is not produced by a factory.
         var textBoxView = _serviceProvider.GetRequiredService<TextBoxDocumentView>();
+        textBoxView.EditorId = DocumentConstants.TextBoxFallbackEditorId;
         return textBoxView.OkResult<IDocumentView>();
     }
 

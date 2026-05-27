@@ -70,6 +70,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<ContributionDocumentView>();
         view.Contribution = _contribution;
+        view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);
 #else
