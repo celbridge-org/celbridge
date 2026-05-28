@@ -1,27 +1,24 @@
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
-using Celbridge.Search;
+using Celbridge.Search.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Search;
 
 [TestFixture]
-public class FileFilterTests
+public class SearchServiceFilterTests
 {
-    private FileFilter _filter = null!;
-    private IFileStorage _fileStorage = null!;
+    private SearchService _service = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private string _testDir = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _filter = new FileFilter(new TextBinarySniffer());
         _testDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDir);
 
-        // Wire a real FileStorage so size + existence probes hit disk.
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_testDir);
 
@@ -33,11 +30,19 @@ public class FileFilterTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
+        workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
-        _fileStorage = new FileStorage(
+        // Wire a real FileStorage so size + existence probes hit disk through the chokepoint.
+        var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
+
+        _service = new SearchService(
+            Substitute.For<ILogger<SearchService>>(),
+            workspaceWrapper,
+            new TextBinarySniffer());
     }
 
     [TearDown]
@@ -63,7 +68,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("test.txt");
         File.WriteAllText(filePath, "test content");
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeTrue();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeTrue();
     }
 
     [Test]
@@ -71,7 +76,7 @@ public class FileFilterTests
     {
         var (resource, filePath) = MakeResource("nonexistent.txt");
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeFalse();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }
 
     [Test]
@@ -80,7 +85,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("test.celbridge");
         File.WriteAllText(filePath, "metadata");
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeFalse();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }
 
     [Test]
@@ -92,7 +97,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("test.webview.cel");
         File.WriteAllText(filePath, "source_url = \"https://example.com\"\n");
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeFalse();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }
 
     [Test]
@@ -101,7 +106,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("test.exe");
         File.WriteAllBytes(filePath, new byte[] { 0x00, 0x01, 0x02 });
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeFalse();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }
 
     [Test]
@@ -110,7 +115,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("test.png");
         File.WriteAllBytes(filePath, new byte[] { 0x89, 0x50, 0x4E, 0x47 });
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeFalse();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }
 
     [Test]
@@ -119,7 +124,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("Test.cs");
         File.WriteAllText(filePath, "public class Test { }");
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeTrue();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeTrue();
     }
 
     [Test]
@@ -128,7 +133,7 @@ public class FileFilterTests
         var (resource, filePath) = MakeResource("README.md");
         File.WriteAllText(filePath, "# Readme");
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeTrue();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeTrue();
     }
 
     [Test]
@@ -141,38 +146,6 @@ public class FileFilterTests
             fs.SetLength(1024 * 1024 + 1);
         }
 
-        (await _filter.ShouldSearchFileAsync(_fileStorage, resource, filePath)).Should().BeFalse();
-    }
-
-    [Test]
-    public void IsTextContent_NormalText_ReturnsTrue()
-    {
-        var content = "This is normal text content";
-
-        _filter.IsTextContent(content).Should().BeTrue();
-    }
-
-    [Test]
-    public void IsTextContent_WithNullCharacter_ReturnsFalse()
-    {
-        var content = "Text with \0 null character";
-
-        _filter.IsTextContent(content).Should().BeFalse();
-    }
-
-    [Test]
-    public void IsTextContent_EmptyString_ReturnsTrue()
-    {
-        var content = "";
-
-        _filter.IsTextContent(content).Should().BeTrue();
-    }
-
-    [Test]
-    public void IsTextContent_Unicode_ReturnsTrue()
-    {
-        var content = "Text with Unicode: ñ, ü, 中文, 日本語, 한글";
-
-        _filter.IsTextContent(content).Should().BeTrue();
+        (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }
 }

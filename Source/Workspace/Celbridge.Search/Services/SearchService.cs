@@ -11,9 +11,17 @@ namespace Celbridge.Search.Services;
 /// </summary>
 public class SearchService : ISearchService, IDisposable
 {
+    private const int MaxSearchableFileSizeBytes = 1024 * 1024; // 1MB
+
+    private static readonly HashSet<string> ExcludedMetadataExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cel",
+        ".celbridge"
+    };
+
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly FileFilter _fileFilter;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
@@ -33,10 +41,37 @@ public class SearchService : ISearchService, IDisposable
 
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _fileFilter = new FileFilter(textBinarySniffer);
+        _textBinarySniffer = textBinarySniffer;
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
         _textReplacer = new TextReplacer();
+    }
+
+    // Decides whether a file should be included in a search. Probes the file
+    // through the chokepoint so the size check honours the same containment
+    // validation as the read that follows. Internal for the test suite.
+    internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath)
+    {
+        var infoResult = await FileStorage.GetInfoAsync(resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
+        {
+            return false;
+        }
+
+        if (infoResult.Value.Size > MaxSearchableFileSizeBytes)
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ExcludedMetadataExtensions.Contains(extension)
+            || _textBinarySniffer.IsBinaryExtension(extension))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private sealed record SearchState
@@ -206,13 +241,14 @@ public class SearchService : ISearchService, IDisposable
         try
         {
             // Check if file should be searched (size, extension filters)
-            if (!await _fileFilter.ShouldSearchFileAsync(FileStorage, resourceKey, filePath))
+            if (!await ShouldSearchFileAsync(resourceKey, filePath))
             {
                 return null;
             }
 
             // Check if file content is text (not binary) using efficient sampling
-            if (!_fileFilter.IsTextFile(filePath))
+            var sniffResult = _textBinarySniffer.IsTextFile(filePath);
+            if (!sniffResult.IsSuccess || !sniffResult.Value)
             {
                 return null;
             }
