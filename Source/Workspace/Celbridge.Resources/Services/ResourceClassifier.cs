@@ -177,22 +177,16 @@ public sealed class ResourceClassifier : IResourceClassifier
     // Checks whether a parentless .cel file is claimed by a registered factory
     // in a way that denotes a standalone form. The match shape that counts
     // here is a multi-part extension suffix that includes a segment in front
-    // of ".cel" (e.g. ".webview.cel", ".note.cel"). Exact-filename matches are
-    // also accepted for completeness, though no current factory registers a
-    // bare .cel filename. The bare ".cel" extension is excluded: it also
-    // serves the generic code-editor syntax-highlighting registration, which
-    // says nothing about pairing semantics. Without that exclusion every
-    // parentless ".cel" would silently disappear from the orphan report.
+    // of ".cel" (e.g. ".webview.cel", ".note.cel"). The bare ".cel" extension
+    // is excluded: it also serves the generic code-editor syntax-highlighting
+    // registration, which says nothing about pairing semantics. Without that
+    // exclusion every parentless ".cel" would silently disappear from the
+    // orphan report.
     private static bool IsRegisteredStandaloneCelForm(
         ResourceKey sidecarKey,
         IDocumentEditorRegistry editorRegistry)
     {
         var fileName = sidecarKey.ResourceName;
-
-        if (editorRegistry.IsFilenameSupported(fileName))
-        {
-            return true;
-        }
 
         foreach (var suffix in EnumerateExtensionSuffixes(fileName))
         {

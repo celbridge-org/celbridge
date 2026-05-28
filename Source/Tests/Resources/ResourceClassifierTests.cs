@@ -69,28 +69,6 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void StandaloneCelWithFilenameOnlyRegistration_IsNotReportedAsOrphan()
-    {
-        // Filename-only factory registrations must drive standalone classification.
-        // Earlier code computed a multi-part suffix and missed the bare-filename
-        // case, so any .cel file owned by a filename-only factory showed up in
-        // the orphan list.
-        File.WriteAllText(Path.Combine(_projectFolderPath, "config.cel"),
-            "value = 1\n");
-
-        var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.IsFilenameSupported("config.cel").Returns(true);
-
-        var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
-        var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
-
-        var report = registry.GetCelFileReport();
-        report.Orphan.Should().NotContain(new ResourceKey("config.cel"));
-        report.Healthy.Should().Contain(new ResourceKey("config.cel"));
-    }
-
-    [Test]
     public void BareCelExtensionRegistration_DoesNotPreventOrphanReport()
     {
         // The ".cel" extension is also registered as a generic code-editor
@@ -141,14 +119,13 @@ public class ResourceClassifierTests
             "tags = [\"x\"]\n");
 
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.IsFilenameSupported(Arg.Any<string>()).Returns(false);
         editorRegistry.IsExtensionSupported(Arg.Any<string>()).Returns(false);
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
         var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        editorRegistry.DidNotReceive().IsFilenameSupported("foo.png.cel");
+        editorRegistry.DidNotReceive().IsExtensionSupported(Arg.Any<string>());
 
         var report = registry.GetCelFileReport();
         report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
