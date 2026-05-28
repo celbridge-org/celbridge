@@ -36,6 +36,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
+    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
+    private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+
     public CopyResourceCommand(
         ILogger<CopyResourceCommand> logger,
         IMessengerService messengerService,
@@ -60,23 +65,12 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             return Result.Ok();
         }
 
-        // Hoist the workspace-scoped service lookups out of the per-resource
-        // loop. Acquiring them inside ExecuteAsync (rather than via constructor
-        // injection) honours the workspace-scoped DI rule — the workspace can
-        // be swapped between executions, but it cannot change while a single
-        // command runs, so caching for the duration of this call is safe.
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileStorage = workspaceService.FileStorage;
-        var transferService = workspaceService.ResourceService.TransferService;
-
         // Filter out resources whose parent folders are also selected.
         // This prevents duplicate operations when both a folder and its contents are selected.
         var filteredResources = FilterRedundantResources(SourceResources);
 
         // Begin batch for single undo operation
-        resourceOpService.BeginBatch();
+        ResourceOperationService.BeginBatch();
 
         List<ResourceKey> failedResources = new();
         List<Result> failedOutcomes = new();
@@ -89,7 +83,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             foreach (var sourceResource in filteredResources)
             {
-                var outcome = await CopySingleResourceAsync(sourceResource, resourceRegistry, fileStorage, transferService, resourceOpService);
+                var outcome = await CopySingleResourceAsync(sourceResource);
 
                 if (outcome.Result.IsFailure)
                 {
@@ -117,7 +111,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         finally
         {
             // Always commit batch - partial success is acceptable
-            resourceOpService.CommitBatch();
+            ResourceOperationService.CommitBatch();
         }
 
         ResultValue = new CopyCommandResult(
@@ -182,20 +176,15 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         return Result.Ok();
     }
 
-    private async Task<CopyResourceOutcome> CopySingleResourceAsync(
-        ResourceKey sourceResource,
-        IResourceRegistry resourceRegistry,
-        IFileStorage fileStorage,
-        IResourceTransferService transferService,
-        IResourceOperationService resourceOpService)
+    private async Task<CopyResourceOutcome> CopySingleResourceAsync(ResourceKey sourceResource)
     {
         // Resolve destination to handle folder drops
-        var resolvedDestResource = transferService.ResolveDestinationResource(sourceResource, DestResource);
+        var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
 
         // Convert resource keys to absolute paths via the registry so root prefixes
         // (project:, temp:, logs:) are stripped correctly. Path.Combine with the bare
         // ResourceKey would incorporate the prefix as a literal directory component.
-        var resolveSourceResult = resourceRegistry.ResolveResourcePath(sourceResource);
+        var resolveSourceResult = ResourceRegistry.ResolveResourcePath(sourceResource);
         if (resolveSourceResult.IsFailure)
         {
             return new CopyResourceOutcome(
@@ -207,7 +196,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
         var sourcePath = resolveSourceResult.Value;
 
-        var resolveDestResult = resourceRegistry.ResolveResourcePath(resolvedDestResource);
+        var resolveDestResult = ResourceRegistry.ResolveResourcePath(resolvedDestResource);
         if (resolveDestResult.IsFailure)
         {
             return new CopyResourceOutcome(
@@ -219,7 +208,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
         var destPath = resolveDestResult.Value;
 
-        var infoResult = await fileStorage.GetInfoAsync(sourceResource);
+        var infoResult = await FileStorage.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)
         {
             return new CopyResourceOutcome(
@@ -249,11 +238,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             if (TransferMode == DataTransferMode.Copy)
             {
-                result = await resourceOpService.CopyFileAsync(sourcePath, destPath);
+                result = await ResourceOperationService.CopyFileAsync(sourcePath, destPath);
             }
             else
             {
-                var moveResult = await resourceOpService.MoveFileAsync(sourcePath, destPath);
+                var moveResult = await ResourceOperationService.MoveFileAsync(sourcePath, destPath);
                 result = moveResult;
                 if (moveResult.IsSuccess)
                 {
@@ -265,11 +254,11 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             if (TransferMode == DataTransferMode.Copy)
             {
-                result = await resourceOpService.CopyFolderAsync(sourcePath, destPath);
+                result = await ResourceOperationService.CopyFolderAsync(sourcePath, destPath);
             }
             else
             {
-                var moveResult = await resourceOpService.MoveFolderAsync(sourcePath, destPath);
+                var moveResult = await ResourceOperationService.MoveFolderAsync(sourcePath, destPath);
                 result = moveResult;
                 if (moveResult.IsSuccess)
                 {

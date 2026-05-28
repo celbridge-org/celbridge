@@ -25,6 +25,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
+    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
+    private IResourceScanner ResourceScanner => _workspaceWrapper.WorkspaceService.ResourceScanner;
+    private ISidecarService SidecarService => _workspaceWrapper.WorkspaceService.SidecarService;
+
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,
         IMessengerService messengerService,
@@ -53,12 +59,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             return Result.Ok();
         }
 
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileStorage = workspaceService.FileStorage;
-        var scanner = workspaceService.ResourceScanner;
-
         // Phase A: aggregate referencers external to the batch. References
         // from one doomed resource to another are filtered out so an internal
         // dependency doesn't block the batch. Folder resources expand to every
@@ -69,7 +69,9 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var folderResources = new List<ResourceKey>();
         foreach (var resource in Resources)
         {
-            if (await IsFolderResourceAsync(fileStorage, resource))
+            var folderInfoResult = await FileStorage.GetInfoAsync(resource);
+            if (folderInfoResult.IsSuccess
+                && folderInfoResult.Value.Kind == StorageItemKind.Folder)
             {
                 folderResources.Add(resource);
             }
@@ -100,7 +102,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 // Walk every referenced target and pull in those that live under
                 // this folder so we surface every incoming reference that the
                 // recursive delete will leave dangling.
-                foreach (var target in await scanner.FindAllReferencedTargetsAsync())
+                foreach (var target in await ResourceScanner.FindAllReferencedTargetsAsync())
                 {
                     if (target.IsDescendantOf(resource))
                     {
@@ -117,7 +119,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             foreach (var key in keysToCheck)
             {
                 var perKeyReferencers = new List<ResourceKey>();
-                foreach (var referencer in await scanner.FindReferencersAsync(key))
+                foreach (var referencer in await ResourceScanner.FindReferencersAsync(key))
                 {
                     if (!IsInsideBatch(referencer))
                     {
@@ -171,12 +173,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var resourceResults = new List<DeleteResourceResult>(Resources.Count);
         var failedItems = new List<string>();
 
-        resourceOpService.BeginBatch();
+        ResourceOperationService.BeginBatch();
         try
         {
             foreach (var resource in Resources)
             {
-                var resolveResult = resourceRegistry.ResolveResourcePath(resource);
+                var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
                 if (resolveResult.IsFailure)
                 {
                     _logger.LogWarning($"Cannot delete resource because path could not be resolved: '{resource}'");
@@ -190,9 +192,19 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 }
                 var resourcePath = resolveResult.Value;
 
-                bool sidecarPresent = await SidecarExistsForResourceAsync(workspaceService, fileStorage, resource);
+                // Probe the sidecar up front so we can report whether the delete
+                // cascaded one. After the delete runs the sidecar is gone (or
+                // never existed), so the only honest moment to ask is now.
+                bool sidecarPresent = false;
+                var sidecarKeyResult = SidecarService.GetSidecarKey(resource);
+                if (sidecarKeyResult.IsSuccess)
+                {
+                    var sidecarInfoResult = await FileStorage.GetInfoAsync(sidecarKeyResult.Value);
+                    sidecarPresent = sidecarInfoResult.IsSuccess
+                        && sidecarInfoResult.Value.Kind == StorageItemKind.File;
+                }
 
-                var infoResult = await fileStorage.GetInfoAsync(resource);
+                var infoResult = await FileStorage.GetInfoAsync(resource);
                 if (infoResult.IsFailure)
                 {
                     _logger.LogWarning($"Cannot delete resource because info probe failed: '{resource}'");
@@ -209,11 +221,11 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 Result deleteResult;
                 if (info.Kind == StorageItemKind.File)
                 {
-                    deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
+                    deleteResult = await ResourceOperationService.DeleteFileAsync(resourcePath);
                 }
                 else if (info.Kind == StorageItemKind.Folder)
                 {
-                    deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
+                    deleteResult = await ResourceOperationService.DeleteFolderAsync(resourcePath);
                 }
                 else
                 {
@@ -253,7 +265,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
         finally
         {
-            resourceOpService.CommitBatch();
+            ResourceOperationService.CommitBatch();
         }
 
         // Distinguish "every resource deleted cleanly" from "policy gate passed
@@ -322,32 +334,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         }
 
         return (DeleteResourceOutcome.IOFailure, deleteResult.FirstErrorMessage);
-    }
-
-    private static async Task<bool> IsFolderResourceAsync(IFileStorage fileStorage, ResourceKey resource)
-    {
-        var infoResult = await fileStorage.GetInfoAsync(resource);
-        if (infoResult.IsFailure)
-        {
-            return false;
-        }
-        return infoResult.Value.Kind == StorageItemKind.Folder;
-    }
-
-    private static async Task<bool> SidecarExistsForResourceAsync(IWorkspaceService workspaceService, IFileStorage fileStorage, ResourceKey resource)
-    {
-        var sidecarKeyResult = workspaceService.SidecarService.GetSidecarKey(resource);
-        if (sidecarKeyResult.IsFailure)
-        {
-            return false;
-        }
-
-        var infoResult = await fileStorage.GetInfoAsync(sidecarKeyResult.Value);
-        if (infoResult.IsFailure)
-        {
-            return false;
-        }
-        return infoResult.Value.Kind == StorageItemKind.File;
     }
 
     private static string BuildConfirmationMessage(
