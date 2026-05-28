@@ -176,11 +176,11 @@ public sealed class ResourceScanner : IResourceScanner
     }
 
     // True when `text` contains a tracked "project:<target>" reference. The
-    // boundary rules in ReferenceLiteralRules constrain the match to canonical
+    // boundary rules in ResourceReferenceParser constrain the match to canonical
     // quoted forms.
     private static bool ContainsReferenceTo(string text, ResourceKey target)
     {
-        var marker = ReferenceLiteralRules.ReferenceMarker;
+        var marker = ResourceReferenceParser.ReferenceMarker;
         int searchStart = 0;
         while (true)
         {
@@ -190,7 +190,7 @@ public sealed class ResourceScanner : IResourceScanner
                 return false;
             }
 
-            var parsed = ReferenceLiteralRules.TryParseReferenceAt(text, markerIndex);
+            var parsed = ResourceReferenceParser.TryParseReferenceAt(text, markerIndex);
             if (parsed is not null
                 && parsed.Key.Equals(target))
             {
@@ -205,7 +205,7 @@ public sealed class ResourceScanner : IResourceScanner
     private static HashSet<ResourceKey> ScanReferences(string text)
     {
         var references = new HashSet<ResourceKey>();
-        var marker = ReferenceLiteralRules.ReferenceMarker;
+        var marker = ResourceReferenceParser.ReferenceMarker;
         int searchStart = 0;
         while (true)
         {
@@ -215,7 +215,7 @@ public sealed class ResourceScanner : IResourceScanner
                 break;
             }
 
-            var parsed = ReferenceLiteralRules.TryParseReferenceAt(text, markerIndex);
+            var parsed = ResourceReferenceParser.TryParseReferenceAt(text, markerIndex);
             if (parsed is not null)
             {
                 references.Add(parsed.Key);

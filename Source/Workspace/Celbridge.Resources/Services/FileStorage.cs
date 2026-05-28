@@ -740,7 +740,7 @@ public sealed class FileStorage : IFileStorage
     }
 
     // Replaces every quoted occurrence of sourceLiteral with destLiteral. The
-    // boundary check (ReferenceLiteralRules.IsNonKeyBoundary on the bytes
+    // boundary check (ResourceReferenceParser.IsNonKeyBoundary on the bytes
     // immediately before and after the match) keeps incidental substring
     // matches untouched — only the canonical quoted form gets rewritten.
     //
@@ -777,9 +777,9 @@ public sealed class FileStorage : IFileStorage
             int afterMatch = matchIndex + sourceLiteral.Length;
 
             bool leadingOk = matchIndex > 0
-                && ReferenceLiteralRules.IsNonKeyBoundary(text[matchIndex - 1]);
+                && ResourceReferenceParser.IsNonKeyBoundary(text[matchIndex - 1]);
             bool trailingExact = afterMatch < text.Length
-                && ReferenceLiteralRules.IsNonKeyBoundary(text[afterMatch]);
+                && ResourceReferenceParser.IsNonKeyBoundary(text[afterMatch]);
             bool trailingFolderPrefix = sourceIsFolder
                 && afterMatch < text.Length
                 && text[afterMatch] == '/';
