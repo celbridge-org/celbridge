@@ -46,30 +46,30 @@ public class InspectorFactory : IInspectorFactory
         }
     }
 
-    public Result<IInspector> CreateResourceInspector(ResourceKey resource)
+    public async Task<Result<IInspector>> CreateResourceInspectorAsync(ResourceKey resource)
     {
         try
         {
-            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            var resolveResult = resourceRegistry.ResolveResourcePath(resource);
-            if (resolveResult.IsFailure)
+            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var infoResult = await fileSystem.GetInfoAsync(resource);
+            if (infoResult.IsFailure)
             {
-                return Result<IInspector>.Fail($"Failed to resolve path for resource: '{resource}'")
-                    .WithErrors(resolveResult);
+                return Result<IInspector>.Fail($"Failed to probe resource: '{resource}'")
+                    .WithErrors(infoResult);
             }
-            var path = resolveResult.Value;
+            var info = infoResult.Value;
 
-            if (Directory.Exists(path))
+            if (info.Kind == ResourceInfoKind.Folder)
             {
                 return CreateFolderInspector(resource);
             }
 
-            if (File.Exists(path))
+            if (info.Kind == ResourceInfoKind.File)
             {
                 return CreateFileInspector(resource);
             }
 
-            return Result<IInspector>.Fail($"Resource not found at path: {path}");
+            return Result<IInspector>.Fail($"Resource not found: '{resource}'");
         }
         catch (Exception ex)
         {

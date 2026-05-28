@@ -63,11 +63,11 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
         if (!string.IsNullOrEmpty(files))
         {
-            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceRegistry);
+            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, fileSystem);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
@@ -85,7 +85,7 @@ public partial class FileTools
 
         var truncated = results.ReachedMaxResults || results.WasCancelled;
 
-        var fileLineCache = new Dictionary<string, string[]>();
+        var fileLineCache = new Dictionary<ResourceKey, string[]>();
 
         var fileResults = new List<GrepFileResult>();
         foreach (var fileResult in results.FileResults)
@@ -99,18 +99,10 @@ public partial class FileTools
                 {
                     if (contextLines > 0)
                     {
-                        var resolveContextResult = resourceRegistry.ResolveResourcePath(fileResult.Resource);
-                        if (resolveContextResult.IsFailure)
+                        if (!fileLineCache.TryGetValue(fileResult.Resource, out var fileLines))
                         {
-                            matchList.Add(new GrepMatch(match.LineNumber, match.LineText, match.MatchStart, match.MatchLength));
-                            continue;
-                        }
-                        var resourcePath = resolveContextResult.Value;
-
-                        if (!fileLineCache.TryGetValue(resourcePath, out var fileLines))
-                        {
-                            fileLines = File.Exists(resourcePath) ? await File.ReadAllLinesAsync(resourcePath) : Array.Empty<string>();
-                            fileLineCache[resourcePath] = fileLines;
+                            fileLines = await ReadFileLinesStreamedAsync(fileSystem, fileResult.Resource);
+                            fileLineCache[fileResult.Resource] = fileLines;
                         }
 
                         var matchLineIndex = match.LineNumber - 1;
@@ -152,10 +144,10 @@ public partial class FileTools
             if (includeContent
                 && !summaryOnly)
             {
-                var resolveContentResult = resourceRegistry.ResolveResourcePath(fileResult.Resource);
-                if (resolveContentResult.IsSuccess && File.Exists(resolveContentResult.Value))
+                var contentResult = await fileSystem.ReadAllTextAsync(fileResult.Resource);
+                if (contentResult.IsSuccess)
                 {
-                    fileContent = await File.ReadAllTextAsync(resolveContentResult.Value);
+                    fileContent = contentResult.Value;
                 }
             }
 
@@ -199,7 +191,32 @@ public partial class FileTools
         };
     }
 
-    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceRegistry resourceRegistry)
+    /// <summary>
+    /// Streams a file via the chokepoint's OpenReadAsync and returns it as a
+    /// line array. Avoids loading the full content into memory and routes the
+    /// read through containment validation. Returns an empty array on failure
+    /// so callers can treat missing or unreadable files as zero matches.
+    /// </summary>
+    private static async Task<string[]> ReadFileLinesStreamedAsync(IResourceFileSystem fileSystem, ResourceKey resource)
+    {
+        var openResult = await fileSystem.OpenReadAsync(resource);
+        if (openResult.IsFailure)
+        {
+            return Array.Empty<string>();
+        }
+
+        var lines = new List<string>();
+        await using var stream = openResult.Value;
+        using var reader = new StreamReader(stream);
+        string? line;
+        while ((line = await reader.ReadLineAsync()) is not null)
+        {
+            lines.Add(line);
+        }
+        return lines.ToArray();
+    }
+
+    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceFileSystem fileSystem)
     {
         // Detect the most common mis-use: a glob or single path passed where a
         // JSON array is required. The raw JsonException for this case ("'w' is
@@ -255,19 +272,14 @@ public partial class FileTools
                 continue;
             }
 
-            var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
-            if (resolveResult.IsFailure)
-            {
-                continue;
-            }
-            var filePath = resolveResult.Value;
-
-            if (!File.Exists(filePath))
+            var infoResult = await fileSystem.GetInfoAsync(fileResourceKey);
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind != ResourceInfoKind.File)
             {
                 continue;
             }
 
-            var fileLines = await File.ReadAllLinesAsync(filePath);
+            var fileLines = await ReadFileLinesStreamedAsync(fileSystem, fileResourceKey);
             var matchList = new List<object>();
             int fileMatchCount = 0;
 
@@ -334,7 +346,7 @@ public partial class FileTools
 
                 fileResults.Add(new GrepFileResult(
                     fileKeyString,
-                    Path.GetFileName(filePath),
+                    fileResourceKey.ResourceName,
                     fileMatchCount,
                     matchList,
                     fileContent));

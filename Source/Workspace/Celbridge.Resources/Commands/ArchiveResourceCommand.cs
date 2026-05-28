@@ -2,7 +2,6 @@ using System.IO.Compression;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
-using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -49,6 +48,41 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         return result;
     }
 
+    // Recursive walk via the chokepoint to collect every descendant file
+    // together with the relative archive entry name. Mirrors the prior
+    // Directory.GetFiles(..., AllDirectories) traversal but routes through
+    // EnumerateFolderAsync so the read side honours the same containment
+    // validation as the write side.
+    private static async Task CollectArchiveEntriesAsync(
+        IResourceFileSystem fileSystem,
+        ResourceKey folder,
+        string relativePrefix,
+        List<(ResourceKey Resource, string RelativePath)> entries)
+    {
+        var enumerateResult = await fileSystem.EnumerateFolderAsync(folder);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+
+        foreach (var item in enumerateResult.Value)
+        {
+            var name = item.Resource.ResourceName;
+            var childRelative = string.IsNullOrEmpty(relativePrefix)
+                ? name
+                : $"{relativePrefix}/{name}";
+
+            if (item.IsFolder)
+            {
+                await CollectArchiveEntriesAsync(fileSystem, item.Resource, childRelative, entries);
+            }
+            else
+            {
+                entries.Add((item.Resource, childRelative));
+            }
+        }
+    }
+
     private async Task<Result> ExecuteArchiveAsync()
     {
         if (!_workspaceWrapper.IsWorkspacePageLoaded)
@@ -59,6 +93,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
         if (!ResourceKey.IsValidKey(SourceResource))
         {
@@ -86,15 +121,25 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         }
         var archivePath = resolveArchiveResult.Value;
 
-        bool isFile = File.Exists(sourcePath);
-        bool isFolder = Directory.Exists(sourcePath);
+        var sourceInfoResult = await fileSystem.GetInfoAsync(SourceResource);
+        if (sourceInfoResult.IsFailure)
+        {
+            return Result.Fail($"Failed to probe source resource: '{SourceResource}'")
+                .WithErrors(sourceInfoResult);
+        }
+        bool isFile = sourceInfoResult.Value.Kind == ResourceInfoKind.File;
+        bool isFolder = sourceInfoResult.Value.Kind == ResourceInfoKind.Folder;
 
         if (!isFile && !isFolder)
         {
             return Result.Fail($"Resource not found: '{SourceResource}'");
         }
 
-        if (!Overwrite && File.Exists(archivePath))
+        var archiveInfoResult = await fileSystem.GetInfoAsync(ArchiveResource);
+        bool archiveExists = archiveInfoResult.IsSuccess
+            && archiveInfoResult.Value.Kind == ResourceInfoKind.File;
+
+        if (!Overwrite && archiveExists)
         {
             return Result.Fail($"Archive already exists: '{ArchiveResource}'. Set overwrite to true to replace it.");
         }
@@ -103,7 +148,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         var excludeRegexes = ArchiveHelper.ParseGlobPatterns(Exclude);
 
         // If overwriting, delete the existing file first so it can be restored on undo
-        if (Overwrite && File.Exists(archivePath))
+        if (Overwrite && archiveExists)
         {
             var deleteResult = await resourceOpService.DeleteFileAsync(archivePath);
             if (deleteResult.IsFailure)
@@ -123,49 +168,44 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             {
                 if (isFile)
                 {
-                    var fileName = Path.GetFileName(sourcePath);
+                    var fileName = SourceResource.ResourceName;
 
                     if (ArchiveHelper.ShouldIncludeFile(fileName, includeRegexes, excludeRegexes))
                     {
-                        await ArchiveHelper.AddFileToArchiveAsync(zipArchive, sourcePath, fileName);
+                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, fileSystem, SourceResource, fileName);
+                        if (addResult.IsFailure)
+                        {
+                            return addResult;
+                        }
                         entryCount++;
                     }
                 }
                 else
                 {
-                    var filePaths = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
+                    var fileEntries = new List<(ResourceKey Resource, string RelativePath)>();
+                    await CollectArchiveEntriesAsync(fileSystem, SourceResource, string.Empty, fileEntries);
 
-                    foreach (var filePath in filePaths)
+                    foreach (var (fileResource, relativePath) in fileEntries)
                     {
-                        var fileAttributes = File.GetAttributes(filePath);
-                        if (fileAttributes.HasFlag(System.IO.FileAttributes.ReparsePoint))
+                        if (!ArchiveHelper.ShouldIncludeFile(relativePath, includeRegexes, excludeRegexes))
                         {
                             continue;
                         }
 
-                        var relativePath = Path.GetRelativePath(sourcePath, filePath);
-                        var entryName = relativePath.Replace('\\', '/');
-
-                        if (!ArchiveHelper.ShouldIncludeFile(entryName, includeRegexes, excludeRegexes))
+                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, fileSystem, fileResource, relativePath);
+                        if (addResult.IsFailure)
                         {
-                            continue;
+                            return addResult;
                         }
-
-                        await ArchiveHelper.AddFileToArchiveAsync(zipArchive, filePath, entryName);
                         entryCount++;
                     }
                 }
             }
 
-            // Read the temp file and register it as an undoable create operation
+            // Read the temp file and register it as an undoable create operation.
+            // The temp file lives under the OS temp folder, outside the project
+            // tree, so the chokepoint contract does not apply.
             var archiveBytes = await File.ReadAllBytesAsync(tempPath);
-
-            // Ensure parent folder exists
-            var archiveFolder = Path.GetDirectoryName(archivePath);
-            if (!string.IsNullOrEmpty(archiveFolder) && !Directory.Exists(archiveFolder))
-            {
-                Directory.CreateDirectory(archiveFolder);
-            }
 
             var createResult = await resourceOpService.CreateFileAsync(archivePath, archiveBytes);
             if (createResult.IsFailure)
@@ -173,7 +213,10 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
                 return createResult;
             }
 
-            var archiveSize = new FileInfo(archivePath).Length;
+            var archiveProbeResult = await fileSystem.GetInfoAsync(ArchiveResource);
+            long archiveSize = archiveProbeResult.IsSuccess
+                ? archiveProbeResult.Value.Size
+                : archiveBytes.Length;
 
             ResultValue = new ArchiveResult
             {

@@ -39,8 +39,10 @@ public interface IDialogFactory
 
     /// <summary>
     /// Create a Resource Picker Dialog filtered to the specified file extensions.
+    /// Requires a loaded workspace; the dialog's view model resolves the
+    /// resource registry and file system from the workspace wrapper.
     /// </summary>
-    IResourcePickerDialog CreateResourcePickerDialog(IResourceRegistry registry, IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
+    IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false);
 
     /// <summary>
     /// Create a Choice Dialog that lets the user pick from a list of named options.

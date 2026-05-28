@@ -41,9 +41,10 @@ internal static class SidecarPairingTestHelper
     /// </summary>
     public static SidecarPairingService BuildPairingServiceWithNoFactories()
     {
+        // NSubstitute returns false for unconfigured bool methods, so the
+        // standalone-form check naturally returns "no match" without any
+        // explicit stubbing.
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.GetFactory(Arg.Any<ResourceKey>())
-            .Returns(Result<IDocumentEditorFactory>.Fail("no factory"));
         return BuildPairingService(editorRegistry);
     }
 

@@ -9,21 +9,17 @@ public partial class DefaultDocumentViewModel : DocumentViewModel
 
     public async Task<Result> LoadDocument()
     {
-        try
-        {
-            PropertyChanged -= TextDocumentViewModel_PropertyChanged;
+        PropertyChanged -= TextDocumentViewModel_PropertyChanged;
 
-            // Read the file contents to initialize the text editor
-            var text = await File.ReadAllTextAsync(FilePath);
-            Text = text;
-
-            PropertyChanged += TextDocumentViewModel_PropertyChanged;
-        }
-        catch (Exception ex)
+        var loadResult = await LoadTextFromFileAsync();
+        if (loadResult.IsFailure)
         {
             return Result.Fail($"Failed to load document file: '{FilePath}'")
-                .WithException(ex);
+                .WithErrors(loadResult);
         }
+        Text = loadResult.Value;
+
+        PropertyChanged += TextDocumentViewModel_PropertyChanged;
 
         return Result.Ok();
     }

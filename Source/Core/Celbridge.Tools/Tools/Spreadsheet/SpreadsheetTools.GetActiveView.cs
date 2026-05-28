@@ -10,17 +10,24 @@ public partial class SpreadsheetTools
     [McpServerTool(Name = "spreadsheet_get_active_view", ReadOnly = true)]
     [ToolAlias("spreadsheet.get_active_view")]
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
-    public partial CallToolResult GetActiveView(string resource)
+    public async partial Task<CallToolResult> GetActiveView(string resource)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
+        var openResult = await OpenWorkbookStreamAsync(workbookResource);
+        if (openResult.IsFailure)
+        {
+            return ToolResponse.Error(openResult);
+        }
+
+        using var stream = openResult.Value;
         var reader = GetRequiredService<ISpreadsheetReader>();
-        var viewResult = reader.GetActiveView(workbookPath);
+        var viewResult = reader.GetActiveView(stream);
         if (viewResult.IsFailure)
         {
             return ToolResponse.Error(viewResult);

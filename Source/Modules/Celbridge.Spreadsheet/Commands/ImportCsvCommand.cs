@@ -1,5 +1,6 @@
 using System.Globalization;
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
@@ -23,14 +24,12 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (Imports.Count == 0)
         {
@@ -80,9 +79,16 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
         int totalRowCount = 0;
         int sheetsCreated = 0;
 
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             for (int importIndex = 0; importIndex < parsedImports.Count; importIndex++)
             {
@@ -127,7 +133,11 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
                 totalRowCount += parsedRows.Count;
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             ResultValue = new ImportCsvResult(parsedImports.Count, totalRowCount, sheetsCreated);
         }

@@ -459,20 +459,54 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         return keys;
     }
 
-    public async Task<Result<bool>> ExistsAsync(ResourceKey resource)
+    public async Task<Result<ResourceInfo>> GetInfoAsync(ResourceKey resource)
     {
         await Task.CompletedTask;
 
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<bool>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result<ResourceInfo>.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
 
-        var exists = File.Exists(resourcePath) || Directory.Exists(resourcePath);
-        return exists;
+        try
+        {
+            // File.Exists, FileInfo.Length, and FileInfo.LastWriteTimeUtc share
+            // the same underlying stat() call; populating the rich record costs
+            // no more than a plain existence probe.
+            var fileInfo = new FileInfo(resourcePath);
+            if (fileInfo.Exists)
+            {
+                var fileResult = new ResourceInfo(
+                    Kind: ResourceInfoKind.File,
+                    Size: fileInfo.Length,
+                    ModifiedUtc: fileInfo.LastWriteTimeUtc);
+                return fileResult;
+            }
+
+            var directoryInfo = new DirectoryInfo(resourcePath);
+            if (directoryInfo.Exists)
+            {
+                var folderResult = new ResourceInfo(
+                    Kind: ResourceInfoKind.Folder,
+                    Size: 0,
+                    ModifiedUtc: directoryInfo.LastWriteTimeUtc);
+                return folderResult;
+            }
+
+            var notFoundResult = new ResourceInfo(
+                Kind: ResourceInfoKind.NotFound,
+                Size: 0,
+                ModifiedUtc: default);
+            return notFoundResult;
+        }
+        catch (Exception ex)
+        {
+            return Result<ResourceInfo>.Fail($"Failed to get info for resource: '{resource}'")
+                .WithException(ex);
+        }
     }
 
     public async Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder)

@@ -55,7 +55,7 @@ public partial class FileTools
         var editValue = editResult.Value;
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
         var affectedLines = new List<AffectedLineRange>(editValue.AffectedRanges.Count);
 
@@ -67,7 +67,7 @@ public partial class FileTools
         string[]? fileLines = null;
         if (editValue.AffectedRanges.Count > 0)
         {
-            fileLines = await ReadFileLinesForContextAsync(resourceRegistry, fileResourceKey);
+            fileLines = await ReadFileLinesForContextAsync(fileSystem, fileResourceKey);
         }
 
         foreach (var range in editValue.AffectedRanges)

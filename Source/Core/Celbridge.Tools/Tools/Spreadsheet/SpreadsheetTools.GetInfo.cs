@@ -10,17 +10,24 @@ public partial class SpreadsheetTools
     [McpServerTool(Name = "spreadsheet_get_info", ReadOnly = true)]
     [ToolAlias("spreadsheet.get_info")]
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_workflows")]
-    public partial CallToolResult GetInfo(string resource)
+    public async partial Task<CallToolResult> GetInfo(string resource)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
+        var openResult = await OpenWorkbookStreamAsync(workbookResource);
+        if (openResult.IsFailure)
+        {
+            return ToolResponse.Error(openResult);
+        }
+
+        using var stream = openResult.Value;
         var reader = GetRequiredService<ISpreadsheetReader>();
-        var infoResult = reader.GetInfo(workbookPath);
+        var infoResult = reader.GetInfo(stream);
         if (infoResult.IsFailure)
         {
             return ToolResponse.Error(infoResult);

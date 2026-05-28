@@ -115,7 +115,11 @@ public class DataTransferService : IDataTransferService, IDisposable
                 .WithErrors(resolveResult);
         }
         var destFolderPath = resolveResult.Value;
-        if (!Directory.Exists(destFolderPath))
+
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var destInfoResult = await fileSystem.GetInfoAsync(destFolderResource);
+        if (destInfoResult.IsFailure
+            || destInfoResult.Value.Kind != ResourceInfoKind.Folder)
         {
             return Result<IResourceTransfer>.Fail($"The path '{destFolderPath}' does not exist.");
         }
@@ -147,7 +151,7 @@ public class DataTransferService : IDataTransferService, IDisposable
                 ? DataTransferMode.Move
                 : DataTransferMode.Copy;
 
-            var createTransferResult = resourceTransferService.CreateResourceTransfer(paths, destFolderResource, transferMode);
+            var createTransferResult = await resourceTransferService.CreateResourceTransferAsync(paths, destFolderResource, transferMode);
             if (createTransferResult.IsFailure)
             {
                 return Result<IResourceTransfer>.Fail($"Failed to create resource transfer.")

@@ -10,17 +10,17 @@ public partial class SpreadsheetTools
     [McpServerTool(Name = "spreadsheet_read_format", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_format")]
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation")]
-    public partial CallToolResult ReadFormat(
+    public async partial Task<CallToolResult> ReadFormat(
         string resource,
         string sheet,
         string range = "")
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -29,8 +29,15 @@ public partial class SpreadsheetTools
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
 
+        var openResult = await OpenWorkbookStreamAsync(workbookResource);
+        if (openResult.IsFailure)
+        {
+            return ToolResponse.Error(openResult);
+        }
+
+        using var stream = openResult.Value;
         var reader = GetRequiredService<ISpreadsheetReader>();
-        var readResult = reader.ReadFormat(workbookPath, sheet, rangeArgument);
+        var readResult = reader.ReadFormat(stream, sheet, rangeArgument);
         if (readResult.IsFailure)
         {
             return ToolResponse.Error(readResult);

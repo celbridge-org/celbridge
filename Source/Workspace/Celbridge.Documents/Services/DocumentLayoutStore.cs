@@ -178,7 +178,7 @@ public class DocumentLayoutStore
         if (storedLayout.Addresses is null
             || storedLayout.Addresses.Count == 0)
         {
-            OpenDefaultReadme();
+            await OpenDefaultReadmeAsync();
             return;
         }
 
@@ -254,7 +254,7 @@ public class DocumentLayoutStore
             }
             var filePath = resolveResult.Value;
 
-            if (!_fileAccessHelper.CanAccessFile(filePath))
+            if (!await _fileAccessHelper.CanAccessFileAsync(fileResource))
             {
                 _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
                 continue;
@@ -319,7 +319,7 @@ public class DocumentLayoutStore
         DocumentsPanel.ActiveDocument = selectedDocumentKey;
     }
 
-    private void OpenDefaultReadme()
+    private async Task OpenDefaultReadmeAsync()
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var readmeResource = new ResourceKey("readme.md");
@@ -331,9 +331,7 @@ public class DocumentLayoutStore
         }
         var normalizedResource = normalizeResult.Value;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(normalizedResource);
-        if (resolveResult.IsFailure
-            || !_fileAccessHelper.CanAccessFile(resolveResult.Value))
+        if (!await _fileAccessHelper.CanAccessFileAsync(normalizedResource))
         {
             return;
         }

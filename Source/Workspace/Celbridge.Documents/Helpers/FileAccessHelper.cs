@@ -17,39 +17,35 @@ public class FileAccessHelper
     }
 
     /// <summary>
-    /// True when the path points to an existing file that can be opened for
-    /// shared read access. Returns false for empty paths, missing files, or
+    /// True when the resource key resolves to an existing file that can be
+    /// opened for shared read access. Returns false for missing files or
     /// access-denied conditions.
     /// </summary>
-    public bool CanAccessFile(string resourcePath)
+    public async Task<bool> CanAccessFileAsync(ResourceKey fileResource)
     {
-        if (string.IsNullOrEmpty(resourcePath)
-            || !File.Exists(resourcePath))
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+
+        var infoResult = await fileSystem.GetInfoAsync(fileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
             return false;
         }
 
-        try
-        {
-            var fileInfo = new FileInfo(resourcePath);
-            using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-            return true;
-        }
-        catch (IOException)
+        var openResult = await fileSystem.OpenReadAsync(fileResource);
+        if (openResult.IsFailure)
         {
             return false;
         }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
+        openResult.Value.Dispose();
+        return true;
     }
 
     /// <summary>
     /// Resolves a resource key to its backing path and verifies the file
     /// exists and is readable. Returns the resolved path on success.
     /// </summary>
-    public Result<string> ResolveAndValidateFilePath(ResourceKey fileResource)
+    public async Task<Result<string>> ResolveAndValidateFilePathAsync(ResourceKey fileResource)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -61,12 +57,15 @@ public class FileAccessHelper
         }
         var filePath = resolveResult.Value;
 
-        if (!File.Exists(filePath))
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var infoResult = await fileSystem.GetInfoAsync(fileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
         }
 
-        if (!CanAccessFile(filePath))
+        if (!await CanAccessFileAsync(fileResource))
         {
             return Result.Fail($"File exists but cannot be opened: '{filePath}'");
         }

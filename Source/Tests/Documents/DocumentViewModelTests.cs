@@ -17,6 +17,7 @@ public class DocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
     private IResourceFileSystem _fileSystem = null!;
+    private IResourceRegistry _resourceRegistry = null!;
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
@@ -36,12 +37,12 @@ public class DocumentViewModelTests
         // whose registry maps the test's resource key to the temp file path. The
         // layer's atomic write + retry semantics are exercised directly against
         // the temp folder.
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(Result<string>.Ok(_tempFilePath));
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(Result<string>.Ok(_tempFilePath));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.Registry.Returns(_resourceRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -89,7 +90,14 @@ public class DocumentViewModelTests
     [Test]
     public async Task LoadDocument_ReturnsFailure_WhenFileIsMissing()
     {
-        _vm.FilePath = Path.Combine(_tempFolder, "nonexistent.md");
+        // Point the registry at a path that doesn't exist on disk so the
+        // chokepoint-routed read fails. Setting FilePath alone is not enough
+        // because the read goes through ResolveResourcePath(FileResource).
+        var missingPath = Path.Combine(_tempFolder, "nonexistent.md");
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(Result<string>.Ok(missingPath));
+
+        _vm.FilePath = missingPath;
 
         var result = await _vm.LoadDocument();
 
@@ -316,14 +324,14 @@ public class DocumentViewModelTests
 
         protected override IResourceFileSystem GetFileSystem() => _fileSystem;
 
-        protected override void UpdateFileTrackingInfo()
+        protected override async Task UpdateFileTrackingInfoAsync()
         {
             if (!_hasInjected)
             {
                 _hasInjected = true;
                 File.WriteAllText(_injectedFilePath, _externalContent);
             }
-            base.UpdateFileTrackingInfo();
+            await base.UpdateFileTrackingInfoAsync();
         }
     }
 }

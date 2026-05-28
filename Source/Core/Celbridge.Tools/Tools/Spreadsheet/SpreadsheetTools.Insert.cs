@@ -13,11 +13,12 @@ public partial class SpreadsheetTools
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> Insert(string resource, string operationsJson)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         var parseResult = ParseInsertOperations(operationsJson);
         if (parseResult.IsFailure)
@@ -26,10 +27,9 @@ public partial class SpreadsheetTools
         }
         var operations = parseResult.Value;
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<IInsertRangesCommand, InsertRangesResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Operations = operations;
         });
         if (commandResult.IsFailure)

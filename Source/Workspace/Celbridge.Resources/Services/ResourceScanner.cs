@@ -277,9 +277,9 @@ public sealed class ResourceScanner : IResourceScanner
                 return;
             }
 
-            var existsResult = await fileSystem.ExistsAsync(parentKey.Value);
-            if (existsResult.IsFailure
-                || !existsResult.Value)
+            var infoResult = await fileSystem.GetInfoAsync(parentKey.Value);
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind == ResourceInfoKind.NotFound)
             {
                 return;
             }

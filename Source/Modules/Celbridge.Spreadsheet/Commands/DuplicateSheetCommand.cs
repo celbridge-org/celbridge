@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -23,14 +24,12 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(SourceSheet))
         {
@@ -42,9 +41,16 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
             return Result.Fail("New sheet name is required.");
         }
 
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             if (!workbook.Worksheets.Contains(SourceSheet))
             {
@@ -87,7 +93,11 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
                 ColorScaleCopyHelper.Reapply(duplicate, colorScaleSnapshots);
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             ResultValue = new DuplicateSheetResult(duplicate.Name, duplicate.Position);
         }

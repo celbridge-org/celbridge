@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Server;
 using Celbridge.Tools;
 using Celbridge.Workspace;
@@ -31,6 +33,7 @@ public class FileToolTests
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -40,6 +43,14 @@ public class FileToolTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        // Wire a real ResourceFileSystem against the temp folder so the
+        // chokepoint reads tests rely on probe and read the actual files.
+        var fileSystem = new ResourceFileSystem(
+            Substitute.For<ILogger<ResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
+            workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(fileSystem);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }

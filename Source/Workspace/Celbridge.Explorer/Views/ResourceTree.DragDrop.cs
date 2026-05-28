@@ -193,7 +193,7 @@ public sealed partial class ResourceTree
         }
 
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
-        var createResult = _resourceTransferService.CreateResourceTransfer(
+        var createResult = await _resourceTransferService.CreateResourceTransferAsync(
             sourcePaths,
             destFolderResource,
             DataTransferMode.Copy);

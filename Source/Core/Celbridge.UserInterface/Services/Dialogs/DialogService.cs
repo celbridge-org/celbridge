@@ -143,8 +143,7 @@ public class DialogService : IDialogService
             return Result<ResourceKey>.Fail("Cannot show resource picker: no project is currently loaded.");
         }
 
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var dialog = _dialogFactory.CreateResourcePickerDialog(registry, extensions, title, showPreview);
+        var dialog = _dialogFactory.CreateResourcePickerDialog(extensions, title, showPreview);
         return await ShowDialogAsync(dialog.ShowDialogAsync);
     }
 

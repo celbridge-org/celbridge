@@ -18,7 +18,7 @@ public interface IPackageService
     /// Discovers all packages (bundled module packages and project packages)
     /// and registers all package behaviors (e.g. custom document editor factories).
     /// </summary>
-    void RegisterPackages(string projectFolderPath);
+    Task RegisterPackagesAsync(string projectFolderPath);
 
     /// <summary>
     /// Gets document type entries from discovered packages that declare templates.

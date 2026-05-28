@@ -52,16 +52,16 @@ public partial class FileTools
                 var results = new List<SearchResultWithMetadata>();
                 foreach (var folderKey in matchingFolders)
                 {
-                    var resolvePathResult = resourceRegistry.ResolveResourcePath(folderKey);
-                    if (resolvePathResult.IsFailure)
+                    var infoResult = await fileSystem.GetInfoAsync(folderKey);
+                    if (infoResult.IsFailure
+                        || infoResult.Value.Kind != ResourceInfoKind.Folder)
                     {
                         continue;
                     }
-                    var directoryInfo = new DirectoryInfo(resolvePathResult.Value);
                     results.Add(new SearchResultWithMetadata(
                         folderKey.ToString(),
                         0,
-                        directoryInfo.LastWriteTimeUtc.ToString("o")));
+                        infoResult.Value.ModifiedUtc.ToString("o")));
                 }
                 return ToolResponse.Success(SerializeJson(results));
             }
@@ -81,11 +81,16 @@ public partial class FileTools
             var results = new List<SearchResultWithMetadata>();
             foreach (var match in matches)
             {
-                var fileInfo = new FileInfo(match.Path);
+                var infoResult = await fileSystem.GetInfoAsync(match.Resource);
+                if (infoResult.IsFailure
+                    || infoResult.Value.Kind != ResourceInfoKind.File)
+                {
+                    continue;
+                }
                 results.Add(new SearchResultWithMetadata(
                     match.Resource.ToString(),
-                    fileInfo.Length,
-                    fileInfo.LastWriteTimeUtc.ToString("o")));
+                    infoResult.Value.Size,
+                    infoResult.Value.ModifiedUtc.ToString("o")));
             }
             return ToolResponse.Success(SerializeJson(results));
         }

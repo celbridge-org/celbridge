@@ -1,6 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Documents.Helpers;
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -34,6 +36,7 @@ public class DocumentLayoutStoreTests
 
         _workspaceSettings = Substitute.For<IWorkspaceSettings>();
         _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
         _documentsPanel = Substitute.For<IDocumentsPanel>();
         _commandService = Substitute.For<ICommandService>();
 
@@ -59,6 +62,15 @@ public class DocumentLayoutStoreTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        // Wire a real ResourceFileSystem so FileAccessHelper's GetInfoAsync /
+        // OpenReadAsync calls probe the actual disk paths the registry
+        // resolves to.
+        var fileSystem = new ResourceFileSystem(
+            Substitute.For<ILogger<ResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
+            _workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(fileSystem);
 
         _fileAccessHelper = new FileAccessHelper(_workspaceWrapper);
 

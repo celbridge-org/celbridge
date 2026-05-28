@@ -7,6 +7,7 @@ namespace Celbridge.Documents.Views;
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
     private IResourceRegistry? _resourceRegistry;
+    private IResourceFileSystem? _resourceFileSystem;
 
     /// <summary>
     /// Provides access to the resource registry for file resource validation.
@@ -22,6 +23,23 @@ public abstract partial class DocumentView : UserControl, IDocumentView
                 _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
             }
             return _resourceRegistry;
+        }
+    }
+
+    /// <summary>
+    /// Provides access to the resource file system chokepoint.
+    /// Lazily initialized from the workspace wrapper.
+    /// </summary>
+    protected IResourceFileSystem ResourceFileSystem
+    {
+        get
+        {
+            if (_resourceFileSystem is null)
+            {
+                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+                _resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            }
+            return _resourceFileSystem;
         }
     }
 
@@ -56,30 +74,32 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     /// Validates the resource exists in the registry and on disk, then sets the ViewModel properties.
     /// Subclasses can override to add additional logic (call base first).
     /// </summary>
-    public virtual Task<Result> SetFileResource(ResourceKey fileResource)
+    public virtual async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         if (ResourceRegistry.GetResource(fileResource).IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"File resource does not exist in resource registry: {fileResource}"));
+            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
         }
 
         var resolveResult = ResourceRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
-                .WithErrors(resolveResult));
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
         }
         var filePath = resolveResult.Value;
 
-        if (!File.Exists(filePath))
+        var infoResult = await ResourceFileSystem.GetInfoAsync(fileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
-            return Task.FromResult<Result>(Result.Fail($"File resource does not exist on disk: {fileResource}"));
+            return Result.Fail($"File resource does not exist on disk: {fileResource}");
         }
 
         DocumentViewModel.FileResource = fileResource;
         DocumentViewModel.FilePath = filePath;
 
-        return Task.FromResult(Result.Ok());
+        return Result.Ok();
     }
 
     public abstract Task<Result> LoadContent();

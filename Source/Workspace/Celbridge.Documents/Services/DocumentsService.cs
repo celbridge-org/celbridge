@@ -280,7 +280,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        var resolveResult = _fileAccessHelper.ResolveAndValidateFilePath(fileResource);
+        var resolveResult = await _fileAccessHelper.ResolveAndValidateFilePathAsync(fileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to open document for file resource '{fileResource}'")
@@ -377,13 +377,15 @@ public class DocumentsService : IDocumentsService, IDisposable
         }
         var newResourcePath = resolveResult.Value;
 
-        Guard.IsTrue(File.Exists(newResourcePath));
-
         var oldDocumentType = _fileTypeHelper.GetDocumentViewType(oldResource);
         var newDocumentType = _fileTypeHelper.GetDocumentViewType(newResource);
 
         var changeDocumentResource = async Task () =>
         {
+            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var infoResult = await fileSystem.GetInfoAsync(message.NewResource);
+            Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == ResourceInfoKind.File);
+
             var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
             if (changeResult.IsFailure)
             {

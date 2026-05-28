@@ -1,5 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Services;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -23,14 +23,12 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(Sheet))
         {
@@ -42,9 +40,16 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
             return Result.Fail("At least one edit is required.");
         }
 
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             if (!workbook.Worksheets.Contains(Sheet))
             {
@@ -94,7 +99,11 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                 }
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             ResultValue = new WriteCellsResult(Edits.Count);
         }

@@ -29,30 +29,28 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
     public override async Task<Result> ExecuteAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileSystem = workspaceService.ResourceFileSystem;
-
-        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
 
         // Preserve existing line endings when overwriting. For a new file,
         // honour whatever endings the caller's content already uses (so a CSV
         // exporter emitting CRLF lands as CRLF on disk); fall back to the
         // platform default when the content has no line endings to detect.
         string targetSeparator;
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
             targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(Content);
         }
         else
         {
-            var existingContent = await File.ReadAllTextAsync(resourcePath);
-            targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(existingContent);
+            var readResult = await fileSystem.ReadAllTextAsync(FileResource);
+            if (readResult.IsFailure)
+            {
+                return Result.Fail($"Failed to read existing file: '{FileResource}'")
+                    .WithErrors(readResult);
+            }
+            targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(readResult.Value);
         }
 
         var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);

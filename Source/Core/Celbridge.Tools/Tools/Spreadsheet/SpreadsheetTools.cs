@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Celbridge.Resources;
 using ModelContextProtocol.Server;
 using Path = System.IO.Path;
 
@@ -6,8 +7,9 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// MCP tools for reading, querying, and modifying .xlsx workbooks. Reads use
-/// ISpreadsheetReader directly. Writes route through ISpreadsheet*Command
-/// implementations so they appear in the command audit trail.
+/// ISpreadsheetReader directly against a stream opened through the resource
+/// file system. Writes route through ISpreadsheet*Command implementations so
+/// they appear in the command audit trail.
 /// </summary>
 [McpServerToolType]
 public partial class SpreadsheetTools : AgentToolBase
@@ -16,7 +18,12 @@ public partial class SpreadsheetTools : AgentToolBase
 
     public SpreadsheetTools(IApplicationServiceProvider services) : base(services) { }
 
-    private Result<string> ResolveWorkbookPath(string resource)
+    // Validates the resource is a present .xlsx file and returns its key.
+    // Mirrors SpreadsheetHelper.ResolveWorkbookResourceAsync in the
+    // Spreadsheet module — that helper is internal to its assembly so the
+    // tool layer reimplements the same check rather than taking a module
+    // dependency.
+    private async Task<Result<ResourceKey>> ResolveWorkbookResourceAsync(string resource)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
         {
@@ -30,21 +37,42 @@ public partial class SpreadsheetTools : AgentToolBase
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
-        if (resolveResult.IsFailure)
+        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+        if (infoResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail($"Failed to inspect workbook: '{resourceKey}'")
+                .WithErrors(infoResult);
         }
-        var workbookPath = resolveResult.Value;
 
-        if (!File.Exists(workbookPath))
+        var info = infoResult.Value;
+        if (info.Kind == ResourceInfoKind.NotFound)
         {
             return Result.Fail($"File not found: '{resourceKey}'");
         }
+        if (info.Kind != ResourceInfoKind.File)
+        {
+            return Result.Fail($"Resource is not a file: '{resourceKey}'");
+        }
 
-        return workbookPath;
+        return resourceKey;
+    }
+
+    // Opens the workbook bytes via the resource file system and returns them
+    // as a seekable MemoryStream positioned at zero. Caller disposes.
+    private async Task<Result<Stream>> OpenWorkbookStreamAsync(ResourceKey resource)
+    {
+        var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
+        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+
+        var bytesResult = await fileSystem.ReadAllBytesAsync(resource);
+        if (bytesResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read workbook: '{resource}'")
+                .WithErrors(bytesResult);
+        }
+
+        return (Stream)new MemoryStream(bytesResult.Value, writable: false);
     }
 
     private static string SerializeJson(object value)

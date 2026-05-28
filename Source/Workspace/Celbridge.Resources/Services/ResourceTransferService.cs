@@ -24,9 +24,9 @@ public class ResourceTransferService : IResourceTransferService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode)
+    public async Task<Result<IResourceTransfer>> CreateResourceTransferAsync(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode)
     {
-        var createItemsResult = CreateResourceTransferItems(sourcePaths, destFolderResource);
+        var createItemsResult = await CreateResourceTransferItemsAsync(sourcePaths, destFolderResource);
         if (createItemsResult.IsFailure)
         {
             return Result<IResourceTransfer>.Fail($"Failed to create resource transfer items.")
@@ -43,7 +43,7 @@ public class ResourceTransferService : IResourceTransferService
         return Result<IResourceTransfer>.Ok(resourceTransfer);
     }
 
-    private Result<List<ResourceTransferItem>> CreateResourceTransferItems(List<string> sourcePaths, ResourceKey destFolderResource)
+    private async Task<Result<List<ResourceTransferItem>>> CreateResourceTransferItemsAsync(List<string> sourcePaths, ResourceKey destFolderResource)
     {
         try
         {
@@ -56,7 +56,11 @@ public class ResourceTransferService : IResourceTransferService
                     .WithErrors(resolveResult);
             }
             var destFolderPath = resolveResult.Value;
-            if (!Directory.Exists(destFolderPath))
+
+            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var destInfoResult = await fileSystem.GetInfoAsync(destFolderResource);
+            if (destInfoResult.IsFailure
+                || destInfoResult.Value.Kind != ResourceInfoKind.Folder)
             {
                 return Result<List<ResourceTransferItem>>.Fail($"The path '{destFolderPath}' does not exist.");
             }

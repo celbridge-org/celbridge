@@ -58,12 +58,7 @@ public class SidecarPairingServiceTests
             "[note]\ntitle = \"Hello\"\n");
 
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.GetFactory(
-                Arg.Is<ResourceKey>(k => k.ToString().EndsWith("feature.note.cel")))
-            .Returns(Result<IDocumentEditorFactory>.Ok(Substitute.For<IDocumentEditorFactory>()));
-        editorRegistry.GetFactory(
-                Arg.Is<ResourceKey>(k => !k.ToString().EndsWith("feature.note.cel")))
-            .Returns(Result<IDocumentEditorFactory>.Fail("no factory"));
+        editorRegistry.IsExtensionSupported(".note.cel").Returns(true);
 
         var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
         var registry = BuildRegistry(pairingService);
@@ -85,12 +80,7 @@ public class SidecarPairingServiceTests
             "[package]\nid = \"acme\"\nname = \"Acme\"\nversion = \"1.0.0\"\n");
 
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.GetFactory(
-                Arg.Is<ResourceKey>(k => k.ToString().EndsWith("package.cel")))
-            .Returns(Result<IDocumentEditorFactory>.Ok(Substitute.For<IDocumentEditorFactory>()));
-        editorRegistry.GetFactory(
-                Arg.Is<ResourceKey>(k => !k.ToString().EndsWith("package.cel")))
-            .Returns(Result<IDocumentEditorFactory>.Fail("no factory"));
+        editorRegistry.IsFilenameSupported("package.cel").Returns(true);
 
         var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
         var registry = BuildRegistry(pairingService);
@@ -99,6 +89,28 @@ public class SidecarPairingServiceTests
         var report = registry.GetSidecarReport();
         report.Orphan.Should().NotContain(new ResourceKey("package.cel"));
         report.Healthy.Should().Contain(new ResourceKey("package.cel"));
+    }
+
+    [Test]
+    public void BareCelExtensionRegistration_DoesNotPreventOrphanReport()
+    {
+        // The ".cel" extension is also registered as a generic code-editor
+        // language (for syntax highlighting), and that registration must not
+        // be treated as evidence of a standalone .cel form. A parentless
+        // ".cel" whose only matching registration is the bare extension is a
+        // true orphan and must appear in the report.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "orphaned.png.cel"),
+            "tags = [\"orphan\"]\n");
+
+        var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
+        editorRegistry.IsExtensionSupported(".cel").Returns(true);
+
+        var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
+        var registry = BuildRegistry(pairingService);
+        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = registry.GetSidecarReport();
+        report.Orphan.Should().Contain(new ResourceKey("orphaned.png.cel"));
     }
 
     [Test]
@@ -130,14 +142,14 @@ public class SidecarPairingServiceTests
             "tags = [\"x\"]\n");
 
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.GetFactory(Arg.Any<ResourceKey>())
-            .Returns(Result<IDocumentEditorFactory>.Fail("no factory"));
+        editorRegistry.IsFilenameSupported(Arg.Any<string>()).Returns(false);
+        editorRegistry.IsExtensionSupported(Arg.Any<string>()).Returns(false);
 
         var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
         var registry = BuildRegistry(pairingService);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        editorRegistry.DidNotReceive().GetFactory(new ResourceKey("foo.png.cel"));
+        editorRegistry.DidNotReceive().IsFilenameSupported("foo.png.cel");
 
         var report = registry.GetSidecarReport();
         report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));

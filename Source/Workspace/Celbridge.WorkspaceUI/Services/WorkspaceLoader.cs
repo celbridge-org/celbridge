@@ -130,7 +130,7 @@ public class WorkspaceLoader
             try
             {
                 var packageService = workspaceService.PackageService;
-                packageService.RegisterPackages(projectFolderPath);
+                await packageService.RegisterPackagesAsync(projectFolderPath);
             }
             catch (Exception ex)
             {

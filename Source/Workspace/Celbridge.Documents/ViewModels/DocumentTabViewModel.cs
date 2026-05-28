@@ -120,7 +120,7 @@ public partial class DocumentTabViewModel : ObservableObject
         return factories.Count >= 2;
     }
 
-    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
         if (_pendingResourceKeyChangedMessage is not null)
         {
@@ -144,7 +144,10 @@ public partial class DocumentTabViewModel : ObservableObject
                 // rename temp" save pattern used by some editors and coding agents. Check if the file
                 // still exists on disk before closing. The resource registry may not have caught up
                 // with the rename yet.
-                if (File.Exists(FilePath))
+                var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+                var infoResult = await fileSystem.GetInfoAsync(FileResource);
+                if (infoResult.IsSuccess
+                    && infoResult.Value.Kind == ResourceInfoKind.File)
                 {
                     return;
                 }
@@ -181,7 +184,10 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         Guard.IsNotNull(DocumentView);
 
-        if (!File.Exists(FilePath))
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var closeInfoResult = await fileSystem.GetInfoAsync(FileResource);
+        if (closeInfoResult.IsFailure
+            || closeInfoResult.Value.Kind != ResourceInfoKind.File)
         {
             // The file no longer exists, so we assume that it was deleted intentionally.
             // Any pending save changes are discarded.

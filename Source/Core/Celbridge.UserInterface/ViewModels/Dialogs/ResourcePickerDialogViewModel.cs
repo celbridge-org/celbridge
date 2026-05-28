@@ -1,13 +1,15 @@
 using System.ComponentModel;
+using Celbridge.Workspace;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Celbridge.UserInterface.ViewModels;
 
 public partial class ResourcePickerDialogViewModel : ObservableObject
 {
-    private readonly IFileIconService _fileIconService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IResourceRegistry? _registry;
+    private IResourceFileSystem? _fileSystem;
     private List<string> _extensions = [];
     private List<ResourcePickerItem> _allItems = [];
     private bool _showPreview;
@@ -33,15 +35,24 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     [ObservableProperty]
     private Visibility _previewImageVisibility = Visibility.Collapsed;
 
-    public ResourcePickerDialogViewModel(IFileIconService fileIconService)
+    public ResourcePickerDialogViewModel(
+        IWorkspaceWrapper workspaceWrapper)
     {
-        _fileIconService = fileIconService;
+        _workspaceWrapper = workspaceWrapper;
         PropertyChanged += OnPropertyChanged;
     }
 
-    public void Initialize(IResourceRegistry registry, IReadOnlyList<string> extensions, bool showPreview)
+    public void Initialize(IReadOnlyList<string> extensions, bool showPreview)
     {
-        _registry = registry;
+        // The resource picker only makes sense for a loaded project. Callers
+        // (DialogService.ShowResourcePickerDialogAsync) already short-circuit
+        // with a user-facing error in that case; the guard here is a
+        // belt-and-braces safety net against a future caller that forgets.
+        Guard.IsTrue(_workspaceWrapper.IsWorkspacePageLoaded);
+
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        _registry = workspaceService.ResourceService.Registry;
+        _fileSystem = workspaceService.ResourceFileSystem;
         _showPreview = showPreview;
         _extensions = extensions
             .Select(e => e.TrimStart('.').ToLowerInvariant())
@@ -50,7 +61,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         // Show the preview panel container if preview is enabled (reserves space)
         PreviewPanelVisibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
 
-        _allItems = BuildFlatList(registry);
+        _allItems = BuildFlatList(_registry);
         UpdateFilteredItems();
     }
 
@@ -67,16 +78,17 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
     }
 
-    private void UpdatePreview()
+    private async void UpdatePreview()
     {
-        if (!_showPreview || SelectedItem is null || _registry is null)
+        if (!_showPreview || SelectedItem is null || _registry is null || _fileSystem is null)
         {
             PreviewImageVisibility = Visibility.Collapsed;
             PreviewImage = null;
             return;
         }
 
-        var resolveResult = _registry.ResolveResourcePath(SelectedItem.ResourceKey);
+        var selectedItem = SelectedItem;
+        var resolveResult = _registry.ResolveResourcePath(selectedItem.ResourceKey);
         if (resolveResult.IsFailure)
         {
             PreviewImageVisibility = Visibility.Collapsed;
@@ -85,22 +97,29 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
         var resourcePath = resolveResult.Value;
 
-        if (File.Exists(resourcePath))
+        var infoResult = await _fileSystem.GetInfoAsync(selectedItem.ResourceKey);
+        // The selection can change while the probe is in flight; the late
+        // result must not overwrite a newer selection's preview.
+        if (!ReferenceEquals(selectedItem, SelectedItem))
         {
-            try
-            {
-                var bitmap = new BitmapImage();
-                bitmap.UriSource = new Uri(resourcePath);
-                PreviewImage = bitmap;
-                PreviewImageVisibility = Visibility.Visible;
-            }
-            catch
-            {
-                PreviewImageVisibility = Visibility.Collapsed;
-                PreviewImage = null;
-            }
+            return;
         }
-        else
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
+        {
+            PreviewImageVisibility = Visibility.Collapsed;
+            PreviewImage = null;
+            return;
+        }
+
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.UriSource = new Uri(resourcePath);
+            PreviewImage = bitmap;
+            PreviewImageVisibility = Visibility.Visible;
+        }
+        catch
         {
             PreviewImageVisibility = Visibility.Collapsed;
             PreviewImage = null;

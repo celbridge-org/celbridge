@@ -39,7 +39,7 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
         var entries = new List<ReadManyFileEntry>();
         foreach (var resourceString in resourceKeys)
@@ -54,21 +54,25 @@ public partial class FileTools
             // entries for different roots are unambiguous regardless of how the agent typed them.
             var canonicalResource = resourceKey.ToString();
 
-            var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
-            if (resolveResult.IsFailure)
+            var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+            if (infoResult.IsFailure)
             {
-                entries.Add(new ReadManyFileEntry(canonicalResource, Error: resolveResult.FirstErrorMessage));
+                entries.Add(new ReadManyFileEntry(canonicalResource, Error: infoResult.FirstErrorMessage));
                 continue;
             }
-            var resourcePath = resolveResult.Value;
-
-            if (!File.Exists(resourcePath))
+            if (infoResult.Value.Kind != ResourceInfoKind.File)
             {
                 entries.Add(new ReadManyFileEntry(canonicalResource, Error: $"File not found: '{canonicalResource}'"));
                 continue;
             }
 
-            var fileText = await File.ReadAllTextAsync(resourcePath);
+            var readResult = await fileSystem.ReadAllTextAsync(resourceKey);
+            if (readResult.IsFailure)
+            {
+                entries.Add(new ReadManyFileEntry(canonicalResource, Error: readResult.FirstErrorMessage));
+                continue;
+            }
+            var fileText = readResult.Value;
             var totalLineCount = LineEndingHelper.CountLines(fileText);
 
             if (offset == 0 && limit == 0)

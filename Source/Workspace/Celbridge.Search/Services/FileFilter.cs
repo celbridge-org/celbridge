@@ -1,3 +1,4 @@
+using Celbridge.Resources;
 using Path = System.IO.Path;
 
 namespace Celbridge.Search;
@@ -23,19 +24,21 @@ public class FileFilter
     }
 
     /// <summary>
-    /// Checks if a file should be included in search based on its path.
+    /// Checks if a file should be included in search. Routes the file probe
+    /// through the chokepoint so the size check honours the same containment
+    /// validation as the read that follows.
     /// </summary>
-    public bool ShouldSearchFile(string filePath)
+    public async Task<bool> ShouldSearchFileAsync(IResourceFileSystem fileSystem, ResourceKey resource, string filePath)
     {
-        if (!File.Exists(filePath))
+        var infoResult = await fileSystem.GetInfoAsync(resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
             return false;
         }
 
-        var fileInfo = new FileInfo(filePath);
-
         // Skip large files
-        if (fileInfo.Length > MaxFileSizeBytes)
+        if (infoResult.Value.Size > MaxFileSizeBytes)
         {
             return false;
         }

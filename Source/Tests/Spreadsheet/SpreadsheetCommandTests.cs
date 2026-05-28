@@ -1,4 +1,6 @@
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Spreadsheet;
 using Celbridge.Spreadsheet.Commands;
 using Celbridge.Spreadsheet.Services;
@@ -34,6 +36,12 @@ public class SpreadsheetCommandTests
         _workbookResource = new ResourceKey(WorkbookResourceName);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        {
+            var key = callInfo.Arg<ResourceKey>();
+            return Result<string>.Ok(Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
         _resourceRegistry.ResolveResourcePath(_workbookResource).Returns(Result<string>.Ok(_workbookPath));
 
         var resourceService = Substitute.For<IResourceService>();
@@ -44,6 +52,12 @@ public class SpreadsheetCommandTests
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var fileSystem = new ResourceFileSystem(
+            Substitute.For<ILogger<ResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
+            _workspaceWrapper);
+        workspaceService.ResourceFileSystem.Returns(fileSystem);
     }
 
     [TearDown]
@@ -1692,7 +1706,7 @@ public class SpreadsheetCommandTests
         setResult.IsSuccess.Should().BeTrue();
 
         var reader = new Celbridge.Spreadsheet.Services.SpreadsheetReader();
-        var viewResult = reader.GetActiveView(_workbookPath);
+        var viewResult = reader.GetActiveView(new MemoryStream(File.ReadAllBytes(_workbookPath)));
         viewResult.IsSuccess.Should().BeTrue();
         var view = viewResult.Value;
         view.Sheet.Should().Be("Summary");
@@ -1926,7 +1940,7 @@ public class SpreadsheetCommandTests
         setResult.IsSuccess.Should().BeTrue();
 
         var reader = new SpreadsheetReader();
-        var viewResult = reader.GetActiveView(_workbookPath);
+        var viewResult = reader.GetActiveView(new MemoryStream(File.ReadAllBytes(_workbookPath)));
         viewResult.IsSuccess.Should().BeTrue();
         var view = viewResult.Value;
         view.Range.Should().Be("A7:B8");
@@ -1955,7 +1969,7 @@ public class SpreadsheetCommandTests
         result.IsSuccess.Should().BeTrue();
 
         var reader = new SpreadsheetReader();
-        var viewResult = reader.GetActiveView(_workbookPath);
+        var viewResult = reader.GetActiveView(new MemoryStream(File.ReadAllBytes(_workbookPath)));
         viewResult.Value.Ranges.Should().Equal("A1:B2", "D5:E6");
     }
 

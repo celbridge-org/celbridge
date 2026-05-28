@@ -49,7 +49,9 @@ public sealed class GetFieldCommand : CommandBase, IGetFieldCommand
 
         if (!read.Content!.Frontmatter.TryGetValue(Field, out var value))
         {
-            return Result.Fail($"Field '{Field}' is not set on resource '{Resource}'.");
+            return Result.Fail(
+                $"Field '{Field}' is not set on resource '{Resource}'. " +
+                "Use data_get_info to see the fields currently set on this resource.");
         }
 
         ResultValue = value;

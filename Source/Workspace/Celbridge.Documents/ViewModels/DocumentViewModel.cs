@@ -98,7 +98,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         _messengerService.Register<DocumentSaveCompletedMessage>(this, OnDocumentSaveCompleted);
     }
 
-    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
+    private async void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
         if (message.Resource != FileResource)
         {
@@ -107,7 +107,7 @@ public abstract partial class DocumentViewModel : ObservableObject
 
         // Self-events from our own writes hash-match _lastSavedFileHash and are
         // ignored. Genuine external changes have a different hash and proceed.
-        if (IsFileChangedExternally())
+        if (await IsFileChangedExternallyAsync())
         {
             // External edits supersede any pending or in-flight buffer save.
             // Discard the queued save so the buffer reload wins.
@@ -119,11 +119,11 @@ public abstract partial class DocumentViewModel : ObservableObject
         }
     }
 
-    private void OnDocumentSaveCompleted(object recipient, DocumentSaveCompletedMessage message)
+    private async void OnDocumentSaveCompleted(object recipient, DocumentSaveCompletedMessage message)
     {
         if (message.DocumentResource == FileResource)
         {
-            UpdateFileTrackingInfo();
+            await UpdateFileTrackingInfoAsync();
         }
     }
 
@@ -133,17 +133,16 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     protected async Task<Result<string>> LoadTextFromFileAsync()
     {
-        try
-        {
-            var text = await File.ReadAllTextAsync(FilePath);
-            UpdateFileTrackingInfo();
-            return text;
-        }
-        catch (Exception ex)
+        var fileSystem = GetFileSystem();
+        var readResult = await fileSystem.ReadAllTextAsync(FileResource);
+        if (readResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to load file: '{FilePath}'")
-                .WithException(ex);
+                .WithErrors(readResult);
         }
+
+        await UpdateFileTrackingInfoAsync();
+        return readResult.Value;
     }
 
     /// <summary>
@@ -187,7 +186,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     {
         var intendedHash = ComputeBytesHash(bytes);
 
-        if (TryDetectPreWriteExternalChange())
+        if (await TryDetectPreWriteExternalChangeAsync())
         {
             return Result.Ok();
         }
@@ -199,7 +198,7 @@ public abstract partial class DocumentViewModel : ObservableObject
             return writeResult;
         }
 
-        UpdateFileTrackingInfo();
+        await UpdateFileTrackingInfoAsync();
 
         if (_lastSavedFileHash is not null
             && _lastSavedFileHash != intendedHash)
@@ -220,36 +219,35 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// against, or if the disk read fails (the caller falls through to the
     /// write attempt, whose retry loop handles transient IO errors).
     /// </summary>
-    private bool TryDetectPreWriteExternalChange()
+    private async Task<bool> TryDetectPreWriteExternalChangeAsync()
     {
-        if (_lastSavedFileHash is null
-            || !File.Exists(FilePath))
+        if (_lastSavedFileHash is null)
         {
             return false;
         }
 
-        try
+        var fileSystem = GetFileSystem();
+        var readResult = await fileSystem.ReadAllBytesAsync(FileResource);
+        if (readResult.IsFailure)
         {
-            var preWriteHash = ComputeFileHash(FilePath);
-            if (preWriteHash == _lastSavedFileHash)
-            {
-                return false;
-            }
-
-            SaveTimer = 0;
-            HasUnsavedChanges = false;
-            UpdateFileTrackingInfo();
-
-            _logger?.LogDebug($"External write detected before save for '{FileResource}', aborting save and requesting reload");
-            RaiseReloadRequested();
-
-            return true;
-        }
-        catch (IOException ex)
-        {
-            _logger?.LogDebug(ex, $"Pre-write hash check failed for '{FilePath}', proceeding to write attempt");
+            _logger?.LogDebug($"Pre-write hash check failed for '{FilePath}', proceeding to write attempt");
             return false;
         }
+
+        var preWriteHash = ComputeBytesHash(readResult.Value);
+        if (preWriteHash == _lastSavedFileHash)
+        {
+            return false;
+        }
+
+        SaveTimer = 0;
+        HasUnsavedChanges = false;
+        await UpdateFileTrackingInfoAsync();
+
+        _logger?.LogDebug($"External write detected before save for '{FileResource}', aborting save and requesting reload");
+        RaiseReloadRequested();
+
+        return true;
     }
 
     /// <summary>
@@ -272,7 +270,7 @@ public abstract partial class DocumentViewModel : ObservableObject
         _messengerService?.UnregisterAll(this);
     }
 
-    protected bool IsFileChangedExternally()
+    protected async Task<bool> IsFileChangedExternallyAsync()
     {
         // If we haven't saved yet, any change is considered external
         if (_lastSavedFileHash == null)
@@ -280,61 +278,54 @@ public abstract partial class DocumentViewModel : ObservableObject
             return true;
         }
 
-        try
+        var fileSystem = GetFileSystem();
+        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
-            if (!File.Exists(FilePath))
-            {
-                // File was deleted, consider this an external change
-                return true;
-            }
-
-            var fileInfo = new FileInfo(FilePath);
-            var currentSize = fileInfo.Length;
-
-            // Quick check: if file size is different, it's definitely changed
-            if (currentSize != _lastSavedFileSize)
-            {
-                return true;
-            }
-
-            // File size is the same - compute hash to check if content actually changed
-            // This handles cases where the file was rewritten with identical content
-            var currentHash = ComputeFileHash(FilePath);
-
-            return currentHash != _lastSavedFileHash;
-        }
-        catch (Exception)
-        {
-            // If we can't read the file, assume it changed (safer to reload)
             return true;
         }
+
+        // Quick check: if file size is different, it's definitely changed.
+        if (infoResult.Value.Size != _lastSavedFileSize)
+        {
+            return true;
+        }
+
+        // File size is the same; compute hash to check if content actually changed.
+        // This handles cases where the file was rewritten with identical content.
+        var readResult = await fileSystem.ReadAllBytesAsync(FileResource);
+        if (readResult.IsFailure)
+        {
+            return true;
+        }
+
+        var currentHash = ComputeBytesHash(readResult.Value);
+        return currentHash != _lastSavedFileHash;
     }
 
-    protected virtual void UpdateFileTrackingInfo()
+    protected virtual async Task UpdateFileTrackingInfoAsync()
     {
-        try
+        var fileSystem = GetFileSystem();
+        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
-            if (File.Exists(FilePath))
-            {
-                var fileInfo = new FileInfo(FilePath);
-                _lastSavedFileSize = fileInfo.Length;
-                _lastSavedFileHash = ComputeFileHash(FilePath);
-            }
-        }
-        catch (Exception)
-        {
-            // If we can't read the file, clear our tracking info
             _lastSavedFileHash = null;
             _lastSavedFileSize = 0;
+            return;
         }
-    }
 
-    protected static string ComputeFileHash(string filePath)
-    {
-        using var stream = File.OpenRead(filePath);
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(stream);
-        return Convert.ToBase64String(hashBytes);
+        var readResult = await fileSystem.ReadAllBytesAsync(FileResource);
+        if (readResult.IsFailure)
+        {
+            _lastSavedFileHash = null;
+            _lastSavedFileSize = 0;
+            return;
+        }
+
+        _lastSavedFileSize = infoResult.Value.Size;
+        _lastSavedFileHash = ComputeBytesHash(readResult.Value);
     }
 
     private static string ComputeBytesHash(byte[] bytes)

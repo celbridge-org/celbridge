@@ -4,6 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
 
@@ -20,15 +21,16 @@ public class PackageService : IPackageService
         IModuleService moduleService,
         IMessengerService messengerService,
         IFeatureFlags featureFlags,
-        IPackageLocalizationService localizationService)
+        IPackageLocalizationService localizationService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
-        _registry = new PackageRegistry(logger, moduleService, featureFlags, localizationService);
+        _registry = new PackageRegistry(logger, moduleService, featureFlags, localizationService, workspaceWrapper);
     }
 
-    public void RegisterPackages(string projectFolderPath)
+    public async Task RegisterPackagesAsync(string projectFolderPath)
     {
-        var report = _registry.DiscoverPackages(projectFolderPath);
+        var report = await _registry.DiscoverPackagesAsync(projectFolderPath);
 
         if (report.Failures.Count > 0)
         {

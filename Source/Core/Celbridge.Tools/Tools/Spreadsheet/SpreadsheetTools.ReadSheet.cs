@@ -10,7 +10,7 @@ public partial class SpreadsheetTools
     [McpServerTool(Name = "spreadsheet_read_sheet", ReadOnly = true)]
     [ToolAlias("spreadsheet.read_sheet")]
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_cell_typing", "spreadsheet_headers_mode", "spreadsheet_paging")]
-    public partial CallToolResult ReadSheet(
+    public async partial Task<CallToolResult> ReadSheet(
         string resource,
         string sheet,
         string range = "",
@@ -20,12 +20,12 @@ public partial class SpreadsheetTools
         int limit = 0,
         int columnLimit = 0)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -47,8 +47,15 @@ public partial class SpreadsheetTools
             Limit: limit,
             ColumnLimit: columnLimit);
 
+        var openResult = await OpenWorkbookStreamAsync(workbookResource);
+        if (openResult.IsFailure)
+        {
+            return ToolResponse.Error(openResult);
+        }
+
+        using var stream = openResult.Value;
         var reader = GetRequiredService<ISpreadsheetReader>();
-        var readResult = reader.ReadSheet(workbookPath, sheet, options);
+        var readResult = reader.ReadSheet(stream, sheet, options);
         if (readResult.IsFailure)
         {
             return ToolResponse.Error(readResult);

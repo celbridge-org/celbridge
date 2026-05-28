@@ -36,21 +36,20 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
-        if (resolveResult.IsFailure)
+        var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+        if (infoResult.IsFailure)
         {
-            return ToolResponse.Error(resolveResult.FirstErrorMessage);
+            return ToolResponse.Error(infoResult);
         }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        if (infoResult.Value.Kind != ResourceInfoKind.File)
         {
             return ToolResponse.Error($"File not found: '{resourceKey}'");
         }
+        var info = infoResult.Value;
 
-        var extension = Path.GetExtension(resourcePath).ToLowerInvariant();
+        var extension = Path.GetExtension(resourceKey.Path).ToLowerInvariant();
         if (!SupportedImageMimeTypes.TryGetValue(extension, out var mimeType))
         {
             return ToolResponse.Error(
@@ -59,16 +58,20 @@ public partial class FileTools
                 $"For other binary content, use file_read_binary.");
         }
 
-        var fileInfo = new FileInfo(resourcePath);
-        if (fileInfo.Length > MaxInlineImageBytes)
+        if (info.Size > MaxInlineImageBytes)
         {
             return ToolResponse.Error(
-                $"Image '{resourceKey}' is {fileInfo.Length} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
+                $"Image '{resourceKey}' is {info.Size} bytes, which exceeds the {MaxInlineImageBytes}-byte inline cap. " +
                 $"Resize or recompress the image (or capture a smaller screenshot via webview_screenshot with maxEdge) " +
                 $"before calling file_read_image.");
         }
 
-        var bytes = await File.ReadAllBytesAsync(resourcePath);
+        var bytesResult = await fileSystem.ReadAllBytesAsync(resourceKey);
+        if (bytesResult.IsFailure)
+        {
+            return ToolResponse.Error(bytesResult.FirstErrorMessage);
+        }
+        var bytes = bytesResult.Value;
 
         var metadata = new FileReadImageResult(resourceKey.ToString(), mimeType, bytes.Length);
         var metadataJson = JsonSerializer.Serialize(metadata, JsonOptions);

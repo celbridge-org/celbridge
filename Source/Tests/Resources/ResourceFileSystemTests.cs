@@ -256,40 +256,87 @@ public class ResourceFileSystemTests
     }
 
     [Test]
-    public async Task ExistsAsync_ReturnsTrue_WhenFilePresent()
+    public async Task GetInfoAsync_ReturnsFile_WithSizeAndModifiedUtc_WhenFilePresent()
     {
-        var resource = new ResourceKey("present.txt");
-        var path = Path.Combine(_tempFolder, "present.txt");
-        await File.WriteAllTextAsync(path, "content");
+        var resource = new ResourceKey("present.bin");
+        var path = Path.Combine(_tempFolder, "present.bin");
+        var bytes = new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05 };
+        await File.WriteAllBytesAsync(path, bytes);
+        var expectedModifiedUtc = File.GetLastWriteTimeUtc(path);
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.ExistsAsync(resource);
+        var result = await _fileSystem.GetInfoAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeTrue();
+        var info = result.Value;
+        info.Kind.Should().Be(ResourceInfoKind.File);
+        info.Size.Should().Be(bytes.Length);
+        info.ModifiedUtc.Should().Be(expectedModifiedUtc);
     }
 
     [Test]
-    public async Task ExistsAsync_ReturnsFalse_WhenFileMissing()
+    public async Task GetInfoAsync_ReturnsFolder_WhenFolderPresent()
+    {
+        var resource = new ResourceKey("nested");
+        var folderPath = Path.Combine(_tempFolder, "nested");
+        Directory.CreateDirectory(folderPath);
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _fileSystem.GetInfoAsync(resource);
+
+        result.IsSuccess.Should().BeTrue();
+        var info = result.Value;
+        info.Kind.Should().Be(ResourceInfoKind.Folder);
+        info.Size.Should().Be(0);
+        info.ModifiedUtc.Should().NotBe(default);
+    }
+
+    [Test]
+    public async Task GetInfoAsync_ReturnsNotFound_WhenResourceMissing()
     {
         var resource = new ResourceKey("missing.txt");
         var path = Path.Combine(_tempFolder, "missing.txt");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.ExistsAsync(resource);
+        var result = await _fileSystem.GetInfoAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeFalse();
+        var info = result.Value;
+        info.Kind.Should().Be(ResourceInfoKind.NotFound);
+        info.Size.Should().Be(0);
+        info.ModifiedUtc.Should().Be(default);
     }
 
     [Test]
-    public async Task ExistsAsync_ReturnsFailure_WhenResolveFails()
+    public async Task GetInfoAsync_ResolvesViaRegistry_ForNonDefaultRoot()
+    {
+        // Non-default-root callers route through IResourceRegistry the same way
+        // default-root callers do: the chokepoint hands the key off, the
+        // registry resolves it to an absolute path, and the on-disk probe is
+        // identical. This test pins the contract end-to-end against a temp:
+        // key so a future regression in the resolution wiring surfaces here.
+        var resource = new ResourceKey("temp:scratch.txt");
+        var stagingFolder = Path.Combine(_tempFolder, ".celbridge", "scratch");
+        Directory.CreateDirectory(stagingFolder);
+        var path = Path.Combine(stagingFolder, "scratch.txt");
+        await File.WriteAllTextAsync(path, "scratch");
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+
+        var result = await _fileSystem.GetInfoAsync(resource);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Kind.Should().Be(ResourceInfoKind.File);
+        result.Value.Size.Should().Be("scratch".Length);
+    }
+
+    [Test]
+    public async Task GetInfoAsync_ReturnsFailure_WhenResolveFails()
     {
         var resource = new ResourceKey("bad.txt");
         _resourceRegistry.ResolveResourcePath(resource)
             .Returns(Result<string>.Fail("simulated resolve failure"));
 
-        var result = await _fileSystem.ExistsAsync(resource);
+        var result = await _fileSystem.GetInfoAsync(resource);
 
         result.IsFailure.Should().BeTrue();
     }

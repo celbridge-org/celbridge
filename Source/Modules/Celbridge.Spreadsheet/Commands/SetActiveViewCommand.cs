@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -25,14 +26,12 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(Sheet))
         {
@@ -85,7 +84,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
         // Write to disk and let the file-watcher reload path apply the view
         // state to any open editor. The editor's restoreViewState yields to
         // disk when the active sheet or selection has changed.
-        var applyResult = ApplyViewStateToWorkbook(workbookPath);
+        var applyResult = await ApplyViewStateToWorkbookAsync(workbookResource);
         if (applyResult.IsFailure)
         {
             return Result.Fail(applyResult.FirstErrorMessage);
@@ -103,11 +102,18 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
     // first cell of the first selection range.
     private record AppliedViewState(IReadOnlyList<string> Ranges, string ActiveCell);
 
-    private Result<AppliedViewState> ApplyViewStateToWorkbook(string workbookPath)
+    private async Task<Result<AppliedViewState>> ApplyViewStateToWorkbookAsync(ResourceKey workbookResource)
     {
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             if (!workbook.Worksheets.Contains(Sheet))
             {
@@ -207,7 +213,11 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
                 worksheet.SheetView.TopLeftCellAddress = scrollAnchor.Address;
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             return new AppliedViewState(appliedRanges, appliedActiveCell);
         }

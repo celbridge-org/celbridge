@@ -1,4 +1,5 @@
 using System.Globalization;
+using Celbridge.Resources;
 using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
@@ -22,11 +23,11 @@ public static class WebViewScreenshotResolver
     /// A trailing slash, or a path with no extension, is treated as a folder
     /// reference and an auto-named file is generated inside it. Otherwise
     /// the saveTo value is used verbatim and its extension is checked
-    /// against the format. The projectFolderPath is used to probe for
-    /// filename collisions when generating an auto-name, so the common case
-    /// (no collision) yields a clean unsuffixed filename.
+    /// against the format. Collision probing for auto-named files routes
+    /// through the chokepoint so the lookup honours the same containment
+    /// validation as the screenshot save that follows.
     /// </summary>
-    public static Result<ResourceKey> Resolve(string saveTo, string format, string projectFolderPath)
+    public static async Task<Result<ResourceKey>> ResolveAsync(string saveTo, string format, IResourceFileSystem fileSystem)
     {
         var extension = ExtensionForFormat(format);
         if (extension is null)
@@ -55,9 +56,9 @@ public static class WebViewScreenshotResolver
         // always carry an extension.
         if (endsWithSlash || !HasExtension(key.Path))
         {
+            var folderResource = key;
             var folderPath = key.Path;
-            var folderAbsolutePath = ResolveAbsoluteUnderProject(projectFolderPath, folderPath);
-            var fileName = GenerateAutoName(extension, folderAbsolutePath);
+            var fileName = await GenerateAutoNameAsync(extension, fileSystem, folderResource);
             var combined = string.IsNullOrEmpty(folderPath) ? fileName : folderPath + "/" + fileName;
             if (!ResourceKey.TryCreate(combined, out var fileKey))
             {
@@ -81,7 +82,7 @@ public static class WebViewScreenshotResolver
         return key;
     }
 
-    private static string GenerateAutoName(string extension, string absoluteFolderPath)
+    private static async Task<string> GenerateAutoNameAsync(string extension, IResourceFileSystem fileSystem, ResourceKey folderResource)
     {
         // Prefer the clean unsuffixed name. In the common case (no collision)
         // the agent gets `screenshot-20260430-090238.jpg` rather than a noisy
@@ -91,8 +92,7 @@ public static class WebViewScreenshotResolver
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
         var primary = $"screenshot-{timestamp}.{extension}";
-        var primaryPath = Path.Combine(absoluteFolderPath, primary);
-        if (!File.Exists(primaryPath))
+        if (!await ExistsAsync(fileSystem, folderResource, primary))
         {
             return primary;
         }
@@ -100,8 +100,7 @@ public static class WebViewScreenshotResolver
         for (int seq = 1; seq <= 999; seq++)
         {
             var candidate = $"screenshot-{timestamp}-{seq}.{extension}";
-            var candidatePath = Path.Combine(absoluteFolderPath, candidate);
-            if (!File.Exists(candidatePath))
+            if (!await ExistsAsync(fileSystem, folderResource, candidate))
             {
                 return candidate;
             }
@@ -137,13 +136,11 @@ public static class WebViewScreenshotResolver
         return !string.IsNullOrEmpty(extension);
     }
 
-    private static string ResolveAbsoluteUnderProject(string projectFolderPath, string resourceKeyString)
+    private static async Task<bool> ExistsAsync(IResourceFileSystem fileSystem, ResourceKey folderResource, string fileName)
     {
-        if (string.IsNullOrEmpty(resourceKeyString))
-        {
-            return projectFolderPath;
-        }
-
-        return Path.Combine(projectFolderPath, resourceKeyString.Replace('/', Path.DirectorySeparatorChar));
+        var candidateKey = folderResource.IsEmpty ? new ResourceKey(fileName) : folderResource.Combine(fileName);
+        var infoResult = await fileSystem.GetInfoAsync(candidateKey);
+        return infoResult.IsSuccess
+            && infoResult.Value.Kind != ResourceInfoKind.NotFound;
     }
 }

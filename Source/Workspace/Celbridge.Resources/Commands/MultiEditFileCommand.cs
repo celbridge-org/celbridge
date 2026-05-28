@@ -38,23 +38,22 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileSystem = workspaceService.ResourceFileSystem;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        var originalContent = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileSystem.ReadAllTextAsync(FileResource);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read file: '{FileResource}'")
+                .WithErrors(readResult);
+        }
+        var originalContent = readResult.Value;
         var separator = LineEndingHelper.DetectSeparatorOrDefault(originalContent);
 
         // Sequential application: each edit anchors against the buffer state

@@ -22,8 +22,8 @@ public class SidecarServiceTests
     {
         _fileSystem = Substitute.For<IResourceFileSystem>();
         // Default: nothing exists on disk. Tests opt-in per resource.
-        _fileSystem.ExistsAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<bool>.Ok(false)));
+        _fileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<ResourceInfo>.Ok(new ResourceInfo(ResourceInfoKind.NotFound, 0, default))));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceFileSystem.Returns(_fileSystem);
@@ -52,8 +52,8 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileSystem.ExistsAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<bool>.Ok(true)));
+        _fileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<ResourceInfo>.Ok(new ResourceInfo(ResourceInfoKind.File, 0, default))));
         _fileSystem.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
 
@@ -73,8 +73,8 @@ public class SidecarServiceTests
         // bogus .cel.cel key).
         var standaloneCel = new ResourceKey("design.widget.cel");
 
-        _fileSystem.ExistsAsync(standaloneCel)
-            .Returns(Task.FromResult(Result<bool>.Ok(true)));
+        _fileSystem.GetInfoAsync(standaloneCel)
+            .Returns(Task.FromResult(Result<ResourceInfo>.Ok(new ResourceInfo(ResourceInfoKind.File, 0, default))));
         _fileSystem.ReadAllTextAsync(standaloneCel)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"celbridge.code-editor.code-document\"\n")));
 
@@ -85,7 +85,7 @@ public class SidecarServiceTests
         readResult.Value.Content!.Frontmatter["editor"].Should().Be("celbridge.code-editor.code-document");
 
         // Belt-and-braces: the bogus .cel.cel key must never be touched.
-        await _fileSystem.DidNotReceive().ExistsAsync(new ResourceKey("design.widget.cel.cel"));
+        await _fileSystem.DidNotReceive().GetInfoAsync(new ResourceKey("design.widget.cel.cel"));
         await _fileSystem.DidNotReceive().ReadAllTextAsync(new ResourceKey("design.widget.cel.cel"));
     }
 
@@ -145,8 +145,8 @@ public class SidecarServiceTests
         var standaloneCel = new ResourceKey("design.widget.cel");
         var existingContent = "title = \"My Design\"\nversion = 1\n";
 
-        _fileSystem.ExistsAsync(standaloneCel)
-            .Returns(Task.FromResult(Result<bool>.Ok(true)));
+        _fileSystem.GetInfoAsync(standaloneCel)
+            .Returns(Task.FromResult(Result<ResourceInfo>.Ok(new ResourceInfo(ResourceInfoKind.File, 0, default))));
         _fileSystem.ReadAllTextAsync(standaloneCel)
             .Returns(Task.FromResult(Result<string>.Ok(existingContent)));
 
@@ -176,8 +176,8 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileSystem.ExistsAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<bool>.Ok(true)));
+        _fileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<ResourceInfo>.Ok(new ResourceInfo(ResourceInfoKind.File, 0, default))));
         _fileSystem.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
 
@@ -196,8 +196,8 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileSystem.ExistsAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<bool>.Ok(true)));
+        _fileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<ResourceInfo>.Ok(new ResourceInfo(ResourceInfoKind.File, 0, default))));
         _fileSystem.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("tags = [\"hero\", \"sprite\"]\n")));
 

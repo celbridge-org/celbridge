@@ -56,6 +56,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
+        var fileSystem = workspaceService.ResourceFileSystem;
 
         if (!ResourceKey.IsValidKey(ArchiveResource))
         {
@@ -83,7 +84,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         }
         var destinationPath = resolveDestinationResult.Value;
 
-        if (!File.Exists(archivePath))
+        var archiveInfoResult = await fileSystem.GetInfoAsync(ArchiveResource);
+        if (archiveInfoResult.IsFailure
+            || archiveInfoResult.Value.Kind != ResourceInfoKind.File)
         {
             return Result.Fail($"Archive not found: '{ArchiveResource}'");
         }
@@ -93,7 +96,13 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         try
         {
-            using var fileStream = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var openArchiveResult = await fileSystem.OpenReadAsync(ArchiveResource);
+            if (openArchiveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to open archive: '{ArchiveResource}'")
+                    .WithErrors(openArchiveResult);
+            }
+            await using var fileStream = openArchiveResult.Value;
             using var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Read);
 
             // First pass: validate all entries and collect folder paths
@@ -143,11 +152,17 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                         "Aborting extraction.");
                 }
 
-                if (!Overwrite && File.Exists(outputPath))
+                if (!Overwrite)
                 {
-                    return Result.Fail(
-                        $"File already exists: '{DestinationResource}/{entryName}'. " +
-                        "Set overwrite to true to replace existing files.");
+                    var entryResource = DestinationResource.Combine(entryName);
+                    var existingInfoResult = await fileSystem.GetInfoAsync(entryResource);
+                    if (existingInfoResult.IsSuccess
+                        && existingInfoResult.Value.Kind == ResourceInfoKind.File)
+                    {
+                        return Result.Fail(
+                            $"File already exists: '{DestinationResource}/{entryName}'. " +
+                            "Set overwrite to true to replace existing files.");
+                    }
                 }
 
                 validEntries.Add(entry);
@@ -165,13 +180,31 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
             try
             {
-                // Create the destination folder if it doesn't exist
+                // Create the destination folder if it doesn't exist. Any
+                // missing ancestor folders above the destination are created
+                // through the operation service too so the entire chain lands
+                // in the unarchive's undo batch; the earlier direct
+                // Directory.CreateDirectory bypassed undo and watcher
+                // coordination.
                 if (!Directory.Exists(destinationPath))
                 {
-                    var parentFolder = Path.GetDirectoryName(destinationPath);
-                    if (!string.IsNullOrEmpty(parentFolder) && !Directory.Exists(parentFolder))
+                    var missingAncestors = new List<string>();
+                    var ancestor = Path.GetDirectoryName(destinationPath);
+                    while (!string.IsNullOrEmpty(ancestor)
+                        && !Directory.Exists(ancestor))
                     {
-                        Directory.CreateDirectory(parentFolder);
+                        missingAncestors.Add(ancestor);
+                        ancestor = Path.GetDirectoryName(ancestor);
+                    }
+                    missingAncestors.Reverse();
+
+                    foreach (var ancestorPath in missingAncestors)
+                    {
+                        var createAncestorResult = await resourceOpService.CreateFolderAsync(ancestorPath);
+                        if (createAncestorResult.IsFailure)
+                        {
+                            return createAncestorResult;
+                        }
                     }
 
                     var createDestResult = await resourceOpService.CreateFolderAsync(destinationPath);
@@ -202,12 +235,18 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                     var outputPath = Path.Combine(destinationPath, entry.FullName.Replace('/', Path.DirectorySeparatorChar));
 
                     // If overwriting, delete existing file first so it's preserved in trash for undo
-                    if (Overwrite && File.Exists(outputPath))
+                    if (Overwrite)
                     {
-                        var deleteResult = await resourceOpService.DeleteFileAsync(outputPath);
-                        if (deleteResult.IsFailure)
+                        var entryResource = DestinationResource.Combine(entry.FullName);
+                        var existingInfoResult = await fileSystem.GetInfoAsync(entryResource);
+                        if (existingInfoResult.IsSuccess
+                            && existingInfoResult.Value.Kind == ResourceInfoKind.File)
                         {
-                            return deleteResult;
+                            var deleteResult = await resourceOpService.DeleteFileAsync(outputPath);
+                            if (deleteResult.IsFailure)
+                            {
+                                return deleteResult;
+                            }
                         }
                     }
 

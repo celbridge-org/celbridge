@@ -174,6 +174,11 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return _extensionToFactories.ContainsKey(normalizedExtension);
     }
 
+    public bool IsFilenameSupported(string fileName)
+    {
+        return _filenameToFactories.ContainsKey(fileName);
+    }
+
     /// <summary>
     /// Gets all registered factories.
     /// </summary>

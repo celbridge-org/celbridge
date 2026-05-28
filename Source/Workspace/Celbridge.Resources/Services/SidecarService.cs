@@ -57,9 +57,9 @@ public sealed class SidecarService : ISidecarService
 
         var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var existsResult = await fileSystem.ExistsAsync(sidecarKey);
-        if (existsResult.IsFailure
-            || !existsResult.Value)
+        var infoResult = await fileSystem.GetInfoAsync(sidecarKey);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == ResourceInfoKind.NotFound)
         {
             return Result<SidecarReadResult>.Ok(new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null));
         }

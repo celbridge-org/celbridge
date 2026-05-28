@@ -13,7 +13,7 @@ public interface IInspectorFactory
     /// <summary>
     /// Creates an inspector based on the resource type.
     /// </summary>
-    Result<IInspector> CreateResourceInspector(ResourceKey resource);
+    Task<Result<IInspector>> CreateResourceInspectorAsync(ResourceKey resource);
 
     /// <summary>
     /// Creates an entity component list view for a resource.

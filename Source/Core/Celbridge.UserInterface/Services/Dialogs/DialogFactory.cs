@@ -80,10 +80,10 @@ public class DialogFactory : IDialogFactory
         return dialog;
     }
 
-    public IResourcePickerDialog CreateResourcePickerDialog(IResourceRegistry registry, IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
+    public IResourcePickerDialog CreateResourcePickerDialog(IReadOnlyList<string> extensions, string? title = null, bool showPreview = false)
     {
         var dialog = new ResourcePickerDialog();
-        dialog.ViewModel.Initialize(registry, extensions, showPreview);
+        dialog.ViewModel.Initialize(extensions, showPreview);
         if (title is not null)
         {
             dialog.SetTitle(title);

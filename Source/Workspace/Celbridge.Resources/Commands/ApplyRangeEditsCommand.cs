@@ -91,15 +91,9 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         ResourceKey resource,
         List<RangeEdit> edits)
     {
-        var resolveResult = resourceRegistry.ResolveResourcePath(resource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileSystem.GetInfoAsync(resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != ResourceInfoKind.File)
         {
             return Result.Fail($"File not found: '{resource}'");
         }
@@ -107,7 +101,13 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         // Read the file's existing content to capture its line-ending style and
         // trailing-newline state. Both must be preserved across the edit so the
         // file's on-disk format does not silently drift.
-        var originalContent = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileSystem.ReadAllTextAsync(resource);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read file: '{resource}'")
+                .WithErrors(readResult);
+        }
+        var originalContent = readResult.Value;
         var originalSeparator = LineEndingHelper.DetectSeparatorOrDefault(originalContent);
         var originalEndsWithNewline = LineEndingHelper.EndsWithNewline(originalContent);
 

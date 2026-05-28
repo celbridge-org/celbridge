@@ -79,6 +79,27 @@ public record FolderItem(
     DateTime ModifiedUtc);
 
 /// <summary>
+/// Discriminates the outcome of a GetInfoAsync probe.
+/// </summary>
+public enum ResourceInfoKind
+{
+    NotFound,
+    File,
+    Folder,
+}
+
+/// <summary>
+/// Metadata for a single resource, returned by GetInfoAsync. Size is the
+/// file size in bytes for File; 0 for Folder and NotFound. ModifiedUtc is
+/// the last-modified timestamp for File and Folder; default(DateTime) for
+/// NotFound.
+/// </summary>
+public record ResourceInfo(
+    ResourceInfoKind Kind,
+    long Size,
+    DateTime ModifiedUtc);
+
+/// <summary>
 /// The chokepoint for disk reads, writes, and structural operations on project
 /// resources. Callers pass a ResourceKey; the layer resolves it through
 /// IResourceRegistry so containment and symlink validation run automatically.
@@ -144,9 +165,13 @@ public interface IResourceFileSystem
     Task<Result<DeleteResult>> DeleteAsync(ResourceKey source);
 
     /// <summary>
-    /// Returns true if a file or folder exists at the resolved path of the resource key.
+    /// Probes a resource and returns its kind (NotFound, File, or Folder) along
+    /// with its size and modified-time in a single roundtrip. Callers that only
+    /// need existence check Kind != NotFound; callers that need to discriminate
+    /// file vs folder switch on Kind. Size and ModifiedUtc are populated for
+    /// the File case; Folder yields Size = 0 with ModifiedUtc set.
     /// </summary>
-    Task<Result<bool>> ExistsAsync(ResourceKey resource);
+    Task<Result<ResourceInfo>> GetInfoAsync(ResourceKey resource);
 
     /// <summary>
     /// Returns the immediate children of a folder resource as FolderItem records.

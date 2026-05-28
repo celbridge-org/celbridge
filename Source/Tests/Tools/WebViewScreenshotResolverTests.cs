@@ -1,4 +1,8 @@
+using Celbridge.Messaging;
+using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Tools;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Tools;
 
@@ -6,12 +10,36 @@ namespace Celbridge.Tests.Tools;
 public class WebViewScreenshotResolverTests
 {
     private string _projectFolder = null!;
+    private IResourceFileSystem _fileSystem = null!;
+    private IResourceRegistry _resourceRegistry = null!;
 
     [SetUp]
     public void SetUp()
     {
         _projectFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(WebViewScreenshotResolverTests)}/{Guid.NewGuid():N}");
         Directory.CreateDirectory(_projectFolder);
+
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_projectFolder);
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        {
+            var key = callInfo.Arg<ResourceKey>();
+            return Result<string>.Ok(Path.Combine(_projectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
+
+        var resourceService = Substitute.For<IResourceService>();
+        resourceService.Registry.Returns(_resourceRegistry);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.ResourceService.Returns(resourceService);
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        _fileSystem = new ResourceFileSystem(
+            Substitute.For<ILogger<ResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
+            workspaceWrapper);
     }
 
     [TearDown]
@@ -24,78 +52,75 @@ public class WebViewScreenshotResolverTests
     }
 
     [Test]
-    public void Resolve_EmptySaveTo_UsesDefaultFolderWithCleanName()
+    public async Task Resolve_EmptySaveTo_UsesDefaultFolderWithCleanName()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "", format: "jpeg", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "", format: "jpeg", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
-        // Assert against the bare path portion (without the project: prefix)
-        // because these checks are about the path shape the resolver picked.
         var path = result.Value.Path;
         path.Should().StartWith("screenshots/screenshot-");
         path.Should().EndWith(".jpg");
-        // No collision in a fresh folder, so the unsuffixed form should be used.
         path.Should().NotContain(".jpg-").And.MatchRegex(@"screenshots/screenshot-\d{8}-\d{6}\.jpg$");
     }
 
     [Test]
-    public void Resolve_EmptySaveToWithPng_UsesPngExtension()
+    public async Task Resolve_EmptySaveToWithPng_UsesPngExtension()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "", format: "png", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "", format: "png", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Path.Should().EndWith(".png");
     }
 
     [Test]
-    public void Resolve_ExactResourceKeyWithMatchingExtension_PreservesKey()
+    public async Task Resolve_ExactResourceKeyWithMatchingExtension_PreservesKey()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.png", format: "png", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/output.png", format: "png", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.ToString().Should().Be("project:docs/output.png");
     }
 
     [Test]
-    public void Resolve_JpgExtensionMatchesJpegFormat()
+    public async Task Resolve_JpgExtensionMatchesJpegFormat()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.jpg", format: "jpeg", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/output.jpg", format: "jpeg", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.ToString().Should().Be("project:docs/output.jpg");
     }
 
     [Test]
-    public void Resolve_JpegExtensionMatchesJpegFormat()
+    public async Task Resolve_JpegExtensionMatchesJpegFormat()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.jpeg", format: "jpeg", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/output.jpeg", format: "jpeg", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
     }
 
     [Test]
-    public void Resolve_ExtensionFormatMismatch_Fails()
+    public async Task Resolve_ExtensionFormatMismatch_Fails()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.png", format: "jpeg", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/output.png", format: "jpeg", _fileSystem);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("does not match format");
     }
 
     [Test]
-    public void Resolve_TxtExtension_FailsForBothFormats()
+    public async Task Resolve_TxtExtension_FailsForBothFormats()
     {
-        var resultJpeg = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.txt", format: "jpeg", _projectFolder);
-        var resultPng = WebViewScreenshotResolver.Resolve(saveTo: "docs/output.txt", format: "png", _projectFolder);
+        var resultJpeg = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/output.txt", format: "jpeg", _fileSystem);
+        var resultPng = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/output.txt", format: "png", _fileSystem);
 
         resultJpeg.IsFailure.Should().BeTrue();
         resultPng.IsFailure.Should().BeTrue();
     }
 
     [Test]
-    public void Resolve_TrailingSlashSaveTo_GeneratesAutoNameInThatFolder()
+    public async Task Resolve_TrailingSlashSaveTo_GeneratesAutoNameInThatFolder()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "docs/", format: "jpeg", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "docs/", format: "jpeg", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
         var path = result.Value.Path;
@@ -104,11 +129,11 @@ public class WebViewScreenshotResolverTests
     }
 
     [Test]
-    public void Resolve_NoExtensionSaveTo_TreatedAsFolder()
+    public async Task Resolve_NoExtensionSaveTo_TreatedAsFolder()
     {
         // A path without a file extension is interpreted as a folder reference,
         // matching the agent's likely intent ("put a screenshot in this folder").
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "captures", format: "png", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "captures", format: "png", _fileSystem);
 
         result.IsSuccess.Should().BeTrue();
         var path = result.Value.Path;
@@ -117,65 +142,57 @@ public class WebViewScreenshotResolverTests
     }
 
     [Test]
-    public void Resolve_CollisionWithExistingFile_AddsSequenceSuffix()
+    public async Task Resolve_CollisionWithExistingFile_AddsSequenceSuffix()
     {
         // Pre-create a file matching the timestamp pattern the saver will pick.
         // To do this deterministically without racing the wall clock, we let
         // the saver generate its first name, then re-run Resolve and confirm
         // the second call produces a -1 suffix.
-        var first = WebViewScreenshotResolver.Resolve(saveTo: "screenshots/", format: "jpeg", _projectFolder);
+        var first = await WebViewScreenshotResolver.ResolveAsync(saveTo: "screenshots/", format: "jpeg", _fileSystem);
         first.IsSuccess.Should().BeTrue();
 
-        // Materialise the first name so the next probe collides. Use the bare
-        // path (no root prefix) because we're constructing a filesystem path.
         var firstPath = first.Value.Path;
         var firstAbsolute = Path.Combine(_projectFolder, firstPath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(firstAbsolute)!);
         File.WriteAllBytes(firstAbsolute, new byte[] { 0 });
 
-        var second = WebViewScreenshotResolver.Resolve(saveTo: "screenshots/", format: "jpeg", _projectFolder);
+        var second = await WebViewScreenshotResolver.ResolveAsync(saveTo: "screenshots/", format: "jpeg", _fileSystem);
         second.IsSuccess.Should().BeTrue();
 
-        // If both calls landed in the same wall-clock second, the second name
-        // should carry a -1 suffix. If they straddled a second boundary, the
-        // names will differ in the timestamp and neither carries a suffix —
-        // both outcomes are correct, so the assertion accepts either form.
         var secondPath = second.Value.Path;
         secondPath.Should().NotBe(firstPath);
         secondPath.Should().MatchRegex(@"screenshots/screenshot-\d{8}-\d{6}(-\d+)?\.jpg$");
     }
 
     [Test]
-    public void Resolve_TraversalAttempt_RejectedByResourceKey()
+    public async Task Resolve_TraversalAttempt_RejectedByResourceKey()
     {
-        // Defense-in-depth check: ResourceKey.IsValidKey rejects '..', so the
-        // saveTo path cannot escape the project root via traversal.
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "../escape.png", format: "png", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "../escape.png", format: "png", _fileSystem);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Invalid saveTo");
     }
 
     [Test]
-    public void Resolve_BackslashInSaveTo_Rejected()
+    public async Task Resolve_BackslashInSaveTo_Rejected()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: @"docs\output.png", format: "png", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: @"docs\output.png", format: "png", _fileSystem);
 
         result.IsFailure.Should().BeTrue();
     }
 
     [Test]
-    public void Resolve_AbsolutePathSaveTo_Rejected()
+    public async Task Resolve_AbsolutePathSaveTo_Rejected()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "/etc/output.png", format: "png", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "/etc/output.png", format: "png", _fileSystem);
 
         result.IsFailure.Should().BeTrue();
     }
 
     [Test]
-    public void Resolve_UnsupportedFormat_Fails()
+    public async Task Resolve_UnsupportedFormat_Fails()
     {
-        var result = WebViewScreenshotResolver.Resolve(saveTo: "", format: "webp", _projectFolder);
+        var result = await WebViewScreenshotResolver.ResolveAsync(saveTo: "", format: "webp", _fileSystem);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Unsupported screenshot format");

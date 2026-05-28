@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -21,14 +22,12 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (Sheets.Count == 0)
         {
@@ -49,9 +48,16 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
             }
         }
 
+        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             foreach (var sheetName in Sheets)
             {
@@ -66,7 +72,11 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
                 workbook.Worksheets.Add(sheetName);
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             ResultValue = new AddSheetsResult(Sheets.ToList());
         }

@@ -13,11 +13,12 @@ public partial class SpreadsheetTools
     [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> AddSheets(string resource, string sheetsJson)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         var parseResult = ParseSheetNames(sheetsJson);
         if (parseResult.IsFailure)
@@ -26,10 +27,9 @@ public partial class SpreadsheetTools
         }
         var sheetNames = parseResult.Value;
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<IAddSheetsCommand, AddSheetsResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Sheets = sheetNames;
         });
         if (commandResult.IsFailure)

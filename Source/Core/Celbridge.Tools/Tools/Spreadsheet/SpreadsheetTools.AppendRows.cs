@@ -13,11 +13,12 @@ public partial class SpreadsheetTools
     [RelatedGuides("resource_keys", "spreadsheet_cell_typing", "spreadsheet_headers_mode", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> AppendRows(string resource, string sheet, string rowsJson)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -31,10 +32,9 @@ public partial class SpreadsheetTools
         }
         var parsedRows = parseResult.Value;
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<IAppendRowsCommand, AppendRowsResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Sheet = sheet;
             command.Rows = parsedRows;
         });

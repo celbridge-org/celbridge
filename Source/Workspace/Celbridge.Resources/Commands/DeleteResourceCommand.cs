@@ -56,6 +56,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
+        var fileSystem = workspaceService.ResourceFileSystem;
         var scanner = workspaceService.ResourceScanner;
 
         // Phase A: aggregate referencers external to the batch. References
@@ -68,7 +69,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var folderResources = new List<ResourceKey>();
         foreach (var resource in Resources)
         {
-            if (IsFolderResource(resourceRegistry, resource))
+            if (await IsFolderResourceAsync(fileSystem, resource))
             {
                 folderResources.Add(resource);
             }
@@ -189,14 +190,28 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 }
                 var resourcePath = resolveResult.Value;
 
-                bool sidecarPresent = SidecarExistsForResource(workspaceService, resource);
+                bool sidecarPresent = await SidecarExistsForResourceAsync(workspaceService, fileSystem, resource);
+
+                var infoResult = await fileSystem.GetInfoAsync(resource);
+                if (infoResult.IsFailure)
+                {
+                    _logger.LogWarning($"Cannot delete resource because info probe failed: '{resource}'");
+                    resourceResults.Add(new DeleteResourceResult(
+                        resource,
+                        DeleteResourceOutcome.IOFailure,
+                        SidecarOutcome.NotPresent,
+                        FailureMessage: infoResult.FirstErrorMessage));
+                    failedItems.Add(resource.ResourceName);
+                    continue;
+                }
+                var info = infoResult.Value;
 
                 Result deleteResult;
-                if (File.Exists(resourcePath))
+                if (info.Kind == ResourceInfoKind.File)
                 {
                     deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
                 }
-                else if (Directory.Exists(resourcePath))
+                else if (info.Kind == ResourceInfoKind.Folder)
                 {
                     deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
                 }
@@ -309,17 +324,17 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         return (DeleteResourceOutcome.IOFailure, deleteResult.FirstErrorMessage);
     }
 
-    private static bool IsFolderResource(IResourceRegistry registry, ResourceKey resource)
+    private static async Task<bool> IsFolderResourceAsync(IResourceFileSystem fileSystem, ResourceKey resource)
     {
-        var resolveResult = registry.ResolveResourcePath(resource);
-        if (resolveResult.IsFailure)
+        var infoResult = await fileSystem.GetInfoAsync(resource);
+        if (infoResult.IsFailure)
         {
             return false;
         }
-        return Directory.Exists(resolveResult.Value);
+        return infoResult.Value.Kind == ResourceInfoKind.Folder;
     }
 
-    private static bool SidecarExistsForResource(IWorkspaceService workspaceService, ResourceKey resource)
+    private static async Task<bool> SidecarExistsForResourceAsync(IWorkspaceService workspaceService, IResourceFileSystem fileSystem, ResourceKey resource)
     {
         var sidecarKeyResult = workspaceService.SidecarService.GetSidecarKey(resource);
         if (sidecarKeyResult.IsFailure)
@@ -327,13 +342,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             return false;
         }
 
-        var resolveResult = workspaceService.ResourceService.Registry.ResolveResourcePath(sidecarKeyResult.Value);
-        if (resolveResult.IsFailure)
+        var infoResult = await fileSystem.GetInfoAsync(sidecarKeyResult.Value);
+        if (infoResult.IsFailure)
         {
             return false;
         }
-
-        return File.Exists(resolveResult.Value);
+        return infoResult.Value.Kind == ResourceInfoKind.File;
     }
 
     private static string BuildConfirmationMessage(

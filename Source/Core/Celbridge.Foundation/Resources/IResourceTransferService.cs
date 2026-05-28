@@ -12,7 +12,7 @@ public interface IResourceTransferService
     /// <summary>
     /// Create a Resource Transfer object describing the transfer of resources from a list of source paths to a destination folder.
     /// </summary>
-    Result<IResourceTransfer> CreateResourceTransfer(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode);
+    Task<Result<IResourceTransfer>> CreateResourceTransferAsync(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode);
 
     /// <summary>
     /// Transfer resources to a destination folder resource.
