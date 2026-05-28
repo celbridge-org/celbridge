@@ -32,11 +32,10 @@ public class PathValidatorTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var validator = new PathValidator();
+        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
         var resourceKey = ResourceKey.Create("folder/file.txt");
 
-        var resolveResult = validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, resourceKey);
+        var resolveResult = validator.ValidateAndResolve(resourceKey);
 
         var expectedPath = Path.GetFullPath(Path.Combine(_projectFolder, "folder", "file.txt"));
         resolveResult.IsSuccess.Should().BeTrue();
@@ -48,10 +47,9 @@ public class PathValidatorTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var validator = new PathValidator();
+        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
 
-        var resolveResult = validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Empty);
+        var resolveResult = validator.ValidateAndResolve(ResourceKey.Empty);
 
         var expectedPath = Path.GetFullPath(_projectFolder);
         resolveResult.IsSuccess.Should().BeTrue();
@@ -68,15 +66,13 @@ public class PathValidatorTests
         Directory.CreateDirectory(subFolder);
         File.WriteAllText(Path.Combine(subFolder, "a.txt"), "test");
 
-        var validator = new PathValidator();
+        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
 
         // First call — verifies the folder
-        validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("cached/a.txt"));
+        validator.ValidateAndResolve(ResourceKey.Create("cached/a.txt"));
 
         // Second call — should hit the cache (no way to assert directly, but it should not throw)
-        validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("cached/b.txt"));
+        validator.ValidateAndResolve(ResourceKey.Create("cached/b.txt"));
     }
 
     [Test]
@@ -88,18 +84,16 @@ public class PathValidatorTests
         Directory.CreateDirectory(subFolder);
         File.WriteAllText(Path.Combine(subFolder, "a.txt"), "test");
 
-        var validator = new PathValidator();
+        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
 
         // Cache the folder
-        validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("ephemeral/a.txt"));
+        validator.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
 
         // Invalidate
         validator.InvalidateCache();
 
         // Next call should re-verify (still succeeds since folder is clean)
-        var resolveResult = validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("ephemeral/a.txt"));
+        var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
         resolveResult.IsSuccess.Should().BeTrue();
         resolveResult.Value.Should().NotBeEmpty();
     }
@@ -127,10 +121,9 @@ public class PathValidatorTests
 
         try
         {
-            var validator = new PathValidator();
+            var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
 
-            var resolveResult = validator.ValidateAndResolve(
-                ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("link_folder/file.txt"));
+            var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("link_folder/file.txt"));
             resolveResult.IsFailure.Should().BeTrue();
             resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
         }
@@ -152,11 +145,10 @@ public class PathValidatorTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var validator = new PathValidator();
+        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
 
         // Non-existent paths should be accepted (for create operations)
-        var resolveResult = validator.ValidateAndResolve(
-            ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("new_folder/new_file.txt"));
+        var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("new_folder/new_file.txt"));
         resolveResult.IsSuccess.Should().BeTrue();
         resolveResult.Value.Should().NotBeEmpty();
     }
@@ -188,10 +180,9 @@ public class PathValidatorTests
 
         try
         {
-            var validator = new PathValidator();
+            var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
 
-            var resolveResult = validator.ValidateAndResolve(
-                ResourceKey.DefaultRoot, _projectFolder, ResourceKey.Create("parent/link/file.txt"));
+            var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("parent/link/file.txt"));
             resolveResult.IsFailure.Should().BeTrue();
             resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
         }
@@ -204,46 +195,6 @@ public class PathValidatorTests
             if (Directory.Exists(outsideFolder))
             {
                 Directory.Delete(outsideFolder, true);
-            }
-        }
-    }
-
-    [Test]
-    public void ValidateAndResolveCacheIsScopedPerRoot()
-    {
-        Guard.IsNotNull(_projectFolder);
-
-        // Two roots with two distinct backing locations.
-        var secondaryBacking = Path.Combine(
-            Path.GetTempPath(), $"Celbridge/{nameof(PathValidatorTests)}_secondary");
-        if (Directory.Exists(secondaryBacking))
-        {
-            Directory.Delete(secondaryBacking, true);
-        }
-        Directory.CreateDirectory(secondaryBacking);
-
-        try
-        {
-            var validator = new PathValidator();
-
-            // Resolve the same path-portion key under both roots; both should succeed and
-            // produce results scoped to their respective backing locations.
-            var keyA = ResourceKey.Create("scratch/file.txt");
-            var resolveProject = validator.ValidateAndResolve(
-                ResourceKey.DefaultRoot, _projectFolder, keyA);
-            var resolveSecondary = validator.ValidateAndResolve(
-                "temp", secondaryBacking, keyA);
-
-            resolveProject.IsSuccess.Should().BeTrue();
-            resolveSecondary.IsSuccess.Should().BeTrue();
-            resolveProject.Value.Should().StartWith(Path.GetFullPath(_projectFolder));
-            resolveSecondary.Value.Should().StartWith(Path.GetFullPath(secondaryBacking));
-        }
-        finally
-        {
-            if (Directory.Exists(secondaryBacking))
-            {
-                Directory.Delete(secondaryBacking, true);
             }
         }
     }

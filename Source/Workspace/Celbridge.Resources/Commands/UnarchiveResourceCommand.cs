@@ -180,27 +180,46 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
             try
             {
-                // Create the destination folder if it doesn't exist. Any
-                // missing ancestor folders above the destination are created
-                // through the operation service too so the entire chain lands
-                // in the unarchive's undo batch; the earlier direct
-                // Directory.CreateDirectory bypassed undo and watcher
-                // coordination.
-                if (!Directory.Exists(destinationPath))
+                // Create the destination folder and any missing ancestors
+                // through the operation service so the whole chain lands in
+                // the unarchive's undo batch.
+                var destInfoResult = await fileStorage.GetInfoAsync(DestinationResource);
+                if (destInfoResult.IsFailure)
                 {
-                    var missingAncestors = new List<string>();
-                    var ancestor = Path.GetDirectoryName(destinationPath);
-                    while (!string.IsNullOrEmpty(ancestor)
-                        && !Directory.Exists(ancestor))
-                    {
-                        missingAncestors.Add(ancestor);
-                        ancestor = Path.GetDirectoryName(ancestor);
-                    }
-                    missingAncestors.Reverse();
+                    return Result.Fail($"Failed to probe destination resource: '{DestinationResource}'")
+                        .WithErrors(destInfoResult);
+                }
 
-                    foreach (var ancestorPath in missingAncestors)
+                if (destInfoResult.Value.Kind == StorageItemKind.NotFound)
+                {
+                    var missingAncestorKeys = new List<ResourceKey>();
+                    var ancestorKey = DestinationResource.GetParent();
+                    while (!ancestorKey.IsEmpty)
                     {
-                        var createAncestorResult = await resourceOpService.CreateFolderAsync(ancestorPath);
+                        var ancestorInfoResult = await fileStorage.GetInfoAsync(ancestorKey);
+                        if (ancestorInfoResult.IsFailure)
+                        {
+                            return Result.Fail($"Failed to probe ancestor resource: '{ancestorKey}'")
+                                .WithErrors(ancestorInfoResult);
+                        }
+                        if (ancestorInfoResult.Value.Kind != StorageItemKind.NotFound)
+                        {
+                            break;
+                        }
+                        missingAncestorKeys.Add(ancestorKey);
+                        ancestorKey = ancestorKey.GetParent();
+                    }
+                    missingAncestorKeys.Reverse();
+
+                    foreach (var key in missingAncestorKeys)
+                    {
+                        var ancestorPathResult = resourceRegistry.ResolveResourcePath(key);
+                        if (ancestorPathResult.IsFailure)
+                        {
+                            return Result.Fail($"Failed to resolve ancestor path: '{key}'")
+                                .WithErrors(ancestorPathResult);
+                        }
+                        var createAncestorResult = await resourceOpService.CreateFolderAsync(ancestorPathResult.Value);
                         if (createAncestorResult.IsFailure)
                         {
                             return createAncestorResult;
@@ -214,11 +233,22 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                     }
                 }
 
-                // Create folders shallowest first (sorted by path length)
-                var sortedFolders = foldersToCreate
-                    .Where(folderPath => !Directory.Exists(folderPath))
-                    .OrderBy(folderPath => folderPath.Length)
-                    .ToList();
+                // Filter shallowest-first so parents are created before children.
+                var sortedFolders = new List<string>();
+                foreach (var folderPath in foldersToCreate.OrderBy(path => path.Length))
+                {
+                    var folderKey = BuildDescendantKey(DestinationResource, destinationPath, folderPath);
+                    var folderInfoResult = await fileStorage.GetInfoAsync(folderKey);
+                    if (folderInfoResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to probe folder resource: '{folderKey}'")
+                            .WithErrors(folderInfoResult);
+                    }
+                    if (folderInfoResult.Value.Kind == StorageItemKind.NotFound)
+                    {
+                        sortedFolders.Add(folderPath);
+                    }
+                }
 
                 foreach (var folderPath in sortedFolders)
                 {
@@ -287,5 +317,24 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         };
 
         return Result.Ok();
+    }
+
+    private static ResourceKey BuildDescendantKey(
+        ResourceKey parentKey,
+        string parentPath,
+        string descendantPath)
+    {
+        var relative = Path.GetRelativePath(parentPath, descendantPath);
+        var segments = relative.Split(
+            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+            StringSplitOptions.RemoveEmptyEntries);
+
+        var key = parentKey;
+        foreach (var segment in segments)
+        {
+            key = key.Combine(segment);
+        }
+
+        return key;
     }
 }

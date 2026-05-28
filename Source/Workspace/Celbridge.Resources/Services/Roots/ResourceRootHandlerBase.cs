@@ -3,19 +3,19 @@ using Celbridge.Resources.Helpers;
 namespace Celbridge.Resources.Services.Roots;
 
 /// <summary>
-/// Shared implementation for resource root handlers. Holds the backing location and
-/// path validator, and provides the common Resolve and GetResourceKey logic.
-/// Concrete subclasses supply the root name and capability flags.
+/// Shared implementation for resource root handlers. Owns the backing location and
+/// a path validator scoped to this root, and provides the common Resolve and
+/// GetResourceKey logic. Concrete subclasses supply the root name and capability flags.
 /// </summary>
 public abstract class ResourceRootHandlerBase : IResourceRootHandler
 {
     private readonly PathValidator _pathValidator;
     private readonly string _backingLocation;
 
-    protected ResourceRootHandlerBase(string backingLocation, PathValidator pathValidator)
+    protected ResourceRootHandlerBase(string backingLocation)
     {
         _backingLocation = backingLocation;
-        _pathValidator = pathValidator;
+        _pathValidator = new PathValidator(RootName, backingLocation);
     }
 
     public abstract string RootName { get; }
@@ -26,7 +26,12 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
 
     public Result<string> Resolve(ResourceKey key)
     {
-        return _pathValidator.ValidateAndResolve(RootName, BackingLocation, key);
+        return _pathValidator.ValidateAndResolve(key);
+    }
+
+    public void InvalidatePathCache()
+    {
+        _pathValidator.InvalidateCache();
     }
 
     public Result<ResourceKey> GetResourceKey(string absolutePath)

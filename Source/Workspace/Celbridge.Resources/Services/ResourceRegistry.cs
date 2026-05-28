@@ -32,7 +32,7 @@ public class ResourceRegistry : IResourceRegistry
 
         _projectFolderPath = projectFolderPath;
         _rootHandlerRegistry.RegisterRootHandler(
-            new ProjectRootHandler(projectFolderPath, _rootHandlerRegistry.PathValidator));
+            new ProjectRootHandler(projectFolderPath));
     }
 
     private FolderResource _projectFolder = new FolderResource(string.Empty, null);

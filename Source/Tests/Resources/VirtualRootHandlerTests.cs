@@ -1,4 +1,3 @@
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services.Roots;
 
 namespace Celbridge.Tests.Resources;
@@ -41,8 +40,7 @@ public class VirtualRootHandlerTests
     public void TempRootHandlerResolvesUnderBackingLocation()
     {
         Guard.IsNotNull(_tempBacking);
-        var validator = new PathValidator();
-        var handler = new TempRootHandler(_tempBacking, validator);
+        var handler = new TempRootHandler(_tempBacking);
 
         handler.RootName.Should().Be("temp");
         handler.BackingLocation.Should().Be(_tempBacking);
@@ -59,8 +57,7 @@ public class VirtualRootHandlerTests
     public void LogsRootHandlerResolvesUnderBackingLocation()
     {
         Guard.IsNotNull(_logsBacking);
-        var validator = new PathValidator();
-        var handler = new LogsRootHandler(_logsBacking, validator);
+        var handler = new LogsRootHandler(_logsBacking);
 
         handler.RootName.Should().Be("logs");
         handler.BackingLocation.Should().Be(_logsBacking);
@@ -77,8 +74,7 @@ public class VirtualRootHandlerTests
     public void TempRootHandlerResolvesRootOnlyKeyToBackingFolder()
     {
         Guard.IsNotNull(_tempBacking);
-        var validator = new PathValidator();
-        var handler = new TempRootHandler(_tempBacking, validator);
+        var handler = new TempRootHandler(_tempBacking);
 
         var resolveResult = handler.Resolve(ResourceKey.Create("temp:"));
         resolveResult.IsSuccess.Should().BeTrue();
@@ -87,15 +83,13 @@ public class VirtualRootHandlerTests
     }
 
     [Test]
-    public void HandlersShareValidatorWithoutCrossContamination()
+    public void HandlersResolveSameKeyToDifferentBackings()
     {
         Guard.IsNotNull(_tempBacking);
         Guard.IsNotNull(_logsBacking);
 
-        // Both handlers share a single PathValidator instance, just like ResourceService wires them in production.
-        var validator = new PathValidator();
-        var tempHandler = new TempRootHandler(_tempBacking, validator);
-        var logsHandler = new LogsRootHandler(_logsBacking, validator);
+        var tempHandler = new TempRootHandler(_tempBacking);
+        var logsHandler = new LogsRootHandler(_logsBacking);
 
         // Same path-portion key resolves under each handler to that handler's backing location.
         var key = ResourceKey.Create("session.log");
@@ -112,8 +106,7 @@ public class VirtualRootHandlerTests
     public void GetResourceKeyOnHandlerReturnsRootPrefixedKey()
     {
         Guard.IsNotNull(_tempBacking);
-        var validator = new PathValidator();
-        var handler = new TempRootHandler(_tempBacking, validator);
+        var handler = new TempRootHandler(_tempBacking);
 
         var absolutePath = Path.Combine(_tempBacking, "staging", "foo", "bar.txt");
         var keyResult = handler.GetResourceKey(absolutePath);
@@ -128,8 +121,7 @@ public class VirtualRootHandlerTests
     public void GetResourceKeyReturnsRootOnlyKeyWhenPathIsBackingLocation()
     {
         Guard.IsNotNull(_logsBacking);
-        var validator = new PathValidator();
-        var handler = new LogsRootHandler(_logsBacking, validator);
+        var handler = new LogsRootHandler(_logsBacking);
 
         var keyResult = handler.GetResourceKey(_logsBacking);
 
@@ -143,8 +135,7 @@ public class VirtualRootHandlerTests
     public void GetResourceKeyFailsForPathOutsideBackingLocation()
     {
         Guard.IsNotNull(_tempBacking);
-        var validator = new PathValidator();
-        var handler = new TempRootHandler(_tempBacking, validator);
+        var handler = new TempRootHandler(_tempBacking);
 
         // A path under the logs backing folder is not under temp's backing.
         Guard.IsNotNull(_logsBacking);

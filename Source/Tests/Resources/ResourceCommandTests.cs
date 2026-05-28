@@ -292,7 +292,7 @@ public class ResourceCommandTests
                 File.WriteAllText(fullPath, "log content");
             }
         }
-        _resourceRegistry.RegisterRootHandler(new LogsRootHandler(logsBacking, new PathValidator()));
+        _resourceRegistry.RegisterRootHandler(new LogsRootHandler(logsBacking));
         return logsBacking;
     }
 

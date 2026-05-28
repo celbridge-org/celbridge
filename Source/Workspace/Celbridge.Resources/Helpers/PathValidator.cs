@@ -3,33 +3,35 @@ using FileAttributes = System.IO.FileAttributes;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Validates that resolved resource paths stay within the backing folder of a given
+/// Validates that resolved resource paths stay within the backing folder of a single
 /// root and do not traverse through symlinks, junctions, or other reparse points.
-/// Maintains a per-root cache of verified directory paths to avoid repeated filesystem
-/// stat calls.
+/// Maintains a cache of verified directory paths to avoid repeated filesystem stat
+/// calls. One instance serves exactly one root; its owning root handler constructs
+/// it with that root's name and backing location.
 /// </summary>
 public class PathValidator
 {
+    private readonly string _rootName;
+    private readonly string _backingLocation;
     private readonly StringComparer _pathComparer;
+    private readonly HashSet<string> _verifiedFolders;
 
-    // Per-root cache of verified folder paths. Cache is scoped by root so two roots
-    // cannot share verification state, even when their backing locations are nested.
-    private readonly Dictionary<string, HashSet<string>> _verifiedFoldersByRoot;
-
-    public PathValidator()
+    public PathValidator(string rootName, string backingLocation)
     {
+        _rootName = rootName;
+        _backingLocation = backingLocation;
         _pathComparer = OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
 
-        _verifiedFoldersByRoot = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        _verifiedFolders = new HashSet<string>(_pathComparer);
     }
 
     /// <summary>
     /// Validates a resource key and resolves it to an absolute filesystem path under the
-    /// specified backing location. Returns a failure result if the key fails any validation check.
+    /// validator's backing location. Returns a failure result if the key fails any validation check.
     /// </summary>
-    public Result<string> ValidateAndResolve(string rootName, string backingLocation, ResourceKey resource)
+    public Result<string> ValidateAndResolve(ResourceKey resource)
     {
         // Belt-and-suspenders format check. Should never fail since construction already
         // validated, but catches any bypass.
@@ -44,10 +46,10 @@ public class PathValidator
         // already been used to select the handler and its backing location.
         var pathPortion = resource.Path;
 
-        var combinedPath = Path.Combine(backingLocation, pathPortion);
+        var combinedPath = Path.Combine(_backingLocation, pathPortion);
         var resolvedPath = Path.GetFullPath(combinedPath);
 
-        var normalizedBackingLocation = NormalizeBackingLocation(backingLocation);
+        var normalizedBackingLocation = NormalizeBackingLocation(_backingLocation);
 
         var isBackingRoot = resolvedPath.Equals(
             normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar),
@@ -56,10 +58,10 @@ public class PathValidator
         if (!isBackingRoot && !resolvedPath.StartsWith(normalizedBackingLocation, GetPathComparison()))
         {
             return Result<string>.Fail(
-                $"Resource key '{resource}' resolves to a path outside the '{rootName}' root.");
+                $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
         }
 
-        var reparseResult = CheckForReparsePoints(rootName, resolvedPath, normalizedBackingLocation);
+        var reparseResult = CheckForReparsePoints(resolvedPath, normalizedBackingLocation);
         if (reparseResult.IsFailure)
         {
             return Result<string>.Fail(reparseResult.FirstErrorMessage);
@@ -69,20 +71,19 @@ public class PathValidator
     }
 
     /// <summary>
-    /// Clears the cache of verified directory paths across all roots. Call this when the directory
+    /// Clears the cache of verified directory paths. Call this when the directory
     /// structure may have changed (e.g. after ResourceMonitor triggers a registry sync).
     /// </summary>
     public void InvalidateCache()
     {
-        _verifiedFoldersByRoot.Clear();
+        _verifiedFolders.Clear();
     }
 
-    private Result CheckForReparsePoints(string rootName, string resolvedPath, string normalizedBackingLocation)
+    private Result CheckForReparsePoints(string resolvedPath, string normalizedBackingLocation)
     {
         var folderPath = GetFolderPath(resolvedPath);
-        var verifiedFolders = GetOrCreateVerifiedFolderSet(rootName);
 
-        if (verifiedFolders.Contains(folderPath))
+        if (_verifiedFolders.Contains(folderPath))
         {
             return Result.Ok();
         }
@@ -91,7 +92,7 @@ public class PathValidator
         var backingTrimmed = normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar);
         if (resolvedPath.Equals(backingTrimmed, GetPathComparison()))
         {
-            verifiedFolders.Add(folderPath);
+            _verifiedFolders.Add(folderPath);
             return Result.Ok();
         }
 
@@ -119,18 +120,8 @@ public class PathValidator
             }
         }
 
-        verifiedFolders.Add(folderPath);
+        _verifiedFolders.Add(folderPath);
         return Result.Ok();
-    }
-
-    private HashSet<string> GetOrCreateVerifiedFolderSet(string rootName)
-    {
-        if (!_verifiedFoldersByRoot.TryGetValue(rootName, out var verifiedFolders))
-        {
-            verifiedFolders = new HashSet<string>(_pathComparer);
-            _verifiedFoldersByRoot[rootName] = verifiedFolders;
-        }
-        return verifiedFolders;
     }
 
     private static string GetFolderPath(string resolvedPath)

@@ -1,19 +1,8 @@
-using Celbridge.Resources.Helpers;
-
 namespace Celbridge.Resources.Services;
 
 public sealed class RootHandlerRegistry : IRootHandlerRegistry
 {
     private readonly Dictionary<string, IResourceRootHandler> _rootHandlers = new(StringComparer.Ordinal);
-    private readonly PathValidator _pathValidator = new();
-
-    /// <summary>
-    /// The shared path validator that this registry's handlers consult for
-    /// reparse-point checks and verified-folder caching. Surfaced so callers
-    /// constructing concrete handlers (project, temp, logs) can wire them up
-    /// against the same cache.
-    /// </summary>
-    public PathValidator PathValidator => _pathValidator;
 
     public void RegisterRootHandler(IResourceRootHandler handler)
     {
@@ -90,6 +79,9 @@ public sealed class RootHandlerRegistry : IRootHandlerRegistry
 
     public void InvalidatePathCache()
     {
-        _pathValidator.InvalidateCache();
+        foreach (var handler in _rootHandlers.Values)
+        {
+            handler.InvalidatePathCache();
+        }
     }
 }

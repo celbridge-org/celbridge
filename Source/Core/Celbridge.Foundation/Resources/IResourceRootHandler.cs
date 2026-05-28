@@ -43,4 +43,10 @@ public interface IResourceRootHandler
     /// produces an invalid key segment.
     /// </summary>
     Result<ResourceKey> GetResourceKey(string absolutePath);
+
+    /// <summary>
+    /// Clears this handler's path-validator cache so subsequent resolves re-verify
+    /// folders against the current filesystem state.
+    /// </summary>
+    void InvalidatePathCache();
 }

@@ -57,7 +57,7 @@ public class DataCheckProjectTests
         // ProjectCheckCommand writes its latest report to logs:project-check.log,
         // so the chokepoint needs a logs: root or the write step fails.
         _resourceRegistry.RegisterRootHandler(
-            new LogsRootHandler(_logsBackingFolder, new PathValidator()));
+            new LogsRootHandler(_logsBackingFolder));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);

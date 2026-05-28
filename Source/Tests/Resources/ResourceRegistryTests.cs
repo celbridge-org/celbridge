@@ -451,8 +451,7 @@ public class ResourceRegistryTests
         var tempBacking = Path.Combine(_resourceFolderPath, ".celbridge", "temp");
         Directory.CreateDirectory(tempBacking);
 
-        var pathValidator = new PathValidator();
-        resourceRegistry.RegisterRootHandler(new TempRootHandler(tempBacking, pathValidator));
+        resourceRegistry.RegisterRootHandler(new TempRootHandler(tempBacking));
 
         // A path under the project tree but outside .celbridge/temp/ goes to project.
         var projectFilePath = Path.Combine(_resourceFolderPath, FileNameA);

@@ -1,5 +1,3 @@
-using Celbridge.Resources.Helpers;
-
 namespace Celbridge.Resources.Services.Roots;
 
 /// <summary>
@@ -15,8 +13,8 @@ public class ProjectRootHandler : ResourceRootHandlerBase
     public override string RootName => ResourceKey.DefaultRoot;
     public override ResourceRootCapabilities Capabilities => ProjectCapabilities;
 
-    public ProjectRootHandler(string projectFolderPath, PathValidator pathValidator)
-        : base(projectFolderPath, pathValidator)
+    public ProjectRootHandler(string projectFolderPath)
+        : base(projectFolderPath)
     {
     }
 }

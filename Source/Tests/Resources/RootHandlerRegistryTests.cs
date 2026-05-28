@@ -48,7 +48,7 @@ public class RootHandlerRegistryTests
     [Test]
     public void RegisterRootHandler_AddsHandlerKeyedByRootName()
     {
-        var projectHandler = new ProjectRootHandler(_projectFolderPath, _rootRegistry.PathValidator);
+        var projectHandler = new ProjectRootHandler(_projectFolderPath);
 
         _rootRegistry.RegisterRootHandler(projectHandler);
 
@@ -59,13 +59,13 @@ public class RootHandlerRegistryTests
     [Test]
     public void RegisterRootHandler_ReplacesExistingHandlerForSameRoot()
     {
-        var firstHandler = new ProjectRootHandler(_projectFolderPath, _rootRegistry.PathValidator);
+        var firstHandler = new ProjectRootHandler(_projectFolderPath);
         var alternatePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(alternatePath);
 
         try
         {
-            var secondHandler = new ProjectRootHandler(alternatePath, _rootRegistry.PathValidator);
+            var secondHandler = new ProjectRootHandler(alternatePath);
 
             _rootRegistry.RegisterRootHandler(firstHandler);
             _rootRegistry.RegisterRootHandler(secondHandler);
@@ -82,7 +82,7 @@ public class RootHandlerRegistryTests
     public void IsResolvable_ReturnsTrueForRegisteredRoot_FalseOtherwise()
     {
         _rootRegistry.RegisterRootHandler(
-            new ProjectRootHandler(_projectFolderPath, _rootRegistry.PathValidator));
+            new ProjectRootHandler(_projectFolderPath));
 
         _rootRegistry.IsResolvable(ResourceKey.Create("foo/bar")).Should().BeTrue();
         _rootRegistry.IsResolvable(ResourceKey.Empty).Should().BeTrue();
@@ -96,9 +96,9 @@ public class RootHandlerRegistryTests
         Directory.CreateDirectory(tempBacking);
 
         _rootRegistry.RegisterRootHandler(
-            new ProjectRootHandler(_projectFolderPath, _rootRegistry.PathValidator));
+            new ProjectRootHandler(_projectFolderPath));
         _rootRegistry.RegisterRootHandler(
-            new TempRootHandler(tempBacking, _rootRegistry.PathValidator));
+            new TempRootHandler(tempBacking));
 
         // Path under both roots — temp wins because its backing prefix is longer.
         var tempPath = Path.Combine(tempBacking, "staging", "x.txt");
@@ -119,7 +119,7 @@ public class RootHandlerRegistryTests
     public void GetResourceKey_FailsForPathOutsideEveryRoot()
     {
         _rootRegistry.RegisterRootHandler(
-            new ProjectRootHandler(_projectFolderPath, _rootRegistry.PathValidator));
+            new ProjectRootHandler(_projectFolderPath));
 
         var outsidePath = Path.Combine(Path.GetTempPath(), "somewhere_else", "file.txt");
         var result = _rootRegistry.GetResourceKey(outsidePath);
@@ -132,7 +132,7 @@ public class RootHandlerRegistryTests
     public void ResolveResourcePath_DelegatesToRegisteredHandler()
     {
         _rootRegistry.RegisterRootHandler(
-            new ProjectRootHandler(_projectFolderPath, _rootRegistry.PathValidator));
+            new ProjectRootHandler(_projectFolderPath));
 
         var resolved = _rootRegistry.ResolveResourcePath(ResourceKey.Create("a/b.txt"));
 

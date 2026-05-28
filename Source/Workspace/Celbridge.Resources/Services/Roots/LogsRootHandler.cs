@@ -1,5 +1,3 @@
-using Celbridge.Resources.Helpers;
-
 namespace Celbridge.Resources.Services.Roots;
 
 /// <summary>
@@ -21,8 +19,8 @@ public class LogsRootHandler : ResourceRootHandlerBase
     public override string RootName => Name;
     public override ResourceRootCapabilities Capabilities => LogsCapabilities;
 
-    public LogsRootHandler(string backingLocation, PathValidator pathValidator)
-        : base(backingLocation, pathValidator)
+    public LogsRootHandler(string backingLocation)
+        : base(backingLocation)
     {
     }
 }

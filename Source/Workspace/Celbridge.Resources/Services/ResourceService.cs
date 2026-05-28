@@ -119,12 +119,8 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Register the temp: and logs: root handlers against the shared
-        // PathValidator owned by the root handler registry so a single
-        // InvalidatePathCache call covers project + temp + logs together.
-        var sharedPathValidator = rootHandlerRegistry.PathValidator;
-        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder, sharedPathValidator));
-        rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder, sharedPathValidator));
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder));
+        rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder));
 
         // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
         // the monitor looks up its registry through IWorkspaceWrapper, which is only populated
