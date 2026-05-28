@@ -56,7 +56,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
         var scanner = workspaceService.ResourceScanner;
 
         // Phase A: aggregate referencers external to the batch. References
@@ -69,7 +69,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var folderResources = new List<ResourceKey>();
         foreach (var resource in Resources)
         {
-            if (await IsFolderResourceAsync(fileSystem, resource))
+            if (await IsFolderResourceAsync(fileStorage, resource))
             {
                 folderResources.Add(resource);
             }
@@ -190,9 +190,9 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 }
                 var resourcePath = resolveResult.Value;
 
-                bool sidecarPresent = await SidecarExistsForResourceAsync(workspaceService, fileSystem, resource);
+                bool sidecarPresent = await SidecarExistsForResourceAsync(workspaceService, fileStorage, resource);
 
-                var infoResult = await fileSystem.GetInfoAsync(resource);
+                var infoResult = await fileStorage.GetInfoAsync(resource);
                 if (infoResult.IsFailure)
                 {
                     _logger.LogWarning($"Cannot delete resource because info probe failed: '{resource}'");
@@ -207,11 +207,11 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 var info = infoResult.Value;
 
                 Result deleteResult;
-                if (info.Kind == ResourceInfoKind.File)
+                if (info.Kind == StorageItemKind.File)
                 {
                     deleteResult = await resourceOpService.DeleteFileAsync(resourcePath);
                 }
-                else if (info.Kind == ResourceInfoKind.Folder)
+                else if (info.Kind == StorageItemKind.Folder)
                 {
                     deleteResult = await resourceOpService.DeleteFolderAsync(resourcePath);
                 }
@@ -324,17 +324,17 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         return (DeleteResourceOutcome.IOFailure, deleteResult.FirstErrorMessage);
     }
 
-    private static async Task<bool> IsFolderResourceAsync(IResourceFileSystem fileSystem, ResourceKey resource)
+    private static async Task<bool> IsFolderResourceAsync(IFileStorage fileStorage, ResourceKey resource)
     {
-        var infoResult = await fileSystem.GetInfoAsync(resource);
+        var infoResult = await fileStorage.GetInfoAsync(resource);
         if (infoResult.IsFailure)
         {
             return false;
         }
-        return infoResult.Value.Kind == ResourceInfoKind.Folder;
+        return infoResult.Value.Kind == StorageItemKind.Folder;
     }
 
-    private static async Task<bool> SidecarExistsForResourceAsync(IWorkspaceService workspaceService, IResourceFileSystem fileSystem, ResourceKey resource)
+    private static async Task<bool> SidecarExistsForResourceAsync(IWorkspaceService workspaceService, IFileStorage fileStorage, ResourceKey resource)
     {
         var sidecarKeyResult = workspaceService.SidecarService.GetSidecarKey(resource);
         if (sidecarKeyResult.IsFailure)
@@ -342,12 +342,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
             return false;
         }
 
-        var infoResult = await fileSystem.GetInfoAsync(sidecarKeyResult.Value);
+        var infoResult = await fileStorage.GetInfoAsync(sidecarKeyResult.Value);
         if (infoResult.IsFailure)
         {
             return false;
         }
-        return infoResult.Value.Kind == ResourceInfoKind.File;
+        return infoResult.Value.Kind == StorageItemKind.File;
     }
 
     private static string BuildConfirmationMessage(

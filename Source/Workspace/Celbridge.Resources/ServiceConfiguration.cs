@@ -20,7 +20,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
-        services.AddTransient<IResourceFileSystem, ResourceFileSystem>();
+        services.AddTransient<IFileStorage, FileStorage>();
         services.AddTransient<IResourceScanner, ResourceScanner>();
         services.AddTransient<ISidecarService, SidecarService>();
         services.AddTransient<IResourceClassifier, ResourceClassifier>();

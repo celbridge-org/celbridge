@@ -382,9 +382,9 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var changeDocumentResource = async Task () =>
         {
-            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-            var infoResult = await fileSystem.GetInfoAsync(message.NewResource);
-            Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == ResourceInfoKind.File);
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var infoResult = await fileStorage.GetInfoAsync(message.NewResource);
+            Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == StorageItemKind.File);
 
             var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);
             if (changeResult.IsFailure)

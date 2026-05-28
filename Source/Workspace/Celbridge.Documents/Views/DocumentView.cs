@@ -7,7 +7,7 @@ namespace Celbridge.Documents.Views;
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
     private IResourceRegistry? _resourceRegistry;
-    private IResourceFileSystem? _resourceFileSystem;
+    private IFileStorage? _fileStorage;
 
     /// <summary>
     /// Provides access to the resource registry for file resource validation.
@@ -27,19 +27,19 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
-    /// Provides access to the resource file system chokepoint.
+    /// Provides access to the file storage chokepoint.
     /// Lazily initialized from the workspace wrapper.
     /// </summary>
-    protected IResourceFileSystem ResourceFileSystem
+    protected IFileStorage FileStorage
     {
         get
         {
-            if (_resourceFileSystem is null)
+            if (_fileStorage is null)
             {
                 var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-                _resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+                _fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
             }
-            return _resourceFileSystem;
+            return _fileStorage;
         }
     }
 
@@ -89,9 +89,9 @@ public abstract partial class DocumentView : UserControl, IDocumentView
         }
         var filePath = resolveResult.Value;
 
-        var infoResult = await ResourceFileSystem.GetInfoAsync(fileResource);
+        var infoResult = await FileStorage.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File resource does not exist on disk: {fileResource}");
         }

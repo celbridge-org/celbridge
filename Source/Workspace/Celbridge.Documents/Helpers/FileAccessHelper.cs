@@ -23,16 +23,16 @@ public class FileAccessHelper
     /// </summary>
     public async Task<bool> CanAccessFileAsync(ResourceKey fileResource)
     {
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
 
-        var infoResult = await fileSystem.GetInfoAsync(fileResource);
+        var infoResult = await fileStorage.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return false;
         }
 
-        var openResult = await fileSystem.OpenReadAsync(fileResource);
+        var openResult = await fileStorage.OpenReadAsync(fileResource);
         if (openResult.IsFailure)
         {
             return false;
@@ -57,10 +57,10 @@ public class FileAccessHelper
         }
         var filePath = resolveResult.Value;
 
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-        var infoResult = await fileSystem.GetInfoAsync(fileResource);
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var infoResult = await fileStorage.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File path does not exist: '{filePath}'");
         }

@@ -56,7 +56,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
 
         if (!ResourceKey.IsValidKey(ArchiveResource))
         {
@@ -84,9 +84,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         }
         var destinationPath = resolveDestinationResult.Value;
 
-        var archiveInfoResult = await fileSystem.GetInfoAsync(ArchiveResource);
+        var archiveInfoResult = await fileStorage.GetInfoAsync(ArchiveResource);
         if (archiveInfoResult.IsFailure
-            || archiveInfoResult.Value.Kind != ResourceInfoKind.File)
+            || archiveInfoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Archive not found: '{ArchiveResource}'");
         }
@@ -96,7 +96,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         try
         {
-            var openArchiveResult = await fileSystem.OpenReadAsync(ArchiveResource);
+            var openArchiveResult = await fileStorage.OpenReadAsync(ArchiveResource);
             if (openArchiveResult.IsFailure)
             {
                 return Result.Fail($"Failed to open archive: '{ArchiveResource}'")
@@ -155,9 +155,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 if (!Overwrite)
                 {
                     var entryResource = DestinationResource.Combine(entryName);
-                    var existingInfoResult = await fileSystem.GetInfoAsync(entryResource);
+                    var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
                     if (existingInfoResult.IsSuccess
-                        && existingInfoResult.Value.Kind == ResourceInfoKind.File)
+                        && existingInfoResult.Value.Kind == StorageItemKind.File)
                     {
                         return Result.Fail(
                             $"File already exists: '{DestinationResource}/{entryName}'. " +
@@ -238,9 +238,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                     if (Overwrite)
                     {
                         var entryResource = DestinationResource.Combine(entry.FullName);
-                        var existingInfoResult = await fileSystem.GetInfoAsync(entryResource);
+                        var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
                         if (existingInfoResult.IsSuccess
-                            && existingInfoResult.Value.Kind == ResourceInfoKind.File)
+                            && existingInfoResult.Value.Kind == StorageItemKind.File)
                         {
                             var deleteResult = await resourceOpService.DeleteFileAsync(outputPath);
                             if (deleteResult.IsFailure)

@@ -93,9 +93,9 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
     {
         try
         {
-            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
             var content = FormatReport(report);
-            var writeResult = await fileSystem.WriteAllTextAsync(ReportFileResource, content);
+            var writeResult = await fileStorage.WriteAllTextAsync(ReportFileResource, content);
             if (writeResult.IsFailure)
             {
                 _logger.LogWarning(writeResult, "Failed to write project check report to '{Resource}'.", ReportFileResource);

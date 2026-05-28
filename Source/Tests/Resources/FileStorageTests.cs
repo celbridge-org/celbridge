@@ -7,17 +7,17 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ResourceFileSystem — atomic writes, retry on transient IO,
+/// Tests for FileStorage — atomic writes, retry on transient IO,
 /// parent-folder creation, ResolveResourcePath integration, reads, and
 /// stream-open happy paths.
 /// </summary>
 [TestFixture]
-public class ResourceFileSystemTests
+public class FileStorageTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IResourceScanner _resourceScanner = null!;
-    private ResourceFileSystem _fileSystem = null!;
+    private FileStorage _fileStorage = null!;
 
     [SetUp]
     public void Setup()
@@ -25,7 +25,7 @@ public class ResourceFileSystemTests
         _tempFolder = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
-            nameof(ResourceFileSystemTests),
+            nameof(FileStorageTests),
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempFolder);
 
@@ -50,8 +50,8 @@ public class ResourceFileSystemTests
         var sidecarService = new SidecarService(workspaceWrapper);
         workspaceService.SidecarService.Returns(sidecarService);
 
-        _fileSystem = new ResourceFileSystem(
-            Substitute.For<ILogger<ResourceFileSystem>>(),
+        _fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             workspaceWrapper);
     }
@@ -74,7 +74,7 @@ public class ResourceFileSystemTests
 
         var bytes = new byte[] { 0x01, 0x02, 0x03 };
 
-        var result = await _fileSystem.WriteAllBytesAsync(resource, bytes);
+        var result = await _fileStorage.WriteAllBytesAsync(resource, bytes);
 
         result.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
@@ -88,7 +88,7 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "new.txt");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.WriteAllTextAsync(resource, "hello world");
+        var result = await _fileStorage.WriteAllTextAsync(resource, "hello world");
 
         result.IsSuccess.Should().BeTrue();
         (await File.ReadAllTextAsync(path)).Should().Be("hello world");
@@ -102,7 +102,7 @@ public class ResourceFileSystemTests
         await File.WriteAllTextAsync(path, "old");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.WriteAllTextAsync(resource, "new");
+        var result = await _fileStorage.WriteAllTextAsync(resource, "new");
 
         result.IsSuccess.Should().BeTrue();
         (await File.ReadAllTextAsync(path)).Should().Be("new");
@@ -115,7 +115,7 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "nested", "deeper", "file.txt");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.WriteAllTextAsync(resource, "deep content");
+        var result = await _fileStorage.WriteAllTextAsync(resource, "deep content");
 
         result.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
@@ -129,7 +129,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(resource)
             .Returns(Result<string>.Fail("simulated resolve failure"));
 
-        var result = await _fileSystem.WriteAllTextAsync(resource, "anything");
+        var result = await _fileStorage.WriteAllTextAsync(resource, "anything");
 
         result.IsFailure.Should().BeTrue();
     }
@@ -144,7 +144,7 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "clean.bin");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        await _fileSystem.WriteAllBytesAsync(resource, new byte[] { 0x42 });
+        await _fileStorage.WriteAllBytesAsync(resource, new byte[] { 0x42 });
 
         // No sibling temp file next to the destination.
         File.Exists(path + ".tmp").Should().BeFalse();
@@ -167,7 +167,7 @@ public class ResourceFileSystemTests
         await File.WriteAllBytesAsync(path, expected);
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.ReadAllBytesAsync(resource);
+        var result = await _fileStorage.ReadAllBytesAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Equal(expected);
@@ -181,7 +181,7 @@ public class ResourceFileSystemTests
         await File.WriteAllTextAsync(path, "the content");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.ReadAllTextAsync(resource);
+        var result = await _fileStorage.ReadAllTextAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be("the content");
@@ -194,7 +194,7 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "missing.bin");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.ReadAllBytesAsync(resource);
+        var result = await _fileStorage.ReadAllBytesAsync(resource);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -208,7 +208,7 @@ public class ResourceFileSystemTests
         await File.WriteAllBytesAsync(path, expected);
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var openResult = await _fileSystem.OpenReadAsync(resource);
+        var openResult = await _fileStorage.OpenReadAsync(resource);
 
         openResult.IsSuccess.Should().BeTrue();
         await using var stream = openResult.Value;
@@ -224,7 +224,7 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "openwrite.bin");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var openResult = await _fileSystem.OpenWriteAsync(resource);
+        var openResult = await _fileStorage.OpenWriteAsync(resource);
 
         openResult.IsSuccess.Should().BeTrue();
         var content = new byte[] { 0x01, 0x02, 0x03, 0x04 };
@@ -244,7 +244,7 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "nested", "folder", "openwrite.bin");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var openResult = await _fileSystem.OpenWriteAsync(resource);
+        var openResult = await _fileStorage.OpenWriteAsync(resource);
 
         openResult.IsSuccess.Should().BeTrue();
         await using (var stream = openResult.Value)
@@ -265,11 +265,11 @@ public class ResourceFileSystemTests
         var expectedModifiedUtc = File.GetLastWriteTimeUtc(path);
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.GetInfoAsync(resource);
+        var result = await _fileStorage.GetInfoAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
         var info = result.Value;
-        info.Kind.Should().Be(ResourceInfoKind.File);
+        info.Kind.Should().Be(StorageItemKind.File);
         info.Size.Should().Be(bytes.Length);
         info.ModifiedUtc.Should().Be(expectedModifiedUtc);
     }
@@ -282,11 +282,11 @@ public class ResourceFileSystemTests
         Directory.CreateDirectory(folderPath);
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
 
-        var result = await _fileSystem.GetInfoAsync(resource);
+        var result = await _fileStorage.GetInfoAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
         var info = result.Value;
-        info.Kind.Should().Be(ResourceInfoKind.Folder);
+        info.Kind.Should().Be(StorageItemKind.Folder);
         info.Size.Should().Be(0);
         info.ModifiedUtc.Should().NotBe(default);
     }
@@ -298,11 +298,11 @@ public class ResourceFileSystemTests
         var path = Path.Combine(_tempFolder, "missing.txt");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.GetInfoAsync(resource);
+        var result = await _fileStorage.GetInfoAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
         var info = result.Value;
-        info.Kind.Should().Be(ResourceInfoKind.NotFound);
+        info.Kind.Should().Be(StorageItemKind.NotFound);
         info.Size.Should().Be(0);
         info.ModifiedUtc.Should().Be(default);
     }
@@ -322,10 +322,10 @@ public class ResourceFileSystemTests
         await File.WriteAllTextAsync(path, "scratch");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
-        var result = await _fileSystem.GetInfoAsync(resource);
+        var result = await _fileStorage.GetInfoAsync(resource);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Kind.Should().Be(ResourceInfoKind.File);
+        result.Value.Kind.Should().Be(StorageItemKind.File);
         result.Value.Size.Should().Be("scratch".Length);
     }
 
@@ -336,7 +336,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(resource)
             .Returns(Result<string>.Fail("simulated resolve failure"));
 
-        var result = await _fileSystem.GetInfoAsync(resource);
+        var result = await _fileStorage.GetInfoAsync(resource);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -357,7 +357,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sidecarSource).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(sidecarDest).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         File.Exists(sourcePath).Should().BeFalse();
@@ -373,7 +373,7 @@ public class ResourceFileSystemTests
         var sourceKey = new ResourceKey("project:a.txt");
         var destKey = new ResourceKey("temp:a.txt");
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Cross-root");
@@ -399,7 +399,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sidecarSource).Returns(Result<string>.Ok(sourceSidecarPath));
         _resourceRegistry.ResolveResourcePath(sidecarDest).Returns(Result<string>.Ok(destSidecarPath));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Sidecar.Should().Be(SidecarOutcome.Cascaded);
@@ -422,7 +422,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(destKey).Returns(Result<string>.Ok(destPath));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsFailure.Should().BeTrue();
         // Source still in place; destination unchanged.
@@ -451,7 +451,7 @@ public class ResourceFileSystemTests
 
         _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.UpdatedReferencers.Should().Contain(referencerKey);
@@ -491,7 +491,7 @@ public class ResourceFileSystemTests
 
         _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.UpdatedReferencers.Should().Contain(referencerKey);
@@ -528,7 +528,7 @@ public class ResourceFileSystemTests
 
         _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.UpdatedReferencers.Should().Contain(referencerKey);
@@ -562,7 +562,7 @@ public class ResourceFileSystemTests
 
         _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.UpdatedReferencers.Should().Contain(referencerKey);
@@ -588,7 +588,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("a.txt.cel")).Returns(Result<string>.Ok(sourceSidecarPath));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("b.txt.cel")).Returns(Result<string>.Ok(destSidecarPath));
 
-        var result = await _fileSystem.CopyAsync(sourceKey, destKey);
+        var result = await _fileStorage.CopyAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Sidecar.Should().Be(SidecarOutcome.Cascaded);
@@ -610,7 +610,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("a.txt.cel")).Returns(Result<string>.Ok(sourceSidecarPath));
 
-        var result = await _fileSystem.DeleteAsync(sourceKey);
+        var result = await _fileStorage.DeleteAsync(sourceKey);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Sidecar.Should().Be(SidecarOutcome.Cascaded);
@@ -626,7 +626,7 @@ public class ResourceFileSystemTests
 
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
 
-        var result = await _fileSystem.DeleteAsync(sourceKey);
+        var result = await _fileStorage.DeleteAsync(sourceKey);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -649,7 +649,7 @@ public class ResourceFileSystemTests
             lockStream.Dispose();
         });
 
-        var result = await _fileSystem.ReadAllTextAsync(resource);
+        var result = await _fileStorage.ReadAllTextAsync(resource);
         await releaseTask;
 
         result.IsSuccess.Should().BeTrue();
@@ -667,7 +667,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(sourceKey).Returns(Result<string>.Ok(sourcePath));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("readonly.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
 
-        var result = await _fileSystem.DeleteAsync(sourceKey);
+        var result = await _fileStorage.DeleteAsync(sourceKey);
 
         result.IsSuccess.Should().BeTrue();
         File.Exists(sourcePath).Should().BeFalse();
@@ -688,7 +688,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(new ResourceKey("readonly.txt.cel")).Returns(Result<string>.Ok(sourcePath + ".cel"));
         _resourceRegistry.ResolveResourcePath(new ResourceKey("renamed.txt.cel")).Returns(Result<string>.Ok(destPath + ".cel"));
 
-        var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+        var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
         result.IsSuccess.Should().BeTrue();
         File.Exists(sourcePath).Should().BeFalse();
@@ -720,7 +720,7 @@ public class ResourceFileSystemTests
 
             _resourceScanner.FindReferencersAsync(sourceKey).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(new[] { referencerKey }));
 
-            var result = await _fileSystem.MoveAsync(sourceKey, destKey);
+            var result = await _fileStorage.MoveAsync(sourceKey, destKey);
 
             result.IsSuccess.Should().BeTrue();
             // Parent move completed even though the referencer was read-only.
@@ -752,7 +752,7 @@ public class ResourceFileSystemTests
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var result = await _fileSystem.ReadAllBytesAsync(resource);
+        var result = await _fileStorage.ReadAllBytesAsync(resource);
         stopwatch.Stop();
 
         result.IsFailure.Should().BeTrue();

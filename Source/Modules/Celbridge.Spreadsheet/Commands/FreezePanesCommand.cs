@@ -41,8 +41,8 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
             return Result.Fail("Rows and Columns must be non-negative.");
         }
 
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -82,7 +82,7 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
             worksheet.SheetView.FreezeRows(Rows);
             worksheet.SheetView.FreezeColumns(Columns);
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

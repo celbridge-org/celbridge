@@ -36,14 +36,14 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
-        var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             return ToolResponse.Error(infoResult);
         }
-        if (infoResult.Value.Kind != ResourceInfoKind.File)
+        if (infoResult.Value.Kind != StorageItemKind.File)
         {
             return ToolResponse.Error($"File not found: '{resourceKey}'");
         }
@@ -66,7 +66,7 @@ public partial class FileTools
                 $"before calling file_read_image.");
         }
 
-        var bytesResult = await fileSystem.ReadAllBytesAsync(resourceKey);
+        var bytesResult = await fileStorage.ReadAllBytesAsync(resourceKey);
         if (bytesResult.IsFailure)
         {
             return ToolResponse.Error(bytesResult.FirstErrorMessage);

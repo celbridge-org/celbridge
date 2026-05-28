@@ -56,7 +56,7 @@ public partial class FileTools
         var commandResult = findReplaceResult.Value;
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
         var affectedLines = new List<AffectedLineRange>(commandResult.AffectedRanges.Count);
 
@@ -68,7 +68,7 @@ public partial class FileTools
         string[]? fileLines = null;
         if (commandResult.AffectedRanges.Count > 0)
         {
-            fileLines = await ReadFileLinesForContextAsync(fileSystem, fileResourceKey);
+            fileLines = await ReadFileLinesForContextAsync(fileStorage, fileResourceKey);
         }
 
         foreach (var range in commandResult.AffectedRanges)

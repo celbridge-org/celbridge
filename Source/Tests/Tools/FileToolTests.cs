@@ -44,13 +44,13 @@ public class FileToolTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real ResourceFileSystem against the temp folder so the
+        // Wire a real FileStorage against the temp folder so the
         // chokepoint reads tests rely on probe and read the actual files.
-        var fileSystem = new ResourceFileSystem(
-            Substitute.For<ILogger<ResourceFileSystem>>(),
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             workspaceWrapper);
-        workspaceService.ResourceFileSystem.Returns(fileSystem);
+        workspaceService.FileStorage.Returns(fileStorage);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }

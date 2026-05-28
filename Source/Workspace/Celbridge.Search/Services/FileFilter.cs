@@ -28,11 +28,11 @@ public class FileFilter
     /// through the chokepoint so the size check honours the same containment
     /// validation as the read that follows.
     /// </summary>
-    public async Task<bool> ShouldSearchFileAsync(IResourceFileSystem fileSystem, ResourceKey resource, string filePath)
+    public async Task<bool> ShouldSearchFileAsync(IFileStorage fileStorage, ResourceKey resource, string filePath)
     {
-        var infoResult = await fileSystem.GetInfoAsync(resource);
+        var infoResult = await fileStorage.GetInfoAsync(resource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return false;
         }

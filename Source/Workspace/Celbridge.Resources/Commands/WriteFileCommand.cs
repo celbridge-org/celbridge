@@ -29,22 +29,22 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
     public override async Task<Result> ExecuteAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
 
         // Preserve existing line endings when overwriting. For a new file,
         // honour whatever endings the caller's content already uses (so a CSV
         // exporter emitting CRLF lands as CRLF on disk); fall back to the
         // platform default when the content has no line endings to detect.
         string targetSeparator;
-        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(Content);
         }
         else
         {
-            var readResult = await fileSystem.ReadAllTextAsync(FileResource);
+            var readResult = await fileStorage.ReadAllTextAsync(FileResource);
             if (readResult.IsFailure)
             {
                 return Result.Fail($"Failed to read existing file: '{FileResource}'")
@@ -55,7 +55,7 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
         var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);
 
-        var writeResult = await fileSystem.WriteAllTextAsync(FileResource, contentToWrite);
+        var writeResult = await fileStorage.WriteAllTextAsync(FileResource, contentToWrite);
         if (writeResult.IsFailure)
         {
             return writeResult;

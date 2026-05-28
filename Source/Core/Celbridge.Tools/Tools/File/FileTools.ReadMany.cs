@@ -39,7 +39,7 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
         var entries = new List<ReadManyFileEntry>();
         foreach (var resourceString in resourceKeys)
@@ -54,19 +54,19 @@ public partial class FileTools
             // entries for different roots are unambiguous regardless of how the agent typed them.
             var canonicalResource = resourceKey.ToString();
 
-            var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+            var infoResult = await fileStorage.GetInfoAsync(resourceKey);
             if (infoResult.IsFailure)
             {
                 entries.Add(new ReadManyFileEntry(canonicalResource, Error: infoResult.FirstErrorMessage));
                 continue;
             }
-            if (infoResult.Value.Kind != ResourceInfoKind.File)
+            if (infoResult.Value.Kind != StorageItemKind.File)
             {
                 entries.Add(new ReadManyFileEntry(canonicalResource, Error: $"File not found: '{canonicalResource}'"));
                 continue;
             }
 
-            var readResult = await fileSystem.ReadAllTextAsync(resourceKey);
+            var readResult = await fileStorage.ReadAllTextAsync(resourceKey);
             if (readResult.IsFailure)
             {
                 entries.Add(new ReadManyFileEntry(canonicalResource, Error: readResult.FirstErrorMessage));

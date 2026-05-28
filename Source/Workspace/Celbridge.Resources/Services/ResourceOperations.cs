@@ -61,7 +61,7 @@ internal class FileOperationBatch : FileOperation
 
 /// <summary>
 /// Undoable copy file operation. The bytes-and-sidecar cascade runs through
-/// IResourceFileSystem.CopyAsync; entity-data cascade rides alongside via
+/// IFileStorage.CopyAsync; entity-data cascade rides alongside via
 /// EntityFileHelper.
 /// </summary>
 internal class CopyFileOperation : FileOperation
@@ -71,7 +71,7 @@ internal class CopyFileOperation : FileOperation
     private readonly ResourceKey _sourceKey;
     private readonly ResourceKey _destKey;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IResourceFileSystem _fileSystem;
+    private readonly IFileStorage _fileStorage;
 
     public CopyResult? LastCopyResult { get; private set; }
 
@@ -82,21 +82,21 @@ internal class CopyFileOperation : FileOperation
         ResourceKey destKey,
         IEntityService? entityService,
         IResourceRegistry? resourceRegistry,
-        IResourceFileSystem fileSystem)
+        IFileStorage fileStorage)
     {
         _sourcePath = sourcePath;
         _destPath = destPath;
         _sourceKey = sourceKey;
         _destKey = destKey;
         _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
-        _fileSystem = fileSystem;
+        _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
         _entityHelper.CopyEntityDataFile(_sourcePath, _destPath);
 
-        var copyResult = await _fileSystem.CopyAsync(_sourceKey, _destKey);
+        var copyResult = await _fileStorage.CopyAsync(_sourceKey, _destKey);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
@@ -110,7 +110,7 @@ internal class CopyFileOperation : FileOperation
     {
         _entityHelper.DeleteEntityDataFile(_destPath);
 
-        var deleteResult = await _fileSystem.DeleteAsync(_destKey);
+        var deleteResult = await _fileStorage.DeleteAsync(_destKey);
         if (deleteResult.IsFailure)
         {
             return Result.Fail(deleteResult);
@@ -122,7 +122,7 @@ internal class CopyFileOperation : FileOperation
 
 /// <summary>
 /// Undoable move file operation. Bytes, reference rewrites, and sidecar cascade
-/// run through IResourceFileSystem.MoveAsync; the inverse re-walks the reference
+/// run through IFileStorage.MoveAsync; the inverse re-walks the reference
 /// graph in the opposite direction so undo restores references too.
 /// </summary>
 internal class MoveFileOperation : FileOperation
@@ -132,7 +132,7 @@ internal class MoveFileOperation : FileOperation
     private readonly ResourceKey _sourceKey;
     private readonly ResourceKey _destKey;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IResourceFileSystem _fileSystem;
+    private readonly IFileStorage _fileStorage;
 
     public MoveResult? LastMoveResult { get; private set; }
 
@@ -143,14 +143,14 @@ internal class MoveFileOperation : FileOperation
         ResourceKey destKey,
         IEntityService? entityService,
         IResourceRegistry? resourceRegistry,
-        IResourceFileSystem fileSystem)
+        IFileStorage fileStorage)
     {
         _sourcePath = sourcePath;
         _destPath = destPath;
         _sourceKey = sourceKey;
         _destKey = destKey;
         _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
-        _fileSystem = fileSystem;
+        _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -159,7 +159,7 @@ internal class MoveFileOperation : FileOperation
         // still resolves while EntityFileHelper computes the destination key.
         _entityHelper.MoveEntityDataFile(_sourcePath, _destPath);
 
-        var moveResult = await _fileSystem.MoveAsync(_sourceKey, _destKey);
+        var moveResult = await _fileStorage.MoveAsync(_sourceKey, _destKey);
         if (moveResult.IsFailure)
         {
             return Result.Fail(moveResult);
@@ -173,7 +173,7 @@ internal class MoveFileOperation : FileOperation
     {
         _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
 
-        var moveResult = await _fileSystem.MoveAsync(_destKey, _sourceKey);
+        var moveResult = await _fileStorage.MoveAsync(_destKey, _sourceKey);
         if (moveResult.IsFailure)
         {
             return Result.Fail(moveResult);
@@ -346,7 +346,7 @@ internal class DeleteFileOperation : FileOperation
 
 /// <summary>
 /// Undoable copy folder operation. Bytes-and-sidecar cascade runs through
-/// IResourceFileSystem.CopyAsync; entity-data cascade rides alongside via
+/// IFileStorage.CopyAsync; entity-data cascade rides alongside via
 /// EntityFileHelper.
 /// </summary>
 internal class CopyFolderOperation : FileOperation
@@ -356,7 +356,7 @@ internal class CopyFolderOperation : FileOperation
     private readonly ResourceKey _sourceKey;
     private readonly ResourceKey _destKey;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IResourceFileSystem _fileSystem;
+    private readonly IFileStorage _fileStorage;
 
     public CopyResult? LastCopyResult { get; private set; }
 
@@ -367,19 +367,19 @@ internal class CopyFolderOperation : FileOperation
         ResourceKey destKey,
         IEntityService? entityService,
         IResourceRegistry? resourceRegistry,
-        IResourceFileSystem fileSystem)
+        IFileStorage fileStorage)
     {
         _sourcePath = sourcePath;
         _destPath = destPath;
         _sourceKey = sourceKey;
         _destKey = destKey;
         _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
-        _fileSystem = fileSystem;
+        _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        var copyResult = await _fileSystem.CopyAsync(_sourceKey, _destKey);
+        var copyResult = await _fileStorage.CopyAsync(_sourceKey, _destKey);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
@@ -395,7 +395,7 @@ internal class CopyFolderOperation : FileOperation
     {
         _entityHelper.DeleteFolderEntityDataFiles(_destPath);
 
-        var deleteResult = await _fileSystem.DeleteAsync(_destKey);
+        var deleteResult = await _fileStorage.DeleteAsync(_destKey);
         if (deleteResult.IsFailure)
         {
             return Result.Fail(deleteResult);
@@ -407,7 +407,7 @@ internal class CopyFolderOperation : FileOperation
 
 /// <summary>
 /// Undoable move folder operation. Bytes, reference rewrites, and sidecar
-/// cascade run through IResourceFileSystem.MoveAsync; the inverse re-walks the
+/// cascade run through IFileStorage.MoveAsync; the inverse re-walks the
 /// reference graph in the opposite direction.
 /// </summary>
 internal class MoveFolderOperation : FileOperation
@@ -417,7 +417,7 @@ internal class MoveFolderOperation : FileOperation
     private readonly ResourceKey _sourceKey;
     private readonly ResourceKey _destKey;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IResourceFileSystem _fileSystem;
+    private readonly IFileStorage _fileStorage;
 
     public MoveResult? LastMoveResult { get; private set; }
 
@@ -428,14 +428,14 @@ internal class MoveFolderOperation : FileOperation
         ResourceKey destKey,
         IEntityService? entityService,
         IResourceRegistry? resourceRegistry,
-        IResourceFileSystem fileSystem)
+        IFileStorage fileStorage)
     {
         _sourcePath = sourcePath;
         _destPath = destPath;
         _sourceKey = sourceKey;
         _destKey = destKey;
         _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
-        _fileSystem = fileSystem;
+        _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -443,7 +443,7 @@ internal class MoveFolderOperation : FileOperation
         // Move entity data files first (while source folder still exists for enumeration).
         _entityHelper.MoveFolderEntityDataFiles(_sourcePath, _destPath);
 
-        var moveResult = await _fileSystem.MoveAsync(_sourceKey, _destKey);
+        var moveResult = await _fileStorage.MoveAsync(_sourceKey, _destKey);
         if (moveResult.IsFailure)
         {
             return Result.Fail(moveResult);
@@ -458,7 +458,7 @@ internal class MoveFolderOperation : FileOperation
         // Move entity data files back first (while dest folder still exists for enumeration).
         _entityHelper.MoveFolderEntityDataFiles(_destPath, _sourcePath);
 
-        var moveResult = await _fileSystem.MoveAsync(_destKey, _sourceKey);
+        var moveResult = await _fileStorage.MoveAsync(_destKey, _sourceKey);
         if (moveResult.IsFailure)
         {
             return Result.Fail(moveResult);

@@ -81,7 +81,7 @@ public record FolderItem(
 /// <summary>
 /// Discriminates the outcome of a GetInfoAsync probe.
 /// </summary>
-public enum ResourceInfoKind
+public enum StorageItemKind
 {
     NotFound,
     File,
@@ -94,20 +94,24 @@ public enum ResourceInfoKind
 /// the last-modified timestamp for File and Folder; default(DateTime) for
 /// NotFound.
 /// </summary>
-public record ResourceInfo(
-    ResourceInfoKind Kind,
+public record StorageItemInfo(
+    StorageItemKind Kind,
     long Size,
     DateTime ModifiedUtc);
 
 /// <summary>
-/// The chokepoint for disk reads, writes, and structural operations on project
-/// resources. Callers pass a ResourceKey; the layer resolves it through
-/// IResourceRegistry so containment and symlink validation run automatically.
-/// Bytes and text writes are atomic via temp-file rename with bounded retry on
-/// transient IO failures. Structural operations include reference rewrites and
-/// the paired-sidecar cascade as part of their definition.
+/// The chokepoint for disk reads, writes, and structural operations against any
+/// resource addressable by a ResourceKey — files under the project tree as well
+/// as files under registered non-project roots (e.g. temp:, logs:). Callers pass
+/// a ResourceKey; the layer dispatches via the registered root handlers so
+/// containment and symlink validation run automatically. Bytes and text writes
+/// are atomic via temp-file rename with bounded retry on transient IO failures.
+/// Structural operations on project: resources additionally cascade the paired
+/// sidecar, and rewrite references that live inside scannable file types (see
+/// ResourceScanner for the current allowlist); operations on non-project roots
+/// are pure byte moves.
 /// </summary>
-public interface IResourceFileSystem
+public interface IFileStorage
 {
     /// <summary>
     /// Reads the full byte content of the resource.
@@ -171,7 +175,7 @@ public interface IResourceFileSystem
     /// file vs folder switch on Kind. Size and ModifiedUtc are populated for
     /// the File case; Folder yields Size = 0 with ModifiedUtc set.
     /// </summary>
-    Task<Result<ResourceInfo>> GetInfoAsync(ResourceKey resource);
+    Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource);
 
     /// <summary>
     /// Returns the immediate children of a folder resource as FolderItem records.

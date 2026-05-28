@@ -36,8 +36,8 @@ public class MultiEditFileCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileSystem = new ResourceFileSystem(Substitute.For<ILogger<ResourceFileSystem>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
-        workspaceService.ResourceFileSystem.Returns(fileSystem);
+        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
     }
 
     [TearDown]

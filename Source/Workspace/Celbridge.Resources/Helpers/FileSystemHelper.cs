@@ -10,7 +10,7 @@ internal static class FileSystemHelper
     // shell can briefly hold a read handle on the file, which surfaces as an
     // IOException ("being used by another process") on an immediate File.Move
     // or Directory.Move. Mirrors the read/write retry budgets in
-    // ResourceFileSystem; worst-case wait across all attempts is
+    // FileStorage; worst-case wait across all attempts is
     // MoveRetryBaseDelayMs * (1 + 2) = 150ms with the values below.
     private const int MaxMoveAttempts = 3;
     private const int MoveRetryBaseDelayMs = 50;

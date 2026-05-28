@@ -40,8 +40,8 @@ public class ResourceOperationService : IResourceOperationService
     private IResourceRegistry? ResourceRegistry =>
         _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceService.Registry : null;
 
-    private IResourceFileSystem? FileSystem =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceFileSystem : null;
+    private IFileStorage? FileStorage =>
+        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.FileStorage : null;
 
     private string ProjectFolderPath =>
         _workspaceWrapper.IsWorkspacePageLoaded ? ResourceRegistry!.ProjectFolderPath : string.Empty;
@@ -116,10 +116,10 @@ public class ResourceOperationService : IResourceOperationService
         {
             return Result.Fail(keyResult);
         }
-        var fileSystem = FileSystem;
-        if (fileSystem is null)
+        var fileStorage = FileStorage;
+        if (fileStorage is null)
         {
-            return Result<CopyResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
+            return Result<CopyResult>.Fail("Workspace is not loaded; file storage is unavailable.");
         }
 
         var operation = new CopyFileOperation(
@@ -129,7 +129,7 @@ public class ResourceOperationService : IResourceOperationService
             keyResult.Value.Destination,
             EntityService,
             ResourceRegistry,
-            fileSystem);
+            fileStorage);
         var execResult = await operation.ExecuteAsync();
 
         if (execResult.IsFailure)
@@ -189,10 +189,10 @@ public class ResourceOperationService : IResourceOperationService
         {
             return Result.Fail(keyResult);
         }
-        var fileSystem = FileSystem;
-        if (fileSystem is null)
+        var fileStorage = FileStorage;
+        if (fileStorage is null)
         {
-            return Result<MoveResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
+            return Result<MoveResult>.Fail("Workspace is not loaded; file storage is unavailable.");
         }
 
         var operation = new MoveFileOperation(
@@ -202,7 +202,7 @@ public class ResourceOperationService : IResourceOperationService
             keyResult.Value.Destination,
             EntityService,
             ResourceRegistry,
-            fileSystem);
+            fileStorage);
         var execResult = await operation.ExecuteAsync();
 
         if (execResult.IsFailure)
@@ -306,10 +306,10 @@ public class ResourceOperationService : IResourceOperationService
         {
             return Result.Fail(keyResult);
         }
-        var fileSystem = FileSystem;
-        if (fileSystem is null)
+        var fileStorage = FileStorage;
+        if (fileStorage is null)
         {
-            return Result<CopyResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
+            return Result<CopyResult>.Fail("Workspace is not loaded; file storage is unavailable.");
         }
 
         var operation = new CopyFolderOperation(
@@ -319,7 +319,7 @@ public class ResourceOperationService : IResourceOperationService
             keyResult.Value.Destination,
             EntityService,
             ResourceRegistry,
-            fileSystem);
+            fileStorage);
         var execResult = await operation.ExecuteAsync();
 
         if (execResult.IsFailure)
@@ -341,10 +341,10 @@ public class ResourceOperationService : IResourceOperationService
         {
             return Result.Fail(keyResult);
         }
-        var fileSystem = FileSystem;
-        if (fileSystem is null)
+        var fileStorage = FileStorage;
+        if (fileStorage is null)
         {
-            return Result<MoveResult>.Fail("Workspace is not loaded; resource file system is unavailable.");
+            return Result<MoveResult>.Fail("Workspace is not loaded; file storage is unavailable.");
         }
 
         var operation = new MoveFolderOperation(
@@ -354,7 +354,7 @@ public class ResourceOperationService : IResourceOperationService
             keyResult.Value.Destination,
             EntityService,
             ResourceRegistry,
-            fileSystem);
+            fileStorage);
         var execResult = await operation.ExecuteAsync();
 
         if (execResult.IsFailure)

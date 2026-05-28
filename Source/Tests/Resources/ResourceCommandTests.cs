@@ -63,13 +63,13 @@ public class ResourceCommandTests
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         // ListFolderContentsCommand and GetFileTreeCommand route through the
-        // ResourceFileSystem chokepoint, so the workspace needs a real instance
+        // FileStorage chokepoint, so the workspace needs a real instance
         // (a Substitute would return null for EnumerateFolderAsync).
-        var fileSystem = new ResourceFileSystem(
-            Substitute.For<ILogger<ResourceFileSystem>>(),
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper);
-        workspaceService.ResourceFileSystem.Returns(fileSystem);
+        workspaceService.FileStorage.Returns(fileStorage);
     }
 
     [TearDown]

@@ -9,7 +9,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IResourceRegistry? _registry;
-    private IResourceFileSystem? _fileSystem;
+    private IFileStorage? _fileStorage;
     private List<string> _extensions = [];
     private List<ResourcePickerItem> _allItems = [];
     private bool _showPreview;
@@ -52,7 +52,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         _registry = workspaceService.ResourceService.Registry;
-        _fileSystem = workspaceService.ResourceFileSystem;
+        _fileStorage = workspaceService.FileStorage;
         _showPreview = showPreview;
         _extensions = extensions
             .Select(e => e.TrimStart('.').ToLowerInvariant())
@@ -80,7 +80,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     private async void UpdatePreview()
     {
-        if (!_showPreview || SelectedItem is null || _registry is null || _fileSystem is null)
+        if (!_showPreview || SelectedItem is null || _registry is null || _fileStorage is null)
         {
             PreviewImageVisibility = Visibility.Collapsed;
             PreviewImage = null;
@@ -97,7 +97,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
         var resourcePath = resolveResult.Value;
 
-        var infoResult = await _fileSystem.GetInfoAsync(selectedItem.ResourceKey);
+        var infoResult = await _fileStorage.GetInfoAsync(selectedItem.ResourceKey);
         // The selection can change while the probe is in flight; the late
         // result must not overwrite a newer selection's preview.
         if (!ReferenceEquals(selectedItem, SelectedItem))
@@ -105,7 +105,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
             return;
         }
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             PreviewImageVisibility = Visibility.Collapsed;
             PreviewImage = null;

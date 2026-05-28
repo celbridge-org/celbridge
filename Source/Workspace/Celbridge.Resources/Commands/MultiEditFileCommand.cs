@@ -38,16 +38,16 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
 
-        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        var readResult = await fileSystem.ReadAllTextAsync(FileResource);
+        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
         {
             return Result.Fail($"Failed to read file: '{FileResource}'")
@@ -107,7 +107,7 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
             buffer = applyResult.NewContent;
         }
 
-        var writeResult = await fileSystem.WriteAllTextAsync(FileResource, buffer);
+        var writeResult = await fileStorage.WriteAllTextAsync(FileResource, buffer);
         if (writeResult.IsFailure)
         {
             return writeResult;

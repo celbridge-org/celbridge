@@ -133,8 +133,8 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     protected async Task<Result<string>> LoadTextFromFileAsync()
     {
-        var fileSystem = GetFileSystem();
-        var readResult = await fileSystem.ReadAllTextAsync(FileResource);
+        var fileStorage = GetFileSystem();
+        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to load file: '{FilePath}'")
@@ -176,7 +176,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Routes the save through IResourceFileSystem (atomic write + bounded retry
+    /// Routes the save through IFileStorage (atomic write + bounded retry
     /// on transient IO) and raises ReloadRequested when external interleaving is
     /// detected either before the write (pre-write hash check) or between the
     /// write completing and our tracking-hash read (post-write check). Updates
@@ -191,8 +191,8 @@ public abstract partial class DocumentViewModel : ObservableObject
             return Result.Ok();
         }
 
-        var fileSystem = GetFileSystem();
-        var writeResult = await fileSystem.WriteAllBytesAsync(FileResource, bytes);
+        var fileStorage = GetFileSystem();
+        var writeResult = await fileStorage.WriteAllBytesAsync(FileResource, bytes);
         if (writeResult.IsFailure)
         {
             return writeResult;
@@ -226,8 +226,8 @@ public abstract partial class DocumentViewModel : ObservableObject
             return false;
         }
 
-        var fileSystem = GetFileSystem();
-        var readResult = await fileSystem.ReadAllBytesAsync(FileResource);
+        var fileStorage = GetFileSystem();
+        var readResult = await fileStorage.ReadAllBytesAsync(FileResource);
         if (readResult.IsFailure)
         {
             _logger?.LogDebug($"Pre-write hash check failed for '{FilePath}', proceeding to write attempt");
@@ -255,10 +255,10 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// substitute a layer wired to a temp folder without going through the
     /// workspace service hierarchy.
     /// </summary>
-    protected virtual IResourceFileSystem GetFileSystem()
+    protected virtual IFileStorage GetFileSystem()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        return workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        return workspaceWrapper.WorkspaceService.FileStorage;
     }
 
     /// <summary>
@@ -278,10 +278,10 @@ public abstract partial class DocumentViewModel : ObservableObject
             return true;
         }
 
-        var fileSystem = GetFileSystem();
-        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        var fileStorage = GetFileSystem();
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return true;
         }
@@ -294,7 +294,7 @@ public abstract partial class DocumentViewModel : ObservableObject
 
         // File size is the same; compute hash to check if content actually changed.
         // This handles cases where the file was rewritten with identical content.
-        var readResult = await fileSystem.ReadAllBytesAsync(FileResource);
+        var readResult = await fileStorage.ReadAllBytesAsync(FileResource);
         if (readResult.IsFailure)
         {
             return true;
@@ -306,17 +306,17 @@ public abstract partial class DocumentViewModel : ObservableObject
 
     protected virtual async Task UpdateFileTrackingInfoAsync()
     {
-        var fileSystem = GetFileSystem();
-        var infoResult = await fileSystem.GetInfoAsync(FileResource);
+        var fileStorage = GetFileSystem();
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
-            || infoResult.Value.Kind != ResourceInfoKind.File)
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             _lastSavedFileHash = null;
             _lastSavedFileSize = 0;
             return;
         }
 
-        var readResult = await fileSystem.ReadAllBytesAsync(FileResource);
+        var readResult = await fileStorage.ReadAllBytesAsync(FileResource);
         if (readResult.IsFailure)
         {
             _lastSavedFileHash = null;

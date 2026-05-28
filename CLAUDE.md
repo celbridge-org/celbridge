@@ -88,7 +88,7 @@ python run_tests.py
 ## Architecture
 
 - Workspace-scoped services are transient and must NOT be injected via constructor DI. Access them through `_workspaceWrapper.WorkspaceService`:
-  - IWorkspaceSettingsService, IWorkspaceSettings, IResourceRegistry, IResourceFileSystem, IResourceTransferService, IResourceOperationService, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
+  - IWorkspaceSettingsService, IWorkspaceSettings, IResourceRegistry, IFileStorage, IResourceTransferService, IResourceOperationService, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
 - Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
 - The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
 - Never bypass `ICommandService` to call methods directly. Every important operation goes through the command service for automation and auditing support. If a command-based flow has a bug, fix it within the command service pattern (e.g., add new command options or fix the command handling logic)

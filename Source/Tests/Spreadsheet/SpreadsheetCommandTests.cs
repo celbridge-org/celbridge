@@ -53,11 +53,11 @@ public class SpreadsheetCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileSystem = new ResourceFileSystem(
-            Substitute.For<ILogger<ResourceFileSystem>>(),
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper);
-        workspaceService.ResourceFileSystem.Returns(fileSystem);
+        workspaceService.FileStorage.Returns(fileStorage);
     }
 
     [TearDown]

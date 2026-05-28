@@ -29,7 +29,7 @@ public partial class PackageTools
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
 
         var packageResource = ResourceKey.Create($"packages/{packageName}");
         var resolveResult = resourceRegistry.ResolveResourcePath(packageResource);
@@ -55,7 +55,7 @@ public partial class PackageTools
         manifestContent.AppendLine("[contributes]");
 
         var manifestResource = ResourceKey.Create($"packages/{packageName}/{ManifestFileName}");
-        var writeManifestResult = await fileSystem.WriteAllTextAsync(manifestResource, manifestContent.ToString());
+        var writeManifestResult = await fileStorage.WriteAllTextAsync(manifestResource, manifestContent.ToString());
         if (writeManifestResult.IsFailure)
         {
             return ToolResponse.Error($"Failed to create package: {writeManifestResult.FirstErrorMessage}");

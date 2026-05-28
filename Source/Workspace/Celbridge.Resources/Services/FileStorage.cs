@@ -6,7 +6,7 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
-public sealed class ResourceFileSystem : IResourceFileSystem
+public sealed class FileStorage : IFileStorage
 {
     // Bounded retry for transient IO failures (file briefly locked by AV,
     // backup software, sync clients, concurrent writers, etc.). Total
@@ -19,7 +19,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
     // FileStream buffer size when none is supplied.
     private const int StreamBufferSize = 4096;
 
-    private readonly ILogger<ResourceFileSystem> _logger;
+    private readonly ILogger<FileStorage> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -28,8 +28,8 @@ public sealed class ResourceFileSystem : IResourceFileSystem
     // and only the ResourceService instance has ProjectFolderPath set. The
     // file-system layer resolves the live registry through the workspace wrapper
     // at call time.
-    public ResourceFileSystem(
-        ILogger<ResourceFileSystem> logger,
+    public FileStorage(
+        ILogger<FileStorage> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
@@ -459,14 +459,14 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         return keys;
     }
 
-    public async Task<Result<ResourceInfo>> GetInfoAsync(ResourceKey resource)
+    public async Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource)
     {
         await Task.CompletedTask;
 
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<ResourceInfo>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result<StorageItemInfo>.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
@@ -479,8 +479,8 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             var fileInfo = new FileInfo(resourcePath);
             if (fileInfo.Exists)
             {
-                var fileResult = new ResourceInfo(
-                    Kind: ResourceInfoKind.File,
+                var fileResult = new StorageItemInfo(
+                    Kind: StorageItemKind.File,
                     Size: fileInfo.Length,
                     ModifiedUtc: fileInfo.LastWriteTimeUtc);
                 return fileResult;
@@ -489,22 +489,22 @@ public sealed class ResourceFileSystem : IResourceFileSystem
             var directoryInfo = new DirectoryInfo(resourcePath);
             if (directoryInfo.Exists)
             {
-                var folderResult = new ResourceInfo(
-                    Kind: ResourceInfoKind.Folder,
+                var folderResult = new StorageItemInfo(
+                    Kind: StorageItemKind.Folder,
                     Size: 0,
                     ModifiedUtc: directoryInfo.LastWriteTimeUtc);
                 return folderResult;
             }
 
-            var notFoundResult = new ResourceInfo(
-                Kind: ResourceInfoKind.NotFound,
+            var notFoundResult = new StorageItemInfo(
+                Kind: StorageItemKind.NotFound,
                 Size: 0,
                 ModifiedUtc: default);
             return notFoundResult;
         }
         catch (Exception ex)
         {
-            return Result<ResourceInfo>.Fail($"Failed to get info for resource: '{resource}'")
+            return Result<StorageItemInfo>.Fail($"Failed to get info for resource: '{resource}'")
                 .WithException(ex);
         }
     }

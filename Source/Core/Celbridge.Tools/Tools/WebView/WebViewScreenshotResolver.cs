@@ -27,7 +27,7 @@ public static class WebViewScreenshotResolver
     /// through the chokepoint so the lookup honours the same containment
     /// validation as the screenshot save that follows.
     /// </summary>
-    public static async Task<Result<ResourceKey>> ResolveAsync(string saveTo, string format, IResourceFileSystem fileSystem)
+    public static async Task<Result<ResourceKey>> ResolveAsync(string saveTo, string format, IFileStorage fileStorage)
     {
         var extension = ExtensionForFormat(format);
         if (extension is null)
@@ -58,7 +58,7 @@ public static class WebViewScreenshotResolver
         {
             var folderResource = key;
             var folderPath = key.Path;
-            var fileName = await GenerateAutoNameAsync(extension, fileSystem, folderResource);
+            var fileName = await GenerateAutoNameAsync(extension, fileStorage, folderResource);
             var combined = string.IsNullOrEmpty(folderPath) ? fileName : folderPath + "/" + fileName;
             if (!ResourceKey.TryCreate(combined, out var fileKey))
             {
@@ -82,7 +82,7 @@ public static class WebViewScreenshotResolver
         return key;
     }
 
-    private static async Task<string> GenerateAutoNameAsync(string extension, IResourceFileSystem fileSystem, ResourceKey folderResource)
+    private static async Task<string> GenerateAutoNameAsync(string extension, IFileStorage fileStorage, ResourceKey folderResource)
     {
         // Prefer the clean unsuffixed name. In the common case (no collision)
         // the agent gets `screenshot-20260430-090238.jpg` rather than a noisy
@@ -92,7 +92,7 @@ public static class WebViewScreenshotResolver
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
         var primary = $"screenshot-{timestamp}.{extension}";
-        if (!await ExistsAsync(fileSystem, folderResource, primary))
+        if (!await ExistsAsync(fileStorage, folderResource, primary))
         {
             return primary;
         }
@@ -100,7 +100,7 @@ public static class WebViewScreenshotResolver
         for (int seq = 1; seq <= 999; seq++)
         {
             var candidate = $"screenshot-{timestamp}-{seq}.{extension}";
-            if (!await ExistsAsync(fileSystem, folderResource, candidate))
+            if (!await ExistsAsync(fileStorage, folderResource, candidate))
             {
                 return candidate;
             }
@@ -136,11 +136,11 @@ public static class WebViewScreenshotResolver
         return !string.IsNullOrEmpty(extension);
     }
 
-    private static async Task<bool> ExistsAsync(IResourceFileSystem fileSystem, ResourceKey folderResource, string fileName)
+    private static async Task<bool> ExistsAsync(IFileStorage fileStorage, ResourceKey folderResource, string fileName)
     {
         var candidateKey = folderResource.IsEmpty ? new ResourceKey(fileName) : folderResource.Combine(fileName);
-        var infoResult = await fileSystem.GetInfoAsync(candidateKey);
+        var infoResult = await fileStorage.GetInfoAsync(candidateKey);
         return infoResult.IsSuccess
-            && infoResult.Value.Kind != ResourceInfoKind.NotFound;
+            && infoResult.Value.Kind != StorageItemKind.NotFound;
     }
 }

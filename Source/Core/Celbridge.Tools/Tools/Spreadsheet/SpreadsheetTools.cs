@@ -37,8 +37,8 @@ public partial class SpreadsheetTools : AgentToolBase
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
-        var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to inspect workbook: '{resourceKey}'")
@@ -46,11 +46,11 @@ public partial class SpreadsheetTools : AgentToolBase
         }
 
         var info = infoResult.Value;
-        if (info.Kind == ResourceInfoKind.NotFound)
+        if (info.Kind == StorageItemKind.NotFound)
         {
             return Result.Fail($"File not found: '{resourceKey}'");
         }
-        if (info.Kind != ResourceInfoKind.File)
+        if (info.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Resource is not a file: '{resourceKey}'");
         }
@@ -58,14 +58,14 @@ public partial class SpreadsheetTools : AgentToolBase
         return resourceKey;
     }
 
-    // Opens the workbook bytes via the resource file system and returns them
+    // Opens the workbook bytes via the file storage chokepoint and returns them
     // as a seekable MemoryStream positioned at zero. Caller disposes.
     private async Task<Result<Stream>> OpenWorkbookStreamAsync(ResourceKey resource)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
-        var bytesResult = await fileSystem.ReadAllBytesAsync(resource);
+        var bytesResult = await fileStorage.ReadAllBytesAsync(resource);
         if (bytesResult.IsFailure)
         {
             return Result.Fail($"Failed to read workbook: '{resource}'")

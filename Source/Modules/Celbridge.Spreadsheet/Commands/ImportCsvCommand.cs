@@ -79,8 +79,8 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
         int totalRowCount = 0;
         int sheetsCreated = 0;
 
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -133,7 +133,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
                 totalRowCount += parsedRows.Count;
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

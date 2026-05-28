@@ -22,9 +22,9 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
-        var infoResult = await fileSystem.GetInfoAsync(resourceKey);
+        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             // Surface the chokepoint's failure verbatim so case-mismatch
@@ -33,12 +33,12 @@ public partial class FileTools
             // resolve succeeded but the resource genuinely is not a file.
             return ToolResponse.Error(infoResult);
         }
-        if (infoResult.Value.Kind != ResourceInfoKind.File)
+        if (infoResult.Value.Kind != StorageItemKind.File)
         {
             return ToolResponse.Error($"Resource not found: '{resourceKey}'. file_read addresses resources by resource key, not arbitrary disk paths — only files under a registered root (e.g. 'project:', 'temp:', 'logs:') can be read.");
         }
 
-        var readResult = await fileSystem.ReadAllTextAsync(resourceKey);
+        var readResult = await fileStorage.ReadAllTextAsync(resourceKey);
         if (readResult.IsFailure)
         {
             return ToolResponse.Error(readResult.FirstErrorMessage);

@@ -37,7 +37,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
@@ -46,7 +46,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         }
         var resourcePath = resolveResult.Value;
 
-        var infoResult = await fileSystem.GetInfoAsync(Resource);
+        var infoResult = await fileStorage.GetInfoAsync(Resource);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to probe resource: '{Resource}'")
@@ -54,7 +54,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         }
         var info = infoResult.Value;
 
-        if (info.Kind == ResourceInfoKind.File)
+        if (info.Kind == StorageItemKind.File)
         {
             var extension = Path.GetExtension(resourcePath);
             var isText = !_textBinarySniffer.IsBinaryExtension(extension)
@@ -64,7 +64,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
 
             if (isText)
             {
-                lineCount = await CountLinesAsync(fileSystem, Resource);
+                lineCount = await CountLinesAsync(fileStorage, Resource);
             }
 
             // Surface the paired sidecar's key and current parse state when
@@ -95,7 +95,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             return Result.Ok();
         }
 
-        if (info.Kind == ResourceInfoKind.Folder)
+        if (info.Kind == StorageItemKind.Folder)
         {
             ResultValue = new FileInfoSnapshot(
                 Exists: true,
@@ -117,9 +117,9 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
     // Streams the file via the chokepoint and counts lines without loading
     // the entire content into memory. Used for the LineCount field on the
     // FileInfoSnapshot when the resource is text.
-    private static async Task<int> CountLinesAsync(IResourceFileSystem fileSystem, ResourceKey resource)
+    private static async Task<int> CountLinesAsync(IFileStorage fileStorage, ResourceKey resource)
     {
-        var openResult = await fileSystem.OpenReadAsync(resource);
+        var openResult = await fileStorage.OpenReadAsync(resource);
         if (openResult.IsFailure)
         {
             return 0;

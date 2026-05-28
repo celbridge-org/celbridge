@@ -49,7 +49,7 @@ public interface IWorkspaceService
     /// <summary>
     /// Returns the chokepoint file-system layer for project resources.
     /// </summary>
-    IResourceFileSystem ResourceFileSystem { get; }
+    IFileStorage FileStorage { get; }
 
     /// <summary>
     /// Returns the on-demand scanner over project text and sidecar files,

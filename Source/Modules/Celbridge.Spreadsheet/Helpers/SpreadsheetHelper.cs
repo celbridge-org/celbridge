@@ -74,8 +74,8 @@ internal static class SpreadsheetHelper
             return Result.Fail($"Resource is not an .xlsx workbook: '{fileResource}'");
         }
 
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
-        var infoResult = await fileSystem.GetInfoAsync(fileResource);
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var infoResult = await fileStorage.GetInfoAsync(fileResource);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to inspect workbook: '{fileResource}'")
@@ -83,11 +83,11 @@ internal static class SpreadsheetHelper
         }
 
         var info = infoResult.Value;
-        if (info.Kind == ResourceInfoKind.NotFound)
+        if (info.Kind == StorageItemKind.NotFound)
         {
             return Result.Fail($"Workbook file not found: '{fileResource}'");
         }
-        if (info.Kind != ResourceInfoKind.File)
+        if (info.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Resource is not a file: '{fileResource}'");
         }
@@ -101,10 +101,10 @@ internal static class SpreadsheetHelper
     /// dispose it; the underlying stream is owned by the workbook.
     /// </summary>
     public static async Task<Result<XLWorkbook>> LoadWorkbookAsync(
-        IResourceFileSystem fileSystem,
+        IFileStorage fileStorage,
         ResourceKey fileResource)
     {
-        var bytesResult = await fileSystem.ReadAllBytesAsync(fileResource);
+        var bytesResult = await fileStorage.ReadAllBytesAsync(fileResource);
         if (bytesResult.IsFailure)
         {
             return Result.Fail($"Failed to read workbook: '{fileResource}'")
@@ -131,7 +131,7 @@ internal static class SpreadsheetHelper
     /// Evaluates formulas before saving so cached values stay fresh.
     /// </summary>
     public static async Task<Result> SaveWorkbookAsync(
-        IResourceFileSystem fileSystem,
+        IFileStorage fileStorage,
         ResourceKey fileResource,
         XLWorkbook workbook)
     {
@@ -148,7 +148,7 @@ internal static class SpreadsheetHelper
                 .WithException(ex);
         }
 
-        var writeResult = await fileSystem.WriteAllBytesAsync(fileResource, bytes);
+        var writeResult = await fileStorage.WriteAllBytesAsync(fileResource, bytes);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to save workbook: '{fileResource}'")

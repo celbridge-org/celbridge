@@ -283,16 +283,16 @@ public class PackageRegistry
         }
 
         var packagesResource = new ResourceKey(PackagesFolderName);
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
 
-        var packagesInfoResult = await fileSystem.GetInfoAsync(packagesResource);
+        var packagesInfoResult = await fileStorage.GetInfoAsync(packagesResource);
         if (packagesInfoResult.IsFailure
-            || packagesInfoResult.Value.Kind != ResourceInfoKind.Folder)
+            || packagesInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return failures;
         }
 
-        var enumerateResult = await fileSystem.EnumerateFolderAsync(packagesResource);
+        var enumerateResult = await fileStorage.EnumerateFolderAsync(packagesResource);
         if (enumerateResult.IsFailure)
         {
             return failures;
@@ -309,9 +309,9 @@ public class PackageRegistry
             }
 
             var manifestResource = item.Resource.Combine(ManifestFileName);
-            var manifestInfoResult = await fileSystem.GetInfoAsync(manifestResource);
+            var manifestInfoResult = await fileStorage.GetInfoAsync(manifestResource);
             if (manifestInfoResult.IsFailure
-                || manifestInfoResult.Value.Kind != ResourceInfoKind.File)
+                || manifestInfoResult.Value.Kind != StorageItemKind.File)
             {
                 // A folder under packages/ with no manifest is not a package.
                 // Silently skip rather than report as a failure.

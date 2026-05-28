@@ -48,11 +48,11 @@ public class FileToolsReadImageTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileSystem = new ResourceFileSystem(
-            Substitute.For<ILogger<ResourceFileSystem>>(),
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             workspaceWrapper);
-        workspaceService.ResourceFileSystem.Returns(fileSystem);
+        workspaceService.FileStorage.Returns(fileStorage);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }

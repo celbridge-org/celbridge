@@ -65,7 +65,7 @@ class TestExplorer:
         assert "original.txt" not in names
 
     def test_move_preserves_referential_integrity(self, explorer, file, data):
-        # The reference-rewrite cascade in IResourceFileSystem.MoveAsync must
+        # The reference-rewrite cascade in IFileStorage.MoveAsync must
         # leave no broken project: references after a move. The referencer is
         # .json (an allowlisted scanner extension) so the cascade actually
         # walks it; .md would be invisible to the scanner.

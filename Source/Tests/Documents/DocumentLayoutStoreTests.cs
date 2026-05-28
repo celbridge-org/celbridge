@@ -63,14 +63,14 @@ public class DocumentLayoutStoreTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real ResourceFileSystem so FileAccessHelper's GetInfoAsync /
+        // Wire a real FileStorage so FileAccessHelper's GetInfoAsync /
         // OpenReadAsync calls probe the actual disk paths the registry
         // resolves to.
-        var fileSystem = new ResourceFileSystem(
-            Substitute.For<ILogger<ResourceFileSystem>>(),
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper);
-        workspaceService.ResourceFileSystem.Returns(fileSystem);
+        workspaceService.FileStorage.Returns(fileStorage);
 
         _fileAccessHelper = new FileAccessHelper(_workspaceWrapper);
 

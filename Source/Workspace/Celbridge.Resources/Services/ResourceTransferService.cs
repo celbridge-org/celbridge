@@ -57,10 +57,10 @@ public class ResourceTransferService : IResourceTransferService
             }
             var destFolderPath = resolveResult.Value;
 
-            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-            var destInfoResult = await fileSystem.GetInfoAsync(destFolderResource);
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var destInfoResult = await fileStorage.GetInfoAsync(destFolderResource);
             if (destInfoResult.IsFailure
-                || destInfoResult.Value.Kind != ResourceInfoKind.Folder)
+                || destInfoResult.Value.Kind != StorageItemKind.Folder)
             {
                 return Result<List<ResourceTransferItem>>.Fail($"The path '{destFolderPath}' does not exist.");
             }

@@ -104,8 +104,8 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 
     private async Task<Result<AppliedViewState>> ApplyViewStateToWorkbookAsync(ResourceKey workbookResource)
     {
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileSystem, workbookResource);
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -213,7 +213,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
                 worksheet.SheetView.TopLeftCellAddress = scrollAnchor.Address;
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileSystem, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

@@ -50,8 +50,8 @@ public class InspectorFactory : IInspectorFactory
     {
         try
         {
-            var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
-            var infoResult = await fileSystem.GetInfoAsync(resource);
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var infoResult = await fileStorage.GetInfoAsync(resource);
             if (infoResult.IsFailure)
             {
                 return Result<IInspector>.Fail($"Failed to probe resource: '{resource}'")
@@ -59,12 +59,12 @@ public class InspectorFactory : IInspectorFactory
             }
             var info = infoResult.Value;
 
-            if (info.Kind == ResourceInfoKind.Folder)
+            if (info.Kind == StorageItemKind.Folder)
             {
                 return CreateFolderInspector(resource);
             }
 
-            if (info.Kind == ResourceInfoKind.File)
+            if (info.Kind == StorageItemKind.File)
             {
                 return CreateFileInspector(resource);
             }

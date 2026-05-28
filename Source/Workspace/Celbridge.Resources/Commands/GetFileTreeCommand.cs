@@ -26,12 +26,12 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var fileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
 
         // EnumerateFolderAsync at the root surfaces a missing-or-not-a-folder
         // error to the caller; deeper recursion silently skips unreadable
         // subfolders to match the existing tree-walk behavior.
-        var rootEntriesResult = await fileSystem.EnumerateFolderAsync(Resource);
+        var rootEntriesResult = await fileStorage.EnumerateFolderAsync(Resource);
         if (rootEntriesResult.IsFailure)
         {
             return Result.Fail($"Resource not found: '{Resource}'")
@@ -50,7 +50,7 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
             : Resource.ResourceName;
 
         var rootNode = await BuildSnapshotAsync(
-            fileSystem, folderName, rootEntries, Depth, globRegex, TypeFilter);
+            fileStorage, folderName, rootEntries, Depth, globRegex, TypeFilter);
         ResultValue = new FileTreeSnapshot(rootNode);
 
         return Result.Ok();
@@ -61,7 +61,7 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
     // is therefore irrelevant to the result. Subfolder enumeration failures are
     // swallowed so a single unreadable directory doesn't break the whole tree.
     private static async Task<FileTreeSnapshotNode?> BuildSnapshotAsync(
-        IResourceFileSystem fileSystem,
+        IFileStorage fileStorage,
         string folderName,
         IReadOnlyList<FolderItem> entries,
         int remainingDepth,
@@ -80,14 +80,14 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
             {
                 if (entry.IsFolder)
                 {
-                    var childEntriesResult = await fileSystem.EnumerateFolderAsync(entry.Resource);
+                    var childEntriesResult = await fileStorage.EnumerateFolderAsync(entry.Resource);
                     if (childEntriesResult.IsFailure)
                     {
                         continue;
                     }
 
                     var childNode = await BuildSnapshotAsync(
-                        fileSystem, entry.Resource.ResourceName, childEntriesResult.Value,
+                        fileStorage, entry.Resource.ResourceName, childEntriesResult.Value,
                         remainingDepth - 1, globRegex, typeFilter);
                     if (childNode is not null && showFolders)
                     {

@@ -19,7 +19,7 @@ public partial class FileTools
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
         var regexPattern = GlobHelper.PathGlobToRegex(pattern);
         var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
@@ -35,7 +35,7 @@ public partial class FileTools
             && resourceRegistry.RootHandlers.ContainsKey(patternRoot))
         {
             return await SearchNonDefaultRootAsync(
-                fileSystem, patternRoot, regex, isFolderSearch, includeMetadata);
+                fileStorage, patternRoot, regex, isFolderSearch, includeMetadata);
         }
 
         if (isFolderSearch)
@@ -52,9 +52,9 @@ public partial class FileTools
                 var results = new List<SearchResultWithMetadata>();
                 foreach (var folderKey in matchingFolders)
                 {
-                    var infoResult = await fileSystem.GetInfoAsync(folderKey);
+                    var infoResult = await fileStorage.GetInfoAsync(folderKey);
                     if (infoResult.IsFailure
-                        || infoResult.Value.Kind != ResourceInfoKind.Folder)
+                        || infoResult.Value.Kind != StorageItemKind.Folder)
                     {
                         continue;
                     }
@@ -81,9 +81,9 @@ public partial class FileTools
             var results = new List<SearchResultWithMetadata>();
             foreach (var match in matches)
             {
-                var infoResult = await fileSystem.GetInfoAsync(match.Resource);
+                var infoResult = await fileStorage.GetInfoAsync(match.Resource);
                 if (infoResult.IsFailure
-                    || infoResult.Value.Kind != ResourceInfoKind.File)
+                    || infoResult.Value.Kind != StorageItemKind.File)
                 {
                     continue;
                 }
@@ -112,7 +112,7 @@ public partial class FileTools
     }
 
     private async Task<CallToolResult> SearchNonDefaultRootAsync(
-        IResourceFileSystem fileSystem,
+        IFileStorage fileStorage,
         string rootName,
         Regex regex,
         bool isFolderSearch,
@@ -120,7 +120,7 @@ public partial class FileTools
     {
         var rootKey = new ResourceKey(rootName + ":");
         var allEntries = new List<FolderItem>();
-        await CollectRecursiveAsync(fileSystem, rootKey, allEntries);
+        await CollectRecursiveAsync(fileStorage, rootKey, allEntries);
 
         var matches = allEntries
             .Where(entry => entry.IsFolder == isFolderSearch)
@@ -143,11 +143,11 @@ public partial class FileTools
     }
 
     private static async Task CollectRecursiveAsync(
-        IResourceFileSystem fileSystem,
+        IFileStorage fileStorage,
         ResourceKey folder,
         List<FolderItem> entries)
     {
-        var enumerateResult = await fileSystem.EnumerateFolderAsync(folder);
+        var enumerateResult = await fileStorage.EnumerateFolderAsync(folder);
         if (enumerateResult.IsFailure)
         {
             return;
@@ -158,7 +158,7 @@ public partial class FileTools
             entries.Add(entry);
             if (entry.IsFolder)
             {
-                await CollectRecursiveAsync(fileSystem, entry.Resource, entries);
+                await CollectRecursiveAsync(fileStorage, entry.Resource, entries);
             }
         }
     }

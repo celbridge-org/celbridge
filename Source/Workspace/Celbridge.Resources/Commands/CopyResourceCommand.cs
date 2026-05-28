@@ -68,7 +68,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileSystem = workspaceService.ResourceFileSystem;
+        var fileStorage = workspaceService.FileStorage;
         var transferService = workspaceService.ResourceService.TransferService;
 
         // Filter out resources whose parent folders are also selected.
@@ -89,7 +89,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         {
             foreach (var sourceResource in filteredResources)
             {
-                var outcome = await CopySingleResourceAsync(sourceResource, resourceRegistry, fileSystem, transferService, resourceOpService);
+                var outcome = await CopySingleResourceAsync(sourceResource, resourceRegistry, fileStorage, transferService, resourceOpService);
 
                 if (outcome.Result.IsFailure)
                 {
@@ -185,7 +185,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private async Task<CopyResourceOutcome> CopySingleResourceAsync(
         ResourceKey sourceResource,
         IResourceRegistry resourceRegistry,
-        IResourceFileSystem fileSystem,
+        IFileStorage fileStorage,
         IResourceTransferService transferService,
         IResourceOperationService resourceOpService)
     {
@@ -219,7 +219,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         }
         var destPath = resolveDestResult.Value;
 
-        var infoResult = await fileSystem.GetInfoAsync(sourceResource);
+        var infoResult = await fileStorage.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)
         {
             return new CopyResourceOutcome(
@@ -230,8 +230,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 MoveDetail: null);
         }
         var info = infoResult.Value;
-        bool isFile = info.Kind == ResourceInfoKind.File;
-        bool isFolder = info.Kind == ResourceInfoKind.Folder;
+        bool isFile = info.Kind == StorageItemKind.File;
+        bool isFolder = info.Kind == StorageItemKind.Folder;
 
         if (!isFile && !isFolder)
         {
