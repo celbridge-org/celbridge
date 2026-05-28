@@ -1,4 +1,3 @@
-using Celbridge.Entities;
 using Celbridge.Resources.Helpers;
 
 namespace Celbridge.Resources.Services;
@@ -8,24 +7,15 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 internal abstract class FileOperation
 {
-    /// <summary>
-    /// Executes the operation for the first time or re-executes it (redo).
-    /// </summary>
     public abstract Task<Result> ExecuteAsync();
-
-    /// <summary>
-    /// Reverses the operation.
-    /// </summary>
     public abstract Task<Result> UndoAsync();
-
-    /// <summary>
-    /// Re-executes the operation after it was undone.
-    /// </summary>
     public virtual Task<Result> RedoAsync() => ExecuteAsync();
 }
 
 /// <summary>
-/// Represents a group of file operations that should be undone/redone together.
+/// Groups a sequence of operations into one undo unit. Undo runs in reverse so
+/// each operation's inverse executes against a filesystem in the same shape it
+/// saw on the forward pass.
 /// </summary>
 internal class FileOperationBatch : FileOperation
 {
@@ -33,9 +23,9 @@ internal class FileOperationBatch : FileOperation
 
     public override async Task<Result> ExecuteAsync()
     {
-        foreach (var op in Operations)
+        foreach (var operation in Operations)
         {
-            var result = await op.ExecuteAsync();
+            var result = await operation.ExecuteAsync();
             if (result.IsFailure)
             {
                 return result;
@@ -46,7 +36,6 @@ internal class FileOperationBatch : FileOperation
 
     public override async Task<Result> UndoAsync()
     {
-        // Undo in reverse order
         for (int i = Operations.Count - 1; i >= 0; i--)
         {
             var result = await Operations[i].UndoAsync();
@@ -60,46 +49,132 @@ internal class FileOperationBatch : FileOperation
 }
 
 /// <summary>
-/// Undoable copy file operation. The bytes-and-sidecar cascade runs through
-/// IFileStorage.CopyAsync; entity-data cascade rides alongside via
-/// EntityFileHelper.
+/// Undoable create-file or create-folder operation. The folder variant runs
+/// through the chokepoint's idempotent CreateFolderAsync; undo deletes the
+/// folder only when it is still empty so user content added after creation is
+/// not silently wiped. The file variant writes bytes through the chokepoint;
+/// undo hard-deletes (no trash) since the user is reversing a just-created
+/// resource they did not previously want.
 /// </summary>
-internal class CopyFileOperation : FileOperation
+internal class CreateOperation : FileOperation
 {
-    private readonly string _sourcePath;
-    private readonly string _destPath;
-    private readonly ResourceKey _sourceKey;
-    private readonly ResourceKey _destKey;
-    private readonly EntityFileHelper _entityHelper;
+    private readonly ResourceKey _resource;
+    private readonly bool _isFile;
+    private readonly byte[]? _content;
     private readonly IFileStorage _fileStorage;
 
-    public CopyResult? LastCopyResult { get; private set; }
-
-    public CopyFileOperation(
-        string sourcePath,
-        string destPath,
-        ResourceKey sourceKey,
-        ResourceKey destKey,
-        IEntityService? entityService,
-        IResourceRegistry? resourceRegistry,
-        IFileStorage fileStorage)
+    public CreateOperation(ResourceKey resource, byte[] content, IFileStorage fileStorage)
     {
-        _sourcePath = sourcePath;
-        _destPath = destPath;
-        _sourceKey = sourceKey;
-        _destKey = destKey;
-        _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
+        _resource = resource;
+        _isFile = true;
+        _content = content;
+        _fileStorage = fileStorage;
+    }
+
+    public CreateOperation(ResourceKey resource, IFileStorage fileStorage)
+    {
+        _resource = resource;
+        _isFile = false;
+        _content = null;
         _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        _entityHelper.CopyEntityDataFile(_sourcePath, _destPath);
+        if (_isFile)
+        {
+            var infoResult = await _fileStorage.GetInfoAsync(_resource);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind != StorageItemKind.NotFound)
+            {
+                return Result.Fail($"Resource already exists: '{_resource}'");
+            }
 
-        var copyResult = await _fileStorage.CopyAsync(_sourceKey, _destKey);
+            return await _fileStorage.WriteAllBytesAsync(_resource, _content!);
+        }
+
+        return await _fileStorage.CreateFolderAsync(_resource);
+    }
+
+    public override async Task<Result> UndoAsync()
+    {
+        var infoResult = await _fileStorage.GetInfoAsync(_resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == StorageItemKind.NotFound)
+        {
+            return Result.Ok();
+        }
+
+        if (!_isFile)
+        {
+            // Only remove an empty folder. If the user filled it after the
+            // original create, leave the contents alone.
+            var enumerateResult = await _fileStorage.EnumerateFolderAsync(_resource);
+            if (enumerateResult.IsFailure
+                || enumerateResult.Value.Count > 0)
+            {
+                return Result.Ok();
+            }
+        }
+
+        var deleteResult = await _fileStorage.DeleteAsync(_resource);
+        return deleteResult.IsSuccess
+            ? Result.Ok()
+            : Result.Fail(deleteResult);
+    }
+}
+
+/// <summary>
+/// Undoable copy of a file or folder through the chokepoint. The entity-data
+/// cascade runs alongside via EntityFileHelper; the bytes-and-sidecar cascade
+/// runs inside the chokepoint's CopyAsync.
+/// </summary>
+internal class CopyOperation : FileOperation
+{
+    private readonly ResourceKey _source;
+    private readonly ResourceKey _destination;
+    private readonly bool _isFolder;
+    private readonly EntityFileHelper _entityHelper;
+    private readonly IFileStorage _fileStorage;
+    private readonly string _sourcePath;
+    private readonly string _destinationPath;
+
+    public CopyResult? LastCopyResult { get; private set; }
+
+    public CopyOperation(
+        ResourceKey source,
+        ResourceKey destination,
+        bool isFolder,
+        string sourcePath,
+        string destinationPath,
+        EntityFileHelper entityHelper,
+        IFileStorage fileStorage)
+    {
+        _source = source;
+        _destination = destination;
+        _isFolder = isFolder;
+        _sourcePath = sourcePath;
+        _destinationPath = destinationPath;
+        _entityHelper = entityHelper;
+        _fileStorage = fileStorage;
+    }
+
+    public override async Task<Result> ExecuteAsync()
+    {
+        if (!_isFolder)
+        {
+            _entityHelper.CopyEntityDataFile(_sourcePath, _destinationPath);
+        }
+
+        var copyResult = await _fileStorage.CopyAsync(_source, _destination);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
+        }
+
+        if (_isFolder)
+        {
+            _entityHelper.CopyFolderEntityDataFiles(_sourcePath, _destinationPath);
         }
 
         LastCopyResult = copyResult.Value;
@@ -108,58 +183,71 @@ internal class CopyFileOperation : FileOperation
 
     public override async Task<Result> UndoAsync()
     {
-        _entityHelper.DeleteEntityDataFile(_destPath);
-
-        var deleteResult = await _fileStorage.DeleteAsync(_destKey);
-        if (deleteResult.IsFailure)
+        if (_isFolder)
         {
-            return Result.Fail(deleteResult);
+            _entityHelper.DeleteFolderEntityDataFiles(_destinationPath);
+        }
+        else
+        {
+            _entityHelper.DeleteEntityDataFile(_destinationPath);
         }
 
-        return Result.Ok();
+        var deleteResult = await _fileStorage.DeleteAsync(_destination);
+        return deleteResult.IsSuccess
+            ? Result.Ok()
+            : Result.Fail(deleteResult);
     }
 }
 
 /// <summary>
-/// Undoable move file operation. Bytes, reference rewrites, and sidecar cascade
-/// run through IFileStorage.MoveAsync; the inverse re-walks the reference
-/// graph in the opposite direction so undo restores references too.
+/// Undoable move of a file or folder through the chokepoint. The chokepoint
+/// handles references, the paired sidecar, and the source-removal broadcast;
+/// the inverse re-walks references in the opposite direction.
 /// </summary>
-internal class MoveFileOperation : FileOperation
+internal class MoveOperation : FileOperation
 {
-    private readonly string _sourcePath;
-    private readonly string _destPath;
-    private readonly ResourceKey _sourceKey;
-    private readonly ResourceKey _destKey;
+    private readonly ResourceKey _source;
+    private readonly ResourceKey _destination;
+    private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
     private readonly IFileStorage _fileStorage;
+    private readonly string _sourcePath;
+    private readonly string _destinationPath;
 
     public MoveResult? LastMoveResult { get; private set; }
 
-    public MoveFileOperation(
+    public MoveOperation(
+        ResourceKey source,
+        ResourceKey destination,
+        bool isFolder,
         string sourcePath,
-        string destPath,
-        ResourceKey sourceKey,
-        ResourceKey destKey,
-        IEntityService? entityService,
-        IResourceRegistry? resourceRegistry,
+        string destinationPath,
+        EntityFileHelper entityHelper,
         IFileStorage fileStorage)
     {
+        _source = source;
+        _destination = destination;
+        _isFolder = isFolder;
         _sourcePath = sourcePath;
-        _destPath = destPath;
-        _sourceKey = sourceKey;
-        _destKey = destKey;
-        _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
+        _destinationPath = destinationPath;
+        _entityHelper = entityHelper;
         _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        // Entity-data cascade runs before the bytes move so the source path
-        // still resolves while EntityFileHelper computes the destination key.
-        _entityHelper.MoveEntityDataFile(_sourcePath, _destPath);
+        // Entity-data cascade runs while the source still resolves so the
+        // helper can compute keys against the original location.
+        if (_isFolder)
+        {
+            _entityHelper.MoveFolderEntityDataFiles(_sourcePath, _destinationPath);
+        }
+        else
+        {
+            _entityHelper.MoveEntityDataFile(_sourcePath, _destinationPath);
+        }
 
-        var moveResult = await _fileStorage.MoveAsync(_sourceKey, _destKey);
+        var moveResult = await _fileStorage.MoveAsync(_source, _destination);
         if (moveResult.IsFailure)
         {
             return Result.Fail(moveResult);
@@ -171,723 +259,196 @@ internal class MoveFileOperation : FileOperation
 
     public override async Task<Result> UndoAsync()
     {
-        _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
-
-        var moveResult = await _fileStorage.MoveAsync(_destKey, _sourceKey);
-        if (moveResult.IsFailure)
+        if (_isFolder)
         {
-            return Result.Fail(moveResult);
+            _entityHelper.MoveFolderEntityDataFiles(_destinationPath, _sourcePath);
+        }
+        else
+        {
+            _entityHelper.MoveEntityDataFile(_destinationPath, _sourcePath);
         }
 
-        return Result.Ok();
+        var moveResult = await _fileStorage.MoveAsync(_destination, _source);
+        return moveResult.IsSuccess
+            ? Result.Ok()
+            : Result.Fail(moveResult);
     }
 }
 
 /// <summary>
-/// Undoable delete file operation.
+/// Undoable soft-delete through the trash service. The trash service handles
+/// the paired sidecar, entity-data cascade, and read-only attribute clearing
+/// as one atomic batch.
 /// </summary>
-internal class DeleteFileOperation : FileOperation
+internal class DeleteOperation : FileOperation
 {
-    private readonly string _originalPath;
-    private readonly string _trashPath;
-    private readonly string? _entityDataOriginalPath;
-    private readonly string? _entityDataTrashPath;
-    private readonly string? _sidecarOriginalPath;
-    private readonly string? _sidecarTrashPath;
+    private readonly ResourceKey _resource;
+    private readonly ITrashService _trashService;
+    private TrashEntry? _trashEntry;
 
-    public DeleteFileOperation(
-        string originalPath,
-        string trashPath,
-        string? entityDataOriginalPath,
-        string? entityDataTrashPath,
-        string? sidecarOriginalPath,
-        string? sidecarTrashPath)
+    public TrashEntry? TrashEntry => _trashEntry;
+
+    public DeleteOperation(ResourceKey resource, ITrashService trashService)
     {
-        _originalPath = originalPath;
-        _trashPath = trashPath;
-        _entityDataOriginalPath = entityDataOriginalPath;
-        _entityDataTrashPath = entityDataTrashPath;
-        _sidecarOriginalPath = sidecarOriginalPath;
-        _sidecarTrashPath = sidecarTrashPath;
+        _resource = resource;
+        _trashService = trashService;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        try
+        var result = await _trashService.MoveToTrashAsync(_resource);
+        if (result.IsFailure)
         {
-            if (!File.Exists(_originalPath))
-            {
-                return Result.Fail($"File does not exist: {_originalPath}");
-            }
-
-            // Clear read-only so the soft-delete (a File.Move into the trash
-            // folder) is not blocked by an attribute the user has explicitly
-            // chosen to override by invoking delete. The cleared state persists
-            // through undo — restoring a previously-read-only file produces a
-            // writable copy. A user who needs the read-only attribute back can
-            // re-apply it via the OS file properties dialog.
-            ClearReadOnlyIfSet(_originalPath);
-
-            await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_originalPath, _trashPath);
-
-            // Also move entity data file to trash if it exists
-            if (!string.IsNullOrEmpty(_entityDataOriginalPath) &&
-                !string.IsNullOrEmpty(_entityDataTrashPath) &&
-                File.Exists(_entityDataOriginalPath))
-            {
-                ClearReadOnlyIfSet(_entityDataOriginalPath);
-                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_entityDataOriginalPath, _entityDataTrashPath);
-            }
-
-            // Also move the paired sidecar to trash if it exists
-            if (!string.IsNullOrEmpty(_sidecarOriginalPath) &&
-                !string.IsNullOrEmpty(_sidecarTrashPath) &&
-                File.Exists(_sidecarOriginalPath))
-            {
-                ClearReadOnlyIfSet(_sidecarOriginalPath);
-                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_sidecarOriginalPath, _sidecarTrashPath);
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to delete file: {_originalPath}")
-                .WithException(ex);
-        }
-    }
-
-    private static void ClearReadOnlyIfSet(string path)
-    {
-        try
-        {
-            var info = new FileInfo(path);
-            if (info.Exists
-                && info.IsReadOnly)
-            {
-                info.IsReadOnly = false;
-            }
-        }
-        catch
-        {
-            // Best effort; surface from the subsequent move/delete failure.
-        }
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (!File.Exists(_trashPath))
-            {
-                return Result.Fail($"Trash file does not exist: {_trashPath}");
-            }
-
-            await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_trashPath, _originalPath);
-
-            // Also restore entity data file if it was trashed
-            if (!string.IsNullOrEmpty(_entityDataOriginalPath) &&
-                !string.IsNullOrEmpty(_entityDataTrashPath) &&
-                File.Exists(_entityDataTrashPath))
-            {
-                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_entityDataTrashPath, _entityDataOriginalPath);
-            }
-
-            // Also restore the paired sidecar if it was trashed
-            if (!string.IsNullOrEmpty(_sidecarOriginalPath) &&
-                !string.IsNullOrEmpty(_sidecarTrashPath) &&
-                File.Exists(_sidecarTrashPath))
-            {
-                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_sidecarTrashPath, _sidecarOriginalPath);
-            }
-
-            FileSystemHelper.CleanupEmptyParentDirectories(_trashPath);
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to restore deleted file: {_originalPath}")
-                .WithException(ex);
-        }
-    }
-
-    /// <summary>
-    /// Clean up the trash file when this operation is discarded from the undo stack.
-    /// </summary>
-    public void CleanupTrashFile()
-    {
-        try
-        {
-            FileSystemHelper.DeleteFileIfExists(_trashPath);
-
-            if (!string.IsNullOrEmpty(_entityDataTrashPath))
-            {
-                FileSystemHelper.DeleteFileIfExists(_entityDataTrashPath);
-            }
-
-            if (!string.IsNullOrEmpty(_sidecarTrashPath))
-            {
-                FileSystemHelper.DeleteFileIfExists(_sidecarTrashPath);
-            }
-
-            FileSystemHelper.CleanupEmptyParentDirectories(_trashPath);
-        }
-        catch
-        {
-            // Best effort cleanup - ignore errors
-        }
-    }
-}
-
-/// <summary>
-/// Undoable copy folder operation. Bytes-and-sidecar cascade runs through
-/// IFileStorage.CopyAsync; entity-data cascade rides alongside via
-/// EntityFileHelper.
-/// </summary>
-internal class CopyFolderOperation : FileOperation
-{
-    private readonly string _sourcePath;
-    private readonly string _destPath;
-    private readonly ResourceKey _sourceKey;
-    private readonly ResourceKey _destKey;
-    private readonly EntityFileHelper _entityHelper;
-    private readonly IFileStorage _fileStorage;
-
-    public CopyResult? LastCopyResult { get; private set; }
-
-    public CopyFolderOperation(
-        string sourcePath,
-        string destPath,
-        ResourceKey sourceKey,
-        ResourceKey destKey,
-        IEntityService? entityService,
-        IResourceRegistry? resourceRegistry,
-        IFileStorage fileStorage)
-    {
-        _sourcePath = sourcePath;
-        _destPath = destPath;
-        _sourceKey = sourceKey;
-        _destKey = destKey;
-        _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
-        _fileStorage = fileStorage;
-    }
-
-    public override async Task<Result> ExecuteAsync()
-    {
-        var copyResult = await _fileStorage.CopyAsync(_sourceKey, _destKey);
-        if (copyResult.IsFailure)
-        {
-            return Result.Fail(copyResult);
+            return Result.Fail(result);
         }
 
-        _entityHelper.CopyFolderEntityDataFiles(_sourcePath, _destPath);
-        LastCopyResult = copyResult.Value;
-
+        _trashEntry = result.Value;
         return Result.Ok();
     }
 
     public override async Task<Result> UndoAsync()
     {
-        _entityHelper.DeleteFolderEntityDataFiles(_destPath);
-
-        var deleteResult = await _fileStorage.DeleteAsync(_destKey);
-        if (deleteResult.IsFailure)
+        if (_trashEntry is null)
         {
-            return Result.Fail(deleteResult);
+            return Result.Fail($"No trash entry to restore for resource: '{_resource}'");
         }
 
-        return Result.Ok();
+        return await _trashService.RestoreFromTrashAsync(_trashEntry);
+    }
+
+    public async Task CleanupAsync()
+    {
+        if (_trashEntry is null)
+        {
+            return;
+        }
+
+        await _trashService.PurgeAsync(_trashEntry);
     }
 }
 
 /// <summary>
-/// Undoable move folder operation. Bytes, reference rewrites, and sidecar
-/// cascade run through IFileStorage.MoveAsync; the inverse re-walks the
-/// reference graph in the opposite direction.
-/// </summary>
-internal class MoveFolderOperation : FileOperation
-{
-    private readonly string _sourcePath;
-    private readonly string _destPath;
-    private readonly ResourceKey _sourceKey;
-    private readonly ResourceKey _destKey;
-    private readonly EntityFileHelper _entityHelper;
-    private readonly IFileStorage _fileStorage;
-
-    public MoveResult? LastMoveResult { get; private set; }
-
-    public MoveFolderOperation(
-        string sourcePath,
-        string destPath,
-        ResourceKey sourceKey,
-        ResourceKey destKey,
-        IEntityService? entityService,
-        IResourceRegistry? resourceRegistry,
-        IFileStorage fileStorage)
-    {
-        _sourcePath = sourcePath;
-        _destPath = destPath;
-        _sourceKey = sourceKey;
-        _destKey = destKey;
-        _entityHelper = new EntityFileHelper(entityService, resourceRegistry);
-        _fileStorage = fileStorage;
-    }
-
-    public override async Task<Result> ExecuteAsync()
-    {
-        // Move entity data files first (while source folder still exists for enumeration).
-        _entityHelper.MoveFolderEntityDataFiles(_sourcePath, _destPath);
-
-        var moveResult = await _fileStorage.MoveAsync(_sourceKey, _destKey);
-        if (moveResult.IsFailure)
-        {
-            return Result.Fail(moveResult);
-        }
-
-        LastMoveResult = moveResult.Value;
-        return Result.Ok();
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        // Move entity data files back first (while dest folder still exists for enumeration).
-        _entityHelper.MoveFolderEntityDataFiles(_destPath, _sourcePath);
-
-        var moveResult = await _fileStorage.MoveAsync(_destKey, _sourceKey);
-        if (moveResult.IsFailure)
-        {
-            return Result.Fail(moveResult);
-        }
-
-        return Result.Ok();
-    }
-}
-
-/// <summary>
-/// Undoable delete folder operation.
-/// </summary>
-internal class DeleteFolderOperation : FileOperation
-{
-    private readonly string _originalPath;
-    private readonly string _trashPath;
-    private readonly bool _wasEmpty;
-    private readonly List<(string OriginalPath, string TrashPath)> _entityDataFiles;
-
-    public DeleteFolderOperation(
-        string originalPath, 
-        string trashPath, 
-        bool wasEmpty,
-        List<(string OriginalPath, string TrashPath)> entityDataFiles)
-    {
-        _originalPath = originalPath;
-        _trashPath = trashPath;
-        _wasEmpty = wasEmpty;
-        _entityDataFiles = entityDataFiles;
-    }
-
-    public override async Task<Result> ExecuteAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (!Directory.Exists(_originalPath))
-            {
-                return Result.Fail($"Folder does not exist: {_originalPath}");
-            }
-
-            // Clear read-only on every contained file so the folder move into
-            // trash (or the empty-folder Directory.Delete) is not blocked by an
-            // attribute the user has explicitly chosen to override by invoking
-            // delete on the parent folder.
-            ClearReadOnlyRecursive(_originalPath);
-
-            if (FileSystemHelper.IsDirectoryEmpty(_originalPath))
-            {
-                Directory.Delete(_originalPath);
-            }
-            else
-            {
-                // Move entity data files to trash first
-                await MoveEntityDataFilesToTrashAsync();
-
-                // Non-empty folder - move to trash
-                await FileSystemHelper.MoveDirectoryWithParentCreationAsync(_originalPath, _trashPath);
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to delete folder: {_originalPath}")
-                .WithException(ex);
-        }
-    }
-
-    private static void ClearReadOnlyRecursive(string folder)
-    {
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    var info = new FileInfo(file);
-                    if (info.Exists
-                        && info.IsReadOnly)
-                    {
-                        info.IsReadOnly = false;
-                    }
-                }
-                catch
-                {
-                    // Best effort per file; surface aggregate via the delete failure.
-                }
-            }
-        }
-        catch
-        {
-            // Best effort traversal.
-        }
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (_wasEmpty)
-            {
-                Directory.CreateDirectory(_originalPath);
-            }
-            else
-            {
-                if (!Directory.Exists(_trashPath))
-                {
-                    return Result.Fail($"Trash folder does not exist: {_trashPath}");
-                }
-
-                await FileSystemHelper.MoveDirectoryWithParentCreationAsync(_trashPath, _originalPath);
-
-                // Restore entity data files from trash
-                await RestoreEntityDataFilesAsync();
-
-                FileSystemHelper.CleanupEmptyParentDirectories(_trashPath);
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to restore deleted folder: {_originalPath}")
-                .WithException(ex);
-        }
-    }
-
-    /// <summary>
-    /// Clean up the trash folder when this operation is discarded from the undo stack.
-    /// </summary>
-    public void CleanupTrashFolder()
-    {
-        try
-        {
-            if (!_wasEmpty && Directory.Exists(_trashPath))
-            {
-                Directory.Delete(_trashPath, recursive: true);
-                FileSystemHelper.CleanupEmptyParentDirectories(_trashPath);
-            }
-
-            // Also clean up entity data files in trash
-            foreach (var (_, trashPath) in _entityDataFiles)
-            {
-                FileSystemHelper.DeleteFileIfExists(trashPath);
-                FileSystemHelper.CleanupEmptyParentDirectories(trashPath);
-            }
-        }
-        catch
-        {
-            // Best effort cleanup - ignore errors
-        }
-    }
-
-    private async Task MoveEntityDataFilesToTrashAsync()
-    {
-        foreach (var (originalPath, trashPath) in _entityDataFiles)
-        {
-            if (File.Exists(originalPath))
-            {
-                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(originalPath, trashPath);
-                FileSystemHelper.CleanupEmptyParentDirectories(originalPath);
-            }
-        }
-    }
-
-    private async Task RestoreEntityDataFilesAsync()
-    {
-        foreach (var (originalPath, trashPath) in _entityDataFiles)
-        {
-            if (File.Exists(trashPath))
-            {
-                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(trashPath, originalPath);
-                FileSystemHelper.CleanupEmptyParentDirectories(trashPath);
-            }
-        }
-    }
-}
-
-/// <summary>
-/// Undoable copy of bytes from outside the project folder (file). External
+/// Undoable import of a file or folder from outside the project. External
 /// imports carry no inbound references or sidecars, so the cascade does not
-/// apply; this operation does a direct File.Copy and tracks undo as a delete.
+/// apply. Source bytes are read directly (the source is outside the registry);
+/// the destination flows through the chokepoint for containment validation.
 /// </summary>
-internal class CopyExternalFileOperation : FileOperation
+internal class ImportExternalOperation : FileOperation
 {
     private readonly string _sourcePath;
-    private readonly string _destPath;
+    private readonly ResourceKey _destination;
+    private readonly bool _isFolder;
+    private readonly IFileStorage _fileStorage;
 
-    public CopyExternalFileOperation(string sourcePath, string destPath)
+    public ImportExternalOperation(
+        string sourcePath,
+        ResourceKey destination,
+        bool isFolder,
+        IFileStorage fileStorage)
     {
         _sourcePath = sourcePath;
-        _destPath = destPath;
+        _destination = destination;
+        _isFolder = isFolder;
+        _fileStorage = fileStorage;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (!File.Exists(_sourcePath))
-            {
-                return Result.Fail($"Source file does not exist: {_sourcePath}");
-            }
-            if (File.Exists(_destPath))
-            {
-                return Result.Fail($"Destination file already exists: {_destPath}");
-            }
-
-            var destFolder = Path.GetDirectoryName(_destPath);
-            if (!string.IsNullOrEmpty(destFolder)
-                && !Directory.Exists(destFolder))
-            {
-                Directory.CreateDirectory(destFolder);
-            }
-
-            File.Copy(_sourcePath, _destPath);
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to copy external file: {_sourcePath} to {_destPath}")
-                .WithException(ex);
-        }
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (File.Exists(_destPath))
-            {
-                File.Delete(_destPath);
-            }
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to undo external file copy: {_destPath}")
-                .WithException(ex);
-        }
-    }
-}
-
-/// <summary>
-/// Undoable copy of bytes from outside the project folder (folder). Mirrors
-/// CopyExternalFileOperation; no cascade applies.
-/// </summary>
-internal class CopyExternalFolderOperation : FileOperation
-{
-    private readonly string _sourcePath;
-    private readonly string _destPath;
-
-    public CopyExternalFolderOperation(string sourcePath, string destPath)
-    {
-        _sourcePath = sourcePath;
-        _destPath = destPath;
-    }
-
-    public override async Task<Result> ExecuteAsync()
-    {
-        await Task.CompletedTask;
-
-        try
+        if (_isFolder)
         {
             if (!Directory.Exists(_sourcePath))
             {
-                return Result.Fail($"Source folder does not exist: {_sourcePath}");
-            }
-            if (Directory.Exists(_destPath))
-            {
-                return Result.Fail($"Destination folder already exists: {_destPath}");
+                return Result.Fail($"Source folder does not exist: '{_sourcePath}'");
             }
 
-            ResourceUtils.CopyFolder(_sourcePath, _destPath);
-            return Result.Ok();
+            var infoResult = await _fileStorage.GetInfoAsync(_destination);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind != StorageItemKind.NotFound)
+            {
+                return Result.Fail($"Destination already exists: '{_destination}'");
+            }
+
+            return await ImportFolderAsync(_sourcePath, _destination);
+        }
+
+        if (!File.Exists(_sourcePath))
+        {
+            return Result.Fail($"Source file does not exist: '{_sourcePath}'");
+        }
+
+        var destInfoResult = await _fileStorage.GetInfoAsync(_destination);
+        if (destInfoResult.IsSuccess
+            && destInfoResult.Value.Kind != StorageItemKind.NotFound)
+        {
+            return Result.Fail($"Destination already exists: '{_destination}'");
+        }
+
+        try
+        {
+            var bytes = await File.ReadAllBytesAsync(_sourcePath);
+            return await _fileStorage.WriteAllBytesAsync(_destination, bytes);
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to copy external folder: {_sourcePath} to {_destPath}")
+            return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_destination}'")
                 .WithException(ex);
         }
     }
 
     public override async Task<Result> UndoAsync()
     {
-        await Task.CompletedTask;
-
-        try
+        var infoResult = await _fileStorage.GetInfoAsync(_destination);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            if (Directory.Exists(_destPath))
-            {
-                Directory.Delete(_destPath, recursive: true);
-            }
             return Result.Ok();
         }
-        catch (Exception ex)
+
+        var deleteResult = await _fileStorage.DeleteAsync(_destination);
+        return deleteResult.IsSuccess
+            ? Result.Ok()
+            : Result.Fail(deleteResult);
+    }
+
+    private async Task<Result> ImportFolderAsync(string sourceFolderPath, ResourceKey destinationFolder)
+    {
+        var createResult = await _fileStorage.CreateFolderAsync(destinationFolder);
+        if (createResult.IsFailure)
         {
-            return Result.Fail($"Failed to undo external folder copy: {_destPath}")
-                .WithException(ex);
+            return createResult;
         }
-    }
-}
-
-/// <summary>
-/// Undoable create file operation.
-/// Undo deletes the created file. Redo recreates it.
-/// </summary>
-internal class CreateFileOperation : FileOperation
-{
-    private readonly string _filePath;
-    private readonly byte[] _content;
-
-    public CreateFileOperation(string filePath, byte[] content)
-    {
-        _filePath = filePath;
-        _content = content;
-    }
-
-    public override async Task<Result> ExecuteAsync()
-    {
-        await Task.CompletedTask;
 
         try
         {
-            if (File.Exists(_filePath))
+            foreach (var file in Directory.GetFiles(sourceFolderPath))
             {
-                return Result.Fail($"File already exists: {_filePath}");
-            }
-
-            var parentFolder = Path.GetDirectoryName(_filePath);
-            if (!Directory.Exists(parentFolder))
-            {
-                return Result.Fail($"Parent folder does not exist: {parentFolder}");
-            }
-
-            File.WriteAllBytes(_filePath, _content);
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to create file: {_filePath}")
-                .WithException(ex);
-        }
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (File.Exists(_filePath))
-            {
-                File.Delete(_filePath);
-            }
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to undo create file: {_filePath}")
-                .WithException(ex);
-        }
-    }
-}
-
-/// <summary>
-/// Undoable create folder operation.
-/// Undo deletes the created folder. Redo recreates it.
-/// </summary>
-internal class CreateFolderOperation : FileOperation
-{
-    private readonly string _folderPath;
-
-    public CreateFolderOperation(string folderPath)
-    {
-        _folderPath = folderPath;
-    }
-
-    public override async Task<Result> ExecuteAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (Directory.Exists(_folderPath))
-            {
-                return Result.Fail($"Folder already exists: {_folderPath}");
-            }
-
-            // Directory.CreateDirectory handles intermediate parent folders automatically
-            Directory.CreateDirectory(_folderPath);
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to create folder: {_folderPath}")
-                .WithException(ex);
-        }
-    }
-
-    public override async Task<Result> UndoAsync()
-    {
-        await Task.CompletedTask;
-
-        try
-        {
-            if (Directory.Exists(_folderPath))
-            {
-                // Only delete if empty - if user added content, don't delete it
-                var files = Directory.GetFiles(_folderPath);
-                var dirs = Directory.GetDirectories(_folderPath);
-                if (files.Length == 0 && dirs.Length == 0)
+                var fileName = Path.GetFileName(file);
+                var destinationFile = destinationFolder.Combine(fileName);
+                var bytes = await File.ReadAllBytesAsync(file);
+                var writeResult = await _fileStorage.WriteAllBytesAsync(destinationFile, bytes);
+                if (writeResult.IsFailure)
                 {
-                    Directory.Delete(_folderPath);
+                    return writeResult;
                 }
             }
-            return Result.Ok();
+
+            foreach (var subFolder in Directory.GetDirectories(sourceFolderPath))
+            {
+                var folderName = Path.GetFileName(subFolder);
+                var destinationSubFolder = destinationFolder.Combine(folderName);
+                var recurseResult = await ImportFolderAsync(subFolder, destinationSubFolder);
+                if (recurseResult.IsFailure)
+                {
+                    return recurseResult;
+                }
+            }
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to undo create folder: {_folderPath}")
+            return Result.Fail($"Failed to import external folder from '{sourceFolderPath}' to '{destinationFolder}'")
                 .WithException(ex);
         }
+
+        return Result.Ok();
     }
 }

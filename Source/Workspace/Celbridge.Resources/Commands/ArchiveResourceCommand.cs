@@ -105,22 +105,6 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return Result.Fail($"Invalid archive resource key: '{ArchiveResource}'");
         }
 
-        var resolveSourceResult = resourceRegistry.ResolveResourcePath(SourceResource);
-        if (resolveSourceResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{SourceResource}'")
-                .WithErrors(resolveSourceResult);
-        }
-        var sourcePath = resolveSourceResult.Value;
-
-        var resolveArchiveResult = resourceRegistry.ResolveResourcePath(ArchiveResource);
-        if (resolveArchiveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{ArchiveResource}'")
-                .WithErrors(resolveArchiveResult);
-        }
-        var archivePath = resolveArchiveResult.Value;
-
         var sourceInfoResult = await fileStorage.GetInfoAsync(SourceResource);
         if (sourceInfoResult.IsFailure)
         {
@@ -150,7 +134,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         // If overwriting, delete the existing file first so it can be restored on undo
         if (Overwrite && archiveExists)
         {
-            var deleteResult = await resourceOpService.DeleteFileAsync(archivePath);
+            var deleteResult = await resourceOpService.DeleteAsync(ArchiveResource);
             if (deleteResult.IsFailure)
             {
                 return deleteResult;
@@ -211,7 +195,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return Result.Fail($"Failed to create archive: {exception.Message}");
         }
 
-        var createResult = await resourceOpService.CreateFileAsync(archivePath, archiveBytes);
+        var createResult = await resourceOpService.CreateFileAsync(ArchiveResource, archiveBytes);
         if (createResult.IsFailure)
         {
             return createResult;

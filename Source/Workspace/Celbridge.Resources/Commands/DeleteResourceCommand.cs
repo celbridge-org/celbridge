@@ -26,7 +26,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     private readonly IDialogService _dialogService;
 
     private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
-    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
     private IResourceScanner ResourceScanner => _workspaceWrapper.WorkspaceService.ResourceScanner;
     private ISidecarService SidecarService => _workspaceWrapper.WorkspaceService.SidecarService;
@@ -178,20 +177,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         {
             foreach (var resource in Resources)
             {
-                var resolveResult = ResourceRegistry.ResolveResourcePath(resource);
-                if (resolveResult.IsFailure)
-                {
-                    _logger.LogWarning($"Cannot delete resource because path could not be resolved: '{resource}'");
-                    resourceResults.Add(new DeleteResourceResult(
-                        resource,
-                        DeleteResourceOutcome.IOFailure,
-                        SidecarOutcome.NotPresent,
-                        FailureMessage: resolveResult.FirstErrorMessage));
-                    failedItems.Add(resource.ResourceName);
-                    continue;
-                }
-                var resourcePath = resolveResult.Value;
-
                 // Probe the sidecar up front so we can report whether the delete
                 // cascaded one. After the delete runs the sidecar is gone (or
                 // never existed), so the only honest moment to ask is now.
@@ -218,16 +203,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 }
                 var info = infoResult.Value;
 
-                Result deleteResult;
-                if (info.Kind == StorageItemKind.File)
-                {
-                    deleteResult = await ResourceOperationService.DeleteFileAsync(resourcePath);
-                }
-                else if (info.Kind == StorageItemKind.Folder)
-                {
-                    deleteResult = await ResourceOperationService.DeleteFolderAsync(resourcePath);
-                }
-                else
+                if (info.Kind == StorageItemKind.NotFound)
                 {
                     _logger.LogWarning($"Cannot delete resource because it does not exist: '{resource}'");
                     resourceResults.Add(new DeleteResourceResult(
@@ -238,6 +214,8 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                     failedItems.Add(resource.ResourceName);
                     continue;
                 }
+
+                var deleteResult = await ResourceOperationService.DeleteAsync(resource);
 
                 if (deleteResult.IsFailure)
                 {

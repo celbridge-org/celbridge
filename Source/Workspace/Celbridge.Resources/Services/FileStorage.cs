@@ -1,7 +1,6 @@
 using System.Text;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources.Helpers;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -242,11 +241,11 @@ public sealed class FileStorage : IFileStorage
                 // attribute the user has explicitly chosen to override by
                 // invoking a move on the file.
                 ClearReadOnlyIfSet(sourcePath);
-                await FileSystemHelper.MoveWithRetryAsync(() => File.Move(sourcePath, destPath));
+                await MoveWithRetryAsync(() => File.Move(sourcePath, destPath));
             }
             else
             {
-                await FileSystemHelper.MoveWithRetryAsync(() => Directory.Move(sourcePath, destPath));
+                await MoveWithRetryAsync(() => Directory.Move(sourcePath, destPath));
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -463,6 +462,44 @@ public sealed class FileStorage : IFileStorage
             // clean up the index.
         }
         return keys;
+    }
+
+    public async Task<Result> CreateFolderAsync(ResourceKey folder)
+    {
+        await Task.CompletedTask;
+
+        var resolveResult = ResolvePath(folder);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{folder}'")
+                .WithErrors(resolveResult);
+        }
+        var folderPath = resolveResult.Value;
+
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        if (!IsRootWritable(rootHandlerRegistry, folder))
+        {
+            return Result.Fail($"Root '{folder.Root}' is read-only.");
+        }
+
+        if (File.Exists(folderPath))
+        {
+            return Result.Fail($"Cannot create folder; a file already exists at: '{folder}'");
+        }
+
+        try
+        {
+            // Directory.CreateDirectory is idempotent: existing folders return
+            // the DirectoryInfo without error, and missing intermediate parents
+            // are created in the same call.
+            Directory.CreateDirectory(folderPath);
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Failed to create folder: '{folder}'")
+                .WithException(ex);
+        }
     }
 
     public async Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource)
@@ -866,7 +903,7 @@ public sealed class FileStorage : IFileStorage
                 Directory.CreateDirectory(destFolder);
             }
 
-            await FileSystemHelper.MoveWithRetryAsync(() => File.Move(sourceSidecarPath, destSidecarPath));
+            await MoveWithRetryAsync(() => File.Move(sourceSidecarPath, destSidecarPath));
             return SidecarOutcome.Cascaded;
         }
         catch (Exception ex)
@@ -1163,6 +1200,27 @@ public sealed class FileStorage : IFileStorage
         }
     }
 
+    // Runs a synchronous move action under the chokepoint's bounded-retry
+    // policy. A file briefly held open by AV, indexer, or sync clients after
+    // creation clears within milliseconds; the same retry budget the read and
+    // write paths use catches the common races. Non-IO exceptions and the final
+    // attempt's IOException propagate unchanged so persistent failures surface.
+    private static async Task MoveWithRetryAsync(Action moveAction)
+    {
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            try
+            {
+                moveAction();
+                return;
+            }
+            catch (IOException) when (attempt < MaxAttempts)
+            {
+                await Task.Delay(BaseRetryDelayMs * attempt);
+            }
+        }
+    }
+
     // Writes bytes to a uniquely-named temp file inside the project's central
     // staging folder, then atomically replaces the destination via File.Move.
     // A unique filename per write prevents concurrent writers to the same
@@ -1174,7 +1232,7 @@ public sealed class FileStorage : IFileStorage
         try
         {
             await File.WriteAllBytesAsync(tempPath, bytes);
-            await FileSystemHelper.MoveWithRetryAsync(() => File.Move(tempPath, resourcePath, overwrite: true));
+            await MoveWithRetryAsync(() => File.Move(tempPath, resourcePath, overwrite: true));
         }
         catch
         {

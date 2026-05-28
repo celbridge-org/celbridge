@@ -169,6 +169,12 @@ public interface IFileStorage
     Task<Result<DeleteResult>> DeleteAsync(ResourceKey source);
 
     /// <summary>
+    /// Creates a folder at the resource path, including any missing parents.
+    /// Idempotent: succeeds without error when the folder already exists.
+    /// </summary>
+    Task<Result> CreateFolderAsync(ResourceKey folder);
+
+    /// <summary>
     /// Probes a resource and returns its kind (NotFound, File, or Folder) along
     /// with its size and modified-time in a single roundtrip. Callers that only
     /// need existence check Kind != NotFound; callers that need to discriminate

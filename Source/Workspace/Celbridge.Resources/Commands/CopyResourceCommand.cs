@@ -37,7 +37,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private readonly ICommandService _commandService;
 
     private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
-    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
     private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
 
@@ -181,33 +180,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // Resolve destination to handle folder drops
         var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
 
-        // Convert resource keys to absolute paths via the registry so root prefixes
-        // (project:, temp:, logs:) are stripped correctly. Path.Combine with the bare
-        // ResourceKey would incorporate the prefix as a literal directory component.
-        var resolveSourceResult = ResourceRegistry.ResolveResourcePath(sourceResource);
-        if (resolveSourceResult.IsFailure)
-        {
-            return new CopyResourceOutcome(
-                Result.Fail($"Failed to resolve path for source resource: '{sourceResource}'")
-                    .WithErrors(resolveSourceResult),
-                ParentFolder: null,
-                CopiedFolder: null,
-                MoveDetail: null);
-        }
-        var sourcePath = resolveSourceResult.Value;
-
-        var resolveDestResult = ResourceRegistry.ResolveResourcePath(resolvedDestResource);
-        if (resolveDestResult.IsFailure)
-        {
-            return new CopyResourceOutcome(
-                Result.Fail($"Failed to resolve path for destination resource: '{resolvedDestResource}'")
-                    .WithErrors(resolveDestResult),
-                ParentFolder: null,
-                CopiedFolder: null,
-                MoveDetail: null);
-        }
-        var destPath = resolveDestResult.Value;
-
         var infoResult = await FileStorage.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)
         {
@@ -219,13 +191,12 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 MoveDetail: null);
         }
         var info = infoResult.Value;
-        bool isFile = info.Kind == StorageItemKind.File;
         bool isFolder = info.Kind == StorageItemKind.Folder;
 
-        if (!isFile && !isFolder)
+        if (info.Kind == StorageItemKind.NotFound)
         {
             return new CopyResourceOutcome(
-                Result.Fail($"Resource does not exist: {sourcePath}"),
+                Result.Fail($"Resource does not exist: '{sourceResource}'"),
                 ParentFolder: null,
                 CopiedFolder: null,
                 MoveDetail: null);
@@ -234,36 +205,18 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         Result result;
         MoveResult? moveDetail = null;
 
-        if (isFile)
+        if (TransferMode == DataTransferMode.Copy)
         {
-            if (TransferMode == DataTransferMode.Copy)
-            {
-                result = await ResourceOperationService.CopyFileAsync(sourcePath, destPath);
-            }
-            else
-            {
-                var moveResult = await ResourceOperationService.MoveFileAsync(sourcePath, destPath);
-                result = moveResult;
-                if (moveResult.IsSuccess)
-                {
-                    moveDetail = moveResult.Value;
-                }
-            }
+            var copyResult = await ResourceOperationService.CopyAsync(sourceResource, resolvedDestResource);
+            result = copyResult;
         }
         else
         {
-            if (TransferMode == DataTransferMode.Copy)
+            var moveResult = await ResourceOperationService.MoveAsync(sourceResource, resolvedDestResource);
+            result = moveResult;
+            if (moveResult.IsSuccess)
             {
-                result = await ResourceOperationService.CopyFolderAsync(sourcePath, destPath);
-            }
-            else
-            {
-                var moveResult = await ResourceOperationService.MoveFolderAsync(sourcePath, destPath);
-                result = moveResult;
-                if (moveResult.IsSuccess)
-                {
-                    moveDetail = moveResult.Value;
-                }
+                moveDetail = moveResult.Value;
             }
         }
 

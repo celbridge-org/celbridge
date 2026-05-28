@@ -52,6 +52,12 @@ public interface IWorkspaceService
     IFileStorage FileStorage { get; }
 
     /// <summary>
+    /// Returns the soft-delete trash service: move-to-trash, restore, and purge
+    /// operations used by the resource operation service for undoable deletes.
+    /// </summary>
+    ITrashService TrashService { get; }
+
+    /// <summary>
     /// Returns the on-demand scanner over project text and sidecar files,
     /// used by the rename cascade, tag queries, and the project-health check.
     /// </summary>

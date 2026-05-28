@@ -742,6 +742,74 @@ public class FileStorageTests
     }
 
     [Test]
+    public async Task CreateFolderAsync_CreatesFolder_WhenAbsent()
+    {
+        var folder = new ResourceKey("new-folder");
+        var folderPath = Path.Combine(_tempFolder, "new-folder");
+        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _fileStorage.CreateFolderAsync(folder);
+
+        result.IsSuccess.Should().BeTrue();
+        Directory.Exists(folderPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateFolderAsync_IsIdempotent_WhenFolderAlreadyExists()
+    {
+        var folder = new ResourceKey("existing");
+        var folderPath = Path.Combine(_tempFolder, "existing");
+        Directory.CreateDirectory(folderPath);
+        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _fileStorage.CreateFolderAsync(folder);
+
+        result.IsSuccess.Should().BeTrue();
+        Directory.Exists(folderPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateFolderAsync_CreatesMissingIntermediateParents()
+    {
+        var folder = new ResourceKey("outer/middle/inner");
+        var folderPath = Path.Combine(_tempFolder, "outer", "middle", "inner");
+        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _fileStorage.CreateFolderAsync(folder);
+
+        result.IsSuccess.Should().BeTrue();
+        Directory.Exists(folderPath).Should().BeTrue();
+        Directory.Exists(Path.Combine(_tempFolder, "outer", "middle")).Should().BeTrue();
+        Directory.Exists(Path.Combine(_tempFolder, "outer")).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateFolderAsync_FailsWhenPathIsAlreadyAFile()
+    {
+        var folder = new ResourceKey("collision");
+        var folderPath = Path.Combine(_tempFolder, "collision");
+        await File.WriteAllTextAsync(folderPath, "I am a file");
+        _resourceRegistry.ResolveResourcePath(folder).Returns(Result<string>.Ok(folderPath));
+
+        var result = await _fileStorage.CreateFolderAsync(folder);
+
+        result.IsFailure.Should().BeTrue();
+        File.Exists(folderPath).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateFolderAsync_ReturnsFailure_WhenResolveFails()
+    {
+        var folder = new ResourceKey("bad");
+        _resourceRegistry.ResolveResourcePath(folder)
+            .Returns(Result<string>.Fail("simulated resolve failure"));
+
+        var result = await _fileStorage.CreateFolderAsync(folder);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
     public async Task ReadAllBytesAsync_FailsImmediately_WhenFileMissing_WithoutRetry()
     {
         // FileNotFoundException is permanent; the retry budget should not be

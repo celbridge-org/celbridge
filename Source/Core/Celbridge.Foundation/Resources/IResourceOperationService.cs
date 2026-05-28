@@ -3,54 +3,64 @@ using Celbridge.DataTransfer;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Service for performing resource operations with undo/redo support.
+/// The workspace-scoped resource operation service. Layers session-local undo
+/// and redo, batched grouping, and soft-delete trash on top of the IFileStorage
+/// chokepoint. Every method names its target with a ResourceKey; external
+/// imports keep a string source path because the source lies outside the
+/// registry by definition.
 /// </summary>
 public interface IResourceOperationService
 {
     /// <summary>
-    /// Create a new file with the specified content.
+    /// Creates a new file at the resource with the given content. Fails if the
+    /// resource already exists.
     /// </summary>
-    Task<Result> CreateFileAsync(string path, byte[] content);
+    Task<Result> CreateFileAsync(ResourceKey resource, byte[] content);
 
     /// <summary>
-    /// Create a new empty folder.
+    /// Creates a new empty folder at the resource, including any missing parents.
+    /// Idempotent: succeeds if the folder already exists.
     /// </summary>
-    Task<Result> CreateFolderAsync(string path);
+    Task<Result> CreateFolderAsync(ResourceKey resource);
 
     /// <summary>
-    /// Copy a file from source to destination path.
+    /// Copies a file or folder from one resource location to another. The
+    /// returned CopyResult carries the paired-sidecar cascade outcome.
     /// </summary>
-    Task<Result<CopyResult>> CopyFileAsync(string sourcePath, string destPath);
+    Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination);
 
     /// <summary>
-    /// Move a file from source to destination path.
+    /// Moves a file or folder from one resource location to another. The
+    /// returned MoveResult carries the reference-rewrite and paired-sidecar
+    /// cascade outcomes.
     /// </summary>
-    Task<Result<MoveResult>> MoveFileAsync(string sourcePath, string destPath);
+    Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey destination);
 
     /// <summary>
-    /// Delete a file at the specified path.
+    /// Soft-deletes the resource via the trash service, preserving undo. The
+    /// paired sidecar (if any) cascades into the same trash batch.
     /// </summary>
-    Task<Result> DeleteFileAsync(string path);
+    Task<Result> DeleteAsync(ResourceKey resource);
 
     /// <summary>
-    /// Copy a folder from source to destination path.
+    /// Imports a file from outside the project into a registry-addressable
+    /// destination. The source path is taken as-is; the destination receives
+    /// containment validation through the chokepoint.
     /// </summary>
-    Task<Result<CopyResult>> CopyFolderAsync(string sourcePath, string destPath);
+    Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey destination);
 
     /// <summary>
-    /// Move a folder from source to destination path.
+    /// Imports a folder from outside the project into a registry-addressable
+    /// destination. The source is enumerated recursively; each file lands at
+    /// its corresponding destination key through the chokepoint.
     /// </summary>
-    Task<Result<MoveResult>> MoveFolderAsync(string sourcePath, string destPath);
+    Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey destination);
 
     /// <summary>
-    /// Delete a folder at the specified path.
+    /// Copies or moves the resource depending on the transfer mode. Dispatches
+    /// file vs folder internally via the chokepoint's GetInfoAsync probe.
     /// </summary>
-    Task<Result> DeleteFolderAsync(string path);
-
-    /// <summary>
-    /// Transfer a file or folder from source to destination path.
-    /// </summary>
-    Task<Result> TransferAsync(string sourcePath, string destPath, DataTransferMode mode);
+    Task<Result> TransferAsync(ResourceKey source, ResourceKey destination, DataTransferMode mode);
 
     /// <summary>
     /// Begin a batch of operations that will be grouped together as a single undo unit.

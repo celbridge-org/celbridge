@@ -24,6 +24,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
     public IFileStorage FileStorage { get; }
+    public ITrashService TrashService { get; }
     public IResourceScanner ResourceScanner { get; }
     public ISidecarService SidecarService { get; }
     public IExplorerService ExplorerService { get; }
@@ -61,6 +62,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
         FileStorage = serviceProvider.GetRequiredService<IFileStorage>();
+        TrashService = serviceProvider.GetRequiredService<ITrashService>();
         ResourceScanner = serviceProvider.GetRequiredService<IResourceScanner>();
         SidecarService = serviceProvider.GetRequiredService<ISidecarService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();

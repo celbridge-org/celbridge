@@ -1,15 +1,18 @@
 using Celbridge.DataTransfer;
 using Celbridge.Entities;
 using Celbridge.Logging;
-using Celbridge.Projects;
 using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Service for performing resource operations with undo/redo support.
-/// Uses a soft-delete trash folder approach for delete operations.
+/// Wraps the IFileStorage chokepoint and the ITrashService soft-delete layer
+/// with a session-local undo/redo stack and batched grouping. Public methods
+/// accept ResourceKey; external imports keep a string source path because the
+/// source is outside the registry by definition. All actual disk I/O routes
+/// through the chokepoint or the trash service; this class owns no direct
+/// System.IO calls.
 /// </summary>
 public class ResourceOperationService : IResourceOperationService
 {
@@ -34,454 +37,214 @@ public class ResourceOperationService : IResourceOperationService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    private IEntityService? EntityService =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.EntityService : null;
-
-    private IResourceRegistry? ResourceRegistry =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.ResourceService.Registry : null;
-
-    private IFileStorage? FileStorage =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.FileStorage : null;
-
-    private string ProjectFolderPath =>
-        _workspaceWrapper.IsWorkspacePageLoaded ? ResourceRegistry!.ProjectFolderPath : string.Empty;
-
-    /// <summary>
-    /// Gets the path to the trash folder for soft-deleted files.
-    /// </summary>
-    private string TrashFolderPath =>
-        Path.Combine(ProjectFolderPath, ProjectConstants.CelbridgeFolder, ProjectConstants.CelbridgeTrashFolder);
-
-    public async Task<Result> CreateFileAsync(string path, byte[] content)
-    {
-        path = Path.GetFullPath(path);
-
-        var operation = new CreateFileOperation(path, content);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
-        {
-            AddOperation(operation);
-        }
-
-        return result;
-    }
-
-    public async Task<Result> CreateFolderAsync(string path)
-    {
-        path = Path.GetFullPath(path);
-
-        var operation = new CreateFolderOperation(path);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
-        {
-            AddOperation(operation);
-        }
-
-        return result;
-    }
-
-    // Default outcome returned when the FS-layer cascade did not run (e.g.
-    // external import via the path-based fallback). Callers treating the empty
-    // structure as "no cascade work was applicable" stay symmetric with the
-    // real-cascade case.
+    // Default outcomes returned when the chokepoint's cascade did not run
+    // (typically because the source is outside the project tree).
     private static readonly CopyResult EmptyCopyResult = new(SidecarOutcome.NotPresent);
     private static readonly MoveResult EmptyMoveResult = new(
         Array.Empty<ResourceKey>(),
         Array.Empty<SkippedReferencer>(),
         SidecarOutcome.NotPresent);
 
-    public async Task<Result<CopyResult>> CopyFileAsync(string sourcePath, string destPath)
+    private IEntityService? EntityService =>
+        _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.EntityService : null;
+
+    private IResourceRegistry ResourceRegistry =>
+        _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+
+    private IFileStorage FileStorage =>
+        _workspaceWrapper.WorkspaceService.FileStorage;
+
+    private ITrashService TrashService =>
+        _workspaceWrapper.WorkspaceService.TrashService;
+
+    public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {
-        sourcePath = Path.GetFullPath(sourcePath);
-        destPath = Path.GetFullPath(destPath);
+        var operation = new CreateOperation(resource, content, FileStorage);
+        var result = await operation.ExecuteAsync();
 
-        // External-import callers (TransferResourcesCommand.AddExternalResourceAsync,
-        // AddResourceHelper) supply a source path outside the project folder. The
-        // FS-layer cascade does not apply: the implicit "<source>.cel" sidecar
-        // lookup is rooted in resource keys and can't address external paths, and
-        // external bytes have no inbound references in this project. Sidecars that
-        // are explicitly selected (file-by-file) or contained in a copied folder
-        // come along as ordinary bytes via the path-based fallback; the registry's
-        // pairing pass picks them up on the next sync. Stale "project:" references
-        // inside imported sidecar bodies surface via data_check_project.
-        if (!IsInProjectFolder(sourcePath))
+        if (result.IsSuccess)
         {
-            return await CopyExternalFileAsync(sourcePath, destPath);
+            AddOperation(operation);
         }
 
-        var keyResult = ResolveOperationKeys(sourcePath, destPath);
-        if (keyResult.IsFailure)
+        return result;
+    }
+
+    public async Task<Result> CreateFolderAsync(ResourceKey resource)
+    {
+        var operation = new CreateOperation(resource, FileStorage);
+        var result = await operation.ExecuteAsync();
+
+        if (result.IsSuccess)
         {
-            return Result.Fail(keyResult);
-        }
-        var fileStorage = FileStorage;
-        if (fileStorage is null)
-        {
-            return Result<CopyResult>.Fail("Workspace is not loaded; file storage is unavailable.");
+            AddOperation(operation);
         }
 
-        var operation = new CopyFileOperation(
+        return result;
+    }
+
+    public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination)
+    {
+        var sourcePathResult = ResourceRegistry.ResolveResourcePath(source);
+        if (sourcePathResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail($"Failed to resolve path for source resource: '{source}'")
+                .WithErrors(sourcePathResult);
+        }
+        var sourcePath = sourcePathResult.Value;
+
+        var destinationPathResult = ResourceRegistry.ResolveResourcePath(destination);
+        if (destinationPathResult.IsFailure)
+        {
+            return Result<CopyResult>.Fail($"Failed to resolve path for destination resource: '{destination}'")
+                .WithErrors(destinationPathResult);
+        }
+        var destinationPath = destinationPathResult.Value;
+
+        var infoResult = await FileStorage.GetInfoAsync(source);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == StorageItemKind.NotFound)
+        {
+            return Result<CopyResult>.Fail($"Source resource does not exist: '{source}'");
+        }
+        bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
+
+        var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
+        var operation = new CopyOperation(
+            source,
+            destination,
+            isFolder,
             sourcePath,
-            destPath,
-            keyResult.Value.Source,
-            keyResult.Value.Destination,
-            EntityService,
-            ResourceRegistry,
-            fileStorage);
-        var execResult = await operation.ExecuteAsync();
+            destinationPath,
+            entityHelper,
+            FileStorage);
 
-        if (execResult.IsFailure)
+        var executeResult = await operation.ExecuteAsync();
+        if (executeResult.IsFailure)
         {
-            return Result.Fail(execResult);
+            return Result<CopyResult>.Fail(executeResult);
         }
 
         AddOperation(operation);
         return operation.LastCopyResult ?? EmptyCopyResult;
     }
 
-    private async Task<Result<CopyResult>> CopyExternalFileAsync(string sourcePath, string destPath)
+    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey destination)
     {
-        var operation = new CopyExternalFileOperation(sourcePath, destPath);
-        var execResult = await operation.ExecuteAsync();
-        if (execResult.IsFailure)
+        var sourcePathResult = ResourceRegistry.ResolveResourcePath(source);
+        if (sourcePathResult.IsFailure)
         {
-            return Result.Fail(execResult);
+            return Result<MoveResult>.Fail($"Failed to resolve path for source resource: '{source}'")
+                .WithErrors(sourcePathResult);
         }
-        AddOperation(operation);
-        return EmptyCopyResult;
-    }
+        var sourcePath = sourcePathResult.Value;
 
-    private async Task<Result<CopyResult>> CopyExternalFolderAsync(string sourcePath, string destPath)
-    {
-        var operation = new CopyExternalFolderOperation(sourcePath, destPath);
-        var execResult = await operation.ExecuteAsync();
-        if (execResult.IsFailure)
+        var destinationPathResult = ResourceRegistry.ResolveResourcePath(destination);
+        if (destinationPathResult.IsFailure)
         {
-            return Result.Fail(execResult);
+            return Result<MoveResult>.Fail($"Failed to resolve path for destination resource: '{destination}'")
+                .WithErrors(destinationPathResult);
         }
-        AddOperation(operation);
-        return EmptyCopyResult;
-    }
+        var destinationPath = destinationPathResult.Value;
 
-    private bool IsInProjectFolder(string absolutePath)
-    {
-        var projectFolderPath = ProjectFolderPath;
-        if (string.IsNullOrEmpty(projectFolderPath))
+        var infoResult = await FileStorage.GetInfoAsync(source);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            return false;
+            return Result<MoveResult>.Fail($"Source resource does not exist: '{source}'");
         }
+        bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
-        var normalizedProject = Path.GetFullPath(projectFolderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var normalizedPath = Path.GetFullPath(absolutePath);
-        return normalizedPath.StartsWith(normalizedProject + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalizedPath, normalizedProject, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public async Task<Result<MoveResult>> MoveFileAsync(string sourcePath, string destPath)
-    {
-        sourcePath = Path.GetFullPath(sourcePath);
-        destPath = Path.GetFullPath(destPath);
-
-        var keyResult = ResolveOperationKeys(sourcePath, destPath);
-        if (keyResult.IsFailure)
-        {
-            return Result.Fail(keyResult);
-        }
-        var fileStorage = FileStorage;
-        if (fileStorage is null)
-        {
-            return Result<MoveResult>.Fail("Workspace is not loaded; file storage is unavailable.");
-        }
-
-        var operation = new MoveFileOperation(
+        var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
+        var operation = new MoveOperation(
+            source,
+            destination,
+            isFolder,
             sourcePath,
-            destPath,
-            keyResult.Value.Source,
-            keyResult.Value.Destination,
-            EntityService,
-            ResourceRegistry,
-            fileStorage);
-        var execResult = await operation.ExecuteAsync();
+            destinationPath,
+            entityHelper,
+            FileStorage);
 
-        if (execResult.IsFailure)
+        var executeResult = await operation.ExecuteAsync();
+        if (executeResult.IsFailure)
         {
-            return Result.Fail(execResult);
+            return Result<MoveResult>.Fail(executeResult);
         }
 
         AddOperation(operation);
 
-        // Notify opened documents that the file has moved
-        SendResourceKeyChangedMessage(sourcePath, destPath);
-
-        return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
-    }
-
-    public async Task<Result> DeleteFileAsync(string path)
-    {
-        path = Path.GetFullPath(path);
-
-        if (!File.Exists(path))
+        if (isFolder)
         {
-            return Result.Fail($"File does not exist: {path}");
-        }
-
-        // Pre-compute trash paths
-        var trashId = Guid.NewGuid().ToString();
-        var relativePath = Path.GetRelativePath(ProjectFolderPath, path);
-        var trashPath = Path.Combine(TrashFolderPath, trashId, relativePath);
-
-        // Pre-compute entity data paths
-        string? entityDataPath = null;
-        string? entityDataTrashPath = null;
-        if (EntityService != null && ResourceRegistry != null)
-        {
-            var resourceKeyResult = ResourceRegistry.GetResourceKey(path);
-            if (resourceKeyResult.IsSuccess)
-            {
-                var existingEntityDataPath = EntityService.GetEntityDataPath(resourceKeyResult.Value);
-                if (File.Exists(existingEntityDataPath))
-                {
-                    entityDataPath = existingEntityDataPath;
-                    var entityDataRelativePath = EntityService.GetEntityDataRelativePath(resourceKeyResult.Value);
-                    entityDataTrashPath = Path.Combine(TrashFolderPath, trashId, entityDataRelativePath);
-                }
-            }
-        }
-
-        // Pre-compute sidecar paths so the cascade can land in the same trash
-        // batch as the parent file. The sibling lookup is a pure filename check
-        // (matches the FS-layer cascade rule); it does not consult the registry.
-        string? sidecarPath = null;
-        string? sidecarTrashPath = null;
-        var siblingSidecar = path + SidecarHelper.Extension;
-        if (File.Exists(siblingSidecar))
-        {
-            sidecarPath = siblingSidecar;
-            sidecarTrashPath = trashPath + SidecarHelper.Extension;
-        }
-
-        var operation = new DeleteFileOperation(path, trashPath, entityDataPath, entityDataTrashPath, sidecarPath, sidecarTrashPath);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
-        {
-            AddOperation(operation);
-
-            // Announce the removal synchronously so subscribers update before
-            // control returns. The watcher's own delete event still arrives
-            // later via UI-thread dispatch; subscribers must treat these
-            // messages as idempotent.
-            if (ResourceRegistry is not null)
-            {
-                var keyResult = ResourceRegistry.GetResourceKey(path);
-                if (keyResult.IsSuccess)
-                {
-                    var removedMessage = new ResourceDeletedMessage(keyResult.Value);
-                    _messengerService.Send(removedMessage);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    public async Task<Result<CopyResult>> CopyFolderAsync(string sourcePath, string destPath)
-    {
-        sourcePath = Path.GetFullPath(sourcePath);
-        destPath = Path.GetFullPath(destPath);
-
-        // External-import callers supply a source folder outside the project.
-        // The FS-layer cascade does not apply (see CopyFileAsync for the full
-        // rationale). Sidecars inside the source folder come along as ordinary
-        // bytes via the recursive copy; the registry pairing pass picks them up.
-        if (!IsInProjectFolder(sourcePath))
-        {
-            return await CopyExternalFolderAsync(sourcePath, destPath);
-        }
-
-        var keyResult = ResolveOperationKeys(sourcePath, destPath);
-        if (keyResult.IsFailure)
-        {
-            return Result.Fail(keyResult);
-        }
-        var fileStorage = FileStorage;
-        if (fileStorage is null)
-        {
-            return Result<CopyResult>.Fail("Workspace is not loaded; file storage is unavailable.");
-        }
-
-        var operation = new CopyFolderOperation(
-            sourcePath,
-            destPath,
-            keyResult.Value.Source,
-            keyResult.Value.Destination,
-            EntityService,
-            ResourceRegistry,
-            fileStorage);
-        var execResult = await operation.ExecuteAsync();
-
-        if (execResult.IsFailure)
-        {
-            return Result.Fail(execResult);
-        }
-
-        AddOperation(operation);
-        return Result<CopyResult>.Ok(operation.LastCopyResult ?? EmptyCopyResult);
-    }
-
-    public async Task<Result<MoveResult>> MoveFolderAsync(string sourcePath, string destPath)
-    {
-        sourcePath = Path.GetFullPath(sourcePath);
-        destPath = Path.GetFullPath(destPath);
-
-        var keyResult = ResolveOperationKeys(sourcePath, destPath);
-        if (keyResult.IsFailure)
-        {
-            return Result.Fail(keyResult);
-        }
-        var fileStorage = FileStorage;
-        if (fileStorage is null)
-        {
-            return Result<MoveResult>.Fail("Workspace is not loaded; file storage is unavailable.");
-        }
-
-        var operation = new MoveFolderOperation(
-            sourcePath,
-            destPath,
-            keyResult.Value.Source,
-            keyResult.Value.Destination,
-            EntityService,
-            ResourceRegistry,
-            fileStorage);
-        var execResult = await operation.ExecuteAsync();
-
-        if (execResult.IsFailure)
-        {
-            return Result.Fail(execResult);
-        }
-
-        AddOperation(operation);
-
-        // Notify opened documents that resources in this folder have moved
-        SendFolderResourceKeyChangedMessages(sourcePath, destPath);
-
-        return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
-    }
-
-    public async Task<Result> DeleteFolderAsync(string path)
-    {
-        path = Path.GetFullPath(path);
-
-        if (!Directory.Exists(path))
-        {
-            return Result.Fail($"Folder does not exist: {path}");
-        }
-
-        var files = Directory.GetFiles(path);
-        var directories = Directory.GetDirectories(path);
-        var wasEmpty = files.Length == 0 && directories.Length == 0;
-
-        // Pre-compute trash paths
-        var trashId = Guid.NewGuid().ToString();
-        var relativePath = Path.GetRelativePath(ProjectFolderPath, path);
-        var trashPath = wasEmpty ? string.Empty : Path.Combine(TrashFolderPath, trashId, relativePath);
-
-        // Pre-compute entity data file paths for trash
-        var entityDataFiles = new List<(string OriginalPath, string TrashPath)>();
-        if (!wasEmpty && EntityService != null && ResourceRegistry != null)
-        {
-            var trashBasePath = Path.Combine(TrashFolderPath, trashId);
-            foreach (var filePath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
-            {
-                var resourceKeyResult = ResourceRegistry.GetResourceKey(filePath);
-                if (resourceKeyResult.IsFailure)
-                {
-                    continue;
-                }
-
-                var entityDataPath = EntityService.GetEntityDataPath(resourceKeyResult.Value);
-                if (!File.Exists(entityDataPath))
-                {
-                    continue;
-                }
-
-                var entityDataRelativePath = EntityService.GetEntityDataRelativePath(resourceKeyResult.Value);
-                var entityDataTrashPath = Path.Combine(trashBasePath, entityDataRelativePath);
-                entityDataFiles.Add((entityDataPath, entityDataTrashPath));
-            }
-        }
-
-        // Capture descendant keys (folders only) before the disk delete so the
-        // post-delete eager-notify can drop their stale entries too.
-        var descendantKeys = new List<ResourceKey>();
-        if (!wasEmpty && ResourceRegistry is not null)
-        {
-            foreach (var filePath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
-            {
-                var keyResult = ResourceRegistry.GetResourceKey(filePath);
-                if (keyResult.IsSuccess)
-                {
-                    descendantKeys.Add(keyResult.Value);
-                }
-            }
-        }
-
-        var operation = new DeleteFolderOperation(path, trashPath, wasEmpty, entityDataFiles);
-        var result = await operation.ExecuteAsync();
-
-        if (result.IsSuccess)
-        {
-            AddOperation(operation);
-
-            // Announce the removal synchronously so subscribers update before
-            // control returns. The folder key and every captured descendant are
-            // broadcast; the watcher events still arrive later via UI-thread
-            // dispatch and are idempotent against the prior notification.
-            if (ResourceRegistry is not null)
-            {
-                var folderKeyResult = ResourceRegistry.GetResourceKey(path);
-                if (folderKeyResult.IsSuccess)
-                {
-                    var folderRemovedMessage = new ResourceDeletedMessage(folderKeyResult.Value);
-                    _messengerService.Send(folderRemovedMessage);
-                }
-                foreach (var key in descendantKeys)
-                {
-                    var descendantRemovedMessage = new ResourceDeletedMessage(key);
-                    _messengerService.Send(descendantRemovedMessage);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    public async Task<Result> TransferAsync(string sourcePath, string destPath, DataTransferMode mode)
-    {
-        sourcePath = Path.GetFullPath(sourcePath);
-
-        bool isFile = File.Exists(sourcePath);
-        bool isFolder = Directory.Exists(sourcePath);
-
-        if (!isFile && !isFolder)
-        {
-            return Result.Fail($"Source does not exist: {sourcePath}");
-        }
-
-        if (isFile)
-        {
-            return mode == DataTransferMode.Copy
-                ? await CopyFileAsync(sourcePath, destPath)
-                : await MoveFileAsync(sourcePath, destPath);
+            SendFolderResourceKeyChangedMessages(source, destination);
         }
         else
         {
-            return mode == DataTransferMode.Copy
-                ? await CopyFolderAsync(sourcePath, destPath)
-                : await MoveFolderAsync(sourcePath, destPath);
+            var message = new ResourceKeyChangedMessage(source, destination);
+            _messengerService.Send(message);
         }
+
+        return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
+    }
+
+    public async Task<Result> DeleteAsync(ResourceKey resource)
+    {
+        var operation = new DeleteOperation(resource, TrashService);
+        var result = await operation.ExecuteAsync();
+
+        if (result.IsSuccess)
+        {
+            AddOperation(operation);
+            BroadcastDeleteMessages(operation.TrashEntry);
+        }
+
+        return result;
+    }
+
+    public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey destination)
+    {
+        sourcePath = Path.GetFullPath(sourcePath);
+
+        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: false, FileStorage);
+        var result = await operation.ExecuteAsync();
+
+        if (result.IsSuccess)
+        {
+            AddOperation(operation);
+        }
+
+        return result;
+    }
+
+    public async Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey destination)
+    {
+        sourcePath = Path.GetFullPath(sourcePath);
+
+        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: true, FileStorage);
+        var result = await operation.ExecuteAsync();
+
+        if (result.IsSuccess)
+        {
+            AddOperation(operation);
+        }
+
+        return result;
+    }
+
+    public async Task<Result> TransferAsync(ResourceKey source, ResourceKey destination, DataTransferMode mode)
+    {
+        var infoResult = await FileStorage.GetInfoAsync(source);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == StorageItemKind.NotFound)
+        {
+            return Result.Fail($"Source resource does not exist: '{source}'");
+        }
+
+        if (mode == DataTransferMode.Copy)
+        {
+            return await CopyAsync(source, destination);
+        }
+
+        return await MoveAsync(source, destination);
     }
 
     public void BeginBatch()
@@ -518,7 +281,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         if (_undoStack.Count == 0)
         {
-            return Result.Ok(); // Nothing to undo
+            return Result.Ok();
         }
 
         var operation = _undoStack[^1];
@@ -541,7 +304,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         if (_redoStack.Count == 0)
         {
-            return Result.Ok(); // Nothing to redo
+            return Result.Ok();
         }
 
         var operation = _redoStack[^1];
@@ -560,35 +323,6 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    // Maps a pair of project-folder absolute paths to ResourceKey form so the
-    // FS-layer-backed operations can address sources and destinations via key.
-    // The registry returns generated keys even for destinations that don't exist
-    // on disk yet, which is exactly the move/copy case.
-    private Result<(ResourceKey Source, ResourceKey Destination)> ResolveOperationKeys(string sourcePath, string destPath)
-    {
-        var registry = ResourceRegistry;
-        if (registry is null)
-        {
-            return Result<(ResourceKey, ResourceKey)>.Fail("Workspace is not loaded; resource registry is unavailable.");
-        }
-
-        var sourceKeyResult = registry.GetResourceKey(sourcePath);
-        if (sourceKeyResult.IsFailure)
-        {
-            return Result<(ResourceKey, ResourceKey)>.Fail($"Failed to compute resource key for source path: '{sourcePath}'")
-                .WithErrors(sourceKeyResult);
-        }
-
-        var destKeyResult = registry.GetResourceKey(destPath);
-        if (destKeyResult.IsFailure)
-        {
-            return Result<(ResourceKey, ResourceKey)>.Fail($"Failed to compute resource key for destination path: '{destPath}'")
-                .WithErrors(destKeyResult);
-        }
-
-        return Result<(ResourceKey, ResourceKey)>.Ok((sourceKeyResult.Value, destKeyResult.Value));
-    }
-
     private void AddOperation(FileOperation operation)
     {
         if (_currentBatch != null)
@@ -599,16 +333,12 @@ public class ResourceOperationService : IResourceOperationService
         {
             _undoStack.Add(operation);
             ClearRedoStack();
-
-            // Enforce undo stack size limit
             TrimUndoStack();
         }
     }
 
-    /// <summary>
-    /// Remove oldest operations from the undo stack if it exceeds the maximum size.
-    /// Also cleans up any associated trash files for removed delete operations.
-    /// </summary>
+    // Drop oldest operations once the stack reaches MaxUndoStackSize and purge
+    // any trash bytes they were keeping alive for undo.
     private void TrimUndoStack()
     {
         while (_undoStack.Count > MaxUndoStackSize)
@@ -616,86 +346,64 @@ public class ResourceOperationService : IResourceOperationService
             var oldestOperation = _undoStack[0];
             _undoStack.RemoveAt(0);
 
-            // Clean up trash files for delete operations that are being discarded
-            CleanupOperationTrashFiles(oldestOperation);
+            _ = PurgeOperationTrashAsync(oldestOperation);
         }
     }
 
-    /// <summary>
-    /// Clear the redo stack and clean up any associated trash files.
-    /// This is called when a new operation is performed, invalidating the redo history.
-    /// </summary>
+    // The redo stack is invalidated whenever a new operation lands. Purge any
+    // trash bytes the cleared redo entries were holding open.
     private void ClearRedoStack()
     {
         foreach (var operation in _redoStack)
         {
-            CleanupOperationTrashFiles(operation);
+            _ = PurgeOperationTrashAsync(operation);
         }
         _redoStack.Clear();
     }
 
-    /// <summary>
-    /// Recursively clean up trash files associated with an operation.
-    /// </summary>
-    private void CleanupOperationTrashFiles(FileOperation operation)
+    // Recursively walks operation batches and purges any trash bytes a
+    // DeleteOperation was keeping alive. Fire-and-forget at the call site
+    // because trash purge is best-effort cleanup.
+    private static async Task PurgeOperationTrashAsync(FileOperation operation)
     {
         if (operation is FileOperationBatch batch)
         {
-            foreach (var op in batch.Operations)
+            foreach (var inner in batch.Operations)
             {
-                CleanupOperationTrashFiles(op);
+                await PurgeOperationTrashAsync(inner);
             }
         }
-        else if (operation is DeleteFileOperation deleteFile)
+        else if (operation is DeleteOperation delete)
         {
-            deleteFile.CleanupTrashFile();
-        }
-        else if (operation is DeleteFolderOperation deleteFolder)
-        {
-            deleteFolder.CleanupTrashFolder();
+            await delete.CleanupAsync();
         }
     }
 
-    /// <summary>
-    /// Send a ResourceKeyChangedMessage for a single file that has been moved.
-    /// </summary>
-    private void SendResourceKeyChangedMessage(string sourcePath, string destPath)
+    private void BroadcastDeleteMessages(TrashEntry? entry)
     {
-        if (ResourceRegistry == null)
+        if (entry is null)
         {
             return;
         }
 
-        var sourceKeyResult = ResourceRegistry.GetResourceKey(sourcePath);
-        var destKeyResult = ResourceRegistry.GetResourceKey(destPath);
+        var sourceRemovedMessage = new ResourceDeletedMessage(entry.OriginalResource);
+        _messengerService.Send(sourceRemovedMessage);
 
-        if (sourceKeyResult.IsSuccess && destKeyResult.IsSuccess)
+        foreach (var descendant in entry.DescendantKeys)
         {
-            var message = new ResourceKeyChangedMessage(sourceKeyResult.Value, destKeyResult.Value);
-            _messengerService.Send(message);
+            var descendantRemovedMessage = new ResourceDeletedMessage(descendant);
+            _messengerService.Send(descendantRemovedMessage);
         }
     }
 
-    /// <summary>
-    /// Send ResourceKeyChangedMessage for all resources in a folder that has been moved.
-    /// </summary>
-    private void SendFolderResourceKeyChangedMessages(string sourceFolderPath, string destFolderPath)
+    // After a folder move, broadcast a key-changed message for the folder and
+    // every descendant resource so opened documents can repoint cleanly. Walks
+    // the registry-cached source tree because the on-disk source is already
+    // gone by the time we get here.
+    private void SendFolderResourceKeyChangedMessages(ResourceKey sourceFolder, ResourceKey destinationFolder)
     {
-        if (ResourceRegistry == null)
-        {
-            return;
-        }
-
-        var sourceKeyResult = ResourceRegistry.GetResourceKey(sourceFolderPath);
-        var destKeyResult = ResourceRegistry.GetResourceKey(destFolderPath);
-
-        if (sourceKeyResult.IsFailure || destKeyResult.IsFailure)
-        {
-            return;
-        }
-
-        var sourceFolder = sourceKeyResult.Value;
-        var destFolder = destKeyResult.Value;
+        var folderMessage = new ResourceKeyChangedMessage(sourceFolder, destinationFolder);
+        _messengerService.Send(folderMessage);
 
         var getResourceResult = ResourceRegistry.GetResource(sourceFolder);
         if (getResourceResult.IsFailure)
@@ -708,18 +416,17 @@ public class ResourceOperationService : IResourceOperationService
             return;
         }
 
-        List<ResourceKey> sourceResources = new();
+        var sourceResources = new List<ResourceKey>();
         PopulateSourceResources(sourceFolderResource);
 
         void PopulateSourceResources(FolderResource folderResource)
         {
-            var folderKey = ResourceRegistry.GetResourceKey(folderResource);
-            sourceResources.Add(folderKey);
-
             foreach (var childResource in folderResource.Children)
             {
                 if (childResource is FolderResource childFolderResource)
                 {
+                    var folderKey = ResourceRegistry.GetResourceKey(childFolderResource);
+                    sourceResources.Add(folderKey);
                     PopulateSourceResources(childFolderResource);
                 }
                 else
@@ -730,10 +437,10 @@ public class ResourceOperationService : IResourceOperationService
             }
         }
 
-        foreach (var sourceResource in sourceResources)
+        foreach (var descendantSource in sourceResources)
         {
-            var destResource = sourceResource.ToString().Replace(sourceFolder, destFolder);
-            var message = new ResourceKeyChangedMessage(sourceResource, destResource);
+            var descendantDestination = descendantSource.ToString().Replace(sourceFolder, destinationFolder);
+            var message = new ResourceKeyChangedMessage(descendantSource, descendantDestination);
             _messengerService.Send(message);
         }
     }

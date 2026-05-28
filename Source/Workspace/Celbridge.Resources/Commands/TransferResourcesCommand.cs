@@ -117,14 +117,6 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         IResourceRegistry resourceRegistry,
         IResourceOperationService resourceOpService)
     {
-        var resolveDestResult = resourceRegistry.ResolveResourcePath(item.DestResource);
-        if (resolveDestResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{item.DestResource}'")
-                .WithErrors(resolveDestResult);
-        }
-        var destPath = resolveDestResult.Value;
-
         if (item.ResourceType == ResourceType.File)
         {
             if (!File.Exists(item.SourcePath))
@@ -132,7 +124,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                 return Result.Fail($"Source file does not exist: {item.SourcePath}");
             }
 
-            return await resourceOpService.CopyFileAsync(item.SourcePath, destPath);
+            return await resourceOpService.ImportExternalFileAsync(item.SourcePath, item.DestResource);
         }
         else if (item.ResourceType == ResourceType.Folder)
         {
@@ -141,7 +133,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                 return Result.Fail($"Source folder does not exist: {item.SourcePath}");
             }
 
-            return await resourceOpService.CopyFolderAsync(item.SourcePath, destPath);
+            return await resourceOpService.ImportExternalFolderAsync(item.SourcePath, item.DestResource);
         }
 
         return Result.Fail($"Invalid resource type: {item.ResourceType}");
@@ -155,21 +147,7 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     {
         var resolvedDestResource = transferService.ResolveDestinationResource(item.SourceResource, item.DestResource);
 
-        var resolveSourceResult = resourceRegistry.ResolveResourcePath(item.SourceResource);
-        if (resolveSourceResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{item.SourceResource}'")
-                .WithErrors(resolveSourceResult);
-        }
-
-        var resolveDestResult = resourceRegistry.ResolveResourcePath(resolvedDestResource);
-        if (resolveDestResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{resolvedDestResource}'")
-                .WithErrors(resolveDestResult);
-        }
-
-        var result = await resourceOpService.TransferAsync(resolveSourceResult.Value, resolveDestResult.Value, TransferMode);
+        var result = await resourceOpService.TransferAsync(item.SourceResource, resolvedDestResource, TransferMode);
 
         // Expand destination parent folder
         if (result.IsSuccess)
