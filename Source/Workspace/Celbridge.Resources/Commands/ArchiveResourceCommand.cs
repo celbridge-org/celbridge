@@ -157,14 +157,13 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             }
         }
 
-        // Build the zip to a temporary file first
-        var tempPath = Path.GetTempFileName();
         int entryCount = 0;
+        byte[] archiveBytes;
 
         try
         {
-            using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            using (var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Create, leaveOpen: false))
+            using var memoryStream = new MemoryStream();
+            using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
             {
                 if (isFile)
                 {
@@ -202,43 +201,34 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
                 }
             }
 
-            // Read the temp file and register it as an undoable create operation.
-            // The temp file lives under the OS temp folder, outside the project
-            // tree, so the chokepoint contract does not apply.
-            var archiveBytes = await File.ReadAllBytesAsync(tempPath);
-
-            var createResult = await resourceOpService.CreateFileAsync(archivePath, archiveBytes);
-            if (createResult.IsFailure)
-            {
-                return createResult;
-            }
-
-            var archiveProbeResult = await fileStorage.GetInfoAsync(ArchiveResource);
-            long archiveSize = archiveProbeResult.IsSuccess
-                ? archiveProbeResult.Value.Size
-                : archiveBytes.Length;
-
-            ResultValue = new ArchiveResult
-            {
-                Entries = entryCount,
-                Size = archiveSize,
-                Archive = ArchiveResource.ToString()
-            };
-
-            return Result.Ok();
+            // Disposing the ZipArchive flushes the central directory into
+            // memoryStream; leaveOpen:true keeps the buffer accessible.
+            archiveBytes = memoryStream.ToArray();
         }
         catch (IOException exception)
         {
             _logger.LogError(exception, "Failed to create archive");
             return Result.Fail($"Failed to create archive: {exception.Message}");
         }
-        finally
+
+        var createResult = await resourceOpService.CreateFileAsync(archivePath, archiveBytes);
+        if (createResult.IsFailure)
         {
-            // Clean up temp file
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
+            return createResult;
         }
+
+        var archiveProbeResult = await fileStorage.GetInfoAsync(ArchiveResource);
+        long archiveSize = archiveProbeResult.IsSuccess
+            ? archiveProbeResult.Value.Size
+            : archiveBytes.Length;
+
+        ResultValue = new ArchiveResult
+        {
+            Entries = entryCount,
+            Size = archiveSize,
+            Archive = ArchiveResource.ToString()
+        };
+
+        return Result.Ok();
     }
 }
