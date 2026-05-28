@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Resources.Helpers;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
@@ -553,6 +554,18 @@ public sealed class FileStorage : IFileStorage
             return Result<IReadOnlyList<FolderItem>>.Fail($"Failed to enumerate folder: '{folder}'")
                 .WithException(ex);
         }
+    }
+
+    public async Task<Result<string>> ComputeHashAsync(ResourceKey resource)
+    {
+        var readResult = await ReadAllBytesAsync(resource);
+        if (readResult.IsFailure)
+        {
+            return Result<string>.Fail($"Failed to compute hash for resource: '{resource}'")
+                .WithErrors(readResult);
+        }
+
+        return FileHashHelper.HashBytes(readResult.Value);
     }
 
     private Result<string> ResolvePath(ResourceKey resource)

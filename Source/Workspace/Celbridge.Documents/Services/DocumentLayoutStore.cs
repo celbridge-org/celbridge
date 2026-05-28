@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Documents.Helpers;
 using Celbridge.Logging;
 using Celbridge.Resources;
 using Celbridge.Workspace;
@@ -21,7 +20,6 @@ public class DocumentLayoutStore
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
-    private readonly FileAccessHelper _fileAccessHelper;
     private readonly ILogger<DocumentLayoutStore> _logger;
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
@@ -29,12 +27,10 @@ public class DocumentLayoutStore
     public DocumentLayoutStore(
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        FileAccessHelper fileAccessHelper,
         ILogger<DocumentLayoutStore> logger)
     {
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
-        _fileAccessHelper = fileAccessHelper;
         _logger = logger;
     }
 
@@ -252,9 +248,11 @@ public class DocumentLayoutStore
                 _logger.LogWarning(resolveResult, $"Failed to resolve path for resource: '{fileResource}'");
                 continue;
             }
-            var filePath = resolveResult.Value;
 
-            if (!await _fileAccessHelper.CanAccessFileAsync(fileResource))
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var infoResult = await fileStorage.GetInfoAsync(fileResource);
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind != StorageItemKind.File)
             {
                 _logger.LogWarning($"Cannot access file for resource: '{fileResource}'");
                 continue;
@@ -331,7 +329,10 @@ public class DocumentLayoutStore
         }
         var normalizedResource = normalizeResult.Value;
 
-        if (!await _fileAccessHelper.CanAccessFileAsync(normalizedResource))
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var infoResult = await fileStorage.GetInfoAsync(normalizedResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return;
         }

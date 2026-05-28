@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Documents.Helpers;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
@@ -21,7 +20,6 @@ public class DocumentLayoutStoreTests
     private IDocumentsPanel _documentsPanel = null!;
     private ICommandService _commandService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private FileAccessHelper _fileAccessHelper = null!;
     private DocumentLayoutStore _store = null!;
     private string _tempFolder = null!;
     private string _accessibleFilePath = null!;
@@ -63,21 +61,17 @@ public class DocumentLayoutStoreTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real FileStorage so FileAccessHelper's GetInfoAsync /
-        // OpenReadAsync calls probe the actual disk paths the registry
-        // resolves to.
+        // Wire a real FileStorage so GetInfoAsync probes the actual disk
+        // paths the registry resolves to.
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper);
         workspaceService.FileStorage.Returns(fileStorage);
 
-        _fileAccessHelper = new FileAccessHelper(_workspaceWrapper);
-
         _store = new DocumentLayoutStore(
             _workspaceWrapper,
             _commandService,
-            _fileAccessHelper,
             Substitute.For<ILogger<DocumentLayoutStore>>());
     }
 
@@ -207,7 +201,7 @@ public class DocumentLayoutStoreTests
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
         // ResolveResourcePath returns a path that does not exist on disk.
-        // FileAccessHelper.CanAccessFile rejects it; the restore skips.
+        // FileStorage.GetInfoAsync reports NotFound; the restore skips.
         var missingPath = Path.Combine(_tempFolder, "does_not_exist.md");
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Ok(missingPath));

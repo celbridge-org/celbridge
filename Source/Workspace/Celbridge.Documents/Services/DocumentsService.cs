@@ -23,7 +23,6 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly FileTypeHelper _fileTypeHelper;
     private readonly DocumentEditorRegistry _documentEditorRegistry;
     private readonly FileTypeClassifier _fileTypeClassifier;
-    private readonly FileAccessHelper _fileAccessHelper;
     private readonly DocumentEditorPreferenceStore _preferenceStore;
     private readonly DocumentViewFactory _viewFactory;
     private readonly DocumentLayoutStore _layoutStore;
@@ -105,8 +104,6 @@ public class DocumentsService : IDocumentsService, IDisposable
             _workspaceWrapper,
             _documentEditorRegistry);
 
-        _fileAccessHelper = new FileAccessHelper(_workspaceWrapper);
-
         _preferenceStore = new DocumentEditorPreferenceStore(
             _workspaceWrapper,
             serviceProvider.GetRequiredService<ILogger<DocumentEditorPreferenceStore>>());
@@ -124,7 +121,6 @@ public class DocumentsService : IDocumentsService, IDisposable
         _layoutStore = new DocumentLayoutStore(
             _workspaceWrapper,
             _commandService,
-            _fileAccessHelper,
             serviceProvider.GetRequiredService<ILogger<DocumentLayoutStore>>());
     }
 
@@ -280,11 +276,13 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        var resolveResult = await _fileAccessHelper.ResolveAndValidateFilePathAsync(fileResource);
-        if (resolveResult.IsFailure)
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var infoResult = await fileStorage.GetInfoAsync(fileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return Result.Fail($"Failed to open document for file resource '{fileResource}'")
-                .WithErrors(resolveResult);
+            return Result.Fail($"Failed to open document for file resource '{fileResource}': file does not exist")
+                .WithErrors(infoResult);
         }
 
         var openResult = await DocumentsPanel.OpenDocument(fileResource, options);

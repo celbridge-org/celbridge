@@ -183,4 +183,13 @@ public interface IFileStorage
     /// Fails when the resource does not resolve to an existing folder.
     /// </summary>
     Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder);
+
+    /// <summary>
+    /// Reads the resource and returns a SHA256 hex digest of its bytes. Use this
+    /// when the caller only needs the hash (e.g. external-change detection) and
+    /// would otherwise read bytes purely to feed them through SHA256. Callers
+    /// that already have the bytes in hand should hash directly via
+    /// FileHashHelper.HashBytes rather than re-reading through this method.
+    /// </summary>
+    Task<Result<string>> ComputeHashAsync(ResourceKey resource);
 }

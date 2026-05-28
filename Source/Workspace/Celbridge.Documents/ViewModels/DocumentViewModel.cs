@@ -1,7 +1,7 @@
-using System.Security.Cryptography;
 using System.Text;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -184,7 +184,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     /// </summary>
     private async Task<Result> SaveBytesToFileAsync(byte[] bytes)
     {
-        var intendedHash = ComputeBytesHash(bytes);
+        var intendedHash = FileHashHelper.HashBytes(bytes);
 
         if (await TryDetectPreWriteExternalChangeAsync())
         {
@@ -227,14 +227,14 @@ public abstract partial class DocumentViewModel : ObservableObject
         }
 
         var fileStorage = GetFileSystem();
-        var readResult = await fileStorage.ReadAllBytesAsync(FileResource);
-        if (readResult.IsFailure)
+        var hashResult = await fileStorage.ComputeHashAsync(FileResource);
+        if (hashResult.IsFailure)
         {
             _logger?.LogDebug($"Pre-write hash check failed for '{FilePath}', proceeding to write attempt");
             return false;
         }
 
-        var preWriteHash = ComputeBytesHash(readResult.Value);
+        var preWriteHash = hashResult.Value;
         if (preWriteHash == _lastSavedFileHash)
         {
             return false;
@@ -294,14 +294,13 @@ public abstract partial class DocumentViewModel : ObservableObject
 
         // File size is the same; compute hash to check if content actually changed.
         // This handles cases where the file was rewritten with identical content.
-        var readResult = await fileStorage.ReadAllBytesAsync(FileResource);
-        if (readResult.IsFailure)
+        var hashResult = await fileStorage.ComputeHashAsync(FileResource);
+        if (hashResult.IsFailure)
         {
             return true;
         }
 
-        var currentHash = ComputeBytesHash(readResult.Value);
-        return currentHash != _lastSavedFileHash;
+        return hashResult.Value != _lastSavedFileHash;
     }
 
     protected virtual async Task UpdateFileTrackingInfoAsync()
@@ -316,8 +315,8 @@ public abstract partial class DocumentViewModel : ObservableObject
             return;
         }
 
-        var readResult = await fileStorage.ReadAllBytesAsync(FileResource);
-        if (readResult.IsFailure)
+        var hashResult = await fileStorage.ComputeHashAsync(FileResource);
+        if (hashResult.IsFailure)
         {
             _lastSavedFileHash = null;
             _lastSavedFileSize = 0;
@@ -325,13 +324,6 @@ public abstract partial class DocumentViewModel : ObservableObject
         }
 
         _lastSavedFileSize = infoResult.Value.Size;
-        _lastSavedFileHash = ComputeBytesHash(readResult.Value);
-    }
-
-    private static string ComputeBytesHash(byte[] bytes)
-    {
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(bytes);
-        return Convert.ToBase64String(hashBytes);
+        _lastSavedFileHash = hashResult.Value;
     }
 }

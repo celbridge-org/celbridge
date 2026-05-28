@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
@@ -81,7 +80,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     /// </summary>
     public bool IsMaximizeButtonHighlighted => IsConsoleMaximized;
 
-    private byte[]? _originalProjectFileHash = null;
+    private string? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
         IServiceProvider serviceProvider,
@@ -297,14 +296,14 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var readResult = await fileStorage.ReadAllBytesAsync(projectFileResource);
-        if (readResult.IsFailure)
+        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        if (hashResult.IsFailure)
         {
             _originalProjectFileHash = null;
             return;
         }
 
-        _originalProjectFileHash = SHA256.HashData(readResult.Value);
+        _originalProjectFileHash = hashResult.Value;
     }
 
     private async Task CheckProjectFileChangedAsync()
@@ -315,15 +314,15 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var readResult = await fileStorage.ReadAllBytesAsync(projectFileResource);
-        if (readResult.IsFailure)
+        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        if (hashResult.IsFailure)
         {
             // If we can't read the file, hide the banner
             IsProjectChangeBannerVisible = false;
             return;
         }
 
-        var currentHash = SHA256.HashData(readResult.Value);
+        var currentHash = hashResult.Value;
 
         // If error banner is visible, don't show the project change banner
         if (IsErrorBannerVisible)
@@ -333,8 +332,8 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         // Check if the hash has changed from the original
-        if (_originalProjectFileHash == null
-            || !currentHash.SequenceEqual(_originalProjectFileHash))
+        if (_originalProjectFileHash is null
+            || !string.Equals(currentHash, _originalProjectFileHash, StringComparison.Ordinal))
         {
             // Populate the project change banner strings
             ProjectChangeBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerTitle");
