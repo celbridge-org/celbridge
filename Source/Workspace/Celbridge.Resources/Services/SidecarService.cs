@@ -3,10 +3,6 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
-/// <summary>
-/// Mutations re-read the sidecar, apply the change, and skip the write when
-/// the composed output matches what is on disk.
-/// </summary>
 public sealed class SidecarService : ISidecarService
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
