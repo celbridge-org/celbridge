@@ -58,21 +58,21 @@ public partial class SpreadsheetTools : AgentToolBase
         return resourceKey;
     }
 
-    // Opens the workbook bytes via the file storage chokepoint and returns them
-    // as a seekable MemoryStream positioned at zero. Caller disposes.
+    // Opens a read-only stream on the workbook via the file storage chokepoint.
+    // Caller disposes.
     private async Task<Result<Stream>> OpenWorkbookStreamAsync(ResourceKey resource)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
-        var bytesResult = await fileStorage.ReadAllBytesAsync(resource);
-        if (bytesResult.IsFailure)
+        var openResult = await fileStorage.OpenReadAsync(resource);
+        if (openResult.IsFailure)
         {
-            return Result.Fail($"Failed to read workbook: '{resource}'")
-                .WithErrors(bytesResult);
+            return Result.Fail($"Failed to open workbook: '{resource}'")
+                .WithErrors(openResult);
         }
 
-        return (Stream)new MemoryStream(bytesResult.Value, writable: false);
+        return openResult.Value;
     }
 
     private static string SerializeJson(object value)

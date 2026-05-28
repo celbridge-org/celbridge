@@ -49,10 +49,12 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        return await ReadWithRetryAsync<byte[]>(
-            resource,
-            resourcePath,
-            path => File.ReadAllBytesAsync(path));
+        return await RunWithRetryAsync<byte[]>(
+            operationLabel: "Read",
+            resource: resource,
+            resourcePath: resourcePath,
+            operation: () => File.ReadAllBytesAsync(resourcePath),
+            shouldRetry: IsTransientReadIOException);
     }
 
     public async Task<Result<string>> ReadAllTextAsync(ResourceKey resource)
@@ -65,42 +67,45 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        return await ReadWithRetryAsync<string>(
-            resource,
-            resourcePath,
-            path => File.ReadAllTextAsync(path));
+        return await RunWithRetryAsync<string>(
+            operationLabel: "Read",
+            resource: resource,
+            resourcePath: resourcePath,
+            operation: () => File.ReadAllTextAsync(resourcePath),
+            shouldRetry: IsTransientReadIOException);
     }
 
     public async Task<Result<Stream>> OpenReadAsync(ResourceKey resource)
     {
-        await Task.CompletedTask;
-
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            var failure = Result<Stream>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result<Stream>.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
-            return failure;
         }
         var resourcePath = resolveResult.Value;
 
-        try
-        {
-            var stream = new FileStream(
+        return await RunWithRetryAsync<Stream>(
+            operationLabel: "Read",
+            resource: resource,
+            resourcePath: resourcePath,
+            operation: () => Task.FromResult<Stream>(new FileStream(
                 resourcePath,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
                 StreamBufferSize,
-                useAsync: true);
-            return stream;
-        }
-        catch (Exception ex)
-        {
-            var failure = Result<Stream>.Fail($"Failed to open read stream for resource: '{resource}'")
-                .WithException(ex);
-            return failure;
-        }
+                useAsync: true)),
+            shouldRetry: IsTransientReadIOException);
+    }
+
+    // Reads short-circuit FileNotFoundException and DirectoryNotFoundException
+    // so a genuinely missing file fails immediately rather than burning the
+    // retry budget on a hopeless case.
+    private static bool IsTransientReadIOException(IOException ex)
+    {
+        return ex is not FileNotFoundException
+            and not DirectoryNotFoundException;
     }
 
     public Task<Result> WriteAllBytesAsync(ResourceKey resource, byte[] bytes)
@@ -1034,20 +1039,22 @@ public sealed class FileStorage : IFileStorage
         }
     }
 
-    // Bounded retry on transient IO failures. Mirrors WriteWithRetryAsync: a
-    // file briefly held open by an external editor, antivirus, or backup
-    // product clears within milliseconds, so 3 attempts at 50/100/150ms backoff
-    // catches the common cases without imposing meaningful latency on the
-    // typical-case success. FileNotFoundException and DirectoryNotFoundException
-    // are explicitly not retried — the file is genuinely missing and retrying
-    // won't change that. UnauthorizedAccessException is also not retried: for
-    // reads it almost always means a permission issue (e.g. an ACL the user
-    // can't get past), not a transient lock, and the metadata scanner has its
-    // own retry budget for the rarer transient cases.
-    private async Task<Result<T>> ReadWithRetryAsync<T>(
+    // Runs an IO operation under the chokepoint's bounded-retry policy. A file
+    // briefly held open by an external editor, antivirus, or backup product
+    // clears within milliseconds, so 3 attempts at 50/100/150ms backoff catches
+    // the common cases without imposing meaningful latency on the typical-case
+    // success. shouldRetry decides whether a particular IOException is worth
+    // retrying; read paths exclude FileNotFoundException and
+    // DirectoryNotFoundException because the file is genuinely missing.
+    // UnauthorizedAccessException is never retried — for reads and writes it
+    // almost always means a permission issue (e.g. an ACL the user can't get
+    // past), not a transient lock.
+    private async Task<Result<T>> RunWithRetryAsync<T>(
+        string operationLabel,
         ResourceKey resource,
         string resourcePath,
-        Func<string, Task<T>> readOperation)
+        Func<Task<T>> operation,
+        Func<IOException, bool>? shouldRetry = null)
         where T : notnull
     {
         IOException? lastException = null;
@@ -1056,41 +1063,31 @@ public sealed class FileStorage : IFileStorage
         {
             try
             {
-                var value = await readOperation(resourcePath);
+                var value = await operation();
                 if (attempt > 1)
                 {
-                    _logger.LogWarning($"Read succeeded for '{resourcePath}' on attempt {attempt} of {MaxAttempts} after transient IO failures");
+                    _logger.LogWarning($"{operationLabel} succeeded for '{resourcePath}' on attempt {attempt} of {MaxAttempts} after transient IO failures");
                 }
                 return Result<T>.Ok(value);
             }
-            catch (FileNotFoundException ex)
-            {
-                return Result<T>.Fail($"Failed to read file: '{resource}'")
-                    .WithException(ex);
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                return Result<T>.Fail($"Failed to read file: '{resource}'")
-                    .WithException(ex);
-            }
-            catch (IOException ex)
+            catch (IOException ex) when (shouldRetry?.Invoke(ex) ?? true)
             {
                 lastException = ex;
                 if (attempt < MaxAttempts)
                 {
                     var delay = BaseRetryDelayMs * attempt;
-                    _logger.LogWarning(ex, $"Read attempt {attempt} failed for '{resourcePath}', retrying after {delay}ms");
+                    _logger.LogWarning(ex, $"{operationLabel} attempt {attempt} failed for '{resourcePath}', retrying after {delay}ms");
                     await Task.Delay(delay);
                 }
             }
             catch (Exception ex)
             {
-                return Result<T>.Fail($"Failed to read file: '{resource}'")
+                return Result<T>.Fail($"Failed to {operationLabel.ToLowerInvariant()} file: '{resource}'")
                     .WithException(ex);
             }
         }
 
-        return Result<T>.Fail($"Failed to read file after {MaxAttempts} attempts: '{resource}'")
+        return Result<T>.Fail($"Failed to {operationLabel.ToLowerInvariant()} file after {MaxAttempts} attempts: '{resource}'")
             .WithException(lastException!);
     }
 
@@ -1132,42 +1129,17 @@ public sealed class FileStorage : IFileStorage
                 .WithException(ex);
         }
 
-        IOException? lastException = null;
-
-        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
-        {
-            try
+        var runResult = await RunWithRetryAsync<bool>(
+            operationLabel: "Write",
+            resource: resource,
+            resourcePath: resourcePath,
+            operation: async () =>
             {
                 await WriteAtomicAsync(resourcePath, stagingFolder, bytes);
-                if (attempt > 1)
-                {
-                    // A retry should be unusual — the workspace owns the project
-                    // folder and we use an atomic temp+rename. Surface success-
-                    // after-retry as a warning so unusual disk contention (AV
-                    // scans, sync clients, external locks) is visible in logs.
-                    _logger.LogWarning($"Write succeeded for '{resourcePath}' on attempt {attempt} of {MaxAttempts} after transient IO failures");
-                }
-                return Result.Ok();
-            }
-            catch (IOException ex)
-            {
-                lastException = ex;
-                if (attempt < MaxAttempts)
-                {
-                    var delay = BaseRetryDelayMs * attempt;
-                    _logger.LogWarning(ex, $"Write attempt {attempt} failed for '{resourcePath}', retrying after {delay}ms");
-                    await Task.Delay(delay);
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to write file: '{resourcePath}'")
-                    .WithException(ex);
-            }
-        }
+                return true;
+            });
 
-        return Result.Fail($"Failed to write file after {MaxAttempts} attempts: '{resourcePath}'")
-            .WithException(lastException!);
+        return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
     }
 
     private static Result EnsureParentFolderExists(string resourcePath, ResourceKey resource)

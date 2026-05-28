@@ -104,12 +104,12 @@ public record StorageItemInfo(
 /// resource addressable by a ResourceKey — files under the project tree as well
 /// as files under registered non-project roots (e.g. temp:, logs:). Callers pass
 /// a ResourceKey; the layer dispatches via the registered root handlers so
-/// containment and symlink validation run automatically. Bytes and text writes
-/// are atomic via temp-file rename with bounded retry on transient IO failures.
-/// Structural operations on project: resources additionally cascade the paired
-/// sidecar, and rewrite references that live inside scannable file types (see
-/// ResourceScanner for the current allowlist); operations on non-project roots
-/// are pure byte moves.
+/// containment and symlink validation run automatically. Reads and writes have
+/// bounded retry on transient IO failures; writes are additionally atomic via
+/// temp-file rename. Structural operations on project: resources additionally
+/// cascade the paired sidecar, and rewrite references that live inside
+/// scannable file types (see ResourceScanner for the current allowlist);
+/// operations on non-project roots are pure byte moves.
 /// </summary>
 public interface IFileStorage
 {
