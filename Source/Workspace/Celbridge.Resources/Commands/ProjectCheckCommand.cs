@@ -67,11 +67,11 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
             return string.Compare(a.Source.ToString(), b.Source.ToString(), StringComparison.Ordinal);
         });
 
-        var sidecarReport = registry.GetSidecarReport();
-        var orphanCelFiles = sidecarReport.Orphan
+        var celFileReport = registry.GetCelFileReport();
+        var orphanCelFiles = celFileReport.Orphan
             .OrderBy(k => k.ToString(), StringComparer.Ordinal)
             .ToList();
-        var brokenCelFiles = sidecarReport.Broken
+        var brokenCelFiles = celFileReport.Broken
             .OrderBy(k => k.ToString(), StringComparer.Ordinal)
             .ToList();
 

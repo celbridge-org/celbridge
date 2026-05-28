@@ -32,7 +32,7 @@ public class ResourceService : IResourceService, IDisposable
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
         IProjectTreeBuilder projectTreeBuilder,
-        ISidecarPairingService sidecarPairingService,
+        IResourceClassifier resourceClassifier,
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
         IResourceOperationService resourceOperationService)
@@ -54,7 +54,7 @@ public class ResourceService : IResourceService, IDisposable
             registryLogger,
             messengerService,
             projectTreeBuilder,
-            sidecarPairingService,
+            resourceClassifier,
             rootHandlerRegistry);
 
         Monitor = resourceMonitor;

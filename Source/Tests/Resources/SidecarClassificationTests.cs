@@ -32,7 +32,7 @@ public class SidecarClassificationTests
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
             new ProjectTreeBuilder(new FileIconService()),
-            SidecarPairingTestHelper.BuildPairingServiceWithNoFactories(),
+            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             new RootHandlerRegistry());
         _registry.InitializeProjectRoot(_projectFolderPath);
     }
@@ -53,7 +53,7 @@ public class SidecarClassificationTests
         }
     }
 
-    private SidecarInfo? GetParentSidecar(string parentName)
+    private SidecarLink? GetParentSidecar(string parentName)
     {
         var resource = _registry.GetResource(new ResourceKey(parentName)).Value as IFileResource;
         return resource!.Sidecar;
@@ -69,7 +69,7 @@ public class SidecarClassificationTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
@@ -83,7 +83,7 @@ public class SidecarClassificationTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
@@ -102,9 +102,9 @@ public class SidecarClassificationTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
-        _registry.GetSidecarReport().Broken.Should().Contain(new ResourceKey("foo.png.cel"));
+        _registry.GetCelFileReport().Broken.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
     [Test]
@@ -120,7 +120,7 @@ public class SidecarClassificationTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
@@ -134,7 +134,7 @@ public class SidecarClassificationTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(SidecarStatus.Healthy);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Healthy);
     }
 
     [Test]
@@ -151,7 +151,7 @@ public class SidecarClassificationTests
         var result = _registry.UpdateResourceRegistry();
         result.IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("good.png")!.Status.Should().Be(SidecarStatus.Healthy);
-        GetParentSidecar("bad.png")!.Status.Should().Be(SidecarStatus.Broken);
+        GetParentSidecar("good.png")!.Status.Should().Be(CelFileStatus.Healthy);
+        GetParentSidecar("bad.png")!.Status.Should().Be(CelFileStatus.Broken);
     }
 }

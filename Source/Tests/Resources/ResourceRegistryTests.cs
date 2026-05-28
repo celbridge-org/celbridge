@@ -72,7 +72,7 @@ public class ResourceRegistryTests
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
 
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var updateResult = resourceRegistry.UpdateResourceRegistry();
@@ -111,7 +111,7 @@ public class ResourceRegistryTests
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
 
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -142,7 +142,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var resolveResult = resourceRegistry.ResolveResourcePath(ResourceKey.Create(FileNameA));
@@ -158,7 +158,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var resolveResult = resourceRegistry.ResolveResourcePath(ResourceKey.Empty);
@@ -174,7 +174,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var resolveResult = resourceRegistry.ResolveResourcePath(
@@ -199,7 +199,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
         var updateResult = resourceRegistry.UpdateResourceRegistry();
         updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
@@ -224,7 +224,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
         var updateResult = resourceRegistry.UpdateResourceRegistry();
         updateResult.IsSuccess.Should().BeTrue(updateResult.FirstErrorMessage);
@@ -244,7 +244,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         // Non-existent files should still resolve without error
@@ -261,7 +261,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var filePath = Path.Combine(_resourceFolderPath, FileNameA);
@@ -302,7 +302,7 @@ public class ResourceRegistryTests
         {
             var messengerService = new MessengerService();
             var fileIconService = new FileIconService();
-            var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+            var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
             resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
             var resolveResult = resourceRegistry.ResolveResourcePath(
@@ -330,7 +330,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
 
         // Before ProjectFolderPath is set, no handler is registered.
         resourceRegistry.RootHandlers.Should().BeEmpty();
@@ -352,7 +352,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         resourceRegistry.IsResolvable(ResourceKey.Create("foo/bar")).Should().BeTrue();
@@ -369,7 +369,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var resolveResult = resourceRegistry.ResolveResourcePath(
@@ -386,7 +386,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
         resourceRegistry.UpdateResourceRegistry();
 
@@ -409,7 +409,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         var originalHandler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
@@ -442,7 +442,7 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         // Register a temp root whose backing folder is nested inside the project folder.

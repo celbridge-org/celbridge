@@ -9,14 +9,14 @@ public class ResourceRegistry : IResourceRegistry
     private readonly ILogger<ResourceRegistry> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IProjectTreeBuilder _projectTreeBuilder;
-    private readonly ISidecarPairingService _sidecarPairingService;
+    private readonly IResourceClassifier _resourceClassifier;
     private readonly RootHandlerRegistry _rootHandlerRegistry;
 
     // Sidecar tracking state, refreshed on each UpdateResourceRegistry pass.
     // The report is rebuilt atomically per pass so readers always see a coherent
     // snapshot.
     private readonly object _sidecarLock = new();
-    private SidecarReport _sidecarReport = new(
+    private CelFileReport _celFileReport = new(
         Healthy: Array.Empty<ResourceKey>(),
         Broken: Array.Empty<ResourceKey>(),
         Orphan: Array.Empty<ResourceKey>());
@@ -45,13 +45,13 @@ public class ResourceRegistry : IResourceRegistry
         ILogger<ResourceRegistry> logger,
         IMessengerService messengerService,
         IProjectTreeBuilder projectTreeBuilder,
-        ISidecarPairingService sidecarPairingService,
+        IResourceClassifier resourceClassifier,
         RootHandlerRegistry rootHandlerRegistry)
     {
         _logger = logger;
         _messengerService = messengerService;
         _projectTreeBuilder = projectTreeBuilder;
-        _sidecarPairingService = sidecarPairingService;
+        _resourceClassifier = resourceClassifier;
         _rootHandlerRegistry = rootHandlerRegistry;
     }
 
@@ -198,7 +198,7 @@ public class ResourceRegistry : IResourceRegistry
             // handler registry is handed in so per-sidecar path resolution
             // goes through the same reparse-point chokepoint as every other
             // resource operation.
-            var pairings = _sidecarPairingService.ComputePairings(newRoot, _rootHandlerRegistry);
+            var pairings = _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
 
             Volatile.Write(ref _projectFolder, newRoot);
 
@@ -209,7 +209,7 @@ public class ResourceRegistry : IResourceRegistry
                 {
                     _sidecarToParent[entry.Key] = entry.Value;
                 }
-                _sidecarReport = pairings.Report;
+                _celFileReport = pairings.Report;
             }
 
             _rootHandlerRegistry.InvalidatePathCache();
@@ -317,11 +317,11 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public SidecarReport GetSidecarReport()
+    public CelFileReport GetCelFileReport()
     {
         lock (_sidecarLock)
         {
-            return _sidecarReport;
+            return _celFileReport;
         }
     }
 

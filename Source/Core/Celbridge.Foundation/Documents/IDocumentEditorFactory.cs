@@ -35,8 +35,9 @@ public interface IDocumentEditorFactory
     /// <summary>
     /// The file extensions this factory handles (e.g., ".md", ".txt", ".cs").
     /// Extensions should be lowercase with leading dot. Multi-part forms such as
-    /// ".project.cel" are also accepted; the registry resolves longest match
-    /// first when a file's name matches more than one registered suffix.
+    /// ".webview.cel" or ".document.toml" are also accepted; the registry
+    /// resolves longest match first when a file's name matches more than one
+    /// registered suffix.
     /// </summary>
     IReadOnlyList<string> SupportedExtensions { get; }
 
@@ -55,9 +56,9 @@ public interface IDocumentEditorFactory
     EditorPriority Priority { get; }
 
     /// <summary>
-    /// True for factories that exist solely to register an extension so the
-    /// resources subsystem recognizes the form (e.g. package.cel, *.celbridge,
-    /// *.document.cel). Placeholders do not produce real document views and
+    /// True for factories that exist solely to reserve a filename or extension
+    /// for a known non-document role (e.g. package.toml, *.celbridge,
+    /// *.document.toml). Placeholders do not produce real document views and
     /// are hidden from user-facing pickers such as the "Open with..." menu.
     /// </summary>
     bool IsPlaceholder { get; }

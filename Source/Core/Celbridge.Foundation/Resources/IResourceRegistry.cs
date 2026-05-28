@@ -1,8 +1,8 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Snapshot of every .cel-shaped file the registry knows about, partitioned by
-/// parse state and orphan-ness. Used for project-load diagnostics and by
+/// Snapshot of every .cel file the registry knows about, partitioned by parse
+/// state and orphan-ness. Used for project-load diagnostics and by
 /// data_check_project to surface attention states.
 ///
 /// Parse state (Healthy / Broken) and orphan-ness are orthogonal dimensions:
@@ -10,7 +10,7 @@ namespace Celbridge.Resources;
 /// Files whose names end in .cel.cel are classified as Broken and never as a
 /// regular sidecar.
 /// </summary>
-public record SidecarReport(
+public record CelFileReport(
     IReadOnlyList<ResourceKey> Healthy,
     IReadOnlyList<ResourceKey> Broken,
     IReadOnlyList<ResourceKey> Orphan);
@@ -123,9 +123,9 @@ public interface IResourceRegistry
     Result<IFileResource> GetSidecarParent(ResourceKey sidecar);
 
     /// <summary>
-    /// Returns a snapshot of every sidecar the registry knows about, partitioned
-    /// by parse state, orphan-ness, and the .cel.cel invalid category. Used for
-    /// project-load diagnostics and by data_check_project.
+    /// Returns a snapshot of every .cel file the registry knows about,
+    /// partitioned by parse state, orphan-ness, and the .cel.cel invalid
+    /// category. Used for project-load diagnostics and by data_check_project.
     /// </summary>
-    SidecarReport GetSidecarReport();
+    CelFileReport GetCelFileReport();
 }

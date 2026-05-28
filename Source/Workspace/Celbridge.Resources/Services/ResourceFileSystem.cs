@@ -236,11 +236,11 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 // attribute the user has explicitly chosen to override by
                 // invoking a move on the file.
                 ClearReadOnlyIfSet(sourcePath);
-                File.Move(sourcePath, destPath);
+                await FileSystemHelper.MoveWithRetryAsync(() => File.Move(sourcePath, destPath));
             }
             else
             {
-                Directory.Move(sourcePath, destPath);
+                await FileSystemHelper.MoveWithRetryAsync(() => Directory.Move(sourcePath, destPath));
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -254,7 +254,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 .WithException(ex);
         }
 
-        var sidecarOutcome = TryCascadeSidecarMove(source, destination);
+        var sidecarOutcome = await TryCascadeSidecarMoveAsync(source, destination);
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
@@ -802,7 +802,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         return builder.ToString();
     }
 
-    private SidecarOutcome TryCascadeSidecarMove(ResourceKey source, ResourceKey destination)
+    private async Task<SidecarOutcome> TryCascadeSidecarMoveAsync(ResourceKey source, ResourceKey destination)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         var destSidecar = AppendSidecarSuffix(destination);
@@ -848,7 +848,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
                 Directory.CreateDirectory(destFolder);
             }
 
-            File.Move(sourceSidecarPath, destSidecarPath);
+            await FileSystemHelper.MoveWithRetryAsync(() => File.Move(sourceSidecarPath, destSidecarPath));
             return SidecarOutcome.Cascaded;
         }
         catch (Exception ex)
@@ -1189,7 +1189,7 @@ public sealed class ResourceFileSystem : IResourceFileSystem
         try
         {
             await File.WriteAllBytesAsync(tempPath, bytes);
-            File.Move(tempPath, resourcePath, overwrite: true);
+            await FileSystemHelper.MoveWithRetryAsync(() => File.Move(tempPath, resourcePath, overwrite: true));
         }
         catch
         {

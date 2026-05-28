@@ -150,7 +150,7 @@ public class DocumentViewFactory
     }
 
     // Highest-priority factory for the resource. Placeholder factories
-    // (package.cel, *.celbridge, *.document.cel) reserve extensions but
+    // (package.toml, *.celbridge, *.document.toml) reserve extensions but
     // never produce a view, so they are skipped here.
     private IDocumentView? CreateFromPriorityFactory(ResourceKey fileResource)
     {

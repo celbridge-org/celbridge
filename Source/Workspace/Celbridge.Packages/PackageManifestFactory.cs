@@ -5,15 +5,15 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Factory that claims ownership of package manifest files by exact filename
-/// (package.cel). The manifest sits at the top of each package folder and has no
-/// stem segment, so it is matched by filename rather than by a multi-part
+/// (package.toml). The manifest sits at the top of each package folder and has
+/// no stem segment, so it is matched by filename rather than by a multi-part
 /// extension form. Registering through the standard factory surface
 /// consolidates package-manifest identity in the same registry that other
 /// document editors use.
 /// </summary>
 public class PackageManifestFactory : DocumentEditorFactoryBase
 {
-    private const string PackageManifestFilename = "package.cel";
+    private const string PackageManifestFilename = "package.toml";
 
     private readonly IStringLocalizer _stringLocalizer;
 

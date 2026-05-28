@@ -5,14 +5,26 @@ namespace Celbridge.Resources.Helpers;
 /// </summary>
 internal static class FileSystemHelper
 {
+    // Retry budget for cross-process sharing-violation races on file/folder
+    // moves. After a file is created, the OS, antivirus, search indexer, or
+    // shell can briefly hold a read handle on the file, which surfaces as an
+    // IOException ("being used by another process") on an immediate File.Move
+    // or Directory.Move. Mirrors the read/write retry budgets in
+    // ResourceFileSystem; worst-case wait across all attempts is
+    // MoveRetryBaseDelayMs * (1 + 2) = 150ms with the values below.
+    private const int MaxMoveAttempts = 3;
+    private const int MoveRetryBaseDelayMs = 50;
+
     /// <summary>
     /// Moves a file to a destination, creating the destination directory if needed.
+    /// Retries briefly on transient IOException to absorb cross-process sharing
+    /// races; non-IO exceptions fall through unchanged.
     /// </summary>
-    public static void MoveFileWithDirectoryCreation(string sourcePath, string destPath)
+    public static async Task MoveFileWithDirectoryCreationAsync(string sourcePath, string destPath)
     {
         var destDir = Path.GetDirectoryName(destPath)!;
         Directory.CreateDirectory(destDir);
-        File.Move(sourcePath, destPath);
+        await MoveWithRetryAsync(() => File.Move(sourcePath, destPath));
     }
 
     /// <summary>
@@ -27,12 +39,36 @@ internal static class FileSystemHelper
 
     /// <summary>
     /// Moves a directory to a destination, creating the parent directory if needed.
+    /// Retries briefly on transient IOException to absorb cross-process sharing
+    /// races; non-IO exceptions fall through unchanged.
     /// </summary>
-    public static void MoveDirectoryWithParentCreation(string sourcePath, string destPath)
+    public static async Task MoveDirectoryWithParentCreationAsync(string sourcePath, string destPath)
     {
         var destParentDir = Path.GetDirectoryName(destPath)!;
         Directory.CreateDirectory(destParentDir);
-        Directory.Move(sourcePath, destPath);
+        await MoveWithRetryAsync(() => Directory.Move(sourcePath, destPath));
+    }
+
+    /// <summary>
+    /// Invokes a synchronous file/folder move operation with brief retries on
+    /// transient IOException. Non-IO exceptions and the last attempt's
+    /// IOException propagate unchanged so persistent failures surface
+    /// immediately.
+    /// </summary>
+    public static async Task MoveWithRetryAsync(Action moveOperation)
+    {
+        for (var attempt = 1; attempt <= MaxMoveAttempts; attempt++)
+        {
+            try
+            {
+                moveOperation();
+                return;
+            }
+            catch (IOException) when (attempt < MaxMoveAttempts)
+            {
+                await Task.Delay(MoveRetryBaseDelayMs * attempt);
+            }
+        }
     }
 
     /// <summary>

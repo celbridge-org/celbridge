@@ -61,11 +61,11 @@ public class MultiPartExtensionResolutionTests
     {
         var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
-        var multiFactory = CreateMockFactoryWithExtensions("test.multi-cel", new[] { ".note.cel", ".package.cel" });
+        var multiFactory = CreateMockFactoryWithExtensions("test.multi-cel", new[] { ".note.cel", ".theme.cel" });
         registry.RegisterFactory(multiFactory);
 
         var noteResult = registry.GetFactory(new ResourceKey("foo.note.cel"));
-        var modResult = registry.GetFactory(new ResourceKey("bar.package.cel"));
+        var modResult = registry.GetFactory(new ResourceKey("bar.theme.cel"));
 
         noteResult.IsSuccess.Should().BeTrue();
         noteResult.Value.Should().Be(multiFactory);

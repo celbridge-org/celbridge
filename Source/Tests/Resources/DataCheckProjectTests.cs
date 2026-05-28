@@ -50,7 +50,7 @@ public class DataCheckProjectTests
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
             new ProjectTreeBuilder(fileIconService),
-            SidecarPairingTestHelper.BuildPairingServiceWithNoFactories(),
+            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             new RootHandlerRegistry());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 

@@ -26,7 +26,7 @@ public class SidecarTrackingTests
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
             new ProjectTreeBuilder(new FileIconService()),
-            SidecarPairingTestHelper.BuildPairingServiceWithNoFactories(),
+            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             new RootHandlerRegistry());
         _registry.InitializeProjectRoot(_projectFolderPath);
     }
@@ -74,7 +74,7 @@ public class SidecarTrackingTests
         var fileResource = resourceResult.Value as IFileResource;
         fileResource!.Sidecar.Should().NotBeNull();
         fileResource.Sidecar!.Key.Should().Be(new ResourceKey("foo.png.cel"));
-        fileResource.Sidecar.Status.Should().Be(SidecarStatus.Healthy);
+        fileResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
 
         var parentResult = _registry.GetSidecarParent(new ResourceKey("foo.png.cel"));
         parentResult.IsSuccess.Should().BeTrue();
@@ -101,7 +101,7 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _registry.GetCelFileReport();
         report.Orphan.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
@@ -116,14 +116,14 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _registry.GetCelFileReport();
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel.cel"));
 
         // foo.png.cel is still healthy and paired with foo.png; the .cel.cel
         // file is not considered its sidecar.
         report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
         var fooPng = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
-        fooPng!.Sidecar!.Status.Should().Be(SidecarStatus.Healthy);
+        fooPng!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
     }
 
     [Test]
@@ -135,11 +135,11 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _registry.GetCelFileReport();
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
 
         var parent = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
-        parent!.Sidecar!.Status.Should().Be(SidecarStatus.Broken);
+        parent!.Sidecar!.Status.Should().Be(CelFileStatus.Broken);
     }
 
     [Test]
@@ -152,7 +152,7 @@ public class SidecarTrackingTests
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
         var parent1 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
-        parent1!.Sidecar!.Status.Should().Be(SidecarStatus.Healthy);
+        parent1!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
 
         File.Delete(sidecarPath);
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
@@ -168,12 +168,12 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetSidecarReport();
+        var report = _registry.GetCelFileReport();
         report.Broken.Should().Contain(new ResourceKey("lonely.cel"));
         report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
     }
 
-    // Standalone .cel form recognition (package.cel, foo.webview.cel) and the
-    // editor-registry hookup live in SidecarPairingServiceTests, which targets
-    // the pairing service directly.
+    // Standalone .cel form recognition (foo.webview.cel, foo.note.cel) and the
+    // editor-registry hookup live in ResourceClassifierTests, which targets
+    // the classifier directly.
 }

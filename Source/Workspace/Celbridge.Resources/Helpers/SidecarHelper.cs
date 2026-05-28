@@ -312,7 +312,7 @@ public static class SidecarHelper
     /// (parses cleanly) or Broken (any parse or read failure). The bytes on
     /// disk are never modified.
     /// </summary>
-    public static SidecarStatus Inspect(string absolutePath, ILogger logger)
+    public static CelFileStatus Inspect(string absolutePath, ILogger logger)
     {
         string text;
         try
@@ -322,17 +322,17 @@ public static class SidecarHelper
         catch (Exception ex)
         {
             logger.LogWarning(ex, $"sidecar pairing: failed to read '{absolutePath}'");
-            return SidecarStatus.Broken;
+            return CelFileStatus.Broken;
         }
 
         var parseResult = Parse(text);
         if (parseResult.IsFailure)
         {
             logger.LogWarning($"sidecar pairing: '{absolutePath}' has unparseable content");
-            return SidecarStatus.Broken;
+            return CelFileStatus.Broken;
         }
 
-        return SidecarStatus.Healthy;
+        return CelFileStatus.Healthy;
     }
 
     // One physical line plus the line terminator that follows it. The

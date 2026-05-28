@@ -1,23 +1,22 @@
-using Celbridge.Documents;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Direct unit tests for the sidecar pairing pass: parent pairing, parentless
-/// classification (standalone-form vs orphan), and the broken / healthy split.
-/// The previous behaviour was tested only end-to-end through ResourceRegistry
-/// with a nullable workspace wrapper, which silently disabled the standalone-
-/// form recognition in tests; this fixture covers the cross-domain decision
-/// directly.
+/// Direct unit tests for the resource classification pass: parent pairing,
+/// parentless classification (standalone-form vs orphan), per-file FileKind
+/// stamping, and the broken / healthy split. The previous behaviour was tested
+/// only end-to-end through ResourceRegistry with a nullable workspace wrapper,
+/// which silently disabled the standalone-form recognition in tests; this
+/// fixture covers the cross-domain decision directly.
 ///
-/// The pairing service reads sidecar bytes from disk to drive SidecarHelper.Inspect,
+/// The classifier reads sidecar bytes from disk to drive SidecarHelper.Inspect,
 /// so tests still set up real files; the value is that they target the service
 /// surface rather than the registry.
 /// </summary>
 [TestFixture]
-public class SidecarPairingServiceTests
+public class ResourceClassifierTests
 {
     private string _projectFolderPath = null!;
 
@@ -27,7 +26,7 @@ public class SidecarPairingServiceTests
         _projectFolderPath = Path.Combine(
             Path.GetTempPath(),
             "Celbridge",
-            nameof(SidecarPairingServiceTests),
+            nameof(ResourceClassifierTests),
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
     }
@@ -60,11 +59,11 @@ public class SidecarPairingServiceTests
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
         editorRegistry.IsExtensionSupported(".note.cel").Returns(true);
 
-        var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetSidecarReport();
+        var report = registry.GetCelFileReport();
         report.Orphan.Should().NotContain(new ResourceKey("feature.note.cel"));
         report.Healthy.Should().Contain(new ResourceKey("feature.note.cel"));
     }
@@ -72,23 +71,23 @@ public class SidecarPairingServiceTests
     [Test]
     public void StandaloneCelWithFilenameOnlyRegistration_IsNotReportedAsOrphan()
     {
-        // Regression for "package.cel": a filename-only factory registration must
-        // also drive standalone classification. Earlier code computed a multi-
-        // part suffix and missed the bare-filename case, so every package.cel showed
-        // up in the orphan list.
-        File.WriteAllText(Path.Combine(_projectFolderPath, "package.cel"),
-            "[package]\nid = \"acme\"\nname = \"Acme\"\nversion = \"1.0.0\"\n");
+        // Filename-only factory registrations must drive standalone classification.
+        // Earlier code computed a multi-part suffix and missed the bare-filename
+        // case, so any .cel file owned by a filename-only factory showed up in
+        // the orphan list.
+        File.WriteAllText(Path.Combine(_projectFolderPath, "config.cel"),
+            "value = 1\n");
 
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        editorRegistry.IsFilenameSupported("package.cel").Returns(true);
+        editorRegistry.IsFilenameSupported("config.cel").Returns(true);
 
-        var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetSidecarReport();
-        report.Orphan.Should().NotContain(new ResourceKey("package.cel"));
-        report.Healthy.Should().Contain(new ResourceKey("package.cel"));
+        var report = registry.GetCelFileReport();
+        report.Orphan.Should().NotContain(new ResourceKey("config.cel"));
+        report.Healthy.Should().Contain(new ResourceKey("config.cel"));
     }
 
     [Test]
@@ -105,11 +104,11 @@ public class SidecarPairingServiceTests
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
         editorRegistry.IsExtensionSupported(".cel").Returns(true);
 
-        var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetSidecarReport();
+        var report = registry.GetCelFileReport();
         report.Orphan.Should().Contain(new ResourceKey("orphaned.png.cel"));
     }
 
@@ -122,11 +121,11 @@ public class SidecarPairingServiceTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "scratch.unknown.cel"),
             "key = \"value\"\n");
 
-        var pairingService = SidecarPairingTestHelper.BuildPairingServiceWithNoFactories();
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetSidecarReport();
+        var report = registry.GetCelFileReport();
         report.Orphan.Should().Contain(new ResourceKey("scratch.unknown.cel"));
     }
 
@@ -145,13 +144,13 @@ public class SidecarPairingServiceTests
         editorRegistry.IsFilenameSupported(Arg.Any<string>()).Returns(false);
         editorRegistry.IsExtensionSupported(Arg.Any<string>()).Returns(false);
 
-        var pairingService = SidecarPairingTestHelper.BuildPairingService(editorRegistry);
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
         editorRegistry.DidNotReceive().IsFilenameSupported("foo.png.cel");
 
-        var report = registry.GetSidecarReport();
+        var report = registry.GetCelFileReport();
         report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
         report.Orphan.Should().NotContain(new ResourceKey("foo.png.cel"));
     }
@@ -167,39 +166,112 @@ public class SidecarPairingServiceTests
         File.WriteAllText(Path.Combine(sub, "note.md"), "body");
         File.WriteAllText(Path.Combine(sub, "note.md.cel"), "tags = [\"meeting\"]\n");
 
-        var pairingService = SidecarPairingTestHelper.BuildPairingServiceWithNoFactories();
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
         var noteResource = registry.GetResource(new ResourceKey("subfolder/note.md")).Value as IFileResource;
         noteResource!.Sidecar.Should().NotBeNull();
         noteResource.Sidecar!.Key.Should().Be(new ResourceKey("subfolder/note.md.cel"));
-        noteResource.Sidecar.Status.Should().Be(SidecarStatus.Healthy);
+        noteResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
 
-        registry.GetSidecarReport()
+        registry.GetCelFileReport()
             .Healthy.Should().Contain(new ResourceKey("subfolder/note.md.cel"));
     }
 
     [Test]
     public void EmptyTree_ProducesEmptyReport()
     {
-        var pairingService = SidecarPairingTestHelper.BuildPairingServiceWithNoFactories();
-        var registry = BuildRegistry(pairingService);
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetSidecarReport();
+        var report = registry.GetCelFileReport();
         report.Healthy.Should().BeEmpty();
         report.Broken.Should().BeEmpty();
         report.Orphan.Should().BeEmpty();
     }
 
-    private ResourceRegistry BuildRegistry(SidecarPairingService pairingService)
+    [Test]
+    public void Classify_PlainDataFileWithoutSidecar_IsPlainData()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
+
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
+        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var file = registry.GetResource(new ResourceKey("notes.md")).Value as IFileResource;
+        file!.FileKind.Should().Be(FileKind.PlainData);
+    }
+
+    [Test]
+    public void Classify_PairedSidecarAndParent_AssignsExpectedKinds()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"), "tags = []\n");
+
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
+        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var parent = registry.GetResource(new ResourceKey("notes.md")).Value as IFileResource;
+        var sidecar = registry.GetResource(new ResourceKey("notes.md.cel")).Value as IFileResource;
+
+        parent!.FileKind.Should().Be(FileKind.PlainData);
+        sidecar!.FileKind.Should().Be(FileKind.Sidecar);
+    }
+
+    [Test]
+    public void Classify_RegisteredStandaloneCel_IsStandalone()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "page.webview.cel"),
+            "source_url = \"https://example.com\"\n");
+
+        var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
+        editorRegistry.IsExtensionSupported(".webview.cel").Returns(true);
+
+        var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
+        var registry = BuildRegistry(classifier);
+        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var file = registry.GetResource(new ResourceKey("page.webview.cel")).Value as IFileResource;
+        file!.FileKind.Should().Be(FileKind.Standalone);
+    }
+
+    [Test]
+    public void Classify_ParentlessUnregisteredCel_IsOrphan()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "tags = []\n");
+
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
+        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var file = registry.GetResource(new ResourceKey("lonely.cel")).Value as IFileResource;
+        file!.FileKind.Should().Be(FileKind.Orphan);
+    }
+
+    [Test]
+    public void Classify_DoubleCelExtension_IsInvalidSidecar()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "stray.cel.cel"), "broken\n");
+
+        var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
+        var registry = BuildRegistry(classifier);
+        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var file = registry.GetResource(new ResourceKey("stray.cel.cel")).Value as IFileResource;
+        file!.FileKind.Should().Be(FileKind.InvalidSidecar);
+    }
+
+    private ResourceRegistry BuildRegistry(ResourceClassifier classifier)
     {
         var registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new Celbridge.Messaging.Services.MessengerService(),
             new ProjectTreeBuilder(new Celbridge.UserInterface.Services.FileIconService()),
-            pairingService,
+            classifier,
             new RootHandlerRegistry());
         registry.InitializeProjectRoot(_projectFolderPath);
         return registry;

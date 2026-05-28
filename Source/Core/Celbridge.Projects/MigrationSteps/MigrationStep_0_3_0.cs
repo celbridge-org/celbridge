@@ -5,23 +5,15 @@ using Celbridge.Projects.Services;
 namespace Celbridge.Projects.MigrationSteps;
 
 /// <summary>
-/// Migrates projects to v0.3.0. Celbridge's package and document file formats
-/// consolidate onto the .cel extension as the final phase of the resources
-/// redesign. This step renames each package.toml to package.cel, each *.document.toml
-/// to *.document.cel, and each *.webview file to *.webview.cel (converting the
-/// JSON body to TOML at the same time). The .celbridge project file extension is
-/// deliberately retained and is not renamed by this step. Internal references in
-/// the project config and the renamed package.cel manifests are rewritten so the
-/// post-migration project loads cleanly.
+/// Migrates projects to v0.3.0. The user-visible change in this version is that
+/// the WebView resource adopts the .cel sidecar/standalone form: each pre-v0.3.0
+/// "blah.webview" JSON file is converted to "blah.webview.cel" TOML. The .celbridge
+/// project file extension and the .toml package and document manifest filenames are
+/// deliberately retained. Quoted references to the old WebView extension inside the
+/// project config are rewritten so the post-migration project loads cleanly.
 /// </summary>
 public class MigrationStep_0_3_0 : IMigrationStep
 {
-    private const string PackageManifestOldName = "package.toml";
-    private const string PackageManifestNewName = "package.cel";
-
-    private const string DocumentManifestOldExtension = ".document.toml";
-    private const string DocumentManifestNewExtension = ".document.cel";
-
     private const string WebViewOldExtension = ".webview";
     private const string WebViewNewExtension = ".webview.cel";
 
@@ -34,18 +26,6 @@ public class MigrationStep_0_3_0 : IMigrationStep
     {
         var projectDataFolderPath = Path.GetFullPath(context.ProjectDataFolderPath);
 
-        var packageRenameResult = RenamePackageManifests(context, projectDataFolderPath);
-        if (packageRenameResult.IsFailure)
-        {
-            return packageRenameResult;
-        }
-
-        var documentRenameResult = RenameDocumentManifests(context, projectDataFolderPath);
-        if (documentRenameResult.IsFailure)
-        {
-            return documentRenameResult;
-        }
-
         var webViewConvertResult = await ConvertWebViewFilesAsync(context, projectDataFolderPath);
         if (webViewConvertResult.IsFailure)
         {
@@ -56,154 +36,6 @@ public class MigrationStep_0_3_0 : IMigrationStep
         if (configRewriteResult.IsFailure)
         {
             return configRewriteResult;
-        }
-
-        return Result.Ok();
-    }
-
-    private Result RenamePackageManifests(MigrationContext context, string projectDataFolderPath)
-    {
-        try
-        {
-            var matches = Directory.EnumerateFiles(
-                context.ProjectFolderPath,
-                PackageManifestOldName,
-                SearchOption.AllDirectories);
-
-            int renamedCount = 0;
-            foreach (var oldPath in matches)
-            {
-                var fullOldPath = Path.GetFullPath(oldPath);
-                if (IsInsideMetaDataFolder(fullOldPath, projectDataFolderPath))
-                {
-                    continue;
-                }
-
-                var newPath = Path.Combine(
-                    Path.GetDirectoryName(fullOldPath)!,
-                    PackageManifestNewName);
-
-                if (File.Exists(newPath))
-                {
-                    return Result.Fail(
-                        $"Cannot rename '{fullOldPath}' to '{newPath}'. Target file already exists.");
-                }
-
-                File.Move(fullOldPath, newPath);
-                renamedCount++;
-            }
-
-            if (renamedCount > 0)
-            {
-                context.Logger.LogInformation(
-                    $"Renamed {renamedCount} '{PackageManifestOldName}' file(s) to '{PackageManifestNewName}'");
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to rename '{PackageManifestOldName}' files in project folder")
-                .WithException(ex);
-        }
-    }
-
-    private Result RenameDocumentManifests(MigrationContext context, string projectDataFolderPath)
-    {
-        try
-        {
-            // Two passes: rename the files first, then rewrite each surviving
-            // package.cel so the document_editors array points at the renamed
-            // *.document.cel files. The package.cel rewrite is best-effort: we only
-            // touch quoted entries that end with the old extension, leaving any
-            // bespoke prose paths alone.
-
-            var renamedFiles = new List<(string OldPath, string NewPath)>();
-            var matches = Directory.EnumerateFiles(
-                context.ProjectFolderPath,
-                $"*{DocumentManifestOldExtension}",
-                SearchOption.AllDirectories);
-
-            foreach (var oldPath in matches)
-            {
-                var fullOldPath = Path.GetFullPath(oldPath);
-                if (IsInsideMetaDataFolder(fullOldPath, projectDataFolderPath))
-                {
-                    continue;
-                }
-
-                var fileName = Path.GetFileName(fullOldPath);
-                var stem = fileName.Substring(0, fileName.Length - DocumentManifestOldExtension.Length);
-                var newPath = Path.Combine(
-                    Path.GetDirectoryName(fullOldPath)!,
-                    stem + DocumentManifestNewExtension);
-
-                if (File.Exists(newPath))
-                {
-                    return Result.Fail(
-                        $"Cannot rename '{fullOldPath}' to '{newPath}'. Target file already exists.");
-                }
-
-                File.Move(fullOldPath, newPath);
-                renamedFiles.Add((fullOldPath, newPath));
-            }
-
-            if (renamedFiles.Count > 0)
-            {
-                context.Logger.LogInformation(
-                    $"Renamed {renamedFiles.Count} '*{DocumentManifestOldExtension}' file(s) to '*{DocumentManifestNewExtension}'");
-            }
-
-            var packageManifestRewriteResult = RewritePackageManifestReferences(context, projectDataFolderPath);
-            if (packageManifestRewriteResult.IsFailure)
-            {
-                return packageManifestRewriteResult;
-            }
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to rename '*{DocumentManifestOldExtension}' files in project folder")
-                .WithException(ex);
-        }
-    }
-
-    private Result RewritePackageManifestReferences(MigrationContext context, string projectDataFolderPath)
-    {
-        var packageManifests = Directory.EnumerateFiles(
-            context.ProjectFolderPath,
-            PackageManifestNewName,
-            SearchOption.AllDirectories);
-
-        foreach (var packageManifestPath in packageManifests)
-        {
-            var fullPath = Path.GetFullPath(packageManifestPath);
-            if (IsInsideMetaDataFolder(fullPath, projectDataFolderPath))
-            {
-                continue;
-            }
-
-            try
-            {
-                var originalText = File.ReadAllText(fullPath);
-                var rewrittenText = RewriteQuotedExtensions(
-                    originalText,
-                    DocumentManifestOldExtension,
-                    DocumentManifestNewExtension);
-
-                if (rewrittenText != originalText)
-                {
-                    File.WriteAllText(fullPath, rewrittenText);
-                    context.Logger.LogInformation(
-                        $"Rewrote '*{DocumentManifestOldExtension}' references in package manifest: '{fullPath}'");
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result.Fail($"Failed to rewrite references in package manifest: '{fullPath}'")
-                    .WithException(ex);
-            }
         }
 
         return Result.Ok();
@@ -381,13 +213,8 @@ public class MigrationStep_0_3_0 : IMigrationStep
             var originalText = await File.ReadAllTextAsync(context.ProjectFilePath);
 
             // Rewrites are scoped to quoted occurrences so bare prose mentions of
-            // these extensions in comments stay untouched. Order matters: rewrite
-            // the longer/more-specific extension first so .webview does not eat
-            // .document.toml or vice versa.
-            var updatedText = originalText;
-            updatedText = RewriteQuotedExtensions(updatedText, DocumentManifestOldExtension, DocumentManifestNewExtension);
-            updatedText = RewriteQuotedExtensions(updatedText, WebViewOldExtension, WebViewNewExtension);
-            updatedText = RewriteQuotedFilenames(updatedText, PackageManifestOldName, PackageManifestNewName);
+            // the old extension in comments stay untouched.
+            var updatedText = RewriteQuotedExtensions(originalText, WebViewOldExtension, WebViewNewExtension);
 
             if (updatedText == originalText)
             {
@@ -418,15 +245,6 @@ public class MigrationStep_0_3_0 : IMigrationStep
         return text
             .Replace($"{oldExtension}\"", $"{newExtension}\"")
             .Replace($"{oldExtension}'", $"{newExtension}'");
-    }
-
-    private static string RewriteQuotedFilenames(string text, string oldFilename, string newFilename)
-    {
-        return text
-            .Replace($"/{oldFilename}\"", $"/{newFilename}\"")
-            .Replace($"/{oldFilename}'", $"/{newFilename}'")
-            .Replace($"\\{oldFilename}\"", $"\\{newFilename}\"")
-            .Replace($"\\{oldFilename}'", $"\\{newFilename}'");
     }
 
     private static bool IsInsideMetaDataFolder(string fullPath, string projectDataFolderPath)

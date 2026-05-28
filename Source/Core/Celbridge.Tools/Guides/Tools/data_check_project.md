@@ -3,7 +3,7 @@
 Reports project-wide consistency findings without modifying anything:
 
 - **Broken references** — `project:` references in text files that name a missing target.
-- **Orphan .cel files** — `.cel` files with no parent file present on disk and no registered factory claiming the standalone form (e.g. `package.cel`, `*.note.cel`, `*.document.cel`).
+- **Orphan .cel files** — `.cel` files with no parent file present on disk and no registered factory claiming the standalone form (e.g. `*.webview.cel`, `*.note.cel`).
 - **Broken .cel files** — `.cel` files (including invalid `.cel.cel` filenames) that fail to parse. Applies to both parent-paired sidecars and standalone `.cel` forms.
 
 Returns a JSON object with three arrays:

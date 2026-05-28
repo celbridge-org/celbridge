@@ -122,7 +122,7 @@ public class PackageServiceTests
         // Create an invalid package
         var badDir = Path.Combine(_tempProjectFolder, "packages", "bad");
         Directory.CreateDirectory(badDir);
-        File.WriteAllText(Path.Combine(badDir, "package.cel"), "{ invalid toml }");
+        File.WriteAllText(Path.Combine(badDir, "package.toml"), "{ invalid toml }");
 
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
@@ -315,7 +315,7 @@ public class PackageServiceTests
     {
         var bundledDir = Path.Combine(_tempProjectFolder, "bad-bundled");
         Directory.CreateDirectory(bundledDir);
-        File.WriteAllText(Path.Combine(bundledDir, "package.cel"), "{ invalid toml }");
+        File.WriteAllText(Path.Combine(bundledDir, "package.toml"), "{ invalid toml }");
 
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = bundledDir } });
 
@@ -382,7 +382,7 @@ public class PackageServiceTests
         await _service.RegisterPackagesAsync(_tempProjectFolder);
 
         // CustomDocumentViewFactory builds editor IDs as "{packageId}.{contributionId}".
-        // The contributionId comes from the [document] table key in package.cel,
+        // The contributionId comes from the [document] table key in package.toml,
         // which CreateBundledPackage sets to the docType argument.
         var editorId = new DocumentEditorId("celbridge.notes.custom");
 
@@ -444,17 +444,17 @@ public class PackageServiceTests
 
     private static void WritePackageFiles(string packageDir, string packageId, string packageName, string docType, string fileExt)
     {
-        File.WriteAllText(Path.Combine(packageDir, "package.cel"), $"""
+        File.WriteAllText(Path.Combine(packageDir, "package.toml"), $"""
             [package]
             id = "{packageId}"
             name = "{packageName}"
             version = "1.0.0"
 
             [contributes]
-            document_editors = ["editor.document.cel"]
+            document_editors = ["editor.document.toml"]
             """);
 
-        File.WriteAllText(Path.Combine(packageDir, "editor.document.cel"), $"""
+        File.WriteAllText(Path.Combine(packageDir, "editor.document.toml"), $"""
             [document]
             id = "{packageId}-doc"
             type = "{docType}"

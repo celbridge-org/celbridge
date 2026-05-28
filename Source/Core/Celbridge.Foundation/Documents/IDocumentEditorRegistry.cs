@@ -23,7 +23,7 @@ public interface IDocumentEditorRegistry
 
     /// <summary>
     /// Checks if any registered factory is bound to the specified exact filename.
-    /// Filename-only registrations (e.g. "package.cel") drive matching distinct
+    /// Filename-only registrations (e.g. "package.toml") drive matching distinct
     /// from extension lookups.
     /// </summary>
     bool IsFilenameSupported(string fileName);

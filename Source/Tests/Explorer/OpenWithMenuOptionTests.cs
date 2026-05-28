@@ -231,7 +231,7 @@ public class OpenWithMenuOptionTests
         // menu stays hidden (one candidate, nothing to pick between). This
         // closes the footgun where picking a placeholder would write a
         // non-functional editor id into the manifest's own frontmatter.
-        var clickedFile = CreateFileResource("package.cel");
+        var clickedFile = CreateFileResource("package.toml");
         var placeholder = CreateFactory("celbridge.package-manifest");
         placeholder.IsPlaceholder.Returns(true);
         _editorRegistry.GetUserPickableFactoriesForResource(Arg.Any<ResourceKey>())

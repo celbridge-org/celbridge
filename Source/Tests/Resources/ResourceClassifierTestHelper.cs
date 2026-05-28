@@ -1,4 +1,3 @@
-using Celbridge.Documents;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Workspace;
@@ -6,54 +5,54 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Helpers for tests that need a real SidecarPairingService — typically tests
-/// that exercise code paths reading the sidecar report or per-file Sidecar
+/// Helpers for tests that need a real ResourceClassifier — typically tests
+/// that exercise code paths reading the .cel report or per-file Sidecar
 /// pairing through the resource registry.
 /// </summary>
-internal static class SidecarPairingTestHelper
+internal static class ResourceClassifierTestHelper
 {
     /// <summary>
-    /// Builds a stub that returns an empty pairing result on every call. Use
-    /// for tests that exercise the registry but do not care about sidecar
+    /// Builds a stub that returns an empty classification result on every call.
+    /// Use for tests that exercise the registry but do not care about file
     /// classification (most ResourceRegistry tests). Avoids needing a real
     /// workspace wrapper.
     /// </summary>
-    public static ISidecarPairingService BuildEmptyStub()
+    public static IResourceClassifier BuildEmptyStub()
     {
-        var stub = Substitute.For<ISidecarPairingService>();
-        var emptyReport = new SidecarReport(
+        var stub = Substitute.For<IResourceClassifier>();
+        var emptyReport = new CelFileReport(
             Healthy: Array.Empty<ResourceKey>(),
             Broken: Array.Empty<ResourceKey>(),
             Orphan: Array.Empty<ResourceKey>());
-        var emptyResult = new SidecarPairingResult(
+        var emptyResult = new ResourceClassificationResult(
             emptyReport,
             new Dictionary<ResourceKey, ResourceKey>());
-        stub.ComputePairings(Arg.Any<IFolderResource>(), Arg.Any<IRootHandlerRegistry>())
+        stub.ClassifyResources(Arg.Any<IFolderResource>(), Arg.Any<IRootHandlerRegistry>())
             .Returns(emptyResult);
         return stub;
     }
 
     /// <summary>
-    /// Builds a real SidecarPairingService wrapped around an editor registry
+    /// Builds a real ResourceClassifier wrapped around an editor registry
     /// that claims no factories. Every parentless .cel file is classified as
     /// an orphan, which matches the default expectation for tests that are
     /// not exercising standalone-form recognition.
     /// </summary>
-    public static SidecarPairingService BuildPairingServiceWithNoFactories()
+    public static ResourceClassifier BuildClassifierWithNoFactories()
     {
         // NSubstitute returns false for unconfigured bool methods, so the
         // standalone-form check naturally returns "no match" without any
         // explicit stubbing.
         var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        return BuildPairingService(editorRegistry);
+        return BuildClassifier(editorRegistry);
     }
 
     /// <summary>
-    /// Builds a real SidecarPairingService wrapped around the supplied editor
+    /// Builds a real ResourceClassifier wrapped around the supplied editor
     /// registry. Use when the test wants to stub specific standalone-form
-    /// recognition rules (e.g. package.cel, foo.webview.cel).
+    /// recognition rules (e.g. foo.webview.cel, foo.note.cel).
     /// </summary>
-    public static SidecarPairingService BuildPairingService(IDocumentEditorRegistry editorRegistry)
+    public static ResourceClassifier BuildClassifier(IDocumentEditorRegistry editorRegistry)
     {
         var documentsService = Substitute.For<IDocumentsService>();
         documentsService.DocumentEditorRegistry.Returns(editorRegistry);
@@ -65,8 +64,8 @@ internal static class SidecarPairingTestHelper
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
         workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
 
-        return new SidecarPairingService(
-            Substitute.For<ILogger<SidecarPairingService>>(),
+        return new ResourceClassifier(
+            Substitute.For<ILogger<ResourceClassifier>>(),
             workspaceWrapper);
     }
 }

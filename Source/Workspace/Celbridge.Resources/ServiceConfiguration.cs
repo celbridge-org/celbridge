@@ -23,7 +23,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceFileSystem, ResourceFileSystem>();
         services.AddTransient<IResourceScanner, ResourceScanner>();
         services.AddTransient<ISidecarService, SidecarService>();
-        services.AddTransient<ISidecarPairingService, SidecarPairingService>();
+        services.AddTransient<IResourceClassifier, ResourceClassifier>();
         services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();
         services.AddTransient<AddResourceHelper>();
 

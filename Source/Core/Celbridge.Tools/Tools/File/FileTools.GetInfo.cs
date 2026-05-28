@@ -58,8 +58,8 @@ public partial class FileTools
         {
             var sidecarStatusText = snapshot.SidecarStatus switch
             {
-                Celbridge.Resources.SidecarStatus.Healthy => "healthy",
-                Celbridge.Resources.SidecarStatus.Broken => "broken",
+                Celbridge.Resources.CelFileStatus.Healthy => "healthy",
+                Celbridge.Resources.CelFileStatus.Broken => "broken",
                 _ => "none",
             };
 

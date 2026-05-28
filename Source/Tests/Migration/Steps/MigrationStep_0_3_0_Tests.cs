@@ -8,9 +8,9 @@ using Tomlyn.Model;
 namespace Celbridge.Tests.Migration.Steps;
 
 /// <summary>
-/// Unit tests for MigrationStep_0_3_0 which renames package.toml to package.cel,
-/// *.document.toml to *.document.cel, and *.webview to *.webview.cel (converting
-/// the JSON body to TOML at the same time).
+/// Unit tests for MigrationStep_0_3_0 which converts each pre-v0.3.0
+/// "blah.webview" JSON file to "blah.webview.cel" TOML and rewrites quoted
+/// references to the old extension in the project config.
 /// </summary>
 [TestFixture]
 public class MigrationStep_0_3_0_Tests
@@ -57,95 +57,16 @@ public class MigrationStep_0_3_0_Tests
     }
 
     [Test]
-    public async Task ApplyAsync_RenamesPackageTomlToPackageCel()
-    {
-        // Arrange
-        WriteMinimalProjectFile();
-        var packageDir = Path.Combine(_projectFolderPath, "packages", "my-package");
-        Directory.CreateDirectory(packageDir);
-        var oldManifestPath = Path.Combine(packageDir, "package.toml");
-        await File.WriteAllTextAsync(oldManifestPath, "[package]\nid = \"my-package\"\nname = \"My Package\"\nversion = \"1.0.0\"\n");
-
-        var context = CreateContext();
-
-        // Act
-        var result = await _step.ApplyAsync(context);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        File.Exists(oldManifestPath).Should().BeFalse();
-        File.Exists(Path.Combine(packageDir, "package.cel")).Should().BeTrue();
-    }
-
-    [Test]
-    public async Task ApplyAsync_RenamesDocumentTomlToDocumentCel()
-    {
-        // Arrange
-        WriteMinimalProjectFile();
-        var packageDir = Path.Combine(_projectFolderPath, "packages", "my-package");
-        Directory.CreateDirectory(packageDir);
-        var oldDocPath = Path.Combine(packageDir, "myeditor.document.toml");
-        await File.WriteAllTextAsync(oldDocPath, "[document]\nid = \"my-doc\"\ntype = \"custom\"\ndisplay_name = \"My Doc\"\n\n[[document_file_types]]\nextension = \".my\"\ndisplay_name = \"My File\"\n");
-
-        var context = CreateContext();
-
-        // Act
-        var result = await _step.ApplyAsync(context);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        File.Exists(oldDocPath).Should().BeFalse();
-        File.Exists(Path.Combine(packageDir, "myeditor.document.cel")).Should().BeTrue();
-    }
-
-    [Test]
-    public async Task ApplyAsync_RewritesDocumentEditorsReferencesInPackageCel()
-    {
-        // Arrange
-        WriteMinimalProjectFile();
-        var packageDir = Path.Combine(_projectFolderPath, "packages", "my-package");
-        Directory.CreateDirectory(packageDir);
-        var oldManifestPath = Path.Combine(packageDir, "package.toml");
-        await File.WriteAllTextAsync(oldManifestPath, """
-            [package]
-            id = "my-package"
-            name = "My Package"
-            version = "1.0.0"
-
-            [contributes]
-            document_editors = ["editor-a.document.toml", "editor-b.document.toml"]
-            """);
-        await File.WriteAllTextAsync(Path.Combine(packageDir, "editor-a.document.toml"), "[document]\nid = \"a\"\ntype = \"custom\"\ndisplay_name = \"A\"\n[[document_file_types]]\nextension = \".a\"\ndisplay_name = \"A\"\n");
-        await File.WriteAllTextAsync(Path.Combine(packageDir, "editor-b.document.toml"), "[document]\nid = \"b\"\ntype = \"custom\"\ndisplay_name = \"B\"\n[[document_file_types]]\nextension = \".b\"\ndisplay_name = \"B\"\n");
-
-        var context = CreateContext();
-
-        // Act
-        var result = await _step.ApplyAsync(context);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-
-        var newManifestText = await File.ReadAllTextAsync(Path.Combine(packageDir, "package.cel"));
-        newManifestText.Should().Contain("\"editor-a.document.cel\"");
-        newManifestText.Should().Contain("\"editor-b.document.cel\"");
-        newManifestText.Should().NotContain(".document.toml");
-    }
-
-    [Test]
     public async Task ApplyAsync_ConvertsWebViewFromJsonToToml()
     {
-        // Arrange
         WriteMinimalProjectFile();
         var oldWebViewPath = Path.Combine(_projectFolderPath, "page.webview");
         await File.WriteAllTextAsync(oldWebViewPath, "{\"sourceUrl\": \"https://example.com/path\"}");
 
         var context = CreateContext();
 
-        // Act
         var result = await _step.ApplyAsync(context);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         File.Exists(oldWebViewPath).Should().BeFalse();
 
@@ -164,17 +85,14 @@ public class MigrationStep_0_3_0_Tests
     [Test]
     public async Task ApplyAsync_ConvertsWebViewWithMissingSourceUrlToEmptyValue()
     {
-        // Arrange
         WriteMinimalProjectFile();
         var oldWebViewPath = Path.Combine(_projectFolderPath, "empty.webview");
         await File.WriteAllTextAsync(oldWebViewPath, "{}");
 
         var context = CreateContext();
 
-        // Act
         var result = await _step.ApplyAsync(context);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         var newPath = Path.Combine(_projectFolderPath, "empty.webview.cel");
         File.Exists(newPath).Should().BeTrue();
@@ -186,7 +104,6 @@ public class MigrationStep_0_3_0_Tests
     [Test]
     public async Task ApplyAsync_RewritesWebViewReferencesInProjectConfig()
     {
-        // Arrange
         var content = """
             [celbridge]
             celbridge-version = "0.2.7"
@@ -199,61 +116,69 @@ public class MigrationStep_0_3_0_Tests
 
         var context = CreateContext();
 
-        // Act
         var result = await _step.ApplyAsync(context);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         var updated = await File.ReadAllTextAsync(_projectFilePath);
         updated.Should().Contain("entry = \"Sites/index.webview.cel\"");
     }
 
     [Test]
+    public async Task ApplyAsync_LeavesTomlManifestsAlone()
+    {
+        // v0.3.0 keeps package.toml and *.document.toml on their original
+        // extension. Only the .webview content file is touched.
+        WriteMinimalProjectFile();
+        var packageDir = Path.Combine(_projectFolderPath, "packages", "my-package");
+        Directory.CreateDirectory(packageDir);
+
+        var packagePath = Path.Combine(packageDir, "package.toml");
+        var documentPath = Path.Combine(packageDir, "myeditor.document.toml");
+        await File.WriteAllTextAsync(packagePath, "[package]\nid = \"my-package\"\n");
+        await File.WriteAllTextAsync(documentPath, "[document]\nid = \"my-doc\"\n");
+
+        var context = CreateContext();
+
+        var result = await _step.ApplyAsync(context);
+
+        result.IsSuccess.Should().BeTrue();
+        File.Exists(packagePath).Should().BeTrue();
+        File.Exists(documentPath).Should().BeTrue();
+        File.Exists(Path.Combine(packageDir, "package.cel")).Should().BeFalse();
+        File.Exists(Path.Combine(packageDir, "myeditor.document.cel")).Should().BeFalse();
+    }
+
+    [Test]
     public async Task ApplyAsync_SkipsFilesInsideMetaDataFolder()
     {
-        // Arrange
         WriteMinimalProjectFile();
         Directory.CreateDirectory(_projectDataFolderPath);
 
         var metadataWebView = Path.Combine(_projectDataFolderPath, "stale.webview");
-        var metadataPackage = Path.Combine(_projectDataFolderPath, "package.toml");
         await File.WriteAllTextAsync(metadataWebView, "{}");
-        await File.WriteAllTextAsync(metadataPackage, "[package]\nid = \"x\"\n");
 
         var context = CreateContext();
 
-        // Act
         var result = await _step.ApplyAsync(context);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         File.Exists(metadataWebView).Should().BeTrue();
-        File.Exists(metadataPackage).Should().BeTrue();
         File.Exists(Path.Combine(_projectDataFolderPath, "stale.webview.cel")).Should().BeFalse();
-        File.Exists(Path.Combine(_projectDataFolderPath, "package.cel")).Should().BeFalse();
     }
 
     [Test]
     public async Task ApplyAsync_IsIdempotent()
     {
-        // Arrange
         WriteMinimalProjectFile();
-        var packageDir = Path.Combine(_projectFolderPath, "packages", "my-package");
-        Directory.CreateDirectory(packageDir);
-        await File.WriteAllTextAsync(Path.Combine(packageDir, "package.toml"), "[package]\nid = \"my-package\"\nname = \"My Package\"\nversion = \"1.0.0\"\n");
         await File.WriteAllTextAsync(Path.Combine(_projectFolderPath, "page.webview"), "{\"sourceUrl\": \"https://example.com\"}");
 
         var context = CreateContext();
 
-        // Act - run twice
         var firstResult = await _step.ApplyAsync(context);
         var secondResult = await _step.ApplyAsync(context);
 
-        // Assert
         firstResult.IsSuccess.Should().BeTrue();
         secondResult.IsSuccess.Should().BeTrue();
-        File.Exists(Path.Combine(packageDir, "package.toml")).Should().BeFalse();
-        File.Exists(Path.Combine(packageDir, "package.cel")).Should().BeTrue();
         File.Exists(Path.Combine(_projectFolderPath, "page.webview")).Should().BeFalse();
         File.Exists(Path.Combine(_projectFolderPath, "page.webview.cel")).Should().BeTrue();
     }

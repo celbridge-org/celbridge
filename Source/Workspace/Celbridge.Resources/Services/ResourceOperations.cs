@@ -230,7 +230,7 @@ internal class DeleteFileOperation : FileOperation
             // re-apply it via the OS file properties dialog.
             ClearReadOnlyIfSet(_originalPath);
 
-            FileSystemHelper.MoveFileWithDirectoryCreation(_originalPath, _trashPath);
+            await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_originalPath, _trashPath);
 
             // Also move entity data file to trash if it exists
             if (!string.IsNullOrEmpty(_entityDataOriginalPath) &&
@@ -238,7 +238,7 @@ internal class DeleteFileOperation : FileOperation
                 File.Exists(_entityDataOriginalPath))
             {
                 ClearReadOnlyIfSet(_entityDataOriginalPath);
-                FileSystemHelper.MoveFileWithDirectoryCreation(_entityDataOriginalPath, _entityDataTrashPath);
+                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_entityDataOriginalPath, _entityDataTrashPath);
             }
 
             // Also move the paired sidecar to trash if it exists
@@ -247,7 +247,7 @@ internal class DeleteFileOperation : FileOperation
                 File.Exists(_sidecarOriginalPath))
             {
                 ClearReadOnlyIfSet(_sidecarOriginalPath);
-                FileSystemHelper.MoveFileWithDirectoryCreation(_sidecarOriginalPath, _sidecarTrashPath);
+                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_sidecarOriginalPath, _sidecarTrashPath);
             }
 
             return Result.Ok();
@@ -287,14 +287,14 @@ internal class DeleteFileOperation : FileOperation
                 return Result.Fail($"Trash file does not exist: {_trashPath}");
             }
 
-            FileSystemHelper.MoveFileWithDirectoryCreation(_trashPath, _originalPath);
+            await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_trashPath, _originalPath);
 
             // Also restore entity data file if it was trashed
             if (!string.IsNullOrEmpty(_entityDataOriginalPath) &&
                 !string.IsNullOrEmpty(_entityDataTrashPath) &&
                 File.Exists(_entityDataTrashPath))
             {
-                FileSystemHelper.MoveFileWithDirectoryCreation(_entityDataTrashPath, _entityDataOriginalPath);
+                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_entityDataTrashPath, _entityDataOriginalPath);
             }
 
             // Also restore the paired sidecar if it was trashed
@@ -302,7 +302,7 @@ internal class DeleteFileOperation : FileOperation
                 !string.IsNullOrEmpty(_sidecarTrashPath) &&
                 File.Exists(_sidecarTrashPath))
             {
-                FileSystemHelper.MoveFileWithDirectoryCreation(_sidecarTrashPath, _sidecarOriginalPath);
+                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(_sidecarTrashPath, _sidecarOriginalPath);
             }
 
             FileSystemHelper.CleanupEmptyParentDirectories(_trashPath);
@@ -514,10 +514,10 @@ internal class DeleteFolderOperation : FileOperation
             else
             {
                 // Move entity data files to trash first
-                MoveEntityDataFilesToTrash();
+                await MoveEntityDataFilesToTrashAsync();
 
                 // Non-empty folder - move to trash
-                FileSystemHelper.MoveDirectoryWithParentCreation(_originalPath, _trashPath);
+                await FileSystemHelper.MoveDirectoryWithParentCreationAsync(_originalPath, _trashPath);
             }
 
             return Result.Ok();
@@ -573,10 +573,10 @@ internal class DeleteFolderOperation : FileOperation
                     return Result.Fail($"Trash folder does not exist: {_trashPath}");
                 }
 
-                FileSystemHelper.MoveDirectoryWithParentCreation(_trashPath, _originalPath);
+                await FileSystemHelper.MoveDirectoryWithParentCreationAsync(_trashPath, _originalPath);
 
                 // Restore entity data files from trash
-                RestoreEntityDataFiles();
+                await RestoreEntityDataFilesAsync();
 
                 FileSystemHelper.CleanupEmptyParentDirectories(_trashPath);
             }
@@ -616,25 +616,25 @@ internal class DeleteFolderOperation : FileOperation
         }
     }
 
-    private void MoveEntityDataFilesToTrash()
+    private async Task MoveEntityDataFilesToTrashAsync()
     {
         foreach (var (originalPath, trashPath) in _entityDataFiles)
         {
             if (File.Exists(originalPath))
             {
-                FileSystemHelper.MoveFileWithDirectoryCreation(originalPath, trashPath);
+                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(originalPath, trashPath);
                 FileSystemHelper.CleanupEmptyParentDirectories(originalPath);
             }
         }
     }
 
-    private void RestoreEntityDataFiles()
+    private async Task RestoreEntityDataFilesAsync()
     {
         foreach (var (originalPath, trashPath) in _entityDataFiles)
         {
             if (File.Exists(trashPath))
             {
-                FileSystemHelper.MoveFileWithDirectoryCreation(trashPath, originalPath);
+                await FileSystemHelper.MoveFileWithDirectoryCreationAsync(trashPath, originalPath);
                 FileSystemHelper.CleanupEmptyParentDirectories(trashPath);
             }
         }

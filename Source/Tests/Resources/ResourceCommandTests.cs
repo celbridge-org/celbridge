@@ -49,7 +49,7 @@ public class ResourceCommandTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), SidecarPairingTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
         _resourceRegistry.UpdateResourceRegistry();
 

@@ -86,9 +86,9 @@ public class FileFilterTests
     [Test]
     public async Task ShouldSearchFile_CelExtension_ReturnsFalse()
     {
-        // .cel files (sidecars and standalone manifests) are excluded from
-        // plain-text search because their content is editor-owned and a
-        // plain-text replace would corrupt the file structure.
+        // .cel files (sidecars and standalone forms such as .webview.cel) are
+        // excluded from plain-text search because their content is editor-owned
+        // and a plain-text replace would corrupt the file structure.
         var (resource, filePath) = MakeResource("test.webview.cel");
         File.WriteAllText(filePath, "source_url = \"https://example.com\"\n");
 

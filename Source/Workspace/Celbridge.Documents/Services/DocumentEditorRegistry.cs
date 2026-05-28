@@ -51,7 +51,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         _factories.Add(factory);
 
         // Index the factory by each supported extension.
-        // Multi-part extensions such as ".project.cel" are indexed as-is; the
+        // Multi-part extensions such as ".document.toml" are indexed as-is; the
         // longest-suffix walk in GetFactory tries the most specific form first.
         foreach (var extension in supportedExtensions)
         {
@@ -250,9 +250,10 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     }
 
     // Yields the extension suffixes of a filename from longest to shortest.
-    // "foo.project.cel" produces ".project.cel" then ".cel"; "foo.md" produces
-    // ".md"; "Makefile" produces nothing. A leading dot (".gitignore") is
-    // skipped so the file's full name is not treated as an extension.
+    // "foo.document.toml" produces ".document.toml" then ".toml"; "foo.md"
+    // produces ".md"; "Makefile" produces nothing. A leading dot
+    // (".gitignore") is skipped so the file's full name is not treated as
+    // an extension.
     private static IEnumerable<string> GetExtensionSuffixes(string fileName)
     {
         int searchFrom = 0;

@@ -4,4 +4,4 @@ name = "Spreadsheet_Package_Name"
 version = "1.0.0"
 
 [contributes]
-document_editors = ["spreadsheet.document.cel"]
+document_editors = ["spreadsheet.document.toml"]
