@@ -47,7 +47,7 @@ public static class ProjectConstants
     public const string WorkspaceSettingsFile = "workspace_settings.db";
 
     /// <summary>
-    /// Hidden folder that contains all Celbridge-internal storage in the new layout.
+    /// Hidden folder for Celbridge-internal storage.
     /// </summary>
     public const string CelbridgeFolder = ".celbridge";
 
@@ -75,7 +75,8 @@ public static class ProjectConstants
     public const string CelbridgeStagingFsFolder = "staging-fs";
 
     /// <summary>
-    /// Sub-folder of temp: that holds in-progress downloads from the WebView.
+    /// Folder name used for WebView downloads. Used both for the in-progress
+    /// staging folder under temp: and for the destination folder under project:.
     /// </summary>
-    public const string CelbridgeTempDownloadsFolder = "downloads";
+    public const string DownloadsFolder = "downloads";
 }

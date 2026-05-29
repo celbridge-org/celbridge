@@ -180,6 +180,10 @@ public sealed class SidecarService : ISidecarService
         {
             return Result.Fail("Block content is null.");
         }
+        if (SidecarHelper.BlockContentContainsFenceLine(content))
+        {
+            return Result.Fail($"Block '{blockId}' content contains a line matching the fence regex (e.g. '+++ \"name\"'); this would corrupt the sidecar on round-trip.");
+        }
 
         return await MutateBlocksAsync(
             resource,

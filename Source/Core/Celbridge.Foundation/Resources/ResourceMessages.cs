@@ -1,17 +1,46 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Types of resource operations that can fail.
+/// Types of resource operations that can fail. Carried by
+/// ResourceOperationFailedMessage so subscribers can branch on the operation
+/// kind without parsing the message text.
 /// </summary>
 public enum ResourceOperationType
 {
+    /// <summary>
+    /// Soft-delete via the trash service.
+    /// </summary>
     Delete,
+
+    /// <summary>
+    /// Copy a resource to a different location, leaving the source in place.
+    /// </summary>
     Copy,
+
+    /// <summary>
+    /// Move a resource to a different folder.
+    /// </summary>
     Move,
+
+    /// <summary>
+    /// Rename a resource within its current folder.
+    /// </summary>
     Rename,
+
+    /// <summary>
+    /// Create a new file or folder resource.
+    /// </summary>
     Create,
+
+    /// <summary>
+    /// Compress a folder or set of resources into a .zip archive.
+    /// </summary>
     Archive,
-    Extract
+
+    /// <summary>
+    /// Extract the contents of a .zip archive into the project tree.
+    /// </summary>
+    Extract,
 }
 
 /// <summary>

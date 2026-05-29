@@ -137,11 +137,11 @@ public class DocumentLayoutStoreTests
     [Test]
     public async Task RestorePanelStateAsync_RestoresStoredAddressesViaPanelOpen()
     {
-        // One stored doc: the store should call panel.OpenDocument with the
-        // parsed editor id and target address.
+        // One stored doc: the store should call panel.OpenDocument with an
+        // empty editor id (sidecar wins at restore) and the saved address.
         var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
         {
-            new("notes/readme.md", WindowIndex: 0, SectionIndex: 0, TabOrder: 2, DocumentEditorId: "test.editor"),
+            new("notes/readme.md", WindowIndex: 0, SectionIndex: 0, TabOrder: 2),
         };
         _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
             .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
@@ -151,7 +151,7 @@ public class DocumentLayoutStoreTests
         await _documentsPanel.Received(1).OpenDocument(
             new ResourceKey("notes/readme.md"),
             Arg.Is<OpenDocumentOptions>(options =>
-                options.EditorId == new DocumentEditorId("test.editor")
+                options.EditorId == DocumentEditorId.Empty
                 && options.Activate == false
                 && options.Address!.SectionIndex == 0
                 && options.Address.TabOrder == 2));
@@ -215,25 +215,6 @@ public class DocumentLayoutStoreTests
         await _store.RestorePanelStateAsync();
 
         await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
-    }
-
-    [Test]
-    public async Task RestorePanelStateAsync_MalformedEditorId_FallsBackToEmpty()
-    {
-        // A persisted editor id that no longer parses (renamed format, etc.)
-        // should be treated as "no preference" rather than aborting the open.
-        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
-        {
-            new("notes/readme.md", 0, 0, 0, "totally not a valid id"),
-        };
-        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
-            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
-
-        await _store.RestorePanelStateAsync();
-
-        await _documentsPanel.Received(1).OpenDocument(
-            Arg.Any<ResourceKey>(),
-            Arg.Is<OpenDocumentOptions>(options => options.EditorId.IsEmpty));
     }
 
     [Test]

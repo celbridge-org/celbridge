@@ -1,5 +1,7 @@
 namespace Celbridge.Documents.Services;
 
+internal readonly record struct ReloadHintEntry(ReloadHint Hint, DateTime ExpiresUtc);
+
 /// <summary>
 /// Holds reload hints keyed by ResourceKey with a short TTL. Used by DocumentsService
 /// to bridge a command that wrote a file and the watcher-driven reload that follows.
@@ -38,6 +40,4 @@ public sealed class ReloadHintStore
 
         return entry.Hint;
     }
-
-    private readonly record struct ReloadHintEntry(ReloadHint Hint, DateTime ExpiresUtc);
 }

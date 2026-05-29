@@ -235,21 +235,21 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public List<(ResourceKey Resource, string Path)> GetAllFileResources()
+    public IReadOnlyList<FileResourceEntry> GetAllFileResources()
     {
         return GetAllFileResources(ResourceKey.DefaultRoot);
     }
 
-    public List<(ResourceKey Resource, string Path)> GetAllFileResources(string root)
+    public IReadOnlyList<FileResourceEntry> GetAllFileResources(string root)
     {
         // Only the project root has an indexed tree in the registry.
         // Other roots (e.g. temp:, logs:) are addressable but not enumerated here.
         if (root != ResourceKey.DefaultRoot)
         {
-            return new List<(ResourceKey Resource, string Path)>();
+            return Array.Empty<FileResourceEntry>();
         }
 
-        var fileResources = new List<(ResourceKey Resource, string Path)>();
+        var fileResources = new List<FileResourceEntry>();
         CollectFileResources(_projectFolder, fileResources);
 
         // Sort by path for stable ordering
@@ -263,7 +263,7 @@ public class ResourceRegistry : IResourceRegistry
     /// </summary>
     private void CollectFileResources(
         IFolderResource folder,
-        List<(ResourceKey Resource, string Path)> fileResources)
+        List<FileResourceEntry> fileResources)
     {
         foreach (var child in folder.Children)
         {
@@ -273,7 +273,7 @@ public class ResourceRegistry : IResourceRegistry
                 var resolveResult = ResolveResourcePath(resourceKey);
                 if (resolveResult.IsSuccess)
                 {
-                    fileResources.Add((resourceKey, resolveResult.Value));
+                    fileResources.Add(new FileResourceEntry(resourceKey, resolveResult.Value));
                 }
             }
             else if (child is IFolderResource childFolder)

@@ -133,29 +133,29 @@ internal class CreateOperation : FileOperation
 internal class CopyOperation : FileOperation
 {
     private readonly ResourceKey _source;
-    private readonly ResourceKey _destination;
+    private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
     private readonly IFileStorage _fileStorage;
     private readonly string _sourcePath;
-    private readonly string _destinationPath;
+    private readonly string _destPath;
 
     public CopyResult? LastCopyResult { get; private set; }
 
     public CopyOperation(
         ResourceKey source,
-        ResourceKey destination,
+        ResourceKey dest,
         bool isFolder,
         string sourcePath,
-        string destinationPath,
+        string destPath,
         EntityFileHelper entityHelper,
         IFileStorage fileStorage)
     {
         _source = source;
-        _destination = destination;
+        _dest = dest;
         _isFolder = isFolder;
         _sourcePath = sourcePath;
-        _destinationPath = destinationPath;
+        _destPath = destPath;
         _entityHelper = entityHelper;
         _fileStorage = fileStorage;
     }
@@ -164,10 +164,10 @@ internal class CopyOperation : FileOperation
     {
         if (!_isFolder)
         {
-            _entityHelper.CopyEntityDataFile(_sourcePath, _destinationPath);
+            _entityHelper.CopyEntityDataFile(_sourcePath, _destPath);
         }
 
-        var copyResult = await _fileStorage.CopyAsync(_source, _destination);
+        var copyResult = await _fileStorage.CopyAsync(_source, _dest);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
@@ -175,7 +175,7 @@ internal class CopyOperation : FileOperation
 
         if (_isFolder)
         {
-            _entityHelper.CopyFolderEntityDataFiles(_sourcePath, _destinationPath);
+            _entityHelper.CopyFolderEntityDataFiles(_sourcePath, _destPath);
         }
 
         LastCopyResult = copyResult.Value;
@@ -186,14 +186,14 @@ internal class CopyOperation : FileOperation
     {
         if (_isFolder)
         {
-            _entityHelper.DeleteFolderEntityDataFiles(_destinationPath);
+            _entityHelper.DeleteFolderEntityDataFiles(_destPath);
         }
         else
         {
-            _entityHelper.DeleteEntityDataFile(_destinationPath);
+            _entityHelper.DeleteEntityDataFile(_destPath);
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_destination);
+        var deleteResult = await _fileStorage.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -208,29 +208,29 @@ internal class CopyOperation : FileOperation
 internal class MoveOperation : FileOperation
 {
     private readonly ResourceKey _source;
-    private readonly ResourceKey _destination;
+    private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
     private readonly IFileStorage _fileStorage;
     private readonly string _sourcePath;
-    private readonly string _destinationPath;
+    private readonly string _destPath;
 
     public MoveResult? LastMoveResult { get; private set; }
 
     public MoveOperation(
         ResourceKey source,
-        ResourceKey destination,
+        ResourceKey dest,
         bool isFolder,
         string sourcePath,
-        string destinationPath,
+        string destPath,
         EntityFileHelper entityHelper,
         IFileStorage fileStorage)
     {
         _source = source;
-        _destination = destination;
+        _dest = dest;
         _isFolder = isFolder;
         _sourcePath = sourcePath;
-        _destinationPath = destinationPath;
+        _destPath = destPath;
         _entityHelper = entityHelper;
         _fileStorage = fileStorage;
     }
@@ -241,16 +241,36 @@ internal class MoveOperation : FileOperation
         // helper can compute keys against the original location.
         if (_isFolder)
         {
-            _entityHelper.MoveFolderEntityDataFiles(_sourcePath, _destinationPath);
+            _entityHelper.MoveFolderEntityDataFiles(_sourcePath, _destPath);
         }
         else
         {
-            _entityHelper.MoveEntityDataFile(_sourcePath, _destinationPath);
+            _entityHelper.MoveEntityDataFile(_sourcePath, _destPath);
         }
 
-        var moveResult = await _fileStorage.MoveAsync(_source, _destination);
+        var moveResult = await _fileStorage.MoveAsync(_source, _dest);
         if (moveResult.IsFailure)
         {
+            // Best-effort rollback of the entity-data cascade so the bytes
+            // stay paired with the source on failure. Errors here are swallowed
+            // because the chokepoint failure is the load-bearing problem; the
+            // entity system is on its way out and the precise post-failure
+            // state is not worth a partial-recovery report.
+            try
+            {
+                if (_isFolder)
+                {
+                    _entityHelper.MoveFolderEntityDataFiles(_destPath, _sourcePath);
+                }
+                else
+                {
+                    _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
+                }
+            }
+            catch
+            {
+            }
+
             return Result.Fail(moveResult);
         }
 
@@ -262,14 +282,14 @@ internal class MoveOperation : FileOperation
     {
         if (_isFolder)
         {
-            _entityHelper.MoveFolderEntityDataFiles(_destinationPath, _sourcePath);
+            _entityHelper.MoveFolderEntityDataFiles(_destPath, _sourcePath);
         }
         else
         {
-            _entityHelper.MoveEntityDataFile(_destinationPath, _sourcePath);
+            _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
         }
 
-        var moveResult = await _fileStorage.MoveAsync(_destination, _source);
+        var moveResult = await _fileStorage.MoveAsync(_dest, _source);
         return moveResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(moveResult);
@@ -337,20 +357,20 @@ internal class DeleteOperation : FileOperation
 internal class ImportExternalOperation : FileOperation
 {
     private readonly string _sourcePath;
-    private readonly ResourceKey _destination;
+    private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly IFileStorage _fileStorage;
     private readonly ILogger _logger;
 
     public ImportExternalOperation(
         string sourcePath,
-        ResourceKey destination,
+        ResourceKey dest,
         bool isFolder,
         IFileStorage fileStorage,
         ILogger logger)
     {
         _sourcePath = sourcePath;
-        _destination = destination;
+        _dest = dest;
         _isFolder = isFolder;
         _fileStorage = fileStorage;
         _logger = logger;
@@ -365,14 +385,14 @@ internal class ImportExternalOperation : FileOperation
                 return Result.Fail($"Source folder does not exist: '{_sourcePath}'");
             }
 
-            var infoResult = await _fileStorage.GetInfoAsync(_destination);
+            var infoResult = await _fileStorage.GetInfoAsync(_dest);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind != StorageItemKind.NotFound)
             {
-                return Result.Fail($"Destination already exists: '{_destination}'");
+                return Result.Fail($"Destination already exists: '{_dest}'");
             }
 
-            return await ImportFolderAsync(_sourcePath, _destination);
+            return await ImportFolderAsync(_sourcePath, _dest);
         }
 
         if (!File.Exists(_sourcePath))
@@ -380,36 +400,36 @@ internal class ImportExternalOperation : FileOperation
             return Result.Fail($"Source file does not exist: '{_sourcePath}'");
         }
 
-        var destInfoResult = await _fileStorage.GetInfoAsync(_destination);
+        var destInfoResult = await _fileStorage.GetInfoAsync(_dest);
         if (destInfoResult.IsSuccess
             && destInfoResult.Value.Kind != StorageItemKind.NotFound)
         {
-            return Result.Fail($"Destination already exists: '{_destination}'");
+            return Result.Fail($"Destination already exists: '{_dest}'");
         }
 
         try
         {
             var bytes = await File.ReadAllBytesAsync(_sourcePath);
-            return await _fileStorage.WriteAllBytesAsync(_destination, bytes);
+            return await _fileStorage.WriteAllBytesAsync(_dest, bytes);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to import external file from '{SourcePath}' to '{Destination}'", _sourcePath, _destination);
-            return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_destination}'")
+            _logger.LogError(ex, "Failed to import external file from '{SourcePath}' to '{Destination}'", _sourcePath, _dest);
+            return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_dest}'")
                 .WithException(ex);
         }
     }
 
     public override async Task<Result> UndoAsync()
     {
-        var infoResult = await _fileStorage.GetInfoAsync(_destination);
+        var infoResult = await _fileStorage.GetInfoAsync(_dest);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
             return Result.Ok();
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_destination);
+        var deleteResult = await _fileStorage.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);

@@ -16,6 +16,12 @@ public record CelFileReport(
     IReadOnlyList<ResourceKey> Orphan);
 
 /// <summary>
+/// A file resource paired with its absolute filesystem path, as returned by
+/// IResourceRegistry.GetAllFileResources.
+/// </summary>
+public record FileResourceEntry(ResourceKey Resource, string Path);
+
+/// <summary>
 /// A data structure representing the resources in the project folder.
 /// </summary>
 public interface IResourceRegistry
@@ -106,13 +112,13 @@ public interface IResourceRegistry
     /// Returns all file resources for the project root with their resource keys and absolute paths.
     /// The results are sorted by path for stable ordering.
     /// </summary>
-    List<(ResourceKey Resource, string Path)> GetAllFileResources();
+    IReadOnlyList<FileResourceEntry> GetAllFileResources();
 
     /// <summary>
     /// Returns all file resources for the specified root with their resource keys and absolute paths.
     /// Returns an empty list for roots without indexed tree state.
     /// </summary>
-    List<(ResourceKey Resource, string Path)> GetAllFileResources(string root);
+    IReadOnlyList<FileResourceEntry> GetAllFileResources(string root);
 
     /// <summary>
     /// Returns the parent file resource of a sidecar key, or a failure result

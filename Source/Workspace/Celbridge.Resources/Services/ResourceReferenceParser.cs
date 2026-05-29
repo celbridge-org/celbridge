@@ -35,24 +35,6 @@ public static class ResourceReferenceParser
     };
 
     /// <summary>
-    /// Returns true if the character can sit immediately adjacent to a
-    /// tracked reference — one of the quote forms, or the leading backslash
-    /// of an escaped quote.
-    /// </summary>
-    public static bool IsNonKeyBoundary(char c)
-    {
-        switch (c)
-        {
-            case '"':
-            case '\'':
-            case '\\':
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    /// <summary>
     /// Attempts to parse a single reference at the given marker position.
     /// <paramref name="markerIndex"/> must point at the 'p' of a "project:"
     /// literal in the text; returns null if the surrounding quoted region is

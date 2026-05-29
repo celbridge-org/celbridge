@@ -9,9 +9,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ResourceOperationService — covers the end-of-phase gate property
-/// from the cm-9 redesign: a batch that fails mid-way still commits the
-/// prior-successful operations and a single UndoAsync reverses them cleanly.
+/// Tests for ResourceOperationService — covers the batch property that a
+/// batch failing mid-way still commits the prior-successful operations,
+/// and a single UndoAsync reverses them cleanly.
 /// </summary>
 [TestFixture]
 public class ResourceOperationServiceTests

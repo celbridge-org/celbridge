@@ -3,14 +3,20 @@ using Celbridge.UserInterface;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Parse health of a .cel file's content. Healthy means the frontmatter parses
-/// cleanly; Broken means it does not (malformed TOML, merge-conflict markers,
-/// missing fences, or any other parse failure). Applies to any .cel file —
-/// paired sidecar, standalone, or orphan.
+/// Parse health of a .cel file's content. Applies to any .cel file — paired
+/// sidecar, standalone, or orphan.
 /// </summary>
 public enum CelFileStatus
 {
+    /// <summary>
+    /// The frontmatter and content blocks parse cleanly.
+    /// </summary>
     Healthy,
+
+    /// <summary>
+    /// The file failed to parse: malformed TOML, merge-conflict markers,
+    /// missing fences, duplicate block names, or any other parse failure.
+    /// </summary>
     Broken,
 }
 

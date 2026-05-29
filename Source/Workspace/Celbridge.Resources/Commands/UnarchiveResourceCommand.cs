@@ -69,7 +69,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         // Path resolution is still needed for entry-name validation and the
         // zip-slip canonicalization check below; the operation-service writes
-        // themselves take ResourceKey arguments after cm-9c.
+        // themselves take ResourceKey arguments.
         var resolveDestinationResult = resourceRegistry.ResolveResourcePath(DestinationResource);
         if (resolveDestinationResult.IsFailure)
         {

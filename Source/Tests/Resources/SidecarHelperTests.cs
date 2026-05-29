@@ -181,6 +181,36 @@ public class SidecarHelperTests
     }
 
     [Test]
+    public void Compose_RejectsBlockContentContainingFenceLine()
+    {
+        var blocks = new List<SidecarBlock>
+        {
+            new("block-a", "ok line\n+++ \"sneaky\"\nmore content\n"),
+        };
+
+        var act = () => SidecarHelper.Compose(new Dictionary<string, object>(), blocks);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Test]
+    public void BlockContentContainsFenceLine_ReturnsTrueForLineMatchingFence()
+    {
+        SidecarHelper.BlockContentContainsFenceLine("+++ \"block-a\"").Should().BeTrue();
+        SidecarHelper.BlockContentContainsFenceLine("first line\r\n+++ \"block-a\"\r\nlast")
+            .Should().BeTrue();
+    }
+
+    [Test]
+    public void BlockContentContainsFenceLine_ReturnsFalseForOrdinaryContent()
+    {
+        SidecarHelper.BlockContentContainsFenceLine("").Should().BeFalse();
+        SidecarHelper.BlockContentContainsFenceLine("+++ no quote").Should().BeFalse();
+        SidecarHelper.BlockContentContainsFenceLine("line one\nline two\n").Should().BeFalse();
+        SidecarHelper.BlockContentContainsFenceLine("+++\"missing-space\"").Should().BeFalse();
+    }
+
+    [Test]
     public void Parse_TreatsBlockContentWithoutTrailingNewlineAsEquivalent()
     {
         // Writing "three" and writing "three\n" both store as the same on-disk

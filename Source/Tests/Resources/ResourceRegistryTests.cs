@@ -398,7 +398,8 @@ public class ResourceRegistryTests
         var explicitProject = resourceRegistry.GetAllFileResources(ResourceKey.DefaultRoot);
         explicitProject.Count.Should().Be(defaultResults.Count);
 
-        // Other roots return empty in vr-2 (no indexed tree state).
+        // Other roots return empty because the registry indexes only the project
+        // tree; temp and logs are reachable through their root handlers, not here.
         resourceRegistry.GetAllFileResources("temp").Should().BeEmpty();
     }
 

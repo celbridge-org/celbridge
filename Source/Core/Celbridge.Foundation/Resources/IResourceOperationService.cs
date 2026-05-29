@@ -36,14 +36,14 @@ public interface IResourceOperationService
     /// Copies a file or folder from one resource location to another. The
     /// returned CopyResult carries the paired-sidecar cascade outcome.
     /// </summary>
-    Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination);
+    Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest);
 
     /// <summary>
     /// Moves a file or folder from one resource location to another. The
     /// returned MoveResult carries the reference-rewrite and paired-sidecar
     /// cascade outcomes.
     /// </summary>
-    Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey destination);
+    Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest);
 
     /// <summary>
     /// Soft-deletes the resource via the trash service, preserving undo. The
@@ -56,20 +56,20 @@ public interface IResourceOperationService
     /// destination. The source path is taken as-is; the destination receives
     /// containment validation through the chokepoint.
     /// </summary>
-    Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey destination);
+    Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
     /// Imports a folder from outside the project into a registry-addressable
     /// destination. The source is enumerated recursively; each file lands at
     /// its corresponding destination key through the chokepoint.
     /// </summary>
-    Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey destination);
+    Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
     /// Copies or moves the resource depending on the transfer mode. Dispatches
     /// file vs folder internally via the chokepoint's GetInfoAsync probe.
     /// </summary>
-    Task<Result> TransferAsync(ResourceKey source, ResourceKey destination, DataTransferMode mode);
+    Task<Result> TransferAsync(ResourceKey source, ResourceKey dest, DataTransferMode mode);
 
     /// <summary>
     /// Begins a batch of operations that commit as a single undo unit when the

@@ -116,7 +116,7 @@ public class DataCheckProjectTests
     public async Task CleanProject_AllReportListsAreEmpty()
     {
         // Fixture uses .json because the scanner only walks allowlisted
-        // data-bearing extensions. See ResourceScanRules.ScannableExtensions.
+        // data-bearing extensions. See ResourceScanner.ScannableExtensions.
         File.WriteAllText(Path.Combine(_projectFolderPath, "a.json"), "{}");
         File.WriteAllText(Path.Combine(_projectFolderPath, "b.json"),
             "{ \"target\": \"project:a.json\" }");
@@ -150,7 +150,7 @@ public class DataCheckProjectTests
     public async Task NonAllowlistedExtensions_AreExcludedFromScan()
     {
         // .md is not on the allowlist (along with .txt, .rst, .yaml, and every
-        // other extension not enumerated in ResourceScanRules.ScannableExtensions).
+        // other extension not enumerated in ResourceScanner.ScannableExtensions).
         // A "project:..." literal inside an off-allowlist file is treated as
         // descriptive prose, not as an active reference — no cascade rewrite,
         // no broken-reference detection. This test guards the allowlist gate

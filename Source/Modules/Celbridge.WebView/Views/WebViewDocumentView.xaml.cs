@@ -42,10 +42,6 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     // webview_* tool namespace is not supported for them.
     private IDocumentWebViewToolBridge? _toolBridge;
 
-    // Sub-folder under the project root where completed WebView downloads
-    // land. Auto-created by the chokepoint on first write.
-    private const string DownloadsFolderName = "downloads";
-
     private static readonly WebViewDocumentOptions DefaultOptions = new(
         WebViewDocumentRole.ExternalUrl,
         InterceptTopFrameNavigation: false);
@@ -251,7 +247,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             // temp:/ is wiped on workspace load, so the downloads sub-folder
             // may not exist yet. Ensure it via the chokepoint before the user
             // can trigger a download.
-            var downloadsFolder = new ResourceKey($"temp:{ProjectConstants.CelbridgeTempDownloadsFolder}");
+            var downloadsFolder = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}");
             await FileStorage.CreateFolderAsync(downloadsFolder);
 
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
@@ -548,7 +544,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
         // Downloads land under project:downloads/ so the project root stays
         // uncluttered when a session produces multiple downloads.
-        var requestedDestResource = new ResourceKey($"{DownloadsFolderName}/{filename}");
+        var requestedDestResource = new ResourceKey($"{ProjectConstants.DownloadsFolder}/{filename}");
         var resolveResult = ResourceRegistry.ResolveResourcePath(requestedDestResource);
         if (resolveResult.IsFailure)
         {
@@ -577,7 +573,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         // and the wipe-on-load policy bounds orphan accumulation.
         var extension = Path.GetExtension(filename);
         var randomName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
-        var downloadResource = new ResourceKey($"temp:{ProjectConstants.CelbridgeTempDownloadsFolder}/{randomName}{extension}");
+        var downloadResource = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}/{randomName}{extension}");
         var resolveTempResult = ResourceRegistry.ResolveResourcePath(downloadResource);
         if (resolveTempResult.IsFailure)
         {

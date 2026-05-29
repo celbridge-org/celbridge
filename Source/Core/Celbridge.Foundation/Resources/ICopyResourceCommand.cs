@@ -26,7 +26,7 @@ public interface ICopyResourceCommand : IExecutableCommand<CopyCommandResult>
     List<ResourceKey> SourceResources { get; set; }
 
     /// <summary>
-    /// Location to move the resources to.
+    /// Destination location for the copy or move.
     /// </summary>
     ResourceKey DestResource { get; set; }
 
@@ -37,7 +37,7 @@ public interface ICopyResourceCommand : IExecutableCommand<CopyCommandResult>
     DataTransferMode TransferMode { get; set; }
 
     /// <summary>
-    /// If a copied resource is a folder, expand the folder after moving it.
+    /// If a copied resource is a folder, expand the folder after the copy or move.
     /// </summary>
     bool ExpandCopiedFolder { get; set; }
 }

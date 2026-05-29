@@ -8,13 +8,6 @@ namespace Celbridge.Resources.Services;
 
 public sealed class FileStorage : IFileStorage
 {
-    // Bounded retry for transient IO failures (file briefly locked by AV,
-    // backup software, sync clients, concurrent writers, etc.). Total
-    // worst-case wait across all attempts is BaseRetryDelayMs * (1 + 2 + ...
-    // + (MaxAttempts - 1)) = 150ms with the values below.
-    private const int MaxAttempts = 3;
-    private const int BaseRetryDelayMs = 50;
-
     // Buffer size used when opening file streams. Matches the default System.IO
     // FileStream buffer size when none is supplied.
     private const int StreamBufferSize = 4096;
@@ -22,6 +15,8 @@ public sealed class FileStorage : IFileStorage
     private readonly ILogger<FileStorage> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly SidecarCascade _sidecarCascade;
+    private readonly ReferenceRewriter _referenceRewriter;
 
     // The resource registry is workspace-scoped and transient: a constructor-
     // injected instance is a different object from the one held by ResourceService,
@@ -36,6 +31,8 @@ public sealed class FileStorage : IFileStorage
         _logger = logger;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _sidecarCascade = new SidecarCascade(logger, workspaceWrapper);
+        _referenceRewriter = new ReferenceRewriter(logger, workspaceWrapper, this);
     }
 
     public async Task<Result<byte[]>> ReadAllBytesAsync(ResourceKey resource)
@@ -43,14 +40,15 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<byte[]>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
 
-        return await RunWithRetryAsync<byte[]>(
+        return await FileStorageInternals.RunWithRetryAsync<byte[]>(
+            _logger,
             operationLabel: "Read",
-            resource: resource,
+            resourceLabel: resource,
             resourcePath: resourcePath,
             operation: () => File.ReadAllBytesAsync(resourcePath),
             shouldRetry: IsTransientReadIOException);
@@ -61,14 +59,15 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<string>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
 
-        return await RunWithRetryAsync<string>(
+        return await FileStorageInternals.RunWithRetryAsync<string>(
+            _logger,
             operationLabel: "Read",
-            resource: resource,
+            resourceLabel: resource,
             resourcePath: resourcePath,
             operation: () => File.ReadAllTextAsync(resourcePath),
             shouldRetry: IsTransientReadIOException);
@@ -79,14 +78,15 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<Stream>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
 
-        return await RunWithRetryAsync<Stream>(
+        return await FileStorageInternals.RunWithRetryAsync<Stream>(
+            _logger,
             operationLabel: "Read",
-            resource: resource,
+            resourceLabel: resource,
             resourcePath: resourcePath,
             operation: () => Task.FromResult<Stream>(new FileStream(
                 resourcePath,
@@ -125,7 +125,7 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            var failure = Result<Stream>.Fail($"Failed to resolve path for resource: '{resource}'")
+            var failure = Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
             return failure;
         }
@@ -143,6 +143,9 @@ public sealed class FileStorage : IFileStorage
             // stream is open no other process can read partial bytes. The
             // trade-off is that another reader hitting the file mid-write sees
             // a sharing-violation IOException, not stale-or-partial content.
+            // Unlike the buffered-bytes write paths, this stream writes directly
+            // to the destination: a crash or unhandled exception before the
+            // stream is fully written and disposed truncates the file in place.
             var stream = new FileStream(
                 resourcePath,
                 FileMode.Create,
@@ -154,17 +157,17 @@ public sealed class FileStorage : IFileStorage
         }
         catch (Exception ex)
         {
-            var failure = Result<Stream>.Fail($"Failed to open write stream for resource: '{resource}'")
+            var failure = Result.Fail($"Failed to open write stream for resource: '{resource}'")
                 .WithException(ex);
             return failure;
         }
     }
 
-    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey destination)
+    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
     {
-        if (source.Root != destination.Root)
+        if (source.Root != dest.Root)
         {
-            return Result<MoveResult>.Fail($"Cross-root move not supported: '{source}' to '{destination}'");
+            return Result.Fail($"Cross-root move not supported: '{source}' to '{dest}'");
         }
 
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -172,15 +175,15 @@ public sealed class FileStorage : IFileStorage
         var resolveSourceResult = registry.ResolveResourcePath(source);
         if (resolveSourceResult.IsFailure)
         {
-            return Result<MoveResult>.Fail($"Failed to resolve path for source resource: '{source}'")
+            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
                 .WithErrors(resolveSourceResult);
         }
         var sourcePath = resolveSourceResult.Value;
 
-        var resolveDestResult = registry.ResolveResourcePath(destination);
+        var resolveDestResult = registry.ResolveResourcePath(dest);
         if (resolveDestResult.IsFailure)
         {
-            return Result<MoveResult>.Fail($"Failed to resolve path for destination resource: '{destination}'")
+            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
                 .WithErrors(resolveDestResult);
         }
         var destPath = resolveDestResult.Value;
@@ -190,20 +193,20 @@ public sealed class FileStorage : IFileStorage
         if (!sourceIsFile
             && !sourceIsFolder)
         {
-            return Result<MoveResult>.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail($"Source resource does not exist: '{source}'");
         }
 
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
-        if (!IsRootWritable(rootHandlerRegistry, destination))
+        if (!IsRootWritable(rootHandlerRegistry, dest))
         {
-            return Result<MoveResult>.Fail($"Root '{destination.Root}' is read-only.");
+            return Result.Fail($"Root '{dest.Root}' is read-only.");
         }
 
         bool isSameLocation = string.Equals(sourcePath, destPath, StringComparison.OrdinalIgnoreCase);
         if (!isSameLocation
             && (File.Exists(destPath) || Directory.Exists(destPath)))
         {
-            return Result<MoveResult>.Fail($"Destination already exists: '{destination}'");
+            return Result.Fail($"Destination already exists: '{dest}'");
         }
 
         var updatedReferencers = new List<ResourceKey>();
@@ -211,7 +214,7 @@ public sealed class FileStorage : IFileStorage
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
-            var rewriteResult = await RewriteReferencesForMoveAsync(source, destination, sourceIsFolder, updatedReferencers, skippedReferencers);
+            var rewriteResult = await _referenceRewriter.RewriteForMoveAsync(source, dest, sourceIsFolder, updatedReferencers, skippedReferencers);
             if (rewriteResult.IsFailure)
             {
                 return Result.Fail(rewriteResult);
@@ -240,26 +243,26 @@ public sealed class FileStorage : IFileStorage
                 // Clear read-only so the move itself is not blocked by an
                 // attribute the user has explicitly chosen to override by
                 // invoking a move on the file.
-                ClearReadOnlyIfSet(sourcePath);
-                await RetryTransientIOAsync(() => File.Move(sourcePath, destPath));
+                FileStorageInternals.ClearReadOnlyIfSet(sourcePath);
+                await FileStorageInternals.RetryTransientIOAsync(_logger, "Move", sourcePath, () => File.Move(sourcePath, destPath));
             }
             else
             {
-                await RetryTransientIOAsync(() => Directory.Move(sourcePath, destPath));
+                await FileStorageInternals.RetryTransientIOAsync(_logger, "Move", sourcePath, () => Directory.Move(sourcePath, destPath));
             }
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Result<MoveResult>.Fail($"Failed to move resource '{source}' to '{destination}': access denied (permissions or file in use).")
+            return Result.Fail($"Failed to move resource '{source}' to '{dest}': access denied (permissions or file in use).")
                 .WithException(ex);
         }
         catch (Exception ex)
         {
-            return Result<MoveResult>.Fail($"Failed to move resource: '{source}' to '{destination}'")
+            return Result.Fail($"Failed to move resource: '{source}' to '{dest}'")
                 .WithException(ex);
         }
 
-        var sidecarOutcome = await TryCascadeSidecarMoveAsync(source, destination);
+        var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest);
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
@@ -270,7 +273,7 @@ public sealed class FileStorage : IFileStorage
             var sourceRemovedMessage = new ResourceDeletedMessage(source);
             _messengerService.Send(sourceRemovedMessage);
 
-            var keyChangedMessage = new ResourceKeyChangedMessage(source, destination);
+            var keyChangedMessage = new ResourceKeyChangedMessage(source, dest);
             _messengerService.Send(keyChangedMessage);
 
             foreach (var descendantSource in sourceDescendantKeys)
@@ -278,7 +281,7 @@ public sealed class FileStorage : IFileStorage
                 var descendantRemovedMessage = new ResourceDeletedMessage(descendantSource);
                 _messengerService.Send(descendantRemovedMessage);
 
-                if (TryMapDescendantKey(source, destination, descendantSource, out var descendantDestination))
+                if (TryMapDescendantKey(source, dest, descendantSource, out var descendantDestination))
                 {
                     var descendantKeyChangedMessage = new ResourceKeyChangedMessage(descendantSource, descendantDestination);
                     _messengerService.Send(descendantKeyChangedMessage);
@@ -296,7 +299,7 @@ public sealed class FileStorage : IFileStorage
     // destination folder.
     private static bool TryMapDescendantKey(
         ResourceKey sourceFolder,
-        ResourceKey destinationFolder,
+        ResourceKey destFolder,
         ResourceKey descendantSource,
         out ResourceKey descendantDestination)
     {
@@ -309,30 +312,30 @@ public sealed class FileStorage : IFileStorage
         }
 
         var relativeSuffix = descendantPath.Substring(sourcePath.Length);
-        var destinationPath = destinationFolder.Path + relativeSuffix;
-        var rootName = destinationFolder.Root;
+        var destPath = destFolder.Path + relativeSuffix;
+        var rootName = destFolder.Root;
         var fullKey = rootName == ResourceKey.DefaultRoot
-            ? destinationPath
-            : $"{rootName}:{destinationPath}";
+            ? destPath
+            : $"{rootName}:{destPath}";
         return ResourceKey.TryCreate(fullKey, out descendantDestination);
     }
 
-    public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination)
+    public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
         var resolveSourceResult = registry.ResolveResourcePath(source);
         if (resolveSourceResult.IsFailure)
         {
-            return Result<CopyResult>.Fail($"Failed to resolve path for source resource: '{source}'")
+            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
                 .WithErrors(resolveSourceResult);
         }
         var sourcePath = resolveSourceResult.Value;
 
-        var resolveDestResult = registry.ResolveResourcePath(destination);
+        var resolveDestResult = registry.ResolveResourcePath(dest);
         if (resolveDestResult.IsFailure)
         {
-            return Result<CopyResult>.Fail($"Failed to resolve path for destination resource: '{destination}'")
+            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
                 .WithErrors(resolveDestResult);
         }
         var destPath = resolveDestResult.Value;
@@ -342,19 +345,19 @@ public sealed class FileStorage : IFileStorage
         if (!sourceIsFile
             && !sourceIsFolder)
         {
-            return Result<CopyResult>.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail($"Source resource does not exist: '{source}'");
         }
 
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
-        if (!IsRootWritable(rootHandlerRegistry, destination))
+        if (!IsRootWritable(rootHandlerRegistry, dest))
         {
-            return Result<CopyResult>.Fail($"Root '{destination.Root}' is read-only.");
+            return Result.Fail($"Root '{dest.Root}' is read-only.");
         }
 
         if (File.Exists(destPath)
             || Directory.Exists(destPath))
         {
-            return Result<CopyResult>.Fail($"Destination already exists: '{destination}'");
+            return Result.Fail($"Destination already exists: '{dest}'");
         }
 
         try
@@ -368,22 +371,20 @@ public sealed class FileStorage : IFileStorage
 
             if (sourceIsFile)
             {
-                File.Copy(sourcePath, destPath);
+                await FileStorageInternals.RetryTransientIOAsync(_logger, "Copy", sourcePath, () => File.Copy(sourcePath, destPath));
             }
             else
             {
-                CopyFolderRecursive(sourcePath, destPath);
+                await FileStorageInternals.RetryTransientIOAsync(_logger, "Copy", sourcePath, () => CopyFolderRecursive(sourcePath, destPath));
             }
         }
         catch (Exception ex)
         {
-            return Result<CopyResult>.Fail($"Failed to copy resource: '{source}' to '{destination}'")
+            return Result.Fail($"Failed to copy resource: '{source}' to '{dest}'")
                 .WithException(ex);
         }
 
-        var sidecarOutcome = TryCascadeSidecarCopy(source, destination);
-
-        await Task.CompletedTask;
+        var sidecarOutcome = _sidecarCascade.TryCopy(source, dest);
 
         var copyResult = new CopyResult(sidecarOutcome);
         return copyResult;
@@ -396,7 +397,7 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = registry.ResolveResourcePath(source);
         if (resolveResult.IsFailure)
         {
-            return Result<DeleteResult>.Fail($"Failed to resolve path for resource: '{source}'")
+            return Result.Fail($"Failed to resolve path for resource: '{source}'")
                 .WithErrors(resolveResult);
         }
         var sourcePath = resolveResult.Value;
@@ -406,16 +407,16 @@ public sealed class FileStorage : IFileStorage
         if (!sourceIsFile
             && !sourceIsFolder)
         {
-            return Result<DeleteResult>.Fail($"Resource does not exist: '{source}'");
+            return Result.Fail($"Resource does not exist: '{source}'");
         }
 
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
         if (!IsRootWritable(rootHandlerRegistry, source))
         {
-            return Result<DeleteResult>.Fail($"Root '{source.Root}' is read-only.");
+            return Result.Fail($"Root '{source.Root}' is read-only.");
         }
 
-        var sidecarOutcome = TryCascadeSidecarDelete(source);
+        var sidecarOutcome = _sidecarCascade.TryDelete(source);
 
         // Capture descendant keys (folders only) before the disk delete so the
         // post-delete eager-notify can drop their stale index entries too.
@@ -430,25 +431,25 @@ public sealed class FileStorage : IFileStorage
                 // Clear read-only so File.Delete doesn't trip on the attribute.
                 // Matches OS Explorer's "delete read-only file?" behaviour
                 // (proceed when the user explicitly invokes delete).
-                ClearReadOnlyIfSet(sourcePath);
-                await RetryTransientIOAsync(() => File.Delete(sourcePath));
+                FileStorageInternals.ClearReadOnlyIfSet(sourcePath);
+                await FileStorageInternals.RetryTransientIOAsync(_logger, "Delete", sourcePath, () => File.Delete(sourcePath));
             }
             else
             {
                 // Recursive delete fails on any contained read-only file, so
                 // strip the attribute throughout the subtree first.
-                ClearReadOnlyRecursive(sourcePath);
-                await RetryTransientIOAsync(() => Directory.Delete(sourcePath, recursive: true));
+                FileStorageInternals.ClearReadOnlyRecursive(sourcePath);
+                await FileStorageInternals.RetryTransientIOAsync(_logger, "Delete", sourcePath, () => Directory.Delete(sourcePath, recursive: true));
             }
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Result<DeleteResult>.Fail($"Failed to delete resource '{source}': access denied (permissions or file in use).")
+            return Result.Fail($"Failed to delete resource '{source}': access denied (permissions or file in use).")
                 .WithException(ex);
         }
         catch (Exception ex)
         {
-            return Result<DeleteResult>.Fail($"Failed to delete resource: '{source}'")
+            return Result.Fail($"Failed to delete resource: '{source}'")
                 .WithException(ex);
         }
 
@@ -542,7 +543,7 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<StorageItemInfo>.Fail($"Failed to resolve path for resource: '{resource}'")
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
                 .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
@@ -580,7 +581,7 @@ public sealed class FileStorage : IFileStorage
         }
         catch (Exception ex)
         {
-            return Result<StorageItemInfo>.Fail($"Failed to get info for resource: '{resource}'")
+            return Result.Fail($"Failed to get info for resource: '{resource}'")
                 .WithException(ex);
         }
     }
@@ -592,14 +593,14 @@ public sealed class FileStorage : IFileStorage
         var resolveResult = ResolvePath(folder);
         if (resolveResult.IsFailure)
         {
-            return Result<IReadOnlyList<FolderItem>>.Fail($"Failed to resolve path for resource: '{folder}'")
+            return Result.Fail($"Failed to resolve path for resource: '{folder}'")
                 .WithErrors(resolveResult);
         }
         var folderPath = resolveResult.Value;
 
         if (!Directory.Exists(folderPath))
         {
-            return Result<IReadOnlyList<FolderItem>>.Fail($"Resource is not a folder: '{folder}'");
+            return Result.Fail($"Resource is not a folder: '{folder}'");
         }
 
         try
@@ -622,11 +623,11 @@ public sealed class FileStorage : IFileStorage
                     ModifiedUtc: info.LastWriteTimeUtc));
             }
 
-            return Result<IReadOnlyList<FolderItem>>.Ok(entries);
+            return entries;
         }
         catch (Exception ex)
         {
-            return Result<IReadOnlyList<FolderItem>>.Fail($"Failed to enumerate folder: '{folder}'")
+            return Result.Fail($"Failed to enumerate folder: '{folder}'")
                 .WithException(ex);
         }
     }
@@ -636,7 +637,7 @@ public sealed class FileStorage : IFileStorage
         var readResult = await ReadAllBytesAsync(resource);
         if (readResult.IsFailure)
         {
-            return Result<string>.Fail($"Failed to compute hash for resource: '{resource}'")
+            return Result.Fail($"Failed to compute hash for resource: '{resource}'")
                 .WithErrors(readResult);
         }
 
@@ -655,437 +656,6 @@ public sealed class FileStorage : IFileStorage
     {
         return !rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
             || handler.Capabilities.IsWritable;
-    }
-
-    // Re-writes every "project:<source>" literal in every referencer of source
-    // (and, for folders, every "project:<source>/<rest>" literal). The rewrite is
-    // performed via this layer's own ReadAllTextAsync / WriteAllTextAsync so the
-    // atomic-write semantics apply to each touched file. On any failure the
-    // operation aborts; previously-rewritten files are left at their new state
-    // and the source bytes are still in place, so a re-run completes the work.
-    private async Task<Result> RewriteReferencesForMoveAsync(
-        ResourceKey source,
-        ResourceKey destination,
-        bool sourceIsFolder,
-        List<ResourceKey> updatedReferencers,
-        List<SkippedReferencer> skippedReferencers)
-    {
-        var scanner = _workspaceWrapper.WorkspaceService.ResourceScanner;
-
-        var referencerSet = new HashSet<ResourceKey>();
-        foreach (var referencer in await scanner.FindReferencersAsync(source))
-        {
-            referencerSet.Add(referencer);
-        }
-
-        if (sourceIsFolder)
-        {
-            // Children of source contribute prefix-form references; gather every
-            // referencer of every descendant target so the prefix rewrite reaches
-            // each file that names a child key.
-            foreach (var target in await scanner.FindAllReferencedTargetsAsync())
-            {
-                if (target.IsDescendantOf(source))
-                {
-                    foreach (var referencer in await scanner.FindReferencersAsync(target))
-                    {
-                        referencerSet.Add(referencer);
-                    }
-                }
-            }
-        }
-
-        var sourceLiteral = source.FullKey;
-        var destLiteral = destination.FullKey;
-
-        var orderedReferencers = referencerSet
-            .OrderBy(r => r.ToString(), StringComparer.Ordinal)
-            .ToList();
-
-        // Per-referencer failures (typically file locked by an external editor
-        // for a moment, or marked read-only by the user) are logged and skipped
-        // rather than aborting the whole move. The parent move still completes;
-        // data_check_project surfaces any references that remained stale, and a
-        // subsequent rerun of the rename picks up the residual rewrites because
-        // the FS layer is idempotent under partial completion (the source bytes
-        // are still in place between the rewrite loop and the parent move, and
-        // the next scanner call re-derives the referencer set).
-        foreach (var referencer in orderedReferencers)
-        {
-            var readResult = await ReadAllTextAsync(referencer);
-            if (readResult.IsFailure)
-            {
-                var message = $"read failed for '{referencer}'";
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {message}. The reference is left as-is and will surface via data_check_project.");
-                skippedReferencers.Add(new SkippedReferencer(referencer, ReferencerSkipReason.ReadFailed, message));
-                continue;
-            }
-            var originalText = readResult.Value;
-
-            var rewritten = RewriteReferenceLiterals(originalText, sourceLiteral, destLiteral, sourceIsFolder);
-            if (rewritten == originalText)
-            {
-                continue;
-            }
-
-            // Honor the DOS read-only attribute as a "do not modify" hint
-            // BEFORE attempting the write. The atomic temp+rename path would
-            // surface this as a write failure on Windows (MoveFileEx checks
-            // the target's read-only bit) but silently succeed on Linux
-            // (rename only checks write permission on the parent directory,
-            // not on the target). Pre-checking closes that cross-platform
-            // gap so the user's "don't touch this file" intent is honored
-            // identically on every platform.
-            if (IsReferencerReadOnly(referencer))
-            {
-                const string readOnlyMessage = "file is read-only";
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {readOnlyMessage}. The reference is left as-is and will surface via data_check_project.");
-                skippedReferencers.Add(new SkippedReferencer(referencer, ReferencerSkipReason.ReadOnly, readOnlyMessage));
-                continue;
-            }
-
-            var writeResult = await WriteAllTextAsync(referencer, rewritten);
-            if (writeResult.IsFailure)
-            {
-                // The referencer cascade does not override user-set read-only
-                // or ACL permissions: the user invoked a move on `source`, not
-                // on this incidental referencer. Skip with a clear message so
-                // the user (or the calling agent) knows exactly why and can
-                // decide whether to fix the permissions and rerun the rename.
-                var classification = ClassifyReferencerWriteFailure(referencer, writeResult);
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{destination}': {classification.Message}. The reference is left as-is and will surface via data_check_project.");
-                skippedReferencers.Add(new SkippedReferencer(referencer, classification.Reason, classification.Message));
-                continue;
-            }
-
-            updatedReferencers.Add(referencer);
-        }
-
-        return Result.Ok();
-    }
-
-    private bool IsReferencerReadOnly(ResourceKey referencer)
-    {
-        var resolveResult = ResolvePath(referencer);
-        if (resolveResult.IsFailure)
-        {
-            return false;
-        }
-
-        try
-        {
-            var info = new FileInfo(resolveResult.Value);
-            return info.Exists
-                && info.IsReadOnly;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private (ReferencerSkipReason Reason, string Message) ClassifyReferencerWriteFailure(ResourceKey referencer, Result writeResult)
-    {
-        var resolveResult = ResolvePath(referencer);
-        if (resolveResult.IsFailure)
-        {
-            return (ReferencerSkipReason.WriteFailed, "write failed (could not resolve path)");
-        }
-
-        // Check the DOS read-only attribute first. We split it from the ACL /
-        // POSIX denial case because the fixes are different: read-only is
-        // trivially clearable ("uncheck the read-only flag"), whereas an ACL
-        // deny typically needs the right user account or admin rights. Agents
-        // that want to auto-clear read-only-and-retry can switch on ReadOnly;
-        // agents that want a coarse "permissions thing" check can match both.
-        try
-        {
-            var info = new FileInfo(resolveResult.Value);
-            if (info.Exists
-                && info.IsReadOnly)
-            {
-                return (ReferencerSkipReason.ReadOnly, "file is read-only");
-            }
-        }
-        catch
-        {
-            // Fall through to the exception-based classification.
-        }
-
-        // UnauthorizedAccessException from the underlying File.Move (after the
-        // atomic temp-write) typically means an ACL deny on Windows or a POSIX
-        // permission failure on Unix.
-        if (writeResult.FirstException is UnauthorizedAccessException)
-        {
-            return (ReferencerSkipReason.PermissionDenied, "permission denied (no write access to file)");
-        }
-
-        // Catch-all for any other write failure: actual file locks, disk full,
-        // quota exceeded, network share gone, antivirus interference. The
-        // hedged message tells the user where to look without overcommitting
-        // to a specific cause we can't detect.
-        return (ReferencerSkipReason.WriteFailed, "write failed (file may be locked or another IO issue)");
-    }
-
-    // Replaces every quoted occurrence of sourceLiteral with destLiteral. The
-    // boundary check (ResourceReferenceParser.IsNonKeyBoundary on the bytes
-    // immediately before and after the match) keeps incidental substring
-    // matches untouched — only the canonical quoted form gets rewritten.
-    //
-    // Both sides of the match must have a real boundary character; matches at
-    // position 0 or at end-of-text are not eligible because under the
-    // always-quoted contract every tracked reference is wrapped in a quote
-    // (or its \" / \' escape) on both sides.
-    //
-    // Folder cascade: the trailing-boundary check also accepts '/' so a folder
-    // rename rewrites descendant references via prefix substitution —
-    // "project:<folder>/<child>" becomes "project:<newfolder>/<child>" because
-    // sourceLiteral matched only the "<folder>" prefix.
-    private static string RewriteReferenceLiterals(string text, string sourceLiteral, string destLiteral, bool sourceIsFolder)
-    {
-        if (string.IsNullOrEmpty(text))
-        {
-            return text;
-        }
-
-        var builder = new StringBuilder(text.Length);
-        int cursor = 0;
-
-        while (cursor < text.Length)
-        {
-            int matchIndex = text.IndexOf(sourceLiteral, cursor, StringComparison.Ordinal);
-            if (matchIndex < 0)
-            {
-                builder.Append(text, cursor, text.Length - cursor);
-                break;
-            }
-
-            builder.Append(text, cursor, matchIndex - cursor);
-
-            int afterMatch = matchIndex + sourceLiteral.Length;
-
-            bool leadingOk = matchIndex > 0
-                && ResourceReferenceParser.IsNonKeyBoundary(text[matchIndex - 1]);
-            bool trailingExact = afterMatch < text.Length
-                && ResourceReferenceParser.IsNonKeyBoundary(text[afterMatch]);
-            bool trailingFolderPrefix = sourceIsFolder
-                && afterMatch < text.Length
-                && text[afterMatch] == '/';
-
-            if (leadingOk
-                && (trailingExact || trailingFolderPrefix))
-            {
-                builder.Append(destLiteral);
-                cursor = afterMatch;
-            }
-            else
-            {
-                // Boundary check failed. Preserve the matched byte and advance
-                // by one so the next scan can find an overlapping occurrence.
-                builder.Append(text[matchIndex]);
-                cursor = matchIndex + 1;
-            }
-        }
-
-        return builder.ToString();
-    }
-
-    private async Task<SidecarOutcome> TryCascadeSidecarMoveAsync(ResourceKey source, ResourceKey destination)
-    {
-        var sourceSidecar = AppendSidecarSuffix(source);
-        var destSidecar = AppendSidecarSuffix(destination);
-        if (sourceSidecar is null
-            || destSidecar is null)
-        {
-            return SidecarOutcome.NotPresent;
-        }
-
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var resolveSourceResult = registry.ResolveResourcePath(sourceSidecar.Value);
-        if (resolveSourceResult.IsFailure)
-        {
-            return SidecarOutcome.NotPresent;
-        }
-        var sourceSidecarPath = resolveSourceResult.Value;
-        if (!File.Exists(sourceSidecarPath))
-        {
-            return SidecarOutcome.NotPresent;
-        }
-
-        var resolveDestResult = registry.ResolveResourcePath(destSidecar.Value);
-        if (resolveDestResult.IsFailure)
-        {
-            _logger.LogWarning($"Failed to resolve sidecar destination '{destSidecar}' for move from '{source}'. Sidecar bytes remain at the source path.");
-            return SidecarOutcome.Failed;
-        }
-        var destSidecarPath = resolveDestResult.Value;
-
-        if (File.Exists(destSidecarPath))
-        {
-            _logger.LogWarning($"Sidecar destination '{destSidecar}' already exists. Parent move completed but sidecar was not cascaded.");
-            return SidecarOutcome.Failed;
-        }
-
-        try
-        {
-            var destFolder = Path.GetDirectoryName(destSidecarPath);
-            if (!string.IsNullOrEmpty(destFolder)
-                && !Directory.Exists(destFolder))
-            {
-                Directory.CreateDirectory(destFolder);
-            }
-
-            await RetryTransientIOAsync(() => File.Move(sourceSidecarPath, destSidecarPath));
-            return SidecarOutcome.Cascaded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, $"Failed to cascade sidecar move from '{sourceSidecar}' to '{destSidecar}'.");
-            return SidecarOutcome.Failed;
-        }
-    }
-
-    private SidecarOutcome TryCascadeSidecarCopy(ResourceKey source, ResourceKey destination)
-    {
-        var sourceSidecar = AppendSidecarSuffix(source);
-        var destSidecar = AppendSidecarSuffix(destination);
-        if (sourceSidecar is null
-            || destSidecar is null)
-        {
-            return SidecarOutcome.NotPresent;
-        }
-
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var resolveSourceResult = registry.ResolveResourcePath(sourceSidecar.Value);
-        if (resolveSourceResult.IsFailure)
-        {
-            return SidecarOutcome.NotPresent;
-        }
-        var sourceSidecarPath = resolveSourceResult.Value;
-        if (!File.Exists(sourceSidecarPath))
-        {
-            return SidecarOutcome.NotPresent;
-        }
-
-        var resolveDestResult = registry.ResolveResourcePath(destSidecar.Value);
-        if (resolveDestResult.IsFailure)
-        {
-            _logger.LogWarning($"Failed to resolve sidecar destination '{destSidecar}' for copy from '{source}'.");
-            return SidecarOutcome.Failed;
-        }
-        var destSidecarPath = resolveDestResult.Value;
-
-        if (File.Exists(destSidecarPath))
-        {
-            _logger.LogWarning($"Sidecar destination '{destSidecar}' already exists. Parent copy completed but sidecar was not cascaded.");
-            return SidecarOutcome.Failed;
-        }
-
-        try
-        {
-            var destFolder = Path.GetDirectoryName(destSidecarPath);
-            if (!string.IsNullOrEmpty(destFolder)
-                && !Directory.Exists(destFolder))
-            {
-                Directory.CreateDirectory(destFolder);
-            }
-
-            File.Copy(sourceSidecarPath, destSidecarPath);
-            return SidecarOutcome.Cascaded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, $"Failed to cascade sidecar copy from '{sourceSidecar}' to '{destSidecar}'.");
-            return SidecarOutcome.Failed;
-        }
-    }
-
-    private SidecarOutcome TryCascadeSidecarDelete(ResourceKey source)
-    {
-        var sourceSidecar = AppendSidecarSuffix(source);
-        if (sourceSidecar is null)
-        {
-            return SidecarOutcome.NotPresent;
-        }
-
-        var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var resolveResult = registry.ResolveResourcePath(sourceSidecar.Value);
-        if (resolveResult.IsFailure)
-        {
-            return SidecarOutcome.NotPresent;
-        }
-        var sidecarPath = resolveResult.Value;
-        if (!File.Exists(sidecarPath))
-        {
-            return SidecarOutcome.NotPresent;
-        }
-
-        try
-        {
-            File.Delete(sidecarPath);
-            return SidecarOutcome.Cascaded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, $"Failed to cascade sidecar delete for '{sourceSidecar}'.");
-            return SidecarOutcome.Failed;
-        }
-    }
-
-    // Returns the sidecar resource key for the given parent, or null when no
-    // valid sidecar key can be derived (root-only key, or the parent itself
-    // is already a sidecar key — in which case there is nothing to cascade).
-    private ResourceKey? AppendSidecarSuffix(ResourceKey key)
-    {
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
-        var result = sidecarService.GetSidecarKey(key);
-        if (result.IsSuccess)
-        {
-            return result.Value;
-        }
-        return null;
-    }
-
-    // Clears the read-only attribute from a file before the FS layer performs
-    // a move or delete. User intent to move or delete a file overrides the
-    // read-only marker the same way Windows Explorer's "delete" prompt does.
-    // Best-effort: any IO failure surfaces when the subsequent move/delete
-    // itself fails; we don't pre-flight check.
-    private static void ClearReadOnlyIfSet(string path)
-    {
-        try
-        {
-            var info = new FileInfo(path);
-            if (info.Exists
-                && info.IsReadOnly)
-            {
-                info.IsReadOnly = false;
-            }
-        }
-        catch
-        {
-            // Best effort; surface the underlying issue from the caller's operation.
-        }
-    }
-
-    // Recursive read-only clear for folder delete. Directory.Delete(recursive: true)
-    // fails if any contained file is read-only, so traverse first.
-    private static void ClearReadOnlyRecursive(string folder)
-    {
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
-            {
-                ClearReadOnlyIfSet(file);
-            }
-        }
-        catch
-        {
-            // Best effort.
-        }
     }
 
     // Recursive folder copy. Mirrors ResourceUtils.CopyFolder but stays internal
@@ -1107,58 +677,6 @@ public sealed class FileStorage : IFileStorage
             var destSubFolder = Path.Combine(destFolder, folderName);
             CopyFolderRecursive(subFolder, destSubFolder);
         }
-    }
-
-    // Runs an IO operation under the chokepoint's bounded-retry policy. A file
-    // briefly held open by an external editor, antivirus, or backup product
-    // clears within milliseconds, so 3 attempts at 50/100/150ms backoff catches
-    // the common cases without imposing meaningful latency on the typical-case
-    // success. shouldRetry decides whether a particular IOException is worth
-    // retrying; read paths exclude FileNotFoundException and
-    // DirectoryNotFoundException because the file is genuinely missing.
-    // UnauthorizedAccessException is never retried — for reads and writes it
-    // almost always means a permission issue (e.g. an ACL the user can't get
-    // past), not a transient lock.
-    private async Task<Result<T>> RunWithRetryAsync<T>(
-        string operationLabel,
-        ResourceKey resource,
-        string resourcePath,
-        Func<Task<T>> operation,
-        Func<IOException, bool>? shouldRetry = null)
-        where T : notnull
-    {
-        IOException? lastException = null;
-
-        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
-        {
-            try
-            {
-                var value = await operation();
-                if (attempt > 1)
-                {
-                    _logger.LogWarning($"{operationLabel} succeeded for '{resourcePath}' on attempt {attempt} of {MaxAttempts} after transient IO failures");
-                }
-                return Result<T>.Ok(value);
-            }
-            catch (IOException ex) when (shouldRetry?.Invoke(ex) ?? true)
-            {
-                lastException = ex;
-                if (attempt < MaxAttempts)
-                {
-                    var delay = BaseRetryDelayMs * attempt;
-                    _logger.LogWarning(ex, $"{operationLabel} attempt {attempt} failed for '{resourcePath}', retrying after {delay}ms");
-                    await Task.Delay(delay);
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result<T>.Fail($"Failed to {operationLabel.ToLowerInvariant()} file: '{resource}'")
-                    .WithException(ex);
-            }
-        }
-
-        return Result<T>.Fail($"Failed to {operationLabel.ToLowerInvariant()} file after {MaxAttempts} attempts: '{resource}'")
-            .WithException(lastException!);
     }
 
     private async Task<Result> WriteWithRetryAsync(ResourceKey resource, byte[] bytes)
@@ -1199,13 +717,14 @@ public sealed class FileStorage : IFileStorage
                 .WithException(ex);
         }
 
-        var runResult = await RunWithRetryAsync<bool>(
+        var runResult = await FileStorageInternals.RunWithRetryAsync<bool>(
+            _logger,
             operationLabel: "Write",
-            resource: resource,
+            resourceLabel: resource,
             resourcePath: resourcePath,
             operation: async () =>
             {
-                await WriteAtomicAsync(resourcePath, stagingFolder, bytes);
+                await WriteAtomicAsync(_logger, resourcePath, stagingFolder, bytes);
                 return true;
             });
 
@@ -1233,39 +752,18 @@ public sealed class FileStorage : IFileStorage
         }
     }
 
-    // Runs a synchronous filesystem action under the chokepoint's bounded-retry
-    // policy. A file briefly held open by AV, indexer, or sync clients after
-    // creation clears within milliseconds; the same retry budget the read and
-    // write paths use catches the common races. Non-IO exceptions and the final
-    // attempt's IOException propagate unchanged so persistent failures surface.
-    private static async Task RetryTransientIOAsync(Action action)
-    {
-        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
-        {
-            try
-            {
-                action();
-                return;
-            }
-            catch (IOException) when (attempt < MaxAttempts)
-            {
-                await Task.Delay(BaseRetryDelayMs * attempt);
-            }
-        }
-    }
-
     // Writes bytes to a uniquely-named temp file inside the project's central
     // staging folder, then atomically replaces the destination via File.Move.
     // A unique filename per write prevents concurrent writers to the same
     // destination from clobbering each other's intermediate state.
-    private static async Task WriteAtomicAsync(string resourcePath, string stagingFolder, byte[] bytes)
+    private static async Task WriteAtomicAsync(ILogger logger, string resourcePath, string stagingFolder, byte[] bytes)
     {
         var tempPath = Path.Combine(stagingFolder, Guid.NewGuid().ToString("N") + ".tmp");
 
         try
         {
             await File.WriteAllBytesAsync(tempPath, bytes);
-            await RetryTransientIOAsync(() => File.Move(tempPath, resourcePath, overwrite: true));
+            await FileStorageInternals.RetryTransientIOAsync(logger, "Atomic rename", resourcePath, () => File.Move(tempPath, resourcePath, overwrite: true));
         }
         catch
         {

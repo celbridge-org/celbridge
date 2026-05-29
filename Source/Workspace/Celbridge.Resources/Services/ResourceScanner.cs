@@ -233,8 +233,8 @@ public sealed class ResourceScanner : IResourceScanner
     // each. Reads the registry's snapshot directly; mutation commands carry
     // CommandFlags.UpdateResources so the snapshot reflects the latest disk
     // state by the time a tool that consults the scanner runs. Files are
-    // filtered through ResourceScanRules.ScannableExtensions — only the
-    // allowlisted data-bearing extensions participate.
+    // filtered through ScannableExtensions — only the allowlisted
+    // data-bearing extensions participate.
     private async Task EnumerateProjectTextFilesAsync(Func<ResourceKey, string, Task> visit)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -242,7 +242,8 @@ public sealed class ResourceScanner : IResourceScanner
 
         await Parallel.ForEachAsync(files, async (file, _) =>
         {
-            var (resourceKey, absolutePath) = file;
+            var resourceKey = file.Resource;
+            var absolutePath = file.Path;
             if (!IsScannableFile(absolutePath))
             {
                 return;
@@ -265,7 +266,8 @@ public sealed class ResourceScanner : IResourceScanner
 
         await Parallel.ForEachAsync(files, async (file, _) =>
         {
-            var (resourceKey, absolutePath) = file;
+            var resourceKey = file.Resource;
+            var absolutePath = file.Path;
             if (!IsSidecarPath(absolutePath))
             {
                 return;

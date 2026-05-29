@@ -68,12 +68,6 @@ public class MigrationStep_0_3_0 : IMigrationStep
                 }
 
                 var newPath = fullOldPath + ".cel";
-                if (File.Exists(newPath))
-                {
-                    return Result.Fail(
-                        $"Cannot convert '{fullOldPath}' to '{newPath}'. Target file already exists.");
-                }
-
                 var convertResult = await ConvertWebViewFileAsync(fullOldPath, newPath);
                 if (convertResult.IsFailure)
                 {
@@ -106,14 +100,9 @@ public class MigrationStep_0_3_0 : IMigrationStep
         {
             var originalText = await File.ReadAllTextAsync(oldPath);
             var sourceUrl = ExtractSourceUrlFromJson(originalText);
+            var tomlText = BuildWebViewTomlContent(sourceUrl);
 
-            var tomlBuilder = new StringBuilder();
-            tomlBuilder.Append(WebViewTomlSourceUrlKey);
-            tomlBuilder.Append(" = ");
-            tomlBuilder.Append(QuoteTomlBasicString(sourceUrl));
-            tomlBuilder.Append('\n');
-
-            await File.WriteAllTextAsync(newPath, tomlBuilder.ToString());
+            await File.WriteAllTextAsync(newPath, tomlText);
             return Result.Ok();
         }
         catch (Exception ex)
@@ -121,6 +110,16 @@ public class MigrationStep_0_3_0 : IMigrationStep
             return Result.Fail($"Failed to read or write WebView file during conversion: '{oldPath}'")
                 .WithException(ex);
         }
+    }
+
+    private static string BuildWebViewTomlContent(string sourceUrl)
+    {
+        var tomlBuilder = new StringBuilder();
+        tomlBuilder.Append(WebViewTomlSourceUrlKey);
+        tomlBuilder.Append(" = ");
+        tomlBuilder.Append(QuoteTomlBasicString(sourceUrl));
+        tomlBuilder.Append('\n');
+        return tomlBuilder.ToString();
     }
 
     private static string ExtractSourceUrlFromJson(string jsonText)

@@ -80,97 +80,97 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination)
+    public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey dest)
     {
         var sourcePathResult = ResourceRegistry.ResolveResourcePath(source);
         if (sourcePathResult.IsFailure)
         {
-            return Result<CopyResult>.Fail($"Failed to resolve path for source resource: '{source}'")
+            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
                 .WithErrors(sourcePathResult);
         }
         var sourcePath = sourcePathResult.Value;
 
-        var destinationPathResult = ResourceRegistry.ResolveResourcePath(destination);
-        if (destinationPathResult.IsFailure)
+        var destPathResult = ResourceRegistry.ResolveResourcePath(dest);
+        if (destPathResult.IsFailure)
         {
-            return Result<CopyResult>.Fail($"Failed to resolve path for destination resource: '{destination}'")
-                .WithErrors(destinationPathResult);
+            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
+                .WithErrors(destPathResult);
         }
-        var destinationPath = destinationPathResult.Value;
+        var destPath = destPathResult.Value;
 
         var infoResult = await FileStorage.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            return Result<CopyResult>.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail($"Source resource does not exist: '{source}'");
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
         var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
         var operation = new CopyOperation(
             source,
-            destination,
+            dest,
             isFolder,
             sourcePath,
-            destinationPath,
+            destPath,
             entityHelper,
             FileStorage);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
         {
-            return Result<CopyResult>.Fail(executeResult);
+            return Result.Fail(executeResult);
         }
 
         AddOperation(operation);
         return operation.LastCopyResult ?? EmptyCopyResult;
     }
 
-    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey destination)
+    public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
     {
         var sourcePathResult = ResourceRegistry.ResolveResourcePath(source);
         if (sourcePathResult.IsFailure)
         {
-            return Result<MoveResult>.Fail($"Failed to resolve path for source resource: '{source}'")
+            return Result.Fail($"Failed to resolve path for source resource: '{source}'")
                 .WithErrors(sourcePathResult);
         }
         var sourcePath = sourcePathResult.Value;
 
-        var destinationPathResult = ResourceRegistry.ResolveResourcePath(destination);
-        if (destinationPathResult.IsFailure)
+        var destPathResult = ResourceRegistry.ResolveResourcePath(dest);
+        if (destPathResult.IsFailure)
         {
-            return Result<MoveResult>.Fail($"Failed to resolve path for destination resource: '{destination}'")
-                .WithErrors(destinationPathResult);
+            return Result.Fail($"Failed to resolve path for destination resource: '{dest}'")
+                .WithErrors(destPathResult);
         }
-        var destinationPath = destinationPathResult.Value;
+        var destPath = destPathResult.Value;
 
         var infoResult = await FileStorage.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            return Result<MoveResult>.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail($"Source resource does not exist: '{source}'");
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
         var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
         var operation = new MoveOperation(
             source,
-            destination,
+            dest,
             isFolder,
             sourcePath,
-            destinationPath,
+            destPath,
             entityHelper,
             FileStorage);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
         {
-            return Result<MoveResult>.Fail(executeResult);
+            return Result.Fail(executeResult);
         }
 
         AddOperation(operation);
 
-        return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
+        return operation.LastMoveResult ?? EmptyMoveResult;
     }
 
     public async Task<Result> DeleteAsync(ResourceKey resource)
@@ -186,11 +186,11 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey destination)
+    public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest)
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: false, FileStorage, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, FileStorage, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -201,11 +201,11 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey destination)
+    public async Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey dest)
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: true, FileStorage, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, FileStorage, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -216,14 +216,14 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
-    public async Task<Result> TransferAsync(ResourceKey source, ResourceKey destination, DataTransferMode mode)
+    public async Task<Result> TransferAsync(ResourceKey source, ResourceKey dest, DataTransferMode mode)
     {
         if (mode == DataTransferMode.Copy)
         {
-            return await CopyAsync(source, destination);
+            return await CopyAsync(source, dest);
         }
 
-        return await MoveAsync(source, destination);
+        return await MoveAsync(source, dest);
     }
 
     public IBatchScope BeginBatch()
@@ -295,11 +295,16 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         var operation = _undoStack[^1];
-        _undoStack.RemoveAt(_undoStack.Count - 1);
 
+        // Run the undo against the in-place operation; only move it between
+        // stacks once the outcome is known. A failed undo leaves the operation
+        // on the undo stack so the user can retry once the underlying issue
+        // clears (file unlocked, permission granted), instead of losing the
+        // entry to the abyss.
         var result = await operation.UndoAsync();
         if (result.IsSuccess)
         {
+            _undoStack.RemoveAt(_undoStack.Count - 1);
             _redoStack.Add(operation);
         }
         else
@@ -318,11 +323,13 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         var operation = _redoStack[^1];
-        _redoStack.RemoveAt(_redoStack.Count - 1);
 
+        // Mirror of UndoAsync: only move the operation between stacks on
+        // success. A failed redo stays on the redo stack so the user can retry.
         var result = await operation.RedoAsync();
         if (result.IsSuccess)
         {
+            _redoStack.RemoveAt(_redoStack.Count - 1);
             _undoStack.Add(operation);
         }
         else
@@ -356,7 +363,7 @@ public class ResourceOperationService : IResourceOperationService
             var oldestOperation = _undoStack[0];
             _undoStack.RemoveAt(0);
 
-            _ = PurgeOperationTrashAsync(oldestOperation);
+            FireAndForgetPurge(oldestOperation);
         }
     }
 
@@ -366,14 +373,30 @@ public class ResourceOperationService : IResourceOperationService
     {
         foreach (var operation in _redoStack)
         {
-            _ = PurgeOperationTrashAsync(operation);
+            FireAndForgetPurge(operation);
         }
         _redoStack.Clear();
     }
 
+    // Schedules a best-effort purge of the operation's trash bytes without
+    // blocking the caller. The wrapper guarantees that any exception thrown
+    // inside the chain is logged rather than escaping as an unobserved task
+    // exception — internal purge already logs at Warning, but a programming
+    // error introduced later in the chain would otherwise be invisible.
+    private void FireAndForgetPurge(FileOperation operation)
+    {
+        _ = PurgeOperationTrashAsync(operation).ContinueWith(task =>
+        {
+            if (task.Exception is not null)
+            {
+                _logger.LogWarning(task.Exception, "Unhandled exception while purging operation trash.");
+            }
+        }, TaskScheduler.Default);
+    }
+
     // Recursively walks operation batches and purges any trash bytes a
-    // DeleteOperation was keeping alive. Fire-and-forget at the call site
-    // because trash purge is best-effort cleanup.
+    // DeleteOperation was keeping alive. Called via FireAndForgetPurge at the
+    // call site because trash purge is best-effort cleanup.
     private static async Task PurgeOperationTrashAsync(FileOperation operation)
     {
         if (operation is FileOperationBatch batch)

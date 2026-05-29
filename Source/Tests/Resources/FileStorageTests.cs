@@ -541,8 +541,8 @@ public class FileStorageTests
     {
         // The reference sits inside a JSON-escape sequence \"project:...\"
         // (e.g. an MCP tool response stored as a JSON string). The scanner
-        // detects it via the two-char \" opener and the cascade must rewrite
-        // it via the matching trailing-\\ boundary on IsNonKeyBoundary.
+        // detects it via the two-char \" opener and the cascade rewrites it
+        // through the same parser path so the trailing \" is recognised.
         var sourceKey = new ResourceKey("foo.md");
         var destKey = new ResourceKey("bar.md");
         var referencerKey = new ResourceKey("payload.json");

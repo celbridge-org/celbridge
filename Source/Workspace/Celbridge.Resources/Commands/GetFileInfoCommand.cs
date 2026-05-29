@@ -70,14 +70,14 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             // Surface the paired sidecar's key and current parse state when
             // the registry has recorded one for this file. Sidecars belong to
             // file resources only; folders don't have their own sidecars in v1.
-            string? sidecarKey = null;
+            ResourceKey? sidecarKey = null;
             CelFileStatus? sidecarStatus = null;
             var resourceResult = resourceRegistry.GetResource(Resource);
             if (resourceResult.IsSuccess
                 && resourceResult.Value is IFileResource fileResource
                 && fileResource.Sidecar is not null)
             {
-                sidecarKey = fileResource.Sidecar.Key.ToString();
+                sidecarKey = fileResource.Sidecar.Key;
                 sidecarStatus = fileResource.Sidecar.Status;
             }
 

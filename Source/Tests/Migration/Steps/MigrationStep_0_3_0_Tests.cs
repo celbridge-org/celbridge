@@ -183,6 +183,52 @@ public class MigrationStep_0_3_0_Tests
         File.Exists(Path.Combine(_projectFolderPath, "page.webview.cel")).Should().BeTrue();
     }
 
+    [Test]
+    public async Task ApplyAsync_TreatsMalformedJsonAsEmptySourceUrl()
+    {
+        // A pre-0.3.0 .webview file with malformed JSON should not abort the
+        // migration: the conversion treats the URL as empty and continues so
+        // the file lands at the new extension and the user can supply a URL.
+        WriteMinimalProjectFile();
+        var oldWebViewPath = Path.Combine(_projectFolderPath, "broken.webview");
+        await File.WriteAllTextAsync(oldWebViewPath, "{ not valid json");
+
+        var context = CreateContext();
+
+        var result = await _step.ApplyAsync(context);
+
+        result.IsSuccess.Should().BeTrue();
+        var newPath = Path.Combine(_projectFolderPath, "broken.webview.cel");
+        File.Exists(newPath).Should().BeTrue();
+
+        var newText = await File.ReadAllTextAsync(newPath);
+        newText.Should().Contain("source_url = \"\"");
+    }
+
+    [Test]
+    public async Task ApplyAsync_EscapesSpecialCharactersInSourceUrl()
+    {
+        // Quote and backslash characters in the sourceUrl must be escaped on
+        // the TOML basic-string side or the resulting file fails to parse.
+        WriteMinimalProjectFile();
+        var oldWebViewPath = Path.Combine(_projectFolderPath, "tricky.webview");
+        await File.WriteAllTextAsync(oldWebViewPath, "{\"sourceUrl\": \"https://example.com/q?x=\\\"a\\\"&y=back\\\\slash\"}");
+
+        var context = CreateContext();
+
+        var result = await _step.ApplyAsync(context);
+
+        result.IsSuccess.Should().BeTrue();
+        var newPath = Path.Combine(_projectFolderPath, "tricky.webview.cel");
+        var newText = await File.ReadAllTextAsync(newPath);
+        var parsed = Toml.Parse(newText);
+        parsed.HasErrors.Should().BeFalse();
+
+        var root = (TomlTable)parsed.ToModel();
+        root.TryGetValue("source_url", out var urlValue).Should().BeTrue();
+        urlValue.Should().Be("https://example.com/q?x=\"a\"&y=back\\slash");
+    }
+
     private void WriteMinimalProjectFile()
     {
         var content = """

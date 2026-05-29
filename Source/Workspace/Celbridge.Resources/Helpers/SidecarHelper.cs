@@ -53,6 +53,34 @@ public static class SidecarHelper
     }
 
     /// <summary>
+    /// True when the block content contains a line that would parse as a fence
+    /// (e.g. '+++ "evil"'). Block content with a fence line round-trips to a
+    /// file whose Parse splits it incorrectly, so writers must reject this up
+    /// front. There is no escape mechanism.
+    /// </summary>
+    public static bool BlockContentContainsFenceLine(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return false;
+        }
+
+        var lines = content.Split('\n');
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.EndsWith('\r')
+                ? rawLine.Substring(0, rawLine.Length - 1)
+                : rawLine;
+            if (FenceLineRegex.IsMatch(line))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// True when the value can be written through the structured frontmatter
     /// surface: scalars (string, numeric, bool, datetime) and lists of those.
     /// Nested objects and mixed lists are rejected.
@@ -250,6 +278,10 @@ public static class SidecarHelper
             if (!IsValidBlockName(block.Name))
             {
                 throw new ArgumentException($"Block name '{block.Name}' does not match the block-naming rules.");
+            }
+            if (BlockContentContainsFenceLine(block.Content))
+            {
+                throw new ArgumentException($"Block '{block.Name}' content contains a line matching the fence regex; this would corrupt the file on round-trip.");
             }
 
             // Each fence line starts on its own line. If we already wrote

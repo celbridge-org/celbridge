@@ -14,12 +14,19 @@ public class RootPathResolver
 {
     private readonly string _rootName;
     private readonly string _backingLocation;
+    // Pre-computed once at construction so the GetResourceKey / ValidateAndResolve
+    // hot paths don't repeat Path.GetFullPath + TrimEnd on every call.
+    private readonly string _normalizedBackingWithSeparator;
+    private readonly string _normalizedBackingTrimmed;
     private readonly HashSet<string> _verifiedFolders;
 
     public RootPathResolver(string rootName, string backingLocation)
     {
         _rootName = rootName;
         _backingLocation = backingLocation;
+        _normalizedBackingWithSeparator = NormalizeBackingLocation(backingLocation);
+        _normalizedBackingTrimmed = _normalizedBackingWithSeparator
+            .TrimEnd(Path.DirectorySeparatorChar);
         _verifiedFolders = new HashSet<string>(GetPathComparer());
     }
 
@@ -45,19 +52,15 @@ public class RootPathResolver
         var combinedPath = Path.Combine(_backingLocation, pathPortion);
         var resolvedPath = Path.GetFullPath(combinedPath);
 
-        var normalizedBackingLocation = NormalizeBackingLocation(_backingLocation);
+        var isBackingRoot = resolvedPath.Equals(_normalizedBackingTrimmed, GetPathComparison());
 
-        var isBackingRoot = resolvedPath.Equals(
-            normalizedBackingLocation.TrimEnd(Path.DirectorySeparatorChar),
-            GetPathComparison());
-
-        if (!isBackingRoot && !resolvedPath.StartsWith(normalizedBackingLocation, GetPathComparison()))
+        if (!isBackingRoot && !resolvedPath.StartsWith(_normalizedBackingWithSeparator, GetPathComparison()))
         {
             return Result<string>.Fail(
                 $"Resource key '{resource}' resolves to a path outside the '{_rootName}' root.");
         }
 
-        var reparseResult = CheckForReparsePoints(resolvedPath, normalizedBackingLocation);
+        var reparseResult = CheckForReparsePoints(resolvedPath, _normalizedBackingWithSeparator);
         if (reparseResult.IsFailure)
         {
             return Result<string>.Fail(reparseResult.FirstErrorMessage);
@@ -76,17 +79,15 @@ public class RootPathResolver
         try
         {
             var normalizedPath = Path.GetFullPath(absolutePath);
-            var normalizedBacking = Path.GetFullPath(_backingLocation)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             // No symlink check here: ValidateAndResolve enforces it at the I/O
             // boundary, and replaying it on every label call would dominate the
             // watcher / enumerate hot path.
             var comparison = GetPathComparison();
 
-            bool isBackingRoot = normalizedPath.Equals(normalizedBacking, comparison);
+            bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
             bool isUnderBacking = normalizedPath.StartsWith(
-                normalizedBacking + Path.DirectorySeparatorChar, comparison);
+                _normalizedBackingWithSeparator, comparison);
 
             if (!isBackingRoot && !isUnderBacking)
             {
@@ -97,7 +98,7 @@ public class RootPathResolver
             var relativePart = isBackingRoot
                 ? string.Empty
                 : normalizedPath
-                    .Substring(normalizedBacking.Length)
+                    .Substring(_normalizedBackingTrimmed.Length)
                     .Replace('\\', '/')
                     .Trim('/');
 

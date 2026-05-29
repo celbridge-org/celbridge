@@ -70,7 +70,7 @@ public partial class FileTools
                 snapshot.Extension,
                 snapshot.IsText,
                 snapshot.LineCount,
-                snapshot.SidecarKey,
+                snapshot.SidecarKey?.ToString(),
                 sidecarStatusText);
             return ToolResponse.Success(SerializeJson(fileResult));
         }

@@ -36,9 +36,12 @@ public class DocumentLayoutStore
 
     /// <summary>
     /// Serialization DTO for a single open document tab. Public so the
-    /// workspace-settings deserializer can reach it through the store.
+    /// workspace-settings deserializer can reach it through the store. The
+    /// document's editor is recovered from the sidecar at restore time (or
+    /// from the per-extension default), so the layout never needs to persist
+    /// the editor id directly.
     /// </summary>
-    public record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder, string DocumentEditorId = "");
+    public record StoredDocumentAddress(string Resource, int WindowIndex, int SectionIndex, int TabOrder);
 
     public async Task StoreDocumentLayoutAsync()
     {
@@ -50,8 +53,7 @@ public class DocumentLayoutStore
                 document.FileResource.ToString(),
                 document.Address.WindowIndex,
                 document.Address.SectionIndex,
-                document.Address.TabOrder,
-                document.EditorId.ToString()))
+                document.Address.TabOrder))
             .OrderBy(address => address.WindowIndex)
             .ThenBy(address => address.SectionIndex)
             .ThenBy(address => address.TabOrder)
@@ -262,27 +264,17 @@ public class DocumentLayoutStore
             int targetSection = Math.Min(stored.SectionIndex, currentSectionCount - 1);
             var address = new DocumentAddress(stored.WindowIndex, targetSection, stored.TabOrder);
 
-            // Use TryParse rather than the throwing constructor: a persisted editor id may reference
-            // a package or contribution that has since been renamed or uninstalled, and an invalid
-            // value should fall back to the default editor instead of aborting the restore.
-            DocumentEditorId editorId;
-            if (string.IsNullOrEmpty(stored.DocumentEditorId))
-            {
-                editorId = DocumentEditorId.Empty;
-            }
-            else if (!DocumentEditorId.TryParse(stored.DocumentEditorId, out editorId))
-            {
-                _logger.LogWarning($"Stored document editor id '{stored.DocumentEditorId}' is invalid and will be ignored for resource '{fileResource}'");
-                editorId = DocumentEditorId.Empty;
-            }
-
+            // Editor selection is resolved from the sidecar (or the per-extension
+            // default), not from any persisted layout state. Passing Empty here
+            // lets the factory consult the live sidecar instead of pinning a
+            // possibly-stale id captured at the last shutdown.
             string? editorStateJson = null;
             editorStates?.TryGetValue(fileResource.ToString(), out editorStateJson);
 
             var restoreOptions = new OpenDocumentOptions(
                 Address: address,
                 Activate: false,
-                EditorId: editorId,
+                EditorId: DocumentEditorId.Empty,
                 EditorStateJson: editorStateJson);
 
             var openResult = await DocumentsPanel.OpenDocument(fileResource, restoreOptions);

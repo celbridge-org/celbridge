@@ -17,7 +17,7 @@ public record class FileInfoSnapshot(
     string Extension,
     bool IsText,
     int? LineCount,
-    string? SidecarKey,
+    ResourceKey? SidecarKey,
     CelFileStatus? SidecarStatus);
 
 /// <summary>
@@ -27,5 +27,8 @@ public record class FileInfoSnapshot(
 /// </summary>
 public interface IGetFileInfoCommand : IExecutableCommand<FileInfoSnapshot>
 {
+    /// <summary>
+    /// The file or folder resource to probe. Set by the caller before the command runs.
+    /// </summary>
     ResourceKey Resource { get; set; }
 }

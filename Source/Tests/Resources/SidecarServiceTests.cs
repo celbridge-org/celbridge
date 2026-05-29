@@ -244,6 +244,22 @@ public class SidecarServiceTests
     }
 
     [Test]
+    public async Task WriteBlockAsync_RejectsContentContainingFenceLine()
+    {
+        // Block content that contains a line matching the fence regex would
+        // cause Parse to split it incorrectly on read. The service rejects this
+        // up front so the bytes never land on disk.
+        var writeResult = await _sidecarService.WriteBlockAsync(
+            new ResourceKey("photo.png"),
+            "block-a",
+            "first\n+++ \"sneaky\"\nlast\n");
+
+        writeResult.IsFailure.Should().BeTrue();
+        writeResult.FirstErrorMessage.Should().Contain("fence regex");
+        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+    }
+
+    [Test]
     public void GetSidecarKey_FailsForNonProjectRoot()
     {
         // Sidecars are a project-scoped metadata system; the tracking pass only

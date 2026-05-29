@@ -3,55 +3,93 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// How DeleteResourceCommand should respond when the resources being deleted are
-/// referenced by other project resources. RequireConfirmation prompts the user
-/// via IDialogService; FailIfReferenced refuses the batch and reports
-/// the conflicting referencers; BreakReferences proceeds without prompting,
-/// leaving the existing references dangling.
+/// How DeleteResourceCommand should respond when the resources being deleted
+/// are referenced by other project resources.
 /// </summary>
 public enum DeleteReferencePolicy
 {
+    /// <summary>
+    /// Prompt the user via IDialogService and proceed only if confirmed.
+    /// </summary>
     RequireConfirmation,
+
+    /// <summary>
+    /// Refuse the batch and report the conflicting referencers in the result.
+    /// </summary>
     FailIfReferenced,
+
+    /// <summary>
+    /// Proceed without prompting, leaving the existing references dangling.
+    /// </summary>
     BreakReferences,
 }
 
 /// <summary>
 /// Aggregate outcome of a DeleteResourceCommand batch.
-/// DeletedAll means every resource in the batch was deleted successfully.
-/// DeletedSome means the policy gate passed and execution ran but at least
-/// one resource failed mechanically (file locked, IO error, etc.); inspect
-/// ResourceResults to see which. This also covers the rare edge where every
-/// resource failed — when zero of N succeed, the batch is still classified
-/// DeletedSome rather than carving out a separate "none succeeded" value,
-/// since the agent's next step (inspect ResourceResults) is the same either way.
-/// CancelledByUser and BlockedByReferences are policy-gate failures that leave
-/// the filesystem untouched.
 /// </summary>
 public enum DeleteBatchOutcome
 {
+    /// <summary>
+    /// Every resource in the batch was deleted successfully.
+    /// </summary>
     DeletedAll,
+
+    /// <summary>
+    /// The policy gate passed and execution ran but at least one resource
+    /// failed mechanically (file locked, IO error, etc.); inspect ResourceResults
+    /// to see which. Also covers the rare edge where every resource failed —
+    /// the agent's next step is the same either way (inspect ResourceResults).
+    /// </summary>
     DeletedSome,
+
+    /// <summary>
+    /// Policy-gate failure: the user declined the confirmation prompt. The
+    /// filesystem is untouched.
+    /// </summary>
     CancelledByUser,
+
+    /// <summary>
+    /// Policy-gate failure under FailIfReferenced: at least one resource had
+    /// external referencers. The filesystem is untouched.
+    /// </summary>
     BlockedByReferences,
 }
 
 /// <summary>
 /// Per-resource outcome inside a DeleteResourceCommand batch. The non-Deleted
 /// values are typed so an agent can branch on the cause without parsing
-/// FailureMessage: NotFound is the no-op success case (the resource is already
-/// gone); Locked means another process holds the file (often fixable by closing
-/// the editor or stopping the antivirus); PermissionDenied is an ACL / POSIX
-/// denial (needs the right account or admin); IOFailure is the catch-all for
-/// disk full, network share gone, hardware error, and any other mechanical
-/// failure that doesn't fit the more specific reasons.
+/// FailureMessage. The Locked / PermissionDenied / IOFailure values align
+/// with the same-named concepts on ReferencerSkipReason (used by the rename
+/// cascade) — delete is a single operation so it doesn't need ReferencerSkipReason's
+/// ReadFailed / WriteFailed split.
 /// </summary>
 public enum DeleteResourceOutcome
 {
+    /// <summary>
+    /// The resource was deleted successfully.
+    /// </summary>
     Deleted,
+
+    /// <summary>
+    /// The resource was already gone when the operation ran — a no-op success.
+    /// </summary>
     NotFound,
+
+    /// <summary>
+    /// Another process holds the file (open editor, antivirus, indexer). Often
+    /// fixable by closing the offending process and retrying.
+    /// </summary>
     Locked,
+
+    /// <summary>
+    /// ACL or POSIX denial. Needs the right account or admin rights.
+    /// </summary>
     PermissionDenied,
+
+    /// <summary>
+    /// Catch-all for any other mechanical failure (disk full, network share
+    /// gone, hardware error) that doesn't fit the more specific reasons.
+    /// </summary>
     IOFailure,
 }
 

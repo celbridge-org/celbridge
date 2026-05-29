@@ -8,14 +8,6 @@ namespace Celbridge.Resources.Services;
 
 public sealed class TrashService : ITrashService
 {
-    // Retry budget for cross-process sharing-violation races on file/folder
-    // moves into and out of trash. Antivirus, search indexer, or sync clients
-    // briefly hold a read handle on a newly-created file; matches the chokepoint's
-    // own read/write/move retry budget until we have evidence trash traffic
-    // wants something different.
-    private const int MaxAttempts = 3;
-    private const int BaseRetryDelayMs = 50;
-
     private readonly ILogger<TrashService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -137,20 +129,20 @@ public sealed class TrashService : ITrashService
 
         try
         {
-            ClearReadOnlyIfSet(originalPath);
+            FileStorageInternals.ClearReadOnlyIfSet(originalPath);
             await MoveFileWithDirectoryCreationAsync(originalPath, trashPath);
 
             if (sidecarOriginalPath is not null
                 && sidecarTrashPath is not null)
             {
-                ClearReadOnlyIfSet(sidecarOriginalPath);
+                FileStorageInternals.ClearReadOnlyIfSet(sidecarOriginalPath);
                 await MoveFileWithDirectoryCreationAsync(sidecarOriginalPath, sidecarTrashPath);
             }
 
             if (entityDataOriginalPath is not null
                 && entityDataTrashPath is not null)
             {
-                ClearReadOnlyIfSet(entityDataOriginalPath);
+                FileStorageInternals.ClearReadOnlyIfSet(entityDataOriginalPath);
                 await MoveFileWithDirectoryCreationAsync(entityDataOriginalPath, entityDataTrashPath);
             }
         }
@@ -198,9 +190,9 @@ public sealed class TrashService : ITrashService
         if (!wasEmpty)
         {
             // Walking once to gather descendant keys for messaging and entity-data
-            // pairs for trash. Direct System.IO inside the trash service is
-            // permitted under cm-9 Decision 7 since trash bookkeeping lives outside
-            // the registry's reach.
+            // pairs for trash. The trash folder lives outside the registry's reach,
+            // so direct System.IO here is deliberate; chokepoint dispatch would
+            // fail because the trash paths do not resolve to ResourceKeys.
             var entityService = EntityService;
             foreach (var filePath in Directory.GetFiles(originalPath, "*", SearchOption.AllDirectories))
             {
@@ -225,7 +217,7 @@ public sealed class TrashService : ITrashService
 
         try
         {
-            ClearReadOnlyRecursive(originalPath);
+            FileStorageInternals.ClearReadOnlyRecursive(originalPath);
 
             if (wasEmpty)
             {
@@ -370,83 +362,30 @@ public sealed class TrashService : ITrashService
         {
             // Purge runs when an undo entry is evicted or the redo stack is
             // cleared. It is best-effort cleanup; orphaned bytes inside the trash
-            // folder are wiped on the next workspace load.
-            _logger.LogDebug(ex, $"Best-effort trash purge failed for resource: '{entry.OriginalResource}'");
+            // folder are wiped on the next workspace load. Logged at Warning
+            // because a failure here can indicate a real problem (locked file,
+            // permissions, disk error) that the user benefits from seeing.
+            _logger.LogWarning(ex, $"Best-effort trash purge failed for resource: '{entry.OriginalResource}'");
         }
 
         return Task.FromResult(Result.Ok());
     }
 
-    // User intent to delete overrides the DOS read-only attribute, matching
-    // Windows Explorer's "delete read-only file?" confirmation behaviour. The
-    // cleared state persists through undo; a restored file lands writable and
-    // the user can re-apply the attribute via the OS file properties dialog.
-    private static void ClearReadOnlyIfSet(string path)
-    {
-        try
-        {
-            var info = new FileInfo(path);
-            if (info.Exists
-                && info.IsReadOnly)
-            {
-                info.IsReadOnly = false;
-            }
-        }
-        catch
-        {
-            // Best effort; surface the underlying issue from the subsequent move.
-        }
-    }
-
-    // Recursive read-only clear for folder delete. Directory.Move into trash
-    // (and the empty-folder Directory.Delete) fails if any contained file is
-    // read-only, so traverse first.
-    private static void ClearReadOnlyRecursive(string folder)
-    {
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
-            {
-                ClearReadOnlyIfSet(file);
-            }
-        }
-        catch
-        {
-            // Best effort traversal.
-        }
-    }
-
     // Move a file into the trash subtree, creating any missing parent folders
     // first. Retries briefly on transient IOException for the sharing-violation
     // race that follows AV / indexer / sync clients touching a newly-created file.
-    private static async Task MoveFileWithDirectoryCreationAsync(string sourcePath, string destPath)
+    private async Task MoveFileWithDirectoryCreationAsync(string sourcePath, string destPath)
     {
         var destFolder = Path.GetDirectoryName(destPath)!;
         Directory.CreateDirectory(destFolder);
-        await MoveWithRetryAsync(() => File.Move(sourcePath, destPath));
+        await FileStorageInternals.RetryTransientIOAsync(_logger, "Trash move", sourcePath, () => File.Move(sourcePath, destPath));
     }
 
-    private static async Task MoveDirectoryWithParentCreationAsync(string sourcePath, string destPath)
+    private async Task MoveDirectoryWithParentCreationAsync(string sourcePath, string destPath)
     {
         var destParentFolder = Path.GetDirectoryName(destPath)!;
         Directory.CreateDirectory(destParentFolder);
-        await MoveWithRetryAsync(() => Directory.Move(sourcePath, destPath));
-    }
-
-    private static async Task MoveWithRetryAsync(Action moveOperation)
-    {
-        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
-        {
-            try
-            {
-                moveOperation();
-                return;
-            }
-            catch (IOException) when (attempt < MaxAttempts)
-            {
-                await Task.Delay(BaseRetryDelayMs * attempt);
-            }
-        }
+        await FileStorageInternals.RetryTransientIOAsync(_logger, "Trash move", sourcePath, () => Directory.Move(sourcePath, destPath));
     }
 
     private static void DeleteFileIfExists(string path)
