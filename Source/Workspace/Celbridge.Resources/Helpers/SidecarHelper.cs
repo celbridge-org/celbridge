@@ -346,6 +346,11 @@ public static class SidecarHelper
     /// </summary>
     public static CelFileStatus Inspect(string absolutePath, ILogger logger)
     {
+        // Direct read rather than via IFileStorage: Inspect runs synchronously
+        // inside ResourceClassifier during UpdateResourceRegistry, the absolute
+        // path has already been resolved through the root handler registry, and
+        // a transient read failure is benign (the file gets classified Broken
+        // and the next registry pass reclassifies it).
         string text;
         try
         {
