@@ -1,6 +1,28 @@
 namespace Celbridge.Packages;
 
 /// <summary>
+/// Discovery origin of a package. Determines whether file reads cross the
+/// IFileStorage chokepoint (Project) or stay on direct File.* IO (Bundled,
+/// until the bundled-from-assembly migration lands).
+/// </summary>
+public enum PackageOrigin
+{
+    /// <summary>
+    /// First-party package shipped inside a Celbridge module DLL. Read sites
+    /// stay on direct File.* IO against the install folder.
+    /// </summary>
+    Bundled,
+
+    /// <summary>
+    /// User package discovered under the project's packages/ folder. Read
+    /// sites resolve a ResourceKey via IResourceRegistry and read through
+    /// IFileStorage so the chokepoint contract holds for every project-tree
+    /// byte.
+    /// </summary>
+    Project
+}
+
+/// <summary>
 /// Package identity, permissions, and hosting information.
 /// Shared across all contributions from the same package.
 /// </summary>
@@ -41,6 +63,13 @@ public partial record PackageInfo
     /// packages.
     /// </summary>
     public bool DevToolsBlocked { get; init; }
+
+    /// <summary>
+    /// Whether the package was discovered as a bundled (in-module) or project
+    /// (project-tree) package. Drives the read path selection at every site
+    /// that loads bytes for the package.
+    /// </summary>
+    public PackageOrigin Origin { get; init; }
 
     /// <summary>
     /// The folder containing the package (set during loading, not from TOML).

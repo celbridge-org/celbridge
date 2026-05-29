@@ -45,7 +45,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
         // value when the key is not present (which also handles plain strings).
         var displayKey = _contribution.DisplayName;
 
-        var localizationStrings = localizationService.LoadStrings(_contribution.Package.PackageFolder);
+        var localizationStrings = localizationService.LoadStrings(_contribution.Package);
         if (localizationStrings.TryGetValue(displayKey, out var localizedName))
         {
             return localizedName;
