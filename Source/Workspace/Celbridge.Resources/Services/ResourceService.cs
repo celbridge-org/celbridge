@@ -68,10 +68,10 @@ public class ResourceService : IResourceService, IDisposable
         // staging-fs/. These need to exist before downstream services start reading
         // or watching them.
         var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
-        var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTempFolder);
-        var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeLogsFolder);
-        var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTrashFolder);
-        var celbridgeStagingFsFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeStagingFsFolder);
+        var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.TempFolder);
+        var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.LogsFolder);
+        var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.TrashFolder);
+        var celbridgeStagingFsFolder = Path.Combine(celbridgeFolder, ProjectConstants.StagingFsFolder);
 
         // temp:/ is wiped on every workspace load. The contract is that nothing
         // under temp: survives a reload; consumers needing persistence write
@@ -92,9 +92,9 @@ public class ResourceService : IResourceService, IDisposable
         Directory.CreateDirectory(celbridgeStagingFsFolder);
 
         // Legacy <project>/celbridge/.trash/ from before this redesign: discard.
-        // The other legacy <project>/celbridge/.cache/, .logs/ folders are
-        // left alone (no live data; they retire alongside the entity service).
-        var legacyTrashFolder = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+        // The other legacy <project>/celbridge/.cache/ folder is left alone
+        // (no live data; it retires alongside the entity service).
+        var legacyTrashFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TrashFolder);
         if (Directory.Exists(legacyTrashFolder))
         {
             try
@@ -110,7 +110,7 @@ public class ResourceService : IResourceService, IDisposable
         // Clean up the legacy temp folder from previous sessions. The atomic-write
         // staging area has moved to .celbridge/staging-fs/; any orphans here are
         // from before the chokepoint landed.
-        var legacyTempFolder = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TempFolder);
+        var legacyTempFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TempFolder);
         if (Directory.Exists(legacyTempFolder))
         {
             try
@@ -195,7 +195,7 @@ public class ResourceService : IResourceService, IDisposable
                 var trashFolderPath = Path.Combine(
                     Registry.ProjectFolderPath,
                     ProjectConstants.CelbridgeFolder,
-                    ProjectConstants.CelbridgeTrashFolder);
+                    ProjectConstants.TrashFolder);
                 if (Directory.Exists(trashFolderPath))
                 {
                     try

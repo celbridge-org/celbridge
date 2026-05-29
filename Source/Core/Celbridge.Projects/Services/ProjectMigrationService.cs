@@ -253,7 +253,7 @@ public class ProjectMigrationService : IProjectMigrationService
 
         // Create migration context
         var projectFolderPath = Path.GetDirectoryName(projectFilePath)!;
-        var projectDataFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder);
+        var projectDataFolderPath = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder);
 
         // Local function to write the project file.
         // Line endings are normalized for the current platform.

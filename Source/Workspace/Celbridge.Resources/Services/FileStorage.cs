@@ -706,7 +706,7 @@ public sealed class FileStorage : IFileStorage
         var stagingFolder = Path.Combine(
             resourceRegistry.ProjectFolderPath,
             ProjectConstants.CelbridgeFolder,
-            ProjectConstants.CelbridgeStagingFsFolder);
+            ProjectConstants.StagingFsFolder);
         try
         {
             Directory.CreateDirectory(stagingFolder);

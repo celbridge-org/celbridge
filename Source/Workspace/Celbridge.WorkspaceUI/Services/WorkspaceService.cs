@@ -82,8 +82,12 @@ public class WorkspaceService : IWorkspaceService, IDisposable
 
         var project = projectService.CurrentProject;
         Guard.IsNotNull(project);
-        var workspaceSettingsFolder = Path.Combine(project.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
+        var workspaceSettingsFolder = Path.Combine(
+            project.ProjectFolderPath,
+            ProjectConstants.CelbridgeFolder,
+            ProjectConstants.SettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
+        Directory.CreateDirectory(workspaceSettingsFolder);
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);

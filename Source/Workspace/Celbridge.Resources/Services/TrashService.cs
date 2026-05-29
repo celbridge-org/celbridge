@@ -39,7 +39,7 @@ public sealed class TrashService : ITrashService
     private string TrashFolderPath => Path.Combine(
         ResourceRegistry.ProjectFolderPath,
         ProjectConstants.CelbridgeFolder,
-        ProjectConstants.CelbridgeTrashFolder);
+        ProjectConstants.TrashFolder);
 
     public async Task<Result<TrashEntry>> MoveToTrashAsync(ResourceKey resource)
     {

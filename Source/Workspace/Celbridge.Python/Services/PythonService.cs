@@ -109,7 +109,7 @@ public class PythonService : IPythonService, IDisposable
 
             // Load the saved fingerprint once for use in both the pre-install check
             // and the offline mode comparison later.
-            var cacheDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder);
+            var cacheDir = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
             var savedFingerprint = LoadSavedFingerprint(cacheDir);
 
             // If no fingerprint file exists, delete the installer's version marker BEFORE
@@ -158,13 +158,13 @@ public class PythonService : IPythonService, IDisposable
             // Prepare the per-process environment variables for the terminal.
             // These are injected into the child process environment block rather than set
             // process-wide, so multiple terminals can have different configurations.
-            var ipythonDir = Path.Combine(workingDir, ProjectConstants.MetaDataFolder, ProjectConstants.CacheFolder, IPythonCacheFolderName);
+            var ipythonDir = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder, IPythonCacheFolderName);
             Directory.CreateDirectory(ipythonDir);
 
             var configuration = environmentInfo.Configuration;
             var celbridgeVersion = configuration == "Debug" ? $"{appVersion} (Debug)" : $"{appVersion}";
 
-            var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.CelbridgeLogsFolder);
+            var pythonLogFolder = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.LogsFolder);
 
             // Find a free TCP port for JSON-RPC communication
             var rpcPort = GetAvailableTcpPort();

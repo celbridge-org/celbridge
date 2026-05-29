@@ -153,7 +153,7 @@ public class FileStorageTests
         var stagingFolder = Path.Combine(
             _tempFolder,
             ProjectConstants.CelbridgeFolder,
-            ProjectConstants.CelbridgeStagingFsFolder);
+            ProjectConstants.StagingFsFolder);
         Directory.Exists(stagingFolder).Should().BeTrue();
         Directory.GetFiles(stagingFolder).Should().BeEmpty();
     }

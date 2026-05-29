@@ -75,9 +75,6 @@ public class ProjectTemplateService : IProjectTemplateService
             // Create the staging folder
             Directory.CreateDirectory(tempStagingPath!);
 
-            var stagingDataFolderPath = Path.Combine(tempStagingPath!, ProjectConstants.MetaDataFolder);
-            Directory.CreateDirectory(stagingDataFolderPath);
-
             // Get Celbridge application version
             var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
 

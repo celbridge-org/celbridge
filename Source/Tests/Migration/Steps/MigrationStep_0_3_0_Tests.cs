@@ -31,7 +31,7 @@ public class MigrationStep_0_3_0_Tests
         Directory.CreateDirectory(_projectFolderPath);
 
         _projectFilePath = Path.Combine(_projectFolderPath, "test.celbridge");
-        _projectDataFolderPath = Path.Combine(_projectFolderPath, ProjectConstants.MetaDataFolder);
+        _projectDataFolderPath = Path.Combine(_projectFolderPath, LegacyConstants.MetaDataFolder);
     }
 
     [TearDown]

@@ -423,7 +423,7 @@ public class EntityRegistry
     private string GetEntitiesFolderPath()
     {
         var projectDataFolderPath = _projectService.CurrentProject!.ProjectDataFolderPath;
-        var path = Path.Combine(projectDataFolderPath, ProjectConstants.EntitiesFolder);
+        var path = Path.Combine(projectDataFolderPath, LegacyConstants.EntitiesFolder);
         return path;
     }
 }

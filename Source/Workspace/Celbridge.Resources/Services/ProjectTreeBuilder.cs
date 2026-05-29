@@ -79,7 +79,7 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
             var dirInfo = new DirectoryInfo(path);
 
             if (isProjectFolder
-                && dirInfo.Name == ProjectConstants.MetaDataFolder)
+                && dirInfo.Name == LegacyConstants.MetaDataFolder)
             {
                 return true;
             }

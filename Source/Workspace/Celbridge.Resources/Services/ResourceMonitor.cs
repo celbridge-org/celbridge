@@ -440,7 +440,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             {
                 var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
 
-                if (firstSegment.Equals(ProjectConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase) ||
+                if (firstSegment.Equals(LegacyConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase) ||
                     firstSegment.Equals(ProjectConstants.CelbridgeFolder, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
