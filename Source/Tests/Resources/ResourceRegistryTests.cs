@@ -330,36 +330,20 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), rootHandlerRegistry);
 
         // Before ProjectFolderPath is set, no handler is registered.
-        resourceRegistry.RootHandlers.Should().BeEmpty();
+        rootHandlerRegistry.RootHandlers.Should().BeEmpty();
 
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
-        resourceRegistry.RootHandlers.Should().ContainKey(ResourceKey.DefaultRoot);
-        var handler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
+        rootHandlerRegistry.RootHandlers.Should().ContainKey(ResourceKey.DefaultRoot);
+        var handler = rootHandlerRegistry.RootHandlers[ResourceKey.DefaultRoot];
         handler.RootName.Should().Be(ResourceKey.DefaultRoot);
         handler.BackingLocation.Should().Be(_resourceFolderPath);
         handler.Capabilities.IsWritable.Should().BeTrue();
         handler.Capabilities.IsWatched.Should().BeTrue();
-    }
-
-    [Test]
-    public void IsResolvableReturnsTrueForProjectRootAndFalseForUnknownRoot()
-    {
-        Guard.IsNotNull(_resourceFolderPath);
-
-        var messengerService = new MessengerService();
-        var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
-        resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
-
-        resourceRegistry.IsResolvable(ResourceKey.Create("foo/bar")).Should().BeTrue();
-        resourceRegistry.IsResolvable(ResourceKey.Create("project:foo/bar")).Should().BeTrue();
-        resourceRegistry.IsResolvable(ResourceKey.Empty).Should().BeTrue();
-        resourceRegistry.IsResolvable(ResourceKey.Create("temp:foo/bar")).Should().BeFalse();
-        resourceRegistry.IsResolvable(ResourceKey.Create("unknown:foo")).Should().BeFalse();
     }
 
     [Test]
@@ -410,10 +394,11 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), rootHandlerRegistry);
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
-        var originalHandler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
+        var originalHandler = rootHandlerRegistry.RootHandlers[ResourceKey.DefaultRoot];
 
         // Setting the path again replaces the handler with a new instance for the new path.
         var alternatePath = Path.Combine(
@@ -423,7 +408,7 @@ public class ResourceRegistryTests
         try
         {
             resourceRegistry.InitializeProjectRoot(alternatePath);
-            var newHandler = resourceRegistry.RootHandlers[ResourceKey.DefaultRoot];
+            var newHandler = rootHandlerRegistry.RootHandlers[ResourceKey.DefaultRoot];
             newHandler.Should().NotBeSameAs(originalHandler);
             newHandler.BackingLocation.Should().Be(alternatePath);
         }
@@ -443,7 +428,8 @@ public class ResourceRegistryTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        var resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), rootHandlerRegistry);
         resourceRegistry.InitializeProjectRoot(_resourceFolderPath);
 
         // Register a temp root whose backing folder is nested inside the project folder.
@@ -452,7 +438,7 @@ public class ResourceRegistryTests
         var tempBacking = Path.Combine(_resourceFolderPath, ".celbridge", "temp");
         Directory.CreateDirectory(tempBacking);
 
-        resourceRegistry.RegisterRootHandler(new TempRootHandler(tempBacking));
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(tempBacking));
 
         // A path under the project tree but outside .celbridge/temp/ goes to project.
         var projectFilePath = Path.Combine(_resourceFolderPath, FileNameA);

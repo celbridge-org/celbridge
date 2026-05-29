@@ -18,23 +18,20 @@ public sealed class ResourceClassifier : IResourceClassifier
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public ResourceClassificationResult ClassifyResources(IFolderResource projectRoot, IRootHandlerRegistry rootHandlerRegistry)
+    public SidecarReport ClassifyResources(IFolderResource projectRoot, IRootHandlerRegistry rootHandlerRegistry)
     {
         var healthy = new List<ResourceKey>();
         var broken = new List<ResourceKey>();
         var orphan = new List<ResourceKey>();
-        var sidecarToParent = new Dictionary<ResourceKey, ResourceKey>();
 
         var editorRegistry = ResolveEditorRegistry();
 
         ProcessFolder(projectRoot);
 
-        var report = new CelFileReport(
+        return new SidecarReport(
             Healthy: healthy,
             Broken: broken,
             Orphan: orphan);
-
-        return new ResourceClassificationResult(report, sidecarToParent);
 
         void ProcessFolder(IFolderResource folder)
         {
@@ -135,7 +132,6 @@ public sealed class ResourceClassifier : IResourceClassifier
             if (siblingByName.TryGetValue(parentName, out var parentSibling)
                 && parentSibling is FileResource parentFile)
             {
-                sidecarToParent[sidecarKey] = ResourceTreeNavigator.BuildKey(parentFile);
                 parentFile.Sidecar = new SidecarLink(sidecarKey, status);
                 sidecarFile.FileKind = FileKind.Sidecar;
             }

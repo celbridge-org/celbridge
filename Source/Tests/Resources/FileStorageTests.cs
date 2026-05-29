@@ -31,14 +31,17 @@ public class FileStorageTests
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        _resourceRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
 
         _resourceScanner = Substitute.For<IResourceScanner>();
         _resourceScanner.FindReferencersAsync(Arg.Any<ResourceKey>()).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
         _resourceScanner.FindAllReferencedTargetsAsync().Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
 
+        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
+        rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlerRegistry.Returns(rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);

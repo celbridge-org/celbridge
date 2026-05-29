@@ -104,7 +104,7 @@ public class SidecarClassificationTests
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
-        _registry.GetCelFileReport().Broken.Should().Contain(new ResourceKey("foo.png.cel"));
+        _registry.GetSidecarReport().Broken.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
     [Test]

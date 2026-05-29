@@ -18,7 +18,9 @@ public partial class FileTools
     public async partial Task<CallToolResult> Search(string pattern, bool includeMetadata = false, string type = "")
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
+        var resourceRegistry = resourceService.Registry;
+        var rootHandlerRegistry = resourceService.RootHandlerRegistry;
         var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
         var regexPattern = GlobHelper.PathGlobToRegex(pattern);
@@ -32,7 +34,7 @@ public partial class FileTools
         var patternRoot = ExtractRootPrefix(pattern);
         if (patternRoot is not null
             && patternRoot != ResourceKey.DefaultRoot
-            && resourceRegistry.RootHandlers.ContainsKey(patternRoot))
+            && rootHandlerRegistry.RootHandlers.ContainsKey(patternRoot))
         {
             return await SearchNonDefaultRootAsync(
                 fileStorage, patternRoot, regex, isFolderSearch, includeMetadata);

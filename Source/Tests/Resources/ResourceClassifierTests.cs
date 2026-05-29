@@ -63,7 +63,7 @@ public class ResourceClassifierTests
         var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetCelFileReport();
+        var report = registry.GetSidecarReport();
         report.Orphan.Should().NotContain(new ResourceKey("feature.note.cel"));
         report.Healthy.Should().Contain(new ResourceKey("feature.note.cel"));
     }
@@ -86,7 +86,7 @@ public class ResourceClassifierTests
         var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetCelFileReport();
+        var report = registry.GetSidecarReport();
         report.Orphan.Should().Contain(new ResourceKey("orphaned.png.cel"));
     }
 
@@ -103,7 +103,7 @@ public class ResourceClassifierTests
         var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetCelFileReport();
+        var report = registry.GetSidecarReport();
         report.Orphan.Should().Contain(new ResourceKey("scratch.unknown.cel"));
     }
 
@@ -127,7 +127,7 @@ public class ResourceClassifierTests
 
         editorRegistry.DidNotReceive().IsExtensionSupported(Arg.Any<string>());
 
-        var report = registry.GetCelFileReport();
+        var report = registry.GetSidecarReport();
         report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
         report.Orphan.Should().NotContain(new ResourceKey("foo.png.cel"));
     }
@@ -152,7 +152,7 @@ public class ResourceClassifierTests
         noteResource.Sidecar!.Key.Should().Be(new ResourceKey("subfolder/note.md.cel"));
         noteResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
 
-        registry.GetCelFileReport()
+        registry.GetSidecarReport()
             .Healthy.Should().Contain(new ResourceKey("subfolder/note.md.cel"));
     }
 
@@ -163,7 +163,7 @@ public class ResourceClassifierTests
         var registry = BuildRegistry(classifier);
         registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = registry.GetCelFileReport();
+        var report = registry.GetSidecarReport();
         report.Healthy.Should().BeEmpty();
         report.Broken.Should().BeEmpty();
         report.Orphan.Should().BeEmpty();

@@ -16,11 +16,10 @@ public class ResourceRegistry : IResourceRegistry
     // The report is rebuilt atomically per pass so readers always see a coherent
     // snapshot.
     private readonly object _sidecarLock = new();
-    private CelFileReport _celFileReport = new(
+    private SidecarReport _sidecarReport = new(
         Healthy: Array.Empty<ResourceKey>(),
         Broken: Array.Empty<ResourceKey>(),
         Orphan: Array.Empty<ResourceKey>());
-    private readonly Dictionary<ResourceKey, ResourceKey> _sidecarToParent = new();
 
     private string _projectFolderPath = string.Empty;
 
@@ -39,8 +38,6 @@ public class ResourceRegistry : IResourceRegistry
 
     public IFolderResource ProjectFolder => _projectFolder;
 
-    public IReadOnlyDictionary<string, IResourceRootHandler> RootHandlers => _rootHandlerRegistry.RootHandlers;
-
     public ResourceRegistry(
         ILogger<ResourceRegistry> logger,
         IMessengerService messengerService,
@@ -53,16 +50,6 @@ public class ResourceRegistry : IResourceRegistry
         _projectTreeBuilder = projectTreeBuilder;
         _resourceClassifier = resourceClassifier;
         _rootHandlerRegistry = rootHandlerRegistry;
-    }
-
-    public void RegisterRootHandler(IResourceRootHandler handler)
-    {
-        _rootHandlerRegistry.RegisterRootHandler(handler);
-    }
-
-    public bool IsResolvable(ResourceKey key)
-    {
-        return _rootHandlerRegistry.IsResolvable(key);
     }
 
     public ResourceKey GetResourceKey(IResource resource)
@@ -192,24 +179,18 @@ public class ResourceRegistry : IResourceRegistry
             var newRoot = (FolderResource)_projectTreeBuilder.BuildTree(ProjectFolderPath);
 
             // Sidecar pairing runs on the new tree before publication. The
-            // pairing service sets each parent FileResource.Sidecar in place
-            // and returns the report and sidecar-to-parent lookup, which are
-            // swapped under the lock alongside the tree reference. The root
-            // handler registry is handed in so per-sidecar path resolution
-            // goes through the same reparse-point chokepoint as every other
-            // resource operation.
-            var pairings = _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
+            // classifier sets each parent FileResource.Sidecar in place and
+            // returns the report, which is swapped under the lock alongside
+            // the tree reference. The root handler registry is handed in so
+            // per-sidecar path resolution goes through the same reparse-point
+            // chokepoint as every other resource operation.
+            var sidecarReport = _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
 
             Volatile.Write(ref _projectFolder, newRoot);
 
             lock (_sidecarLock)
             {
-                _sidecarToParent.Clear();
-                foreach (var entry in pairings.SidecarToParent)
-                {
-                    _sidecarToParent[entry.Key] = entry.Value;
-                }
-                _celFileReport = pairings.Report;
+                _sidecarReport = sidecarReport;
             }
 
             _rootHandlerRegistry.InvalidatePathCache();
@@ -283,45 +264,11 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    public Result<IFileResource> GetSidecarParent(ResourceKey sidecar)
-    {
-        if (!sidecar.Path.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
-        {
-            return Result<IFileResource>.Fail(
-                $"Resource key '{sidecar}' is not a sidecar key (does not end in '{SidecarHelper.Extension}').");
-        }
-
-        lock (_sidecarLock)
-        {
-            if (!_sidecarToParent.TryGetValue(sidecar, out var parentKey))
-            {
-                return Result<IFileResource>.Fail(
-                    $"No parent file is paired with sidecar '{sidecar}'.");
-            }
-
-            var resourceResult = GetResource(parentKey);
-            if (resourceResult.IsFailure)
-            {
-                return Result<IFileResource>.Fail(
-                    $"Failed to resolve parent file '{parentKey}' for sidecar '{sidecar}'.")
-                    .WithErrors(resourceResult);
-            }
-
-            if (resourceResult.Value is not IFileResource fileResource)
-            {
-                return Result<IFileResource>.Fail(
-                    $"Parent of sidecar '{sidecar}' is not a file resource.");
-            }
-
-            return Result<IFileResource>.Ok(fileResource);
-        }
-    }
-
-    public CelFileReport GetCelFileReport()
+    public SidecarReport GetSidecarReport()
     {
         lock (_sidecarLock)
         {
-            return _celFileReport;
+            return _sidecarReport;
         }
     }
 

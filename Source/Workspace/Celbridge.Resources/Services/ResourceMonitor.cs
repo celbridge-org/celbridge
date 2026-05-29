@@ -62,8 +62,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             // Spin up one FileSystemWatcher per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
             // returns the configured registry instance here.
-            var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            foreach (var handler in registry.RootHandlers.Values)
+            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+            foreach (var handler in rootHandlerRegistry.RootHandlers.Values)
             {
                 if (!handler.Capabilities.IsWatched)
                 {
@@ -143,7 +143,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error occurred while shutting down resource monitor: {ex.Message}");
+            _logger.LogError(ex, "Error occurred while shutting down resource monitor");
         }
     }
 
@@ -214,7 +214,14 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private void OnFileSystemError(object sender, ErrorEventArgs e)
     {
         var exception = e.GetException();
-        _logger.LogError($"File system watcher error: {exception?.Message ?? "Unknown error"}");
+        if (exception is not null)
+        {
+            _logger.LogError(exception, "File system watcher error");
+        }
+        else
+        {
+            _logger.LogError("File system watcher error (no exception attached)");
+        }
     }
 
     private void ScheduleResourceUpdateIfProjectRoot(IResourceRootHandler handler)
@@ -341,8 +348,8 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         var oldResourceKey = BuildResourceKey(handler, oldFullPath);
         var newResourceKey = BuildResourceKey(handler, newFullPath);
 
-        if ((oldResourceKey.IsEmpty || newResourceKey.IsEmpty) &&
-            handler.RootName == ResourceKey.DefaultRoot)
+        if ((oldResourceKey.IsEmpty || newResourceKey.IsEmpty)
+            && handler.RootName == ResourceKey.DefaultRoot)
         {
             return;
         }
@@ -360,11 +367,12 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     {
         var fileName = Path.GetFileName(fullPath);
 
-        // Cross-platform: Unix hidden files start with '.'
-        if (fileName.StartsWith(".") ||
-            fileName.StartsWith("~") ||
-            fileName.EndsWith(".tmp") ||
-            fileName.EndsWith("~"))    // Emacs/many editors' backup files (e.g. "foo.md~")
+        // Unix hidden files start with '.'. Trailing '~' catches the backup
+        // files written by Emacs and many other editors (e.g. "foo.md~").
+        if (fileName.StartsWith(".")
+            || fileName.StartsWith("~")
+            || fileName.EndsWith(".tmp")
+            || fileName.EndsWith("~"))
         {
             return true;
         }
@@ -378,42 +386,42 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return true;
         }
 
-        // Common editor swap/lock/partial-download patterns from other tools.
-        if (fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase) ||  // Vim swap
-            fileName.EndsWith(".swo", StringComparison.OrdinalIgnoreCase) ||  // Vim swap (second)
-            fileName.EndsWith(".swn", StringComparison.OrdinalIgnoreCase) ||  // Vim swap (third)
-            fileName.EndsWith(".crdownload", StringComparison.OrdinalIgnoreCase) || // Chrome/Edge partial download
-            fileName.EndsWith(".part", StringComparison.OrdinalIgnoreCase))   // Firefox/wget partial download
+        // Swap files (.swp/.swo/.swn from Vim), partial-download files
+        // (.crdownload from Chrome/Edge, .part from Firefox/wget).
+        if (fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".swo", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".swn", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".crdownload", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".part", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        // Ignore Office temporary files
-        // Excel creates temp files with random hex names (e.g., "FED4B600") during save operations
-        // Excel also creates lock files like "~$filename.xlsx"
-        if (fileName.StartsWith("~$") ||  // Excel lock files
-            fileName.StartsWith("~WRL"))   // Word temporary files
+        // Office temporary files. Excel writes lock files like "~$filename.xlsx";
+        // Word writes temporary files prefixed "~WRL".
+        if (fileName.StartsWith("~$")
+            || fileName.StartsWith("~WRL"))
         {
             return true;
         }
 
-        // Ignore Python temporary and cache files
-        if (fileName.EndsWith(".pyc") ||          // Compiled Python files
-            fileName.EndsWith(".pyo") ||          // Optimized Python files
-            fileName.EndsWith(".pyd") ||          // Python dynamic modules
-            fileName.StartsWith("__pycache__"))   // Python cache directory
+        // Python build artifacts: compiled (.pyc), optimised (.pyo),
+        // dynamic-module (.pyd), and the __pycache__ folder.
+        if (fileName.EndsWith(".pyc")
+            || fileName.EndsWith(".pyo")
+            || fileName.EndsWith(".pyd")
+            || fileName.StartsWith("__pycache__"))
         {
             return true;
         }
 
-        // Windows-specific checks
         if (OperatingSystem.IsWindows())
         {
             try
             {
                 var attributes = File.GetAttributes(fullPath);
-                if ((attributes & System.IO.FileAttributes.Hidden) != 0 ||
-                    (attributes & System.IO.FileAttributes.System) != 0)
+                if ((attributes & System.IO.FileAttributes.Hidden) != 0
+                    || (attributes & System.IO.FileAttributes.System) != 0)
                 {
                     return true;
                 }
@@ -440,21 +448,22 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             {
                 var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
 
-                if (firstSegment.Equals(LegacyConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase) ||
-                    firstSegment.Equals(ProjectConstants.CelbridgeFolder, StringComparison.OrdinalIgnoreCase))
+                if (firstSegment.Equals(LegacyConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase)
+                    || firstSegment.Equals(ProjectConstants.CelbridgeFolder, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
             }
         }
 
-        // Ignore specific files and folders at any level
+        // Ignore tool folders at any depth.
         var pathParts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (pathParts.Any(part => part.Equals(".vs", StringComparison.OrdinalIgnoreCase) ||
-                                 part.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
-                                 part.Equals("obj", StringComparison.OrdinalIgnoreCase) ||
-                                 part.Equals(".git", StringComparison.OrdinalIgnoreCase) ||
-                                 part.Equals("__pycache__", StringComparison.OrdinalIgnoreCase)))
+        if (pathParts.Any(part =>
+                part.Equals(".vs", StringComparison.OrdinalIgnoreCase)
+                || part.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                || part.Equals("obj", StringComparison.OrdinalIgnoreCase)
+                || part.Equals(".git", StringComparison.OrdinalIgnoreCase)
+                || part.Equals("__pycache__", StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }

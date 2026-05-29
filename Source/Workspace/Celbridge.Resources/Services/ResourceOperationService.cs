@@ -34,14 +34,6 @@ public class ResourceOperationService : IResourceOperationService
         _workspaceWrapper = workspaceWrapper;
     }
 
-    // Default outcomes returned when the chokepoint's cascade did not run
-    // (typically because the source is outside the project tree).
-    private static readonly CopyResult EmptyCopyResult = new(SidecarOutcome.NotPresent);
-    private static readonly MoveResult EmptyMoveResult = new(
-        Array.Empty<ResourceKey>(),
-        Array.Empty<SkippedReferencer>(),
-        SidecarOutcome.NotPresent);
-
     private IEntityService? EntityService =>
         _workspaceWrapper.IsWorkspacePageLoaded ? _workspaceWrapper.WorkspaceService.EntityService : null;
 
@@ -123,7 +115,8 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         AddOperation(operation);
-        return operation.LastCopyResult ?? EmptyCopyResult;
+
+        return operation.LastCopyResult!;
     }
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
@@ -170,7 +163,7 @@ public class ResourceOperationService : IResourceOperationService
 
         AddOperation(operation);
 
-        return operation.LastMoveResult ?? EmptyMoveResult;
+        return operation.LastMoveResult!;
     }
 
     public async Task<Result> DeleteAsync(ResourceKey resource)

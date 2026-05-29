@@ -20,15 +20,12 @@ internal static class ResourceClassifierTestHelper
     public static IResourceClassifier BuildEmptyStub()
     {
         var stub = Substitute.For<IResourceClassifier>();
-        var emptyReport = new CelFileReport(
+        var emptyReport = new SidecarReport(
             Healthy: Array.Empty<ResourceKey>(),
             Broken: Array.Empty<ResourceKey>(),
             Orphan: Array.Empty<ResourceKey>());
-        var emptyResult = new ResourceClassificationResult(
-            emptyReport,
-            new Dictionary<ResourceKey, ResourceKey>());
         stub.ClassifyResources(Arg.Any<IFolderResource>(), Arg.Any<IRootHandlerRegistry>())
-            .Returns(emptyResult);
+            .Returns(emptyReport);
         return stub;
     }
 

@@ -22,6 +22,7 @@ public class ResourceCommandTests
 {
     private string _projectFolderPath = null!;
     private ResourceRegistry _resourceRegistry = null!;
+    private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     private const string FolderName = "Folder";
@@ -49,12 +50,14 @@ public class ResourceCommandTests
 
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), new RootHandlerRegistry());
+        _rootHandlerRegistry = new RootHandlerRegistry();
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry);
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
         _resourceRegistry.UpdateResourceRegistry();
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -292,7 +295,7 @@ public class ResourceCommandTests
                 File.WriteAllText(fullPath, "log content");
             }
         }
-        _resourceRegistry.RegisterRootHandler(new LogsRootHandler(logsBacking));
+        _rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(logsBacking));
         return logsBacking;
     }
 

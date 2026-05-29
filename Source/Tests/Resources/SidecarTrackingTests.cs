@@ -75,22 +75,6 @@ public class SidecarTrackingTests
         fileResource!.Sidecar.Should().NotBeNull();
         fileResource.Sidecar!.Key.Should().Be(new ResourceKey("foo.png.cel"));
         fileResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
-
-        var parentResult = _registry.GetSidecarParent(new ResourceKey("foo.png.cel"));
-        parentResult.IsSuccess.Should().BeTrue();
-        parentResult.Value.Name.Should().Be("foo.png");
-    }
-
-    [Test]
-    public void GetSidecarParent_FailsForNonSidecarKey()
-    {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
-
-        var result = _registry.GetSidecarParent(new ResourceKey("foo.png"));
-
-        result.IsSuccess.Should().BeFalse();
-        result.FirstErrorMessage.Should().Contain("not a sidecar key");
     }
 
     [Test]
@@ -101,7 +85,7 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetCelFileReport();
+        var report = _registry.GetSidecarReport();
         report.Orphan.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
@@ -116,7 +100,7 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetCelFileReport();
+        var report = _registry.GetSidecarReport();
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel.cel"));
 
         // foo.png.cel is still healthy and paired with foo.png; the .cel.cel
@@ -135,7 +119,7 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetCelFileReport();
+        var report = _registry.GetSidecarReport();
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
 
         var parent = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
@@ -168,7 +152,7 @@ public class SidecarTrackingTests
 
         _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
 
-        var report = _registry.GetCelFileReport();
+        var report = _registry.GetSidecarReport();
         report.Broken.Should().Contain(new ResourceKey("lonely.cel"));
         report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
     }

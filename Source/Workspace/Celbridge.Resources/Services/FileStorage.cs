@@ -650,8 +650,11 @@ public sealed class FileStorage : IFileStorage
         return resourceRegistry.ResolveResourcePath(resource);
     }
 
-    // Roots that don't have a registered handler are assumed writable — the
-    // default project root falls into this category and is always writable.
+    // In production the caller always invokes IsRootWritable after ResolvePath
+    // has succeeded, so a registered handler is guaranteed to be present. Unit
+    // tests that stub ResolveResourcePath directly can reach this without a
+    // handler in RootHandlers; treat that case as writable so those tests don't
+    // need to populate the handler dictionary just to exercise writes.
     private static bool IsRootWritable(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
     {
         return !rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)

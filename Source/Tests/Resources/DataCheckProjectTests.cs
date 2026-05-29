@@ -23,6 +23,7 @@ public class DataCheckProjectTests
     private string _projectFolderPath = null!;
     private string _logsBackingFolder = null!;
     private ResourceRegistry _resourceRegistry = null!;
+    private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IMessengerService _messengerService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
     private ProjectCheckCommand _command = null!;
@@ -46,21 +47,23 @@ public class DataCheckProjectTests
 
         _messengerService = new MessengerService();
         var fileIconService = new FileIconService();
+        _rootHandlerRegistry = new RootHandlerRegistry();
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
             new ProjectTreeBuilder(fileIconService),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
-            new RootHandlerRegistry());
+            _rootHandlerRegistry);
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         // ProjectCheckCommand writes its latest report to logs:project-check.log,
         // so the chokepoint needs a logs: root or the write step fails.
-        _resourceRegistry.RegisterRootHandler(
+        _rootHandlerRegistry.RegisterRootHandler(
             new LogsRootHandler(_logsBackingFolder));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);

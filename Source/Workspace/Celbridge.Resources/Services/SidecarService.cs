@@ -25,17 +25,18 @@ public sealed class SidecarService : ISidecarService
     {
         if (parent.IsEmpty)
         {
-            return Result<ResourceKey>.Fail("Cannot build a sidecar key for an empty resource.");
+            return Result.Fail("Cannot build a sidecar key for an empty resource.");
         }
         if (parent.Root != ResourceKey.DefaultRoot)
         {
-            return Result<ResourceKey>.Fail($"Sidecars are only supported on the project root; resource '{parent}' is on root '{parent.Root}'.");
+            return Result.Fail($"Sidecars are only supported on the project root; resource '{parent}' is on root '{parent.Root}'.");
         }
         if (IsSidecarKey(parent))
         {
-            return Result<ResourceKey>.Fail($"Cannot build a sidecar key for sidecar resource '{parent}': pass the parent resource key instead.");
+            return Result.Fail($"Cannot build a sidecar key for sidecar resource '{parent}': pass the parent resource key instead.");
         }
-        return Result<ResourceKey>.Ok(new ResourceKey(parent.FullKey + SidecarHelper.Extension));
+
+        return new ResourceKey(parent.FullKey + SidecarHelper.Extension);
     }
 
     public bool IsValidBlockName(string name) => SidecarHelper.IsValidBlockName(name);
@@ -47,7 +48,7 @@ public sealed class SidecarService : ISidecarService
         var resolveResult = ResolveSidecarKey(resource);
         if (resolveResult.IsFailure)
         {
-            return Result<SidecarReadResult>.Fail(resolveResult);
+            return Result.Fail(resolveResult);
         }
         var sidecarKey = resolveResult.Value;
 
@@ -57,22 +58,22 @@ public sealed class SidecarService : ISidecarService
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            return Result<SidecarReadResult>.Ok(new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null));
+            return new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null);
         }
 
         var readResult = await fileStorage.ReadAllTextAsync(sidecarKey);
         if (readResult.IsFailure)
         {
-            return Result<SidecarReadResult>.Ok(new SidecarReadResult(SidecarReadOutcome.Broken, null, readResult.FirstErrorMessage));
+            return new SidecarReadResult(SidecarReadOutcome.Broken, null, readResult.FirstErrorMessage);
         }
 
         var parseResult = SidecarHelper.Parse(readResult.Value);
         if (parseResult.IsFailure)
         {
-            return Result<SidecarReadResult>.Ok(new SidecarReadResult(SidecarReadOutcome.Broken, null, parseResult.FirstErrorMessage));
+            return new SidecarReadResult(SidecarReadOutcome.Broken, null, parseResult.FirstErrorMessage);
         }
 
-        return Result<SidecarReadResult>.Ok(new SidecarReadResult(SidecarReadOutcome.Healthy, parseResult.Value, null));
+        return new SidecarReadResult(SidecarReadOutcome.Healthy, parseResult.Value, null);
     }
 
     public async Task<Result> SetFieldAsync(ResourceKey resource, string field, object value)
@@ -345,16 +346,17 @@ public sealed class SidecarService : ISidecarService
     {
         if (resource.IsEmpty)
         {
-            return Result<ResourceKey>.Fail("Cannot resolve sidecar key for an empty resource.");
+            return Result.Fail("Cannot resolve sidecar key for an empty resource.");
         }
         if (resource.Root != ResourceKey.DefaultRoot)
         {
-            return Result<ResourceKey>.Fail($"Sidecars are only supported on the project root; resource '{resource}' is on root '{resource.Root}'.");
+            return Result.Fail($"Sidecars are only supported on the project root; resource '{resource}' is on root '{resource.Root}'.");
         }
         if (IsSidecarKey(resource))
         {
             return resource;
         }
+
         return GetSidecarKey(resource);
     }
 }

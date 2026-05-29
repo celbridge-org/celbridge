@@ -1,16 +1,14 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Snapshot of every .cel file the registry knows about, partitioned by parse
-/// state and orphan-ness. Used for project-load diagnostics and by
-/// data_check_project to surface attention states.
-///
-/// Parse state (Healthy / Broken) and orphan-ness are orthogonal dimensions:
-/// an orphan .cel file with malformed content appears in both Broken and Orphan.
-/// Files whose names end in .cel.cel are classified as Broken and never as a
-/// regular sidecar.
+/// Snapshot of the .cel files in the project tree, partitioned by parse state
+/// and orphan-ness. Produced by the classifier on every UpdateResourceRegistry
+/// pass; consumed by project-load diagnostics and data_check_project.
+/// Parse state (Healthy / Broken) and orphan-ness are orthogonal: an orphan
+/// .cel file with malformed content appears in both Broken and Orphan. Files
+/// ending in .cel.cel are surfaced as Broken and are never treated as sidecars.
 /// </summary>
-public record CelFileReport(
+public record SidecarReport(
     IReadOnlyList<ResourceKey> Healthy,
     IReadOnlyList<ResourceKey> Broken,
     IReadOnlyList<ResourceKey> Orphan);
@@ -52,9 +50,9 @@ public interface IResourceRegistry
     List<ResourceKey> GetResourceKeys(IEnumerable<IResource> resources);
 
     /// <summary>
-    /// Returns the resource key for a resource at the specified path in the project.
-    /// The resource key will be generated even if the resource does not exist yet in the project.
-    /// Fails if the path is not within the project folder.
+    /// Returns the resource key for an absolute filesystem path under any registered root.
+    /// The resource key is generated even if no resource exists at that path yet.
+    /// Fails when the path is not under any registered root.
     /// </summary>
     Result<ResourceKey> GetResourceKey(string resourcePath);
 
@@ -91,24 +89,6 @@ public interface IResourceRegistry
     Result UpdateResourceRegistry();
 
     /// <summary>
-    /// Registers a handler for the specified root name. The handler takes effect
-    /// immediately; subsequent resolution calls for that root delegate to it.
-    /// Replaces any handler previously registered for the same root name.
-    /// </summary>
-    void RegisterRootHandler(IResourceRootHandler handler);
-
-    /// <summary>
-    /// The currently registered root handlers, keyed by root name.
-    /// </summary>
-    IReadOnlyDictionary<string, IResourceRootHandler> RootHandlers { get; }
-
-    /// <summary>
-    /// Returns true if the resource key's root is registered with this registry.
-    /// Use this for early validation at trust boundaries without performing a full resolve.
-    /// </summary>
-    bool IsResolvable(ResourceKey key);
-
-    /// <summary>
     /// Returns all file resources for the project root with their resource keys and absolute paths.
     /// The results are sorted by path for stable ordering.
     /// </summary>
@@ -121,17 +101,9 @@ public interface IResourceRegistry
     IReadOnlyList<FileResourceEntry> GetAllFileResources(string root);
 
     /// <summary>
-    /// Returns the parent file resource of a sidecar key, or a failure result
-    /// if the sidecar has no corresponding parent. Sidecars at "foo.png.cel"
-    /// resolve to "foo.png"; sidecars whose name ends in ".cel.cel" are invalid
-    /// and never have a parent.
+    /// Returns the SidecarReport from the last completed UpdateResourceRegistry
+    /// pass. Project-load diagnostics and data_check_project consume this to
+    /// surface broken and orphan .cel files.
     /// </summary>
-    Result<IFileResource> GetSidecarParent(ResourceKey sidecar);
-
-    /// <summary>
-    /// Returns a snapshot of every .cel file the registry knows about,
-    /// partitioned by parse state, orphan-ness, and the .cel.cel invalid
-    /// category. Used for project-load diagnostics and by data_check_project.
-    /// </summary>
-    CelFileReport GetCelFileReport();
+    SidecarReport GetSidecarReport();
 }

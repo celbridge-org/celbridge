@@ -322,8 +322,9 @@ public sealed class TrashService : ITrashService
         }
     }
 
-    public Task<Result> PurgeAsync(TrashEntry entry)
+    public async Task<Result> PurgeAsync(TrashEntry entry)
     {
+        await Task.CompletedTask;
         try
         {
             if (entry.WasFolder)
@@ -368,7 +369,7 @@ public sealed class TrashService : ITrashService
             _logger.LogWarning(ex, $"Best-effort trash purge failed for resource: '{entry.OriginalResource}'");
         }
 
-        return Task.FromResult(Result.Ok());
+        return Result.Ok();
     }
 
     // Move a file into the trash subtree, creating any missing parent folders
