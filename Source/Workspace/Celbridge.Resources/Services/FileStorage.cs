@@ -661,8 +661,8 @@ public sealed class FileStorage : IFileStorage
             || handler.Capabilities.IsWritable;
     }
 
-    // Recursive folder copy. Mirrors ResourceUtils.CopyFolder but stays internal
-    // to the FS layer so the chokepoint owns the destination structure.
+    // Recursive folder copy used by the chokepoint's CopyAsync path. Stays
+    // internal to the FS layer so the chokepoint owns the destination structure.
     private static void CopyFolderRecursive(string sourceFolder, string destFolder)
     {
         Directory.CreateDirectory(destFolder);
