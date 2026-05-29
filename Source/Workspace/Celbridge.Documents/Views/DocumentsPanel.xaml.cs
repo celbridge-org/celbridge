@@ -335,7 +335,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 return await OpenDocument(fileResource, reopenOptions);
             }
 
-            // If already open in a different section, move it
+            // Without an explicit address the existing tab stays in its own
+            // section. Moving it to wherever the active section happens to be
+            // would yank it from under the user.
+            if (address is null)
+            {
+                sectionIndex = existingSection.SectionIndex;
+            }
+
+            // If a different section was explicitly requested, move it there.
             if (existingSection.SectionIndex != sectionIndex)
             {
                 SectionContainer.MoveTabToSection(existingTab, sectionIndex);
