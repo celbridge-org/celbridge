@@ -18,7 +18,7 @@ A resource key has the optional `root:path` form. When no root prefix is given, 
 ## Roots
 
 - `project:` — the visible project tree. The default root; the prefix is optional in input but always present in output. Use for all user content.
-- `temp:` — host scratch space (`.celbridge/temp/`). Hidden from the resource tree. Used by host tools, scripts, and agents for transient artifacts and staging output. Contents are not version-controlled. Conventional sub-folders include `temp:staging/...`, `temp:scratch/...`, and `temp:cache/...`.
+- `temp:` — host scratch space (`.celbridge/temp/`). Hidden from the resource tree. Used by host tools, scripts, and agents for transient artifacts and staging output. Contents are not version-controlled. **All contents are wiped on workspace load** — if you need data to persist, write under `project:` instead. Conventional sub-folders include `temp:staging/...`, `temp:scratch/...`, `temp:cache/...`, and `temp:downloads/...`.
 - `logs:` — host diagnostic logs (`.celbridge/logs/`). Hidden from the resource tree. Used by the host engine, Python scripts, agents, and Console panel session loggers.
 
 ## Output canonical form

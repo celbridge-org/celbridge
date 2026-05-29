@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Python;
-using Celbridge.Utilities;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Projects.Services;
@@ -50,9 +49,13 @@ public class ProjectTemplateService : IProjectTemplateService
     {
         Guard.IsNotNullOrWhiteSpace(projectFilePath);
 
-        // Use a temporary staging folder to prevent leftover files on failure
-        var tempFile = PathHelper.GetTemporaryFilePath("NewProject", string.Empty);
-        var tempStagingPath = Path.GetDirectoryName(tempFile);
+        // Use a temporary staging folder to prevent leftover files on failure.
+        // The project doesn't exist yet, so temp: isn't available; fall back to
+        // the application's OS temp folder.
+        var tempStagingPath = Path.Combine(
+            ApplicationData.Current.TemporaryFolder.Path,
+            "NewProject",
+            Path.GetFileNameWithoutExtension(Path.GetRandomFileName()));
 
         try
         {

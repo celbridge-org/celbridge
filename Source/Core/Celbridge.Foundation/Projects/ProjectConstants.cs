@@ -52,7 +52,8 @@ public static class ProjectConstants
     public const string CelbridgeFolder = ".celbridge";
 
     /// <summary>
-    /// Sub-folder of .celbridge/ that backs the temp: virtual root.
+    /// Sub-folder of .celbridge/ that backs the temp: virtual root. Wiped on
+    /// workspace load; consumers needing persistence write under project:.
     /// </summary>
     public const string CelbridgeTempFolder = "temp";
 
@@ -72,4 +73,9 @@ public static class ProjectConstants
     /// workspace load to clear orphans left by previous crashes.
     /// </summary>
     public const string CelbridgeStagingFsFolder = "staging-fs";
+
+    /// <summary>
+    /// Sub-folder of temp: that holds in-progress downloads from the WebView.
+    /// </summary>
+    public const string CelbridgeTempDownloadsFolder = "downloads";
 }

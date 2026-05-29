@@ -73,6 +73,10 @@ public class ResourceService : IResourceService, IDisposable
         var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeTrashFolder);
         var celbridgeStagingFsFolder = Path.Combine(celbridgeFolder, ProjectConstants.CelbridgeStagingFsFolder);
 
+        // temp:/ is wiped on every workspace load. The contract is that nothing
+        // under temp: survives a reload; consumers needing persistence write
+        // under project: instead.
+        TryClearFolderContents(celbridgeTempFolder);
         Directory.CreateDirectory(celbridgeTempFolder);
         Directory.CreateDirectory(celbridgeLogsFolder);
 

@@ -33,10 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Link the shared resw localization file so that WebView2Helper can enumerate the available string keys -->
-    <EmbeddedResource Include="..\..\Celbridge\Resources\Strings\en-US\Resources.resw"
-                      Link="Assets\Resources.resw"
-                      LogicalName="Celbridge.Strings.Resources.resw" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons-icon-theme.json" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\devopicons.ttf" />
     <EmbeddedResource Include="Assets\Fonts\FileIcons\file-icons.ttf" />

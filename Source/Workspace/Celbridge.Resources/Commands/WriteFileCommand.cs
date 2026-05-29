@@ -6,10 +6,8 @@ namespace Celbridge.Resources.Commands;
 
 public class WriteFileCommand : CommandBase, IWriteFileCommand
 {
-    // Force a registry update so sidecar classification refreshes on every
-    // write. Without this, overwriting an existing .cel file with broken TOML
-    // would leave data_check_project returning the stale "Healthy" status
-    // while data_get_field correctly rejects the file at read time.
+    // A write can change a file's sidecar classification (e.g. a .cel file
+    // becoming invalid TOML), so refresh the registry after every write.
     public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
 
     private readonly ILogger<WriteFileCommand> _logger;
@@ -28,40 +26,41 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileStorage = workspaceService.FileStorage;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
 
-        // Preserve existing line endings when overwriting. For a new file,
-        // honour whatever endings the caller's content already uses (so a CSV
-        // exporter emitting CRLF lands as CRLF on disk); fall back to the
-        // platform default when the content has no line endings to detect.
-        string targetSeparator;
+        var separatorResult = await ResolveTargetSeparatorAsync(fileStorage);
+        if (separatorResult.IsFailure)
+        {
+            return separatorResult;
+        }
+        var targetSeparator = separatorResult.Value;
+
+        var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);
+
+        return await fileStorage.WriteAllTextAsync(FileResource, contentToWrite);
+    }
+
+    // Preserve the existing file's line endings on overwrite. For a new file,
+    // honour whatever the caller's content already uses (so a CSV exporter
+    // emitting CRLF lands as CRLF on disk); fall back to the platform default
+    // when neither has line endings to detect.
+    private async Task<Result<string>> ResolveTargetSeparatorAsync(IFileStorage fileStorage)
+    {
         var infoResult = await fileStorage.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
-            targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(Content);
+            return LineEndingHelper.DetectSeparatorOrDefault(Content);
         }
-        else
+
+        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        if (readResult.IsFailure)
         {
-            var readResult = await fileStorage.ReadAllTextAsync(FileResource);
-            if (readResult.IsFailure)
-            {
-                return Result.Fail($"Failed to read existing file: '{FileResource}'")
-                    .WithErrors(readResult);
-            }
-            targetSeparator = LineEndingHelper.DetectSeparatorOrDefault(readResult.Value);
+            return Result<string>.Fail($"Failed to read existing file: '{FileResource}'")
+                .WithErrors(readResult);
         }
 
-        var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);
-
-        var writeResult = await fileStorage.WriteAllTextAsync(FileResource, contentToWrite);
-        if (writeResult.IsFailure)
-        {
-            return writeResult;
-        }
-
-        return Result.Ok();
+        return LineEndingHelper.DetectSeparatorOrDefault(readResult.Value);
     }
 
     //

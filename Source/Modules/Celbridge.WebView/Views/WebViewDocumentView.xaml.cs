@@ -6,6 +6,7 @@ using Celbridge.Documents.Views;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -40,6 +41,10 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
     // HtmlViewer role. .webview (external URL) documents do not register and the
     // webview_* tool namespace is not supported for them.
     private IDocumentWebViewToolBridge? _toolBridge;
+
+    // Sub-folder under the project root where completed WebView downloads
+    // land. Auto-created by the chokepoint on first write.
+    private const string DownloadsFolderName = "downloads";
 
     private static readonly WebViewDocumentOptions DefaultOptions = new(
         WebViewDocumentRole.ExternalUrl,
@@ -242,6 +247,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             {
                 TryRegisterWithToolBridge();
             }
+
+            // temp:/ is wiped on workspace load, so the downloads sub-folder
+            // may not exist yet. Ensure it via the chokepoint before the user
+            // can trigger a download.
+            var downloadsFolder = new ResourceKey($"temp:{ProjectConstants.CelbridgeTempDownloadsFolder}");
+            await FileStorage.CreateFolderAsync(downloadsFolder);
 
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
@@ -535,14 +546,17 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 
         var filename = Path.GetFileName(downloadPath);
 
-        var resolveResult = ResourceRegistry.ResolveResourcePath(filename);
+        // Downloads land under project:downloads/ so the project root stays
+        // uncluttered when a session produces multiple downloads.
+        var requestedDestResource = new ResourceKey($"{DownloadsFolderName}/{filename}");
+        var resolveResult = ResourceRegistry.ResolveResourcePath(requestedDestResource);
         if (resolveResult.IsFailure)
         {
             args.Cancel = true;
             return;
         }
         var requestedPath = resolveResult.Value;
-        var getResult = PathHelper.GetUniquePath(requestedPath);
+        var getResult = GetUniquePath(requestedPath);
         if (getResult.IsFailure)
         {
             args.Cancel = true;
@@ -558,26 +572,94 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         }
         var saveResourceKey = getResourceResult.Value;
 
+        // Stage the download under the project's temp: root so the staging
+        // location lives alongside the rest of the workspace's scratch space
+        // and the wipe-on-load policy bounds orphan accumulation.
         var extension = Path.GetExtension(filename);
-        var tempPath = PathHelper.GetTemporaryFilePath("Downloads", extension);
+        var randomName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
+        var downloadResource = new ResourceKey($"temp:{ProjectConstants.CelbridgeTempDownloadsFolder}/{randomName}{extension}");
+        var resolveTempResult = ResourceRegistry.ResolveResourcePath(downloadResource);
+        if (resolveTempResult.IsFailure)
+        {
+            args.Cancel = true;
+            return;
+        }
+        var tempPath = resolveTempResult.Value;
         args.ResultFilePath = tempPath;
 
-        args.DownloadOperation.StateChanged += (s, e) =>
+        args.DownloadOperation.StateChanged += async (s, e) =>
         {
-            if (s.State == CoreWebView2DownloadState.Completed)
+            // Async-void event handler: any escaping exception ends up on the
+            // SynchronizationContext's unhandled-exception channel, so wrap
+            // the body so a WebView-side failure can't crash the host.
+            try
             {
-                _commandService.Execute<IAddResourceCommand>(command =>
+                if (s.State == CoreWebView2DownloadState.Completed)
                 {
-                    command.ResourceType = ResourceType.File;
-                    command.SourcePath = tempPath;
-                    command.DestResource = saveResourceKey;
-                });
+                    var importResult = await _commandService.ExecuteAsync<IAddResourceCommand>(command =>
+                    {
+                        command.ResourceType = ResourceType.File;
+                        command.SourcePath = tempPath;
+                        command.DestResource = saveResourceKey;
+                    });
+
+                    // Move semantics: the chokepoint doesn't support cross-root
+                    // moves (temp: -> project:), so the import above copied
+                    // bytes. Delete the staging copy here so we don't carry two
+                    // copies on disk until temp: is wiped on next workspace load.
+                    if (importResult.IsSuccess)
+                    {
+                        await FileStorage.DeleteAsync(downloadResource);
+                    }
+                }
+                else if (s.State == CoreWebView2DownloadState.Interrupted)
+                {
+                    await FileStorage.DeleteAsync(downloadResource);
+                }
             }
-            else if (s.State == CoreWebView2DownloadState.Interrupted)
+            catch (Exception ex)
             {
-                File.Delete(tempPath);
+                _logger.LogError(ex, "Download state change handler failed");
             }
         };
+    }
+
+    // Returns a path that doesn't collide with an existing file or folder by
+    // appending " (N)" before any extension. Used to resolve the user's chosen
+    // download destination if a file with the same name already exists.
+    private static Result<string> GetUniquePath(string path)
+    {
+        try
+        {
+            path = Path.GetFullPath(path);
+
+            string directoryPath = Path.GetDirectoryName(path)!;
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(path);
+            string extension = Path.GetExtension(path);
+            string uniqueName = Path.GetFileName(path);
+            int count = 1;
+
+            while (File.Exists(Path.Combine(directoryPath, uniqueName)) ||
+                Directory.Exists(Path.Combine(directoryPath, uniqueName)))
+            {
+                if (!string.IsNullOrEmpty(extension))
+                {
+                    uniqueName = $"{nameWithoutExtension} ({count}){extension}";
+                }
+                else
+                {
+                    uniqueName = $"{nameWithoutExtension} ({count})";
+                }
+                count++;
+            }
+
+            return Path.Combine(directoryPath, uniqueName);
+        }
+        catch (Exception ex)
+        {
+            return Result<string>.Fail($"Failed to generate a unique path: {path}")
+                .WithException(ex);
+        }
     }
 
     public override async Task<Result> LoadContent()

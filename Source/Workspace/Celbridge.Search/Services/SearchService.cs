@@ -161,12 +161,8 @@ public class SearchService : ISearchService, IDisposable
 
             if (!string.IsNullOrEmpty(scope))
             {
-                // Canonicalize the scope so callers can pass a bare path
-                // ("Data") or the fully-prefixed form ("project:Data")
-                // interchangeably, matching the convention used by every other
-                // resource-addressing tool. The comparison runs against the
-                // canonical "<root>:<path>" form of each candidate, so a bare
-                // scope without a root prefix never matched otherwise.
+                // File resources are matched as "<root>:<path>", so a bare scope
+                // like "Data" is canonicalized to "project:Data" before comparison.
                 string canonicalScope;
                 if (ResourceKey.TryCreate(scope, out var scopeKey))
                 {
