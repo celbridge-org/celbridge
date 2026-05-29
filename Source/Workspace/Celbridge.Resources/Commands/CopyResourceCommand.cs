@@ -68,9 +68,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // This prevents duplicate operations when both a folder and its contents are selected.
         var filteredResources = FilterRedundantResources(SourceResources);
 
-        // Begin batch for single undo operation
-        ResourceOperationService.BeginBatch();
-
         List<ResourceKey> failedResources = new();
         List<Result> failedOutcomes = new();
         List<ResourceKey> copiedFolders = new();
@@ -78,7 +75,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         List<SkippedReferencer> aggregatedSkipped = new();
         ResourceKey? lastParentFolder = null;
 
-        try
+        // Single undo unit for the whole batch; partial success is acceptable.
+        using (var batch = ResourceOperationService.BeginBatch())
         {
             foreach (var sourceResource in filteredResources)
             {
@@ -106,11 +104,6 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                     aggregatedSkipped.AddRange(outcome.MoveDetail.SkippedReferencers);
                 }
             }
-        }
-        finally
-        {
-            // Always commit batch - partial success is acceptable
-            ResourceOperationService.CommitBatch();
         }
 
         ResultValue = new CopyCommandResult(

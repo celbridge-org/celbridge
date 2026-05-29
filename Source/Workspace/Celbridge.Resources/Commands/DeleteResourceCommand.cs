@@ -172,8 +172,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var resourceResults = new List<DeleteResourceResult>(Resources.Count);
         var failedItems = new List<string>();
 
-        ResourceOperationService.BeginBatch();
-        try
+        using (var batch = ResourceOperationService.BeginBatch())
         {
             foreach (var resource in Resources)
             {
@@ -240,10 +239,6 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                     sidecarPresent ? SidecarOutcome.Cascaded : SidecarOutcome.NotPresent,
                     FailureMessage: null));
             }
-        }
-        finally
-        {
-            ResourceOperationService.CommitBatch();
         }
 
         // Distinguish "every resource deleted cleanly" from "policy gate passed

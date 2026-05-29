@@ -3,33 +3,29 @@ using FileAttributes = System.IO.FileAttributes;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Validates that resolved resource paths stay within the backing folder of a single
-/// root and do not traverse through symlinks, junctions, or other reparse points.
-/// Maintains a cache of verified directory paths to avoid repeated filesystem stat
-/// calls. One instance serves exactly one root; its owning root handler constructs
-/// it with that root's name and backing location.
+/// Resolves between resource keys and absolute filesystem paths for a single
+/// root. Validates that resolved paths stay within the root's backing folder
+/// and do not traverse through symlinks, junctions, or other reparse points;
+/// maintains a cache of verified directory paths to avoid repeated filesystem
+/// stat calls. One instance serves exactly one root; its owning root handler
+/// constructs it with that root's name and backing location.
 /// </summary>
-public class PathValidator
+public class RootPathResolver
 {
     private readonly string _rootName;
     private readonly string _backingLocation;
-    private readonly StringComparer _pathComparer;
     private readonly HashSet<string> _verifiedFolders;
 
-    public PathValidator(string rootName, string backingLocation)
+    public RootPathResolver(string rootName, string backingLocation)
     {
         _rootName = rootName;
         _backingLocation = backingLocation;
-        _pathComparer = OperatingSystem.IsWindows()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal;
-
-        _verifiedFolders = new HashSet<string>(_pathComparer);
+        _verifiedFolders = new HashSet<string>(GetPathComparer());
     }
 
     /// <summary>
     /// Validates a resource key and resolves it to an absolute filesystem path under the
-    /// validator's backing location. Returns a failure result if the key fails any validation check.
+    /// resolver's backing location. Returns a failure result if the key fails any validation check.
     /// </summary>
     public Result<string> ValidateAndResolve(ResourceKey resource)
     {
@@ -68,6 +64,60 @@ public class PathValidator
         }
 
         return resolvedPath;
+    }
+
+    /// <summary>
+    /// Computes the resource key for an absolute filesystem path under this resolver's
+    /// backing location. Returns failure when the path is outside the backing location or
+    /// the relative segment is not a valid resource key.
+    /// </summary>
+    public Result<ResourceKey> GetResourceKey(string absolutePath)
+    {
+        try
+        {
+            var normalizedPath = Path.GetFullPath(absolutePath);
+            var normalizedBacking = Path.GetFullPath(_backingLocation)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            // No symlink check here: ValidateAndResolve enforces it at the I/O
+            // boundary, and replaying it on every label call would dominate the
+            // watcher / enumerate hot path.
+            var comparison = GetPathComparison();
+
+            bool isBackingRoot = normalizedPath.Equals(normalizedBacking, comparison);
+            bool isUnderBacking = normalizedPath.StartsWith(
+                normalizedBacking + Path.DirectorySeparatorChar, comparison);
+
+            if (!isBackingRoot && !isUnderBacking)
+            {
+                return Result<ResourceKey>.Fail(
+                    $"Path '{absolutePath}' is not under root '{_rootName}' backing location '{_backingLocation}'.");
+            }
+
+            var relativePart = isBackingRoot
+                ? string.Empty
+                : normalizedPath
+                    .Substring(normalizedBacking.Length)
+                    .Replace('\\', '/')
+                    .Trim('/');
+
+            var keyString = string.IsNullOrEmpty(relativePart)
+                ? _rootName + ":"
+                : _rootName + ":" + relativePart;
+
+            if (!ResourceKey.TryCreate(keyString, out var resourceKey))
+            {
+                return Result<ResourceKey>.Fail(
+                    $"Path '{absolutePath}' produces an invalid resource key: '{keyString}'.");
+            }
+
+            return resourceKey;
+        }
+        catch (Exception ex)
+        {
+            return Result<ResourceKey>.Fail($"An exception occurred when getting the resource key for '{absolutePath}'.")
+                .WithException(ex);
+        }
     }
 
     /// <summary>
@@ -145,10 +195,19 @@ public class PathValidator
         return normalized;
     }
 
+    // StringComparison flavour for string ops; StringComparer flavour for
+    // collection keys. Both consult the same Windows / non-Windows selector.
     private static StringComparison GetPathComparison()
     {
         return OperatingSystem.IsWindows()
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
+    }
+
+    private static StringComparer GetPathComparer()
+    {
+        return OperatingSystem.IsWindows()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
     }
 }

@@ -17,13 +17,16 @@ public sealed class TrashService : ITrashService
     private const int BaseRetryDelayMs = 50;
 
     private readonly ILogger<TrashService> _logger;
+    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     public TrashService(
         ILogger<TrashService> logger,
+        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -69,12 +72,32 @@ public sealed class TrashService : ITrashService
         var trashBasePath = Path.Combine(TrashFolderPath, trashId);
         var trashPath = Path.Combine(trashBasePath, relativePath);
 
+        Result<TrashEntry> moveResult;
         if (isFile)
         {
-            return await MoveFileToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
+            moveResult = await MoveFileToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
+        }
+        else
+        {
+            moveResult = await MoveFolderToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
         }
 
-        return await MoveFolderToTrashAsync(resource, originalPath, trashPath, trashBasePath, trashId);
+        if (moveResult.IsSuccess
+            && resource.Root == ResourceKey.DefaultRoot)
+        {
+            // Announce the soft-delete synchronously so subscribers update before
+            // control returns. The watcher's own delete event still arrives later
+            // via UI-thread dispatch; subscribers must treat these messages as
+            // idempotent.
+            var entry = moveResult.Value;
+            _messengerService.Send(new ResourceDeletedMessage(entry.OriginalResource));
+            foreach (var descendant in entry.DescendantKeys)
+            {
+                _messengerService.Send(new ResourceDeletedMessage(descendant));
+            }
+        }
+
+        return moveResult;
     }
 
     private async Task<Result<TrashEntry>> MoveFileToTrashAsync(

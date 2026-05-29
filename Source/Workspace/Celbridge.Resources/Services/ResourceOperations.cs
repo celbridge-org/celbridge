@@ -1,3 +1,4 @@
+using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
 
 namespace Celbridge.Resources.Services;
@@ -339,17 +340,20 @@ internal class ImportExternalOperation : FileOperation
     private readonly ResourceKey _destination;
     private readonly bool _isFolder;
     private readonly IFileStorage _fileStorage;
+    private readonly ILogger _logger;
 
     public ImportExternalOperation(
         string sourcePath,
         ResourceKey destination,
         bool isFolder,
-        IFileStorage fileStorage)
+        IFileStorage fileStorage,
+        ILogger logger)
     {
         _sourcePath = sourcePath;
         _destination = destination;
         _isFolder = isFolder;
         _fileStorage = fileStorage;
+        _logger = logger;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -390,6 +394,7 @@ internal class ImportExternalOperation : FileOperation
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to import external file from '{SourcePath}' to '{Destination}'", _sourcePath, _destination);
             return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_destination}'")
                 .WithException(ex);
         }
@@ -445,6 +450,7 @@ internal class ImportExternalOperation : FileOperation
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to import external folder from '{SourceFolderPath}' to '{DestinationFolder}'", sourceFolderPath, destinationFolder);
             return Result.Fail($"Failed to import external folder from '{sourceFolderPath}' to '{destinationFolder}'")
                 .WithException(ex);
         }

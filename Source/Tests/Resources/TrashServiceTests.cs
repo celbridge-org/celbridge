@@ -1,5 +1,6 @@
 using Celbridge.Entities;
 using Celbridge.Logging;
+using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
@@ -54,6 +55,7 @@ public class TrashServiceTests
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
+            Substitute.For<IMessengerService>(),
             _workspaceWrapper);
     }
 

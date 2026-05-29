@@ -10,16 +10,15 @@ namespace Celbridge.Resources.Services;
 /// Wraps the IFileStorage chokepoint and the ITrashService soft-delete layer
 /// with a session-local undo/redo stack and batched grouping. Public methods
 /// accept ResourceKey; external imports keep a string source path because the
-/// source is outside the registry by definition. All actual disk I/O routes
-/// through the chokepoint or the trash service; this class owns no direct
-/// System.IO calls.
+/// source is outside the registry by definition. All disk I/O routes through
+/// the chokepoint or the trash service; this class owns no direct System.IO
+/// calls and no message broadcasts.
 /// </summary>
 public class ResourceOperationService : IResourceOperationService
 {
     private const int MaxUndoStackSize = 50;
 
     private readonly ILogger<ResourceOperationService> _logger;
-    private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private readonly List<FileOperation> _undoStack = new();
@@ -29,11 +28,9 @@ public class ResourceOperationService : IResourceOperationService
 
     public ResourceOperationService(
         ILogger<ResourceOperationService> logger,
-        IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
-        _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -173,16 +170,6 @@ public class ResourceOperationService : IResourceOperationService
 
         AddOperation(operation);
 
-        if (isFolder)
-        {
-            SendFolderResourceKeyChangedMessages(source, destination);
-        }
-        else
-        {
-            var message = new ResourceKeyChangedMessage(source, destination);
-            _messengerService.Send(message);
-        }
-
         return Result<MoveResult>.Ok(operation.LastMoveResult ?? EmptyMoveResult);
     }
 
@@ -194,7 +181,6 @@ public class ResourceOperationService : IResourceOperationService
         if (result.IsSuccess)
         {
             AddOperation(operation);
-            BroadcastDeleteMessages(operation.TrashEntry);
         }
 
         return result;
@@ -204,7 +190,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: false, FileStorage);
+        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: false, FileStorage, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -219,7 +205,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: true, FileStorage);
+        var operation = new ImportExternalOperation(sourcePath, destination, isFolder: true, FileStorage, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -232,13 +218,6 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> TransferAsync(ResourceKey source, ResourceKey destination, DataTransferMode mode)
     {
-        var infoResult = await FileStorage.GetInfoAsync(source);
-        if (infoResult.IsFailure
-            || infoResult.Value.Kind == StorageItemKind.NotFound)
-        {
-            return Result.Fail($"Source resource does not exist: '{source}'");
-        }
-
         if (mode == DataTransferMode.Copy)
         {
             return await CopyAsync(source, destination);
@@ -247,17 +226,19 @@ public class ResourceOperationService : IResourceOperationService
         return await MoveAsync(source, destination);
     }
 
-    public void BeginBatch()
+    public IBatchScope BeginBatch()
     {
         if (_currentBatch != null)
         {
             _logger.LogWarning("BeginBatch called while a batch is already in progress");
-            return;
+            return new BatchScope(this, isOuter: false);
         }
         _currentBatch = new FileOperationBatch();
+        return new BatchScope(this, isOuter: true);
     }
 
-    public void CommitBatch()
+    // Empty batches are discarded; partial batches commit so the user can Ctrl+Z them.
+    private void CommitBatch()
     {
         if (_currentBatch == null)
         {
@@ -272,6 +253,35 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         _currentBatch = null;
+    }
+
+    // Outer scope commits on dispose; a nested BeginBatch returns a no-op
+    // scope that does nothing.
+    private sealed class BatchScope : IBatchScope
+    {
+        private readonly ResourceOperationService _owner;
+        private readonly bool _isOuter;
+        private bool _disposed;
+
+        public BatchScope(ResourceOperationService owner, bool isOuter)
+        {
+            _owner = owner;
+            _isOuter = isOuter;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            _disposed = true;
+
+            if (_isOuter)
+            {
+                _owner.CommitBatch();
+            }
+        }
     }
 
     public bool CanUndo => _undoStack.Count > 0;
@@ -379,69 +389,4 @@ public class ResourceOperationService : IResourceOperationService
         }
     }
 
-    private void BroadcastDeleteMessages(TrashEntry? entry)
-    {
-        if (entry is null)
-        {
-            return;
-        }
-
-        var sourceRemovedMessage = new ResourceDeletedMessage(entry.OriginalResource);
-        _messengerService.Send(sourceRemovedMessage);
-
-        foreach (var descendant in entry.DescendantKeys)
-        {
-            var descendantRemovedMessage = new ResourceDeletedMessage(descendant);
-            _messengerService.Send(descendantRemovedMessage);
-        }
-    }
-
-    // After a folder move, broadcast a key-changed message for the folder and
-    // every descendant resource so opened documents can repoint cleanly. Walks
-    // the registry-cached source tree because the on-disk source is already
-    // gone by the time we get here.
-    private void SendFolderResourceKeyChangedMessages(ResourceKey sourceFolder, ResourceKey destinationFolder)
-    {
-        var folderMessage = new ResourceKeyChangedMessage(sourceFolder, destinationFolder);
-        _messengerService.Send(folderMessage);
-
-        var getResourceResult = ResourceRegistry.GetResource(sourceFolder);
-        if (getResourceResult.IsFailure)
-        {
-            return;
-        }
-
-        if (getResourceResult.Value is not FolderResource sourceFolderResource)
-        {
-            return;
-        }
-
-        var sourceResources = new List<ResourceKey>();
-        PopulateSourceResources(sourceFolderResource);
-
-        void PopulateSourceResources(FolderResource folderResource)
-        {
-            foreach (var childResource in folderResource.Children)
-            {
-                if (childResource is FolderResource childFolderResource)
-                {
-                    var folderKey = ResourceRegistry.GetResourceKey(childFolderResource);
-                    sourceResources.Add(folderKey);
-                    PopulateSourceResources(childFolderResource);
-                }
-                else
-                {
-                    var fileKey = ResourceRegistry.GetResourceKey(childResource);
-                    sourceResources.Add(fileKey);
-                }
-            }
-        }
-
-        foreach (var descendantSource in sourceResources)
-        {
-            var descendantDestination = descendantSource.ToString().Replace(sourceFolder, destinationFolder);
-            var message = new ResourceKeyChangedMessage(descendantSource, descendantDestination);
-            _messengerService.Send(message);
-        }
-    }
 }

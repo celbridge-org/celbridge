@@ -3,6 +3,15 @@ using Celbridge.DataTransfer;
 namespace Celbridge.Resources;
 
 /// <summary>
+/// In-progress batch of resource operations. Disposing the scope commits the
+/// accumulated operations as a single undo unit; partial batches commit so
+/// the user can Ctrl+Z to reverse them.
+/// </summary>
+public interface IBatchScope : IDisposable
+{
+}
+
+/// <summary>
 /// The workspace-scoped resource operation service. Layers session-local undo
 /// and redo, batched grouping, and soft-delete trash on top of the IFileStorage
 /// chokepoint. Every method names its target with a ResourceKey; external
@@ -63,15 +72,10 @@ public interface IResourceOperationService
     Task<Result> TransferAsync(ResourceKey source, ResourceKey destination, DataTransferMode mode);
 
     /// <summary>
-    /// Begin a batch of operations that will be grouped together as a single undo unit.
-    /// Call CommitBatch() when done to finalize the batch.
+    /// Begins a batch of operations that commit as a single undo unit when the
+    /// returned scope is disposed.
     /// </summary>
-    void BeginBatch();
-
-    /// <summary>
-    /// Commit the current batch of operations as a single undo unit.
-    /// </summary>
-    void CommitBatch();
+    IBatchScope BeginBatch();
 
     /// <summary>
     /// Returns true if there are operations that can be undone.

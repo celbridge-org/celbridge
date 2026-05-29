@@ -3,14 +3,14 @@ using Celbridge.Resources.Helpers;
 namespace Celbridge.Tests.Resources;
 
 [TestFixture]
-public class PathValidatorTests
+public class RootPathResolverTests
 {
     private string? _projectFolder;
 
     [SetUp]
     public void Setup()
     {
-        _projectFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(PathValidatorTests)}");
+        _projectFolder = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(RootPathResolverTests)}");
         if (Directory.Exists(_projectFolder))
         {
             Directory.Delete(_projectFolder, true);
@@ -32,10 +32,10 @@ public class PathValidatorTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
         var resourceKey = ResourceKey.Create("folder/file.txt");
 
-        var resolveResult = validator.ValidateAndResolve(resourceKey);
+        var resolveResult = resolver.ValidateAndResolve(resourceKey);
 
         var expectedPath = Path.GetFullPath(Path.Combine(_projectFolder, "folder", "file.txt"));
         resolveResult.IsSuccess.Should().BeTrue();
@@ -47,9 +47,9 @@ public class PathValidatorTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
 
-        var resolveResult = validator.ValidateAndResolve(ResourceKey.Empty);
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Empty);
 
         var expectedPath = Path.GetFullPath(_projectFolder);
         resolveResult.IsSuccess.Should().BeTrue();
@@ -66,13 +66,13 @@ public class PathValidatorTests
         Directory.CreateDirectory(subFolder);
         File.WriteAllText(Path.Combine(subFolder, "a.txt"), "test");
 
-        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
 
         // First call — verifies the folder
-        validator.ValidateAndResolve(ResourceKey.Create("cached/a.txt"));
+        resolver.ValidateAndResolve(ResourceKey.Create("cached/a.txt"));
 
         // Second call — should hit the cache (no way to assert directly, but it should not throw)
-        validator.ValidateAndResolve(ResourceKey.Create("cached/b.txt"));
+        resolver.ValidateAndResolve(ResourceKey.Create("cached/b.txt"));
     }
 
     [Test]
@@ -84,16 +84,16 @@ public class PathValidatorTests
         Directory.CreateDirectory(subFolder);
         File.WriteAllText(Path.Combine(subFolder, "a.txt"), "test");
 
-        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
 
         // Cache the folder
-        validator.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
+        resolver.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
 
         // Invalidate
-        validator.InvalidateCache();
+        resolver.InvalidateCache();
 
         // Next call should re-verify (still succeeds since folder is clean)
-        var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("ephemeral/a.txt"));
         resolveResult.IsSuccess.Should().BeTrue();
         resolveResult.Value.Should().NotBeEmpty();
     }
@@ -104,7 +104,7 @@ public class PathValidatorTests
         Guard.IsNotNull(_projectFolder);
 
         var outsideFolder = Path.Combine(
-            Path.GetTempPath(), $"Celbridge/{nameof(PathValidatorTests)}_outside");
+            Path.GetTempPath(), $"Celbridge/{nameof(RootPathResolverTests)}_outside");
         Directory.CreateDirectory(outsideFolder);
 
         var symlinkPath = Path.Combine(_projectFolder, "link_folder");
@@ -121,9 +121,9 @@ public class PathValidatorTests
 
         try
         {
-            var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+            var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
 
-            var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("link_folder/file.txt"));
+            var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("link_folder/file.txt"));
             resolveResult.IsFailure.Should().BeTrue();
             resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
         }
@@ -145,12 +145,69 @@ public class PathValidatorTests
     {
         Guard.IsNotNull(_projectFolder);
 
-        var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
 
         // Non-existent paths should be accepted (for create operations)
-        var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("new_folder/new_file.txt"));
+        var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("new_folder/new_file.txt"));
         resolveResult.IsSuccess.Should().BeTrue();
         resolveResult.Value.Should().NotBeEmpty();
+    }
+
+    [Test]
+    public void GetResourceKeyReturnsRootOnlyKeyForBackingLocation()
+    {
+        Guard.IsNotNull(_projectFolder);
+
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+
+        var keyResult = resolver.GetResourceKey(_projectFolder);
+
+        keyResult.IsSuccess.Should().BeTrue();
+        keyResult.Value.Root.Should().Be(ResourceKey.DefaultRoot);
+        keyResult.Value.Path.Should().BeEmpty();
+    }
+
+    [Test]
+    public void GetResourceKeyComposesRelativeSegmentsUnderTheRoot()
+    {
+        Guard.IsNotNull(_projectFolder);
+
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var fullPath = Path.Combine(_projectFolder, "folder", "file.txt");
+
+        var keyResult = resolver.GetResourceKey(fullPath);
+
+        keyResult.IsSuccess.Should().BeTrue();
+        keyResult.Value.Path.Should().Be("folder/file.txt");
+    }
+
+    [Test]
+    public void GetResourceKeyFailsForPathOutsideBackingLocation()
+    {
+        Guard.IsNotNull(_projectFolder);
+
+        var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
+        var outsidePath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(RootPathResolverTests)}_unrelated", "stray.txt");
+
+        var keyResult = resolver.GetResourceKey(outsidePath);
+
+        keyResult.IsFailure.Should().BeTrue();
+        keyResult.FirstErrorMessage.Should().Contain("not under root");
+    }
+
+    [Test]
+    public void GetResourceKeyCarriesThroughTheConfiguredRootName()
+    {
+        Guard.IsNotNull(_projectFolder);
+
+        var resolver = new RootPathResolver("temp", _projectFolder);
+        var fullPath = Path.Combine(_projectFolder, "sub", "scratch.txt");
+
+        var keyResult = resolver.GetResourceKey(fullPath);
+
+        keyResult.IsSuccess.Should().BeTrue();
+        keyResult.Value.Root.Should().Be("temp");
+        keyResult.Value.Path.Should().Be("sub/scratch.txt");
     }
 
     [Test]
@@ -159,7 +216,7 @@ public class PathValidatorTests
         Guard.IsNotNull(_projectFolder);
 
         var outsideFolder = Path.Combine(
-            Path.GetTempPath(), $"Celbridge/{nameof(PathValidatorTests)}_outside2");
+            Path.GetTempPath(), $"Celbridge/{nameof(RootPathResolverTests)}_outside2");
         Directory.CreateDirectory(outsideFolder);
 
         // Create a structure: project/parent/link -> outside
@@ -180,9 +237,9 @@ public class PathValidatorTests
 
         try
         {
-            var validator = new PathValidator(ResourceKey.DefaultRoot, _projectFolder);
+            var resolver = new RootPathResolver(ResourceKey.DefaultRoot, _projectFolder);
 
-            var resolveResult = validator.ValidateAndResolve(ResourceKey.Create("parent/link/file.txt"));
+            var resolveResult = resolver.ValidateAndResolve(ResourceKey.Create("parent/link/file.txt"));
             resolveResult.IsFailure.Should().BeTrue();
             resolveResult.FirstErrorMessage.Should().Contain("symbolic link or junction");
         }

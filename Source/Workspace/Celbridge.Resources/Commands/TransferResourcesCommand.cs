@@ -52,12 +52,10 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
             return Result.Ok();
         }
 
-        // Begin batch for single undo operation
-        resourceOpService.BeginBatch();
-
         List<string> failedItems = new();
 
-        try
+        // Single undo unit for the whole batch; partial success is acceptable.
+        using (var batch = resourceOpService.BeginBatch())
         {
             foreach (var item in TransferItems)
             {
@@ -67,11 +65,6 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
                     failedItems.Add(item.DestResource.ResourceName);
                 }
             }
-        }
-        finally
-        {
-            // Always commit batch - partial success is acceptable
-            resourceOpService.CommitBatch();
         }
 
         // Expand the destination folder so the user can see the newly transferred resources

@@ -169,126 +169,119 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 }
             }
 
-            // Begin batch so all operations are a single undo unit
-            resourceOpService.BeginBatch();
+            // Begin batch so all operations are a single undo unit.
+            using var batch = resourceOpService.BeginBatch();
 
-            try
+            // Create the destination folder and any missing ancestors through
+            // the operation service so the whole chain lands in the unarchive's
+            // undo batch.
+            var destInfoResult = await fileStorage.GetInfoAsync(DestinationResource);
+            if (destInfoResult.IsFailure)
             {
-                // Create the destination folder and any missing ancestors
-                // through the operation service so the whole chain lands in
-                // the unarchive's undo batch.
-                var destInfoResult = await fileStorage.GetInfoAsync(DestinationResource);
-                if (destInfoResult.IsFailure)
+                return Result.Fail($"Failed to probe destination resource: '{DestinationResource}'")
+                    .WithErrors(destInfoResult);
+            }
+
+            if (destInfoResult.Value.Kind == StorageItemKind.NotFound)
+            {
+                // CreateFolderAsync on the chokepoint is idempotent and creates
+                // missing intermediate parents in one call. We still collect
+                // and create ancestors one-at-a-time so each lands as its own
+                // undoable operation inside the batch.
+                var missingAncestorKeys = new List<ResourceKey>();
+                var ancestorKey = DestinationResource.GetParent();
+                while (!ancestorKey.IsEmpty)
                 {
-                    return Result.Fail($"Failed to probe destination resource: '{DestinationResource}'")
-                        .WithErrors(destInfoResult);
+                    var ancestorInfoResult = await fileStorage.GetInfoAsync(ancestorKey);
+                    if (ancestorInfoResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to probe ancestor resource: '{ancestorKey}'")
+                            .WithErrors(ancestorInfoResult);
+                    }
+                    if (ancestorInfoResult.Value.Kind != StorageItemKind.NotFound)
+                    {
+                        break;
+                    }
+                    missingAncestorKeys.Add(ancestorKey);
+                    ancestorKey = ancestorKey.GetParent();
                 }
+                missingAncestorKeys.Reverse();
 
-                if (destInfoResult.Value.Kind == StorageItemKind.NotFound)
+                foreach (var key in missingAncestorKeys)
                 {
-                    // CreateFolderAsync on the chokepoint is idempotent and
-                    // creates missing intermediate parents in one call. We still
-                    // collect and create ancestors one-at-a-time so each lands
-                    // as its own undoable operation inside the batch.
-                    var missingAncestorKeys = new List<ResourceKey>();
-                    var ancestorKey = DestinationResource.GetParent();
-                    while (!ancestorKey.IsEmpty)
+                    var createAncestorResult = await resourceOpService.CreateFolderAsync(key);
+                    if (createAncestorResult.IsFailure)
                     {
-                        var ancestorInfoResult = await fileStorage.GetInfoAsync(ancestorKey);
-                        if (ancestorInfoResult.IsFailure)
-                        {
-                            return Result.Fail($"Failed to probe ancestor resource: '{ancestorKey}'")
-                                .WithErrors(ancestorInfoResult);
-                        }
-                        if (ancestorInfoResult.Value.Kind != StorageItemKind.NotFound)
-                        {
-                            break;
-                        }
-                        missingAncestorKeys.Add(ancestorKey);
-                        ancestorKey = ancestorKey.GetParent();
-                    }
-                    missingAncestorKeys.Reverse();
-
-                    foreach (var key in missingAncestorKeys)
-                    {
-                        var createAncestorResult = await resourceOpService.CreateFolderAsync(key);
-                        if (createAncestorResult.IsFailure)
-                        {
-                            return createAncestorResult;
-                        }
-                    }
-
-                    var createDestResult = await resourceOpService.CreateFolderAsync(DestinationResource);
-                    if (createDestResult.IsFailure)
-                    {
-                        return createDestResult;
+                        return createAncestorResult;
                     }
                 }
 
-                // Filter shallowest-first so parents are created before children.
-                var sortedFolderKeys = new List<ResourceKey>();
-                foreach (var folderPath in foldersToCreate.OrderBy(path => path.Length))
+                var createDestResult = await resourceOpService.CreateFolderAsync(DestinationResource);
+                if (createDestResult.IsFailure)
                 {
-                    var folderKey = BuildDescendantKey(DestinationResource, destinationPath, folderPath);
-                    var folderInfoResult = await fileStorage.GetInfoAsync(folderKey);
-                    if (folderInfoResult.IsFailure)
-                    {
-                        return Result.Fail($"Failed to probe folder resource: '{folderKey}'")
-                            .WithErrors(folderInfoResult);
-                    }
-                    if (folderInfoResult.Value.Kind == StorageItemKind.NotFound)
-                    {
-                        sortedFolderKeys.Add(folderKey);
-                    }
-                }
-
-                foreach (var folderKey in sortedFolderKeys)
-                {
-                    var createFolderResult = await resourceOpService.CreateFolderAsync(folderKey);
-                    if (createFolderResult.IsFailure)
-                    {
-                        return createFolderResult;
-                    }
-                }
-
-                // Extract files
-                foreach (var entry in validEntries)
-                {
-                    var entryResource = DestinationResource.Combine(entry.FullName);
-
-                    // If overwriting, delete existing file first so it's preserved in trash for undo
-                    if (Overwrite)
-                    {
-                        var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
-                        if (existingInfoResult.IsSuccess
-                            && existingInfoResult.Value.Kind == StorageItemKind.File)
-                        {
-                            var deleteResult = await resourceOpService.DeleteAsync(entryResource);
-                            if (deleteResult.IsFailure)
-                            {
-                                return deleteResult;
-                            }
-                        }
-                    }
-
-                    // Read entry into byte array
-                    using var entryStream = entry.Open();
-                    using var memoryStream = new MemoryStream();
-                    await entryStream.CopyToAsync(memoryStream);
-                    var entryBytes = memoryStream.ToArray();
-
-                    var createResult = await resourceOpService.CreateFileAsync(entryResource, entryBytes);
-                    if (createResult.IsFailure)
-                    {
-                        return createResult;
-                    }
-
-                    entryCount++;
+                    return createDestResult;
                 }
             }
-            finally
+
+            // Filter shallowest-first so parents are created before children.
+            var sortedFolderKeys = new List<ResourceKey>();
+            foreach (var folderPath in foldersToCreate.OrderBy(path => path.Length))
             {
-                resourceOpService.CommitBatch();
+                var folderKey = BuildDescendantKey(DestinationResource, destinationPath, folderPath);
+                var folderInfoResult = await fileStorage.GetInfoAsync(folderKey);
+                if (folderInfoResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to probe folder resource: '{folderKey}'")
+                        .WithErrors(folderInfoResult);
+                }
+                if (folderInfoResult.Value.Kind == StorageItemKind.NotFound)
+                {
+                    sortedFolderKeys.Add(folderKey);
+                }
+            }
+
+            foreach (var folderKey in sortedFolderKeys)
+            {
+                var createFolderResult = await resourceOpService.CreateFolderAsync(folderKey);
+                if (createFolderResult.IsFailure)
+                {
+                    return createFolderResult;
+                }
+            }
+
+            // Extract files
+            foreach (var entry in validEntries)
+            {
+                var entryResource = DestinationResource.Combine(entry.FullName);
+
+                // If overwriting, delete existing file first so it's preserved in trash for undo
+                if (Overwrite)
+                {
+                    var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
+                    if (existingInfoResult.IsSuccess
+                        && existingInfoResult.Value.Kind == StorageItemKind.File)
+                    {
+                        var deleteResult = await resourceOpService.DeleteAsync(entryResource);
+                        if (deleteResult.IsFailure)
+                        {
+                            return deleteResult;
+                        }
+                    }
+                }
+
+                // Read entry into byte array
+                using var entryStream = entry.Open();
+                using var memoryStream = new MemoryStream();
+                await entryStream.CopyToAsync(memoryStream);
+                var entryBytes = memoryStream.ToArray();
+
+                var createResult = await resourceOpService.CreateFileAsync(entryResource, entryBytes);
+                if (createResult.IsFailure)
+                {
+                    return createResult;
+                }
+
+                entryCount++;
             }
         }
         catch (IOException exception)

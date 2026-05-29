@@ -241,11 +241,11 @@ public sealed class FileStorage : IFileStorage
                 // attribute the user has explicitly chosen to override by
                 // invoking a move on the file.
                 ClearReadOnlyIfSet(sourcePath);
-                await MoveWithRetryAsync(() => File.Move(sourcePath, destPath));
+                await RetryTransientIOAsync(() => File.Move(sourcePath, destPath));
             }
             else
             {
-                await MoveWithRetryAsync(() => Directory.Move(sourcePath, destPath));
+                await RetryTransientIOAsync(() => Directory.Move(sourcePath, destPath));
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -263,16 +263,26 @@ public sealed class FileStorage : IFileStorage
 
         if (source.Root == ResourceKey.DefaultRoot)
         {
-            // Announce the source removal synchronously so subscribers update
-            // before control returns. The watcher's own delete event still
-            // arrives later via UI-thread dispatch; subscribers must treat
-            // these messages as idempotent.
+            // Announce the source removal and the new key identity synchronously
+            // so subscribers update before control returns. The watcher's own
+            // events still arrive later via UI-thread dispatch; subscribers must
+            // treat these messages as idempotent.
             var sourceRemovedMessage = new ResourceDeletedMessage(source);
             _messengerService.Send(sourceRemovedMessage);
-            foreach (var key in sourceDescendantKeys)
+
+            var keyChangedMessage = new ResourceKeyChangedMessage(source, destination);
+            _messengerService.Send(keyChangedMessage);
+
+            foreach (var descendantSource in sourceDescendantKeys)
             {
-                var descendantRemovedMessage = new ResourceDeletedMessage(key);
+                var descendantRemovedMessage = new ResourceDeletedMessage(descendantSource);
                 _messengerService.Send(descendantRemovedMessage);
+
+                if (TryMapDescendantKey(source, destination, descendantSource, out var descendantDestination))
+                {
+                    var descendantKeyChangedMessage = new ResourceKeyChangedMessage(descendantSource, descendantDestination);
+                    _messengerService.Send(descendantKeyChangedMessage);
+                }
             }
         }
 
@@ -280,6 +290,31 @@ public sealed class FileStorage : IFileStorage
 
         var moveResult = new MoveResult(updatedReferencers, skippedReferencers, sidecarOutcome);
         return moveResult;
+    }
+
+    // Maps a descendant of the source folder to the equivalent key under the
+    // destination folder.
+    private static bool TryMapDescendantKey(
+        ResourceKey sourceFolder,
+        ResourceKey destinationFolder,
+        ResourceKey descendantSource,
+        out ResourceKey descendantDestination)
+    {
+        var sourcePath = sourceFolder.Path;
+        var descendantPath = descendantSource.Path;
+        if (!descendantPath.StartsWith(sourcePath + "/", StringComparison.Ordinal))
+        {
+            descendantDestination = ResourceKey.Empty;
+            return false;
+        }
+
+        var relativeSuffix = descendantPath.Substring(sourcePath.Length);
+        var destinationPath = destinationFolder.Path + relativeSuffix;
+        var rootName = destinationFolder.Root;
+        var fullKey = rootName == ResourceKey.DefaultRoot
+            ? destinationPath
+            : $"{rootName}:{destinationPath}";
+        return ResourceKey.TryCreate(fullKey, out descendantDestination);
     }
 
     public async Task<Result<CopyResult>> CopyAsync(ResourceKey source, ResourceKey destination)
@@ -396,14 +431,14 @@ public sealed class FileStorage : IFileStorage
                 // Matches OS Explorer's "delete read-only file?" behaviour
                 // (proceed when the user explicitly invokes delete).
                 ClearReadOnlyIfSet(sourcePath);
-                File.Delete(sourcePath);
+                await RetryTransientIOAsync(() => File.Delete(sourcePath));
             }
             else
             {
                 // Recursive delete fails on any contained read-only file, so
                 // strip the attribute throughout the subtree first.
                 ClearReadOnlyRecursive(sourcePath);
-                Directory.Delete(sourcePath, recursive: true);
+                await RetryTransientIOAsync(() => Directory.Delete(sourcePath, recursive: true));
             }
         }
         catch (UnauthorizedAccessException ex)
@@ -431,8 +466,6 @@ public sealed class FileStorage : IFileStorage
                 _messengerService.Send(descendantRemovedMessage);
             }
         }
-
-        await Task.CompletedTask;
 
         var deleteResult = new DeleteResult(sidecarOutcome);
         return deleteResult;
@@ -903,7 +936,7 @@ public sealed class FileStorage : IFileStorage
                 Directory.CreateDirectory(destFolder);
             }
 
-            await MoveWithRetryAsync(() => File.Move(sourceSidecarPath, destSidecarPath));
+            await RetryTransientIOAsync(() => File.Move(sourceSidecarPath, destSidecarPath));
             return SidecarOutcome.Cascaded;
         }
         catch (Exception ex)
@@ -1200,18 +1233,18 @@ public sealed class FileStorage : IFileStorage
         }
     }
 
-    // Runs a synchronous move action under the chokepoint's bounded-retry
+    // Runs a synchronous filesystem action under the chokepoint's bounded-retry
     // policy. A file briefly held open by AV, indexer, or sync clients after
     // creation clears within milliseconds; the same retry budget the read and
     // write paths use catches the common races. Non-IO exceptions and the final
     // attempt's IOException propagate unchanged so persistent failures surface.
-    private static async Task MoveWithRetryAsync(Action moveAction)
+    private static async Task RetryTransientIOAsync(Action action)
     {
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             try
             {
-                moveAction();
+                action();
                 return;
             }
             catch (IOException) when (attempt < MaxAttempts)
@@ -1232,7 +1265,7 @@ public sealed class FileStorage : IFileStorage
         try
         {
             await File.WriteAllBytesAsync(tempPath, bytes);
-            await MoveWithRetryAsync(() => File.Move(tempPath, resourcePath, overwrite: true));
+            await RetryTransientIOAsync(() => File.Move(tempPath, resourcePath, overwrite: true));
         }
         catch
         {
