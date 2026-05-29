@@ -26,6 +26,7 @@ public class DocumentsService : IDocumentsService, IDisposable
     private readonly DocumentEditorPreferenceStore _preferenceStore;
     private readonly DocumentViewFactory _viewFactory;
     private readonly DocumentLayoutStore _layoutStore;
+    private readonly ReloadHintStore _reloadHintStore = new(TimeSpan.FromSeconds(2));
     private bool _disposed;
 
     private IDocumentsPanel DocumentsPanel => _workspaceWrapper.WorkspaceService.DocumentsPanel;
@@ -394,6 +395,16 @@ public class DocumentsService : IDocumentsService, IDisposable
         };
 
         _ = changeDocumentResource();
+    }
+
+    public void RegisterReloadHint(ResourceKey fileResource, ReloadHint hint)
+    {
+        _reloadHintStore.Register(fileResource, hint);
+    }
+
+    public ReloadHint ConsumeReloadHint(ResourceKey fileResource)
+    {
+        return _reloadHintStore.Consume(fileResource);
     }
 
     public void Dispose()

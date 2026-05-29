@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
@@ -11,6 +12,8 @@ using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
+using Celbridge.Workspace;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
@@ -495,6 +498,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             return;
         }
 
+        // Resolve the workspace-scoped documents service at call time, then drain
+        // any reload hint registered by the command that triggered this reload.
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        var hint = documentsService.ConsumeReloadHint(_viewModel.FileResource);
+        bool preserveViewState = hint == ReloadHint.PreserveViewState;
+
         string? savedState = null;
         try
         {
@@ -517,7 +527,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
         try
         {
-            await Host.NotifyExternalChangeAsync();
+            await Host.NotifyExternalChangeAsync(preserveViewState);
 
             var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(ReloadStateWaitSeconds)));
             if (completed != reloadComplete.Task)

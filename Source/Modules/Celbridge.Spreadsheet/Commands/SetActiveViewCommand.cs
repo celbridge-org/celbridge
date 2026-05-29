@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Documents;
 using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
@@ -212,6 +213,13 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 
                 worksheet.SheetView.TopLeftCellAddress = scrollAnchor.Address;
             }
+
+            // Tell the next reload of this workbook to honour the on-disk view
+            // state rather than the user's pre-reload scroll/selection. Without
+            // this hint the watcher-driven reload would treat the user's local
+            // view as the source of truth and silently override our changes.
+            var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
+            documentsService.RegisterReloadHint(workbookResource, ReloadHint.DiskWinsOnViewState);
 
             var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
             if (saveResult.IsFailure)
