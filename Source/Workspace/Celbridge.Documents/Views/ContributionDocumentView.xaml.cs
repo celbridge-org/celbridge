@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
@@ -11,6 +12,8 @@ using Celbridge.Server;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
+using Celbridge.Workspace;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 
@@ -57,6 +60,15 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
     // Save tracking state for async save coordination with WebView
     private bool _isSaveInProgress;
     private bool _hasPendingSave;
+
+    // Reload coalescing: at most one external-reload runs at a time. FileSystemWatcher
+    // often emits duplicate Changed events for a single logical write, and the
+    // editor host cannot tolerate concurrent NotifyExternalChangeAsync calls.
+    // Requests arriving while a reload is in flight collapse into a single
+    // follow-up pass.
+    private readonly object _reloadLock = new();
+    private bool _isReloadInProgress;
+    private bool _hasPendingReload;
 
     // Completed by InitContributionViewAsync with the init outcome. LoadContent
     // triggers the init on first call and awaits this TCS so the open-document
@@ -486,6 +498,13 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             return;
         }
 
+        // Resolve the workspace-scoped documents service at call time, then drain
+        // any reload hint registered by the command that triggered this reload.
+        var workspaceWrapper = _serviceProvider.GetRequiredService<IWorkspaceWrapper>();
+        var documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
+        var hint = documentsService.ConsumeReloadHint(_viewModel.FileResource);
+        bool preserveViewState = hint == ReloadHint.PreserveViewState;
+
         string? savedState = null;
         try
         {
@@ -508,7 +527,7 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
         try
         {
-            await Host.NotifyExternalChangeAsync();
+            await Host.NotifyExternalChangeAsync(preserveViewState);
 
             var completed = await Task.WhenAny(reloadComplete.Task, Task.Delay(TimeSpan.FromSeconds(ReloadStateWaitSeconds)));
             if (completed != reloadComplete.Task)
@@ -699,15 +718,65 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
     private async void ViewModel_ReloadRequested(object? sender, EventArgs e)
     {
-        // This method is async void because it's an event handler. All exceptions must be caught
-        // so that a faulty editor cannot crash the process.
-        try
+        // Coalesce concurrent reload requests. FileSystemWatcher commonly emits
+        // duplicate Changed events for one logical write; a second reload arriving
+        // mid-flight folds into one follow-up pass instead of racing the first.
+        lock (_reloadLock)
         {
-            await ReloadWithStatePreservationAsync();
+            if (_isReloadInProgress)
+            {
+                _hasPendingReload = true;
+                return;
+            }
+            _isReloadInProgress = true;
         }
-        catch (Exception ex)
+
+        while (true)
         {
-            _logger.LogError(ex, "External reload failed for contribution document");
+            // async void: catch everything so a faulty editor cannot crash the process.
+            try
+            {
+                await ReloadWithStatePreservationAsync();
+                // Sync the ViewModel's external-change tracking with the disk
+                // content we just loaded so duplicate watcher events for this
+                // write hash-match the cache on the next iteration.
+                await _viewModel.UpdateFileTrackingInfoAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "External reload failed for contribution document");
+            }
+
+            // Drain any pending request. Skip the follow-up reload when the disk
+            // content has not actually changed since the reload we just ran (the
+            // duplicate-watcher-event case).
+            bool runFollowUp = false;
+            while (!runFollowUp)
+            {
+                bool wasPending;
+                lock (_reloadLock)
+                {
+                    wasPending = _hasPendingReload;
+                    _hasPendingReload = false;
+                    if (!wasPending)
+                    {
+                        _isReloadInProgress = false;
+                        return;
+                    }
+                }
+
+                try
+                {
+                    runFollowUp = await _viewModel.IsFileChangedExternallyAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Treat a failed disk probe as "assume changed" so we don't
+                    // silently drop a legitimately-queued reload.
+                    _logger.LogDebug(ex, "External change probe failed; running follow-up reload defensively");
+                    runFollowUp = true;
+                }
+            }
         }
     }
 

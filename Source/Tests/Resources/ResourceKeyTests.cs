@@ -23,7 +23,7 @@ public class ResourceKeyTests
     {
         // Valid keys should not throw
         var validKey = new ResourceKey("Some/Path/File.txt");
-        validKey.ToString().Should().Be("Some/Path/File.txt");
+        validKey.ToString().Should().Be("project:Some/Path/File.txt");
 
         // Empty key is valid
         var emptyKey = new ResourceKey("");
@@ -61,7 +61,7 @@ public class ResourceKeyTests
     {
         // Valid string converts successfully
         ResourceKey key = "Some/Path/File.txt";
-        key.ToString().Should().Be("Some/Path/File.txt");
+        key.ToString().Should().Be("project:Some/Path/File.txt");
 
         // Invalid string throws
         var act = () => { ResourceKey invalid = "../escape"; };
@@ -73,7 +73,7 @@ public class ResourceKeyTests
     {
         // Valid keys should not throw
         var validKey = ResourceKey.Create("Some/Path/File.txt");
-        validKey.ToString().Should().Be("Some/Path/File.txt");
+        validKey.ToString().Should().Be("project:Some/Path/File.txt");
 
         // Empty key is valid
         var emptyKey = ResourceKey.Create("");
@@ -95,7 +95,7 @@ public class ResourceKeyTests
     {
         // Valid keys should succeed
         ResourceKey.TryCreate("Some/Path/File.txt", out var validKey).Should().BeTrue();
-        validKey.ToString().Should().Be("Some/Path/File.txt");
+        validKey.ToString().Should().Be("project:Some/Path/File.txt");
 
         // Empty key is valid
         ResourceKey.TryCreate("", out var emptyKey).Should().BeTrue();
@@ -133,22 +133,22 @@ public class ResourceKeyTests
     public void GetParentReturnsParentFolder()
     {
         // Nested path returns parent folder
-        new ResourceKey("a/b/file.txt").GetParent().ToString().Should().Be("a/b");
+        new ResourceKey("a/b/file.txt").GetParent().ToString().Should().Be("project:a/b");
 
         // Deeply nested path
-        new ResourceKey("a/b/c/d/file.txt").GetParent().ToString().Should().Be("a/b/c/d");
+        new ResourceKey("a/b/c/d/file.txt").GetParent().ToString().Should().Be("project:a/b/c/d");
 
         // Root-level file returns empty
-        new ResourceKey("file.txt").GetParent().ToString().Should().Be("");
+        new ResourceKey("file.txt").GetParent().ToString().Should().Be("project:");
 
         // Empty key returns empty
-        ResourceKey.Empty.GetParent().ToString().Should().Be("");
+        ResourceKey.Empty.GetParent().ToString().Should().Be("project:");
 
         // Path with spaces in segments
-        new ResourceKey("My Docs/My File.txt").GetParent().ToString().Should().Be("My Docs");
+        new ResourceKey("My Docs/My File.txt").GetParent().ToString().Should().Be("project:My Docs");
 
         // Single subfolder
-        new ResourceKey("docs/readme.md").GetParent().ToString().Should().Be("docs");
+        new ResourceKey("docs/readme.md").GetParent().ToString().Should().Be("project:docs");
     }
 
     [Test]
@@ -158,12 +158,12 @@ public class ResourceKeyTests
 
         // Valid segment
         var combined = baseKey.Combine("file.txt");
-        combined.ToString().Should().Be("folder/file.txt");
+        combined.ToString().Should().Be("project:folder/file.txt");
 
         // Empty base key
         var emptyBase = ResourceKey.Empty;
         var fromEmpty = emptyBase.Combine("file.txt");
-        fromEmpty.ToString().Should().Be("file.txt");
+        fromEmpty.ToString().Should().Be("project:file.txt");
 
         // Invalid segment with path separator throws
         var act1 = () => baseKey.Combine("sub/file.txt");
@@ -183,6 +183,128 @@ public class ResourceKeyTests
     {
         var emptyKey = ResourceKey.Empty;
         emptyKey.IsEmpty.Should().BeTrue();
-        emptyKey.ToString().Should().Be("");
+        // Empty key still carries its (default) root prefix in canonical form;
+        // use IsEmpty to detect the "no path" case.
+        emptyKey.ToString().Should().Be("project:");
+    }
+
+    [Test]
+    public void ImplicitProjectRootRoundTripsCleanly()
+    {
+        // Regression guard: ResourceKey "project:foo" round-trips through the implicit
+        // string operator without throwing. Today's pre-redesign IsValidKey rejected the
+        // ':' character via Path.GetInvalidFileNameChars() on Windows.
+        ResourceKey rk = "project:foo";
+        rk.Root.Should().Be("project");
+        rk.Path.Should().Be("foo");
+        rk.FullKey.Should().Be("project:foo");
+        rk.ToString().Should().Be("project:foo");
+    }
+
+    [Test]
+    public void RootAccessorReturnsParsedOrDefaultRoot()
+    {
+        new ResourceKey("foo/bar").Root.Should().Be("project");
+        new ResourceKey("project:foo/bar").Root.Should().Be("project");
+        new ResourceKey("temp:staging/foo").Root.Should().Be("temp");
+        new ResourceKey("logs:session.log").Root.Should().Be("logs");
+        ResourceKey.Empty.Root.Should().Be("project");
+    }
+
+    [Test]
+    public void PathAccessorReturnsPathPortionOnly()
+    {
+        new ResourceKey("foo/bar").Path.Should().Be("foo/bar");
+        new ResourceKey("project:foo/bar").Path.Should().Be("foo/bar");
+        new ResourceKey("temp:staging/foo").Path.Should().Be("staging/foo");
+        new ResourceKey("temp:").Path.Should().Be("");
+        ResourceKey.Empty.Path.Should().Be("");
+    }
+
+    [Test]
+    public void FullKeyAlwaysCarriesRootPrefix()
+    {
+        new ResourceKey("foo/bar").FullKey.Should().Be("project:foo/bar");
+        new ResourceKey("project:foo/bar").FullKey.Should().Be("project:foo/bar");
+        new ResourceKey("temp:staging/foo").FullKey.Should().Be("temp:staging/foo");
+        new ResourceKey("temp:").FullKey.Should().Be("temp:");
+        ResourceKey.Empty.FullKey.Should().Be("project:");
+    }
+
+    [Test]
+    public void ToStringEmitsCanonicalForm()
+    {
+        // ToString always carries the root prefix, including "project:" for the default
+        // root, so any value surfaced through ToString matches the literal form the
+        // reference scanner detects and can be copy-pasted into a tracked reference.
+        new ResourceKey("foo/bar").ToString().Should().Be("project:foo/bar");
+        new ResourceKey("project:foo/bar").ToString().Should().Be("project:foo/bar");
+        new ResourceKey("temp:staging/foo").ToString().Should().Be("temp:staging/foo");
+        new ResourceKey("temp:").ToString().Should().Be("temp:");
+    }
+
+    [Test]
+    public void ImplicitAndExplicitProjectRootKeysAreEqual()
+    {
+        // "", "project:", and ResourceKey.Empty are equivalent forms.
+        var bareEmpty = new ResourceKey("");
+        var explicitProject = new ResourceKey("project:");
+        bareEmpty.Should().Be(explicitProject);
+        bareEmpty.Should().Be(ResourceKey.Empty);
+
+        // "foo" and "project:foo" are equivalent forms.
+        new ResourceKey("foo").Should().Be(new ResourceKey("project:foo"));
+        new ResourceKey("foo/bar").GetHashCode().Should().Be(new ResourceKey("project:foo/bar").GetHashCode());
+    }
+
+    [Test]
+    public void InvalidRootsAreRejected()
+    {
+        // Empty root
+        ResourceKey.IsValidKey(":foo").Should().BeFalse();
+        // Uppercase root
+        ResourceKey.IsValidKey("Project:foo").Should().BeFalse();
+        // Single-character root
+        ResourceKey.IsValidKey("a:foo").Should().BeFalse();
+        // Root with leading digit
+        ResourceKey.IsValidKey("1ab:foo").Should().BeFalse();
+        // Root with invalid character
+        ResourceKey.IsValidKey("te-mp:foo").Should().BeFalse();
+
+        // Valid: lowercase letter followed by [a-z0-9_]+
+        ResourceKey.IsValidKey("temp:foo").Should().BeTrue();
+        ResourceKey.IsValidKey("logs:foo").Should().BeTrue();
+        ResourceKey.IsValidKey("a1:foo").Should().BeTrue();
+        ResourceKey.IsValidKey("a_b:foo").Should().BeTrue();
+    }
+
+    [Test]
+    public void CombineAndGetParentPreserveRoot()
+    {
+        var temp = new ResourceKey("temp:staging");
+        var combined = temp.Combine("file.txt");
+        combined.Root.Should().Be("temp");
+        combined.Path.Should().Be("staging/file.txt");
+        combined.ToString().Should().Be("temp:staging/file.txt");
+
+        var parent = combined.GetParent();
+        parent.Root.Should().Be("temp");
+        parent.Path.Should().Be("staging");
+        parent.ToString().Should().Be("temp:staging");
+    }
+
+    [Test]
+    public void IsDescendantOfRequiresSameRoot()
+    {
+        var tempFile = new ResourceKey("temp:staging/file.txt");
+        tempFile.IsDescendantOf(new ResourceKey("temp:staging")).Should().BeTrue();
+
+        // Different roots are never in a descendant relationship.
+        tempFile.IsDescendantOf(new ResourceKey("staging")).Should().BeFalse();
+        tempFile.IsDescendantOf(new ResourceKey("logs:staging")).Should().BeFalse();
+
+        // Project-root parent of project-root child still works.
+        new ResourceKey("foo/bar").IsDescendantOf(new ResourceKey("foo")).Should().BeTrue();
+        new ResourceKey("project:foo/bar").IsDescendantOf(new ResourceKey("foo")).Should().BeTrue();
     }
 }

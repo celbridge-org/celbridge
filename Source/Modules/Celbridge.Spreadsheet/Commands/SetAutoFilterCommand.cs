@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -23,14 +24,12 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(Sheet))
         {
@@ -44,9 +43,16 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
             return Result.Fail($"Auto-filter range must be an A1 cell range like 'A1:F100', was '{Range}'.");
         }
 
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             if (!workbook.Worksheets.Contains(Sheet))
             {
@@ -90,7 +96,11 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
                 ResultValue = new SetAutoFilterResult(true, filterRange.RangeAddress.ToStringRelative());
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
         }
         catch (Exception ex)
         {

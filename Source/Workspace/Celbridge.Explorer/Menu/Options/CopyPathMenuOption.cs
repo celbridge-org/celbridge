@@ -36,17 +36,20 @@ public class CopyPathMenuOption : IMenuOption<ExplorerMenuContext>
     public MenuItemState GetState(ExplorerMenuContext context)
     {
         return new MenuItemState(
-            IsVisible: context.IsSingleItemOrRootTargeted,
+            IsVisible: context.IsSingleItemOrProjectFolderTargeted,
             IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        var target = context.ClickedResource ?? context.RootFolder;
+        var target = context.ClickedResource ?? context.ProjectFolder;
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(target);
-        var filePath = Path.Combine(resourceRegistry.ProjectFolderPath, resourceKey.ToString());
+        // Use .Path (the path portion only) for filesystem-path construction;
+        // ToString() now emits the canonical "project:" prefix that does not
+        // belong in a filesystem path.
+        var filePath = Path.Combine(resourceRegistry.ProjectFolderPath, resourceKey.Path);
 
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {

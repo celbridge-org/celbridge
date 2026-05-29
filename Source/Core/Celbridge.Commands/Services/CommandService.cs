@@ -106,8 +106,7 @@ public class CommandService : ICommandService
 
         if (executionResult.IsFailure)
         {
-            return Result.Fail($"Command execution failed")
-                .WithErrors(executionResult);
+            return Result.Fail(executionResult);
         }
 
         return Result.Ok();
@@ -134,8 +133,7 @@ public class CommandService : ICommandService
 
         if (result.IsFailure)
         {
-            return Result<TResult>.Fail(result.FirstErrorMessage)
-                .WithErrors(result);
+            return Result.Fail(result);
         }
 
         // The command populated ResultValue during its ExecuteAsync().

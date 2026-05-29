@@ -19,4 +19,6 @@ Numeric, boolean, and date cells are skipped.
 
 ## Response shape
 
-For formula cells, `text` is the formula expression without the leading `=` (e.g. `"SUM(C2:F2)"` for the cell `=SUM(C2:F2)`).
+Each match carries `sheet`, `cell`, `text`, and `isFormula`. For formula cells, `text` is the formula expression without the leading `=` (e.g. `"SUM(C2:F2)"` for the cell `=SUM(C2:F2)`).
+
+`isFormula` lets the caller distinguish matches against formula text from matches against displayed values. Searching `"North"` would return both `A2` containing the literal string `"North"` (`isFormula: false`) and `B2` containing `=SUMIF(RawSales!B:B, "North", ...)` (`isFormula: true`) — the latter only matches because the formula expression contains `"North"` as a string literal argument, not because the cell's computed value matches.

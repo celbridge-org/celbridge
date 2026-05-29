@@ -23,23 +23,26 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
-        if (resolveResult.IsFailure)
+        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        if (infoResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error(infoResult);
         }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        if (infoResult.Value.Kind != StorageItemKind.File)
         {
-            return ToolResponse.Error($"File not found: '{resource}'");
+            return ToolResponse.Error($"File not found: '{resourceKey}'");
         }
 
-        var bytes = await File.ReadAllBytesAsync(resourcePath);
+        var bytesResult = await fileStorage.ReadAllBytesAsync(resourceKey);
+        if (bytesResult.IsFailure)
+        {
+            return ToolResponse.Error(bytesResult.FirstErrorMessage);
+        }
+        var bytes = bytesResult.Value;
         var base64 = Convert.ToBase64String(bytes);
-        var extension = Path.GetExtension(resourcePath).ToLowerInvariant();
+        var extension = Path.GetExtension(resourceKey.Path).ToLowerInvariant();
         var mimeType = GetMimeType(extension);
 
         var result = new FileReadBinaryResult(base64, mimeType, bytes.Length);

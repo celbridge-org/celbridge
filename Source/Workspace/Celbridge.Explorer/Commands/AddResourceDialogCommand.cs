@@ -72,7 +72,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
         }
 
-        var getDefaultResult = FindDefaultFileName(parentFolder);
+        var getDefaultResult = await FindDefaultFileNameAsync(parentFolder);
         if (getDefaultResult.IsFailure)
         {
             return Result.Fail()
@@ -130,7 +130,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             return Result.Fail($"Parent folder resource key '{DestFolderResource}' does not reference a folder resource.");
         }
 
-        var getDefaultResult = FindDefaultFolderName(parentFolder);
+        var getDefaultResult = await FindDefaultFolderNameAsync(parentFolder);
         if (getDefaultResult.IsFailure)
         {
             return Result.Fail()
@@ -174,9 +174,9 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     }
 
     /// <summary>
-    /// Find a default folder name that doesn't clash with an existing folder on disk. 
+    /// Find a default folder name that doesn't clash with an existing folder on disk.
     /// </summary>
-    private Result<string> FindDefaultFolderName(IFolderResource? parentFolder)
+    private async Task<Result<string>> FindDefaultFolderNameAsync(IFolderResource? parentFolder)
     {
         if (parentFolder is null)
         {
@@ -184,14 +184,8 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var resolveParentFolderResult = resourceRegistry.ResolveResourcePath(parentFolder);
-        if (resolveParentFolderResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to resolve path for parent folder")
-                .WithErrors(resolveParentFolderResult);
-        }
-        var parentFolderPath = resolveParentFolderResult.Value;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFolderName = string.Empty;
         int folderNumber = 1;
@@ -199,9 +193,10 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         {
             var candidateName = _stringLocalizer.GetString(DefaultFolderNameKey, folderNumber).ToString();
 
-            var candidatePath = Path.Combine(parentFolderPath, candidateName);
-            if (!Directory.Exists(candidatePath) &&
-                !File.Exists(candidatePath))
+            var candidateKey = parentFolderKey.Combine(candidateName);
+            var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.NotFound)
             {
                 defaultFolderName = candidateName;
                 break;
@@ -213,10 +208,10 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
     }
 
     /// <summary>
-    /// Find a default file name that doesn't clash with an existing file on disk. 
+    /// Find a default file name that doesn't clash with an existing file on disk.
     /// Uses the previously saved file extension from settings.
     /// </summary>
-    private Result<string> FindDefaultFileName(IFolderResource? parentFolder)
+    private async Task<Result<string>> FindDefaultFileNameAsync(IFolderResource? parentFolder)
     {
         if (parentFolder is null)
         {
@@ -224,18 +219,13 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension
         var extension = editorSettings.PreviousNewFileExtension;
 
-        var resolveParentFolderResult = resourceRegistry.ResolveResourcePath(parentFolder);
-        if (resolveParentFolderResult.IsFailure)
-        {
-            return Result<string>.Fail($"Failed to resolve path for parent folder")
-                .WithErrors(resolveParentFolderResult);
-        }
-        var parentFolderPath = resolveParentFolderResult.Value;
+        var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFileName = string.Empty;
         int fileNumber = 1;
@@ -246,9 +236,10 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             // Replace the default extension with the preferred extension
             candidateName = Path.ChangeExtension(candidateName, extension);
 
-            var candidatePath = Path.Combine(parentFolderPath, candidateName);
-            if (!Directory.Exists(candidatePath) &&
-                !File.Exists(candidatePath))
+            var candidateKey = parentFolderKey.Combine(candidateName);
+            var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.NotFound)
             {
                 defaultFileName = candidateName;
                 break;

@@ -31,9 +31,4 @@
     <PackageReference Include="StreamJsonRpc" />
   </ItemGroup>
 
-  <!-- Link the shared resw localization file so that WebViewLocalizationHelper can enumerate the available string keys -->
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\Celbridge\Resources\Strings\en-US\Resources.resw" Link="Assets\Resources.resw" LogicalName="Celbridge.Strings.Resources.resw" />
-  </ItemGroup>
-
 </Project>

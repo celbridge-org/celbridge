@@ -1,19 +1,43 @@
 namespace Celbridge.Resources;
 
 /// <summary>
+/// Snapshot of the .cel files in the project tree, partitioned by parse state
+/// and orphan-ness. Produced by the classifier on every UpdateResourceRegistry
+/// pass; consumed by project-load diagnostics and data_check_project.
+/// Parse state (Healthy / Broken) and orphan-ness are orthogonal: an orphan
+/// .cel file with malformed content appears in both Broken and Orphan. Files
+/// ending in .cel.cel are surfaced as Broken and are never treated as sidecars.
+/// </summary>
+public record SidecarReport(
+    IReadOnlyList<ResourceKey> Healthy,
+    IReadOnlyList<ResourceKey> Broken,
+    IReadOnlyList<ResourceKey> Orphan);
+
+/// <summary>
+/// A file resource paired with its absolute filesystem path, as returned by
+/// IResourceRegistry.GetAllFileResources.
+/// </summary>
+public record FileResourceEntry(ResourceKey Resource, string Path);
+
+/// <summary>
 /// A data structure representing the resources in the project folder.
 /// </summary>
 public interface IResourceRegistry
 {
     /// <summary>
-    /// The path of the project folder.
+    /// The path of the project folder. Empty until InitializeProjectRoot is called.
     /// </summary>
-    string ProjectFolderPath { get; set; }
+    string ProjectFolderPath { get; }
 
     /// <summary>
-    /// The root folder resource that contains all the resources in the project.
+    /// Sets the project folder path and registers the project root handler.
     /// </summary>
-    IFolderResource RootFolder { get; }
+    void InitializeProjectRoot(string projectFolderPath);
+
+    /// <summary>
+    /// The project folder resource that contains all the resources in the project.
+    /// </summary>
+    IFolderResource ProjectFolder { get; }
 
     /// <summary>
     /// Returns the resource key for a resource.
@@ -26,9 +50,9 @@ public interface IResourceRegistry
     List<ResourceKey> GetResourceKeys(IEnumerable<IResource> resources);
 
     /// <summary>
-    /// Returns the resource key for a resource at the specified path in the project.
-    /// The resource key will be generated even if the resource does not exist yet in the project.
-    /// Fails if the path is not within the project folder.
+    /// Returns the resource key for an absolute filesystem path under any registered root.
+    /// The resource key is generated even if no resource exists at that path yet.
+    /// Fails when the path is not under any registered root.
     /// </summary>
     Result<ResourceKey> GetResourceKey(string resourcePath);
 
@@ -60,35 +84,26 @@ public interface IResourceRegistry
     Result<IResource> GetResource(ResourceKey resource);
 
     /// <summary>
-    /// Returns a resolved destination resource key for a resource transfer.
-    /// If destResource specifies an existing folder in the project, then the name of the source resource is
-    /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
-    /// </summary>
-    ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource);
-
-    /// <summary>
-    /// Returns a resolved destination resource key for a resource transfer from a source path to a destination resource.
-    /// If destResource specifies an existing folder in the project, then the name of the source resource is
-    /// appended to the destination folder resource. In all other situations, destResource is returned unchanged.
-    /// </summary>
-    ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource);
-
-    /// <summary>
-    /// Returns the folder resource associated with the context menu item for a resource.
-    /// If the resource is a folder, then the folder is returned.
-    /// If the resource is a file, then the file's parent folder is returned.
-    /// If the resource is null, then the root folder is returned.
-    /// </summary>
-    ResourceKey GetContextMenuItemFolder(IResource? resource);
-
-    /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
     Result UpdateResourceRegistry();
 
     /// <summary>
-    /// Returns all file resources in the registry with their resource keys and absolute paths.
+    /// Returns all file resources for the project root with their resource keys and absolute paths.
     /// The results are sorted by path for stable ordering.
     /// </summary>
-    List<(ResourceKey Resource, string Path)> GetAllFileResources();
+    IReadOnlyList<FileResourceEntry> GetAllFileResources();
+
+    /// <summary>
+    /// Returns all file resources for the specified root with their resource keys and absolute paths.
+    /// Returns an empty list for roots without indexed tree state.
+    /// </summary>
+    IReadOnlyList<FileResourceEntry> GetAllFileResources(string root);
+
+    /// <summary>
+    /// Returns the SidecarReport from the last completed UpdateResourceRegistry
+    /// pass. Project-load diagnostics and data_check_project consume this to
+    /// surface broken and orphan .cel files.
+    /// </summary>
+    SidecarReport GetSidecarReport();
 }

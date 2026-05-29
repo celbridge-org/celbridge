@@ -37,27 +37,28 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
             return Result.Fail("Search text cannot be empty");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var fileStorage = workspaceService.FileStorage;
 
-        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        return await ReplaceOnDisk(resourceService, resourcePath);
+        return await ReplaceOnDisk(fileStorage);
     }
 
-    private async Task<Result> ReplaceOnDisk(IResourceService resourceService, string resourcePath)
+    private async Task<Result> ReplaceOnDisk(IFileStorage fileStorage)
     {
-        var content = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read file: '{FileResource}'")
+                .WithErrors(readResult);
+        }
+        var content = readResult.Value;
 
         // Match positions in the post-edit buffer plus the actual substituted
         // text for each match. Regex back-references can make every match's
@@ -80,7 +81,7 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
 
         if (replacementCount > 0)
         {
-            var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, newContent);
+            var writeResult = await fileStorage.WriteAllTextAsync(FileResource, newContent);
             if (writeResult.IsFailure)
             {
                 return writeResult;

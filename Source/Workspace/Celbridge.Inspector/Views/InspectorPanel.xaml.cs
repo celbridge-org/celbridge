@@ -53,15 +53,15 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         _panelFocusService.SetFocusedPanel(WorkspacePanel.Inspector);
     }
 
-    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ViewModel.SelectedResource))
         {
-            UpdateSelectedResource(ViewModel.SelectedResource);
+            await UpdateSelectedResourceAsync(ViewModel.SelectedResource);
         }
     }
 
-    private void UpdateSelectedResource(ResourceKey resource)
+    private async Task UpdateSelectedResourceAsync(ResourceKey resource)
     {
         EntityEditor.ClearComponentListPanel();
 
@@ -86,7 +86,7 @@ public sealed partial class InspectorPanel : UserControl, IInspectorPanel
         inspectorElements.Add(nameInspector);
 
         // Optional resource inspector
-        var resourceInspectorResult = factory.CreateResourceInspector(resource);
+        var resourceInspectorResult = await factory.CreateResourceInspectorAsync(resource);
         if (resourceInspectorResult.IsSuccess)
         {
             var resourceInspector = resourceInspectorResult.Value as UserControl;

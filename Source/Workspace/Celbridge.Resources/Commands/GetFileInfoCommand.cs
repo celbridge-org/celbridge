@@ -21,7 +21,9 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             ModifiedUtc: DateTime.MinValue,
             Extension: string.Empty,
             IsText: false,
-            LineCount: null);
+            LineCount: null,
+            SidecarKey: null,
+            SidecarStatus: null);
 
     public GetFileInfoCommand(
         IWorkspaceWrapper workspaceWrapper,
@@ -33,9 +35,9 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileStorage = workspaceService.FileStorage;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
@@ -44,41 +46,67 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         }
         var resourcePath = resolveResult.Value;
 
-        if (File.Exists(resourcePath))
+        var infoResult = await fileStorage.GetInfoAsync(Resource);
+        if (infoResult.IsFailure)
         {
-            var fileInfo = new FileInfo(resourcePath);
-            var isText = IsTextFile(_textBinarySniffer, resourcePath);
+            return Result.Fail($"Failed to probe resource: '{Resource}'")
+                .WithErrors(infoResult);
+        }
+        var info = infoResult.Value;
+
+        if (info.Kind == StorageItemKind.File)
+        {
+            var extension = Path.GetExtension(resourcePath);
+            var isText = !_textBinarySniffer.IsBinaryExtension(extension)
+                && _textBinarySniffer.IsTextFile(resourcePath).IsSuccess
+                && _textBinarySniffer.IsTextFile(resourcePath).Value;
             int? lineCount = null;
 
             if (isText)
             {
-                lineCount = File.ReadAllLines(resourcePath).Length;
+                lineCount = await CountLinesAsync(fileStorage, Resource);
+            }
+
+            // Surface the paired sidecar's key and current parse state when
+            // the registry has recorded one for this file. Sidecars belong to
+            // file resources only; folders don't have their own sidecars in v1.
+            ResourceKey? sidecarKey = null;
+            CelFileStatus? sidecarStatus = null;
+            var resourceResult = resourceRegistry.GetResource(Resource);
+            if (resourceResult.IsSuccess
+                && resourceResult.Value is IFileResource fileResource
+                && fileResource.Sidecar is not null)
+            {
+                sidecarKey = fileResource.Sidecar.Key;
+                sidecarStatus = fileResource.Sidecar.Status;
             }
 
             ResultValue = new FileInfoSnapshot(
                 Exists: true,
                 IsFile: true,
-                Size: fileInfo.Length,
-                ModifiedUtc: fileInfo.LastWriteTimeUtc,
-                Extension: fileInfo.Extension,
+                Size: info.Size,
+                ModifiedUtc: info.ModifiedUtc,
+                Extension: extension,
                 IsText: isText,
-                LineCount: lineCount);
+                LineCount: lineCount,
+                SidecarKey: sidecarKey,
+                SidecarStatus: sidecarStatus);
 
             return Result.Ok();
         }
 
-        if (Directory.Exists(resourcePath))
+        if (info.Kind == StorageItemKind.Folder)
         {
-            var directoryInfo = new DirectoryInfo(resourcePath);
-
             ResultValue = new FileInfoSnapshot(
                 Exists: true,
                 IsFile: false,
                 Size: 0,
-                ModifiedUtc: directoryInfo.LastWriteTimeUtc,
+                ModifiedUtc: info.ModifiedUtc,
                 Extension: string.Empty,
                 IsText: false,
-                LineCount: null);
+                LineCount: null,
+                SidecarKey: null,
+                SidecarStatus: null);
 
             return Result.Ok();
         }
@@ -86,15 +114,24 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         return Result.Fail($"Resource not found: '{Resource}'");
     }
 
-    private static bool IsTextFile(ITextBinarySniffer textBinarySniffer, string filePath)
+    // Streams the file via the chokepoint and counts lines without loading
+    // the entire content into memory. Used for the LineCount field on the
+    // FileInfoSnapshot when the resource is text.
+    private static async Task<int> CountLinesAsync(IFileStorage fileStorage, ResourceKey resource)
     {
-        var extension = Path.GetExtension(filePath);
-        if (textBinarySniffer.IsBinaryExtension(extension))
+        var openResult = await fileStorage.OpenReadAsync(resource);
+        if (openResult.IsFailure)
         {
-            return false;
+            return 0;
         }
 
-        var result = textBinarySniffer.IsTextFile(filePath);
-        return result.IsSuccess && result.Value;
+        int count = 0;
+        await using var stream = openResult.Value;
+        using var reader = new StreamReader(stream);
+        while (await reader.ReadLineAsync() is not null)
+        {
+            count++;
+        }
+        return count;
     }
 }

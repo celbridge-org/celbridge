@@ -7,6 +7,7 @@ namespace Celbridge.Documents.Views;
 public abstract partial class DocumentView : UserControl, IDocumentView
 {
     private IResourceRegistry? _resourceRegistry;
+    private IFileStorage? _fileStorage;
 
     /// <summary>
     /// Provides access to the resource registry for file resource validation.
@@ -26,6 +27,23 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
+    /// Provides access to the file storage chokepoint.
+    /// Lazily initialized from the workspace wrapper.
+    /// </summary>
+    protected IFileStorage FileStorage
+    {
+        get
+        {
+            if (_fileStorage is null)
+            {
+                var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
+                _fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+            }
+            return _fileStorage;
+        }
+    }
+
+    /// <summary>
     /// Returns the ViewModel for this document view.
     /// Used by the base class to provide default SetFileResource and FileResource implementations.
     /// </summary>
@@ -33,35 +51,55 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public virtual ResourceKey FileResource => DocumentViewModel.FileResource;
 
+    private DocumentEditorId _editorId = DocumentEditorId.Empty;
+
+    // Set once by the constructing factory; throws on any subsequent set.
+    public DocumentEditorId EditorId
+    {
+        get => _editorId;
+        set
+        {
+            if (!_editorId.IsEmpty)
+            {
+                throw new InvalidOperationException(
+                    $"DocumentView.EditorId is set once and immutable thereafter. " +
+                    $"Current value: '{_editorId}'; attempted to set: '{value}'.");
+            }
+            _editorId = value;
+        }
+    }
+
     /// <summary>
     /// Sets the file resource for the document view.
     /// Validates the resource exists in the registry and on disk, then sets the ViewModel properties.
     /// Subclasses can override to add additional logic (call base first).
     /// </summary>
-    public virtual Task<Result> SetFileResource(ResourceKey fileResource)
+    public virtual async Task<Result> SetFileResource(ResourceKey fileResource)
     {
         if (ResourceRegistry.GetResource(fileResource).IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"File resource does not exist in resource registry: {fileResource}"));
+            return Result.Fail($"File resource does not exist in resource registry: {fileResource}");
         }
 
         var resolveResult = ResourceRegistry.ResolveResourcePath(fileResource);
         if (resolveResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
-                .WithErrors(resolveResult));
+            return Result.Fail($"Failed to resolve path for resource: '{fileResource}'")
+                .WithErrors(resolveResult);
         }
         var filePath = resolveResult.Value;
 
-        if (!File.Exists(filePath))
+        var infoResult = await FileStorage.GetInfoAsync(fileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return Task.FromResult<Result>(Result.Fail($"File resource does not exist on disk: {fileResource}"));
+            return Result.Fail($"File resource does not exist on disk: {fileResource}");
         }
 
         DocumentViewModel.FileResource = fileResource;
         DocumentViewModel.FilePath = filePath;
 
-        return Task.FromResult(Result.Ok());
+        return Result.Ok();
     }
 
     public abstract Task<Result> LoadContent();

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -20,7 +21,7 @@ public partial class ExplorerTools
             return ToolResponse.InvalidResourceKey(destinationResource);
         }
 
-        var copyResult = await ExecuteCommandAsync<ICopyResourceCommand>(command =>
+        var copyResult = await ExecuteCommandAsync<ICopyResourceCommand, CopyCommandResult>(command =>
         {
             command.SourceResources = new List<ResourceKey> { sourceResourceKey };
             command.DestResource = destinationResourceKey;
@@ -31,6 +32,22 @@ public partial class ExplorerTools
             return ToolResponse.Error(copyResult);
         }
 
-        return ToolResponse.Success("ok");
+        var detail = copyResult.Value;
+
+        // Copy doesn't rewrite references, so SkippedReferencers is always empty
+        // here. FailedResources still matters: a batch where one resource failed
+        // mechanically (file locked etc.) surfaces the partial outcome.
+        if (detail.FailedResources.Count == 0)
+        {
+            return ToolResponse.Success("ok");
+        }
+
+        var payload = new
+        {
+            status = "partial_failure",
+            failedResources = detail.FailedResources.Select(r => r.ToString()).ToArray(),
+        };
+
+        return ToolResponse.Success(JsonSerializer.Serialize(payload, JsonOptions));
     }
 }

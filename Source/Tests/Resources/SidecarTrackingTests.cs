@@ -1,0 +1,163 @@
+using Celbridge.Explorer.Services;
+using Celbridge.Messaging.Services;
+using Celbridge.Resources;
+using Celbridge.Resources.Services;
+using Celbridge.UserInterface.Services;
+
+namespace Celbridge.Tests.Resources;
+
+[TestFixture]
+public class SidecarTrackingTests
+{
+    private string _projectFolderPath = null!;
+    private ResourceRegistry _registry = null!;
+
+    [SetUp]
+    public void Setup()
+    {
+        _projectFolderPath = Path.Combine(
+            Path.GetTempPath(),
+            "Celbridge",
+            nameof(SidecarTrackingTests),
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_projectFolderPath);
+
+        _registry = new ResourceRegistry(
+            Substitute.For<ILogger<ResourceRegistry>>(),
+            new MessengerService(),
+            new ProjectTreeBuilder(new FileIconService()),
+            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
+            new RootHandlerRegistry());
+        _registry.InitializeProjectRoot(_projectFolderPath);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_projectFolderPath))
+        {
+            try
+            {
+                Directory.Delete(_projectFolderPath, true);
+            }
+            catch
+            {
+                // Best effort
+            }
+        }
+    }
+
+    [Test]
+    public void FileWithNoSidecar_HasNullSidecar()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var resourceResult = _registry.GetResource(new ResourceKey("foo.png"));
+        resourceResult.IsSuccess.Should().BeTrue();
+        var fileResource = resourceResult.Value as IFileResource;
+        fileResource!.Sidecar.Should().BeNull();
+    }
+
+    [Test]
+    public void HealthySidecar_IsPairedWithStatusHealthy()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "tags = [\"meeting\"]\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var resourceResult = _registry.GetResource(new ResourceKey("foo.png"));
+        resourceResult.IsSuccess.Should().BeTrue();
+        var fileResource = resourceResult.Value as IFileResource;
+        fileResource!.Sidecar.Should().NotBeNull();
+        fileResource.Sidecar!.Key.Should().Be(new ResourceKey("foo.png.cel"));
+        fileResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
+    }
+
+    [Test]
+    public void OrphanSidecar_AppearsInReportOrphan()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "tags = [\"x\"]\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Orphan.Should().Contain(new ResourceKey("foo.png.cel"));
+    }
+
+    [Test]
+    public void CelCelFile_AppearsInReportBroken()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "tags = [\"a\"]\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel.cel"),
+            "should = \"not be paired\"\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Broken.Should().Contain(new ResourceKey("foo.png.cel.cel"));
+
+        // foo.png.cel is still healthy and paired with foo.png; the .cel.cel
+        // file is not considered its sidecar.
+        report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
+        var fooPng = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        fooPng!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
+    }
+
+    [Test]
+    public void UnparseableSidecar_AppearsInReportBroken()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
+            "not = valid = toml = !!!");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
+
+        var parent = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        parent!.Sidecar!.Status.Should().Be(CelFileStatus.Broken);
+    }
+
+    [Test]
+    public void DeletingSidecar_FlipsParentToNullSidecar()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
+        var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
+        File.WriteAllText(sidecarPath, "tags = [\"x\"]\n");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var parent1 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        parent1!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
+
+        File.Delete(sidecarPath);
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var parent2 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
+        parent2!.Sidecar.Should().BeNull();
+    }
+
+    [Test]
+    public void BrokenOrphan_AppearsInBothBrokenAndOrphan()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "loose = invalid toml here = !!!");
+
+        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+
+        var report = _registry.GetSidecarReport();
+        report.Broken.Should().Contain(new ResourceKey("lonely.cel"));
+        report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
+    }
+
+    // Standalone .cel form recognition (foo.webview.cel, foo.note.cel) and the
+    // editor-registry hookup live in ResourceClassifierTests, which targets
+    // the classifier directly.
+}

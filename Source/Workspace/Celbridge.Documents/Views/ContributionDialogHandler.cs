@@ -47,8 +47,11 @@ internal sealed class ContributionDialogHandler : IHostDialog
 
         if (result.IsSuccess)
         {
-            var resourceKey = result.Value.ToString();
-            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourceKey);
+            // GetRelativePathFromResourceKey treats its input as the bare path
+            // portion of a project-rooted resource key, so we pass .Path to skip
+            // the canonical "project:" prefix that ToString() now emits.
+            var resourcePath = result.Value.Path;
+            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourcePath);
             return new PickImageResult(relativePath);
         }
 
@@ -63,8 +66,8 @@ internal sealed class ContributionDialogHandler : IHostDialog
 
         if (result.IsSuccess)
         {
-            var resourceKey = result.Value.ToString();
-            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourceKey);
+            var resourcePath = result.Value.Path;
+            var relativePath = _viewModel.GetRelativePathFromResourceKey(resourcePath);
             return new PickFileResult(relativePath);
         }
 

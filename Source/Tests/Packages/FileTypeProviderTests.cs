@@ -1,7 +1,10 @@
 using Celbridge.Packages;
 using Celbridge.Messaging;
 using Celbridge.Modules;
+using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
 
@@ -33,7 +36,32 @@ public class PackageServiceDocumentTypeTests
         var messengerService = Substitute.For<IMessengerService>();
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
         var localizationService = new PackageLocalizationService(localizationLogger);
-        _service = new PackageService(logger, _moduleService, messengerService, _featureFlags, localizationService);
+
+        var resourceRegistry = Substitute.For<IResourceRegistry>();
+        resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
+        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        {
+            var key = callInfo.Arg<ResourceKey>();
+            return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
+
+        var resourceService = Substitute.For<IResourceService>();
+        resourceService.Registry.Returns(resourceRegistry);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.ResourceService.Returns(resourceService);
+
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
+            Substitute.For<IMessengerService>(),
+            workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
+
+        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper);
+        _service = new PackageService(messengerService, registry);
     }
 
     [TearDown]
@@ -54,9 +82,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDocumentTypes_PackageWithTemplates_ReturnsDocumentType()
+    public async Task GetDocumentTypes_PackageWithTemplates_ReturnsDocumentType()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "test-editor",
             "TestEditor",
             [(".test", "TestEditor")],
@@ -73,9 +101,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDocumentTypes_PackageWithoutTemplates_Excluded()
+    public async Task GetDocumentTypes_PackageWithoutTemplates_Excluded()
     {
-        CreateBundledPackage("no-templates", "NoTemplates", [(".notemplate", "NoTemplates")], templates: null);
+        await CreateBundledPackage("no-templates", "NoTemplates", [(".notemplate", "NoTemplates")], templates: null);
 
         var documentTypes = _service.GetDocumentTypes();
 
@@ -83,9 +111,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDocumentTypes_WithLocalization_ResolvesDisplayName()
+    public async Task GetDocumentTypes_WithLocalization_ResolvesDisplayName()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "note",
             "Note",
             [(".note", "Note_FileType_Note")],
@@ -105,9 +133,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDocumentTypes_DisabledFeatureFlag_Excluded()
+    public async Task GetDocumentTypes_DisabledFeatureFlag_Excluded()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "flagged-editor",
             "FlaggedEditor",
             [(".flagged", "FlaggedEditor")],
@@ -125,9 +153,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDocumentTypes_EnabledFeatureFlag_Included()
+    public async Task GetDocumentTypes_EnabledFeatureFlag_Included()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "flagged-editor",
             "FlaggedEditor",
             [(".flagged", "FlaggedEditor")],
@@ -145,9 +173,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDocumentTypes_MultipleFileExtensions_AllIncluded()
+    public async Task GetDocumentTypes_MultipleFileExtensions_AllIncluded()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "multi-ext",
             "MultiExt",
             [(".md", "MultiExt"), (".markdown", "MultiExt")],
@@ -165,10 +193,10 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDefaultTemplateContent_PackageWithTemplate_ReturnsContent()
+    public async Task GetDefaultTemplateContent_PackageWithTemplate_ReturnsContent()
     {
         var templateContent = "{\"type\":\"doc\"}";
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "note",
             "Note",
             [(".note", "Note")],
@@ -197,9 +225,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDefaultTemplateContent_PackageWithoutDefaultTemplate_ReturnsNull()
+    public async Task GetDefaultTemplateContent_PackageWithoutDefaultTemplate_ReturnsNull()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "non-default",
             "NonDefault",
             [(".nd", "NonDefault")],
@@ -214,10 +242,10 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDefaultTemplateContent_CaseInsensitiveExtension()
+    public async Task GetDefaultTemplateContent_CaseInsensitiveExtension()
     {
         var templateContent = "template content";
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "case-test",
             "CaseTest",
             [(".TEST", "CaseTest")],
@@ -236,9 +264,9 @@ public class PackageServiceDocumentTypeTests
     }
 
     [Test]
-    public void GetDefaultTemplateContent_NoProject_StillFindsBundled()
+    public async Task GetDefaultTemplateContent_NoProject_StillFindsBundled()
     {
-        CreateBundledPackage(
+        await CreateBundledPackage(
             "orphan",
             "Orphan",
             [(".orphan", "Orphan")],
@@ -260,7 +288,7 @@ public class PackageServiceDocumentTypeTests
     /// Helper to create a bundled package folder with TOML manifests and optional files.
     /// Registers the path with the module service mock and re-discovers packages.
     /// </summary>
-    private void CreateBundledPackage(
+    private async Task CreateBundledPackage(
         string dirName,
         string packageName,
         (string Extension, string DisplayName)[] fileTypes,
@@ -340,6 +368,6 @@ public class PackageServiceDocumentTypeTests
         }
 
         _bundledPackagePaths.Add(packageDir);
-        _service.RegisterPackages(_tempProjectFolder);
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
     }
 }

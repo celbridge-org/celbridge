@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Server;
 using Celbridge.Spreadsheet;
 using Celbridge.Tools;
@@ -31,6 +33,16 @@ public class SpreadsheetToolTests
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _commandService = Substitute.For<ICommandService>();
 
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(SpreadsheetToolTests), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempFolder);
+
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        {
+            var key = callInfo.Arg<ResourceKey>();
+            return Result<string>.Ok(Path.Combine(_tempFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
 
@@ -40,12 +52,15 @@ public class SpreadsheetToolTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
+            Substitute.For<IMessengerService>(),
+            workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
+
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
         _services.GetRequiredService<ISpreadsheetReader>().Returns(_reader);
         _services.GetRequiredService<ICommandService>().Returns(_commandService);
-
-        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(SpreadsheetToolTests), Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_tempFolder);
     }
 
     [TearDown]
@@ -58,16 +73,16 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void GetInfo_DispatchesToReaderAndReturnsJson()
+    public async Task GetInfo_DispatchesToReaderAndReturnsJson()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
         var info = new WorkbookInfo(
             new[] { new SheetInfo("Q1", 1, "A1:B2", 2, 2, 0, 0) },
             Array.Empty<NamedRange>());
-        _reader.GetInfo(workbookPath).Returns(Result<WorkbookInfo>.Ok(info));
+        _reader.GetInfo(Arg.Any<Stream>()).Returns(Result<WorkbookInfo>.Ok(info));
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(tools.GetInfo("data/sales.xlsx"));
+        var root = ParseResult(await tools.GetInfo("data/sales.xlsx"));
 
         var sheets = root.GetProperty("sheets");
         sheets.GetArrayLength().Should().Be(1);
@@ -77,35 +92,31 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void GetInfo_NonXlsxResource_ReturnsError()
+    public async Task GetInfo_NonXlsxResource_ReturnsError()
     {
         var tools = new SpreadsheetTools(_services);
-        var result = tools.GetInfo("notes/readme.md");
+        var result = await tools.GetInfo("notes/readme.md");
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain(".xlsx");
     }
 
     [Test]
-    public void GetInfo_MissingFile_ReturnsError()
+    public async Task GetInfo_MissingFile_ReturnsError()
     {
-        var resource = new ResourceKey("data/missing.xlsx");
-        var missingPath = Path.Combine(_tempFolder, "missing.xlsx");
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(missingPath));
-
         var tools = new SpreadsheetTools(_services);
-        var result = tools.GetInfo("data/missing.xlsx");
+        var result = await tools.GetInfo("data/missing.xlsx");
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("File not found");
     }
 
     [Test]
-    public void ReadSheet_DispatchesToReaderWithOptions()
+    public async Task ReadSheet_DispatchesToReaderWithOptions()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
         ReadOptions? capturedOptions = null;
-        _reader.ReadSheet(workbookPath, "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
+        _reader.ReadSheet(Arg.Any<Stream>(), "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
             .Returns(Result<ReadResult>.Ok(
                 new ReadResult(
                     new object?[] { new object?[] { "Jan", 100.0 } },
@@ -114,7 +125,7 @@ public class SpreadsheetToolTests
                     Array.Empty<string>())));
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(tools.ReadSheet("data/sales.xlsx", "Q1", "A1:B2", "values", false, 0, 0));
+        var root = ParseResult(await tools.ReadSheet("data/sales.xlsx", "Q1", "A1:B2", "values", false, 0, 0));
 
         capturedOptions.Should().NotBeNull();
         capturedOptions!.Range.Should().Be("A1:B2");
@@ -125,39 +136,39 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void ReadSheet_FormulasMode_PassesFormulasModeThrough()
+    public async Task ReadSheet_FormulasMode_PassesFormulasModeThrough()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
         ReadOptions? capturedOptions = null;
-        _reader.ReadSheet(workbookPath, "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
+        _reader.ReadSheet(Arg.Any<Stream>(), "Q1", Arg.Do<ReadOptions>(o => capturedOptions = o))
             .Returns(Result<ReadResult>.Ok(
                 new ReadResult(Array.Empty<object?>(), 0, 0, Array.Empty<string>())));
 
         var tools = new SpreadsheetTools(_services);
-        tools.ReadSheet("data/sales.xlsx", "Q1", "", "formulas");
+        await tools.ReadSheet("data/sales.xlsx", "Q1", "", "formulas");
 
         capturedOptions!.Mode.Should().Be(SpreadsheetReadMode.Formulas);
     }
 
     [Test]
-    public void ReadSheet_InvalidMode_ReturnsError()
+    public async Task ReadSheet_InvalidMode_ReturnsError()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
 
         var tools = new SpreadsheetTools(_services);
-        var result = tools.ReadSheet("data/sales.xlsx", "Q1", mode: "raw");
+        var result = await tools.ReadSheet("data/sales.xlsx", "Q1", mode: "raw");
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("mode");
     }
 
     [Test]
-    public void ReadSheet_EmptySheetName_ReturnsError()
+    public async Task ReadSheet_EmptySheetName_ReturnsError()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
 
         var tools = new SpreadsheetTools(_services);
-        var result = tools.ReadSheet("data/sales.xlsx", string.Empty);
+        var result = await tools.ReadSheet("data/sales.xlsx", string.Empty);
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("Sheet");
@@ -168,7 +179,7 @@ public class SpreadsheetToolTests
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         var csv = "month,total\r\nJan,100\r\n";
-        _reader.ExportCsv(workbookPath, "Q1", null).Returns(
+        _reader.ExportCsv(Arg.Any<Stream>(), "Q1", null).Returns(
             Result<ExportCsvResult>.Ok(new ExportCsvResult(csv, 2, 2)));
 
         var tools = new SpreadsheetTools(_services);
@@ -182,7 +193,7 @@ public class SpreadsheetToolTests
     public async Task ExportCsv_EmptySheet_ReturnsEmptyBody()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        _reader.ExportCsv(workbookPath, "Empty", null).Returns(
+        _reader.ExportCsv(Arg.Any<Stream>(), "Empty", null).Returns(
             Result<ExportCsvResult>.Ok(new ExportCsvResult(string.Empty, 0, 0)));
 
         var tools = new SpreadsheetTools(_services);
@@ -197,7 +208,7 @@ public class SpreadsheetToolTests
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
         var csv = "month,total\r\nJan,100\r\nFeb,200\r\n";
-        _reader.ExportCsv(workbookPath, "Q1", null).Returns(
+        _reader.ExportCsv(Arg.Any<Stream>(), "Q1", null).Returns(
             Result<ExportCsvResult>.Ok(new ExportCsvResult(csv, 3, 2)));
 
         IWriteFileCommand? capturedCommand = null;
@@ -229,14 +240,15 @@ public class SpreadsheetToolTests
         root.GetProperty("rowCount").GetInt32().Should().Be(3);
         root.GetProperty("columnCount").GetInt32().Should().Be(2);
         root.GetProperty("byteCount").GetInt32().Should().Be(System.Text.Encoding.UTF8.GetByteCount(csv));
-        root.GetProperty("destination").GetString().Should().Be("exports/sales_q1.csv");
+        // Tool responses surface resource keys in canonical "root:path" form.
+        root.GetProperty("destination").GetString().Should().Be("project:exports/sales_q1.csv");
     }
 
     [Test]
     public async Task ExportCsv_WithInvalidDestinationKey_ReturnsError()
     {
         var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
-        _reader.ExportCsv(workbookPath, "Q1", null).Returns(
+        _reader.ExportCsv(Arg.Any<Stream>(), "Q1", null).Returns(
             Result<ExportCsvResult>.Ok(new ExportCsvResult("a\r\n", 1, 1)));
 
         var tools = new SpreadsheetTools(_services);
@@ -710,7 +722,7 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void ReadFormat_DispatchesToReaderAndReturnsGrid()
+    public async Task ReadFormat_DispatchesToReaderAndReturnsGrid()
     {
         CreatePlaceholderFile("data/styles.xlsx");
 
@@ -725,11 +737,11 @@ public class SpreadsheetToolTests
                 }
             });
 
-        _reader.ReadFormat(Arg.Any<string>(), "Data", "A1:B1")
+        _reader.ReadFormat(Arg.Any<Stream>(), "Data", "A1:B1")
             .Returns(Result<ReadFormatResult>.Ok(formatResult));
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(tools.ReadFormat("data/styles.xlsx", "Data", "A1:B1"));
+        var root = ParseResult(await tools.ReadFormat("data/styles.xlsx", "Data", "A1:B1"));
 
         root.GetProperty("range").GetString().Should().Be("Data!A1:B1");
         var rows = root.GetProperty("rows");
@@ -741,12 +753,12 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void ReadFormat_EmptySheetName_ReturnsError()
+    public async Task ReadFormat_EmptySheetName_ReturnsError()
     {
         CreatePlaceholderFile("data/styles.xlsx");
 
         var tools = new SpreadsheetTools(_services);
-        var result = tools.ReadFormat("data/styles.xlsx", sheet: "", range: "");
+        var result = await tools.ReadFormat("data/styles.xlsx", sheet: "", range: "");
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("Sheet");
@@ -900,11 +912,11 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void Find_DispatchesToReaderAndReturnsMatches()
+    public async Task Find_DispatchesToReaderAndReturnsMatches()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
         FindOptions? capturedOptions = null;
-        _reader.Find(workbookPath, Arg.Do<FindOptions>(o => capturedOptions = o))
+        _reader.Find(Arg.Any<Stream>(), Arg.Do<FindOptions>(o => capturedOptions = o))
             .Returns(Result<FindResult>.Ok(new FindResult(
                 new[]
                 {
@@ -914,7 +926,7 @@ public class SpreadsheetToolTests
                 2)));
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(tools.Find("data/sales.xlsx", "Total", sheet: "Q1", matchCase: true));
+        var root = ParseResult(await tools.Find("data/sales.xlsx", "Total", sheet: "Q1", matchCase: true));
 
         capturedOptions.Should().NotBeNull();
         capturedOptions!.Find.Should().Be("Total");
@@ -928,12 +940,12 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void Find_EmptyFindString_ReturnsError()
+    public async Task Find_EmptyFindString_ReturnsError()
     {
         CreatePlaceholderFile("data/sales.xlsx");
 
         var tools = new SpreadsheetTools(_services);
-        var result = tools.Find("data/sales.xlsx", string.Empty);
+        var result = await tools.Find("data/sales.xlsx", string.Empty);
 
         result.IsError.Should().BeTrue();
         GetResultText(result).Should().Contain("Find text");
@@ -1143,19 +1155,19 @@ public class SpreadsheetToolTests
     }
 
     [Test]
-    public void GetActiveView_DispatchesToReaderAndReturnsViewState()
+    public async Task GetActiveView_DispatchesToReaderAndReturnsViewState()
     {
-        var workbookPath = CreatePlaceholderFile("data/sales.xlsx");
+        CreatePlaceholderFile("data/sales.xlsx");
         var view = new ActiveView(
             "Summary",
             "B2:D4",
             new[] { "B2:D4", "F1:F10" },
             "C3",
             "A1");
-        _reader.GetActiveView(workbookPath).Returns(Result<ActiveView>.Ok(view));
+        _reader.GetActiveView(Arg.Any<Stream>()).Returns(Result<ActiveView>.Ok(view));
 
         var tools = new SpreadsheetTools(_services);
-        var root = ParseResult(tools.GetActiveView("data/sales.xlsx"));
+        var root = ParseResult(await tools.GetActiveView("data/sales.xlsx"));
 
         root.GetProperty("sheet").GetString().Should().Be("Summary");
         root.GetProperty("range").GetString().Should().Be("B2:D4");
@@ -1168,10 +1180,13 @@ public class SpreadsheetToolTests
 
     private string CreatePlaceholderFile(string resourceKey)
     {
-        var resource = new ResourceKey(resourceKey);
-        var path = Path.Combine(_tempFolder, Path.GetFileName(resourceKey));
+        var path = Path.Combine(_tempFolder, resourceKey.Replace('/', Path.DirectorySeparatorChar));
+        var folder = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(folder))
+        {
+            Directory.CreateDirectory(folder);
+        }
         File.WriteAllText(path, string.Empty);
-        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
         return path;
     }
 

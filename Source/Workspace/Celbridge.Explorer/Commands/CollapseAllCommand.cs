@@ -21,7 +21,7 @@ public class CollapseAllCommand : CommandBase, ICollapseAllCommand
 
         var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
 
-        CollapseAllFolders(resourceRegistry.RootFolder, resourceRegistry, folderStateService);
+        CollapseAllFolders(resourceRegistry.ProjectFolder, resourceRegistry, folderStateService);
 
         await Task.CompletedTask;
 

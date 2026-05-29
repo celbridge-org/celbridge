@@ -23,8 +23,14 @@ public partial class ExplorerTools
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var explorerService = workspaceWrapper.WorkspaceService.ExplorerService;
 
+        // Empty resource keys (no selection) serialise as the empty string
+        // rather than the canonical "project:" form, so the response field is
+        // a clean signal that nothing is selected.
+        var selectedResource = explorerService.SelectedResource;
+        var selectedResourceString = selectedResource.IsEmpty ? string.Empty : selectedResource.ToString();
+
         var result = new ExplorerStateResult(
-            explorerService.SelectedResource.ToString(),
+            selectedResourceString,
             explorerService.SelectedResources.Select(r => r.ToString()).ToList(),
             explorerService.FolderStateService.ExpandedFolders);
 

@@ -4,9 +4,21 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// Result returned by file_get_info for file resources.
+/// Result returned by file_get_info for file resources. Sidecar fields are
+/// populated when the file has a paired .cel sidecar; SidecarStatus is
+/// "healthy" when the sidecar's frontmatter parses cleanly, "broken"
+/// otherwise. Absence is signalled by sidecar_status = "none" with sidecar
+/// = null.
 /// </summary>
-public record class FileInfoResult(string Type, long Size, string Modified, string Extension, bool IsText, int? LineCount);
+public record class FileInfoResult(
+    string Type,
+    long Size,
+    string Modified,
+    string Extension,
+    bool IsText,
+    int? LineCount,
+    string? Sidecar,
+    string SidecarStatus);
 
 /// <summary>
 /// Result returned by file_get_info for folder resources.
@@ -44,13 +56,22 @@ public partial class FileTools
 
         if (snapshot.IsFile)
         {
+            var sidecarStatusText = snapshot.SidecarStatus switch
+            {
+                Celbridge.Resources.CelFileStatus.Healthy => "healthy",
+                Celbridge.Resources.CelFileStatus.Broken => "broken",
+                _ => "none",
+            };
+
             var fileResult = new FileInfoResult(
                 "file",
                 snapshot.Size,
                 snapshot.ModifiedUtc.ToString("o"),
                 snapshot.Extension,
                 snapshot.IsText,
-                snapshot.LineCount);
+                snapshot.LineCount,
+                snapshot.SidecarKey?.ToString(),
+                sidecarStatusText);
             return ToolResponse.Success(SerializeJson(fileResult));
         }
 

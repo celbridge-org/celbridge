@@ -31,7 +31,8 @@ public class RunCommand : CommandBase, IRunCommand
 
         var consoleService = _workspaceWrapper.WorkspaceService.ConsoleService;
 
-        var command = $"%run \"{ScriptResource}\"";
+        // .Path here, not ToString — the REPL's working folder is the project root.
+        var command = $"%run \"{ScriptResource.Path}\"";
         if (!string.IsNullOrEmpty(Arguments))
         {
             command += " " + Arguments;

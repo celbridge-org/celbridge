@@ -1,3 +1,4 @@
+using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
@@ -34,8 +35,8 @@ public class WriteBinaryFileCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), _workspaceWrapper);
-        resourceService.FileWriter.Returns(fileWriter);
+        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
     }
 
     [TearDown]
@@ -69,7 +70,6 @@ public class WriteBinaryFileCommandTests
         result.IsSuccess.Should().BeTrue();
         File.Exists(path).Should().BeTrue();
         (await File.ReadAllBytesAsync(path)).Should().Equal(bytes);
-        _resourceRegistry.Received(1).UpdateResourceRegistry();
     }
 
     [Test]

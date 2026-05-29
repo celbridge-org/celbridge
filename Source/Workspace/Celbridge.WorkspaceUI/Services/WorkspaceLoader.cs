@@ -2,6 +2,7 @@ using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -16,6 +17,7 @@ public class WorkspaceLoader
     private readonly IFeatureFlags _featureFlags;
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
+    private readonly ProjectCheckReporter _projectCheckReporter;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -23,7 +25,8 @@ public class WorkspaceLoader
         IUserInterfaceService userInterfaceService,
         IFeatureFlags featureFlags,
         IProjectService projectService,
-        IServerService serverService)
+        IServerService serverService,
+        ProjectCheckReporter projectCheckReporter)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -31,6 +34,7 @@ public class WorkspaceLoader
         _featureFlags = featureFlags;
         _projectService = projectService;
         _serverService = serverService;
+        _projectCheckReporter = projectCheckReporter;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -109,8 +113,31 @@ public class WorkspaceLoader
             // Restore previous state of expanded folders before populating resources
             await folderStateService.LoadAsync();
 
-            // Update resource registry immediately to ensure we are up to date
             var resourceService = workspaceService.ResourceService;
+
+            // Start file system watchers now that the wrapper is fully populated.
+            // The monitor cannot be initialized in ResourceService's constructor because
+            // it reaches into the workspace via IWorkspaceWrapper, which is only set up
+            // once construction completes.
+            var initMonitorResult = resourceService.Monitor.Initialize();
+            if (initMonitorResult.IsFailure)
+            {
+                _logger.LogWarning(initMonitorResult, "Failed to initialize resource monitor");
+            }
+
+            // Register packages before the first resource scan so the sidecar
+            // pairing pass sees package-contributed document-editor factories.
+            try
+            {
+                var packageService = workspaceService.PackageService;
+                await packageService.RegisterPackagesAsync(projectFolderPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
+            }
+
+            // Update resource registry immediately to ensure we are up to date
             var updateResult = resourceService.UpdateResources();
             if (updateResult.IsFailure)
             {
@@ -144,19 +171,7 @@ public class WorkspaceLoader
         // Select the previous selected resources in the Explorer Panel.
         await explorerService.RestorePanelState();
 
-        // Register all packages before restoring documents so that restored documents can use editors
-        // defined in packages.
-        try
-        {
-            var packageService = workspaceService.PackageService;
-            packageService.RegisterPackages(projectFolderPath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "An exception occurred while registering packages. The workspace will continue to load with reduced functionality.");
-        }
-
-        // Open previous opened documents in the Documents Panel
+        // Open previous opened documents in the Documents Panel.
         var documentsService = workspaceService.DocumentsService;
         await documentsService.RestorePanelState();
 
@@ -178,6 +193,10 @@ public class WorkspaceLoader
         var messengerService = ServiceLocator.AcquireService<IMessengerService>();
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
+
+        // Run the project-health check after WorkspaceLoadedMessage so it sees
+        // the fully-initialised workspace. Fire-and-forget; never blocks load.
+        _ = Task.Run(() => RunProjectCheckAsync());
 
         //
         // Initialize terminal window and Python scripting
@@ -207,6 +226,28 @@ public class WorkspaceLoader
         }
 
         return Result.Ok();
+    }
+
+    // Runs the project consistency check and hands the report to ProjectCheckReporter.
+    // Errors are logged, never thrown — a broken check must not fail workspace load.
+    private async Task RunProjectCheckAsync()
+    {
+        try
+        {
+            var commandService = ServiceLocator.AcquireService<Celbridge.Commands.ICommandService>();
+            var reportResult = await commandService.ExecuteAsync<IProjectCheckCommand, ProjectCheckReport>();
+            if (reportResult.IsFailure)
+            {
+                _logger.LogWarning(reportResult, "Project consistency check failed.");
+                return;
+            }
+
+            _projectCheckReporter.Report(reportResult.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Project consistency check threw an unexpected exception.");
+        }
     }
 
     private async Task TryInitializePythonAsync(IWorkspaceService workspaceService)

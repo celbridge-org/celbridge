@@ -295,8 +295,8 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     {
         if (item.Resource is IFolderResource)
         {
-            // Double-clicking root folder opens it in File Explorer
-            if (item.IsRootFolder)
+            // Double-clicking the project folder opens it in File Explorer
+            if (item.IsProjectFolder)
             {
                 var resourceKey = _resourceRegistry.GetResourceKey(item.Resource);
                 _commandService.Execute<IOpenFileManagerCommand>(command =>
@@ -321,14 +321,14 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
     private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Filter out root folder from selection - it should not be selectable
-        var rootItem = ResourceListView.SelectedItems
+        // Filter out the project folder from selection - it should not be selectable
+        var projectFolderItem = ResourceListView.SelectedItems
             .OfType<ResourceViewItem>()
-            .FirstOrDefault(item => item.IsRootFolder);
+            .FirstOrDefault(item => item.IsProjectFolder);
 
-        if (rootItem != null)
+        if (projectFolderItem != null)
         {
-            ResourceListView.SelectedItems.Remove(rootItem);
+            ResourceListView.SelectedItems.Remove(projectFolderItem);
             return; // Selection changed event will fire again after removal
         }
 
@@ -366,7 +366,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
         {
             return folderResource;
         }
-        return ViewModel.RootFolder;
+        return ViewModel.ProjectFolder;
     }
 
     private ResourceViewItem? FindItemAtPosition(Point position)
@@ -392,11 +392,11 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     //
 
     /// <summary>
-    /// Adds a file to the currently selected folder (or root if nothing selected).
+    /// Adds a file to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
     public void AddFileToSelectedFolder()
     {
-        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.RootFolder;
+        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
 
         _commandService.Execute<IAddResourceDialogCommand>(command =>
@@ -407,11 +407,11 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     }
 
     /// <summary>
-    /// Adds a folder to the currently selected folder (or root if nothing selected).
+    /// Adds a folder to the currently selected folder (or the project folder if nothing selected).
     /// </summary>
     public void AddFolderToSelectedFolder()
     {
-        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.RootFolder;
+        var destFolder = ViewModel.GetSelectedResourceFolder() ?? ViewModel.ProjectFolder;
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
 
         _commandService.Execute<IAddResourceDialogCommand>(command =>

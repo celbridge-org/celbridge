@@ -12,17 +12,17 @@ public sealed partial class ResourceTree
 
     private void ListView_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
-        // Store the dragged items for later use, excluding root folder
+        // Store the dragged items for later use, excluding the project folder
         var draggedResources = new List<IResource>();
         foreach (var item in e.Items)
         {
-            if (item is ResourceViewItem treeItem && !treeItem.IsRootFolder)
+            if (item is ResourceViewItem treeItem && !treeItem.IsProjectFolder)
             {
                 draggedResources.Add(treeItem.Resource);
             }
         }
 
-        // Cancel drag if no valid items (e.g., only root folder was selected)
+        // Cancel drag if no valid items (e.g., only the project folder was selected)
         if (draggedResources.Count == 0)
         {
             e.Cancel = true;
@@ -74,7 +74,7 @@ public sealed partial class ResourceTree
         // Check for external drag (from File Explorer, etc.)
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
-            // External drag - allow drop on folder, file (uses parent), or empty space (root folder)
+            // External drag - allow drop on folder, file (uses parent), or empty space (project folder)
             return (CanDrop: true, IsInternalDrag: false);
         }
 
@@ -150,7 +150,7 @@ public sealed partial class ResourceTree
         foreach (var resource in resources)
         {
             var sourceResource = _resourceRegistry.GetResourceKey(resource);
-            var resolvedDestResource = _resourceRegistry.ResolveDestinationResource(sourceResource, destResource);
+            var resolvedDestResource = _resourceTransferService.ResolveDestinationResource(sourceResource, destResource);
 
             if (sourceResource == resolvedDestResource)
             {
@@ -193,7 +193,7 @@ public sealed partial class ResourceTree
         }
 
         var destFolderResource = _resourceRegistry.GetResourceKey(destFolder);
-        var createResult = _resourceTransferService.CreateResourceTransfer(
+        var createResult = await _resourceTransferService.CreateResourceTransferAsync(
             sourcePaths,
             destFolderResource,
             DataTransferMode.Copy);

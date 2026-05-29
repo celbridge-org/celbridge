@@ -24,7 +24,12 @@ public class ResourcePickerItem
         Resource = resource;
         ResourceKey = resourceKey;
         IconDefinition = iconDefinition;
-        DisplayText = resourceKey.ToString();
+        // Display text uses the bare path for project-rooted resources (cleaner
+        // for the picker UI) and falls back to the full "root:path" form for
+        // non-default roots so the root is visible when it matters.
+        DisplayText = resourceKey.Root == ResourceKey.DefaultRoot
+            ? resourceKey.Path
+            : resourceKey.ToString();
         DisplayTextLower = DisplayText.ToLowerInvariant();
     }
 }

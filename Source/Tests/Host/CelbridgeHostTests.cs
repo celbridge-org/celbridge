@@ -60,11 +60,12 @@ public class CelbridgeHostTests
         _host.StartListening();
 
         // Act
-        await _host.NotifyExternalChangeAsync();
+        await _host.NotifyExternalChangeAsync(preserveViewState: true);
 
         // Assert
         _channel.SentMessages.Should().HaveCount(1);
         _channel.SentMessages[0].Should().Contain("document/externalChange");
+        _channel.SentMessages[0].Should().Contain("preserveViewState");
     }
 
     [Test]

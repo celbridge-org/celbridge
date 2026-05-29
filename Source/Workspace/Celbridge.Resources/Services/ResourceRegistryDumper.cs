@@ -54,7 +54,7 @@ public class ResourceRegistryDumper : IResourceRegistryDumper, IDisposable
         _dumpFile.ClearFile();
 
         // Write all resources to the dump file
-        WriteFolder(resourceRegistry.RootFolder);
+        WriteFolder(resourceRegistry.ProjectFolder);
 
         // Write expanded folders to the dump file
         foreach (var expandedFolder in folderStateService.ExpandedFolders)

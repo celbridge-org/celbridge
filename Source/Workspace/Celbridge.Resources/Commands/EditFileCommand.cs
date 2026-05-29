@@ -32,22 +32,23 @@ public class EditFileCommand : CommandBase, IEditFileCommand
             return Result.Fail("oldString must be non-empty. To append to a file, anchor on the existing last line and concatenate the new content in newString. To overwrite or create a file, use file_write.");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var fileStorage = workspaceService.FileStorage;
 
-        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        var content = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read file: '{FileResource}'")
+                .WithErrors(readResult);
+        }
+        var content = readResult.Value;
         var separator = LineEndingHelper.DetectSeparatorOrDefault(content);
         var oldString = LineEndingHelper.ConvertLineEndings(OldString, separator);
         var newString = LineEndingHelper.ConvertLineEndings(NewString, separator);
@@ -69,7 +70,7 @@ public class EditFileCommand : CommandBase, IEditFileCommand
         var newContent = buildResult.NewContent;
         var replacementStarts = buildResult.ReplacementStarts;
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, newContent);
+        var writeResult = await fileStorage.WriteAllTextAsync(FileResource, newContent);
         if (writeResult.IsFailure)
         {
             return writeResult;

@@ -78,21 +78,22 @@ public partial class FileTools : AgentToolBase
     /// when the resource cannot be resolved or the file no longer exists, so
     /// the caller can fall back to ranges without context.
     /// </summary>
-    private static async Task<string[]?> ReadFileLinesForContextAsync(IResourceRegistry resourceRegistry, ResourceKey fileResourceKey)
+    private static async Task<string[]?> ReadFileLinesForContextAsync(IFileStorage fileStorage, ResourceKey fileResourceKey)
     {
-        var resolveResult = resourceRegistry.ResolveResourcePath(fileResourceKey);
-        if (resolveResult.IsFailure)
-        {
-            return null;
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileStorage.GetInfoAsync(fileResourceKey);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return null;
         }
 
-        return await File.ReadAllLinesAsync(resourcePath);
+        var readResult = await fileStorage.ReadAllTextAsync(fileResourceKey);
+        if (readResult.IsFailure)
+        {
+            return null;
+        }
+
+        return LineEndingHelper.SplitToContentLines(readResult.Value).ToArray();
     }
 
     /// <summary>

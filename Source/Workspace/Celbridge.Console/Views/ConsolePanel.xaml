@@ -14,6 +14,7 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
@@ -78,9 +79,18 @@
              Message="{x:Bind ViewModel.MigrationBannerMessage, Mode=OneWay}"
              Closed="{x:Bind ViewModel.OnMigrationBannerClosed}"/>
 
+    <InfoBar x:Name="ProjectCheckInfoBar"
+             Grid.Row="4"
+             Severity="Warning"
+             IsOpen="{x:Bind ViewModel.IsProjectCheckBannerVisible, Mode=OneWay}"
+             IsClosable="True"
+             Title="{x:Bind ViewModel.ProjectCheckBannerTitle, Mode=OneWay}"
+             Message="{x:Bind ViewModel.ProjectCheckBannerMessage, Mode=OneWay}"
+             Closed="{x:Bind ViewModel.OnProjectCheckBannerClosed}"/>
+
     <!-- Container for dynamically acquired WebView2 from factory -->
     <Grid x:Name="WebViewContainer"
-          Grid.Row="4"
+          Grid.Row="5"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"/>
   </Grid>

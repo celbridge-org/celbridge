@@ -34,7 +34,9 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
             return Result.Ok();
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var resourceRegistry = workspaceService.ResourceService.Registry;
+        var fileStorage = workspaceService.FileStorage;
 
         var failedResources = new List<ResourceKey>();
         var failureDetails = new List<string>();
@@ -43,7 +45,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         {
             var resource = fileEdit.Resource;
 
-            var applyResult = await ApplyEditsToDisk(resourceService, resource, fileEdit.Edits);
+            var applyResult = await ApplyEditsToDisk(resourceRegistry, fileStorage, resource, fileEdit.Edits);
             if (applyResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
@@ -83,19 +85,15 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         return Result.Ok();
     }
 
-    private static async Task<Result> ApplyEditsToDisk(IResourceService resourceService, ResourceKey resource, List<RangeEdit> edits)
+    private static async Task<Result> ApplyEditsToDisk(
+        IResourceRegistry resourceRegistry,
+        IFileStorage fileStorage,
+        ResourceKey resource,
+        List<RangeEdit> edits)
     {
-        var resourceRegistry = resourceService.Registry;
-
-        var resolveResult = resourceRegistry.ResolveResourcePath(resource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileStorage.GetInfoAsync(resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File not found: '{resource}'");
         }
@@ -103,7 +101,13 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         // Read the file's existing content to capture its line-ending style and
         // trailing-newline state. Both must be preserved across the edit so the
         // file's on-disk format does not silently drift.
-        var originalContent = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileStorage.ReadAllTextAsync(resource);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read file: '{resource}'")
+                .WithErrors(readResult);
+        }
+        var originalContent = readResult.Value;
         var originalSeparator = LineEndingHelper.DetectSeparatorOrDefault(originalContent);
         var originalEndsWithNewline = LineEndingHelper.EndsWithNewline(originalContent);
 
@@ -169,7 +173,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
             output += originalSeparator;
         }
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(resource, output);
+        var writeResult = await fileStorage.WriteAllTextAsync(resource, output);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to write edits to file: '{resource}'")

@@ -16,7 +16,8 @@ namespace Celbridge.Tests.Documents;
 public class DocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
-    private IResourceFileWriter _fileWriter = null!;
+    private IFileStorage _fileStorage = null!;
+    private IResourceRegistry _resourceRegistry = null!;
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
     private string _tempFilePath = null!;
@@ -32,16 +33,16 @@ public class DocumentViewModelTests
         _tempFilePath = Path.Combine(_tempFolder, "test.md");
         File.WriteAllText(_tempFilePath, string.Empty);
 
-        // Wire a real ResourceFileWriter over a substituted workspace hierarchy
+        // Wire a real FileStorage over a substituted workspace hierarchy
         // whose registry maps the test's resource key to the temp file path. The
-        // writer's atomic write + retry semantics are exercised directly against
+        // layer's atomic write + retry semantics are exercised directly against
         // the temp folder.
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
-        resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(Result<string>.Ok(_tempFilePath));
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(Result<string>.Ok(_tempFilePath));
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
+        resourceService.Registry.Returns(_resourceRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -49,14 +50,15 @@ public class DocumentViewModelTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _fileWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), workspaceWrapper);
+        _fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, workspaceWrapper);
+        workspaceService.FileStorage.Returns(_fileStorage);
 
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
         services.AddSingleton(workspaceWrapper);
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
-        _vm = new TestDocumentViewModel(_fileWriter);
+        _vm = new TestDocumentViewModel(_fileStorage);
         _vm.FileResource = new ResourceKey("test.md");
         _vm.FilePath = _tempFilePath;
     }
@@ -88,7 +90,14 @@ public class DocumentViewModelTests
     [Test]
     public async Task LoadDocument_ReturnsFailure_WhenFileIsMissing()
     {
-        _vm.FilePath = Path.Combine(_tempFolder, "nonexistent.md");
+        // Point the registry at a path that doesn't exist on disk so the
+        // chokepoint-routed read fails. Setting FilePath alone is not enough
+        // because the read goes through ResolveResourcePath(FileResource).
+        var missingPath = Path.Combine(_tempFolder, "nonexistent.md");
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(Result<string>.Ok(missingPath));
+
+        _vm.FilePath = missingPath;
 
         var result = await _vm.LoadDocument();
 
@@ -135,9 +144,9 @@ public class DocumentViewModelTests
         var failingWrapper = Substitute.For<IWorkspaceWrapper>();
         failingWrapper.WorkspaceService.Returns(failingWorkspaceService);
 
-        var failingWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), failingWrapper);
+        var failingFileSystem = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, failingWrapper);
 
-        var failingVm = new TestDocumentViewModel(failingWriter)
+        var failingVm = new TestDocumentViewModel(failingFileSystem)
         {
             FileResource = new ResourceKey("test.md"),
             FilePath = _tempFilePath
@@ -160,37 +169,37 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public void MonitoredResourceChanged_TriggersReload_WhenFileChangedExternally()
+    public void ResourceChanged_TriggersReload_WhenFileChangedExternally()
     {
         // With no prior load/save the hash is null, so any change is treated as external
         var reloadRequested = false;
         _vm.ReloadRequested += (_, _) => reloadRequested = true;
 
-        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        var message = new ResourceChangedMessage(_vm.FileResource);
         _messengerService.Send(message);
 
         reloadRequested.Should().BeTrue();
     }
 
     [Test]
-    public void OnMonitoredResourceChanged_ResetsSaveTimer_WhenExternalChangeArrives()
+    public void OnResourceChanged_ResetsSaveTimer_WhenExternalChangeArrives()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 0.5;
 
-        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        var message = new ResourceChangedMessage(_vm.FileResource);
         _messengerService.Send(message);
 
         _vm.SaveTimer.Should().Be(0);
     }
 
     [Test]
-    public void OnMonitoredResourceChanged_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
+    public void OnResourceChanged_ResetsHasUnsavedChanges_WhenExternalChangeArrives()
     {
         _vm.HasUnsavedChanges = true;
         _vm.SaveTimer = 0.5;
 
-        var message = new MonitoredResourceChangedMessage(_vm.FileResource);
+        var message = new ResourceChangedMessage(_vm.FileResource);
         _messengerService.Send(message);
 
         _vm.HasUnsavedChanges.Should().BeFalse();
@@ -227,14 +236,16 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public async Task Save_RaisesReloadRequested_WhenPostWriteDiskHashDiffersFromIntendedHash()
+    public async Task Save_RaisesReloadRequested_WhenPostWriteDiskSizeDiffersFromBytesWritten()
     {
         // Simulate an external write that interleaves with our save: the
-        // ExternalWriteDocumentViewModel rewrites the file with different content
-        // immediately after we call WriteAllBytesAsync but before
-        // UpdateFileTrackingInfo runs.
+        // ExternalWriteDocumentViewModel rewrites the file with different-length
+        // content immediately after WriteAllBytesAsync but before
+        // UpdateFileTrackingInfoAsync runs. The post-write size mismatch flags
+        // the interleave and the reload fires. Same-length interleaves slip
+        // past this check and rely on the watcher's subsequent event.
         var externalContent = "external content that overrode our save";
-        var savingVm = new ExternalWriteDocumentViewModel(_fileWriter, _tempFilePath, externalContent);
+        var savingVm = new ExternalWriteDocumentViewModel(_fileStorage, _tempFilePath, externalContent);
         savingVm.FileResource = new ResourceKey("interleave.md");
         savingVm.FilePath = _tempFilePath;
 
@@ -249,17 +260,37 @@ public class DocumentViewModelTests
         savingVm.Cleanup();
     }
 
+    [Test]
+    public async Task OnResourceChanged_DoesNotRaiseReload_AfterOwnSaveCompletes()
+    {
+        // After we save, the cache holds the size + mtime of our own write.
+        // A watcher event for that same write (the self-event the chokepoint's
+        // atomic write produces) probes the disk, finds the metadata unchanged
+        // from the cache, and returns without raising ReloadRequested. This is
+        // the test that proves the Excel-flash regression is gone.
+        var saveResult = await _vm.SaveDocumentContent("first save");
+        saveResult.IsSuccess.Should().BeTrue();
+
+        var reloadRequested = false;
+        _vm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        var message = new ResourceChangedMessage(_vm.FileResource);
+        _messengerService.Send(message);
+
+        reloadRequested.Should().BeFalse();
+    }
+
     /// <summary>
     /// Minimal test subclass that exposes DocumentViewModel base class functionality
     /// for testing text file operations and file-change monitoring.
     /// </summary>
     private sealed class TestDocumentViewModel : DocumentViewModel
     {
-        private readonly IResourceFileWriter _writer;
+        private readonly IFileStorage _fileStorage;
 
-        public TestDocumentViewModel(IResourceFileWriter writer)
+        public TestDocumentViewModel(IFileStorage fileStorage)
         {
-            _writer = writer;
+            _fileStorage = fileStorage;
             EnableFileChangeMonitoring();
         }
 
@@ -281,26 +312,27 @@ public class DocumentViewModelTests
             SaveTimer = SaveDelay;
         }
 
-        protected override IResourceFileWriter GetFileWriter() => _writer;
+        protected override IFileStorage GetFileSystem() => _fileStorage;
     }
 
     /// <summary>
     /// Test subclass that simulates an external write interleaving between our
-    /// WriteAllBytesAsync call and the post-write disk hash read. The override
-    /// of UpdateFileTrackingInfo runs immediately before the base reads the disk
-    /// hash, so by writing different content here we make _lastSavedFileHash
-    /// reflect external content while our intendedHash reflects ours.
+    /// WriteAllBytesAsync call and the post-write tracking refresh. The override
+    /// of UpdateFileTrackingInfoAsync runs immediately before the base reads
+    /// disk metadata, so by writing different-length content here we make the
+    /// cached size differ from the bytes we wrote — which is what the
+    /// post-write size-mismatch check looks for.
     /// </summary>
     private sealed class ExternalWriteDocumentViewModel : DocumentViewModel
     {
-        private readonly IResourceFileWriter _writer;
+        private readonly IFileStorage _fileStorage;
         private readonly string _injectedFilePath;
         private readonly string _externalContent;
         private bool _hasInjected;
 
-        public ExternalWriteDocumentViewModel(IResourceFileWriter writer, string filePath, string externalContent)
+        public ExternalWriteDocumentViewModel(IFileStorage fileStorage, string filePath, string externalContent)
         {
-            _writer = writer;
+            _fileStorage = fileStorage;
             _injectedFilePath = filePath;
             _externalContent = externalContent;
             EnableFileChangeMonitoring();
@@ -313,16 +345,16 @@ public class DocumentViewModelTests
             return SaveTextToFileAsync(text);
         }
 
-        protected override IResourceFileWriter GetFileWriter() => _writer;
+        protected override IFileStorage GetFileSystem() => _fileStorage;
 
-        protected override void UpdateFileTrackingInfo()
+        public override async Task UpdateFileTrackingInfoAsync()
         {
             if (!_hasInjected)
             {
                 _hasInjected = true;
                 File.WriteAllText(_injectedFilePath, _externalContent);
             }
-            base.UpdateFileTrackingInfo();
+            await base.UpdateFileTrackingInfoAsync();
         }
     }
 }

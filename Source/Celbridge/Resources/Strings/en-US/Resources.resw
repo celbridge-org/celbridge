@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -566,6 +566,12 @@ Do you wish to continue?</value>
   <data name="ConsolePanel_PackageLoadErrorMessage" xml:space="preserve">
     <value>One or more packages failed to load. See the log for details.</value>
   </data>
+  <data name="ConsolePanel_ProjectCheckFindingsTitle" xml:space="preserve">
+    <value>Project Check Findings</value>
+  </data>
+  <data name="ConsolePanel_ProjectCheckFindingsMessage" xml:space="preserve">
+    <value>Project check found {0} issue(s). See log for details.</value>
+  </data>
   <data name="DocumentToolbar_SplitEditorTooltip" xml:space="preserve">
     <value>Split Editor</value>
   </data>
@@ -961,6 +967,15 @@ Do you wish to continue?</value>
   </data>
   <data name="DocumentEditor_HtmlViewer" xml:space="preserve">
     <value>HTML Viewer</value>
+  </data>
+  <data name="DocumentEditor_ProjectFile" xml:space="preserve">
+    <value>Project File</value>
+  </data>
+  <data name="DocumentEditor_PackageManifest" xml:space="preserve">
+    <value>Package Manifest</value>
+  </data>
+  <data name="DocumentEditor_DocumentContribution" xml:space="preserve">
+    <value>Document Contribution</value>
   </data>
   <data name="WebView_NavigationPrompt_Title" xml:space="preserve">
     <value>Open external link</value>

@@ -127,6 +127,7 @@ class CelProxy:
 
     _namespace_descriptions = {
         "app": "Application state, logging, and alerts",
+        "data": "Sidecar fields, tags, content blocks, and project-health",
         "document": "Open, edit, and manage editor documents",
         "explorer": "File and folder operations in the project tree",
         "file": "Read files, search, and query project structure",

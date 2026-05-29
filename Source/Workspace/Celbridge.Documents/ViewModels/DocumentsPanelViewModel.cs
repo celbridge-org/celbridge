@@ -38,9 +38,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
             return Result<IDocumentView>.Fail($"Failed to create document view for file resource: '{fileResource}'")
                 .WithErrors(createResult);
         }
-        var documentView = createResult.Value;
 
-        return Result<IDocumentView>.Ok(documentView);
+        return createResult.Value.OkResult<IDocumentView>();
     }
 
     public void OnCloseDocumentRequested(ResourceKey fileResource)
@@ -142,41 +141,27 @@ public partial class DocumentsPanelViewModel : ObservableObject
 
     public record class EditorDisplayInfo(DocumentEditorId EditorId, string EditorDisplayName);
 
+    // Looks up the display name for the supplied editor id. Returns an empty
+    // label when only one factory claims the extension (no disambiguation
+    // needed); null when the editor id is empty or unregistered.
     public EditorDisplayInfo? ResolveEditorDisplayInfo(ResourceKey fileResource, DocumentEditorId documentEditorId)
     {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        if (documentEditorId.IsEmpty)
+        {
+            return null;
+        }
+
         var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
-
-        if (!documentEditorId.IsEmpty)
+        var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
+        if (factoryResult.IsFailure)
         {
-            var factoryResult = editorRegistry.GetFactoryById(documentEditorId);
-            if (factoryResult.IsSuccess)
-            {
-                var displayName = factories.Count >= 2 ? factoryResult.Value.DisplayName : string.Empty;
-                return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
-            }
+            return null;
         }
 
-        if (factories.Count >= 2)
-        {
-            var resolveResult = ResolveResourcePath(fileResource);
-            var filePath = resolveResult.IsSuccess ? resolveResult.Value : string.Empty;
-
-            foreach (var factory in factories)
-            {
-                if (factory.CanHandleResource(fileResource, filePath))
-                {
-                    return new EditorDisplayInfo(factory.EditorId, factory.DisplayName);
-                }
-            }
-        }
-        else if (factories.Count == 1)
-        {
-            return new EditorDisplayInfo(factories[0].EditorId, string.Empty);
-        }
-
-        return null;
+        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
+        var factoriesForExtension = editorRegistry.GetFactoriesForExtension(extension);
+        var displayName = factoriesForExtension.Count >= 2 ? factoryResult.Value.DisplayName : string.Empty;
+        return new EditorDisplayInfo(factoryResult.Value.EditorId, displayName);
     }
 
     public record class EditorChoiceInfo(
@@ -187,7 +172,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     public EditorChoiceInfo? GetChoicesForFileExtension(string extension, DocumentEditorId currentEditorId)
     {
         var editorRegistry = _documentsService.DocumentEditorRegistry;
-        var factories = editorRegistry.GetFactoriesForFileExtension(extension);
+        var factories = editorRegistry.GetFactoriesForExtension(extension);
 
         if (factories.Count < 2)
         {

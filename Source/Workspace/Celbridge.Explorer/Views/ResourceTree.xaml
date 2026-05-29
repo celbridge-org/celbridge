@@ -26,14 +26,14 @@
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Tooltip for root folder -->
+        <!-- Tooltip for project folder -->
         <ToolTipService.ToolTip>
-          <ToolTip Visibility="{x:Bind IsRootFolder}">
+          <ToolTip Visibility="{x:Bind IsProjectFolder}">
             <TextBlock Text="Double-click to open in File Explorer"/>
           </ToolTip>
         </ToolTipService.ToolTip>
 
-        <!-- Expand/Collapse chevron button (hidden for root folder) -->
+        <!-- Expand/Collapse chevron button (hidden for project folder) -->
         <Button Grid.Column="0"
                 Click="ExpanderButton_Click"
                 Visibility="{x:Bind ChevronVisibility}"
@@ -50,12 +50,12 @@
                             VerticalAlignment="Center"
                             HorizontalAlignment="Left" />
 
-        <!-- Resource name (semi-bold for root folder) -->
+        <!-- Resource name (semi-bold for project folder) -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"
-                   FontWeight="{x:Bind IsRootFolder, Converter={StaticResource RootFolderFontWeightConverter}}" />
+                   FontWeight="{x:Bind IsProjectFolder, Converter={StaticResource ProjectFolderFontWeightConverter}}" />
       </Grid>
     </DataTemplate>
 
@@ -82,7 +82,7 @@
 
     <!-- Converters -->
     <converters:ExpanderGlyphConverter x:Key="ExpanderGlyphConverter"/>
-    <converters:BoolToFontWeightConverter x:Key="RootFolderFontWeightConverter"/>
+    <converters:BoolToFontWeightConverter x:Key="ProjectFolderFontWeightConverter"/>
   </UserControl.Resources>
 
   <!-- Resource List View styled as a tree -->

@@ -464,7 +464,8 @@ class TestWebView:
             format="png",
         )
         assert result["format"] == "png"
-        assert result["resource"] == save_resource
+        # Tool responses emit resource keys in canonical "root:path" form.
+        assert result["resource"] == f"project:{save_resource}"
         assert not result["imageReturned"]
 
         info = file.get_info(save_resource)

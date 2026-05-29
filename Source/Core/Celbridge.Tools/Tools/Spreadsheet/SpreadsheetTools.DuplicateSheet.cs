@@ -16,11 +16,12 @@ public partial class SpreadsheetTools
         string newSheet,
         int position = 0)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sourceSheet))
         {
@@ -32,10 +33,9 @@ public partial class SpreadsheetTools
             return ToolResponse.Error("New sheet name is required.");
         }
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<IDuplicateSheetCommand, DuplicateSheetResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.SourceSheet = sourceSheet;
             command.NewSheet = newSheet;
             command.Position = position;

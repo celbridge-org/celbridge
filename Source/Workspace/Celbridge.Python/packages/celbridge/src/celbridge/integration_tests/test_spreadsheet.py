@@ -81,7 +81,8 @@ class TestSpreadsheet:
         assert result["rowCount"] == 2
         assert result["columnCount"] == 2
         assert result["byteCount"] > 0
-        assert result["destination"] == dest
+        # Tool responses emit resource keys in canonical "root:path" form.
+        assert result["destination"] == f"project:{dest}"
         info = file.get_info(dest)
         assert info["type"] == "file"
 

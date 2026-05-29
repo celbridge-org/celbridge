@@ -37,13 +37,13 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canCut = context.HasAnySelection && !context.SelectionContainsRootFolder;
+        var canCut = context.HasAnySelection && !context.SelectionContainsProjectFolder;
         return new MenuItemState(IsVisible: true, IsEnabled: canCut);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (!context.HasAnySelection || context.SelectionContainsRootFolder)
+        if (!context.HasAnySelection || context.SelectionContainsProjectFolder)
         {
             return;
         }

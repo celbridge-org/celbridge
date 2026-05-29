@@ -12,11 +12,12 @@ public partial class SpreadsheetTools
     [RelatedGuides("resource_keys", "spreadsheet_editor_division")]
     public async partial Task<CallToolResult> MoveSheet(string resource, string sheet, int position)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -28,10 +29,9 @@ public partial class SpreadsheetTools
             return ToolResponse.Error($"Position must be 1 or greater, was {position}.");
         }
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<IMoveSheetCommand, MoveSheetResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Sheet = sheet;
             command.Position = position;
         });

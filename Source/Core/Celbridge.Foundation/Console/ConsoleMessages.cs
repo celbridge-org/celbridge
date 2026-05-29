@@ -45,6 +45,13 @@ public enum ConsoleErrorType
     /// One or more packages failed to load during project discovery.
     /// </summary>
     PackageLoadError,
+
+    /// <summary>
+    /// The workspace-load project consistency check returned non-empty
+    /// findings (broken references, orphan .cel files, or broken .cel files).
+    /// The ConsoleErrorMessage.ConfigFileName field carries the summary text.
+    /// </summary>
+    ProjectCheckError,
 }
 
 /// <summary>

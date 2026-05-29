@@ -37,22 +37,23 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
             return Result.Ok();
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var fileStorage = workspaceService.FileStorage;
 
-        var resolveResult = resourceService.Registry.ResolveResourcePath(FileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                .WithErrors(resolveResult);
-        }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"File not found: '{FileResource}'");
         }
 
-        var originalContent = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read file: '{FileResource}'")
+                .WithErrors(readResult);
+        }
+        var originalContent = readResult.Value;
         var separator = LineEndingHelper.DetectSeparatorOrDefault(originalContent);
 
         // Sequential application: each edit anchors against the buffer state
@@ -106,7 +107,7 @@ public class MultiEditFileCommand : CommandBase, IMultiEditFileCommand
             buffer = applyResult.NewContent;
         }
 
-        var writeResult = await resourceService.FileWriter.WriteAllTextAsync(FileResource, buffer);
+        var writeResult = await fileStorage.WriteAllTextAsync(FileResource, buffer);
         if (writeResult.IsFailure)
         {
             return writeResult;

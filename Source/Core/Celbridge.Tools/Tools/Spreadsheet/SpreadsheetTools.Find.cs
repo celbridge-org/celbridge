@@ -10,7 +10,7 @@ public partial class SpreadsheetTools
     [McpServerTool(Name = "spreadsheet_find", ReadOnly = true)]
     [ToolAlias("spreadsheet.find")]
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_cell_typing")]
-    public partial CallToolResult Find(
+    public async partial Task<CallToolResult> Find(
         string resource,
         string find,
         string sheet = "",
@@ -18,21 +18,28 @@ public partial class SpreadsheetTools
         bool matchCase = false,
         bool matchEntireCellContents = false)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(find))
         {
             return ToolResponse.Error("Find text is required and must be non-empty.");
         }
 
+        var openResult = await OpenWorkbookStreamAsync(workbookResource);
+        if (openResult.IsFailure)
+        {
+            return ToolResponse.Error(openResult);
+        }
+
+        using var stream = openResult.Value;
         var reader = GetRequiredService<ISpreadsheetReader>();
         var options = new FindOptions(find, sheet, range, matchCase, matchEntireCellContents);
-        var findResult = reader.Find(workbookPath, options);
+        var findResult = reader.Find(stream, options);
         if (findResult.IsFailure)
         {
             return ToolResponse.Error(findResult);

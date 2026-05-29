@@ -117,10 +117,16 @@ export class PreviewPipeline {
     }
 }
 
+// Returns the parent path of a resource key, stripped of the "project:" prefix
+// so callers can append it under the https://project.celbridge/ virtual host
+// without producing a bogus "project:..." segment in the URL.
 function extractParentPath(resourceKey) {
     if (!resourceKey) {
         return '';
     }
-    const slashIndex = resourceKey.lastIndexOf('/');
-    return slashIndex >= 0 ? resourceKey.substring(0, slashIndex + 1) : '';
+    const stripped = resourceKey.startsWith('project:')
+        ? resourceKey.substring('project:'.length)
+        : resourceKey;
+    const slashIndex = stripped.lastIndexOf('/');
+    return slashIndex >= 0 ? stripped.substring(0, slashIndex + 1) : '';
 }

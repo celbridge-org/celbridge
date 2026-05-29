@@ -1,7 +1,7 @@
-using System.Text.Json.Nodes;
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
+using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,10 +12,12 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class WebInspectorViewModel : InspectorViewModel
 {
+    private const string SourceUrlFieldName = "source_url";
+
     private readonly ILogger<WebInspectorViewModel> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
-    private readonly IResourceRegistry _resourceRegistry;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IWebViewService _webViewService;
 
     [ObservableProperty]
@@ -71,7 +73,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
         _logger = logger;
         _stringLocalizer = stringLocalizer;
         _messengerService = messengerService;
-        _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _workspaceWrapper = workspaceWrapper;
         _webViewService = webViewService;
 
         _messengerService.Register<WebViewNavigationStateChangedMessage>(this, OnWebViewNavigationStateChanged);
@@ -153,90 +155,63 @@ public partial class WebInspectorViewModel : InspectorViewModel
     {
         if (e.PropertyName == nameof(Resource))
         {
-            var resolveLoadResult = _resourceRegistry.ResolveResourcePath(Resource);
-            if (resolveLoadResult.IsFailure)
-            {
-                _logger.LogError(resolveLoadResult, $"Failed to resolve path for resource: '{Resource}'");
-                return;
-            }
-            var loadResult = LoadWebView(resolveLoadResult.Value);
-            if (loadResult.IsFailure)
-            {
-                _logger.LogError(loadResult, $"Failed to load .webview file: {resolveLoadResult.Value}");
-                return;
-            }
-
-            _suppressSaving = true;
-            SourceUrl = loadResult.Value;
-            _suppressSaving = false;
+            _ = LoadWebViewAsync(Resource);
         }
         else if (e.PropertyName == nameof(SourceUrl) && !_suppressSaving)
         {
-            var resolveSaveResult = _resourceRegistry.ResolveResourcePath(Resource);
-            if (resolveSaveResult.IsFailure)
-            {
-                _logger.LogError(resolveSaveResult, $"Failed to resolve path for resource: '{Resource}'");
-                return;
-            }
-            var saveResult = SaveWebView(resolveSaveResult.Value, SourceUrl);
-            if (saveResult.IsFailure)
-            {
-                _logger.LogError(saveResult, $"Failed to save .webview file: {resolveSaveResult.Value}");
-                return;
-            }
+            _ = SaveWebViewAsync(Resource, SourceUrl);
         }
     }
 
-    private Result<string> LoadWebView(string webFilePath)
+    private async Task LoadWebViewAsync(ResourceKey resource)
     {
-        if (!File.Exists(webFilePath))
+        // The .webview.cel file is a standalone .cel form, so SidecarService
+        // treats the resource itself as the storage. Parse and chokepoint IO
+        // live in the sidecar service; this method just plucks 'source_url'
+        // from the frontmatter and posts it back to the inspector field.
+        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var readResult = await sidecarService.ReadAsync(resource);
+        if (readResult.IsFailure)
         {
-            return Result<string>.Fail($"File not found at path: {webFilePath}");
+            _logger.LogError(readResult, $"Failed to read .webview.cel file: '{resource}'");
+            return;
+        }
+        var read = readResult.Value;
+
+        if (read.Outcome == SidecarReadOutcome.Broken)
+        {
+            _logger.LogError($"Failed to parse .webview.cel file '{resource}': {read.FailureMessage ?? "parse failed"}");
+            return;
         }
 
-        try
+        var sourceUrl = string.Empty;
+        if (read.Outcome == SidecarReadOutcome.Healthy
+            && read.Content is not null
+            && read.Content.Frontmatter.TryGetValue(SourceUrlFieldName, out var urlObject))
         {
-            var json = File.ReadAllText(webFilePath);
-
-            if (string.IsNullOrEmpty(json))
+            if (urlObject is string urlValue)
             {
-                return Result<string>.Ok(string.Empty);
+                sourceUrl = urlValue;
             }
-
-            var jsonObject = JsonNode.Parse(json) as JsonObject;
-            if (jsonObject is null)
+            else
             {
-                return Result<string>.Fail($"Failed to parse JSON file: {webFilePath}");
+                var actualType = urlObject?.GetType().Name ?? "null";
+                _logger.LogWarning($"Field '{SourceUrlFieldName}' in '{resource}' is not a string (got {actualType})");
             }
-
-            var sourceUrl = jsonObject["sourceUrl"]?.ToString() ?? string.Empty;
-
-            return Result<string>.Ok(sourceUrl);
         }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"An exception occurred when loading .webview file: {webFilePath}")
-                .WithException(ex);
-        }
+
+        _suppressSaving = true;
+        SourceUrl = sourceUrl;
+        _suppressSaving = false;
     }
 
-    private Result SaveWebView(string webFilePath, string sourceUrl)
+    private async Task SaveWebViewAsync(ResourceKey resource, string sourceUrl)
     {
-        try
+        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var setResult = await sidecarService.SetFieldAsync(resource, SourceUrlFieldName, sourceUrl);
+        if (setResult.IsFailure)
         {
-            var jsonObject = new JsonObject
-            {
-                ["sourceUrl"] = sourceUrl
-            };
-
-            File.WriteAllText(webFilePath, jsonObject.ToJsonString());
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"An exception occurred when saving .webview file: {webFilePath}")
-                .WithException(ex);
+            _logger.LogError(setResult, $"Failed to save .webview.cel file: '{resource}'");
         }
     }
 }

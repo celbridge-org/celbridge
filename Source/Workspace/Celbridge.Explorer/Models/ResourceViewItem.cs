@@ -36,41 +36,41 @@ public partial class ResourceViewItem : ObservableObject
 
     /// <summary>
     /// The margin used for visual indentation based on tree depth.
-    /// Root folder gets negative margin to align with left edge of panel.
+    /// Project folder gets negative margin to align with left edge of panel.
     /// </summary>
-    public Thickness IndentMargin => IsRootFolder
-        ? new Thickness(-32, 0, 0, 0)  // Shift root folder left to align with panel edge
+    public Thickness IndentMargin => IsProjectFolder
+        ? new Thickness(-32, 0, 0, 0)  // Shift project folder left to align with panel edge
         : new Thickness(IndentLevel * 20, 0, 0, 0);
 
     /// <summary>
     /// The name of the resource for display.
-    /// For root folder, this returns the project folder name.
+    /// For the project folder, this returns the project folder name.
     /// </summary>
     public string Name { get; }
 
     /// <summary>
-    /// Whether this item is the root project folder.
-    /// Root folder has special handling.
+    /// Whether this item is the project folder.
+    /// The project folder has special handling.
     /// </summary>
-    public bool IsRootFolder { get; }
+    public bool IsProjectFolder { get; }
 
     /// <summary>
     /// Visibility for the expand/collapse chevron.
-    /// Hidden for root folder and files
+    /// Hidden for the project folder and files.
     /// </summary>
     public Visibility ChevronVisibility =>
-        IsRootFolder ? Visibility.Collapsed : (HasChildren ? Visibility.Visible : Visibility.Collapsed);
+        IsProjectFolder ? Visibility.Collapsed : (HasChildren ? Visibility.Visible : Visibility.Collapsed);
 
     /// <summary>
     /// Creates a new ResourceViewItem for the given resource.
     /// </summary>
-    public ResourceViewItem(IResource resource, int indentLevel, bool isExpanded, bool hasChildren, bool isRootFolder = false, string? displayName = null)
+    public ResourceViewItem(IResource resource, int indentLevel, bool isExpanded, bool hasChildren, bool isProjectFolder = false, string? displayName = null)
     {
         Resource = resource;
         IndentLevel = indentLevel;
         _isExpanded = isExpanded;
         HasChildren = hasChildren;
-        IsRootFolder = isRootFolder;
+        IsProjectFolder = isProjectFolder;
         Name = displayName ?? resource.Name;
     }
 }

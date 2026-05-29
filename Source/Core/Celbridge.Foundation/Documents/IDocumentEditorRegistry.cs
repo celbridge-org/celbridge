@@ -14,7 +14,7 @@ public interface IDocumentEditorRegistry
     /// Gets the factory for the specified file resource.
     /// Returns the highest priority factory that can handle the resource.
     /// </summary>
-    Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource, string filePath);
+    Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource);
 
     /// <summary>
     /// Checks if any registered factory can handle the specified extension.
@@ -27,10 +27,26 @@ public interface IDocumentEditorRegistry
     IReadOnlyList<IDocumentEditorFactory> GetAllFactories();
 
     /// <summary>
-    /// Gets all factories that can handle the specified extension, sorted by priority.
-    /// Returns an empty list if no factories are registered for the extension.
+    /// Gets all factories indexed under the specified extension, sorted by
+    /// priority. Direct bucket lookup; does not walk the multi-part suffix
+    /// chain or apply CanHandleResource. Returns an empty list when no
+    /// factory is registered for the extension.
     /// </summary>
-    IReadOnlyList<IDocumentEditorFactory> GetFactoriesForFileExtension(string fileExtension);
+    IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension);
+
+    /// <summary>
+    /// Gets every factory that can handle the given file, sorted by priority
+    /// (most specialized first), deduplicated by editor id and filtered by
+    /// CanHandleResource. Uses the same matching rules as GetFactory.
+    /// </summary>
+    IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource);
+
+    /// <summary>
+    /// Returns the factories a user could reasonably pick from an "Open with..."
+    /// dialog: non-placeholder factories that claim the file, plus the code
+    /// editor appended as a "view as text" option for text-shaped files.
+    /// </summary>
+    IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForResource(ResourceKey fileResource);
 
     /// <summary>
     /// Gets a factory by its editor ID.

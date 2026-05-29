@@ -11,6 +11,7 @@ namespace Celbridge.Documents.ViewModels;
 /// </summary>
 public partial class ContributionDocumentViewModel : DocumentViewModel
 {
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
@@ -24,6 +25,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         IWorkspaceWrapper workspaceWrapper,
         IEnumerable<IDocumentContentProvider> contentProviders)
     {
+        _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _contentProviders = contentProviders.ToList().AsReadOnly();
 
@@ -61,7 +63,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
                 var generateResult = await provider.LoadContentAsync(FileResource);
                 if (generateResult.IsSuccess)
                 {
-                    UpdateFileTrackingInfo();
+                    await UpdateFileTrackingInfoAsync();
                     return generateResult.Value;
                 }
             }
@@ -69,31 +71,44 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        if (!File.Exists(FilePath))
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return GetDefaultTemplateContent();
+            return await GetDefaultTemplateContentAsync();
         }
 
         if (IsBinary)
         {
-            var bytes = await File.ReadAllBytesAsync(FilePath);
+            var bytesResult = await fileStorage.ReadAllBytesAsync(FileResource);
+            if (bytesResult.IsFailure)
+            {
+                return await GetDefaultTemplateContentAsync();
+            }
+            var bytes = bytesResult.Value;
             if (bytes.Length == 0)
             {
-                return GetDefaultTemplateContent();
+                return await GetDefaultTemplateContentAsync();
             }
 
-            UpdateFileTrackingInfo();
+            await UpdateFileTrackingInfoAsync();
             return Convert.ToBase64String(bytes);
         }
 
-        var content = await File.ReadAllTextAsync(FilePath);
+        var textResult = await fileStorage.ReadAllTextAsync(FileResource);
+        if (textResult.IsFailure)
+        {
+            return await GetDefaultTemplateContentAsync();
+        }
+        var content = textResult.Value;
 
         if (string.IsNullOrEmpty(content))
         {
-            return GetDefaultTemplateContent();
+            return await GetDefaultTemplateContentAsync();
         }
 
-        UpdateFileTrackingInfo();
+        await UpdateFileTrackingInfoAsync();
         return content;
     }
 
@@ -268,8 +283,10 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Reads the default template content from the manifest's template file.
     /// Returns empty string if no default template is declared or the file cannot be read.
+    /// Routes through IFileStorage when the template path is registry-addressable;
+    /// falls back to direct read for packages installed outside the project tree.
     /// </summary>
-    private string GetDefaultTemplateContent()
+    private async Task<string> GetDefaultTemplateContentAsync()
     {
         if (Contribution is null)
         {
@@ -285,6 +302,17 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         }
 
         var templatePath = Path.Combine(Contribution.Package.PackageFolder, defaultTemplate.TemplateFile);
+
+        var keyResult = _resourceRegistry.GetResourceKey(templatePath);
+        if (keyResult.IsSuccess)
+        {
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var textResult = await fileStorage.ReadAllTextAsync(keyResult.Value);
+            return textResult.IsSuccess ? textResult.Value : string.Empty;
+        }
+
+        // Template lives outside the project tree (bundled with the app's
+        // packages). Treat as embedded resource.
         if (!File.Exists(templatePath))
         {
             return string.Empty;
@@ -292,6 +320,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
         try
         {
+            await Task.CompletedTask;
             return File.ReadAllText(templatePath, Encoding.UTF8);
         }
         catch

@@ -22,21 +22,28 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(resourceKey);
-        if (resolveResult.IsFailure)
+        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        if (infoResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            // Surface the chokepoint's failure verbatim so case-mismatch
+            // errors (which carry the canonical key) reach the caller. The
+            // generic "resource not found" message only fires when the
+            // resolve succeeded but the resource genuinely is not a file.
+            return ToolResponse.Error(infoResult);
         }
-        var resourcePath = resolveResult.Value;
-
-        if (!File.Exists(resourcePath))
+        if (infoResult.Value.Kind != StorageItemKind.File)
         {
-            return ToolResponse.Error($"Resource not found in project: '{resource}'. Note that file_read addresses project resources, not arbitrary disk paths — files outside the project content root cannot be read.");
+            return ToolResponse.Error($"Resource not found: '{resourceKey}'. file_read addresses resources by resource key, not arbitrary disk paths — only files under a registered root (e.g. 'project:', 'temp:', 'logs:') can be read.");
         }
 
-        var fileText = await File.ReadAllTextAsync(resourcePath);
+        var readResult = await fileStorage.ReadAllTextAsync(resourceKey);
+        if (readResult.IsFailure)
+        {
+            return ToolResponse.Error(readResult.FirstErrorMessage);
+        }
+        var fileText = readResult.Value;
         var totalLineCount = LineEndingHelper.CountLines(fileText);
         var fileSeparator = LineEndingHelper.DetectSeparatorOrDefault(fileText);
 
@@ -82,7 +89,7 @@ public partial class FileTools
             rangeContent = string.Join(fileSeparator, selectedLines);
         }
 
-        var readResult = new FileReadResult(rangeContent, totalLineCount);
-        return ToolResponse.Success(SerializeJson(readResult));
+        var rangeReadResult = new FileReadResult(rangeContent, totalLineCount);
+        return ToolResponse.Success(SerializeJson(rangeReadResult));
     }
 }

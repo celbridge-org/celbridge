@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -21,14 +22,12 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (Operations.Count == 0)
         {
@@ -49,9 +48,16 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
             }
         }
 
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             int totalCellCount = 0;
 
@@ -74,7 +80,11 @@ public class ClearRangesCommand : CommandBase, IClearRangesCommand
                 totalCellCount += cellCount;
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             ResultValue = new ClearRangesResult(Operations.Count, totalCellCount);
         }

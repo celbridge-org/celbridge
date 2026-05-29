@@ -306,9 +306,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             var existingSection = existingLocation.Section;
             var existingTab = existingLocation.Tab;
 
-            // If a different editor was requested, close and reopen with the new editor
+            // Honor an explicit editor request even when the existing tab's EditorId is Empty.
             bool isDifferentEditor = !effectiveOptions.EditorId.IsEmpty &&
-                !existingTab.ViewModel.EditorId.IsEmpty &&
                 effectiveOptions.EditorId != existingTab.ViewModel.EditorId;
 
             if (isDifferentEditor)
@@ -336,7 +335,15 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                 return await OpenDocument(fileResource, reopenOptions);
             }
 
-            // If already open in a different section, move it
+            // Without an explicit address the existing tab stays in its own
+            // section. Moving it to wherever the active section happens to be
+            // would yank it from under the user.
+            if (address is null)
+            {
+                sectionIndex = existingSection.SectionIndex;
+            }
+
+            // If a different section was explicitly requested, move it there.
             if (existingSection.SectionIndex != sectionIndex)
             {
                 SectionContainer.MoveTabToSection(existingTab, sectionIndex);
@@ -410,7 +417,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         documentTab.ViewModel.DocumentView = documentView;
         documentTab.Content = documentView;
 
-        UpdateEditorDisplayName(documentTab, effectiveOptions.EditorId);
+        UpdateEditorDisplayName(documentTab, documentView.EditorId);
 
         targetSectionForNew.RefreshSelectedTab();
         UpdateAllTabDisplayNames();
@@ -656,9 +663,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
             // Clean up the old DocumentView state
             await oldDocumentView.PrepareToClose();
 
-            // Populate the tab content
+            // Resource (and possibly extension) changed; refresh content and label.
             documentTab.ViewModel.DocumentView = newDocumentView;
             documentTab.Content = newDocumentView;
+            UpdateEditorDisplayName(documentTab, newDocumentView.EditorId);
 
             // At this point there should be no remaining references to oldDocumentView, so it should go
             // out of scope and eventually be cleaned up by GC.
@@ -680,12 +688,8 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         return Result.Ok();
     }
 
-    /// <summary>
-    /// Updates all tab display names to ensure tabs with the same filename are disambiguated.
-    /// Tabs with unique filenames show just the filename; tabs with ambiguous filenames
-    /// show additional path segments to differentiate them.
-    /// </summary>
-    private void UpdateEditorDisplayName(DocumentTab documentTab, DocumentEditorId documentEditorId = default)
+    // Sets the tab's recorded editor id and display label.
+    private void UpdateEditorDisplayName(DocumentTab documentTab, DocumentEditorId documentEditorId)
     {
         var displayInfo = ViewModel.ResolveEditorDisplayInfo(documentTab.ViewModel.FileResource, documentEditorId);
         if (displayInfo is not null)

@@ -38,7 +38,7 @@ public class AddFileMenuOption : IMenuOption<ExplorerMenuContext>
     public MenuItemState GetState(ExplorerMenuContext context)
     {
         return new MenuItemState(
-            IsVisible: context.IsSingleItemOrRootTargeted,
+            IsVisible: context.IsSingleItemOrProjectFolderTargeted,
             IsEnabled: true);
     }
 

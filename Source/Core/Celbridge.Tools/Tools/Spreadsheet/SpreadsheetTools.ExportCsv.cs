@@ -21,12 +21,12 @@ public partial class SpreadsheetTools
     [RelatedGuides("resource_keys", "spreadsheet_a1_notation", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> ExportCsv(string resource, string sheet, string range = "", string destination = "")
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -35,13 +35,23 @@ public partial class SpreadsheetTools
 
         var rangeArgument = string.IsNullOrEmpty(range) ? null : range;
 
-        var reader = GetRequiredService<ISpreadsheetReader>();
-        var csvResult = reader.ExportCsv(workbookPath, sheet, rangeArgument);
-        if (csvResult.IsFailure)
+        var openResult = await OpenWorkbookStreamAsync(workbookResource);
+        if (openResult.IsFailure)
         {
-            return ToolResponse.Error(csvResult);
+            return ToolResponse.Error(openResult);
         }
-        var csv = csvResult.Value;
+
+        ExportCsvResult csv;
+        using (var stream = openResult.Value)
+        {
+            var reader = GetRequiredService<ISpreadsheetReader>();
+            var csvResult = reader.ExportCsv(stream, sheet, rangeArgument);
+            if (csvResult.IsFailure)
+            {
+                return ToolResponse.Error(csvResult);
+            }
+            csv = csvResult.Value;
+        }
 
         if (string.IsNullOrEmpty(destination))
         {
@@ -64,7 +74,7 @@ public partial class SpreadsheetTools
         }
 
         var byteCount = Encoding.UTF8.GetByteCount(csv.Csv);
-        var metadata = new ExportCsvFileResult(csv.RowCount, csv.ColumnCount, byteCount, destination);
+        var metadata = new ExportCsvFileResult(csv.RowCount, csv.ColumnCount, byteCount, destinationResourceKey.ToString());
         var json = SerializeJson(metadata);
         return ToolResponse.Success(json);
     }

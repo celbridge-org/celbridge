@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Server;
 using Celbridge.Tools;
 using Celbridge.Workspace;
@@ -35,6 +37,7 @@ public class FileToolsReadImageTests
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -44,6 +47,12 @@ public class FileToolsReadImageTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
+            Substitute.For<IMessengerService>(),
+            workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }
@@ -136,7 +145,7 @@ public class FileToolsReadImageTests
 
         var metadataJson = result.Content.OfType<TextContentBlock>().Single().Text;
         var metadata = JsonDocument.Parse(metadataJson).RootElement;
-        metadata.GetProperty("resource").GetString().Should().Be("captures/sample.jpg");
+        metadata.GetProperty("resource").GetString().Should().Be("project:captures/sample.jpg");
         metadata.GetProperty("mimeType").GetString().Should().Be("image/jpeg");
         metadata.GetProperty("sizeBytes").GetInt32().Should().Be(MinimalJpegBytes.Length);
     }

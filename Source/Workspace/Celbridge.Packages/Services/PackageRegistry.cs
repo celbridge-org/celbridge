@@ -1,7 +1,9 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
+using Celbridge.Resources;
 using Celbridge.Settings;
+using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
 
@@ -22,6 +24,7 @@ public class PackageRegistry
     private readonly IModuleService _moduleService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IPackageLocalizationService _localizationService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
@@ -30,21 +33,23 @@ public class PackageRegistry
         ILogger<PackageRegistry> logger,
         IModuleService moduleService,
         IFeatureFlags featureFlags,
-        IPackageLocalizationService localizationService)
+        IPackageLocalizationService localizationService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
         _moduleService = moduleService;
         _featureFlags = featureFlags;
         _localizationService = localizationService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
-    public PackageDiscoveryReport DiscoverPackages(string projectFolderPath)
+    public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath)
     {
         _bundledPackages.Clear();
         _projectPackages.Clear();
 
         var bundledFailures = DiscoverBundledPackages();
-        var projectFailures = DiscoverProjectPackages(projectFolderPath);
+        var projectFailures = await DiscoverProjectPackagesAsync(projectFolderPath);
 
         var failures = new List<PackageLoadFailure>(bundledFailures.Count + projectFailures.Count);
         failures.AddRange(bundledFailures);
@@ -146,6 +151,11 @@ public class PackageRegistry
         return documentTypes.AsReadOnly();
     }
 
+    // Template files are read from contribution.Package.PackageFolder, which is
+    // an absolute path that may live inside the project tree (project packages)
+    // or outside it (bundled packages shipped with module DLLs). The contribution
+    // does not carry a bundled/project tag, so the read stays on direct I/O until
+    // package origin is tracked.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -263,7 +273,7 @@ public class PackageRegistry
         return failures;
     }
 
-    private List<PackageLoadFailure> DiscoverProjectPackages(string projectFolderPath)
+    private async Task<List<PackageLoadFailure>> DiscoverProjectPackagesAsync(string projectFolderPath)
     {
         var failures = new List<PackageLoadFailure>();
 
@@ -272,24 +282,49 @@ public class PackageRegistry
             return failures;
         }
 
-        var packagesFolder = Path.Combine(projectFolderPath, PackagesFolderName);
-        if (!Directory.Exists(packagesFolder))
+        var packagesResource = new ResourceKey(PackagesFolderName);
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+
+        var packagesInfoResult = await fileStorage.GetInfoAsync(packagesResource);
+        if (packagesInfoResult.IsFailure
+            || packagesInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return failures;
         }
 
-        var packageFolders = Directory.GetDirectories(packagesFolder);
+        var enumerateResult = await fileStorage.EnumerateFolderAsync(packagesResource);
+        if (enumerateResult.IsFailure)
+        {
+            return failures;
+        }
+
+        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var candidates = new List<Package>();
 
-        foreach (var packageFolder in packageFolders)
+        foreach (var item in enumerateResult.Value)
         {
-            var manifestPath = Path.Combine(packageFolder, ManifestFileName);
-            if (!File.Exists(manifestPath))
+            if (!item.IsFolder)
+            {
+                continue;
+            }
+
+            var manifestResource = item.Resource.Combine(ManifestFileName);
+            var manifestInfoResult = await fileStorage.GetInfoAsync(manifestResource);
+            if (manifestInfoResult.IsFailure
+                || manifestInfoResult.Value.Kind != StorageItemKind.File)
             {
                 // A folder under packages/ with no manifest is not a package.
                 // Silently skip rather than report as a failure.
                 continue;
             }
+
+            var resolveResult = resourceRegistry.ResolveResourcePath(manifestResource);
+            if (resolveResult.IsFailure)
+            {
+                continue;
+            }
+            var manifestPath = resolveResult.Value;
+            var packageFolder = Path.GetDirectoryName(manifestPath)!;
 
             var loadResult = PackageManifestLoader.LoadPackage(manifestPath, hostNameOverride: null, secrets: null);
             if (loadResult.IsFailure)

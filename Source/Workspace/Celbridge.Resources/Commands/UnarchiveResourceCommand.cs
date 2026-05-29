@@ -2,7 +2,6 @@ using System.IO.Compression;
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
-using Celbridge.Resources.Services;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -56,6 +55,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
+        var fileStorage = workspaceService.FileStorage;
 
         if (!ResourceKey.IsValidKey(ArchiveResource))
         {
@@ -67,14 +67,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             return Result.Fail($"Invalid destination resource key: '{DestinationResource}'");
         }
 
-        var resolveArchiveResult = resourceRegistry.ResolveResourcePath(ArchiveResource);
-        if (resolveArchiveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{ArchiveResource}'")
-                .WithErrors(resolveArchiveResult);
-        }
-        var archivePath = resolveArchiveResult.Value;
-
+        // Path resolution is still needed for entry-name validation and the
+        // zip-slip canonicalization check below; the operation-service writes
+        // themselves take ResourceKey arguments.
         var resolveDestinationResult = resourceRegistry.ResolveResourcePath(DestinationResource);
         if (resolveDestinationResult.IsFailure)
         {
@@ -83,7 +78,9 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         }
         var destinationPath = resolveDestinationResult.Value;
 
-        if (!File.Exists(archivePath))
+        var archiveInfoResult = await fileStorage.GetInfoAsync(ArchiveResource);
+        if (archiveInfoResult.IsFailure
+            || archiveInfoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Archive not found: '{ArchiveResource}'");
         }
@@ -93,7 +90,13 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         try
         {
-            using var fileStream = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var openArchiveResult = await fileStorage.OpenReadAsync(ArchiveResource);
+            if (openArchiveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to open archive: '{ArchiveResource}'")
+                    .WithErrors(openArchiveResult);
+            }
+            await using var fileStream = openArchiveResult.Value;
             using var zipArchive = new ZipArchive(fileStream, ZipArchiveMode.Read);
 
             // First pass: validate all entries and collect folder paths
@@ -143,11 +146,17 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                         "Aborting extraction.");
                 }
 
-                if (!Overwrite && File.Exists(outputPath))
+                if (!Overwrite)
                 {
-                    return Result.Fail(
-                        $"File already exists: '{DestinationResource}/{entryName}'. " +
-                        "Set overwrite to true to replace existing files.");
+                    var entryResource = DestinationResource.Combine(entryName);
+                    var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
+                    if (existingInfoResult.IsSuccess
+                        && existingInfoResult.Value.Kind == StorageItemKind.File)
+                    {
+                        return Result.Fail(
+                            $"File already exists: '{DestinationResource}/{entryName}'. " +
+                            "Set overwrite to true to replace existing files.");
+                    }
                 }
 
                 validEntries.Add(entry);
@@ -160,75 +169,119 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 }
             }
 
-            // Begin batch so all operations are a single undo unit
-            resourceOpService.BeginBatch();
+            // Begin batch so all operations are a single undo unit.
+            using var batch = resourceOpService.BeginBatch();
 
-            try
+            // Create the destination folder and any missing ancestors through
+            // the operation service so the whole chain lands in the unarchive's
+            // undo batch.
+            var destInfoResult = await fileStorage.GetInfoAsync(DestinationResource);
+            if (destInfoResult.IsFailure)
             {
-                // Create the destination folder if it doesn't exist
-                if (!Directory.Exists(destinationPath))
-                {
-                    var parentFolder = Path.GetDirectoryName(destinationPath);
-                    if (!string.IsNullOrEmpty(parentFolder) && !Directory.Exists(parentFolder))
-                    {
-                        Directory.CreateDirectory(parentFolder);
-                    }
+                return Result.Fail($"Failed to probe destination resource: '{DestinationResource}'")
+                    .WithErrors(destInfoResult);
+            }
 
-                    var createDestResult = await resourceOpService.CreateFolderAsync(destinationPath);
-                    if (createDestResult.IsFailure)
+            if (destInfoResult.Value.Kind == StorageItemKind.NotFound)
+            {
+                // CreateFolderAsync on the chokepoint is idempotent and creates
+                // missing intermediate parents in one call. We still collect
+                // and create ancestors one-at-a-time so each lands as its own
+                // undoable operation inside the batch.
+                var missingAncestorKeys = new List<ResourceKey>();
+                var ancestorKey = DestinationResource.GetParent();
+                while (!ancestorKey.IsEmpty)
+                {
+                    var ancestorInfoResult = await fileStorage.GetInfoAsync(ancestorKey);
+                    if (ancestorInfoResult.IsFailure)
                     {
-                        return createDestResult;
+                        return Result.Fail($"Failed to probe ancestor resource: '{ancestorKey}'")
+                            .WithErrors(ancestorInfoResult);
+                    }
+                    if (ancestorInfoResult.Value.Kind != StorageItemKind.NotFound)
+                    {
+                        break;
+                    }
+                    missingAncestorKeys.Add(ancestorKey);
+                    ancestorKey = ancestorKey.GetParent();
+                }
+                missingAncestorKeys.Reverse();
+
+                foreach (var key in missingAncestorKeys)
+                {
+                    var createAncestorResult = await resourceOpService.CreateFolderAsync(key);
+                    if (createAncestorResult.IsFailure)
+                    {
+                        return createAncestorResult;
                     }
                 }
 
-                // Create folders shallowest first (sorted by path length)
-                var sortedFolders = foldersToCreate
-                    .Where(folderPath => !Directory.Exists(folderPath))
-                    .OrderBy(folderPath => folderPath.Length)
-                    .ToList();
-
-                foreach (var folderPath in sortedFolders)
+                var createDestResult = await resourceOpService.CreateFolderAsync(DestinationResource);
+                if (createDestResult.IsFailure)
                 {
-                    var createFolderResult = await resourceOpService.CreateFolderAsync(folderPath);
-                    if (createFolderResult.IsFailure)
-                    {
-                        return createFolderResult;
-                    }
+                    return createDestResult;
                 }
+            }
 
-                // Extract files
-                foreach (var entry in validEntries)
+            // Filter shallowest-first so parents are created before children.
+            var sortedFolderKeys = new List<ResourceKey>();
+            foreach (var folderPath in foldersToCreate.OrderBy(path => path.Length))
+            {
+                var folderKey = BuildDescendantKey(DestinationResource, destinationPath, folderPath);
+                var folderInfoResult = await fileStorage.GetInfoAsync(folderKey);
+                if (folderInfoResult.IsFailure)
                 {
-                    var outputPath = Path.Combine(destinationPath, entry.FullName.Replace('/', Path.DirectorySeparatorChar));
+                    return Result.Fail($"Failed to probe folder resource: '{folderKey}'")
+                        .WithErrors(folderInfoResult);
+                }
+                if (folderInfoResult.Value.Kind == StorageItemKind.NotFound)
+                {
+                    sortedFolderKeys.Add(folderKey);
+                }
+            }
 
-                    // If overwriting, delete existing file first so it's preserved in trash for undo
-                    if (Overwrite && File.Exists(outputPath))
+            foreach (var folderKey in sortedFolderKeys)
+            {
+                var createFolderResult = await resourceOpService.CreateFolderAsync(folderKey);
+                if (createFolderResult.IsFailure)
+                {
+                    return createFolderResult;
+                }
+            }
+
+            // Extract files
+            foreach (var entry in validEntries)
+            {
+                var entryResource = DestinationResource.Combine(entry.FullName);
+
+                // If overwriting, delete existing file first so it's preserved in trash for undo
+                if (Overwrite)
+                {
+                    var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
+                    if (existingInfoResult.IsSuccess
+                        && existingInfoResult.Value.Kind == StorageItemKind.File)
                     {
-                        var deleteResult = await resourceOpService.DeleteFileAsync(outputPath);
+                        var deleteResult = await resourceOpService.DeleteAsync(entryResource);
                         if (deleteResult.IsFailure)
                         {
                             return deleteResult;
                         }
                     }
-
-                    // Read entry into byte array
-                    using var entryStream = entry.Open();
-                    using var memoryStream = new MemoryStream();
-                    await entryStream.CopyToAsync(memoryStream);
-                    var entryBytes = memoryStream.ToArray();
-
-                    var createResult = await resourceOpService.CreateFileAsync(outputPath, entryBytes);
-                    if (createResult.IsFailure)
-                    {
-                        return createResult;
-                    }
-
-                    entryCount++;
                 }
-            }
-            finally
-            {
-                resourceOpService.CommitBatch();
+
+                // Read entry into byte array
+                using var entryStream = entry.Open();
+                using var memoryStream = new MemoryStream();
+                await entryStream.CopyToAsync(memoryStream);
+                var entryBytes = memoryStream.ToArray();
+
+                var createResult = await resourceOpService.CreateFileAsync(entryResource, entryBytes);
+                if (createResult.IsFailure)
+                {
+                    return createResult;
+                }
+
+                entryCount++;
             }
         }
         catch (IOException exception)
@@ -248,5 +301,24 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         };
 
         return Result.Ok();
+    }
+
+    private static ResourceKey BuildDescendantKey(
+        ResourceKey parentKey,
+        string parentPath,
+        string descendantPath)
+    {
+        var relative = Path.GetRelativePath(parentPath, descendantPath);
+        var segments = relative.Split(
+            new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
+            StringSplitOptions.RemoveEmptyEntries);
+
+        var key = parentKey;
+        foreach (var segment in segments)
+        {
+            key = key.Combine(segment);
+        }
+
+        return key;
     }
 }

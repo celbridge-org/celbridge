@@ -34,9 +34,20 @@ public interface IDocumentEditorFactory
 
     /// <summary>
     /// The file extensions this factory handles (e.g., ".md", ".txt", ".cs").
-    /// Extensions should be lowercase with leading dot.
+    /// Extensions should be lowercase with leading dot. Multi-part forms such as
+    /// ".webview.cel" or ".document.toml" are also accepted; the registry
+    /// resolves longest match first when a file's name matches more than one
+    /// registered suffix.
     /// </summary>
     IReadOnlyList<string> SupportedExtensions { get; }
+
+    /// <summary>
+    /// Exact file names this factory handles (e.g., "package.toml"). Filename
+    /// matches are tried before extension matches. Names are compared
+    /// case-insensitively. Defaults to an empty list when the factory matches
+    /// purely by extension.
+    /// </summary>
+    IReadOnlyList<string> SupportedFilenames { get; }
 
     /// <summary>
     /// Priority for conflict resolution when multiple factories support the same extension.
@@ -45,9 +56,17 @@ public interface IDocumentEditorFactory
     EditorPriority Priority { get; }
 
     /// <summary>
+    /// True for factories that exist solely to reserve a filename or extension
+    /// for a known non-document role (e.g. package.toml, *.celbridge,
+    /// *.document.toml). Placeholders do not produce real document views and
+    /// are hidden from user-facing pickers such as the "Open with..." menu.
+    /// </summary>
+    bool IsPlaceholder { get; }
+
+    /// <summary>
     /// Determines if this factory can handle the given file resource.
     /// </summary>
-    bool CanHandleResource(ResourceKey fileResource, string filePath);
+    bool CanHandleResource(ResourceKey fileResource);
 
     /// <summary>
     /// Creates a document view for the specified file resource.

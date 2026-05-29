@@ -19,11 +19,12 @@ public partial class SpreadsheetTools
         string activeCell = "",
         string topLeftCell = "")
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -37,10 +38,9 @@ public partial class SpreadsheetTools
         }
         var ranges = parseResult.Value;
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<ISetActiveViewCommand, SetActiveViewResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Sheet = sheet;
             command.Range = range;
             command.Ranges = ranges;

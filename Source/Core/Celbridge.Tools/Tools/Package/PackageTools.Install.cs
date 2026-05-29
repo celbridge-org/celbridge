@@ -1,9 +1,6 @@
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Directory = System.IO.Directory;
-using File = System.IO.File;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
 
@@ -73,32 +70,16 @@ public partial class PackageTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var workspaceService = workspaceWrapper.WorkspaceService;
+        var fileStorage = workspaceService.FileStorage;
 
-        // Write the downloaded zip to a temporary cache file in the project
-        var tempArchiveResource = ResourceKey.Create($".celbridge/.cache/{packageName}.zip");
-        var resolveTempResult = resourceRegistry.ResolveResourcePath(tempArchiveResource);
-        if (resolveTempResult.IsFailure)
+        // Stage the downloaded zip under temp: so it lives in .celbridge/temp/
+        // (created at workspace load) and is reachable through the chokepoint.
+        var tempArchiveResource = new ResourceKey($"temp:{packageName}.zip");
+        var writeArchiveResult = await fileStorage.WriteAllBytesAsync(tempArchiveResource, downloadResult.Value);
+        if (writeArchiveResult.IsFailure)
         {
-            var failure = Result.Fail("Failed to resolve temporary archive path")
-                .WithErrors(resolveTempResult);
-            return ToolResponse.Error(failure);
-        }
-        var tempArchivePath = resolveTempResult.Value;
-
-        var tempFolder = Path.GetDirectoryName(tempArchivePath);
-        if (!string.IsNullOrEmpty(tempFolder) && !Directory.Exists(tempFolder))
-        {
-            Directory.CreateDirectory(tempFolder);
-        }
-
-        try
-        {
-            await File.WriteAllBytesAsync(tempArchivePath, downloadResult.Value);
-        }
-        catch (System.IO.IOException exception)
-        {
-            return ToolResponse.Error($"Failed to write downloaded package: {exception.Message}");
+            return ToolResponse.Error($"Failed to write downloaded package: {writeArchiveResult.FirstErrorMessage}");
         }
 
         var destinationResource = ResourceKey.Create($"packages/{packageName}");
@@ -124,10 +105,9 @@ public partial class PackageTools
         }
         finally
         {
-            if (File.Exists(tempArchivePath))
-            {
-                File.Delete(tempArchivePath);
-            }
+            // Best-effort cleanup of the staged archive; a failure here does
+            // not change the install outcome the caller sees.
+            await fileStorage.DeleteAsync(tempArchiveResource);
         }
     }
 }

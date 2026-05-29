@@ -6,6 +6,9 @@ namespace Celbridge.Resources.Commands;
 
 public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
 {
+    // See WriteFileCommand for why this command always refreshes the registry.
+    public override CommandFlags CommandFlags => CommandFlags.UpdateResources;
+
     private readonly ILogger<WriteBinaryFileCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
@@ -32,26 +35,13 @@ public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
             return Result.Fail("Invalid base64 content");
         }
 
-        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
-        var resourceRegistry = resourceService.Registry;
+        var workspaceService = _workspaceWrapper.WorkspaceService;
+        var fileStorage = workspaceService.FileStorage;
 
-        var resolveResult = resourceRegistry.ResolveResourcePath(FileResource);
-        if (resolveResult.IsFailure)
-        {
-            return Result.Fail($"Failed to resolve path for resource: '{FileResource}'")
-                .WithErrors(resolveResult);
-        }
-        var isNewFile = !File.Exists(resolveResult.Value);
-
-        var writeResult = await resourceService.FileWriter.WriteAllBytesAsync(FileResource, bytes);
+        var writeResult = await fileStorage.WriteAllBytesAsync(FileResource, bytes);
         if (writeResult.IsFailure)
         {
             return writeResult;
-        }
-
-        if (isNewFile)
-        {
-            resourceRegistry.UpdateResourceRegistry();
         }
 
         return Result.Ok();

@@ -60,7 +60,8 @@ public partial class WebViewTools
                 return ToolResponse.Error("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
             }
 
-            var resolveResult = WebViewScreenshotResolver.Resolve(saveTo, format, projectFolderPath);
+            var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+            var resolveResult = await WebViewScreenshotResolver.ResolveAsync(saveTo, format, fileStorage);
             if (resolveResult.IsFailure)
             {
                 return ToolResponse.Error(resolveResult);
@@ -83,7 +84,7 @@ public partial class WebViewTools
         if (fileResource is not null)
         {
             // Route the write through IWriteBinaryFileCommand so capability
-            // gating, registry refresh, and PathValidator containment all run.
+            // gating, registry refresh, and RootPathResolver containment all run.
             // The base64 round-trip is a one-time in-process cost. No network
             // or JSON envelope sees the encoded form, so the JSON-escape
             // corruption that drove the original on-disk redesign cannot recur.

@@ -124,9 +124,11 @@ public static class HostDocumentExtensions
 
     /// <summary>
     /// Notifies the WebView that the document has been externally modified.
+    /// preserveViewState tells the editor whether to keep its current view state
+    /// across the reload, or to adopt the view state encoded in the on-disk file.
     /// </summary>
-    public static Task NotifyExternalChangeAsync(this CelbridgeHost host)
-        => host.Rpc.NotifyAsync(DocumentRpcMethods.ExternalChange);
+    public static Task NotifyExternalChangeAsync(this CelbridgeHost host, bool preserveViewState)
+        => host.Rpc.NotifyAsync(DocumentRpcMethods.ExternalChange, new { preserveViewState });
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.

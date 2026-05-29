@@ -1,17 +1,46 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Types of resource operations that can fail.
+/// Types of resource operations that can fail. Carried by
+/// ResourceOperationFailedMessage so subscribers can branch on the operation
+/// kind without parsing the message text.
 /// </summary>
 public enum ResourceOperationType
 {
+    /// <summary>
+    /// Soft-delete via the trash service.
+    /// </summary>
     Delete,
+
+    /// <summary>
+    /// Copy a resource to a different location, leaving the source in place.
+    /// </summary>
     Copy,
+
+    /// <summary>
+    /// Move a resource to a different folder.
+    /// </summary>
     Move,
+
+    /// <summary>
+    /// Rename a resource within its current folder.
+    /// </summary>
     Rename,
+
+    /// <summary>
+    /// Create a new file or folder resource.
+    /// </summary>
     Create,
+
+    /// <summary>
+    /// Compress a folder or set of resources into a .zip archive.
+    /// </summary>
     Archive,
-    Extract
+
+    /// <summary>
+    /// Extract the contents of a .zip archive into the project tree.
+    /// </summary>
+    Extract,
 }
 
 /// <summary>
@@ -45,21 +74,25 @@ public record SelectedResourceChangedMessage(ResourceKey Resource);
 public record ResourceOperationFailedMessage(ResourceOperationType OperationType, List<string> FailedItems);
 
 /// <summary>
-/// A message sent when a monitored resource has been created in the file system.
+/// Broadcast when a resource has appeared at the given key. Fired by the
+/// filesystem watcher and by structural operations that have already applied
+/// the change on disk.
 /// </summary>
-public record MonitoredResourceCreatedMessage(ResourceKey Resource);
+public record ResourceCreatedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a monitored resource has been modified in the file system.
+/// Broadcast when an existing resource's bytes have changed.
 /// </summary>
-public record MonitoredResourceChangedMessage(ResourceKey Resource);
+public record ResourceChangedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a monitored resource has been deleted from the file system.
+/// Broadcast when a resource has been removed from the given key. Fired by the
+/// filesystem watcher and by structural operations that have already applied
+/// the change on disk.
 /// </summary>
-public record MonitoredResourceDeletedMessage(ResourceKey Resource);
+public record ResourceDeletedMessage(ResourceKey Resource);
 
 /// <summary>
-/// A message sent when a monitored resource has been renamed or moved in the file system.
+/// Broadcast when a resource has moved from one key to another.
 /// </summary>
-public record MonitoredResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);
+public record ResourceRenamedMessage(ResourceKey OldResource, ResourceKey NewResource);

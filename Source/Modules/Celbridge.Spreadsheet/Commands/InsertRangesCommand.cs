@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -21,14 +22,12 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
-
-        var resolveResult = SpreadsheetHelper.ResolveWorkbookPath(_workspaceWrapper, FileResource);
+        var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
             return Result.Fail(resolveResult.FirstErrorMessage);
         }
-        var workbookPath = resolveResult.Value;
+        var workbookResource = resolveResult.Value;
 
         if (Operations.Count == 0)
         {
@@ -61,9 +60,16 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
         var rowsBySheet = new Dictionary<string, List<AxisRange>>(StringComparer.Ordinal);
         var columnsBySheet = new Dictionary<string, List<AxisRange>>(StringComparer.Ordinal);
 
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        if (loadResult.IsFailure)
+        {
+            return Result.Fail(loadResult);
+        }
+
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = loadResult.Value;
 
             for (int operationIndex = 0; operationIndex < Operations.Count; operationIndex++)
             {
@@ -113,7 +119,11 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
                 }
             }
 
-            SpreadsheetHelper.RecalculateAndSave(workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            if (saveResult.IsFailure)
+            {
+                return Result.Fail(saveResult);
+            }
 
             ResultValue = new InsertRangesResult(Operations.Count, totalRowsInserted, totalColumnsInserted);
         }

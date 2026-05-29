@@ -45,12 +45,15 @@ public class ExplorerToolTests
         var tools = new ExplorerTools(_services);
         var root = ParseResult(tools.GetState());
 
-        root.GetProperty("selectedResource").GetString().Should().Be("src/main.py");
+        root.GetProperty("selectedResource").GetString().Should().Be("project:src/main.py");
 
         var selectedResources = root.GetProperty("selectedResources");
         selectedResources.GetArrayLength().Should().Be(1);
-        selectedResources[0].GetString().Should().Be("src/main.py");
+        selectedResources[0].GetString().Should().Be("project:src/main.py");
 
+        // The folder state service is mocked with bare strings so the response
+        // pass-through is bare. In production the persisted list also stores
+        // the canonical prefixed form (see FolderStateService).
         var expandedFolders = root.GetProperty("expandedFolders");
         expandedFolders.GetArrayLength().Should().Be(2);
         expandedFolders[0].GetString().Should().Be("src");
@@ -96,7 +99,7 @@ public class ExplorerToolTests
         var tools = new ExplorerTools(_services);
         var root = ParseResult(tools.GetState());
 
-        root.GetProperty("selectedResource").GetString().Should().Be("src/a.py");
+        root.GetProperty("selectedResource").GetString().Should().Be("project:src/a.py");
         root.GetProperty("selectedResources").GetArrayLength().Should().Be(2);
     }
 

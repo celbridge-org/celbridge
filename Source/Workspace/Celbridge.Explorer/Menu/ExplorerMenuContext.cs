@@ -9,8 +9,8 @@ namespace Celbridge.Explorer.Menu;
 public record ExplorerMenuContext(
     IResource? ClickedResource,
     IReadOnlyList<IResource> SelectedResources,
-    IFolderResource RootFolder,
-    bool IsRootFolderTargeted,
+    IFolderResource ProjectFolder,
+    bool IsProjectFolderTargeted,
     bool HasClipboardData,
     ClipboardContentType ClipboardContentType,
     ClipboardContentOperation ClipboardOperation
@@ -27,9 +27,9 @@ public record ExplorerMenuContext(
     public bool HasAnySelection => SelectedResources.Count > 0;
 
     /// <summary>
-    /// True when exactly one item is selected OR the root folder is targeted via right-click.
+    /// True when exactly one item is selected OR the project folder is targeted via right-click.
     /// </summary>
-    public bool IsSingleItemOrRootTargeted => HasSingleSelection || IsRootFolderTargeted;
+    public bool IsSingleItemOrProjectFolderTargeted => HasSingleSelection || IsProjectFolderTargeted;
 
     /// <summary>
     /// Gets the single selected resource, or null if zero or multiple items are selected.
@@ -37,13 +37,13 @@ public record ExplorerMenuContext(
     public IResource? SingleSelectedResource => HasSingleSelection ? SelectedResources[0] : null;
 
     /// <summary>
-    /// True if any selected resource is the root folder.
+    /// True if any selected resource is the project folder.
     /// </summary>
-    public bool SelectionContainsRootFolder => SelectedResources.Any(r => r == RootFolder);
+    public bool SelectionContainsProjectFolder => SelectedResources.Any(r => r == ProjectFolder);
 
     /// <summary>
     /// Resolves the target folder for operations based on the clicked resource or selection.
-    /// Returns the clicked/selected folder, the parent folder of a clicked/selected file, or the root folder.
+    /// Returns the clicked/selected folder, the parent folder of a clicked/selected file, or the project folder.
     /// </summary>
     public IFolderResource GetTargetFolder()
     {
@@ -58,6 +58,6 @@ public record ExplorerMenuContext(
             return fileResource.ParentFolder;
         }
 
-        return RootFolder;
+        return ProjectFolder;
     }
 }

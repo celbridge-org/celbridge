@@ -1,63 +1,60 @@
-using System.Text;
-using Celbridge.Projects;
+using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
-using Celbridge.UserInterface;
+using Celbridge.Resources.Services.Roots;
 
 namespace Celbridge.Resources.Services;
 
 public class ResourceRegistry : IResourceRegistry
 {
+    private readonly ILogger<ResourceRegistry> _logger;
     private readonly IMessengerService _messengerService;
-    private readonly IFileIconService _fileIconService;
-    private readonly PathValidator _pathValidator = new();
+    private readonly IProjectTreeBuilder _projectTreeBuilder;
+    private readonly IResourceClassifier _resourceClassifier;
+    private readonly RootHandlerRegistry _rootHandlerRegistry;
 
-    public string ProjectFolderPath { get; set; } = string.Empty;
+    // Sidecar tracking state, refreshed on each UpdateResourceRegistry pass.
+    // The report is rebuilt atomically per pass so readers always see a coherent
+    // snapshot.
+    private readonly object _sidecarLock = new();
+    private SidecarReport _sidecarReport = new(
+        Healthy: Array.Empty<ResourceKey>(),
+        Broken: Array.Empty<ResourceKey>(),
+        Orphan: Array.Empty<ResourceKey>());
 
-    private FolderResource _rootFolder = new FolderResource(string.Empty, null);
+    private string _projectFolderPath = string.Empty;
 
-    public IFolderResource RootFolder => _rootFolder;
+    public string ProjectFolderPath => _projectFolderPath;
+
+    public void InitializeProjectRoot(string projectFolderPath)
+    {
+        Guard.IsNotNullOrEmpty(projectFolderPath);
+
+        _projectFolderPath = projectFolderPath;
+        _rootHandlerRegistry.RegisterRootHandler(
+            new ProjectRootHandler(projectFolderPath));
+    }
+
+    private FolderResource _projectFolder = new FolderResource(string.Empty, null);
+
+    public IFolderResource ProjectFolder => _projectFolder;
 
     public ResourceRegistry(
+        ILogger<ResourceRegistry> logger,
         IMessengerService messengerService,
-        IFileIconService fileIconService)
+        IProjectTreeBuilder projectTreeBuilder,
+        IResourceClassifier resourceClassifier,
+        RootHandlerRegistry rootHandlerRegistry)
     {
+        _logger = logger;
         _messengerService = messengerService;
-        _fileIconService = fileIconService;
+        _projectTreeBuilder = projectTreeBuilder;
+        _resourceClassifier = resourceClassifier;
+        _rootHandlerRegistry = rootHandlerRegistry;
     }
 
     public ResourceKey GetResourceKey(IResource resource)
     {
-        try
-        {
-            var sb = new StringBuilder();
-            void AddResourceKeySegment(IResource resource)
-            {
-                if (resource.ParentFolder is null)
-                {
-                    return;
-                }
-
-                // Build path by recursively visiting each parent folders
-                AddResourceKeySegment(resource.ParentFolder);
-
-                // The trick is to append the path segment after we've visited the parent.
-                // This ensures the path segments are appended in the right order.
-                if (sb.Length > 0)
-                {
-                    sb.Append("/");
-                }
-                sb.Append(resource.Name);
-            }
-            AddResourceKeySegment(resource);
-
-            var resourceKey = ResourceKey.Create(sb.ToString());
-
-            return resourceKey;
-        }
-        catch (Exception ex)
-        {
-            throw new ArgumentException($"Failed to get resource key for '{resource}'", ex);
-        }
+        return ResourceTreeNavigator.BuildKey(resource);
     }
 
     public List<ResourceKey> GetResourceKeys(IEnumerable<IResource> resources)
@@ -67,199 +64,136 @@ public class ResourceRegistry : IResourceRegistry
 
     public Result<ResourceKey> GetResourceKey(string resourcePath)
     {
-        try
-        {
-            var normalizedPath = Path.GetFullPath(resourcePath);
-            var normalizedProjectPath = Path.GetFullPath(ProjectFolderPath);
-
-            if (!normalizedPath.StartsWith(normalizedProjectPath))
-            {
-                return Result<ResourceKey>.Fail($"The path '{resourcePath}' is not in the project folder '{ProjectFolderPath}'.");
-            }
-
-            var relativeKey = normalizedPath.Substring(ProjectFolderPath.Length)
-                .Replace('\\', '/')
-                .Trim('/');
-
-            if (!ResourceKey.TryCreate(relativeKey, out var resourceKey))
-            {
-                return Result<ResourceKey>.Fail($"The path '{resourcePath}' produces an invalid resource key: '{relativeKey}'.");
-            }
-
-            return Result<ResourceKey>.Ok(resourceKey);
-        }
-        catch (Exception ex)
-        {
-            return Result<ResourceKey>.Fail($"An exception occurred when getting the resource key.")
-                .WithException(ex);
-        }
+        return _rootHandlerRegistry.GetResourceKey(resourcePath);
     }
 
     public Result<string> ResolveResourcePath(IResource resource)
     {
         var resourceKey = GetResourceKey(resource);
-        return _pathValidator.ValidateAndResolve(ProjectFolderPath, resourceKey);
+        return ResolveResourcePath(resourceKey);
     }
 
     public Result<string> ResolveResourcePath(ResourceKey resource)
     {
-        return _pathValidator.ValidateAndResolve(ProjectFolderPath, resource);
+        var resolveResult = _rootHandlerRegistry.ResolveResourcePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return resolveResult;
+        }
+        var absolutePath = resolveResult.Value;
+
+        // Strict case enforcement for the project root: if the resolved path
+        // exists on disk, the supplied key must match disk-canonical case.
+        // Without this guard a Windows user can resolve a wrong-case key
+        // (Windows IO is case-insensitive) but the in-memory tree and cascade
+        // scanner (both Ordinal-case-sensitive) would treat it as a separate
+        // resource, leaving the project in an inconsistent state. The case
+        // check requires the project tree, so it stays on the registry rather
+        // than moving down into the root handler registry.
+        if (resource.Root == ResourceKey.DefaultRoot)
+        {
+            var caseCheck = EnsureProjectKeyCaseMatchesDisk(resource, absolutePath);
+            if (caseCheck.IsFailure)
+            {
+                return Result<string>.Fail(caseCheck.FirstErrorMessage);
+            }
+        }
+
+        return absolutePath;
+    }
+
+    // Cheap path: if the registry tree already has a node for this exact key,
+    // the case is canonical by construction (the tree was built from disk-
+    // preserved names). Only when the tree lookup misses do we go to disk to
+    // disambiguate "case is wrong" from "resource is new and being created".
+    private Result EnsureProjectKeyCaseMatchesDisk(ResourceKey resource, string absolutePath)
+    {
+        if (resource.IsEmpty)
+        {
+            return Result.Ok();
+        }
+
+        var treeLookup = GetResource(resource);
+        if (treeLookup.IsSuccess)
+        {
+            return Result.Ok();
+        }
+
+        // Tree miss. Either the resource is new (not on disk yet — pass
+        // through for create flows) or the case is wrong. Check disk to find
+        // out which.
+        if (!File.Exists(absolutePath)
+            && !Directory.Exists(absolutePath))
+        {
+            return Result.Ok();
+        }
+
+        var realPathResult = GetRealPath(absolutePath);
+        if (realPathResult.IsFailure)
+        {
+            // Couldn't determine disk-canonical case for some reason; don't
+            // block the operation on the diagnostic.
+            return Result.Ok();
+        }
+
+        if (string.Equals(realPathResult.Value, absolutePath, StringComparison.Ordinal))
+        {
+            // Disk case already matches the supplied case — the tree miss is
+            // a registry-rebuild lag, not a case mismatch.
+            return Result.Ok();
+        }
+
+        var canonicalKeyResult = GetResourceKey(realPathResult.Value);
+        if (canonicalKeyResult.IsFailure)
+        {
+            return Result.Fail(
+                $"Resource key '{resource}' does not match the on-disk case.");
+        }
+
+        return Result.Fail(
+            $"Resource key '{resource}' does not match the on-disk case. Canonical form is '{canonicalKeyResult.Value}'.");
     }
 
     public Result<IResource> GetResource(ResourceKey resource)
     {
-        if (resource.IsEmpty)
+        // The registry tracks only the project tree; other roots have no IResource nodes.
+        if (resource.Root != ResourceKey.DefaultRoot)
         {
-            // An empty resource key refers to the root folder
-            return Result<IResource>.Ok(_rootFolder);
+            return Result<IResource>.Fail(
+                $"GetResource is scoped to the project tree; root '{resource.Root}' has no tracked resources.");
         }
 
-        var segments = resource.ToString().Split('/');
-        var searchFolder = _rootFolder;
-
-        // Attempt to match each segment with the corresponding resource in the tree
-        var segmentIndex = 0;
-        while (segmentIndex < segments.Length)
-        {
-            FolderResource? matchingFolder = null;
-            string segment = segments[segmentIndex];
-            foreach (var childResource in searchFolder.Children)
-            {
-                if (childResource is FolderResource childFolder &&
-                    childFolder.Name == segment)
-                {
-                    if (segmentIndex == segments.Length - 1)
-                    {
-                        // The folder name matches the last segment in the key, so this is the
-                        // folder resource we're looking for.
-                        return Result<IResource>.Ok(childFolder);
-                    }
-
-                    // This folder resource matches this segment in the key, so we can move onto
-                    // searching for the next segment.
-                    matchingFolder = childFolder;
-                    break;
-                }
-                else if (childResource is FileResource childFile &&
-                         childFile.Name == segment &&
-                         segmentIndex == segments.Length - 1)
-                {
-                    // The file name matches the last segment in the key, so this is the
-                    // file resource we're looking for.
-                    return Result<IResource>.Ok(childFile);
-                }
-            }
-
-            if (matchingFolder is null)
-            {
-                break;
-            }
-
-            searchFolder = matchingFolder;
-            segmentIndex++;
-        }
-
-        return Result<IResource>.Fail($"Failed to find a resource matching the resource key '{resource}'.");
-    }
-
-    public ResourceKey ResolveDestinationResource(ResourceKey sourceResource, ResourceKey destResource)
-    {
-        string output = destResource;
-
-        var getResult = GetResource(destResource);
-        if (getResult.IsSuccess)
-        {
-            var resource = getResult.Value;
-            if (resource is IFolderResource)
-            {
-                if (destResource.IsEmpty)
-                {
-                    // Destination is the root folder
-                    output = sourceResource.ResourceName;
-                }
-                else
-                {
-                    if (sourceResource == destResource)
-                    {
-                        // Source and destination are the same folder. This case is allowed because
-                        // the user may duplicate a folder by copying and pasting it to the same destination.
-                        output = destResource;
-                    }
-                    else
-                    {
-                        // Destination is a folder, so append the source resource name to this folder.
-                        output = destResource.Combine(sourceResource.ResourceName);
-                    }
-                }
-            }
-        }
-
-        return output;
-    }
-
-    public ResourceKey ResolveSourcePathDestinationResource(string sourcePath, ResourceKey destResource)
-    {
-        string output = destResource;
-
-        var getResult = GetResource(destResource);
-        if (getResult.IsSuccess)
-        {
-            var resource = getResult.Value;
-            if (resource is IFolderResource)
-            {
-                var filename = Path.GetFileName(sourcePath);
-                if (destResource.IsEmpty)
-                {
-                    // Destination is the root folder
-                    output = filename;
-                }
-                else
-                {
-                    // Destination is a folder, so append the source filename to this folder.
-                    output = destResource.Combine(filename);
-                }
-            }
-        }
-
-        return output;
-    }
-
-
-    public ResourceKey GetContextMenuItemFolder(IResource? resource)
-    {
-        IFolderResource? destFolder = null;
-        switch (resource)
-        {
-            case IFolderResource folder:
-                destFolder = folder;
-                break;
-            case IFileResource file:
-                destFolder = file.ParentFolder;
-                break;
-        }
-        if (destFolder is null)
-        {
-            destFolder = _rootFolder;
-        }
-
-        return GetResourceKey(destFolder);
+        return ResourceTreeNavigator.FindResource(_projectFolder, resource);
     }
 
     public Result UpdateResourceRegistry()
     {
         try
         {
-            // Build a fresh tree off to the side, then atomically swap _rootFolder.
+            // Build a fresh tree off to the side, then atomically swap _projectFolder.
             // Readers on other threads see either the old or the new tree, never a torn
             // intermediate state. Once a tree has been observed it is immutable, so
             // iterators on Children remain valid even if a swap happens during a read.
             // Volatile.Write adds a release fence so the tree's construction writes are
             // visible before the new reference (a no-op on x64, required on ARM64).
-            var newRoot = new FolderResource(string.Empty, null);
-            SynchronizeFolder(newRoot, ProjectFolderPath);
-            Volatile.Write(ref _rootFolder, newRoot);
+            var newRoot = (FolderResource)_projectTreeBuilder.BuildTree(ProjectFolderPath);
 
-            _pathValidator.InvalidateCache();
+            // Sidecar pairing runs on the new tree before publication. The
+            // classifier sets each parent FileResource.Sidecar in place and
+            // returns the report, which is swapped under the lock alongside
+            // the tree reference. The root handler registry is handed in so
+            // per-sidecar path resolution goes through the same reparse-point
+            // chokepoint as every other resource operation.
+            var sidecarReport = _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
+
+            Volatile.Write(ref _projectFolder, newRoot);
+
+            lock (_sidecarLock)
+            {
+                _sidecarReport = sidecarReport;
+            }
+
+            _rootHandlerRegistry.InvalidatePathCache();
 
             try
             {
@@ -282,58 +216,22 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    /// <summary>
-    /// Recursively synchronizes a folder resource with the file system.
-    /// Always creates fresh resource instances to prevent stale TreeViewNode.Content references
-    /// during rapid registry updates (e.g., undo/redo operations).
-    /// </summary>
-    private void SynchronizeFolder(FolderResource folderResource, string folderPath)
+    public IReadOnlyList<FileResourceEntry> GetAllFileResources()
     {
-        // Get filtered lists of subfolders and files
-        bool isRootFolder = folderResource.ParentFolder is null;
-        var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
-        RemoveHiddenFolders(subFolderPaths, isRootFolder);
-
-        var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
-        RemoveHiddenFiles(filePaths);
-
-        // Clear and rebuild with fresh instances
-        folderResource.Children.Clear();
-
-        // Add subfolder resources (recursive)
-        foreach (var subFolderPath in subFolderPaths)
-        {
-            var folderName = Path.GetFileName(subFolderPath);
-            var childFolder = new FolderResource(folderName, folderResource);
-            SynchronizeFolder(childFolder, subFolderPath);
-            folderResource.AddChild(childFolder);
-        }
-
-        // Add file resources
-        foreach (var filePath in filePaths)
-        {
-            var fileName = Path.GetFileName(filePath);
-            var fileExtension = Path.GetExtension(filePath).TrimStart('.');
-            
-            var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
-            var iconDefinition = getIconResult.IsSuccess 
-                ? getIconResult.Value 
-                : _fileIconService.DefaultFileIcon;
-
-            folderResource.AddChild(new FileResource(fileName, folderResource, iconDefinition));
-        }
-
-        // Sort children: folders first, then files, both alphabetically
-        folderResource.Children = folderResource.Children
-            .OrderBy(child => child is IFolderResource ? 0 : 1)
-            .ThenBy(child => child.Name)
-            .ToList();
+        return GetAllFileResources(ResourceKey.DefaultRoot);
     }
 
-    public List<(ResourceKey Resource, string Path)> GetAllFileResources()
+    public IReadOnlyList<FileResourceEntry> GetAllFileResources(string root)
     {
-        var fileResources = new List<(ResourceKey Resource, string Path)>();
-        CollectFileResources(_rootFolder, fileResources);
+        // Only the project root has an indexed tree in the registry.
+        // Other roots (e.g. temp:, logs:) are addressable but not enumerated here.
+        if (root != ResourceKey.DefaultRoot)
+        {
+            return Array.Empty<FileResourceEntry>();
+        }
+
+        var fileResources = new List<FileResourceEntry>();
+        CollectFileResources(_projectFolder, fileResources);
 
         // Sort by path for stable ordering
         fileResources.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
@@ -346,7 +244,7 @@ public class ResourceRegistry : IResourceRegistry
     /// </summary>
     private void CollectFileResources(
         IFolderResource folder,
-        List<(ResourceKey Resource, string Path)> fileResources)
+        List<FileResourceEntry> fileResources)
     {
         foreach (var child in folder.Children)
         {
@@ -356,13 +254,21 @@ public class ResourceRegistry : IResourceRegistry
                 var resolveResult = ResolveResourcePath(resourceKey);
                 if (resolveResult.IsSuccess)
                 {
-                    fileResources.Add((resourceKey, resolveResult.Value));
+                    fileResources.Add(new FileResourceEntry(resourceKey, resolveResult.Value));
                 }
             }
             else if (child is IFolderResource childFolder)
             {
                 CollectFileResources(childFolder, fileResources);
             }
+        }
+    }
+
+    public SidecarReport GetSidecarReport()
+    {
+        lock (_sidecarLock)
+        {
+            return _sidecarReport;
         }
     }
 
@@ -434,7 +340,7 @@ public class ResourceRegistry : IResourceRegistry
             // If the path is just the root, return it as-is
             if (fullPath.Equals(root, StringComparison.OrdinalIgnoreCase))
             {
-                return Result<string>.Ok(fullPath);
+                return fullPath;
             }
 
             // Get the relative path after the root
@@ -459,7 +365,7 @@ public class ResourceRegistry : IResourceRegistry
                 currentPath = entries[0];
             }
 
-            return Result<string>.Ok(currentPath);
+            return currentPath;
         }
         catch (Exception ex)
         {
@@ -468,73 +374,4 @@ public class ResourceRegistry : IResourceRegistry
         }
     }
 
-    // Remove hidden folders from a list of folder paths
-    private static void RemoveHiddenFolders(List<string> folderPaths, bool isRootFolder)
-    {
-        folderPaths.RemoveAll(path =>
-        {
-            if (Path.GetFileName(path).StartsWith('.'))
-            {
-                // Ignore files or folders that start with a dot.
-                // This includes the .celbridge folder which is used to store workspace settings.
-                return true;
-            }
-
-#if WINDOWS
-            var attributes = File.GetAttributes(path);
-            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
-            {
-                // Windows only: Ignore folders with the 'hidden' attribute
-                return true;
-            }
-#endif
-            var dirInfo = new DirectoryInfo(path);
-
-            // Ignore the CelData folder
-            if (isRootFolder && dirInfo.Name == ProjectConstants.MetaDataFolder)
-            {
-                return true;
-            }
-
-            // Ignore python cache folders
-            if (dirInfo.Name == "__pycache__")
-            {
-                return true;
-            }
-
-            // Ignore the Python/Lib folder containing pip packages
-            if (dirInfo.Name == "Lib" &&
-                dirInfo.Parent?.Name == "Python")
-            {
-                return true;
-            }
-
-            return false;
-        });
-    }
-
-    // Remove hidden files from a list of folder paths
-    private static void RemoveHiddenFiles(List<string> filePaths)
-    {
-        // Ignore hidden files
-        filePaths.RemoveAll(path =>
-        {
-            if (Path.GetFileName(path).StartsWith('.'))
-            {
-                // Ignore files that start with a dot.
-                return true;
-            }
-
-#if WINDOWS
-            var attributes = File.GetAttributes(path);
-            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
-            {
-                // Windows only: Ignore files with the 'hidden' attribute
-                return true;
-            }
-#endif
-
-            return false;
-        });
-    }
 }

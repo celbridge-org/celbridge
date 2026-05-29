@@ -17,6 +17,27 @@ export const ContentLoadedReason = Object.freeze({
 });
 
 /**
+ * Base URL of the project virtual host. Project files are addressable at
+ * `${PROJECT_HOST_URL}<path>` where <path> is the resource key with the
+ * "project:" prefix stripped.
+ */
+export const PROJECT_HOST_URL = 'https://project.celbridge/';
+
+/**
+ * Converts a project resource key to a full URL under the project virtual host.
+ * Strips the "project:" prefix so the URL path lines up with WebView2's virtual
+ * host mapping (which serves paths relative to the project folder). Returns the
+ * bare PROJECT_HOST_URL when the resource key is empty.
+ */
+export function projectUrl(resourceKey) {
+    const key = resourceKey || '';
+    const path = key.startsWith('project:')
+        ? key.substring('project:'.length)
+        : key;
+    return `${PROJECT_HOST_URL}${path}`;
+}
+
+/**
  * Document operations API.
  */
 export class DocumentAPI {

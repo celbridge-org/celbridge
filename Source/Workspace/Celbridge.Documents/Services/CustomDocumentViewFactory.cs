@@ -54,7 +54,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
         return displayKey;
     }
 
-    public override bool CanHandleResource(ResourceKey fileResource, string filePath)
+    public override bool CanHandleResource(ResourceKey fileResource)
     {
         if (!string.IsNullOrEmpty(_contribution.Package.FeatureFlag) &&
             !_featureFlags.IsEnabled(_contribution.Package.FeatureFlag))
@@ -62,7 +62,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
             return false;
         }
 
-        return base.CanHandleResource(fileResource, filePath);
+        return base.CanHandleResource(fileResource);
     }
 
     public override Result<IDocumentView> CreateDocumentView(ResourceKey fileResource)
@@ -70,6 +70,7 @@ public class CustomDocumentViewFactory : DocumentEditorFactoryBase
 #if WINDOWS
         var view = _serviceProvider.GetRequiredService<ContributionDocumentView>();
         view.Contribution = _contribution;
+        view.EditorId = EditorId;
 
         return Result<IDocumentView>.Ok(view);
 #else

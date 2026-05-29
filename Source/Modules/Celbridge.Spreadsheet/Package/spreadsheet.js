@@ -12,7 +12,7 @@ const client = celbridge;
 
 let designer = null;
 
-async function deserializeExcelData(base64Data, viewState = null) {
+async function deserializeExcelData(base64Data, viewState = null, preserveView = true) {
     if (!base64Data) {
         client.document.notifyImportComplete(true);
         return;
@@ -55,7 +55,7 @@ async function deserializeExcelData(base64Data, viewState = null) {
 
                 if (viewState) {
                     requestAnimationFrame(() => {
-                        restoreViewState(viewState);
+                        restoreViewState(viewState, preserveView);
                         spread.resumePaint();
                         client.document.notifyImportComplete(true);
                         resolve();
@@ -146,16 +146,14 @@ function selectionsMatch(a, b) {
     return true;
 }
 
-function restoreViewState(state) {
-    // Active sheet and selection are auto-saved to disk on every change via the
-    // ActiveSheetChanged and SelectionChanged hooks in listenForChanges, so the
-    // freshly-imported workbook already reflects the user's pre-reload sheet and
-    // selection (or the new ones written by an MCP set_active_view, if that's
-    // what triggered the reload). Scroll position is the one piece of view state
-    // we deliberately do not auto-save, so we restore it from the in-memory
-    // snapshot here, but only when disk's active sheet and selection still match
-    // the snapshot. If either differs, the reload was driven by a deliberate
-    // view-state change and disk should win for scroll too.
+function restoreViewState(state, preserveView = false) {
+    // Active sheet name is the one piece of identity we always honour: a sheet
+    // rename collapses the captured snapshot's frame of reference so there is
+    // no sensible scroll to apply. When preserveView is true (the default for
+    // external watcher reloads and for data-changing commands) the snapshot's
+    // scroll wins over disk. When preserveView is false, we only restore scroll
+    // if disk's selection still matches the snapshot — preserving the original
+    // contract for view-changing commands like set_active_view.
     if (!state || !designer) return;
     try {
         const spread = designer.getWorkbook();
@@ -163,7 +161,7 @@ function restoreViewState(state) {
         if (!activeSheet) return;
 
         if (activeSheet.name() !== state.sheetName) return;
-        if (!selectionsMatch(activeSheet.getSelections(), state.selections)) return;
+        if (!preserveView && !selectionsMatch(activeSheet.getSelections(), state.selections)) return;
 
         activeSheet.showRow(state.scrollRow, GC.Spread.Sheets.VerticalPosition.top);
         activeSheet.showColumn(state.scrollColumn, GC.Spread.Sheets.HorizontalPosition.left);
@@ -299,16 +297,21 @@ async function initializeEditor() {
                     console.error('[Spreadsheet] Failed to save:', e);
                 }
             },
-            onExternalChange: async () => {
+            onExternalChange: async (args) => {
                 // Capture view state locally and pass it through deserializeExcelData so the
                 // suspendPaint + requestAnimationFrame + restoreViewState path preserves scroll
                 // and selection across the re-import. The host also sends onRestoreState after
                 // notifyContentLoaded fires, but that RPC arrives while the SpreadJS viewport
                 // is still settling and showRow/showColumn calls from it do not take effect.
+                //
+                // The host passes preserveViewState=true for watcher-driven reloads and for
+                // data-changing commands; view-changing commands like set_active_view set
+                // preserveViewState=false so disk's selection and scroll win.
+                const preserveView = args?.preserveViewState ?? true;
                 const savedViewState = captureViewState();
                 try {
                     const result = await client.document.load();
-                    await deserializeExcelData(result.content, savedViewState);
+                    await deserializeExcelData(result.content, savedViewState, preserveView);
                 } catch (e) {
                     console.error('[Spreadsheet] Failed to reload content:', e);
                 }

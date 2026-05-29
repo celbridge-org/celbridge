@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Server;
 using Celbridge.Tools;
 using Celbridge.Workspace;
@@ -31,6 +33,7 @@ public class FileToolTests
         Directory.CreateDirectory(_tempFolder);
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -40,6 +43,14 @@ public class FileToolTests
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        // Wire a real FileStorage against the temp folder so the
+        // chokepoint reads tests rely on probe and read the actual files.
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
+            Substitute.For<IMessengerService>(),
+            workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }
@@ -594,6 +605,43 @@ public class FileToolTests
         capturedCommand!.FileResource.Should().Be(resource);
         capturedCommand.Base64Content.Should().Be(Convert.ToBase64String(new byte[] { 1, 2, 3 }));
         result.IsError.Should().NotBe(true);
+    }
+
+    [Test]
+    public async Task Read_MissingFileUnderNonProjectRoot_EmitsCanonicalRootPath()
+    {
+        // Regression for vr-4: when a resource under a non-project root is missing, the
+        // error must echo the canonical "root:path" form so the agent can see which root
+        // failed. A bare path is reserved for the project root and is ambiguous otherwise.
+        var resourceKey = ResourceKey.Create("temp:missing/file.txt");
+        var resourcePath = Path.Combine(_tempFolder, "missing", "file.txt");
+        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Read("temp:missing/file.txt");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("temp:missing/file.txt");
+        text.Should().NotContain("'missing/file.txt'");
+    }
+
+    [Test]
+    public async Task Read_MissingFileUnderProjectRoot_EmitsCanonicalRootPath()
+    {
+        // Counterpart to the temp: test: project-root keys are reported in their canonical
+        // "project:" form to match the cascade scanner's tracked-reference literal and to
+        // stay symmetric with non-default roots.
+        var resourceKey = ResourceKey.Create("Scripts/missing.py");
+        var resourcePath = Path.Combine(_tempFolder, "Scripts", "missing.py");
+        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(resourcePath));
+
+        var tools = new FileTools(_services);
+        var result = await tools.Read("project:Scripts/missing.py");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("project:Scripts/missing.py");
     }
 
     private static JsonElement ParseResult(CallToolResult result)

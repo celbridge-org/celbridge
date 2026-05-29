@@ -38,7 +38,7 @@ public class ArchiveMenuOption : IMenuOption<ExplorerMenuContext>
     {
         var isSingleFolder = context.HasSingleSelection &&
                              context.SingleSelectedResource is IFolderResource &&
-                             !context.SelectionContainsRootFolder;
+                             !context.SelectionContainsProjectFolder;
 
         return new MenuItemState(
             IsVisible: isSingleFolder,

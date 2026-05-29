@@ -48,7 +48,7 @@ public class SpreadsheetReaderTests
             workbook.Worksheets.Add("Empty");
         });
 
-        var result = _reader.GetInfo(workbookPath);
+        var result = _reader.GetInfo(OpenWorkbook(workbookPath));
 
         result.IsSuccess.Should().BeTrue();
         var info = result.Value;
@@ -81,7 +81,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("B2").Value = 100;
         });
 
-        var result = _reader.ReadSheet(workbookPath, "Q1", new ReadOptions());
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Q1", new ReadOptions());
 
         result.IsSuccess.Should().BeTrue();
         var read = result.Value;
@@ -112,7 +112,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new ReadOptions(Headers: true);
-        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Q1", options);
 
         result.IsSuccess.Should().BeTrue();
         var read = result.Value;
@@ -140,7 +140,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new ReadOptions(Headers: true);
-        var result = _reader.ReadSheet(workbookPath, "Sheet1", options);
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Sheet1", options);
 
         result.IsSuccess.Should().BeTrue();
         var read = result.Value;
@@ -164,7 +164,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new ReadOptions(Mode: SpreadsheetReadMode.Formulas);
-        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Q1", options);
 
         result.IsSuccess.Should().BeTrue();
         var read = result.Value;
@@ -180,7 +180,7 @@ public class SpreadsheetReaderTests
             workbook.Worksheets.Add("Empty");
         });
 
-        var result = _reader.ReadSheet(workbookPath, "Empty", new ReadOptions());
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Empty", new ReadOptions());
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Rows.Should().BeEmpty();
@@ -195,7 +195,7 @@ public class SpreadsheetReaderTests
             workbook.Worksheets.Add("Sheet1");
         });
 
-        var result = _reader.ReadSheet(workbookPath, "Missing", new ReadOptions());
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Missing", new ReadOptions());
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Missing");
@@ -211,7 +211,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new ReadOptions(Range: "Q1!A1:B2");
-        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Q1", options);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("sheet qualifier");
@@ -230,7 +230,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new ReadOptions(Offset: 3, Limit: 4);
-        var result = _reader.ReadSheet(workbookPath, "Q1", options);
+        var result = _reader.ReadSheet(OpenWorkbook(workbookPath), "Q1", options);
 
         result.IsSuccess.Should().BeTrue();
         var read = result.Value;
@@ -254,7 +254,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("B3").Value = "line1\nline2";
         });
 
-        var result = _reader.ExportCsv(workbookPath, "Q1", null);
+        var result = _reader.ExportCsv(OpenWorkbook(workbookPath), "Q1", null);
 
         result.IsSuccess.Should().BeTrue();
         var csvResult = result.Value;
@@ -275,7 +275,7 @@ public class SpreadsheetReaderTests
             workbook.Worksheets.Add("Empty");
         });
 
-        var result = _reader.ExportCsv(workbookPath, "Empty", null);
+        var result = _reader.ExportCsv(OpenWorkbook(workbookPath), "Empty", null);
 
         result.IsSuccess.Should().BeTrue();
         var csvResult = result.Value;
@@ -296,7 +296,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         });
 
-        var result = _reader.ReadFormat(workbookPath, "Data", "A1");
+        var result = _reader.ReadFormat(OpenWorkbook(workbookPath), "Data", "A1");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Range.Should().Be("Data!A1:A1");
@@ -317,7 +317,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A1").Value = "plain";
         });
 
-        var result = _reader.ReadFormat(workbookPath, "Data", "A1");
+        var result = _reader.ReadFormat(OpenWorkbook(workbookPath), "Data", "A1");
 
         result.IsSuccess.Should().BeTrue();
         var spec = result.Value.Rows[0][0];
@@ -342,7 +342,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A2").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFFF00");
         });
 
-        var result = _reader.ReadFormat(workbookPath, "Data", "A1:B2");
+        var result = _reader.ReadFormat(OpenWorkbook(workbookPath), "Data", "A1:B2");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Rows.Should().HaveCount(2);
@@ -364,7 +364,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("A1").Style.Border.BottomBorder = XLBorderStyleValues.Dashed;
         });
 
-        var result = _reader.ReadFormat(workbookPath, "Data", "A1");
+        var result = _reader.ReadFormat(OpenWorkbook(workbookPath), "Data", "A1");
 
         result.IsSuccess.Should().BeTrue();
         var spec = result.Value.Rows[0][0];
@@ -388,7 +388,7 @@ public class SpreadsheetReaderTests
             sheet.Cell("B2").Style.Fill.BackgroundColor = XLColor.FromHtml("#FFFF00");
         });
 
-        var result = _reader.ReadFormat(workbookPath, "Data", null);
+        var result = _reader.ReadFormat(OpenWorkbook(workbookPath), "Data", null);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Rows.Should().HaveCount(2);
@@ -403,7 +403,7 @@ public class SpreadsheetReaderTests
             workbook.Worksheets.Add("Data");
         });
 
-        var result = _reader.ReadFormat(workbookPath, "Missing", null);
+        var result = _reader.ReadFormat(OpenWorkbook(workbookPath), "Missing", null);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Missing");
@@ -420,7 +420,7 @@ public class SpreadsheetReaderTests
             workbook.Worksheets.Add("Plain");
         });
 
-        var result = _reader.GetInfo(workbookPath);
+        var result = _reader.GetInfo(OpenWorkbook(workbookPath));
 
         result.IsSuccess.Should().BeTrue();
         var sheets = result.Value.Sheets;
@@ -445,7 +445,7 @@ public class SpreadsheetReaderTests
             data.SheetView.TopLeftCellAddress = data.Cell("A10").Address;
         });
 
-        var result = _reader.GetActiveView(workbookPath);
+        var result = _reader.GetActiveView(OpenWorkbook(workbookPath));
 
         result.IsSuccess.Should().BeTrue();
         var view = result.Value;
@@ -468,7 +468,7 @@ public class SpreadsheetReaderTests
             sheet.SelectedRanges.Add(sheet.Range("D5"));
         });
 
-        var result = _reader.GetActiveView(workbookPath);
+        var result = _reader.GetActiveView(OpenWorkbook(workbookPath));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Range.Should().Be("D5");
@@ -490,7 +490,7 @@ public class SpreadsheetReaderTests
             sheet.SelectedRanges.Add(sheet.Range("A12:B13"));
         });
 
-        var result = _reader.GetActiveView(workbookPath);
+        var result = _reader.GetActiveView(OpenWorkbook(workbookPath));
 
         result.IsSuccess.Should().BeTrue();
         var view = result.Value;
@@ -512,7 +512,7 @@ public class SpreadsheetReaderTests
             sheet.SelectedRanges.Add(sheet.Range("B2:D5"));
         });
 
-        var result = _reader.GetActiveView(workbookPath);
+        var result = _reader.GetActiveView(OpenWorkbook(workbookPath));
 
         result.IsSuccess.Should().BeTrue();
         var view = result.Value;
@@ -534,7 +534,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new FindOptions(Find: "Hello", Sheet: "", Range: "", MatchCase: false, MatchEntireCellContents: false);
-        var result = _reader.Find(workbookPath, options);
+        var result = _reader.Find(OpenWorkbook(workbookPath), options);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.MatchCount.Should().Be(2);
@@ -554,7 +554,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new FindOptions(Find: "SUM", Sheet: "Q1", Range: "", MatchCase: false, MatchEntireCellContents: false);
-        var result = _reader.Find(workbookPath, options);
+        var result = _reader.Find(OpenWorkbook(workbookPath), options);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.MatchCount.Should().Be(1);
@@ -576,7 +576,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new FindOptions(Find: "foo", Sheet: "Q1", Range: "", MatchCase: false, MatchEntireCellContents: true);
-        var result = _reader.Find(workbookPath, options);
+        var result = _reader.Find(OpenWorkbook(workbookPath), options);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.MatchCount.Should().Be(1);
@@ -595,7 +595,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new FindOptions(Find: "needle", Sheet: "Q1", Range: "A1:C3", MatchCase: false, MatchEntireCellContents: false);
-        var result = _reader.Find(workbookPath, options);
+        var result = _reader.Find(OpenWorkbook(workbookPath), options);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.MatchCount.Should().Be(2);
@@ -611,7 +611,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new FindOptions(Find: "x", Sheet: "", Range: "A1:C3", MatchCase: false, MatchEntireCellContents: false);
-        var result = _reader.Find(workbookPath, options);
+        var result = _reader.Find(OpenWorkbook(workbookPath), options);
 
         result.IsFailure.Should().BeTrue();
         result.FirstErrorMessage.Should().Contain("Range can only be used together with a specific sheet");
@@ -629,14 +629,14 @@ public class SpreadsheetReaderTests
         });
 
         var caseSensitive = new FindOptions(Find: "Hello", Sheet: "Q1", Range: "", MatchCase: true, MatchEntireCellContents: false);
-        var caseSensitiveResult = _reader.Find(workbookPath, caseSensitive);
+        var caseSensitiveResult = _reader.Find(OpenWorkbook(workbookPath), caseSensitive);
 
         caseSensitiveResult.IsSuccess.Should().BeTrue();
         caseSensitiveResult.Value.MatchCount.Should().Be(1);
         caseSensitiveResult.Value.Matches[0].Cell.Should().Be("A1");
 
         var caseInsensitive = caseSensitive with { MatchCase = false };
-        var caseInsensitiveResult = _reader.Find(workbookPath, caseInsensitive);
+        var caseInsensitiveResult = _reader.Find(OpenWorkbook(workbookPath), caseInsensitive);
 
         caseInsensitiveResult.IsSuccess.Should().BeTrue();
         caseInsensitiveResult.Value.MatchCount.Should().Be(3);
@@ -652,7 +652,7 @@ public class SpreadsheetReaderTests
         });
 
         var options = new FindOptions(Find: "missing", Sheet: "", Range: "", MatchCase: false, MatchEntireCellContents: false);
-        var result = _reader.Find(workbookPath, options);
+        var result = _reader.Find(OpenWorkbook(workbookPath), options);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.MatchCount.Should().Be(0);
@@ -667,4 +667,6 @@ public class SpreadsheetReaderTests
         workbook.SaveAs(workbookPath);
         return workbookPath;
     }
+
+    private static Stream OpenWorkbook(string path) => new MemoryStream(File.ReadAllBytes(path));
 }

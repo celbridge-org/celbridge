@@ -1,4 +1,5 @@
 using Celbridge.Dialog;
+using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
@@ -36,8 +37,8 @@ public class ApplyRangeEditsCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileWriter = new ResourceFileWriter(Substitute.For<ILogger<ResourceFileWriter>>(), _workspaceWrapper);
-        resourceService.FileWriter.Returns(fileWriter);
+        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
     }
 
     [TearDown]

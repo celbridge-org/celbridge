@@ -18,11 +18,12 @@ public partial class SpreadsheetTools
         string rulesJson,
         bool clearExisting = false)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         if (string.IsNullOrEmpty(sheet))
         {
@@ -46,10 +47,9 @@ public partial class SpreadsheetTools
             return ToolResponse.Error("Rules array must contain at least one rule when clearExisting is false.");
         }
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<ISetConditionalFormattingCommand, SetConditionalFormattingResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Sheet = sheet;
             command.Range = range;
             command.Rules = rules;

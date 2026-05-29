@@ -38,6 +38,18 @@
     <ProjectReference Include="..\Core\Celbridge.Tools\Celbridge.Tools.csproj" />
     <ProjectReference Include="..\Workspace\Celbridge.Workspace\Celbridge.Workspace.csproj" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <!--
+      Test-only NLog config that drops the console target. Suppresses incidental
+      service logs (e.g. expected [ERROR] from negative tests) so the GitHub
+      Actions runner does not auto-annotate them as workflow errors. The copy
+      here takes precedence over the NLog.config inherited from Celbridge.Logging.
+    -->
+    <None Update="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
 

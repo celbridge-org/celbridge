@@ -1,7 +1,7 @@
-using System.Security.Cryptography;
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -14,6 +14,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     private readonly IDispatcher _dispatcher;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IProjectService _projectService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
     private readonly ILayoutService _layoutService;
 
@@ -48,6 +49,15 @@ public partial class ConsolePanelViewModel : ObservableObject
     private string _migrationBannerMessage = string.Empty;
 
     [ObservableProperty]
+    private bool _isProjectCheckBannerVisible;
+
+    [ObservableProperty]
+    private string _projectCheckBannerTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _projectCheckBannerMessage = string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreGlyph))]
     [NotifyPropertyChangedFor(nameof(MaximizeRestoreTooltip))]
     [NotifyPropertyChangedFor(nameof(IsMaximizeButtonHighlighted))]
@@ -70,7 +80,7 @@ public partial class ConsolePanelViewModel : ObservableObject
     /// </summary>
     public bool IsMaximizeButtonHighlighted => IsConsoleMaximized;
 
-    private byte[]? _originalProjectFileHash = null;
+    private string? _originalProjectFileHash = null;
 
     public ConsolePanelViewModel(
         IServiceProvider serviceProvider,
@@ -86,6 +96,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         _dispatcher = dispatcher;
         _stringLocalizer = stringLocalizer;
         _projectService = projectService;
+        _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
         _layoutService = layoutService;
 
@@ -96,13 +107,16 @@ public partial class ConsolePanelViewModel : ObservableObject
         _messengerService.Register<ConsoleErrorMessage>(this, OnConsoleError);
 
         // Register for resource change messages to monitor project file changes
-        _messengerService.Register<MonitoredResourceChangedMessage>(this, OnMonitoredResourceChanged);
+        _messengerService.Register<ResourceChangedMessage>(this, OnResourceChanged);
 
         // Register for console maximized state changes
         _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
-        // Store the original project file contents
-        StoreProjectFileHash();
+        // Snapshot the project file contents so subsequent changes can be
+        // detected. The hash read goes through the file storage chokepoint,
+        // which is async; fire-and-forget here since the constructor is sync
+        // and the snapshot is only consulted on later change events.
+        _ = StoreProjectFileHashAsync();
 
         // Check if the project was migrated and show banner if needed
         CheckMigrationStatus();
@@ -189,6 +203,18 @@ public partial class ConsolePanelViewModel : ObservableObject
                 ErrorBannerMessage = _stringLocalizer.GetString("ConsolePanel_PackageLoadErrorMessage");
                 break;
 
+            case ConsoleErrorType.ProjectCheckError:
+                // Project check findings are advisory, not blocking — the
+                // project loaded fine. Route to the dismissable warning
+                // banner rather than the non-dismissable error banner, and
+                // return early so the error-banner side effects below do
+                // not fire.
+                ProjectCheckBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectCheckFindingsTitle");
+                ProjectCheckBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectCheckFindingsMessage", configFile);
+                IsProjectCheckBannerVisible = true;
+                ShowConsolePanel();
+                return;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -198,6 +224,11 @@ public partial class ConsolePanelViewModel : ObservableObject
 
         // Hide project change banner when error banner is shown
         IsProjectChangeBannerVisible = false;
+    }
+
+    public void OnProjectCheckBannerClosed()
+    {
+        IsProjectCheckBannerVisible = false;
     }
 
     public void OnReloadProjectClicked()
@@ -217,7 +248,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         });
     }
 
-    private void OnMonitoredResourceChanged(object recipient, MonitoredResourceChangedMessage message)
+    private void OnResourceChanged(object recipient, ResourceChangedMessage message)
     {
         // Check if the changed resource is the .celbridge project file
         var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
@@ -233,72 +264,86 @@ public partial class ConsolePanelViewModel : ObservableObject
         {
             // This handler may be called from a background thread so ensure that the message
             // is handled on the main UI thread.
-            _dispatcher.TryEnqueue(() =>
+            _dispatcher.TryEnqueue(async () =>
             {
-                CheckProjectFileChanged();
+                await CheckProjectFileChangedAsync();
             });
         }
     }
 
-    private void StoreProjectFileHash()
+    // Resolves the project config file as a ResourceKey at the project root.
+    // The .celbridge config sits next to the project folder root, so its key
+    // is just the file name on the default root.
+    private bool TryGetProjectFileResourceKey(out ResourceKey resourceKey)
     {
+        resourceKey = default;
         var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
-        if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
+        if (string.IsNullOrEmpty(projectFilePath))
         {
-            _originalProjectFileHash = null;
-            return;
+            return false;
         }
 
-        try
-        {
-            var fileContents = File.ReadAllText(projectFilePath);
-            _originalProjectFileHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(fileContents));
-        }
-        catch
-        {
-            _originalProjectFileHash = null;
-        }
+        var projectFileName = Path.GetFileName(projectFilePath);
+        return ResourceKey.TryCreate(projectFileName, out resourceKey);
     }
 
-    private void CheckProjectFileChanged()
+    private async Task StoreProjectFileHashAsync()
     {
-        var projectFilePath = _projectService?.CurrentProject?.ProjectFilePath;
-        if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
+        if (!TryGetProjectFileResourceKey(out var projectFileResource))
+        {
+            _originalProjectFileHash = null;
+            return;
+        }
+
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        if (hashResult.IsFailure)
+        {
+            _originalProjectFileHash = null;
+            return;
+        }
+
+        _originalProjectFileHash = hashResult.Value;
+    }
+
+    private async Task CheckProjectFileChangedAsync()
+    {
+        if (!TryGetProjectFileResourceKey(out var projectFileResource))
         {
             return;
         }
 
-        try
-        {
-            var currentContents = File.ReadAllText(projectFilePath);
-            var currentHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(currentContents));
-
-            // If error banner is visible, don't show the project change banner
-            if (IsErrorBannerVisible)
-            {
-                IsProjectChangeBannerVisible = false;
-                return;
-            }
-
-            // Check if the hash has changed from the original
-            if (_originalProjectFileHash == null ||
-                !currentHash.SequenceEqual(_originalProjectFileHash))
-            {
-                // Populate the project change banner strings
-                ProjectChangeBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerTitle");
-                ProjectChangeBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerMessage");
-
-                IsProjectChangeBannerVisible = true;
-                ShowConsolePanel();
-            }
-            else
-            {
-                IsProjectChangeBannerVisible = false;
-            }
-        }
-        catch
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        if (hashResult.IsFailure)
         {
             // If we can't read the file, hide the banner
+            IsProjectChangeBannerVisible = false;
+            return;
+        }
+
+        var currentHash = hashResult.Value;
+
+        // If error banner is visible, don't show the project change banner
+        if (IsErrorBannerVisible)
+        {
+            IsProjectChangeBannerVisible = false;
+            return;
+        }
+
+        // Check if the hash has changed from the original
+        if (_originalProjectFileHash is null
+            || !string.Equals(currentHash, _originalProjectFileHash, StringComparison.Ordinal))
+        {
+            // Populate the project change banner strings
+            ProjectChangeBannerTitle = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerTitle");
+            ProjectChangeBannerMessage = _stringLocalizer.GetString("ConsolePanel_ProjectChangeBannerMessage");
+
+            IsProjectChangeBannerVisible = true;
+            ShowConsolePanel();
+        }
+        else
+        {
             IsProjectChangeBannerVisible = false;
         }
     }

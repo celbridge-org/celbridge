@@ -26,7 +26,7 @@ Each `format` field's value shape is given below. Omit a field to leave that asp
 
 ## Common number formats
 
-`numberFormat` takes a raw Excel format string. Reach for these first:
+`numberFormat` is **only** a raw Excel format string — pass `"$#,##0.00"`, not a typed wrapper like `{"type": "CURRENCY", "pattern": "$#,##0.00"}`. Reach for these first:
 
 | Goal | Pattern |
 |---|---|

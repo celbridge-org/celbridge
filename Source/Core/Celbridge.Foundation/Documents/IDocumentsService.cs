@@ -1,6 +1,28 @@
 namespace Celbridge.Documents;
 
 /// <summary>
+/// How an upcoming external reload should treat the editor's current view state.
+/// View state is editor-specific — concrete examples include scroll position, cursor
+/// or selection, zoom level, and fold state — and the editor decides what to capture
+/// and restore.
+/// </summary>
+public enum ReloadHint
+{
+    /// <summary>
+    /// Default. The editor keeps its current view state across the reload, regardless
+    /// of any view state encoded in the on-disk file.
+    /// </summary>
+    PreserveViewState,
+
+    /// <summary>
+    /// The editor adopts the view state encoded in the on-disk file, or its default
+    /// view state when the file format does not persist view state. Used by commands
+    /// whose purpose is to update the document's persisted view.
+    /// </summary>
+    DiskWinsOnViewState
+}
+
+/// <summary>
 /// The documents service provides functionality to support the documents panel in the workspace UI.
 /// </summary>
 public interface IDocumentsService
@@ -34,10 +56,9 @@ public interface IDocumentsService
     IReadOnlyList<OpenDocumentInfo> GetOpenDocuments();
 
     /// <summary>
-    /// Create a document view for the specified file resource.
-    /// The type of document view created is based on the file extension.
-    /// When documentEditorId is specified, uses that specific editor instead of the default.
-    /// Fails if the file resource does not exist.
+    /// Creates a document view for the given file resource. When editorId is
+    /// non-empty, uses that specific editor instead of the default resolution
+    /// chain. Fails if the resource does not exist.
     /// </summary>
     Task<Result<IDocumentView>> CreateDocumentView(ResourceKey fileResource, DocumentEditorId editorId = default);
 
@@ -63,6 +84,13 @@ public interface IDocumentsService
     /// if no preference is stored (or the stored value is invalid).
     /// </summary>
     Task<DocumentEditorId> GetEditorPreferenceAsync(string extension);
+
+    /// <summary>
+    /// Returns the editor that would open this file: the sidecar's 'editor'
+    /// field when set, otherwise the per-extension preference, otherwise
+    /// DocumentEditorId.Empty.
+    /// </summary>
+    Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource);
 
     /// <summary>
     /// Stores the user's preferred editor for a file extension. Pass DocumentEditorId.Empty
@@ -117,4 +145,18 @@ public interface IDocumentsService
     /// string to persist, or null/empty to clear any existing entry for the resource.
     /// </summary>
     Task StoreDocumentEditorState(ResourceKey fileResource, string? state);
+
+    /// <summary>
+    /// Records a hint that the next watcher-driven reload of the resource should
+    /// honour. Overwrites any prior hint for the same resource; hints expire if
+    /// not consumed within a short window so they do not bleed into later
+    /// unrelated reloads.
+    /// </summary>
+    void RegisterReloadHint(ResourceKey fileResource, ReloadHint hint);
+
+    /// <summary>
+    /// Returns the most recently registered hint for the resource and removes it
+    /// from the store. Returns PreserveViewState when no fresh hint is set.
+    /// </summary>
+    ReloadHint ConsumeReloadHint(ResourceKey fileResource);
 }

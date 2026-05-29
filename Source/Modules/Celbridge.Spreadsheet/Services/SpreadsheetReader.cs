@@ -5,20 +5,20 @@ using ClosedXML.Excel;
 namespace Celbridge.Spreadsheet.Services;
 
 /// <summary>
-/// ClosedXML-backed implementation of ISpreadsheetReader. Each call opens the
-/// workbook fresh from disk so the reader is stateless and safe to register as
-/// a singleton.
+/// ClosedXML-backed implementation of ISpreadsheetReader. Each call constructs
+/// a fresh XLWorkbook from the supplied stream so the reader is stateless and
+/// safe to register as a singleton.
 /// </summary>
 public class SpreadsheetReader : ISpreadsheetReader
 {
     private const int DefaultRowLimit = 1000;
     private const int DefaultColumnLimit = 256;
 
-    public Result<WorkbookInfo> GetInfo(string workbookPath)
+    public Result<WorkbookInfo> GetInfo(Stream workbookStream)
     {
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = new XLWorkbook(workbookStream);
 
             var sheets = new List<SheetInfo>();
             foreach (var worksheet in workbook.Worksheets)
@@ -71,16 +71,16 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to read workbook info from '{workbookPath}'")
+            return Result.Fail("Failed to read workbook info")
                 .WithException(ex);
         }
     }
 
-    public Result<ReadResult> ReadSheet(string workbookPath, string sheetName, ReadOptions options)
+    public Result<ReadResult> ReadSheet(Stream workbookStream, string sheetName, ReadOptions options)
     {
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = new XLWorkbook(workbookStream);
 
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
@@ -109,16 +109,16 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to read sheet '{sheetName}' from '{workbookPath}'")
+            return Result.Fail($"Failed to read sheet '{sheetName}'")
                 .WithException(ex);
         }
     }
 
-    public Result<ExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range)
+    public Result<ExportCsvResult> ExportCsv(Stream workbookStream, string sheetName, string? range)
     {
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = new XLWorkbook(workbookStream);
 
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
@@ -163,16 +163,16 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to export sheet '{sheetName}' as CSV from '{workbookPath}'")
+            return Result.Fail($"Failed to export sheet '{sheetName}' as CSV")
                 .WithException(ex);
         }
     }
 
-    public Result<ActiveView> GetActiveView(string workbookPath)
+    public Result<ActiveView> GetActiveView(Stream workbookStream)
     {
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = new XLWorkbook(workbookStream);
 
             IXLWorksheet? activeWorksheet = null;
             foreach (var worksheet in workbook.Worksheets)
@@ -189,7 +189,7 @@ public class SpreadsheetReader : ISpreadsheetReader
             }
             if (activeWorksheet is null)
             {
-                return Result.Fail($"Workbook '{workbookPath}' has no worksheets.");
+                return Result.Fail("Workbook has no worksheets.");
             }
 
             string activeCellString;
@@ -258,12 +258,12 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to read active view from '{workbookPath}'")
+            return Result.Fail("Failed to read active view")
                 .WithException(ex);
         }
     }
 
-    public Result<FindResult> Find(string workbookPath, FindOptions options)
+    public Result<FindResult> Find(Stream workbookStream, FindOptions options)
     {
         if (string.IsNullOrEmpty(options.Find))
         {
@@ -282,7 +282,7 @@ public class SpreadsheetReader : ISpreadsheetReader
 
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = new XLWorkbook(workbookStream);
 
             IEnumerable<IXLWorksheet> targetSheets;
             if (string.IsNullOrEmpty(options.Sheet))
@@ -348,7 +348,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result.Fail($"Failed to search workbook '{workbookPath}'")
+            return Result.Fail("Failed to search workbook")
                 .WithException(ex);
         }
     }
@@ -390,11 +390,11 @@ public class SpreadsheetReader : ISpreadsheetReader
         return source.IndexOf(options.Find, comparison) >= 0;
     }
 
-    public Result<ReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range)
+    public Result<ReadFormatResult> ReadFormat(Stream workbookStream, string sheetName, string? range)
     {
         try
         {
-            using var workbook = new XLWorkbook(workbookPath);
+            using var workbook = new XLWorkbook(workbookStream);
 
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
@@ -437,8 +437,7 @@ public class SpreadsheetReader : ISpreadsheetReader
         }
         catch (Exception ex)
         {
-            return Result.Fail(
-                $"Failed to read format from sheet '{sheetName}' in '{workbookPath}'")
+            return Result.Fail($"Failed to read format from sheet '{sheetName}'")
                 .WithException(ex);
         }
     }

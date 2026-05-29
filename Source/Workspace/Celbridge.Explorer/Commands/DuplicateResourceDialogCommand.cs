@@ -1,5 +1,8 @@
 using Celbridge.Commands;
+using Celbridge.DataTransfer;
 using Celbridge.Dialog;
+using Celbridge.Resources;
+using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -52,21 +55,28 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
         }
         var resource = getResult.Value;
 
-        var resourceName = resource.Name;
+        // Pre-populate the dialog with the auto-generated name the silent
+        // duplicate path would have chosen (e.g. "foo - Copy.md"). Matches
+        // Windows Explorer / macOS Finder behaviour and saves keystrokes in
+        // the common case; the user can still clear and type something else.
+        // If the helper somehow can't produce a unique name (very rare; would
+        // mean 1000+ existing copies of this name) we fall back to the
+        // original name and let the validator reject it on dialog submit.
+        var defaultKeyResult = ResourceNameHelper.GenerateUniqueDuplicateKey(Resource, resourceRegistry);
+        var defaultText = defaultKeyResult.IsSuccess
+            ? defaultKeyResult.Value.ResourceName
+            : resource.Name;
 
-        // Select only the filename part without the extension
-        var extensionIndex = resourceName.LastIndexOf('.');
+        // Select only the filename part without the extension so the user can
+        // type a replacement basename immediately.
+        var extensionIndex = defaultText.LastIndexOf('.');
         var selectedRange = extensionIndex > 0 ? 0..extensionIndex : ..;
 
-        var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resourceName);
-
-        var defaultText = resourceName;
+        var duplicateResourceString = _stringLocalizer.GetString("ResourceTree_DuplicateResource", resource.Name);
+        var enterNameString = _stringLocalizer.GetString("ResourceTree_DuplicateResourceEnterName");
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = resource.ParentFolder;
-        validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
-
-        var enterNameString = _stringLocalizer.GetString("ResourceTree_DuplicateResourceEnterName");
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             duplicateResourceString,
@@ -78,33 +88,27 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
         if (showResult.IsSuccess)
         {
             var inputText = showResult.Value;
+            var destResource = Resource.GetParent().Combine(inputText);
 
-            var sourceParentResource = Resource.GetParent();
-            var destResource = sourceParentResource.Combine(inputText);
-
-            if (Resource == destResource)
+            // Preserve folder-expansion state across the copy so a duplicated
+            // expanded folder lands expanded in the tree.
+            bool isExpandedFolder = false;
+            if (resource is IFolderResource)
             {
-                // Choosing the original name is treated as a cancel.
-                return Result.Ok();
+                var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
+                isExpandedFolder = folderStateService.IsExpanded(Resource);
             }
 
-            bool isFolderResource = resource is IFolderResource;
-
-            // Maintain the expanded state of folders after rename
-            var folderStateService = _workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
-            bool isExpandedFolder = isFolderResource &&
-                folderStateService.IsExpanded(Resource);
-
-            // Execute a command to copy the resource to perform the duplication
+            // Issue the copy as a top-level command rather than wrapping it in
+            // another command that would await it from inside the executor. The
+            // command queue is single-threaded; a command's body awaiting
+            // another command via ExecuteAsync deadlocks the queue.
             _commandService.Execute<ICopyResourceCommand>(command =>
             {
-                command.SourceResources = [Resource];
+                command.SourceResources = new List<ResourceKey> { Resource };
                 command.DestResource = destResource;
-
-                if (isExpandedFolder)
-                {
-                    command.ExpandCopiedFolder = true;
-                }
+                command.TransferMode = DataTransferMode.Copy;
+                command.ExpandCopiedFolder = isExpandedFolder;
             });
         }
 

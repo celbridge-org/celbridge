@@ -154,11 +154,10 @@ public record ActiveView(
     string TopLeftCell);
 
 /// <summary>
-/// Reads .xlsx workbooks from disk for the spreadsheet_* MCP tools. The reader
-/// is stateless and opens the workbook fresh on every call. Callers pass the
-/// absolute filesystem path resolved from a resource key. All methods report
-/// expected failures (missing sheet, malformed range) as Result.Fail rather
-/// than throwing.
+/// Reads .xlsx workbooks for the spreadsheet_* MCP tools. The reader is
+/// stateless; callers pass a freshly opened stream produced by the resource
+/// file system. All methods report expected failures (missing sheet,
+/// malformed range) as Result.Fail rather than throwing.
 /// </summary>
 public interface ISpreadsheetReader
 {
@@ -166,13 +165,13 @@ public interface ISpreadsheetReader
     /// Returns a workbook overview: every sheet with its used range and
     /// dimensions, plus any workbook-scoped or sheet-scoped named ranges.
     /// </summary>
-    Result<WorkbookInfo> GetInfo(string workbookPath);
+    Result<WorkbookInfo> GetInfo(Stream workbookStream);
 
     /// <summary>
     /// Reads cell values from a sheet. When options.Range is null the sheet's
     /// used range is read. An empty sheet returns Rows = [] and TotalRowCount = 0.
     /// </summary>
-    Result<ReadResult> ReadSheet(string workbookPath, string sheetName, ReadOptions options);
+    Result<ReadResult> ReadSheet(Stream workbookStream, string sheetName, ReadOptions options);
 
     /// <summary>
     /// Returns the contents of a sheet as RFC 4180 CSV text along with the row
@@ -180,14 +179,14 @@ public interface ISpreadsheetReader
     /// Null exports the sheet's used range. An empty range returns an empty Csv
     /// string and zero dimensions.
     /// </summary>
-    Result<ExportCsvResult> ExportCsv(string workbookPath, string sheetName, string? range);
+    Result<ExportCsvResult> ExportCsv(Stream workbookStream, string sheetName, string? range);
 
     /// <summary>
     /// Reads cell formatting from a sheet as FormatSpec objects in
     /// the same shape accepted by spreadsheet_format_ranges. When range is null
     /// the sheet's used range is read. An empty sheet returns Rows = [].
     /// </summary>
-    Result<ReadFormatResult> ReadFormat(string workbookPath, string sheetName, string? range);
+    Result<ReadFormatResult> ReadFormat(Stream workbookStream, string sheetName, string? range);
 
     /// <summary>
     /// Returns the workbook's persisted view state: active sheet, selection on
@@ -195,7 +194,7 @@ public interface ISpreadsheetReader
     /// the parameters accepted by ISetActiveViewCommand so callers
     /// can round-trip the view state.
     /// </summary>
-    Result<ActiveView> GetActiveView(string workbookPath);
+    Result<ActiveView> GetActiveView(Stream workbookStream);
 
     /// <summary>
     /// Searches the workbook for cells whose literal text or formula expression
@@ -203,5 +202,5 @@ public interface ISpreadsheetReader
     /// Empty Sheet searches every worksheet; empty Range searches each chosen
     /// sheet's entire used range.
     /// </summary>
-    Result<FindResult> Find(string workbookPath, FindOptions options);
+    Result<FindResult> Find(Stream workbookStream, FindOptions options);
 }

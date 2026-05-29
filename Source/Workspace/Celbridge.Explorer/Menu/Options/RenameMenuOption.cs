@@ -36,10 +36,10 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        // Cannot rename root folder (whether clicked directly or in selection)
-        var canRename = context.ClickedResource != null && 
-                        !context.IsRootFolderTargeted && 
-                        !context.SelectionContainsRootFolder;
+        // Cannot rename the project folder (whether clicked directly or in selection)
+        var canRename = context.ClickedResource != null &&
+                        !context.IsProjectFolderTargeted &&
+                        !context.SelectionContainsProjectFolder;
         return new MenuItemState(
             IsVisible: context.ClickedResource != null,
             IsEnabled: canRename);
@@ -47,7 +47,7 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
 
     public void Execute(ExplorerMenuContext context)
     {
-        if (context.ClickedResource == null || context.SelectionContainsRootFolder)
+        if (context.ClickedResource == null || context.SelectionContainsProjectFolder)
         {
             return;
         }

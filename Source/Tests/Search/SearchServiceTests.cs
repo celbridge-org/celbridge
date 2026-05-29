@@ -21,7 +21,7 @@ public class SearchServiceTests
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
-        _resourceRegistry.GetAllFileResources().Returns(new List<(ResourceKey Resource, string Path)>());
+        _resourceRegistry.GetAllFileResources().Returns(new List<FileResourceEntry>());
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);

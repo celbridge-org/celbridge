@@ -12,6 +12,13 @@ public interface IResourceService
     IResourceRegistry Registry { get; }
 
     /// <summary>
+    /// Returns the registry of resource root handlers for the current project.
+    /// Use this rather than IResourceRegistry when only cross-root path/key
+    /// dispatch is required.
+    /// </summary>
+    IRootHandlerRegistry RootHandlerRegistry { get; }
+
+    /// <summary>
     /// Returns the Resource Monitor associated with the current project.
     /// </summary>
     IResourceMonitor Monitor { get; }
@@ -27,12 +34,7 @@ public interface IResourceService
     IResourceOperationService OperationService { get; }
 
     /// <summary>
-    /// Returns the Resource File Writer used to write file content to the project folder.
-    /// </summary>
-    IResourceFileWriter FileWriter { get; }
-
-    /// <summary>
-    /// Schedules a resource update. 
+    /// Schedules a resource update.
     /// The update occurs after a short quiet period to coalesce rapid calls from multiple sources.
     /// </summary>
     void ScheduleResourceUpdate();

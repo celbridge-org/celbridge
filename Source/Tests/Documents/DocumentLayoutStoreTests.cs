@@ -1,0 +1,361 @@
+using Celbridge.Commands;
+using Celbridge.Messaging;
+using Celbridge.Resources;
+using Celbridge.Resources.Services;
+using Celbridge.Workspace;
+
+namespace Celbridge.Tests.Documents;
+
+/// <summary>
+/// Covers DocumentLayoutStore: restore-parsing edge cases (corrupted layout,
+/// invalid resource keys, malformed editor ids, section clamps), the
+/// default-readme fallback when no layout is stored, and the basic
+/// settings-writing shape of the Store* methods.
+/// </summary>
+[TestFixture]
+public class DocumentLayoutStoreTests
+{
+    private IWorkspaceSettings _workspaceSettings = null!;
+    private IResourceRegistry _resourceRegistry = null!;
+    private IDocumentsPanel _documentsPanel = null!;
+    private ICommandService _commandService = null!;
+    private IWorkspaceWrapper _workspaceWrapper = null!;
+    private DocumentLayoutStore _store = null!;
+    private string _tempFolder = null!;
+    private string _accessibleFilePath = null!;
+
+    [SetUp]
+    public void Setup()
+    {
+        _tempFolder = Path.Combine(Path.GetTempPath(), "Celbridge", nameof(DocumentLayoutStoreTests));
+        Directory.CreateDirectory(_tempFolder);
+        _accessibleFilePath = Path.Combine(_tempFolder, "accessible.md");
+        File.WriteAllText(_accessibleFilePath, string.Empty);
+
+        _workspaceSettings = Substitute.For<IWorkspaceSettings>();
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        _documentsPanel = Substitute.For<IDocumentsPanel>();
+        _commandService = Substitute.For<ICommandService>();
+
+        // Default registry behaviour: every key resolves to the accessible temp
+        // file and exists in the registry. Individual tests override these
+        // when they want to exercise the negative branches.
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(Result<string>.Ok(_accessibleFilePath));
+        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
+            .Returns(Result<IResource>.Ok(Substitute.For<IResource>()));
+
+        _documentsPanel.OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>())
+            .Returns(Task.FromResult(Result<OpenDocumentOutcome>.Ok(OpenDocumentOutcome.Opened)));
+        _documentsPanel.SectionCount.Returns(1);
+
+        var resourceService = Substitute.For<IResourceService>();
+        resourceService.Registry.Returns(_resourceRegistry);
+
+        var workspaceService = Substitute.For<IWorkspaceService>();
+        workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
+        workspaceService.ResourceService.Returns(resourceService);
+        workspaceService.DocumentsPanel.Returns(_documentsPanel);
+
+        _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+
+        // Wire a real FileStorage so GetInfoAsync probes the actual disk
+        // paths the registry resolves to.
+        var fileStorage = new FileStorage(
+            Substitute.For<ILogger<FileStorage>>(),
+            Substitute.For<IMessengerService>(),
+            _workspaceWrapper);
+        workspaceService.FileStorage.Returns(fileStorage);
+
+        _store = new DocumentLayoutStore(
+            _workspaceWrapper,
+            _commandService,
+            Substitute.For<ILogger<DocumentLayoutStore>>());
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        if (Directory.Exists(_tempFolder))
+        {
+            Directory.Delete(_tempFolder, true);
+        }
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_NoStoredLayout_OpensDefaultReadme()
+    {
+        // Empty workspace: settings has no layout key, so we fall back to
+        // opening readme.md if it resolves and is readable.
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(ci => Result<ResourceKey>.Ok(ci.Arg<ResourceKey>()));
+
+        await _store.RestorePanelStateAsync();
+
+        // ICommandService.Execute has [CallerFilePath]/[CallerLineNumber]
+        // parameters that the compiler fills in at each call site, so the
+        // verification must accept any value for those.
+        _commandService.Received(1).Execute<IOpenDocumentCommand>(
+            Arg.Any<Action<IOpenDocumentCommand>?>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_NoStoredLayout_SkipsReadmeWhenItDoesNotResolve()
+    {
+        // No readme.md in the workspace: NormalizeResourceKey fails; the
+        // fallback is a no-op rather than an error.
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(Result<ResourceKey>.Fail("not found"));
+
+        await _store.RestorePanelStateAsync();
+
+        _commandService.DidNotReceive().Execute<IOpenDocumentCommand>(
+            Arg.Any<Action<IOpenDocumentCommand>?>(),
+            Arg.Any<string>(),
+            Arg.Any<int>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_MalformedLayoutJson_DoesNotThrow()
+    {
+        // Old format / corrupted settings: GetPropertyAsync throws inside the
+        // store, which catches and treats the layout as empty.
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns<Task<List<DocumentLayoutStore.StoredDocumentAddress>?>>(_ => throw new InvalidOperationException("bad json"));
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(Result<ResourceKey>.Fail("not found"));
+
+        Func<Task> act = async () => await _store.RestorePanelStateAsync();
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_RestoresStoredAddressesViaPanelOpen()
+    {
+        // One stored doc: the store should call panel.OpenDocument with an
+        // empty editor id (sidecar wins at restore) and the saved address.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", WindowIndex: 0, SectionIndex: 0, TabOrder: 2),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.Received(1).OpenDocument(
+            new ResourceKey("notes/readme.md"),
+            Arg.Is<OpenDocumentOptions>(options =>
+                options.EditorId == DocumentEditorId.Empty
+                && options.Activate == false
+                && options.Address!.SectionIndex == 0
+                && options.Address.TabOrder == 2));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_InvalidResourceKey_IsSkipped()
+    {
+        // A stored address whose Resource string isn't a valid ResourceKey
+        // must not abort the rest of the restore.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("///invalid///", 0, 0, 0),
+            new("notes/readme.md", 0, 0, 1),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.Received(1).OpenDocument(
+            new ResourceKey("notes/readme.md"),
+            Arg.Any<OpenDocumentOptions>());
+        await _documentsPanel.Received(1).OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_MissingResource_IsSkipped()
+    {
+        // The resource key is well-formed but no longer exists in the registry
+        // (e.g., the file was deleted between sessions). Skip without failing.
+        _resourceRegistry.GetResource(new ResourceKey("notes/readme.md"))
+            .Returns(Result<IResource>.Fail("missing"));
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", 0, 0, 0),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
+    {
+        // ResolveResourcePath returns a path that does not exist on disk.
+        // FileStorage.GetInfoAsync reports NotFound; the restore skips.
+        var missingPath = Path.Combine(_tempFolder, "does_not_exist.md");
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(Result<string>.Ok(missingPath));
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", 0, 0, 0),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.DidNotReceive().OpenDocument(Arg.Any<ResourceKey>(), Arg.Any<OpenDocumentOptions?>());
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_SectionIndexLargerThanCount_ClampsToLastSection()
+    {
+        // A previously-saved 3-section layout opened today with a 1-section
+        // window should merge the over-flowing tabs into the only available
+        // section rather than dropping them.
+        _documentsPanel.SectionCount.Returns(1);
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", WindowIndex: 0, SectionIndex: 2, TabOrder: 0),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.Received(1).OpenDocument(
+            Arg.Any<ResourceKey>(),
+            Arg.Is<OpenDocumentOptions>(options => options.Address!.SectionIndex == 0));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_AttachesEditorStateJsonByResourceKey()
+    {
+        // Saved editor state is indexed by resource key (the canonical
+        // "project:..." form ResourceKey.ToString emits); the restore must
+        // forward only the entry that matches each opened tab.
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", 0, 0, 0),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+        _workspaceSettings.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
+            .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
+            {
+                [new ResourceKey("notes/readme.md").ToString()] = "{\"scroll\":0.5}",
+                [new ResourceKey("other/file.md").ToString()] = "{\"scroll\":1.0}",
+            }));
+
+        await _store.RestorePanelStateAsync();
+
+        await _documentsPanel.Received(1).OpenDocument(
+            Arg.Any<ResourceKey>(),
+            Arg.Is<OpenDocumentOptions>(options => options.EditorStateJson == "{\"scroll\":0.5}"));
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_RestoresActiveDocumentAfterOpens()
+    {
+        var stored = new List<DocumentLayoutStore.StoredDocumentAddress>
+        {
+            new("notes/readme.md", 0, 0, 0),
+        };
+        _workspaceSettings.GetPropertyAsync<List<DocumentLayoutStore.StoredDocumentAddress>>("DocumentLayout")
+            .Returns(Task.FromResult<List<DocumentLayoutStore.StoredDocumentAddress>?>(stored));
+        _workspaceSettings.GetPropertyAsync<string>("ActiveDocument")
+            .Returns(Task.FromResult<string?>("notes/readme.md"));
+
+        await _store.RestorePanelStateAsync();
+
+        _documentsPanel.Received().ActiveDocument = new ResourceKey("notes/readme.md");
+    }
+
+    [Test]
+    public async Task RestorePanelStateAsync_AppliesSectionRatiosWhenValid()
+    {
+        var ratios = new List<double> { 0.3, 0.7 };
+        _workspaceSettings.GetPropertyAsync<List<double>>("SectionRatios")
+            .Returns(Task.FromResult<List<double>?>(ratios));
+        _resourceRegistry.NormalizeResourceKey(Arg.Any<ResourceKey>())
+            .Returns(Result<ResourceKey>.Fail("not found"));
+
+        await _store.RestorePanelStateAsync();
+
+        _documentsPanel.Received().SectionCount = 2;
+        _documentsPanel.Received(1).SetSectionRatios(ratios);
+    }
+
+    [Test]
+    public async Task StoreActiveDocumentAsync_WritesResourceKeyString()
+    {
+        var resource = new ResourceKey("notes/readme.md");
+
+        await _store.StoreActiveDocumentAsync(resource);
+
+        // ResourceKey.ToString prefixes the default root, so the persisted
+        // value is "project:notes/readme.md" rather than the bare path.
+        await _workspaceSettings.Received(1).SetPropertyAsync("ActiveDocument", resource.ToString());
+    }
+
+    [Test]
+    public async Task StoreSectionRatiosAsync_WritesRatiosList()
+    {
+        var ratios = new List<double> { 0.5, 0.5 };
+
+        await _store.StoreSectionRatiosAsync(ratios);
+
+        await _workspaceSettings.Received(1).SetPropertyAsync("SectionRatios", ratios);
+    }
+
+    [Test]
+    public async Task StoreDocumentEditorStateAsync_WithStateUpdatesDictionary()
+    {
+        var targetResource = new ResourceKey("notes/readme.md");
+        var otherResource = new ResourceKey("other/file.md");
+        _workspaceSettings.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
+            .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
+            {
+                [otherResource.ToString()] = "{\"scroll\":1.0}",
+            }));
+
+        await _store.StoreDocumentEditorStateAsync(targetResource, "{\"scroll\":0.5}");
+
+        await _workspaceSettings.Received(1).SetPropertyAsync(
+            "DocumentEditorStates",
+            Arg.Is<Dictionary<string, string>>(d =>
+                d[targetResource.ToString()] == "{\"scroll\":0.5}"
+                && d[otherResource.ToString()] == "{\"scroll\":1.0}"));
+    }
+
+    [Test]
+    public async Task StoreDocumentEditorStateAsync_WithNullRemovesEntry()
+    {
+        var targetResource = new ResourceKey("notes/readme.md");
+        var otherResource = new ResourceKey("other/file.md");
+        _workspaceSettings.GetPropertyAsync<Dictionary<string, string>>("DocumentEditorStates")
+            .Returns(Task.FromResult<Dictionary<string, string>?>(new Dictionary<string, string>
+            {
+                [targetResource.ToString()] = "{\"scroll\":0.5}",
+                [otherResource.ToString()] = "{\"scroll\":1.0}",
+            }));
+
+        await _store.StoreDocumentEditorStateAsync(targetResource, null);
+
+        await _workspaceSettings.Received(1).SetPropertyAsync(
+            "DocumentEditorStates",
+            Arg.Is<Dictionary<string, string>>(d =>
+                !d.ContainsKey(targetResource.ToString())
+                && d[otherResource.ToString()] == "{\"scroll\":1.0}"));
+    }
+}

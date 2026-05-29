@@ -1,12 +1,14 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Interface for monitoring file system changes in the project folder and scheduling resource updates.
+/// Watches the project folder and any other registered watched roots for file
+/// system changes, debouncing and scheduling resource-registry updates.
 /// </summary>
 public interface IResourceMonitor
 {
     /// <summary>
-    /// Initializes the resource monitor and starts watching for file system changes.
+    /// Initializes the resource monitor and starts watching for file system changes
+    /// across every registered root whose Capabilities.IsWatched is true.
     /// </summary>
     Result Initialize();
 

@@ -21,51 +21,22 @@ public class ListFolderContentsCommand : CommandBase, IListFolderContentsCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        await Task.CompletedTask;
+        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-
-        var getResult = resourceRegistry.GetResource(Resource);
-        if (getResult.IsFailure)
+        var enumerateResult = await fileStorage.EnumerateFolderAsync(Resource);
+        if (enumerateResult.IsFailure)
         {
-            return Result.Fail($"Resource not found: '{Resource}'");
+            return Result.Fail($"Resource not found: '{Resource}'")
+                .WithErrors(enumerateResult);
         }
 
-        if (getResult.Value is not IFolderResource folderResource)
-        {
-            return Result.Fail($"Resource is not a folder: '{Resource}'");
-        }
-
-        var entries = new List<FolderContentsEntry>();
-        foreach (var child in folderResource.Children)
-        {
-            var childKey = resourceRegistry.GetResourceKey(child);
-            var resolveResult = resourceRegistry.ResolveResourcePath(childKey);
-            if (resolveResult.IsFailure)
-            {
-                continue;
-            }
-            var childPath = resolveResult.Value;
-
-            if (child is IFolderResource)
-            {
-                var directoryInfo = new DirectoryInfo(childPath);
-                entries.Add(new FolderContentsEntry(
-                    child.Name,
-                    IsFolder: true,
-                    Size: 0,
-                    ModifiedUtc: directoryInfo.LastWriteTimeUtc));
-            }
-            else
-            {
-                var fileInfo = new FileInfo(childPath);
-                entries.Add(new FolderContentsEntry(
-                    child.Name,
-                    IsFolder: false,
-                    Size: fileInfo.Length,
-                    ModifiedUtc: fileInfo.LastWriteTimeUtc));
-            }
-        }
+        var entries = enumerateResult.Value
+            .Select(entry => new FolderContentsEntry(
+                entry.Resource.ResourceName,
+                IsFolder: entry.IsFolder,
+                Size: entry.Size,
+                ModifiedUtc: entry.ModifiedUtc))
+            .ToList();
 
         ResultValue = new FolderContentsSnapshot(entries);
 

@@ -16,12 +16,16 @@ public static class ServiceConfiguration
         services.AddSingleton<IFileTemplateService, FileTemplateService>();
 
         services.AddTransient<IResourceService, ResourceService>();
-        services.AddTransient<IResourceRegistry, ResourceRegistry>();
         services.AddTransient<IResourceTransferService, ResourceTransferService>();
         services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
-        services.AddTransient<IResourceFileWriter, ResourceFileWriter>();
+        services.AddTransient<IFileStorage, FileStorage>();
+        services.AddTransient<ITrashService, TrashService>();
+        services.AddTransient<IResourceScanner, ResourceScanner>();
+        services.AddTransient<ISidecarService, SidecarService>();
+        services.AddTransient<IResourceClassifier, ResourceClassifier>();
+        services.AddTransient<IProjectTreeBuilder, ProjectTreeBuilder>();
         services.AddTransient<AddResourceHelper>();
 
         //
@@ -43,6 +47,19 @@ public static class ServiceConfiguration
         services.AddTransient<IListFolderContentsCommand, ListFolderContentsCommand>();
         services.AddTransient<IGetFileTreeCommand, GetFileTreeCommand>();
         services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
+        services.AddTransient<IProjectCheckCommand, ProjectCheckCommand>();
+
+        services.AddTransient<ISetFieldCommand, SetFieldCommand>();
+        services.AddTransient<IRemoveFieldCommand, RemoveFieldCommand>();
+        services.AddTransient<IAddTagCommand, AddTagCommand>();
+        services.AddTransient<IRemoveTagCommand, RemoveTagCommand>();
+        services.AddTransient<IWriteBlockCommand, WriteBlockCommand>();
+        services.AddTransient<IRemoveBlockCommand, RemoveBlockCommand>();
+
+        services.AddTransient<IGetFieldCommand, GetFieldCommand>();
+        services.AddTransient<IReadBlockCommand, ReadBlockCommand>();
+        services.AddTransient<IGetInfoCommand, GetInfoCommand>();
+        services.AddTransient<IFindTagCommand, FindTagCommand>();
 
         services.AddTransient<IApplyRangeEditsCommand, ApplyRangeEditsCommand>();
         services.AddTransient<IEditFileCommand, EditFileCommand>();

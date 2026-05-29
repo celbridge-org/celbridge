@@ -14,6 +14,7 @@
   ".c": "c",
   ".cake": "csharp",
   ".cc": "cpp",
+  ".cel": "ruby",
   ".celbridge": "ruby",
   ".cjs": "javascript",
   ".clj": "clojure",

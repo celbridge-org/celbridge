@@ -1,6 +1,4 @@
-using System.Text.Json;
 using Windows.System;
-using Celbridge.Explorer;
 
 namespace Celbridge.Resources.Helpers;
 
@@ -155,64 +153,5 @@ public class ResourceUtils
         }
 
         return Result.Ok();
-    }
-
-    public static Result<string> ExtractUrlFromWebViewFile(string webViewPath)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(webViewPath))
-            {
-                return Result<string>.Fail($"Failed to get path for file resource: {webViewPath}");
-            }
-
-            if (!File.Exists(webViewPath))
-            {
-                return Result<string>.Fail($"File does not exist: {webViewPath}");
-            }
-
-            var fileExtension = Path.GetExtension(webViewPath);
-
-            if (fileExtension == ExplorerConstants.WebViewExtension)
-            {
-                return Result<string>.Fail($"File does not have the .webview extension: {webViewPath}");
-            }
-
-            var json = File.ReadAllText(webViewPath);
-            using var jsonDoc = JsonDocument.Parse(json);
-            var root = jsonDoc.RootElement;
-
-            if (!root.TryGetProperty("sourceUrl", out var urlElement))
-            {
-                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webview JSON data: {webViewPath}");
-            }
-
-            var urlValue = urlElement.GetString();
-            if (urlValue is null)
-            {
-                return Result<string>.Fail($"Failed to find 'sourceUrl' property in .webview JSON data: {webViewPath}");
-            }
-
-            // Todo: This logic is repeated in multiple places, move it to the utility service
-            string targetUrl = urlValue.Trim();
-            if (!string.IsNullOrWhiteSpace(targetUrl) &&
-                !targetUrl.StartsWith("http") &&
-                !targetUrl.StartsWith("file"))
-            {
-                targetUrl = $"https://{targetUrl}";
-            }
-
-            if (!Uri.IsWellFormedUriString(targetUrl, UriKind.Absolute))
-            {
-                return Result<string>.Fail($"Url is not valid: {targetUrl}");
-            }
-
-            return Result<string>.Ok(targetUrl);
-        }
-        catch (Exception ex)
-        {
-            return Result<string>.Fail($"An exception occurred when extracting the url from a .webview file")
-                .WithException(ex); ;
-        }
     }
 }

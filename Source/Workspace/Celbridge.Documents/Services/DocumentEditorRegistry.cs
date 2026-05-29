@@ -7,10 +7,17 @@ namespace Celbridge.Documents.Services;
 public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 {
     private bool _disposed;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly List<IDocumentEditorFactory> _factories = new();
     private readonly Dictionary<string, List<IDocumentEditorFactory>> _extensionToFactories = new();
+    private readonly Dictionary<string, List<IDocumentEditorFactory>> _filenameToFactories = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<DocumentEditorId> _registeredEditorIds = new();
     private readonly Dictionary<DocumentEditorId, IDocumentEditorFactory> _idToFactory = new();
+
+    public DocumentEditorRegistry(ITextBinarySniffer textBinarySniffer)
+    {
+        _textBinarySniffer = textBinarySniffer;
+    }
 
     /// <summary>
     /// Registers a document editor factory.
@@ -19,9 +26,17 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     {
         Guard.IsNotNull(factory);
 
-        if (factory.SupportedExtensions.Count == 0)
+        // NSubstitute stubs return null for collection properties that are
+        // never explicitly configured, so treat null as empty here rather than
+        // pushing the burden to every test setup.
+        var supportedExtensions = factory.SupportedExtensions ?? Array.Empty<string>();
+        var supportedFilenames = factory.SupportedFilenames ?? Array.Empty<string>();
+
+        var supportsAnything = supportedExtensions.Count > 0
+            || supportedFilenames.Count > 0;
+        if (!supportsAnything)
         {
-            return Result.Fail("Factory must support at least one extension");
+            return Result.Fail("Factory must support at least one extension or filename");
         }
 
         if (!_registeredEditorIds.Add(factory.EditorId))
@@ -35,8 +50,10 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         _idToFactory[factory.EditorId] = factory;
         _factories.Add(factory);
 
-        // Index the factory by each supported extension
-        foreach (var extension in factory.SupportedExtensions)
+        // Index the factory by each supported extension.
+        // Multi-part extensions such as ".document.toml" are indexed as-is; the
+        // longest-suffix walk in GetFactory tries the most specific form first.
+        foreach (var extension in supportedExtensions)
         {
             var normalizedExtension = extension.ToLowerInvariant();
 
@@ -52,6 +69,20 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
             factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
         }
 
+        // Index the factory by each supported exact filename. Filename matches
+        // are tried before any extension match in GetFactory.
+        foreach (var filename in supportedFilenames)
+        {
+            if (!_filenameToFactories.TryGetValue(filename, out var factoryList))
+            {
+                factoryList = new List<IDocumentEditorFactory>();
+                _filenameToFactories[filename] = factoryList;
+            }
+
+            factoryList.Add(factory);
+            factoryList.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+        }
+
         return Result.Ok();
     }
 
@@ -59,24 +90,79 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     /// Gets the factory for the specified file resource.
     /// Returns the highest priority factory that can handle the resource.
     /// </summary>
-    public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource, string filePath)
+    public Result<IDocumentEditorFactory> GetFactory(ResourceKey fileResource)
     {
-        var extension = Path.GetExtension(fileResource.ToString()).ToLowerInvariant();
-
-        // Check factories registered for this specific extension
-        if (_extensionToFactories.TryGetValue(extension, out var factoryList))
+        var candidates = GetFactoriesForResource(fileResource);
+        if (candidates.Count == 0)
         {
-            // Find the first factory (sorted by priority) that can handle the resource
-            foreach (var factory in factoryList)
+            return Result<IDocumentEditorFactory>.Fail($"No registered factory can handle resource: '{fileResource}'");
+        }
+        return Result<IDocumentEditorFactory>.Ok(candidates[0]);
+    }
+
+    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForResource(ResourceKey fileResource)
+    {
+        // Match order: exact filename first, then multi-part extension suffixes
+        // longest first. Dedupe by editor id so a factory registered against
+        // both a filename and an extension does not appear twice in the
+        // "Open with..." dialog.
+        var fileName = fileResource.ResourceName;
+        var seenEditorIds = new HashSet<DocumentEditorId>();
+        var candidates = new List<IDocumentEditorFactory>();
+
+        if (_filenameToFactories.TryGetValue(fileName, out var byFilename))
+        {
+            foreach (var factory in byFilename)
             {
-                if (factory.CanHandleResource(fileResource, filePath))
+                if (factory.CanHandleResource(fileResource)
+                    && seenEditorIds.Add(factory.EditorId))
                 {
-                    return Result<IDocumentEditorFactory>.Ok(factory);
+                    candidates.Add(factory);
                 }
             }
         }
 
-        return Result<IDocumentEditorFactory>.Fail($"No registered factory can handle resource: '{fileResource}'");
+        var lowerFileName = fileName.ToLowerInvariant();
+        foreach (var suffix in GetExtensionSuffixes(lowerFileName))
+        {
+            if (_extensionToFactories.TryGetValue(suffix, out var factoryList))
+            {
+                foreach (var factory in factoryList)
+                {
+                    if (factory.CanHandleResource(fileResource)
+                        && seenEditorIds.Add(factory.EditorId))
+                    {
+                        candidates.Add(factory);
+                    }
+                }
+            }
+        }
+
+        return candidates;
+    }
+
+    public IReadOnlyList<IDocumentEditorFactory> GetUserPickableFactoriesForResource(ResourceKey fileResource)
+    {
+        var candidates = GetFactoriesForResource(fileResource)
+            .Where(factory => !factory.IsPlaceholder)
+            .ToList();
+
+        var extension = Path.GetExtension(fileResource.ResourceName).ToLowerInvariant();
+        if (_textBinarySniffer.IsBinaryExtension(extension))
+        {
+            return candidates;
+        }
+
+        // Text-shaped files always get the code editor as a "view as text" option,
+        // even if no factory claims the extension. Skip if already in the list.
+        var codeEditorResult = GetFactoryById(DocumentConstants.CodeEditorId);
+        if (codeEditorResult.IsSuccess
+            && !candidates.Any(factory => factory.EditorId == codeEditorResult.Value.EditorId))
+        {
+            candidates.Add(codeEditorResult.Value);
+        }
+
+        return candidates;
     }
 
     /// <summary>
@@ -99,7 +185,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
     /// <summary>
     /// Gets all factories that can handle the specified extension, sorted by priority.
     /// </summary>
-    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForFileExtension(string fileExtension)
+    public IReadOnlyList<IDocumentEditorFactory> GetFactoriesForExtension(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
 
@@ -158,6 +244,36 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
         return _extensionToFactories.Keys.ToList().AsReadOnly();
     }
 
+    // Yields the extension suffixes of a filename from longest to shortest.
+    // "foo.document.toml" produces ".document.toml" then ".toml"; "foo.md"
+    // produces ".md"; "Makefile" produces nothing. A leading dot
+    // (".gitignore") is skipped so the file's full name is not treated as
+    // an extension.
+    private static IEnumerable<string> GetExtensionSuffixes(string fileName)
+    {
+        int searchFrom = 0;
+
+        // Skip a leading '.' on dotfiles so the first yielded suffix is anchored
+        // on an interior dot rather than the leading one.
+        if (fileName.Length > 0
+            && fileName[0] == '.')
+        {
+            searchFrom = 1;
+        }
+
+        while (searchFrom < fileName.Length)
+        {
+            int dotIndex = fileName.IndexOf('.', searchFrom);
+            if (dotIndex < 0)
+            {
+                yield break;
+            }
+
+            yield return fileName.Substring(dotIndex);
+            searchFrom = dotIndex + 1;
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -178,6 +294,7 @@ public class DocumentEditorRegistry : IDocumentEditorRegistry, IDisposable
 
         _factories.Clear();
         _extensionToFactories.Clear();
+        _filenameToFactories.Clear();
         _registeredEditorIds.Clear();
         _idToFactory.Clear();
     }

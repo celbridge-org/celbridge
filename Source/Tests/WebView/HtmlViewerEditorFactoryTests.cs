@@ -38,25 +38,25 @@ public class HtmlViewerEditorFactoryTests
     [Test]
     public void Registry_HtmlExtensionResolvesToHtmlViewerByDefault_AndCodeEditorIsListedAsAlternate()
     {
-        var registry = new DocumentEditorRegistry();
+        var registry = new DocumentEditorRegistry(Substitute.For<ITextBinarySniffer>());
 
         var codeEditor = Substitute.For<IDocumentEditorFactory>();
         codeEditor.EditorId.Returns(new DocumentEditorId("celbridge.code-editor"));
         codeEditor.DisplayName.Returns("Code Editor");
         codeEditor.SupportedExtensions.Returns(new List<string> { ".html", ".htm" });
         codeEditor.Priority.Returns(EditorPriority.General);
-        codeEditor.CanHandleResource(Arg.Any<ResourceKey>(), Arg.Any<string>()).Returns(true);
+        codeEditor.CanHandleResource(Arg.Any<ResourceKey>()).Returns(true);
 
         registry.RegisterFactory(codeEditor);
         registry.RegisterFactory(_factory);
 
         var fileResource = new ResourceKey("page.html");
-        var resolveResult = registry.GetFactory(fileResource, "/path/page.html");
+        var resolveResult = registry.GetFactory(fileResource);
 
         resolveResult.IsSuccess.Should().BeTrue();
         resolveResult.Value.Should().Be(_factory);
 
-        var alternates = registry.GetFactoriesForFileExtension(".html");
+        var alternates = registry.GetFactoriesForExtension(".html");
         alternates.Should().HaveCount(2);
         alternates[0].Should().Be(_factory);
         alternates[1].Should().Be(codeEditor);

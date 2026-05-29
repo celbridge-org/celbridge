@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Celbridge.Logging;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 using Path = System.IO.Path;
 
@@ -10,13 +11,25 @@ namespace Celbridge.Search.Services;
 /// </summary>
 public class SearchService : ISearchService, IDisposable
 {
+    private const int MaxSearchableFileSizeBytes = 1024 * 1024; // 1MB
+
+    private static readonly HashSet<string> ExcludedMetadataExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cel",
+        ".celbridge"
+    };
+
     private readonly ILogger<SearchService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly FileFilter _fileFilter;
+    private readonly ITextBinarySniffer _textBinarySniffer;
     private readonly TextMatcher _textMatcher;
     private readonly SearchResultFormatter _formatter;
     private readonly TextReplacer _textReplacer;
     private bool _disposed;
+
+    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+    private IWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.WorkspaceSettings;
 
     public SearchService(
         ILogger<SearchService> logger,
@@ -28,10 +41,37 @@ public class SearchService : ISearchService, IDisposable
 
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _fileFilter = new FileFilter(textBinarySniffer);
+        _textBinarySniffer = textBinarySniffer;
         _textMatcher = new TextMatcher();
         _formatter = new SearchResultFormatter();
         _textReplacer = new TextReplacer();
+    }
+
+    // Decides whether a file should be included in a search. Probes the file
+    // through the chokepoint so the size check honours the same containment
+    // validation as the read that follows. Internal for the test suite.
+    internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath)
+    {
+        var infoResult = await FileStorage.GetInfoAsync(resource);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
+        {
+            return false;
+        }
+
+        if (infoResult.Value.Size > MaxSearchableFileSizeBytes)
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ExcludedMetadataExtensions.Contains(extension)
+            || _textBinarySniffer.IsBinaryExtension(extension))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private sealed record SearchState
@@ -63,11 +103,9 @@ public class SearchService : ISearchService, IDisposable
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var projectFolder = resourceRegistry.ProjectFolderPath;
+        var projectFolder = ResourceRegistry.ProjectFolderPath;
 
-        if (string.IsNullOrEmpty(projectFolder) ||
-            !Directory.Exists(projectFolder))
+        if (string.IsNullOrEmpty(projectFolder))
         {
             return new SearchResults(searchTerm, fileResults, 0, 0, false, false);
         }
@@ -101,7 +139,7 @@ public class SearchService : ISearchService, IDisposable
         try
         {
             // Get all file resources from the registry (already sorted by path)
-            var fileResources = resourceRegistry.GetAllFileResources();
+            var fileResources = ResourceRegistry.GetAllFileResources();
 
             if (includeRegex != null)
             {
@@ -123,45 +161,55 @@ public class SearchService : ISearchService, IDisposable
 
             if (!string.IsNullOrEmpty(scope))
             {
+                // File resources are matched as "<root>:<path>", so a bare scope
+                // like "Data" is canonicalized to "project:Data" before comparison.
+                string canonicalScope;
+                if (ResourceKey.TryCreate(scope, out var scopeKey))
+                {
+                    canonicalScope = scopeKey.ToString();
+                }
+                else
+                {
+                    canonicalScope = scope;
+                }
+
                 fileResources = fileResources
-                    .Where(entry => entry.Resource.ToString().StartsWith(scope, StringComparison.OrdinalIgnoreCase))
+                    .Where(entry => entry.Resource.ToString().StartsWith(canonicalScope, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
 
-            await Task.Run(() =>
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var (resource, filePath) in fileResources)
             {
-                foreach (var (resource, filePath) in fileResources)
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (maxResults.HasValue && searchState.TotalMatches >= maxResults.Value)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (maxResults.HasValue && searchState.TotalMatches >= maxResults.Value)
-                    {
-                        searchState.ReachedMaxResults = true;
-                        break;
-                    }
-
-                    var remainingMatches = maxResults.HasValue
-                        ? maxResults.Value - searchState.TotalMatches
-                        : int.MaxValue;
-
-                    var fileResult = SearchFile(
-                        filePath,
-                        projectFolder,
-                        resource,
-                        searchTerm,
-                        matchCase,
-                        wholeWord,
-                        remainingMatches,
-                        cancellationToken,
-                        searchRegex);
-
-                    if (fileResult != null && fileResult.Matches.Count > 0)
-                    {
-                        fileResults.Add(fileResult);
-                        searchState.TotalMatches += fileResult.Matches.Count;
-                    }
+                    searchState.ReachedMaxResults = true;
+                    break;
                 }
-            }, cancellationToken);
+
+                var remainingMatches = maxResults.HasValue
+                    ? maxResults.Value - searchState.TotalMatches
+                    : int.MaxValue;
+
+                var fileResult = await SearchFileAsync(
+                    filePath,
+                    projectFolder,
+                    resource,
+                    searchTerm,
+                    matchCase,
+                    wholeWord,
+                    remainingMatches,
+                    cancellationToken,
+                    searchRegex);
+
+                if (fileResult != null && fileResult.Matches.Count > 0)
+                {
+                    fileResults.Add(fileResult);
+                    searchState.TotalMatches += fileResult.Matches.Count;
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -175,7 +223,7 @@ public class SearchService : ISearchService, IDisposable
         return new SearchResults(searchTerm, fileResults, searchState.TotalMatches, fileResults.Count, false, searchState.ReachedMaxResults);
     }
 
-    private SearchFileResult? SearchFile(
+    private async Task<SearchFileResult?> SearchFileAsync(
         string filePath,
         string rootDirectory,
         ResourceKey resourceKey,
@@ -189,53 +237,56 @@ public class SearchService : ISearchService, IDisposable
         try
         {
             // Check if file should be searched (size, extension filters)
-            if (!_fileFilter.ShouldSearchFile(filePath))
+            if (!await ShouldSearchFileAsync(resourceKey, filePath))
             {
                 return null;
             }
 
             // Check if file content is text (not binary) using efficient sampling
-            if (!_fileFilter.IsTextFile(filePath))
+            var sniffResult = _textBinarySniffer.IsTextFile(filePath);
+            if (!sniffResult.IsSuccess || !sniffResult.Value)
             {
                 return null;
             }
 
-            // Try to read the file content
-            string content;
-            try
-            {
-                content = File.ReadAllText(filePath);
-            }
-            catch
+            // Stream the file via the chokepoint so reads pick up the same
+            // containment validation as writes and large files do not load
+            // fully into memory.
+            var openResult = await FileStorage.OpenReadAsync(resourceKey);
+            if (openResult.IsFailure)
             {
                 return null;
             }
 
             var matches = new List<SearchMatchLine>();
-            var lines = content.Split('\n');
-
-            for (int i = 0; i < lines.Length && matches.Count < maxMatches; i++)
+            await using (var stream = openResult.Value)
+            using (var reader = new StreamReader(stream))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var line = lines[i].TrimEnd('\r');
-
-                var lineMatches = searchRegex != null
-                    ? _textMatcher.FindRegexMatches(line, searchRegex)
-                    : _textMatcher.FindMatches(line, searchTerm, matchCase, wholeWord);
-
-                foreach (var match in lineMatches)
+                int lineNumber = 0;
+                string? rawLine;
+                while ((rawLine = await reader.ReadLineAsync(cancellationToken)) is not null
+                    && matches.Count < maxMatches)
                 {
-                    if (matches.Count >= maxMatches)
-                        break;
+                    lineNumber++;
+                    var line = rawLine.TrimEnd('\r');
 
-                    var (contextLine, displayMatchStart) = _formatter.FormatContextLine(line, match.Start, match.Length);
-                    matches.Add(new SearchMatchLine(
-                        i + 1, // Line numbers are 1-based
-                        contextLine,
-                        displayMatchStart,
-                        match.Length,
-                        match.Start)); // Store original position for navigation
+                    var lineMatches = searchRegex != null
+                        ? _textMatcher.FindRegexMatches(line, searchRegex)
+                        : _textMatcher.FindMatches(line, searchTerm, matchCase, wholeWord);
+
+                    foreach (var match in lineMatches)
+                    {
+                        if (matches.Count >= maxMatches)
+                            break;
+
+                        var (contextLine, displayMatchStart) = _formatter.FormatContextLine(line, match.Start, match.Length);
+                        matches.Add(new SearchMatchLine(
+                            lineNumber,
+                            contextLine,
+                            displayMatchStart,
+                            match.Length,
+                            match.Start));
+                    }
                 }
             }
 
@@ -248,6 +299,12 @@ public class SearchService : ISearchService, IDisposable
             var fileName = Path.GetFileName(filePath);
 
             return new SearchFileResult(resourceKey, fileName, relativePath, matches);
+        }
+        catch (OperationCanceledException)
+        {
+            // Let cancellation propagate so the outer loop returns a Cancelled
+            // result rather than treating the file as unsearchable.
+            throw;
         }
         catch (Exception)
         {
@@ -283,8 +340,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceResult(false, 0);
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveReplaceResult = resourceRegistry.ResolveResourcePath(resource);
+        var resolveReplaceResult = ResourceRegistry.ResolveResourcePath(resource);
         if (resolveReplaceResult.IsFailure)
         {
             return new ReplaceResult(false, 0);
@@ -293,13 +349,34 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            return await Task.Run(() => ReplaceInFile(
-                filePath,
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var readResult = await FileStorage.ReadAllTextAsync(resource);
+            if (readResult.IsFailure)
+            {
+                return new ReplaceResult(false, 0);
+            }
+            var content = readResult.Value;
+
+            var (newContent, totalReplacements) = _textReplacer.ReplaceAll(
+                content,
                 searchText,
                 replaceText,
                 matchCase,
-                wholeWord,
-                cancellationToken), cancellationToken);
+                wholeWord);
+
+            if (totalReplacements == 0)
+            {
+                return new ReplaceResult(true, 0);
+            }
+
+            var writeResult = await FileStorage.WriteAllTextAsync(resource, newContent);
+            if (writeResult.IsFailure)
+            {
+                return new ReplaceResult(false, 0);
+            }
+
+            return new ReplaceResult(true, totalReplacements);
         }
         catch (OperationCanceledException)
         {
@@ -315,50 +392,6 @@ public class SearchService : ISearchService, IDisposable
             _logger.LogError(ex, $"Error replacing in file: {filePath}");
             return new ReplaceResult(false, 0);
         }
-    }
-
-    private ReplaceResult ReplaceInFile(
-        string filePath,
-        string searchText,
-        string replaceText,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        string content;
-        try
-        {
-            content = File.ReadAllText(filePath);
-        }
-        catch (IOException)
-        {
-            return new ReplaceResult(false, 0);
-        }
-
-        var (newContent, totalReplacements) = _textReplacer.ReplaceAll(
-            content,
-            searchText,
-            replaceText,
-            matchCase,
-            wholeWord);
-
-        if (totalReplacements == 0)
-        {
-            return new ReplaceResult(true, 0);
-        }
-
-        try
-        {
-            File.WriteAllText(filePath, newContent);
-        }
-        catch (IOException)
-        {
-            return new ReplaceResult(false, 0);
-        }
-
-        return new ReplaceResult(true, totalReplacements);
     }
 
     public async Task<ReplaceMatchResult> ReplaceMatchAsync(
@@ -381,8 +414,7 @@ public class SearchService : ISearchService, IDisposable
             return new ReplaceMatchResult(false);
         }
 
-        var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resolveMatchResult = resourceRegistry.ResolveResourcePath(resource);
+        var resolveMatchResult = ResourceRegistry.ResolveResourcePath(resource);
         if (resolveMatchResult.IsFailure)
         {
             return new ReplaceMatchResult(false);
@@ -391,15 +423,36 @@ public class SearchService : ISearchService, IDisposable
 
         try
         {
-            return await Task.Run(() => ReplaceMatch(
-                filePath,
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var readResult = await FileStorage.ReadAllTextAsync(resource);
+            if (readResult.IsFailure)
+            {
+                return new ReplaceMatchResult(false);
+            }
+            var content = readResult.Value;
+
+            var (newContent, success) = _textReplacer.ReplaceMatch(
+                content,
                 searchText,
                 replaceText,
                 lineNumber,
                 originalMatchStart,
                 matchCase,
-                wholeWord,
-                cancellationToken), cancellationToken);
+                wholeWord);
+
+            if (!success)
+            {
+                return new ReplaceMatchResult(false);
+            }
+
+            var writeResult = await FileStorage.WriteAllTextAsync(resource, newContent);
+            if (writeResult.IsFailure)
+            {
+                return new ReplaceMatchResult(false);
+            }
+
+            return new ReplaceMatchResult(true);
         }
         catch (OperationCanceledException)
         {
@@ -415,54 +468,6 @@ public class SearchService : ISearchService, IDisposable
             _logger.LogError(ex, $"Error replacing match in file: {filePath}");
             return new ReplaceMatchResult(false);
         }
-    }
-
-    private ReplaceMatchResult ReplaceMatch(
-        string filePath,
-        string searchText,
-        string replaceText,
-        int lineNumber,
-        int originalMatchStart,
-        bool matchCase,
-        bool wholeWord,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        string content;
-        try
-        {
-            content = File.ReadAllText(filePath);
-        }
-        catch (IOException)
-        {
-            return new ReplaceMatchResult(false);
-        }
-
-        var (newContent, success) = _textReplacer.ReplaceMatch(
-            content,
-            searchText,
-            replaceText,
-            lineNumber,
-            originalMatchStart,
-            matchCase,
-            wholeWord);
-
-        if (!success)
-        {
-            return new ReplaceMatchResult(false);
-        }
-
-        try
-        {
-            File.WriteAllText(filePath, newContent);
-        }
-        catch (IOException)
-        {
-            return new ReplaceMatchResult(false);
-        }
-
-        return new ReplaceMatchResult(true);
     }
 
     public async Task<ReplaceAllResult> ReplaceAllAsync(
@@ -542,11 +547,9 @@ public class SearchService : ISearchService, IDisposable
             return emptyHistory;
         }
 
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-
         try
         {
-            var history = await workspaceSettings.GetPropertyAsync<SearchHistory>(SearchHistoryKey);
+            var history = await WorkspaceSettings.GetPropertyAsync<SearchHistory>(SearchHistoryKey);
 
             if (history is null)
             {
@@ -559,7 +562,7 @@ public class SearchService : ISearchService, IDisposable
         {
             // Handle corrupted or old-format data by clearing it and returning empty history
             _logger.LogWarning(ex, "Failed to deserialize search history, clearing corrupted data");
-            await workspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+            await WorkspaceSettings.DeletePropertyAsync(SearchHistoryKey);
             return emptyHistory;
         }
     }
@@ -592,8 +595,7 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var updatedHistory = new SearchHistory(searchTerms, history.ReplaceTerms.ToList());
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        await workspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
+        await WorkspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
     }
 
     public async Task AddReplaceTermToHistoryAsync(string term)
@@ -624,8 +626,7 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var updatedHistory = new SearchHistory(history.SearchTerms.ToList(), replaceTerms);
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        await workspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
+        await WorkspaceSettings.SetPropertyAsync(SearchHistoryKey, updatedHistory);
     }
 
     public async Task ClearHistoryAsync()
@@ -635,8 +636,7 @@ public class SearchService : ISearchService, IDisposable
             return;
         }
 
-        var workspaceSettings = _workspaceWrapper.WorkspaceService.WorkspaceSettings;
-        await workspaceSettings.DeletePropertyAsync(SearchHistoryKey);
+        await WorkspaceSettings.DeletePropertyAsync(SearchHistoryKey);
     }
 
     public void Dispose()

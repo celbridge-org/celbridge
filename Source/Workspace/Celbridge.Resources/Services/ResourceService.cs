@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
 using Celbridge.Projects;
+using Celbridge.Resources.Services.Roots;
 using Celbridge.UserInterface;
 using Celbridge.Workspace;
 
@@ -18,22 +19,23 @@ public class ResourceService : IResourceService, IDisposable
     private readonly IProjectService _projectService;
 
     public IResourceRegistry Registry { get; }
+    public IRootHandlerRegistry RootHandlerRegistry { get; }
     public IResourceMonitor Monitor { get; }
     public IResourceTransferService TransferService { get; }
     public IResourceOperationService OperationService { get; }
-    public IResourceFileWriter FileWriter { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
+        ILogger<ResourceRegistry> registryLogger,
         ICommandService commandService,
         IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IResourceRegistry resourceRegistry,
+        IProjectTreeBuilder projectTreeBuilder,
+        IResourceClassifier resourceClassifier,
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
-        IResourceOperationService resourceOperationService,
-        IResourceFileWriter resourceFileWriter)
+        IResourceOperationService resourceOperationService)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -43,24 +45,61 @@ public class ResourceService : IResourceService, IDisposable
         _messengerService = messengerService;
         _projectService = projectService;
 
-        Registry = resourceRegistry;
+        // RootHandlerRegistry and ResourceRegistry are constructed together so
+        // they share the same root-handler instance
+        var rootHandlerRegistry = new RootHandlerRegistry();
+        RootHandlerRegistry = rootHandlerRegistry;
+
+        Registry = new ResourceRegistry(
+            registryLogger,
+            messengerService,
+            projectTreeBuilder,
+            resourceClassifier,
+            rootHandlerRegistry);
+
         Monitor = resourceMonitor;
         TransferService = resourceTransferService;
         OperationService = resourceOperationService;
-        FileWriter = resourceFileWriter;
 
-        // Set the project folder path on the registry
-        Registry.ProjectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-
-        // Clean up the trash folder from previous sessions.
-        // The trash folder contains soft-deleted files and folders from previous delete operations.
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
-        var trashFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
-        if (Directory.Exists(trashFolderPath))
+        Registry.InitializeProjectRoot(projectFolderPath);
+
+        // Build the new .celbridge/ hidden folder layout: temp/, logs/, trash/,
+        // staging-fs/. These need to exist before downstream services start reading
+        // or watching them.
+        var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
+        var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.TempFolder);
+        var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.LogsFolder);
+        var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.TrashFolder);
+        var celbridgeStagingFsFolder = Path.Combine(celbridgeFolder, ProjectConstants.StagingFsFolder);
+
+        // temp:/ is wiped on every workspace load. The contract is that nothing
+        // under temp: survives a reload; consumers needing persistence write
+        // under project: instead.
+        TryClearFolderContents(celbridgeTempFolder);
+        Directory.CreateDirectory(celbridgeTempFolder);
+        Directory.CreateDirectory(celbridgeLogsFolder);
+
+        // Trash is cleared on every workspace load; undo history lives in memory only,
+        // so previous-session trash content has no live handles.
+        TryClearFolderContents(celbridgeTrashFolder);
+        Directory.CreateDirectory(celbridgeTrashFolder);
+
+        // staging-fs/ holds in-flight temp files for the resource file-system
+        // chokepoint. Wipe orphans from a prior session crash before downstream
+        // services start writing.
+        TryClearFolderContents(celbridgeStagingFsFolder);
+        Directory.CreateDirectory(celbridgeStagingFsFolder);
+
+        // Legacy <project>/celbridge/.trash/ from before this redesign: discard.
+        // The other legacy <project>/celbridge/.cache/ folder is left alone
+        // (no live data; it retires alongside the entity service).
+        var legacyTrashFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TrashFolder);
+        if (Directory.Exists(legacyTrashFolder))
         {
             try
             {
-                Directory.Delete(trashFolderPath, true);
+                Directory.Delete(legacyTrashFolder, true);
             }
             catch
             {
@@ -68,14 +107,15 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Clean up the temp folder from previous sessions.
-        // The temp folder stages in-flight atomic writes; orphans here are from a prior crash.
-        var tempFolderPath = Path.Combine(projectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TempFolder);
-        if (Directory.Exists(tempFolderPath))
+        // Clean up the legacy temp folder from previous sessions. The atomic-write
+        // staging area has moved to .celbridge/staging-fs/; any orphans here are
+        // from before the chokepoint landed.
+        var legacyTempFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TempFolder);
+        if (Directory.Exists(legacyTempFolder))
         {
             try
             {
-                Directory.Delete(tempFolderPath, true);
+                Directory.Delete(legacyTempFolder, true);
             }
             catch
             {
@@ -83,12 +123,12 @@ public class ResourceService : IResourceService, IDisposable
             }
         }
 
-        // Initialize the resource monitor to start watching for file system changes
-        var initResult = Monitor.Initialize();
-        if (initResult.IsFailure)
-        {
-            _logger.LogWarning(initResult, "Failed to initialize resource monitor");
-        }
+        rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder));
+        rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder));
+
+        // Monitor.Initialize() is called from WorkspaceLoader after construction completes;
+        // the monitor looks up its registry through IWorkspaceWrapper, which is only populated
+        // once the WorkspaceService finishes constructing.
 
         _messengerService.Register<MainWindowActivatedMessage>(this, OnMainWindowActivatedMessage);
         _messengerService.Register<RequestResourceRegistryUpdateMessage>(this, OnResourceUpdateRequestedMessage);
@@ -152,7 +192,10 @@ public class ResourceService : IResourceService, IDisposable
 
                 // Clean up the trash folder on project close.
                 // This ensures deleted files don't persist after the project is closed.
-                var trashFolderPath = Path.Combine(Registry.ProjectFolderPath, ProjectConstants.MetaDataFolder, ProjectConstants.TrashFolder);
+                var trashFolderPath = Path.Combine(
+                    Registry.ProjectFolderPath,
+                    ProjectConstants.CelbridgeFolder,
+                    ProjectConstants.TrashFolder);
                 if (Directory.Exists(trashFolderPath))
                 {
                     try
@@ -173,5 +216,39 @@ public class ResourceService : IResourceService, IDisposable
     ~ResourceService()
     {
         Dispose(false);
+    }
+
+    // Removes every child item under the given folder while leaving the folder itself in place.
+    // Used to clear .celbridge/trash/ on every workspace load without disturbing the folder layout.
+    private static void TryClearFolderContents(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+        {
+            return;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(folderPath))
+        {
+            try
+            {
+                File.Delete(file);
+            }
+            catch
+            {
+                // Best effort - ignore errors
+            }
+        }
+
+        foreach (var subFolder in Directory.EnumerateDirectories(folderPath))
+        {
+            try
+            {
+                Directory.Delete(subFolder, true);
+            }
+            catch
+            {
+                // Best effort - ignore errors
+            }
+        }
     }
 }

@@ -35,13 +35,13 @@ public class OpenFileExplorerMenuOption : IMenuOption<ExplorerMenuContext>
     public MenuItemState GetState(ExplorerMenuContext context)
     {
         return new MenuItemState(
-            IsVisible: context.IsSingleItemOrRootTargeted,
+            IsVisible: context.IsSingleItemOrProjectFolderTargeted,
             IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)
     {
-        var target = context.ClickedResource ?? context.RootFolder;
+        var target = context.ClickedResource ?? context.ProjectFolder;
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(target);

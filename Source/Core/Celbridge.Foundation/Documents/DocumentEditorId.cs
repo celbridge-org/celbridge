@@ -95,7 +95,5 @@ public readonly struct DocumentEditorId : IEquatable<DocumentEditorId>
         return !left.Equals(right);
     }
 
-    public static implicit operator DocumentEditorId(string id) => new(id);
-
     public static implicit operator string(DocumentEditorId id) => id.ToString();
 }

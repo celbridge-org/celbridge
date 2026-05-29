@@ -69,13 +69,13 @@ public partial class PackageTools
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveSourceResult.IsFailure)
         {
-            return ToolResponse.Error($"Failed to resolve path for resource: '{resource}'");
+            return ToolResponse.Error(resolveSourceResult.FirstErrorMessage);
         }
         var sourcePath = resolveSourceResult.Value;
 
         if (!Directory.Exists(sourcePath))
         {
-            return ToolResponse.Error($"Folder not found: '{resource}'");
+            return ToolResponse.Error($"Folder not found: '{resourceKey}'");
         }
 
         // Validate that the package manifest exists and is valid

@@ -13,11 +13,12 @@ public partial class SpreadsheetTools
     [RelatedGuides("resource_keys", "spreadsheet_cell_typing", "spreadsheet_editor_division", "spreadsheet_workflows")]
     public async partial Task<CallToolResult> ImportCsv(string resource, string importsJson)
     {
-        var resolveResult = ResolveWorkbookPath(resource);
+        var resolveResult = await ResolveWorkbookResourceAsync(resource);
         if (resolveResult.IsFailure)
         {
             return ToolResponse.Error(resolveResult);
         }
+        var workbookResource = resolveResult.Value;
 
         var parseResult = ParseCsvImports(importsJson);
         if (parseResult.IsFailure)
@@ -26,10 +27,9 @@ public partial class SpreadsheetTools
         }
         var imports = parseResult.Value;
 
-        var fileResourceKey = ResourceKey.Create(resource);
         var commandResult = await ExecuteCommandAsync<IImportCsvCommand, ImportCsvResult>(command =>
         {
-            command.FileResource = fileResourceKey;
+            command.FileResource = workbookResource;
             command.Imports = imports;
         });
         if (commandResult.IsFailure)

@@ -24,5 +24,5 @@ A JSON object:
 
 ## Gotchas
 
-- The downloaded zip is staged briefly under `.celbridge/.cache/` and removed after extraction. A failure mid-extract still cleans up the temp file.
+- The downloaded zip is staged briefly under `temp:` and removed after extraction. A failure mid-extract still cleans up the temp file.
 - An existing `packages/{packageName}` folder causes the call to fail — decide whether to remove it explicitly rather than relying on a flag.
