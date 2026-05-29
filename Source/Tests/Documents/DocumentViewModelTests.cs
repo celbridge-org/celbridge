@@ -236,12 +236,14 @@ public class DocumentViewModelTests
     }
 
     [Test]
-    public async Task Save_RaisesReloadRequested_WhenPostWriteDiskHashDiffersFromIntendedHash()
+    public async Task Save_RaisesReloadRequested_WhenPostWriteDiskSizeDiffersFromBytesWritten()
     {
         // Simulate an external write that interleaves with our save: the
-        // ExternalWriteDocumentViewModel rewrites the file with different content
-        // immediately after we call WriteAllBytesAsync but before
-        // UpdateFileTrackingInfo runs.
+        // ExternalWriteDocumentViewModel rewrites the file with different-length
+        // content immediately after WriteAllBytesAsync but before
+        // UpdateFileTrackingInfoAsync runs. The post-write size mismatch flags
+        // the interleave and the reload fires. Same-length interleaves slip
+        // past this check and rely on the watcher's subsequent event.
         var externalContent = "external content that overrode our save";
         var savingVm = new ExternalWriteDocumentViewModel(_fileStorage, _tempFilePath, externalContent);
         savingVm.FileResource = new ResourceKey("interleave.md");
@@ -256,6 +258,26 @@ public class DocumentViewModelTests
         reloadRequested.Should().BeTrue();
 
         savingVm.Cleanup();
+    }
+
+    [Test]
+    public async Task OnResourceChanged_DoesNotRaiseReload_AfterOwnSaveCompletes()
+    {
+        // After we save, the cache holds the size + mtime of our own write.
+        // A watcher event for that same write (the self-event the chokepoint's
+        // atomic write produces) probes the disk, finds the metadata unchanged
+        // from the cache, and returns without raising ReloadRequested. This is
+        // the test that proves the Excel-flash regression is gone.
+        var saveResult = await _vm.SaveDocumentContent("first save");
+        saveResult.IsSuccess.Should().BeTrue();
+
+        var reloadRequested = false;
+        _vm.ReloadRequested += (_, _) => reloadRequested = true;
+
+        var message = new ResourceChangedMessage(_vm.FileResource);
+        _messengerService.Send(message);
+
+        reloadRequested.Should().BeFalse();
     }
 
     /// <summary>
@@ -295,10 +317,11 @@ public class DocumentViewModelTests
 
     /// <summary>
     /// Test subclass that simulates an external write interleaving between our
-    /// WriteAllBytesAsync call and the post-write disk hash read. The override
-    /// of UpdateFileTrackingInfo runs immediately before the base reads the disk
-    /// hash, so by writing different content here we make _lastSavedFileHash
-    /// reflect external content while our intendedHash reflects ours.
+    /// WriteAllBytesAsync call and the post-write tracking refresh. The override
+    /// of UpdateFileTrackingInfoAsync runs immediately before the base reads
+    /// disk metadata, so by writing different-length content here we make the
+    /// cached size differ from the bytes we wrote — which is what the
+    /// post-write size-mismatch check looks for.
     /// </summary>
     private sealed class ExternalWriteDocumentViewModel : DocumentViewModel
     {
@@ -324,7 +347,7 @@ public class DocumentViewModelTests
 
         protected override IFileStorage GetFileSystem() => _fileStorage;
 
-        protected override async Task UpdateFileTrackingInfoAsync()
+        public override async Task UpdateFileTrackingInfoAsync()
         {
             if (!_hasInjected)
             {
