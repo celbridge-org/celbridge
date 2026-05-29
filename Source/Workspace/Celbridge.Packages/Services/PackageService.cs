@@ -1,10 +1,6 @@
 using Celbridge.Console;
 using Celbridge.Documents;
-using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Modules;
-using Celbridge.Settings;
-using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
 
@@ -17,15 +13,11 @@ public class PackageService : IPackageService
     private readonly PackageRegistry _registry;
 
     public PackageService(
-        ILogger<PackageRegistry> logger,
-        IModuleService moduleService,
         IMessengerService messengerService,
-        IFeatureFlags featureFlags,
-        IPackageLocalizationService localizationService,
-        IWorkspaceWrapper workspaceWrapper)
+        PackageRegistry registry)
     {
         _messengerService = messengerService;
-        _registry = new PackageRegistry(logger, moduleService, featureFlags, localizationService, workspaceWrapper);
+        _registry = registry;
     }
 
     public async Task RegisterPackagesAsync(string projectFolderPath)

@@ -60,7 +60,8 @@ public class PackageServiceDocumentTypeTests
             workspaceWrapper);
         workspaceService.FileStorage.Returns(fileStorage);
 
-        _service = new PackageService(logger, _moduleService, messengerService, _featureFlags, localizationService, workspaceWrapper);
+        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper);
+        _service = new PackageService(messengerService, registry);
     }
 
     [TearDown]
