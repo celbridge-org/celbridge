@@ -34,8 +34,6 @@ public class PackageServiceDocumentTypeTests
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         var messengerService = Substitute.For<IMessengerService>();
-        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
-        var localizationService = new PackageLocalizationService(localizationLogger);
 
         var resourceRegistry = Substitute.For<IResourceRegistry>();
         resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
@@ -43,6 +41,17 @@ public class PackageServiceDocumentTypeTests
         {
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
+        resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
+        {
+            var path = callInfo.Arg<string>();
+            if (!path.StartsWith(_tempProjectFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                return Result<ResourceKey>.Fail($"Path '{path}' is not under the project root");
+            }
+            var relative = Path.GetRelativePath(_tempProjectFolder, path)
+                .Replace(Path.DirectorySeparatorChar, '/');
+            return Result<ResourceKey>.Ok(new ResourceKey(relative));
         });
 
         var resourceService = Substitute.For<IResourceService>();
@@ -59,6 +68,9 @@ public class PackageServiceDocumentTypeTests
             Substitute.For<IMessengerService>(),
             workspaceWrapper);
         workspaceService.FileStorage.Returns(fileStorage);
+
+        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
+        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper);
 
         var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper);
         _service = new PackageService(messengerService, registry);

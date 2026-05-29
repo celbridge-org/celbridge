@@ -26,8 +26,6 @@ public class PackageServiceTests
 
         var logger = Substitute.For<ILogger<PackageRegistry>>();
         _messengerService = Substitute.For<IMessengerService>();
-        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
-        var localizationService = new PackageLocalizationService(localizationLogger);
         _moduleService = Substitute.For<IModuleService>();
         _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor>());
         var featureFlags = Substitute.For<IFeatureFlags>();
@@ -39,6 +37,17 @@ public class PackageServiceTests
         {
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
+        });
+        _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(callInfo =>
+        {
+            var path = callInfo.Arg<string>();
+            if (!path.StartsWith(_tempProjectFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                return Result<ResourceKey>.Fail($"Path '{path}' is not under the project root");
+            }
+            var relative = Path.GetRelativePath(_tempProjectFolder, path)
+                .Replace(Path.DirectorySeparatorChar, '/');
+            return Result<ResourceKey>.Ok(new ResourceKey(relative));
         });
 
         var resourceService = Substitute.For<IResourceService>();
@@ -55,6 +64,9 @@ public class PackageServiceTests
             Substitute.For<IMessengerService>(),
             workspaceWrapper);
         workspaceService.FileStorage.Returns(fileStorage);
+
+        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
+        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper);
 
         var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper);
         _service = new PackageService(_messengerService, registry);

@@ -29,6 +29,11 @@ public class PackageRegistry
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
 
+    // Bundled packages live outside any IResourceRegistry root so their reads
+    // stay on direct File.* IO. One reader is reused across the discovery and
+    // template-fetch paths to keep the bundled branch cheap.
+    private static readonly IPackageReader BundledReader = new DirectPackageReader();
+
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
         IModuleService moduleService,
@@ -130,7 +135,7 @@ public class PackageRegistry
                 continue;
             }
 
-            var localizationStrings = _localizationService.LoadStrings(contribution.Package.PackageFolder);
+            var localizationStrings = _localizationService.LoadStrings(contribution.Package);
             var displayKey = contribution.FileTypes[0].DisplayName;
             string displayName;
             if (localizationStrings.TryGetValue(displayKey, out var localizedName))
@@ -151,11 +156,11 @@ public class PackageRegistry
         return documentTypes.AsReadOnly();
     }
 
-    // Template files are read from contribution.Package.PackageFolder, which is
-    // an absolute path that may live inside the project tree (project packages)
-    // or outside it (bundled packages shipped with module DLLs). The contribution
-    // does not carry a bundled/project tag, so the read stays on direct I/O until
-    // package origin is tracked.
+    // Reads the default template bytes for the given file extension, picking the
+    // first contribution that handles the extension and declares a default template.
+    // The reader is chosen by package origin: bundled packages stay on direct File.*
+    // because their bytes live outside any registry root, project packages route
+    // through IFileStorage by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -180,24 +185,42 @@ public class PackageRegistry
             }
 
             var templatePath = Path.Combine(contribution.Package.PackageFolder, defaultTemplate.TemplateFile);
-            if (!File.Exists(templatePath))
+            var reader = GetReaderForPackage(contribution.Package);
+
+            if (!reader.Exists(templatePath))
             {
                 _logger.LogWarning($"Template file not found: {templatePath}");
                 continue;
             }
 
-            try
+            var readResult = reader.ReadAllBytes(templatePath);
+            if (readResult.IsFailure)
             {
-                return File.ReadAllBytes(templatePath);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning($"Failed to read template file: {templatePath}. {exception.Message}");
+                _logger.LogWarning($"Failed to read template file: {templatePath}. {readResult.FirstErrorMessage}");
                 continue;
             }
+
+            return readResult.Value;
         }
 
         return null;
+    }
+
+    // Selects the file-read primitive that matches a package's discovery origin.
+    // Project packages are read through the chokepoint; bundled packages stay on
+    // direct File.* IO. The project reader is constructed on demand because the
+    // workspace-scoped IFileStorage and IResourceRegistry must be looked up at
+    // call time rather than cached.
+    private IPackageReader GetReaderForPackage(PackageInfo package)
+    {
+        if (package.Origin == PackageOrigin.Project)
+        {
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+            return new FileStoragePackageReader(fileStorage, resourceRegistry);
+        }
+
+        return BundledReader;
     }
 
     private List<PackageLoadFailure> DiscoverBundledPackages()
@@ -209,7 +232,7 @@ public class PackageRegistry
         foreach (var descriptor in descriptors)
         {
             var manifestPath = Path.Combine(descriptor.Folder, ManifestFileName);
-            if (!File.Exists(manifestPath))
+            if (!BundledReader.Exists(manifestPath))
             {
                 // A bundled package with no manifest is a build-time error.
                 // Either the descriptor folder is wrong or the package content
@@ -228,7 +251,9 @@ public class PackageRegistry
                 manifestPath,
                 descriptor.HostNameOverride,
                 descriptor.Secrets,
-                descriptor.DevToolsBlocked);
+                descriptor.DevToolsBlocked,
+                origin: PackageOrigin.Bundled,
+                reader: BundledReader);
             if (loadResult.IsFailure)
             {
                 _logger.LogError(loadResult, $"Failed to load bundled package: {manifestPath}");
@@ -299,6 +324,7 @@ public class PackageRegistry
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var projectReader = new FileStoragePackageReader(fileStorage, resourceRegistry);
         var candidates = new List<Package>();
 
         foreach (var item in enumerateResult.Value)
@@ -326,7 +352,12 @@ public class PackageRegistry
             var manifestPath = resolveResult.Value;
             var packageFolder = Path.GetDirectoryName(manifestPath)!;
 
-            var loadResult = PackageManifestLoader.LoadPackage(manifestPath, hostNameOverride: null, secrets: null);
+            var loadResult = PackageManifestLoader.LoadPackage(
+                manifestPath,
+                hostNameOverride: null,
+                secrets: null,
+                origin: PackageOrigin.Project,
+                reader: projectReader);
             if (loadResult.IsFailure)
             {
                 _logger.LogWarning(loadResult, $"Skipping invalid project package: {manifestPath}");

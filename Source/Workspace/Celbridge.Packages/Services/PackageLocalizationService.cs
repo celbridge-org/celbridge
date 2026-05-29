@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Celbridge.Logging;
+using Celbridge.Workspace;
 
 namespace Celbridge.Packages;
 
@@ -24,27 +25,28 @@ public class PackageLocalizationService : IPackageLocalizationService
         AllowTrailingCommas = true
     };
 
-    private readonly ILogger<PackageLocalizationService> _logger;
+    private static readonly IPackageReader BundledReader = new DirectPackageReader();
 
-    public PackageLocalizationService(ILogger<PackageLocalizationService> logger)
+    private readonly ILogger<PackageLocalizationService> _logger;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
+
+    public PackageLocalizationService(
+        ILogger<PackageLocalizationService> logger,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _logger = logger;
+        _workspaceWrapper = workspaceWrapper;
     }
 
-    /// <summary>
-    /// Loads localization strings from a package's localization folder.
-    /// Uses convention: {packageFolder}/localization/{locale}.json
-    /// If locale is null, uses the current UI culture.
-    /// Falls back to "en.json" if the requested locale is not found, then to an empty dictionary.
-    /// </summary>
-    public Dictionary<string, string> LoadStrings(string packageFolder, string? locale = null)
+    public Dictionary<string, string> LoadStrings(PackageInfo package, string? locale = null)
     {
         locale ??= CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
 
-        var localizationFolder = Path.Combine(packageFolder, LocalizationFolder);
+        var reader = GetReaderForPackage(package);
+        var localizationFolder = Path.Combine(package.PackageFolder, LocalizationFolder);
 
         var localePath = Path.Combine(localizationFolder, $"{locale}.json");
-        var result = TryLoadJsonFile(localePath);
+        var result = TryLoadJsonFile(reader, localePath);
         if (result is not null)
         {
             return result;
@@ -53,7 +55,7 @@ public class PackageLocalizationService : IPackageLocalizationService
         if (locale != FallbackLocale)
         {
             var fallbackPath = Path.Combine(localizationFolder, $"{FallbackLocale}.json");
-            result = TryLoadJsonFile(fallbackPath);
+            result = TryLoadJsonFile(reader, fallbackPath);
             if (result is not null)
             {
                 return result;
@@ -63,22 +65,44 @@ public class PackageLocalizationService : IPackageLocalizationService
         return new Dictionary<string, string>();
     }
 
-    private Dictionary<string, string>? TryLoadJsonFile(string path)
+    // Project packages route through the chokepoint by reverse-resolving the path
+    // to a ResourceKey; bundled packages stay on direct File.* IO. The project
+    // reader is constructed on demand because the workspace-scoped IFileStorage
+    // and IResourceRegistry must be looked up at call time.
+    private IPackageReader GetReaderForPackage(PackageInfo package)
     {
-        if (!File.Exists(path))
+        if (package.Origin == PackageOrigin.Project)
         {
+            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+            return new FileStoragePackageReader(fileStorage, resourceRegistry);
+        }
+
+        return BundledReader;
+    }
+
+    private Dictionary<string, string>? TryLoadJsonFile(IPackageReader reader, string path)
+    {
+        if (!reader.Exists(path))
+        {
+            return null;
+        }
+
+        var readResult = reader.ReadAllText(path);
+        if (readResult.IsFailure)
+        {
+            _logger.LogWarning($"Failed to load localization file: {path}. {readResult.FirstErrorMessage}");
             return null;
         }
 
         try
         {
-            var json = File.ReadAllText(path);
-            var dictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(json, _jsonOptions);
+            var dictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(readResult.Value, _jsonOptions);
             return dictionary;
         }
         catch (Exception exception)
         {
-            _logger.LogWarning($"Failed to load localization file: {path}. {exception.Message}");
+            _logger.LogWarning(exception, $"Failed to parse localization file: {path}");
             return null;
         }
     }

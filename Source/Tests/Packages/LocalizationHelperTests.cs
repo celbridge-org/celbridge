@@ -1,4 +1,5 @@
 using Celbridge.Packages;
+using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
 
@@ -7,6 +8,7 @@ public class PackageLocalizationServiceTests
 {
     private string _tempFolder = null!;
     private IPackageLocalizationService _service = null!;
+    private PackageInfo _bundledPackage = null!;
 
     [SetUp]
     public void Setup()
@@ -15,7 +17,20 @@ public class PackageLocalizationServiceTests
         Directory.CreateDirectory(_tempFolder);
 
         var logger = Substitute.For<ILogger<PackageLocalizationService>>();
-        _service = new PackageLocalizationService(logger);
+
+        // The localization service only consults the workspace wrapper for
+        // Project-origin packages; tests use Bundled-origin packages so the
+        // wrapper is never dereferenced.
+        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
+        _service = new PackageLocalizationService(logger, workspaceWrapper);
+
+        _bundledPackage = new PackageInfo
+        {
+            Id = "test.package",
+            Name = "Test Package",
+            PackageFolder = _tempFolder,
+            Origin = PackageOrigin.Bundled
+        };
     }
 
     [TearDown]
@@ -39,7 +54,7 @@ public class PackageLocalizationServiceTests
             }
             """);
 
-        var result = _service.LoadStrings(_tempFolder, "fr");
+        var result = _service.LoadStrings(_bundledPackage, "fr");
 
         result.Should().HaveCount(2);
         result["Greeting"].Should().Be("Bonjour");
@@ -58,7 +73,7 @@ public class PackageLocalizationServiceTests
             }
             """);
 
-        var result = _service.LoadStrings(_tempFolder, "ja");
+        var result = _service.LoadStrings(_bundledPackage, "ja");
 
         result.Should().HaveCount(2);
         result["Hello"].Should().Be("Hello");
@@ -71,7 +86,7 @@ public class PackageLocalizationServiceTests
         var localizationFolder = Path.Combine(_tempFolder, PackageLocalizationService.LocalizationFolder);
         Directory.CreateDirectory(localizationFolder);
 
-        var result = _service.LoadStrings(_tempFolder, "de");
+        var result = _service.LoadStrings(_bundledPackage, "de");
 
         result.Should().BeEmpty();
     }
@@ -79,7 +94,7 @@ public class PackageLocalizationServiceTests
     [Test]
     public void LoadStrings_NoLocalizationFolder_ReturnsEmptyDictionary()
     {
-        var result = _service.LoadStrings(_tempFolder, "en");
+        var result = _service.LoadStrings(_bundledPackage, "en");
 
         result.Should().BeEmpty();
     }
@@ -91,7 +106,7 @@ public class PackageLocalizationServiceTests
         Directory.CreateDirectory(localizationFolder);
         File.WriteAllText(Path.Combine(localizationFolder, "en.json"), "{ not valid json }");
 
-        var result = _service.LoadStrings(_tempFolder, "en");
+        var result = _service.LoadStrings(_bundledPackage, "en");
 
         result.Should().BeEmpty();
     }
@@ -107,7 +122,7 @@ public class PackageLocalizationServiceTests
             }
             """);
 
-        var result = _service.LoadStrings(_tempFolder, "en");
+        var result = _service.LoadStrings(_bundledPackage, "en");
 
         result.Should().HaveCount(1);
         result["Key"].Should().Be("Value");
@@ -126,7 +141,7 @@ public class PackageLocalizationServiceTests
             }
             """);
 
-        var result = _service.LoadStrings(_tempFolder, "en");
+        var result = _service.LoadStrings(_bundledPackage, "en");
 
         result.Should().HaveCount(2);
         result["Key1"].Should().Be("Value1");

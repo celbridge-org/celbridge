@@ -54,17 +54,30 @@ public static class PackageManifestLoader
     /// hostNameOverride, when non-null, replaces the default package-id-derived virtual host name.
     /// secrets, when non-empty, populates PackageInfo.Secrets for WebView injection.
     /// devToolsBlocked, when true, permanently disables DevTools on WebViews hosting this package.
+    /// origin tags the resulting PackageInfo so downstream read sites can pick the right IO path.
+    /// reader is the file-read primitive used for every byte the loader pulls; when null a
+    /// DirectPackageReader is used, which preserves the legacy direct-disk behaviour for
+    /// callers (tests, bundled discovery) that have no IFileStorage to route through.
     /// </summary>
     public static Result<Package> LoadPackage(
         string packageTomlPath,
         string? hostNameOverride = null,
         IReadOnlyDictionary<string, string>? secrets = null,
-        bool devToolsBlocked = false)
+        bool devToolsBlocked = false,
+        PackageOrigin origin = PackageOrigin.Bundled,
+        IPackageReader? reader = null)
     {
+        reader ??= new DirectPackageReader();
         try
         {
             var packageFolder = Path.GetFullPath(Path.GetDirectoryName(packageTomlPath) ?? string.Empty);
-            var toml = File.ReadAllText(packageTomlPath);
+            var readResult = reader.ReadAllText(packageTomlPath);
+            if (readResult.IsFailure)
+            {
+                return Result.Fail($"Failed to read package manifest: {packageTomlPath}")
+                    .WithErrors(readResult);
+            }
+            var toml = readResult.Value;
             var parsed = Toml.Parse(toml);
 
             if (parsed.HasErrors)
@@ -122,7 +135,8 @@ public static class PackageManifestLoader
                 HostName = hostName,
                 RequiresTools = requiresTools,
                 Secrets = packageSecrets,
-                DevToolsBlocked = devToolsBlocked
+                DevToolsBlocked = devToolsBlocked,
+                Origin = origin
             };
 
             var documentPaths = new List<string>();
@@ -146,7 +160,7 @@ public static class PackageManifestLoader
             foreach (var relativePath in documentPaths)
             {
                 var fullPath = Path.Combine(packageFolder, relativePath);
-                var loadResult = LoadDocument(fullPath, packageInfo);
+                var loadResult = LoadDocument(fullPath, packageInfo, reader);
                 if (loadResult.IsSuccess)
                 {
                     documentEditors.Add(loadResult.Value);
@@ -172,16 +186,23 @@ public static class PackageManifestLoader
     /// </summary>
     private static Result<DocumentEditorContribution> LoadDocument(
         string documentTomlPath,
-        PackageInfo packageInfo)
+        PackageInfo packageInfo,
+        IPackageReader reader)
     {
         try
         {
-            if (!File.Exists(documentTomlPath))
+            if (!reader.Exists(documentTomlPath))
             {
                 return Result.Fail($"Document manifest not found: {documentTomlPath}");
             }
 
-            var toml = File.ReadAllText(documentTomlPath);
+            var readResult = reader.ReadAllText(documentTomlPath);
+            if (readResult.IsFailure)
+            {
+                return Result.Fail($"Failed to read document manifest: {documentTomlPath}")
+                    .WithErrors(readResult);
+            }
+            var toml = readResult.Value;
             var parsed = Toml.Parse(toml);
 
             if (parsed.HasErrors)
@@ -239,7 +260,7 @@ public static class PackageManifestLoader
                                 $"A [[document_file_types]] entry cannot specify both '{ExtensionKey}' and '{ExtensionsFileKey}': {documentTomlPath}");
                         }
 
-                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName);
+                        var expandResult = ExpandExtensionsFile(packageInfo.PackageFolder, extensionsFilePath, fileTypeDisplayName, reader);
                         if (expandResult.IsFailure)
                         {
                             return Result.Fail($"Failed to expand '{ExtensionsFileKey}' in {documentTomlPath}")
@@ -431,17 +452,24 @@ public static class PackageManifestLoader
     private static Result<List<DocumentFileType>> ExpandExtensionsFile(
         string packageFolder,
         string relativePath,
-        string displayName)
+        string displayName,
+        IPackageReader reader)
     {
         var fullPath = Path.Combine(packageFolder, relativePath);
-        if (!File.Exists(fullPath))
+        if (!reader.Exists(fullPath))
         {
             return Result.Fail($"Extensions file not found: {fullPath}");
         }
 
         try
         {
-            var json = File.ReadAllText(fullPath);
+            var readResult = reader.ReadAllText(fullPath);
+            if (readResult.IsFailure)
+            {
+                return Result.Fail($"Failed to read extensions file: {fullPath}")
+                    .WithErrors(readResult);
+            }
+            var json = readResult.Value;
             using var document = JsonDocument.Parse(json);
 
             if (document.RootElement.ValueKind != JsonValueKind.Object)
