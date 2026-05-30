@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Spreadsheet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -35,7 +34,7 @@ public partial class SpreadsheetTools
             return ToolResponse.Error("Range is required.");
         }
 
-        var parseResult = ParseConditionalFormatRules(rulesJson);
+        var parseResult = ParseJsonArgument<List<ConditionalFormatRule>>(rulesJson, "rules JSON");
         if (parseResult.IsFailure)
         {
             return ToolResponse.Error(parseResult);
@@ -65,25 +64,4 @@ public partial class SpreadsheetTools
         return ToolResponse.Success(json);
     }
 
-    private static Result<IReadOnlyList<ConditionalFormatRule>> ParseConditionalFormatRules(string rulesJson)
-    {
-        if (string.IsNullOrEmpty(rulesJson))
-        {
-            return Result.Fail("Rules JSON is required.");
-        }
-
-        try
-        {
-            var rules = JsonSerializer.Deserialize<List<ConditionalFormatRule>>(rulesJson, JsonOptions);
-            if (rules is null)
-            {
-                return Result.Fail("Rules JSON must be a non-null array.");
-            }
-            return rules;
-        }
-        catch (JsonException ex)
-        {
-            return Result.Fail($"Invalid rules JSON: {ex.Message}");
-        }
-    }
 }

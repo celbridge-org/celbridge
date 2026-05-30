@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ModelContextProtocol.Server;
 
 namespace Celbridge.Tools;
@@ -11,15 +10,18 @@ public partial class DocumentTools : AgentToolBase
 {
     public DocumentTools(IApplicationServiceProvider services) : base(services) { }
 
-    private static List<string> ParseResourceKeys(string input)
+    // Accepts a single resource key string OR a JSON array of resource keys.
+    // The leading '[' is what disambiguates the two modes; anything else is
+    // treated as a single key. JSON parsing failures (malformed array) come
+    // back as a friendly Result.Fail rather than an uncaught JsonException.
+    private static Result<List<string>> ParseResourceKeys(string input)
     {
         var trimmed = input.Trim();
-        if (trimmed.StartsWith('['))
+        if (!trimmed.StartsWith('['))
         {
-            var keys = JsonSerializer.Deserialize<List<string>>(trimmed);
-            return keys ?? new List<string> { input };
+            return new List<string> { input };
         }
 
-        return new List<string> { input };
+        return ParseJsonArgument<List<string>>(trimmed, "fileResource");
     }
 }

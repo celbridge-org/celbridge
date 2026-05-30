@@ -29,7 +29,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
         var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail(resolveResult);
         }
         var workbookResource = resolveResult.Value;
 
@@ -67,7 +67,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
             var resolveRangeResult = ResolveSortRange(worksheet);
             if (resolveRangeResult.IsFailure)
             {
-                return Result.Fail(resolveRangeResult.FirstErrorMessage);
+                return Result.Fail(resolveRangeResult);
             }
             var resolvedRange = resolveRangeResult.Value;
             if (resolvedRange.IsEmpty)
@@ -80,7 +80,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
             var buildSortStringResult = BuildSortString(sortRange);
             if (buildSortStringResult.IsFailure)
             {
-                return Result.Fail(buildSortStringResult.FirstErrorMessage);
+                return Result.Fail(buildSortStringResult);
             }
             var sortString = buildSortStringResult.Value;
 

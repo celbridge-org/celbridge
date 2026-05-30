@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Spreadsheet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -20,12 +19,16 @@ public partial class SpreadsheetTools
         }
         var workbookResource = resolveResult.Value;
 
-        var parseResult = ParseDeleteOperations(operationsJson);
+        var parseResult = ParseJsonArgument<List<DeleteRangesOperation>>(operationsJson, "operations JSON");
         if (parseResult.IsFailure)
         {
             return ToolResponse.Error(parseResult);
         }
         var operations = parseResult.Value;
+        if (operations.Count == 0)
+        {
+            return ToolResponse.Error("Operations array must contain at least one operation.");
+        }
 
         var commandResult = await ExecuteCommandAsync<IDeleteRangesCommand, DeleteRangesResult>(command =>
         {
@@ -42,29 +45,4 @@ public partial class SpreadsheetTools
         return ToolResponse.Success(json);
     }
 
-    private static Result<IReadOnlyList<DeleteRangesOperation>> ParseDeleteOperations(string operationsJson)
-    {
-        if (string.IsNullOrEmpty(operationsJson))
-        {
-            return Result.Fail("Operations JSON is required.");
-        }
-
-        try
-        {
-            var operations = JsonSerializer.Deserialize<List<DeleteRangesOperation>>(operationsJson, JsonOptions);
-            if (operations is null)
-            {
-                return Result.Fail("Operations JSON must be a non-null array.");
-            }
-            if (operations.Count == 0)
-            {
-                return Result.Fail("Operations array must contain at least one operation.");
-            }
-            return operations;
-        }
-        catch (JsonException ex)
-        {
-            return Result.Fail($"Invalid operations JSON: {ex.Message}");
-        }
-    }
 }

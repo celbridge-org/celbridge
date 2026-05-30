@@ -27,10 +27,10 @@ public partial class FileTools
         {
             resourceKeys = JsonSerializer.Deserialize<List<string>>(resources);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
             return ToolResponse.Error(
-                $"resources must be a JSON array of resource keys, e.g. [\"project:notes/a.md\", \"project:notes/b.md\"]. Parse error: {ex.Message}");
+                "resources must be a JSON array of resource keys, e.g. [\"project:notes/a.md\", \"project:notes/b.md\"].");
         }
 
         if (resourceKeys is null || resourceKeys.Count == 0)

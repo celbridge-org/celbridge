@@ -133,7 +133,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
         if (waitResult.IsFailure)
         {
-            return Result.Fail(waitResult.FirstErrorMessage);
+            return Result.Fail(waitResult);
         }
 
         try
@@ -190,7 +190,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
         if (waitResult.IsFailure)
         {
-            return Result.Fail(waitResult.FirstErrorMessage);
+            return Result.Fail(waitResult);
         }
 
         await TryDrainConsoleAsync(entry);
@@ -285,7 +285,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
         if (waitResult.IsFailure)
         {
-            return Result.Fail(waitResult.FirstErrorMessage);
+            return Result.Fail(waitResult);
         }
 
         await TryDrainNetworkAsync(entry);
@@ -317,7 +317,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
         if (waitResult.IsFailure)
         {
-            return Result.Fail(waitResult.FirstErrorMessage);
+            return Result.Fail(waitResult);
         }
 
         Result<ScreenshotClip> clipResult = string.IsNullOrEmpty(options.Selector)
@@ -325,7 +325,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             : await ResolveSelectorRectAsync(entry, resource, options.Selector!, options.MaxEdge);
         if (clipResult.IsFailure)
         {
-            return Result.Fail(clipResult.FirstErrorMessage);
+            return Result.Fail(clipResult);
         }
         var clip = clipResult.Value;
 
@@ -366,7 +366,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var unwrap = UnwrapShimResult(evalResultJson, "getRect", resource);
         if (unwrap.IsFailure)
         {
-            return Result.Fail(unwrap.FirstErrorMessage);
+            return Result.Fail(unwrap);
         }
 
         try
@@ -412,7 +412,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var unwrap = UnwrapShimResult(evalResultJson, "getViewport", resource);
         if (unwrap.IsFailure)
         {
-            return Result.Fail(unwrap.FirstErrorMessage);
+            return Result.Fail(unwrap);
         }
 
         try
@@ -503,7 +503,7 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
         var waitResult = await entry.WaitForContentReadyAsync(_contentReadyTimeout);
         if (waitResult.IsFailure)
         {
-            return Result.Fail(waitResult.FirstErrorMessage);
+            return Result.Fail(waitResult);
         }
 
         var argsJson = JsonSerializer.Serialize(args, JsonOptions);

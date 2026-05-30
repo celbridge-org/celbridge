@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Spreadsheet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -31,12 +30,16 @@ public partial class SpreadsheetTools
             return ToolResponse.Error("Sheet name is required.");
         }
 
-        var parseResult = ParseSortKeys(sortByJson);
+        var parseResult = ParseJsonArgument<List<SortKey>>(sortByJson, "sortByJson");
         if (parseResult.IsFailure)
         {
             return ToolResponse.Error(parseResult);
         }
         var sortKeys = parseResult.Value;
+        if (sortKeys.Count == 0)
+        {
+            return ToolResponse.Error("sortByJson must contain at least one sort key.");
+        }
 
         var commandResult = await ExecuteCommandAsync<ISortRangeCommand, SortRangeResult>(command =>
         {
@@ -57,29 +60,4 @@ public partial class SpreadsheetTools
         return ToolResponse.Success(json);
     }
 
-    private static Result<IReadOnlyList<SortKey>> ParseSortKeys(string sortByJson)
-    {
-        if (string.IsNullOrEmpty(sortByJson))
-        {
-            return Result.Fail("sortByJson is required.");
-        }
-
-        try
-        {
-            var keys = JsonSerializer.Deserialize<List<SortKey>>(sortByJson, JsonOptions);
-            if (keys is null)
-            {
-                return Result.Fail("sortByJson must be a non-null array.");
-            }
-            if (keys.Count == 0)
-            {
-                return Result.Fail("sortByJson must contain at least one sort key.");
-            }
-            return keys;
-        }
-        catch (JsonException ex)
-        {
-            return Result.Fail($"Invalid sortByJson: {ex.Message}");
-        }
-    }
 }

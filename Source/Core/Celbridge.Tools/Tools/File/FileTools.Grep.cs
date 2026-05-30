@@ -235,11 +235,11 @@ public partial class FileTools
         {
             fileKeyStrings = JsonSerializer.Deserialize<List<string>>(filesJson);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
             return ToolResponse.Error(
-                $"Invalid JSON array for files: {ex.Message}. " +
-                "Expected a JSON array of resource keys, e.g. [\"folder/a.txt\",\"folder/b.txt\"].");
+                "files takes a JSON array of resource keys, e.g. [\"folder/a.txt\",\"folder/b.txt\"]. " +
+                "For glob-based scoping, use the include parameter instead.");
         }
 
         if (fileKeyStrings is null || fileKeyStrings.Count == 0)

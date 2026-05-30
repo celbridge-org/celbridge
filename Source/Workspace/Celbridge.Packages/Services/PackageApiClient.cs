@@ -85,7 +85,7 @@ public class PackageApiClient : IPackageApiClient
         var loginResult = await EnsureLoggedInAsync();
         if (loginResult.IsFailure)
         {
-            return Result.Fail(loginResult.DiagnosticReport);
+            return Result.Fail(loginResult);
         }
 
         try

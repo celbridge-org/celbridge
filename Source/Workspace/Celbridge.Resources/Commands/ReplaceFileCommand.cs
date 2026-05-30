@@ -44,7 +44,8 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return Result.Fail($"File not found: '{FileResource}'");
+            return Result.Fail($"File not found: '{FileResource}'")
+                .WithErrors(infoResult);
         }
 
         return await ReplaceOnDisk(fileStorage);

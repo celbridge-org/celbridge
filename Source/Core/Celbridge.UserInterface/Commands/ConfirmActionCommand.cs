@@ -16,7 +16,7 @@ public class ConfirmActionCommand : CommandBase, IConfirmActionCommand
 
         if (confirmResult.IsFailure)
         {
-            return Result.Fail(confirmResult.DiagnosticReport);
+            return Result.Fail(confirmResult);
         }
 
         ResultValue = new ConfirmActionResult(confirmResult.Value);

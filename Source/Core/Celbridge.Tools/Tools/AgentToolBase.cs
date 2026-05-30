@@ -63,6 +63,14 @@ public abstract class AgentToolBase
     }
 
     /// <summary>
+    /// Parses a JSON tool argument into T. Failures return "Invalid {label}: ..."
+    /// — unmapped-property errors list the valid names on T (or its element
+    /// type for collections); other errors strip Celbridge.* type prefixes.
+    /// </summary>
+    protected static Result<T> ParseJsonArgument<T>(string json, string label) where T : class
+        => JsonArgumentParser.Parse<T>(json, label, JsonOptions);
+
+    /// <summary>
     /// Loads an embedded resource from the Celbridge.Tools assembly as a string.
     /// Returns a placeholder string when the resource is missing (build-time invariant).
     /// </summary>

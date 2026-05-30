@@ -94,7 +94,8 @@ public class ResourceOperationService : IResourceOperationService
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            return Result.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail($"Source resource does not exist: '{source}'")
+                .WithErrors(infoResult);
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
@@ -141,7 +142,8 @@ public class ResourceOperationService : IResourceOperationService
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
-            return Result.Fail($"Source resource does not exist: '{source}'");
+            return Result.Fail($"Source resource does not exist: '{source}'")
+                .WithErrors(infoResult);
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 

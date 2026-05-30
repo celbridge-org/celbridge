@@ -30,7 +30,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail(resolveResult);
         }
         var workbookResource = resolveResult.Value;
 
@@ -240,7 +240,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
             case "toppercent":
             case "bottompercent":
                 var topBottomResult = ApplyTopBottomRule(conditionalFormat, typeKey, rule);
-                if (topBottomResult.IsFailure) return Result.Fail(topBottomResult.FirstErrorMessage);
+                if (topBottomResult.IsFailure) return Result.Fail(topBottomResult);
                 style = topBottomResult.Value;
                 break;
             default:
@@ -394,7 +394,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         var stopResult = ParseColorScaleStop("low", rule.LowType!, rule.LowValue);
         if (stopResult.IsFailure)
         {
-            return Result.Fail(stopResult.FirstErrorMessage);
+            return Result.Fail(stopResult);
         }
         var stop = stopResult.Value;
 
@@ -414,7 +414,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         var stopResult = ParseColorScaleStop("mid", rule.MidType!, rule.MidValue);
         if (stopResult.IsFailure)
         {
-            return Result.Fail(stopResult.FirstErrorMessage);
+            return Result.Fail(stopResult);
         }
         var stop = stopResult.Value;
 
