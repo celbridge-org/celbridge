@@ -85,14 +85,14 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result.Fail(worksheetResult.FirstErrorMessage);
+                return Result.Fail(worksheetResult);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, options.Range);
             if (rangeResult.IsFailure)
             {
-                return Result.Fail(rangeResult.FirstErrorMessage);
+                return Result.Fail(rangeResult);
             }
             var range = rangeResult.Value.Range;
 
@@ -123,14 +123,14 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result.Fail(worksheetResult.FirstErrorMessage);
+                return Result.Fail(worksheetResult);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, range);
             if (rangeResult.IsFailure)
             {
-                return Result.Fail(rangeResult.FirstErrorMessage);
+                return Result.Fail(rangeResult);
             }
             var resolvedRange = rangeResult.Value.Range;
 
@@ -308,7 +308,7 @@ public class SpreadsheetReader : ISpreadsheetReader
                 var cellsResult = ResolveSearchCells(worksheet, options.Range);
                 if (cellsResult.IsFailure)
                 {
-                    return Result.Fail(cellsResult.FirstErrorMessage);
+                    return Result.Fail(cellsResult);
                 }
 
                 foreach (var cell in cellsResult.Value)
@@ -399,14 +399,14 @@ public class SpreadsheetReader : ISpreadsheetReader
             var worksheetResult = GetWorksheet(workbook, sheetName);
             if (worksheetResult.IsFailure)
             {
-                return Result.Fail(worksheetResult.FirstErrorMessage);
+                return Result.Fail(worksheetResult);
             }
             var worksheet = worksheetResult.Value;
 
             var rangeResult = ResolveRange(worksheet, range);
             if (rangeResult.IsFailure)
             {
-                return Result.Fail(rangeResult.FirstErrorMessage);
+                return Result.Fail(rangeResult);
             }
             var resolvedRange = rangeResult.Value.Range;
 

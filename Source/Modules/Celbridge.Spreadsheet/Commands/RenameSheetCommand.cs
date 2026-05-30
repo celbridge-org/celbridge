@@ -26,7 +26,7 @@ public class RenameSheetCommand : CommandBase, IRenameSheetCommand
         var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail(resolveResult);
         }
         var workbookResource = resolveResult.Value;
 

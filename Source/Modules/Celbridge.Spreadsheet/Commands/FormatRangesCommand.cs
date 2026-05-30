@@ -28,7 +28,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail(resolveResult);
         }
         var workbookResource = resolveResult.Value;
 

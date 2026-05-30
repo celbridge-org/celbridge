@@ -42,7 +42,8 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail($"Failed to resolve path for resource: '{Resource}'");
+            return Result.Fail($"Failed to resolve path for resource: '{Resource}'")
+                .WithErrors(resolveResult);
         }
         var resourcePath = resolveResult.Value;
 

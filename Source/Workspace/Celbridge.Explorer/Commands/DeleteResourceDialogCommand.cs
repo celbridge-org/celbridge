@@ -61,7 +61,8 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
             var getResult = resourceRegistry.GetResource(Resources[0]);
             if (getResult.IsFailure)
             {
-                return Result.Fail(getResult.DiagnosticReport);
+                return Result.Fail($"Failed to resolve resource: '{Resources[0]}'")
+                    .WithErrors(getResult);
             }
             var resource = getResult.Value;
             var resourceName = resource.Name;

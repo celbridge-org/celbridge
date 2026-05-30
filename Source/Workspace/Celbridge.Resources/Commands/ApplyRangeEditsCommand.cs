@@ -95,7 +95,8 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return Result.Fail($"File not found: '{resource}'");
+            return Result.Fail($"File not found: '{resource}'")
+                .WithErrors(infoResult);
         }
 
         // Read the file's existing content to capture its line-ending style and

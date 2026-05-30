@@ -66,10 +66,11 @@ public abstract class Result
     }
 
     /// <summary>
-    /// Concise multi-line summary of every error message in outer-first order,
-    /// joined by newlines, with no file/line decoration and no exception stack
-    /// trace. Suitable for surfacing through a UI dialog or to an MCP tool
-    /// caller. Use DiagnosticReport instead when writing to a developer log.
+    /// Concise multi-line summary of every error message in outer-first order
+    /// (wrapping summary first, inner causes after), joined by newlines, with
+    /// no file/line decoration and no exception stack trace. Suitable for
+    /// surfacing through a UI dialog or to an MCP tool caller. Use
+    /// DiagnosticReport instead when writing to a developer log.
     /// </summary>
     public string MessageChain
     {
@@ -190,7 +191,9 @@ public abstract class Result
     }
 
     /// <summary>
-    /// Adds errors from another result to this result (works across different generic payload types).
+    /// Appends errors from another result to this one so the inner causes
+    /// follow this result's outer summary. Works across differing generic
+    /// payload types.
     /// </summary>
     public Result WithErrors(Result otherResult)
     {
@@ -199,7 +202,7 @@ public abstract class Result
             return this;
         }
 
-        _errors.InsertRange(0, otherResult._errors);
+        _errors.AddRange(otherResult._errors);
         return this;
     }
 
@@ -220,9 +223,10 @@ public abstract class Result
     }
 
     /// <summary>
-    /// Creates a failure result that propagates the errors of an inner result.
-    /// Use this to bubble a failure up across differing generic payloads
-    /// (e.g. Result<A> -> Result<B>) without restating the first error.
+    /// Creates a failure result that propagates the errors of an inner result
+    /// verbatim. Use when the inner messages already stand on their own; use
+    /// `Result.Fail("summary").WithErrors(inner)` instead when you want a
+    /// wrapping summary to lead the chain.
     /// </summary>
     public static FailureResult Fail(Result inner)
     {

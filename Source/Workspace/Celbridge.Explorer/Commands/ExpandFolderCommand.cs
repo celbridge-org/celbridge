@@ -25,7 +25,8 @@ public class ExpandFolderCommand : CommandBase, IExpandFolderCommand
         var getResult = resourceRegistry.GetResource(FolderResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail($"Folder resource not found. {FolderResource}");
+            return Result.Fail($"Folder resource not found: '{FolderResource}'")
+                .WithErrors(getResult);
         }
 
         var folderResource = getResult.Value as IFolderResource;

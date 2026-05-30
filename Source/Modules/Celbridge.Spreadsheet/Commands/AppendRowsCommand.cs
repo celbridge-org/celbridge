@@ -1,8 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
-using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
-using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
@@ -26,7 +23,7 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
         var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail(resolveResult);
         }
         var workbookResource = resolveResult.Value;
 
@@ -91,10 +88,10 @@ public class AppendRowsCommand : CommandBase, IAppendRowsCommand
                     var rawValue = rowValues[columnIndex];
                     if (rawValue is double doubleValue)
                     {
-                        var validation = SpreadsheetHelper.ValidateNumericValue(doubleValue);
-                        if (validation.IsFailure)
+                        var validationResult = SpreadsheetHelper.ValidateNumericValue(doubleValue);
+                        if (validationResult.IsFailure)
                         {
-                            return Result.Fail($"Row {rowOffset + 1}, column {columnIndex + 1}: {validation.FirstErrorMessage}");
+                            return Result.Fail($"Row {rowOffset + 1}, column {columnIndex + 1}: {validationResult.FirstErrorMessage}");
                         }
                     }
                     var cell = worksheet.Cell(rowNumber, columnIndex + 1);

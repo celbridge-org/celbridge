@@ -39,7 +39,8 @@ public class EditFileCommand : CommandBase, IEditFileCommand
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return Result.Fail($"File not found: '{FileResource}'");
+            return Result.Fail($"File not found: '{FileResource}'")
+                .WithErrors(infoResult);
         }
 
         var readResult = await fileStorage.ReadAllTextAsync(FileResource);

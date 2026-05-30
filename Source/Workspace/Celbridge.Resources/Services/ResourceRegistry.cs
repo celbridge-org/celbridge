@@ -147,7 +147,8 @@ public class ResourceRegistry : IResourceRegistry
         if (canonicalKeyResult.IsFailure)
         {
             return Result.Fail(
-                $"Resource key '{resource}' does not match the on-disk case.");
+                    $"Resource key '{resource}' does not match the on-disk case.")
+                .WithErrors(canonicalKeyResult);
         }
 
         return Result.Fail(

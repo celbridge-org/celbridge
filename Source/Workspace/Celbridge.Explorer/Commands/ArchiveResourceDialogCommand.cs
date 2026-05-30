@@ -52,7 +52,8 @@ public class ArchiveResourceDialogCommand : CommandBase, IArchiveResourceDialogC
         var getResult = resourceRegistry.GetResource(FolderResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.DiagnosticReport);
+            return Result.Fail($"Failed to resolve folder resource: '{FolderResource}'")
+                .WithErrors(getResult);
         }
         var resource = getResult.Value;
 

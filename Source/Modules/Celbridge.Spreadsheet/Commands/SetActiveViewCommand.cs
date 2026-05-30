@@ -30,7 +30,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
         var resolveResult = await SpreadsheetHelper.ResolveWorkbookResourceAsync(_workspaceWrapper, FileResource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult.FirstErrorMessage);
+            return Result.Fail(resolveResult);
         }
         var workbookResource = resolveResult.Value;
 
@@ -88,7 +88,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
         var applyResult = await ApplyViewStateToWorkbookAsync(workbookResource);
         if (applyResult.IsFailure)
         {
-            return Result.Fail(applyResult.FirstErrorMessage);
+            return Result.Fail(applyResult);
         }
         var applied = applyResult.Value;
 
@@ -146,7 +146,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
                 var selectionResult = ResolveSelectionRanges(worksheet, hasRanges, hasRange, hasActiveCell);
                 if (selectionResult.IsFailure)
                 {
-                    return Result.Fail(selectionResult.FirstErrorMessage);
+                    return Result.Fail(selectionResult);
                 }
                 var selectionRanges = selectionResult.Value;
 

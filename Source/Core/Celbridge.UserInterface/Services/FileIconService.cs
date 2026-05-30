@@ -46,7 +46,8 @@ public class FileIconService : IFileIconService
         var loadResult = LoadIconData();
         if (loadResult.IsFailure)
         {
-            return Result.Fail($"Failed to load file icon definition. {loadResult.DiagnosticReport}");
+            return Result.Fail("Failed to load file icon definition")
+                .WithErrors(loadResult);
         }
         var iconData = loadResult.Value;
 

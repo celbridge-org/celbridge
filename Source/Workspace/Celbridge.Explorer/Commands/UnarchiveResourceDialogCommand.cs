@@ -52,7 +52,8 @@ public class UnarchiveResourceDialogCommand : CommandBase, IUnarchiveResourceDia
         var getResult = resourceRegistry.GetResource(ArchiveResource);
         if (getResult.IsFailure)
         {
-            return Result.Fail(getResult.DiagnosticReport);
+            return Result.Fail($"Failed to resolve archive resource: '{ArchiveResource}'")
+                .WithErrors(getResult);
         }
         var resource = getResult.Value;
 
