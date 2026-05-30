@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Spreadsheet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -20,12 +19,16 @@ public partial class SpreadsheetTools
         }
         var workbookResource = resolveResult.Value;
 
-        var parseResult = ParseFormatEdits(editsJson);
+        var parseResult = ParseJsonArgument<List<FormatEdit>>(editsJson, "edits JSON");
         if (parseResult.IsFailure)
         {
             return ToolResponse.Error(parseResult);
         }
         var edits = parseResult.Value;
+        if (edits.Count == 0)
+        {
+            return ToolResponse.Error("Edits array must contain at least one edit.");
+        }
 
         var commandResult = await ExecuteCommandAsync<IFormatRangesCommand, FormatRangesResult>(command =>
         {
@@ -42,29 +45,4 @@ public partial class SpreadsheetTools
         return ToolResponse.Success(json);
     }
 
-    private static Result<IReadOnlyList<FormatEdit>> ParseFormatEdits(string editsJson)
-    {
-        if (string.IsNullOrEmpty(editsJson))
-        {
-            return Result.Fail("Edits JSON is required.");
-        }
-
-        try
-        {
-            var edits = JsonSerializer.Deserialize<List<FormatEdit>>(editsJson, JsonOptions);
-            if (edits is null)
-            {
-                return Result.Fail("Edits JSON must be a non-null array.");
-            }
-            if (edits.Count == 0)
-            {
-                return Result.Fail("Edits array must contain at least one edit.");
-            }
-            return edits;
-        }
-        catch (JsonException ex)
-        {
-            return Result.Fail($"Invalid edits JSON: {ex.Message}");
-        }
-    }
 }

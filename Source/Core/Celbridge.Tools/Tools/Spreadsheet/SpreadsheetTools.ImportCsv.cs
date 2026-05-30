@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Celbridge.Spreadsheet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -20,12 +19,16 @@ public partial class SpreadsheetTools
         }
         var workbookResource = resolveResult.Value;
 
-        var parseResult = ParseCsvImports(importsJson);
+        var parseResult = ParseJsonArgument<List<CsvImport>>(importsJson, "imports JSON");
         if (parseResult.IsFailure)
         {
             return ToolResponse.Error(parseResult);
         }
         var imports = parseResult.Value;
+        if (imports.Count == 0)
+        {
+            return ToolResponse.Error("Imports array must contain at least one import.");
+        }
 
         var commandResult = await ExecuteCommandAsync<IImportCsvCommand, ImportCsvResult>(command =>
         {
@@ -42,29 +45,4 @@ public partial class SpreadsheetTools
         return ToolResponse.Success(json);
     }
 
-    private static Result<IReadOnlyList<CsvImport>> ParseCsvImports(string importsJson)
-    {
-        if (string.IsNullOrEmpty(importsJson))
-        {
-            return Result.Fail("Imports JSON is required.");
-        }
-
-        try
-        {
-            var imports = JsonSerializer.Deserialize<List<CsvImport>>(importsJson, JsonOptions);
-            if (imports is null)
-            {
-                return Result.Fail("Imports JSON must be a non-null array.");
-            }
-            if (imports.Count == 0)
-            {
-                return Result.Fail("Imports array must contain at least one import.");
-            }
-            return imports;
-        }
-        catch (JsonException ex)
-        {
-            return Result.Fail($"Invalid imports JSON: {ex.Message}");
-        }
-    }
 }

@@ -573,8 +573,8 @@ public class FileToolTests
 
         result.IsError.Should().BeTrue();
         var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("Invalid JSON array for files");
-        text.Should().Contain("Expected a JSON array of resource keys");
+        text.Should().Contain("files takes a JSON array");
+        text.Should().Contain("folder/a.txt");
     }
 
     [Test]

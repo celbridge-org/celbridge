@@ -658,7 +658,7 @@ public class SpreadsheetToolTests
         var result = await tools.FormatRanges("data/sales.xlsx", editsJson: "");
 
         result.IsError.Should().BeTrue();
-        GetResultText(result).Should().Contain("Edits JSON");
+        GetResultText(result).Should().Contain("edits JSON");
     }
 
     [Test]

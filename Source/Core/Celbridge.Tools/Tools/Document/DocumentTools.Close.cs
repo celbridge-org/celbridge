@@ -18,7 +18,12 @@ public partial class DocumentTools
     [RelatedGuides("resource_keys", "workspace_panels")]
     public async partial Task<CallToolResult> Close(string fileResource, bool forceClose = false)
     {
-        var resourceKeyStrings = ParseResourceKeys(fileResource);
+        var parseResult = ParseResourceKeys(fileResource);
+        if (parseResult.IsFailure)
+        {
+            return ToolResponse.Error(parseResult);
+        }
+        var resourceKeyStrings = parseResult.Value;
 
         var validatedKeys = new List<ResourceKey>();
         foreach (var keyString in resourceKeyStrings)
