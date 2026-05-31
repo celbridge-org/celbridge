@@ -658,7 +658,7 @@ public sealed class FileStorage : IFileStorage
 
     // Recursive folder copy used by CopyAsync. Stays here because the gateway
     // exposes only single-file copy at this layer; recursive composition is a
-    // resource-layer concern (Phase 2 will hoist this into the typed copy result).
+    // resource-layer concern.
     private async Task<Result> CopyFolderRecursiveAsync(string sourceFolder, string destFolder)
     {
         var createResult = await _fileSystem.CreateFolderAsync(destFolder);
