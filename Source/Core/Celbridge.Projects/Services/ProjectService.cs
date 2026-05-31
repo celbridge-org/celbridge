@@ -1,3 +1,5 @@
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 using Celbridge.Settings;
 
 namespace Celbridge.Projects.Services;
@@ -9,17 +11,20 @@ public class ProjectService : IProjectService
     private readonly IEditorSettings _editorSettings;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
+    private readonly IFileSystem _fileSystem;
 
     public IProject? CurrentProject { get; private set; }
 
     public ProjectService(
         IEditorSettings editorSettings,
         ProjectFactory projectFactory,
-        IProjectTemplateService projectTemplateService)
+        IProjectTemplateService projectTemplateService,
+        IFileSystem fileSystem)
     {
         _editorSettings = editorSettings;
         _projectFactory = projectFactory;
         _projectTemplateService = projectTemplateService;
+        _fileSystem = fileSystem;
     }
 
     public Result ValidateNewProjectConfig(NewProjectConfig config)
@@ -54,7 +59,8 @@ public class ProjectService : IProjectService
         try
         {
             var projectFilePath = config.ProjectFilePath;
-            if (File.Exists(projectFilePath))
+            var existingInfo = await _fileSystem.GetInfoAsync(projectFilePath);
+            if (existingInfo.IsSuccess && existingInfo.Value.Kind == StorageItemKind.File)
             {
                 return Result.Fail($"Failed to create project file because the file already exists: '{projectFilePath}'");
             }
@@ -120,7 +126,10 @@ public class ProjectService : IProjectService
 
         foreach (var projectFilePath in _editorSettings.RecentProjects)
         {
-            if (!File.Exists(projectFilePath))
+            // Bridge the async gateway to the sync caller. GetInfoAsync is
+            // a single stat with no continuation work.
+            var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(projectFilePath));
+            if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
             {
                 continue;
             }

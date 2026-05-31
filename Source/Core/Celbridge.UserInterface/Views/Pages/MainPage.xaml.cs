@@ -55,7 +55,7 @@ public partial class MainPage : Page
         Unloaded += OnMainPage_Unloaded;
     }
 
-    private void OnMainPage_Loaded(object sender, RoutedEventArgs e)
+    private async void OnMainPage_Loaded(object sender, RoutedEventArgs e)
     {
         var mainWindow = _userInterfaceService.MainWindow as Window;
         Guard.IsNotNull(mainWindow);
@@ -87,7 +87,7 @@ public partial class MainPage : Page
         Guard.IsNotNull(navigationService);
         navigationService.SetNavigateHandler(NavigateToPage);
 
-        ViewModel.OnMainPage_Loaded();
+        await ViewModel.OnMainPage_LoadedAsync();
 
         // Listen for keyboard input events (required for undo / redo)
 #if WINDOWS

@@ -37,13 +37,6 @@ public static class ProjectConstants
     public const string TrashFolder = "trash";
 
     /// <summary>
-    /// Sub-folder of .celbridge/ that stages in-flight temp files for atomic
-    /// writes performed by the resource file-system chokepoint. Wiped on
-    /// workspace load to clear orphans left by previous crashes.
-    /// </summary>
-    public const string StagingFsFolder = "staging-fs";
-
-    /// <summary>
     /// Sub-folder of .celbridge/ that holds the Python fingerprint and the
     /// IPython profile data.
     /// </summary>

@@ -1,4 +1,6 @@
+using Celbridge.FileSystem;
 using Celbridge.Logging;
+using Celbridge.Resources;
 
 namespace Celbridge.Projects.Services;
 
@@ -8,10 +10,14 @@ namespace Celbridge.Projects.Services;
 public class ProjectFactory
 {
     private readonly ILogger<ProjectFactory> _logger;
+    private readonly IFileSystem _fileSystem;
 
-    public ProjectFactory(ILogger<ProjectFactory> logger)
+    public ProjectFactory(
+        ILogger<ProjectFactory> logger,
+        IFileSystem fileSystem)
     {
         _logger = logger;
+        _fileSystem = fileSystem;
     }
 
     /// <summary>
@@ -20,16 +26,17 @@ public class ProjectFactory
     /// here; the entity service creates it on demand when an entity file is
     /// first written.
     /// </summary>
-    public Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult)
+    public async Task<Result<IProject>> LoadAsync(string projectFilePath, MigrationResult migrationResult)
     {
         if (string.IsNullOrWhiteSpace(projectFilePath))
         {
-            return Task.FromResult(Result<IProject>.Fail("Project file path is empty"));
+            return Result<IProject>.Fail("Project file path is empty");
         }
 
-        if (!File.Exists(projectFilePath))
+        var infoResult = await _fileSystem.GetInfoAsync(projectFilePath);
+        if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
         {
-            return Task.FromResult(Result<IProject>.Fail($"Project file does not exist: '{projectFilePath}'"));
+            return Result<IProject>.Fail($"Project file does not exist: '{projectFilePath}'");
         }
 
         try
@@ -48,7 +55,7 @@ public class ProjectFactory
             ProjectConfig config;
             if (migrationSucceeded)
             {
-                var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath);
+                var parseResult = ProjectConfigParser.ParseFromFile(projectFilePath, _fileSystem);
                 if (parseResult.IsFailure)
                 {
                     _logger.LogError(parseResult, "Failed to parse project configuration");
@@ -72,13 +79,13 @@ public class ProjectFactory
                 config,
                 migrationResult);
 
-            return Task.FromResult(Result<IProject>.Ok(project));
+            return Result<IProject>.Ok(project);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, $"An exception occurred when loading the project: {projectFilePath}");
-            return Task.FromResult(Result<IProject>.Fail($"An exception occurred when loading the project: {projectFilePath}")
-                .WithException(ex));
+            return Result<IProject>.Fail($"An exception occurred when loading the project: {projectFilePath}")
+                .WithException(ex);
         }
     }
 }

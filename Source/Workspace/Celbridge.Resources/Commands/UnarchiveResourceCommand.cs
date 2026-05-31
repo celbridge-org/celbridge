@@ -184,7 +184,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
             if (destInfoResult.Value.Kind == StorageItemKind.NotFound)
             {
-                // CreateFolderAsync on the chokepoint is idempotent and creates
+                // CreateFolderAsync on the gateway is idempotent and creates
                 // missing intermediate parents in one call. We still collect
                 // and create ancestors one-at-a-time so each lands as its own
                 // undoable operation inside the batch.

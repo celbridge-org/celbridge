@@ -1,6 +1,8 @@
 using System.IO.Compression;
 using Celbridge.ApplicationEnvironment;
+using Celbridge.FileSystem;
 using Celbridge.Python;
+using Celbridge.Resources;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Projects.Services;
@@ -12,14 +14,17 @@ public class ProjectTemplateService : IProjectTemplateService
     private readonly List<ProjectTemplate> _templates;
     private readonly IEnvironmentService _environmentService;
     private readonly IPythonConfigService _pythonConfigService;
+    private readonly IFileSystem _fileSystem;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
         IEnvironmentService environmentService,
-        IPythonConfigService pythonConfigService)
+        IPythonConfigService pythonConfigService,
+        IFileSystem fileSystem)
     {
         _environmentService = environmentService;
         _pythonConfigService = pythonConfigService;
+        _fileSystem = fileSystem;
 
         _templates =
         [
@@ -64,7 +69,8 @@ public class ProjectTemplateService : IProjectTemplateService
                 return Result.Fail("Project file path is empty");
             }
 
-            if (File.Exists(projectFilePath))
+            var existingProjectInfo = await _fileSystem.GetInfoAsync(projectFilePath);
+            if (existingProjectInfo.IsSuccess && existingProjectInfo.Value.Kind == StorageItemKind.File)
             {
                 return Result.Fail($"Project file already exists: {projectFilePath}");
             }
@@ -73,7 +79,12 @@ public class ProjectTemplateService : IProjectTemplateService
             Guard.IsNotNull(projectPath);
 
             // Create the staging folder
-            Directory.CreateDirectory(tempStagingPath!);
+            var createStagingResult = await _fileSystem.CreateFolderAsync(tempStagingPath!);
+            if (createStagingResult.IsFailure)
+            {
+                return Result.Fail($"Failed to create staging folder: {tempStagingPath}")
+                    .WithErrors(createStagingResult);
+            }
 
             // Get Celbridge application version
             var appVersion = _environmentService.GetEnvironmentInfo().AppVersion;
@@ -91,36 +102,82 @@ public class ProjectTemplateService : IProjectTemplateService
 
             // Update the extracted project file with actual version values
             var extractedProjectFile = Path.Combine(tempStagingPath!, TemplateProjectFileName);
-            var projectFileContents = await File.ReadAllTextAsync(extractedProjectFile);
+            var readResult = await _fileSystem.ReadAllTextAsync(extractedProjectFile);
+            if (readResult.IsFailure)
+            {
+                return Result.Fail($"Failed to read extracted template project file: {extractedProjectFile}")
+                    .WithErrors(readResult);
+            }
 
-            projectFileContents = projectFileContents
+            var projectFileContents = readResult.Value
                 .Replace("<application-version>", appVersion)
                 .Replace("<python-version>", _pythonConfigService.DefaultPythonVersion);
-            await File.WriteAllTextAsync(extractedProjectFile, projectFileContents);
+
+            var writeResult = await _fileSystem.WriteAllTextAsync(extractedProjectFile, projectFileContents);
+            if (writeResult.IsFailure)
+            {
+                return Result.Fail($"Failed to write extracted template project file: {extractedProjectFile}")
+                    .WithErrors(writeResult);
+            }
 
             // Rename the project settings file to the user-specified name in staging
             var projectFileName = Path.GetFileName(projectFilePath);
             var stagedProjectFilePath = Path.Combine(tempStagingPath!, projectFileName);
-            File.Move(extractedProjectFile, stagedProjectFilePath);
+            var renameResult = await _fileSystem.MoveFileAsync(extractedProjectFile, stagedProjectFilePath);
+            if (renameResult.IsFailure)
+            {
+                return Result.Fail($"Failed to rename staged project file: {extractedProjectFile}")
+                    .WithErrors(renameResult);
+            }
 
             // All staging operations succeeded - now move to final location
             // Ensure the destination folder exists
-            if (!Directory.Exists(projectPath))
+            var destFolderInfo = await _fileSystem.GetInfoAsync(projectPath);
+            if (!destFolderInfo.IsSuccess || destFolderInfo.Value.Kind != StorageItemKind.Folder)
             {
-                Directory.CreateDirectory(projectPath);
+                var createDestResult = await _fileSystem.CreateFolderAsync(projectPath);
+                if (createDestResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to create project folder: {projectPath}")
+                        .WithErrors(createDestResult);
+                }
             }
 
             // Move all files and folders from staging to the final project location
-            foreach (var file in Directory.GetFiles(tempStagingPath!))
+            var stagedFilesResult = await _fileSystem.EnumerateFilesAsync(tempStagingPath!, "*", recursive: false);
+            if (stagedFilesResult.IsFailure)
             {
-                var destFile = Path.Combine(projectPath, Path.GetFileName(file));
-                File.Move(file, destFile);
+                return Result.Fail($"Failed to enumerate staged files: {tempStagingPath}")
+                    .WithErrors(stagedFilesResult);
             }
 
-            foreach (var dir in Directory.GetDirectories(tempStagingPath!))
+            foreach (var file in stagedFilesResult.Value)
             {
-                var destDir = Path.Combine(projectPath, Path.GetFileName(dir));
-                Directory.Move(dir, destDir);
+                var destFile = Path.Combine(projectPath, Path.GetFileName(file));
+                var moveFileResult = await _fileSystem.MoveFileAsync(file, destFile);
+                if (moveFileResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to move staged file to final location: {file}")
+                        .WithErrors(moveFileResult);
+                }
+            }
+
+            var stagedFoldersResult = await _fileSystem.EnumerateFoldersAsync(tempStagingPath!);
+            if (stagedFoldersResult.IsFailure)
+            {
+                return Result.Fail($"Failed to enumerate staged folders: {tempStagingPath}")
+                    .WithErrors(stagedFoldersResult);
+            }
+
+            foreach (var stagedFolder in stagedFoldersResult.Value)
+            {
+                var destFolder = Path.Combine(projectPath, Path.GetFileName(stagedFolder));
+                var moveFolderResult = await _fileSystem.MoveFolderAsync(stagedFolder, destFolder);
+                if (moveFolderResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to move staged folder to final location: {stagedFolder}")
+                        .WithErrors(moveFolderResult);
+                }
             }
         }
         catch (Exception ex)
@@ -131,16 +188,11 @@ public class ProjectTemplateService : IProjectTemplateService
         finally
         {
             // Clean up the staging folder regardless of success or failure
-            try
+            var stagingInfo = await _fileSystem.GetInfoAsync(tempStagingPath);
+            if (stagingInfo.IsSuccess && stagingInfo.Value.Kind == StorageItemKind.Folder)
             {
-                if (Directory.Exists(tempStagingPath))
-                {
-                    Directory.Delete(tempStagingPath, recursive: true);
-                }
-            }
-            catch
-            {
-                // Ignore cleanup errors
+                // Best-effort cleanup; failures here should not mask the primary outcome.
+                await _fileSystem.DeleteFolderAsync(tempStagingPath, recursive: true);
             }
         }
 

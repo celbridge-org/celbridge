@@ -3,6 +3,15 @@ using Celbridge.UserInterface;
 
 namespace Celbridge.Resources.Services;
 
+/// <summary>
+/// Builds the in-memory project tree from disk, applying built-in folder and
+/// file visibility filters along the way.
+/// </summary>
+/// <remarks>
+/// Uses File.GetAttributes directly because the gateway does not surface the
+/// Windows hidden flag.
+/// </remarks>
+[AllowDirectFileSystemAccess]
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
     private readonly IFileIconService _fileIconService;

@@ -1,3 +1,5 @@
+using Celbridge.FileSystem.Services;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Utilities;
 using System.Text;
 
@@ -7,7 +9,7 @@ namespace Celbridge.Tests.Utilities;
 public class TextBinarySnifferTests
 {
     private string _testFilesDir = null!;
-    private readonly TextBinarySniffer _sniffer = new();
+    private readonly TextBinarySniffer _sniffer = new(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
 
     [SetUp]
     public void SetUp()

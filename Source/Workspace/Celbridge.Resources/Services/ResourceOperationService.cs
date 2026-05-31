@@ -7,11 +7,11 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Wraps the IFileStorage chokepoint and the ITrashService soft-delete layer
+/// Wraps the IFileStorage gateway and the ITrashService soft-delete layer
 /// with a session-local undo/redo stack and batched grouping. Public methods
 /// accept ResourceKey; external imports keep a string source path because the
 /// source is outside the registry by definition. All disk I/O routes through
-/// the chokepoint or the trash service; this class owns no direct System.IO
+/// the gateway or the trash service; this class owns no direct System.IO
 /// calls and no message broadcasts.
 /// </summary>
 public class ResourceOperationService : IResourceOperationService
@@ -26,12 +26,16 @@ public class ResourceOperationService : IResourceOperationService
 
     private FileOperationBatch? _currentBatch;
 
+    private readonly IFileSystem _fileSystem;
+
     public ResourceOperationService(
         ILogger<ResourceOperationService> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
     }
 
     private IEntityService? EntityService =>
@@ -185,7 +189,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, FileStorage, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, FileStorage, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -200,7 +204,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, FileStorage, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, FileStorage, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)

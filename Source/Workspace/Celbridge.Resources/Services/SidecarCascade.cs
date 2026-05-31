@@ -13,11 +13,13 @@ internal sealed class SidecarCascade
 {
     private readonly ILogger _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystem _fileSystem;
 
-    public SidecarCascade(ILogger logger, IWorkspaceWrapper workspaceWrapper)
+    public SidecarCascade(ILogger logger, IWorkspaceWrapper workspaceWrapper, IFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
     }
 
     public async Task<SidecarOutcome> TryMoveAsync(ResourceKey source, ResourceKey dest)
@@ -38,7 +40,9 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
         var sourceSidecarPath = resolveSourceResult.Value;
-        if (!File.Exists(sourceSidecarPath))
+        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourceSidecarPath);
+        if (sourceInfoResult.IsFailure
+            || sourceInfoResult.Value.Kind != StorageItemKind.File)
         {
             return SidecarOutcome.NotPresent;
         }
@@ -51,32 +55,41 @@ internal sealed class SidecarCascade
         }
         var destSidecarPath = resolveDestResult.Value;
 
-        if (File.Exists(destSidecarPath))
+        var destInfoResult = await _fileSystem.GetInfoAsync(destSidecarPath);
+        if (destInfoResult.IsSuccess
+            && destInfoResult.Value.Kind != StorageItemKind.NotFound)
         {
             _logger.LogWarning($"Sidecar destination '{destSidecar}' already exists. Parent move completed but sidecar was not cascaded.");
             return SidecarOutcome.Failed;
         }
 
-        try
+        var destFolder = Path.GetDirectoryName(destSidecarPath);
+        if (!string.IsNullOrEmpty(destFolder))
         {
-            var destFolder = Path.GetDirectoryName(destSidecarPath);
-            if (!string.IsNullOrEmpty(destFolder)
-                && !Directory.Exists(destFolder))
+            var createFolderResult = await _fileSystem.CreateFolderAsync(destFolder);
+            if (createFolderResult.IsFailure)
             {
-                Directory.CreateDirectory(destFolder);
+                _logger.LogWarning($"Failed to create sidecar destination folder '{destFolder}' for move from '{sourceSidecar}'.");
+                return SidecarOutcome.Failed;
             }
-
-            await FileStorageInternals.RetryTransientIOAsync(_logger, "Sidecar move", sourceSidecarPath, () => File.Move(sourceSidecarPath, destSidecarPath));
-            return SidecarOutcome.Cascaded;
         }
-        catch (Exception ex)
+
+        var moveResult = await _fileSystem.MoveFileAsync(sourceSidecarPath, destSidecarPath);
+        if (moveResult.IsFailure)
         {
-            _logger.LogWarning(ex, $"Failed to cascade sidecar move from '{sourceSidecar}' to '{destSidecar}'.");
+            _logger.LogWarning($"Failed to cascade sidecar move from '{sourceSidecar}' to '{destSidecar}'. {moveResult.DiagnosticReport}");
             return SidecarOutcome.Failed;
         }
+
+        return SidecarOutcome.Cascaded;
     }
 
     public SidecarOutcome TryCopy(ResourceKey source, ResourceKey dest)
+    {
+        return SyncRunner.Run(() => TryCopyAsync(source, dest));
+    }
+
+    private async Task<SidecarOutcome> TryCopyAsync(ResourceKey source, ResourceKey dest)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         var destSidecar = AppendSidecarSuffix(dest);
@@ -94,7 +107,9 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
         var sourceSidecarPath = resolveSourceResult.Value;
-        if (!File.Exists(sourceSidecarPath))
+        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourceSidecarPath);
+        if (sourceInfoResult.IsFailure
+            || sourceInfoResult.Value.Kind != StorageItemKind.File)
         {
             return SidecarOutcome.NotPresent;
         }
@@ -107,32 +122,41 @@ internal sealed class SidecarCascade
         }
         var destSidecarPath = resolveDestResult.Value;
 
-        if (File.Exists(destSidecarPath))
+        var destInfoResult = await _fileSystem.GetInfoAsync(destSidecarPath);
+        if (destInfoResult.IsSuccess
+            && destInfoResult.Value.Kind != StorageItemKind.NotFound)
         {
             _logger.LogWarning($"Sidecar destination '{destSidecar}' already exists. Parent copy completed but sidecar was not cascaded.");
             return SidecarOutcome.Failed;
         }
 
-        try
+        var destFolder = Path.GetDirectoryName(destSidecarPath);
+        if (!string.IsNullOrEmpty(destFolder))
         {
-            var destFolder = Path.GetDirectoryName(destSidecarPath);
-            if (!string.IsNullOrEmpty(destFolder)
-                && !Directory.Exists(destFolder))
+            var createFolderResult = await _fileSystem.CreateFolderAsync(destFolder);
+            if (createFolderResult.IsFailure)
             {
-                Directory.CreateDirectory(destFolder);
+                _logger.LogWarning($"Failed to create sidecar destination folder '{destFolder}' for copy from '{sourceSidecar}'.");
+                return SidecarOutcome.Failed;
             }
-
-            File.Copy(sourceSidecarPath, destSidecarPath);
-            return SidecarOutcome.Cascaded;
         }
-        catch (Exception ex)
+
+        var copyResult = await _fileSystem.CopyFileAsync(sourceSidecarPath, destSidecarPath);
+        if (copyResult.IsFailure)
         {
-            _logger.LogWarning(ex, $"Failed to cascade sidecar copy from '{sourceSidecar}' to '{destSidecar}'.");
+            _logger.LogWarning($"Failed to cascade sidecar copy from '{sourceSidecar}' to '{destSidecar}'. {copyResult.DiagnosticReport}");
             return SidecarOutcome.Failed;
         }
+
+        return SidecarOutcome.Cascaded;
     }
 
     public SidecarOutcome TryDelete(ResourceKey source)
+    {
+        return SyncRunner.Run(() => TryDeleteAsync(source));
+    }
+
+    private async Task<SidecarOutcome> TryDeleteAsync(ResourceKey source)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         if (sourceSidecar is null)
@@ -148,21 +172,21 @@ internal sealed class SidecarCascade
             return SidecarOutcome.NotPresent;
         }
         var sidecarPath = resolveResult.Value;
-        if (!File.Exists(sidecarPath))
+        var sidecarInfoResult = await _fileSystem.GetInfoAsync(sidecarPath);
+        if (sidecarInfoResult.IsFailure
+            || sidecarInfoResult.Value.Kind != StorageItemKind.File)
         {
             return SidecarOutcome.NotPresent;
         }
 
-        try
+        var deleteResult = await _fileSystem.DeleteFileAsync(sidecarPath);
+        if (deleteResult.IsFailure)
         {
-            File.Delete(sidecarPath);
-            return SidecarOutcome.Cascaded;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, $"Failed to cascade sidecar delete for '{sourceSidecar}'.");
+            _logger.LogWarning($"Failed to cascade sidecar delete for '{sourceSidecar}'. {deleteResult.DiagnosticReport}");
             return SidecarOutcome.Failed;
         }
+
+        return SidecarOutcome.Cascaded;
     }
 
     // Returns the sidecar resource key for the given parent, or null when no

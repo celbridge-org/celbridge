@@ -1,7 +1,7 @@
 namespace Celbridge.Resources;
 
 /// <summary>
-/// The chokepoint for disk reads, writes, and structural operations against any
+/// The gateway for disk reads, writes, and structural operations against any
 /// resource addressable by a ResourceKey — files under the project tree as well
 /// as files under registered non-project roots (e.g. temp:, logs:). Callers pass
 /// a ResourceKey; the layer dispatches via the registered root handlers so

@@ -57,7 +57,7 @@ internal static class SpreadsheetHelper
     /// <summary>
     /// Validates that the resource key is a non-empty .xlsx file that exists
     /// inside a registered root. Returns the key on success so callers can
-    /// pass it to subsequent chokepoint operations.
+    /// pass it to subsequent gateway operations.
     /// </summary>
     public static async Task<Result<ResourceKey>> ResolveWorkbookResourceAsync(
         IWorkspaceWrapper workspaceWrapper,
@@ -96,7 +96,7 @@ internal static class SpreadsheetHelper
     }
 
     /// <summary>
-    /// Loads the workbook bytes via the chokepoint and constructs an XLWorkbook
+    /// Loads the workbook bytes via the gateway and constructs an XLWorkbook
     /// from an in-memory copy. The caller owns the returned workbook and must
     /// dispose it; the underlying stream is owned by the workbook.
     /// </summary>
@@ -127,7 +127,7 @@ internal static class SpreadsheetHelper
     }
 
     /// <summary>
-    /// Serialises the workbook to memory and writes it via the chokepoint.
+    /// Serialises the workbook to memory and writes it via the gateway.
     /// Evaluates formulas before saving so cached values stay fresh.
     /// </summary>
     public static async Task<Result> SaveWorkbookAsync(

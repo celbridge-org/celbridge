@@ -2,6 +2,7 @@ using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -36,7 +37,7 @@ public class ReplaceFileCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
+        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper, TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
     }
 

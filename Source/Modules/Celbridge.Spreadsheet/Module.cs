@@ -1,7 +1,9 @@
 using Celbridge.Activities;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Resources;
 using Celbridge.Screenplay.Components;
 using Celbridge.Spreadsheet.Commands;
 using Celbridge.Spreadsheet.Services;
@@ -78,8 +80,20 @@ public class Module : IModule
         // have a license to distribute them. If the library is not present, we skip
         // registering the package.
         var libraryFolder = Path.Combine(packageFolder, LibraryFolderName);
-        var isLibraryPresent = Directory.Exists(libraryFolder) &&
-                               Directory.EnumerateFiles(libraryFolder, "*.js", SearchOption.AllDirectories).Any();
+        var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+
+        var libraryInfoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(libraryFolder));
+        bool libraryFolderExists = libraryInfoResult.IsSuccess
+            && libraryInfoResult.Value.Kind == StorageItemKind.Folder;
+
+        bool isLibraryPresent = false;
+        if (libraryFolderExists)
+        {
+            var enumerateResult = SyncRunner.Run(() => fileSystem.EnumerateFilesAsync(libraryFolder, "*.js", recursive: true));
+            isLibraryPresent = enumerateResult.IsSuccess
+                && enumerateResult.Value.Count > 0;
+        }
+
         if (!isLibraryPresent)
         {
             var logger = ServiceLocator.AcquireService<ILogger<Module>>();

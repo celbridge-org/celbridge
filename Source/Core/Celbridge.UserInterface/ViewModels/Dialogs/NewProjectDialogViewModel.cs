@@ -1,5 +1,7 @@
 using Celbridge.FilePicker;
+using Celbridge.FileSystem;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using System.ComponentModel;
 
@@ -13,6 +15,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
     private readonly IProjectTemplateService _templateService;
+    private readonly IFileSystem _fileSystem;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -50,12 +53,14 @@ public partial class NewProjectDialogViewModel : ObservableObject
         IEditorSettings editorSettings,
         IProjectService projectService,
         IFilePickerService filePickerService,
-        IProjectTemplateService templateService)
+        IProjectTemplateService templateService,
+        IFileSystem fileSystem)
     {
         _editorSettings = editorSettings;
         _projectService = projectService;
         _filePickerService = filePickerService;
         _templateService = templateService;
+        _fileSystem = fileSystem;
 
         // Initialize templates
         _templates = _templateService.GetTemplates();
@@ -73,12 +78,12 @@ public partial class NewProjectDialogViewModel : ObservableObject
         // 1. Previous project folder (if valid)
         // 2. User's Documents folder (if valid)
         // 3. Previous path as-is (may be invalid, but UI will disable Create button)
-        if (!string.IsNullOrEmpty(_editorSettings.PreviousNewProjectFolderPath) && 
-            Directory.Exists(_editorSettings.PreviousNewProjectFolderPath))
+        if (!string.IsNullOrEmpty(_editorSettings.PreviousNewProjectFolderPath)
+            && FolderExists(_editorSettings.PreviousNewProjectFolderPath))
         {
             _destFolderPath = _editorSettings.PreviousNewProjectFolderPath;
         }
-        else if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
+        else if (FolderExists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
         {
             _destFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         }
@@ -114,7 +119,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
                 return;
             }
 
-            if (!Directory.Exists(DestFolderPath))
+            if (!FolderExists(DestFolderPath))
             {
                 // Project base folder is not valid.
                 IsCreateButtonEnabled = false;
@@ -129,7 +134,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
             if (CreateSubfolder)
             {
                 var subfolderPath = Path.Combine(DestFolderPath, ProjectName);
-                if (Directory.Exists(subfolderPath))
+                if (FolderExists(subfolderPath))
                 {
                     // A subfolder with this name already exists
                     IsCreateButtonEnabled = false;
@@ -146,8 +151,8 @@ public partial class NewProjectDialogViewModel : ObservableObject
                 destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{ProjectConstants.ProjectFileExtension}");
             }
 
-            if (File.Exists(destProjectFilePath)) 
-            { 
+            if (FileExists(destProjectFilePath))
+            {
                 // A project file with the same name already exists
                 IsCreateButtonEnabled = false;
                 DestProjectFilePath = string.Empty;
@@ -185,11 +190,41 @@ public partial class NewProjectDialogViewModel : ObservableObject
         if (pickResult.IsSuccess)
         {
             var folder = pickResult.Value;
-            if (Directory.Exists(folder))
+            var infoResult = await _fileSystem.GetInfoAsync(folder);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.Folder)
             {
                 DestFolderPath = pickResult.Value;
             }
         }
+    }
+
+    // Synchronous existence probes invoked from PropertyChanged. The handler
+    // is sync and high-frequency on each keystroke, so the IFileSystem stat
+    // call is unwrapped via GetAwaiter().GetResult() to keep the API uniform
+    // without re-architecting the dialog around async property change.
+    private bool FolderExists(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(path));
+        return infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+    }
+
+    private bool FileExists(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(path));
+        return infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File;
     }
 
     [RelayCommand]

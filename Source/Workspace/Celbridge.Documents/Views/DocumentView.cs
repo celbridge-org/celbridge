@@ -27,7 +27,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
     }
 
     /// <summary>
-    /// Provides access to the file storage chokepoint.
+    /// Provides access to the file storage gateway.
     /// Lazily initialized from the workspace wrapper.
     /// </summary>
     protected IFileStorage FileStorage

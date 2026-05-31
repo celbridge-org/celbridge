@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Celbridge.Entities.Models;
+using Celbridge.FileSystem;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
@@ -15,6 +16,7 @@ public class EntityRegistry
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystem _fileSystem;
 
     private readonly ConcurrentDictionary<ResourceKey, Entity> _entityCache = new(); // Cache for entity objects
     private readonly ConcurrentDictionary<ResourceKey, bool> _modifiedEntities = new(); // Track modified entities
@@ -26,12 +28,14 @@ public class EntityRegistry
         ILogger<EntityRegistry> logger,
         IMessengerService messengerService,
         IProjectService projectService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
         _projectService = projectService;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
     }
 
     public Result Initialize(ComponentConfigRegistry configRegistry)
@@ -58,14 +62,17 @@ public class EntityRegistry
         return entityDataPath;
     }
 
-    public Result CleanupEntities()
+    public async Task<Result> CleanupEntitiesAsync()
     {
         try
         {
             var projectDataFolderPath = _projectService.CurrentProject!.ProjectDataFolderPath;
             var entitiesFolderPath = Path.Combine(projectDataFolderPath, "Entities");
 
-            if (!Directory.Exists(entitiesFolderPath))
+            var entitiesFolderInfo = await _fileSystem.GetInfoAsync(entitiesFolderPath);
+            bool entitiesFolderExists = entitiesFolderInfo.IsSuccess
+                && entitiesFolderInfo.Value.Kind == StorageItemKind.Folder;
+            if (!entitiesFolderExists)
             {
                 return Result.Fail("The entities folder does not exist.");
             }
@@ -86,8 +93,15 @@ public class EntityRegistry
             }
 
             // Find all the entity files in the Entities folder.
-            // Note that an entity .json file may correspond to either a file or folder resource. 
-            var entityFiles = Directory.EnumerateFiles(entitiesFolderPath, "*.json", SearchOption.AllDirectories);
+            // Note that an entity .json file may correspond to either a file or folder resource.
+            var enumerateFilesResult = await _fileSystem.EnumerateFilesAsync(entitiesFolderPath, "*.json", recursive: true);
+            if (enumerateFilesResult.IsFailure)
+            {
+                return Result.Fail($"Failed to enumerate entity files in: '{entitiesFolderPath}'")
+                    .WithErrors(enumerateFilesResult);
+            }
+            var entityFiles = enumerateFilesResult.Value;
+
             foreach (var entityFile in entityFiles)
             {
                 // Get the resource key from the entity file path
@@ -109,7 +123,11 @@ public class EntityRegistry
                 {
                     continue;
                 }
-                if (Path.Exists(resolveResult.Value))
+
+                var resolvedInfo = await _fileSystem.GetInfoAsync(resolveResult.Value);
+                bool resolvedExists = resolvedInfo.IsSuccess
+                    && resolvedInfo.Value.Kind != StorageItemKind.NotFound;
+                if (resolvedExists)
                 {
                     continue;
                 }
@@ -117,16 +135,36 @@ public class EntityRegistry
                 _entityCache.TryRemove(resourceKey, out _);
                 _modifiedEntities.TryRemove(resourceKey, out _);
 
-                File.Delete(entityFile);
+                var deleteFileResult = await _fileSystem.DeleteFileAsync(entityFile);
+                if (deleteFileResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to delete orphaned entity file: '{entityFile}'")
+                        .WithErrors(deleteFileResult);
+                }
             }
 
-            // Delete any empty folders in the Entities folder
-            var folders = Directory.EnumerateDirectories(entitiesFolderPath, "*", SearchOption.AllDirectories);
-            foreach (var folder in folders)
+            // Delete any empty folders in the Entities folder.
+            // Recursively enumerate descendant folders by walking the tree.
+            var subFolders = await GetAllSubfoldersAsync(entitiesFolderPath);
+            foreach (var folder in subFolders)
             {
-                if (!Directory.EnumerateFileSystemEntries(folder).Any())
+                var filesInFolder = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: false);
+                var foldersInFolder = await _fileSystem.EnumerateFoldersAsync(folder);
+                if (filesInFolder.IsFailure
+                    || foldersInFolder.IsFailure)
                 {
-                    Directory.Delete(folder);
+                    continue;
+                }
+
+                if (filesInFolder.Value.Count == 0
+                    && foldersInFolder.Value.Count == 0)
+                {
+                    var deleteFolderResult = await _fileSystem.DeleteFolderAsync(folder, recursive: false);
+                    if (deleteFolderResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to delete empty entity folder: '{folder}'")
+                            .WithErrors(deleteFolderResult);
+                    }
                 }
             }
 
@@ -137,6 +175,36 @@ public class EntityRegistry
             return Result.Fail("An exception occurred when cleaning up entities")
                 .WithException(ex);
         }
+    }
+
+    // Recursively gather all descendant folders under the root, deepest first,
+    // so empty children are deleted before their (potentially-emptied) parents.
+    private async Task<List<string>> GetAllSubfoldersAsync(string rootFolder)
+    {
+        var collected = new List<string>();
+        var pending = new Queue<string>();
+        pending.Enqueue(rootFolder);
+
+        while (pending.Count > 0)
+        {
+            var current = pending.Dequeue();
+            var childResult = await _fileSystem.EnumerateFoldersAsync(current);
+            if (childResult.IsFailure)
+            {
+                continue;
+            }
+
+            foreach (var child in childResult.Value)
+            {
+                collected.Add(child);
+                pending.Enqueue(child);
+            }
+        }
+
+        // Deepest folders first.
+        collected.Reverse();
+
+        return collected;
     }
 
     public async Task<Result> SaveModifiedEntities()
@@ -173,14 +241,24 @@ public class EntityRegistry
             var folder = Path.GetDirectoryName(entity.EntityDataPath);
             Guard.IsNotNull(folder);
 
-            if (!Directory.Exists(folder))
+            var folderInfo = await _fileSystem.GetInfoAsync(folder);
+            bool folderExists = folderInfo.IsSuccess
+                && folderInfo.Value.Kind == StorageItemKind.Folder;
+            if (!folderExists)
             {
-                Directory.CreateDirectory(folder);
+                var createFolderResult = await _fileSystem.CreateFolderAsync(folder);
+                if (createFolderResult.IsFailure)
+                {
+                    return Result.Fail($"Failed to create entity folder: '{folder}'")
+                        .WithErrors(createFolderResult);
+                }
             }
 
-            using (var writer = new StreamWriter(entity.EntityDataPath))
+            var writeResult = await _fileSystem.WriteAllTextAsync(entity.EntityDataPath, jsonContent);
+            if (writeResult.IsFailure)
             {
-                await writer.WriteAsync(jsonContent);
+                return Result.Fail($"Failed to write entity data file: '{entity.EntityDataPath}'")
+                    .WithErrors(writeResult);
             }
 
             return Result.Ok();
@@ -192,7 +270,7 @@ public class EntityRegistry
         }
     }
 
-    public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
+    public async Task<Result> MoveEntityDataFileAsync(ResourceKey oldResource, ResourceKey newResource)
     {
         try
         {
@@ -216,15 +294,35 @@ public class EntityRegistry
                 // Rename the backing JSON file
                 string oldEntityPath = GetEntityDataPath(oldResource);
                 string newResourcePath = GetEntityDataPath(newResource);
-                if (File.Exists(oldEntityPath))
+
+                var oldEntityInfo = await _fileSystem.GetInfoAsync(oldEntityPath);
+                bool oldEntityExists = oldEntityInfo.IsSuccess
+                    && oldEntityInfo.Value.Kind == StorageItemKind.File;
+                if (oldEntityExists)
                 {
                     var parentFolder = Path.GetDirectoryName(newResourcePath);
-                    if (!string.IsNullOrEmpty(parentFolder) &&
-                        !Directory.Exists(parentFolder))
+                    if (!string.IsNullOrEmpty(parentFolder))
                     {
-                        Directory.CreateDirectory(parentFolder);
+                        var parentInfo = await _fileSystem.GetInfoAsync(parentFolder);
+                        bool parentExists = parentInfo.IsSuccess
+                            && parentInfo.Value.Kind == StorageItemKind.Folder;
+                        if (!parentExists)
+                        {
+                            var createParentResult = await _fileSystem.CreateFolderAsync(parentFolder);
+                            if (createParentResult.IsFailure)
+                            {
+                                return Result.Fail($"Failed to create destination parent folder: '{parentFolder}'")
+                                    .WithErrors(createParentResult);
+                            }
+                        }
                     }
-                    File.Move(oldEntityPath, newResourcePath);
+
+                    var moveResult = await _fileSystem.MoveFileAsync(oldEntityPath, newResourcePath);
+                    if (moveResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to move entity data file from '{oldEntityPath}' to '{newResourcePath}'")
+                            .WithErrors(moveResult);
+                    }
                 }
             }
 
@@ -237,7 +335,7 @@ public class EntityRegistry
         }
     }
 
-    public Result CopyEntityDataFile(ResourceKey sourceResource, ResourceKey destResource)
+    public async Task<Result> CopyEntityDataFileAsync(ResourceKey sourceResource, ResourceKey destResource)
     {
         try
         {
@@ -251,13 +349,19 @@ public class EntityRegistry
             var sourceEntityPath = GetEntityDataPath(sourceResource);
             var destEntityPath = GetEntityDataPath(destResource);
 
-            if (!File.Exists(sourceEntityPath))
+            var sourceInfo = await _fileSystem.GetInfoAsync(sourceEntityPath);
+            bool sourceExists = sourceInfo.IsSuccess
+                && sourceInfo.Value.Kind == StorageItemKind.File;
+            if (!sourceExists)
             {
                 // The source entity file does not exist yet, so there's no need to copy it.
                 return Result.Ok();
             }
 
-            if (File.Exists(destEntityPath))
+            var destInfo = await _fileSystem.GetInfoAsync(destEntityPath);
+            bool destExists = destInfo.IsSuccess
+                && destInfo.Value.Kind == StorageItemKind.File;
+            if (destExists)
             {
                 // There is already an entity file for the destination resource.
                 // This shouldn't be possible, so we'll log an error and return a failure.
@@ -265,13 +369,28 @@ public class EntityRegistry
             }
 
             var parentFolder = Path.GetDirectoryName(destEntityPath);
-            if (!string.IsNullOrEmpty(parentFolder) &&
-                !Directory.Exists(parentFolder))
+            if (!string.IsNullOrEmpty(parentFolder))
             {
-                Directory.CreateDirectory(parentFolder);
+                var parentInfo = await _fileSystem.GetInfoAsync(parentFolder);
+                bool parentExists = parentInfo.IsSuccess
+                    && parentInfo.Value.Kind == StorageItemKind.Folder;
+                if (!parentExists)
+                {
+                    var createParentResult = await _fileSystem.CreateFolderAsync(parentFolder);
+                    if (createParentResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to create destination parent folder: '{parentFolder}'")
+                            .WithErrors(createParentResult);
+                    }
+                }
             }
 
-            File.Copy(sourceEntityPath, destEntityPath);
+            var copyResult = await _fileSystem.CopyFileAsync(sourceEntityPath, destEntityPath);
+            if (copyResult.IsFailure)
+            {
+                return Result.Fail($"Failed to copy entity data file from '{sourceEntityPath}' to '{destEntityPath}'")
+                    .WithErrors(copyResult);
+            }
 
             return Result.Ok();
         }
@@ -282,7 +401,7 @@ public class EntityRegistry
         }
     }
 
-    public Result<Entity> AcquireEntity(ResourceKey resource)
+    public async Task<Result<Entity>> AcquireEntityAsync(ResourceKey resource)
     {
         Guard.IsNotNull(_entitySchema);
         Guard.IsNotNull(_configRegistry);
@@ -309,9 +428,13 @@ public class EntityRegistry
             string entityDataPath = GetEntityDataPath(resource);
 
             EntityData? entityData = null;
-            if (File.Exists(entityDataPath))
+
+            var entityFileInfo = await _fileSystem.GetInfoAsync(entityDataPath);
+            bool entityFileExists = entityFileInfo.IsSuccess
+                && entityFileInfo.Value.Kind == StorageItemKind.File;
+            if (entityFileExists)
             {
-                var loadDataResult = EntityUtils.LoadEntityDataFile(entityDataPath, _entitySchema, _configRegistry);
+                var loadDataResult = await EntityUtils.LoadEntityDataFileAsync(entityDataPath, _entitySchema, _configRegistry);
                 if (loadDataResult.IsSuccess)
                 {
                     entityData = loadDataResult.Value;
@@ -364,6 +487,18 @@ public class EntityRegistry
             return Result<Entity>.Fail($"An exception occurred when loading entity data for resource: '{resource}'")
                 .WithException(ex);
         }
+    }
+
+    // Synchronous gateway over AcquireEntityAsync.
+    // IEntityService exposes many sync methods that ultimately need an entity;
+    // converting all of them to async would ripple beyond Celbridge.Entities,
+    // so we block here at the boundary instead. SyncRunner.Run schedules the
+    // async work on the thread pool so the awaits inside AcquireEntityAsync
+    // (which hit IFileSystem) cannot deadlock waiting for the captured
+    // SynchronizationContext that this call is itself blocking.
+    public Result<Entity> AcquireEntity(ResourceKey resource)
+    {
+        return SyncRunner.Run(() => AcquireEntityAsync(resource));
     }
 
     public void MarkModifiedEntity(ResourceKey resource)

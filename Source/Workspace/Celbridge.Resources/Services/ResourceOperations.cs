@@ -51,9 +51,9 @@ internal class FileOperationBatch : FileOperation
 
 /// <summary>
 /// Undoable create-file or create-folder operation. The folder variant runs
-/// through the chokepoint's idempotent CreateFolderAsync; undo deletes the
+/// through the gateway's idempotent CreateFolderAsync; undo deletes the
 /// folder only when it is still empty so user content added after creation is
-/// not silently wiped. The file variant writes bytes through the chokepoint;
+/// not silently wiped. The file variant writes bytes through the gateway;
 /// undo hard-deletes (no trash) since the user is reversing a just-created
 /// resource they did not previously want.
 /// </summary>
@@ -126,9 +126,9 @@ internal class CreateOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable copy of a file or folder through the chokepoint. The entity-data
+/// Undoable copy of a file or folder through the gateway. The entity-data
 /// cascade runs alongside via EntityFileHelper; the bytes-and-sidecar cascade
-/// runs inside the chokepoint's CopyAsync.
+/// runs inside the gateway's CopyAsync.
 /// </summary>
 internal class CopyOperation : FileOperation
 {
@@ -201,7 +201,7 @@ internal class CopyOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable move of a file or folder through the chokepoint. The chokepoint
+/// Undoable move of a file or folder through the gateway. The gateway
 /// handles references, the paired sidecar, and the source-removal broadcast;
 /// the inverse re-walks references in the opposite direction.
 /// </summary>
@@ -253,7 +253,7 @@ internal class MoveOperation : FileOperation
         {
             // Best-effort rollback of the entity-data cascade so the bytes
             // stay paired with the source on failure. Errors here are swallowed
-            // because the chokepoint failure is the load-bearing problem; the
+            // because the gateway failure is the load-bearing problem; the
             // entity system is on its way out and the precise post-failure
             // state is not worth a partial-recovery report.
             try
@@ -352,7 +352,7 @@ internal class DeleteOperation : FileOperation
 /// Undoable import of a file or folder from outside the project. External
 /// imports carry no inbound references or sidecars, so the cascade does not
 /// apply. Source bytes are read directly (the source is outside the registry);
-/// the destination flows through the chokepoint for containment validation.
+/// the destination flows through the gateway for containment validation.
 /// </summary>
 internal class ImportExternalOperation : FileOperation
 {
@@ -360,6 +360,7 @@ internal class ImportExternalOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly IFileStorage _fileStorage;
+    private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
 
     public ImportExternalOperation(
@@ -367,12 +368,14 @@ internal class ImportExternalOperation : FileOperation
         ResourceKey dest,
         bool isFolder,
         IFileStorage fileStorage,
+        IFileSystem fileSystem,
         ILogger logger)
     {
         _sourcePath = sourcePath;
         _dest = dest;
         _isFolder = isFolder;
         _fileStorage = fileStorage;
+        _fileSystem = fileSystem;
         _logger = logger;
     }
 
@@ -380,7 +383,9 @@ internal class ImportExternalOperation : FileOperation
     {
         if (_isFolder)
         {
-            if (!Directory.Exists(_sourcePath))
+            var sourceFolderInfo = await _fileSystem.GetInfoAsync(_sourcePath);
+            if (sourceFolderInfo.IsFailure
+                || sourceFolderInfo.Value.Kind != StorageItemKind.Folder)
             {
                 return Result.Fail($"Source folder does not exist: '{_sourcePath}'");
             }
@@ -395,7 +400,9 @@ internal class ImportExternalOperation : FileOperation
             return await ImportFolderAsync(_sourcePath, _dest);
         }
 
-        if (!File.Exists(_sourcePath))
+        var sourceFileInfo = await _fileSystem.GetInfoAsync(_sourcePath);
+        if (sourceFileInfo.IsFailure
+            || sourceFileInfo.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Source file does not exist: '{_sourcePath}'");
         }
@@ -407,17 +414,14 @@ internal class ImportExternalOperation : FileOperation
             return Result.Fail($"Destination already exists: '{_dest}'");
         }
 
-        try
+        var readResult = await _fileSystem.ReadAllBytesAsync(_sourcePath);
+        if (readResult.IsFailure)
         {
-            var bytes = await File.ReadAllBytesAsync(_sourcePath);
-            return await _fileStorage.WriteAllBytesAsync(_dest, bytes);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to import external file from '{SourcePath}' to '{Destination}'", _sourcePath, _dest);
+            _logger.LogError($"Failed to read external source file '{_sourcePath}'. {readResult.DiagnosticReport}");
             return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_dest}'")
-                .WithException(ex);
+                .WithErrors(readResult);
         }
+        return await _fileStorage.WriteAllBytesAsync(_dest, readResult.Value);
     }
 
     public override async Task<Result> UndoAsync()
@@ -443,36 +447,41 @@ internal class ImportExternalOperation : FileOperation
             return createResult;
         }
 
-        try
+        var filesResult = await _fileSystem.EnumerateFilesAsync(sourceFolderPath, "*", recursive: false);
+        if (filesResult.IsFailure)
         {
-            foreach (var file in Directory.GetFiles(sourceFolderPath))
+            return Result.Fail(filesResult);
+        }
+        foreach (var file in filesResult.Value)
+        {
+            var fileName = Path.GetFileName(file);
+            var destinationFile = destinationFolder.Combine(fileName);
+            var readResult = await _fileSystem.ReadAllBytesAsync(file);
+            if (readResult.IsFailure)
             {
-                var fileName = Path.GetFileName(file);
-                var destinationFile = destinationFolder.Combine(fileName);
-                var bytes = await File.ReadAllBytesAsync(file);
-                var writeResult = await _fileStorage.WriteAllBytesAsync(destinationFile, bytes);
-                if (writeResult.IsFailure)
-                {
-                    return writeResult;
-                }
+                return Result.Fail(readResult);
             }
-
-            foreach (var subFolder in Directory.GetDirectories(sourceFolderPath))
+            var writeResult = await _fileStorage.WriteAllBytesAsync(destinationFile, readResult.Value);
+            if (writeResult.IsFailure)
             {
-                var folderName = Path.GetFileName(subFolder);
-                var destinationSubFolder = destinationFolder.Combine(folderName);
-                var recurseResult = await ImportFolderAsync(subFolder, destinationSubFolder);
-                if (recurseResult.IsFailure)
-                {
-                    return recurseResult;
-                }
+                return writeResult;
             }
         }
-        catch (Exception ex)
+
+        var foldersResult = await _fileSystem.EnumerateFoldersAsync(sourceFolderPath);
+        if (foldersResult.IsFailure)
         {
-            _logger.LogError(ex, "Failed to import external folder from '{SourceFolderPath}' to '{DestinationFolder}'", sourceFolderPath, destinationFolder);
-            return Result.Fail($"Failed to import external folder from '{sourceFolderPath}' to '{destinationFolder}'")
-                .WithException(ex);
+            return Result.Fail(foldersResult);
+        }
+        foreach (var subFolder in foldersResult.Value)
+        {
+            var folderName = Path.GetFileName(subFolder);
+            var destinationSubFolder = destinationFolder.Combine(folderName);
+            var recurseResult = await ImportFolderAsync(subFolder, destinationSubFolder);
+            if (recurseResult.IsFailure)
+            {
+                return recurseResult;
+            }
         }
 
         return Result.Ok();

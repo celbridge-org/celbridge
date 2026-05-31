@@ -1,10 +1,19 @@
 using Celbridge.FilePicker;
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 using Windows.Storage.Pickers;
 
 namespace Celbridge.UserInterface.Services;
 
 public class FilePickerService : IFilePickerService
 {
+    private readonly IFileSystem _fileSystem;
+
+    public FilePickerService(IFileSystem fileSystem)
+    {
+        _fileSystem = fileSystem;
+    }
+
     public async Task<Result<string>> PickSingleFileAsync(IEnumerable<string> extensions)
     {
         var fileOpenPicker = new FileOpenPicker
@@ -32,7 +41,9 @@ public class FilePickerService : IFilePickerService
             return Result<string>.Fail("No file selected to open");
         }
 
-        if (!File.Exists(file.Path))
+        var infoResult = await _fileSystem.GetInfoAsync(file.Path);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result<string>.Fail("Selected file does not exist");
         }

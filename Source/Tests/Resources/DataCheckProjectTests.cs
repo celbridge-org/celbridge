@@ -6,6 +6,7 @@ using Celbridge.Resources.Commands;
 using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
+using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
@@ -53,11 +54,12 @@ public class DataCheckProjectTests
             _messengerService,
             new ProjectTreeBuilder(fileIconService),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
-            _rootHandlerRegistry);
+            _rootHandlerRegistry,
+            TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         // ProjectCheckCommand writes its latest report to logs:project-check.log,
-        // so the chokepoint needs a logs: root or the write step fails.
+        // so the gateway needs a logs: root or the write step fails.
         _rootHandlerRegistry.RegisterRootHandler(
             new LogsRootHandler(_logsBackingFolder));
 
@@ -75,7 +77,8 @@ public class DataCheckProjectTests
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             _messengerService,
-            _workspaceWrapper);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
 
         var scanner = new ResourceScanner(

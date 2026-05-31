@@ -74,7 +74,7 @@ public partial class PackageTools
         var fileStorage = workspaceService.FileStorage;
 
         // Stage the downloaded zip under temp: so it lives in .celbridge/temp/
-        // (created at workspace load) and is reachable through the chokepoint.
+        // (created at workspace load) and is reachable through the gateway.
         var tempArchiveResource = new ResourceKey($"temp:{packageName}.zip");
         var writeArchiveResult = await fileStorage.WriteAllBytesAsync(tempArchiveResource, downloadResult.Value);
         if (writeArchiveResult.IsFailure)

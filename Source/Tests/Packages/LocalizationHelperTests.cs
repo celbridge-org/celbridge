@@ -1,4 +1,6 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -22,7 +24,8 @@ public class PackageLocalizationServiceTests
         // Project-origin packages; tests use Bundled-origin packages so the
         // wrapper is never dereferenced.
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        _service = new PackageLocalizationService(logger, workspaceWrapper);
+        var fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
+        _service = new PackageLocalizationService(logger, workspaceWrapper, fileSystem);
 
         _bundledPackage = new PackageInfo
         {

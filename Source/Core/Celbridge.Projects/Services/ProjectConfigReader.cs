@@ -1,4 +1,6 @@
+using Celbridge.FileSystem;
 using Celbridge.Logging;
+using Celbridge.Resources;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -20,10 +22,14 @@ public record ProjectMetadata(
 public class ProjectConfigReader
 {
     private readonly ILogger<ProjectConfigReader> _logger;
+    private readonly IFileSystem _fileSystem;
 
-    public ProjectConfigReader(ILogger<ProjectConfigReader> logger)
+    public ProjectConfigReader(
+        ILogger<ProjectConfigReader> logger,
+        IFileSystem fileSystem)
     {
         _logger = logger;
+        _fileSystem = fileSystem;
     }
 
     /// <summary>
@@ -37,7 +43,10 @@ public class ProjectConfigReader
             return Result<ProjectMetadata>.Fail("Project file path is empty");
         }
 
-        if (!File.Exists(projectFilePath))
+        // Probe and read synchronously through the gateway to preserve the
+        // existing sync caller contract.
+        var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(projectFilePath));
+        if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result<ProjectMetadata>.Fail($"Project file does not exist: '{projectFilePath}'");
         }
@@ -50,7 +59,20 @@ public class ProjectConfigReader
 
         try
         {
-            var text = File.ReadAllText(projectFilePath);
+            var readResult = SyncRunner.Run(() => _fileSystem.ReadAllTextAsync(projectFilePath));
+            if (readResult.IsFailure)
+            {
+                _logger.LogWarning($"Failed to read project file '{projectFilePath}': {readResult.DiagnosticReport}");
+
+                return Result<ProjectMetadata>.Ok(new ProjectMetadata(
+                    projectFilePath,
+                    projectName,
+                    projectFolderPath,
+                    CelbridgeVersion: null,
+                    IsConfigValid: false));
+            }
+
+            var text = readResult.Value;
             var parse = Toml.Parse(text);
 
             if (parse.HasErrors)

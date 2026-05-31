@@ -18,7 +18,6 @@ public static class ServiceConfiguration
         Entities.ServiceConfiguration.ConfigureServices(services);
         Explorer.ServiceConfiguration.ConfigureServices(services);
         Packages.ServiceConfiguration.ConfigureServices(services);
-        GenerativeAI.ServiceConfiguration.ConfigureServices(services);
         Inspector.ServiceConfiguration.ConfigureServices(services);
         Python.ServiceConfiguration.ConfigureServices(services);
         Resources.ServiceConfiguration.ConfigureServices(services);

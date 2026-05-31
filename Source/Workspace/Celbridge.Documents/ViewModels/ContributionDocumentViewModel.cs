@@ -1,4 +1,4 @@
-using System.Text;
+using Celbridge.FileSystem;
 using Celbridge.Packages;
 using Celbridge.Workspace;
 
@@ -13,6 +13,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly IFileSystem _fileSystem;
     private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
     /// <summary>
@@ -23,10 +24,12 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
     public ContributionDocumentViewModel(
         IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem,
         IEnumerable<IDocumentContentProvider> contentProviders)
     {
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _fileSystem = fileSystem;
         _contentProviders = contentProviders.ToList().AsReadOnly();
 
         EnableFileChangeMonitoring();
@@ -313,20 +316,15 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
         // Template lives outside the project tree (bundled with the app's
         // packages). Treat as embedded resource.
-        if (!File.Exists(templatePath))
+        var infoResult = await _fileSystem.GetInfoAsync(templatePath);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return string.Empty;
         }
 
-        try
-        {
-            await Task.CompletedTask;
-            return File.ReadAllText(templatePath, Encoding.UTF8);
-        }
-        catch
-        {
-            return string.Empty;
-        }
+        var readResult = await _fileSystem.ReadAllTextAsync(templatePath);
+        return readResult.IsSuccess ? readResult.Value : string.Empty;
     }
 
     /// <summary>

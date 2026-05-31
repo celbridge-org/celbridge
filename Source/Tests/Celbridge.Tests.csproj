@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Core\Celbridge.Server\Celbridge.Server.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
+    <ProjectReference Include="..\Core\Celbridge.FileSystem\Celbridge.FileSystem.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Commands\Celbridge.Commands.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Host\Celbridge.Host.csproj" />
     <ProjectReference Include="..\Core\Celbridge.Logging\Celbridge.Logging.csproj" />

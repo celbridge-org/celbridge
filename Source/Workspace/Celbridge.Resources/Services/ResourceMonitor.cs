@@ -1,19 +1,31 @@
+using System.Collections.Concurrent;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Workspace;
+using ThreadingTimer = System.Threading.Timer;
 using Timer = System.Timers.Timer;
 
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Monitors file system changes across every registered root with the IsWatched
-/// capability and schedules resource updates. Each watched root gets its own
-/// FileSystemWatcher; all watchers feed into a single shared debounce timer so
-/// rapid bursts of events coalesce.
+/// Watches each registered root that advertises IsWatched for file system
+/// changes and schedules debounced resource updates.
 /// </summary>
+/// <remarks>
+/// Uses FileSystemWatcher and File.GetAttributes directly because the gateway
+/// does not surface watcher events or the Windows hidden / system flags.
+/// </remarks>
+[AllowDirectFileSystemAccess]
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
     private const int UpdateDebounceMs = 250;
+
+    // A single File.WriteAllBytes on Windows generates multiple FileSystemWatcher
+    // Changed events (truncate, write, close). This per-path trailing-edge
+    // debounce coalesces that burst into one settled-state notification. The
+    // window also gives the writer time to release the handle before consumers
+    // probe size or read content.
+    private const int ChangedDebounceMs = 75;
 
     private sealed class WatchedRoot
     {
@@ -27,6 +39,20 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
     }
 
+    // Per-path debounce slot for Changed events. The handler is kept latest-wins
+    // because a path is always served by a single root in practice (the watchers
+    // are per-root); this just guards against pathological cross-root races.
+    private sealed class ChangedDebounceEntry
+    {
+        public IResourceRootHandler Handler;
+        public ThreadingTimer? Timer;
+
+        public ChangedDebounceEntry(IResourceRootHandler handler)
+        {
+            Handler = handler;
+        }
+    }
+
     private readonly ILogger<ResourceMonitor> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
@@ -37,6 +63,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private readonly List<WatchedRoot> _watchedRoots = new();
     private Timer? _updateDebounceTimer;
     private bool _isDisposed;
+
+    // Case-insensitive: Windows file paths are case-insensitive and watcher
+    // events can surface different casings for the same on-disk file.
+    private readonly ConcurrentDictionary<string, ChangedDebounceEntry> _changedDebounceEntries =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public ResourceMonitor(
         ILogger<ResourceMonitor> logger,
@@ -131,6 +162,15 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                 _updateDebounceTimer = null;
             }
 
+            // Drain any in-flight per-path Changed debounce timers. Dispose
+            // before clearing so a timer that fires mid-shutdown finds an
+            // empty dict and exits via the TryRemove guard.
+            foreach (var pair in _changedDebounceEntries)
+            {
+                pair.Value.Timer?.Dispose();
+            }
+            _changedDebounceEntries.Clear();
+
             foreach (var watchedRoot in _watchedRoots)
             {
                 var watcher = watchedRoot.Watcher;
@@ -174,9 +214,57 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return;
         }
 
-        OnResourceChanged(handler, e.FullPath);
+        EnqueueChangedEvent(handler, e.FullPath);
+    }
 
-        ScheduleResourceUpdateIfProjectRoot(handler);
+    // Per-path trailing-edge debounce: each Changed event resets the timer for
+    // its path. When the timer expires we emit a single ResourceChangedMessage
+    // for the settled state and schedule the project-tree refresh. Created /
+    // Deleted / Renamed are not debounced because they carry distinct semantics
+    // and listeners need each one.
+    private void EnqueueChangedEvent(IResourceRootHandler handler, string fullPath)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _changedDebounceEntries.AddOrUpdate(
+            fullPath,
+            addValueFactory: _ =>
+            {
+                var entry = new ChangedDebounceEntry(handler);
+                entry.Timer = new ThreadingTimer(
+                    callback: state => OnChangedDebounceElapsed(fullPath),
+                    state: null,
+                    dueTime: ChangedDebounceMs,
+                    period: Timeout.Infinite);
+                return entry;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                existing.Handler = handler;
+                existing.Timer?.Change(ChangedDebounceMs, Timeout.Infinite);
+                return existing;
+            });
+    }
+
+    private void OnChangedDebounceElapsed(string fullPath)
+    {
+        if (!_changedDebounceEntries.TryRemove(fullPath, out var entry))
+        {
+            return;
+        }
+
+        entry.Timer?.Dispose();
+
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        OnResourceChanged(entry.Handler, fullPath);
+        ScheduleResourceUpdateIfProjectRoot(entry.Handler);
     }
 
     private void OnFileSystemDeleted(IResourceRootHandler handler, FileSystemEventArgs e)
@@ -415,24 +503,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return true;
         }
 
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                var attributes = File.GetAttributes(fullPath);
-                if ((attributes & System.IO.FileAttributes.Hidden) != 0
-                    || (attributes & System.IO.FileAttributes.System) != 0)
-                {
-                    return true;
-                }
-            }
-            catch (Exception)
-            {
-                // File may have been deleted between the event firing and reading attributes.
-                // Treat as "ignore" to avoid race condition issues.
-                return true;
-            }
-        }
+        // Folder filters run before the disk-probing Windows attribute check so
+        // paths under .celbridge/ (SQLite db-journal files appear and vanish
+        // between the watcher event and our attribute read), bin/, obj/, etc.
+        // never reach File.GetAttributes and never throw FileNotFoundException
+        // in the catch handler below.
 
         // Only the project watcher needs to suppress the visible legacy "celbridge" folder
         // and the new hidden ".celbridge" folder at the project root. Non-project watchers
@@ -466,6 +541,25 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                 || part.Equals("__pycache__", StringComparison.OrdinalIgnoreCase)))
         {
             return true;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                var attributes = File.GetAttributes(fullPath);
+                if ((attributes & System.IO.FileAttributes.Hidden) != 0
+                    || (attributes & System.IO.FileAttributes.System) != 0)
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // File may have been deleted between the event firing and reading attributes.
+                // Treat as "ignore" to avoid race condition issues.
+                return true;
+            }
         }
 
         return false;

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 
 namespace Celbridge.WebHost.Services;
@@ -23,17 +24,19 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     private readonly TimeSpan _contentReadyTimeout;
     private readonly ICommandService _commandService;
     private readonly ILogger<DocumentWebViewToolBridge> _logger;
+    private readonly IFileSystem _fileSystem;
 
-    public DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger)
-        : this(commandService, logger, DefaultContentReadyTimeout) { }
+    public DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, IFileSystem fileSystem)
+        : this(commandService, logger, fileSystem, DefaultContentReadyTimeout) { }
 
     // Test-friendly constructor so unit tests can use a short timeout without
     // waiting through the 5-second default for every gated-but-never-ready case.
-    internal DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, TimeSpan contentReadyTimeout)
+    internal DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, IFileSystem fileSystem, TimeSpan contentReadyTimeout)
     {
         _contentReadyTimeout = contentReadyTimeout;
         _commandService = commandService;
         _logger = logger;
+        _fileSystem = fileSystem;
     }
 
     // Cap accumulated console history per resource. Older entries are evicted FIFO
@@ -69,16 +72,17 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
             }
 
             var fullPath = System.IO.Path.Combine(AppContext.BaseDirectory, ShimRelativePath);
-            try
-            {
-                _cachedShimScript = File.ReadAllText(fullPath);
-            }
-            catch (Exception ex)
+            // GetShimScript is sync (called during eval composition) and the shim
+            // is cached after the first read, so blocking on the async gateway
+            // call here is acceptable.
+            var readResult = SyncRunner.Run(() => _fileSystem.ReadAllTextAsync(fullPath));
+            if (readResult.IsFailure)
             {
                 throw new InvalidOperationException(
-                    $"Failed to load the WebView tool bridge shim from '{fullPath}'. The file is expected to ship with the host build output.",
-                    ex);
+                    $"Failed to load the WebView tool bridge shim from '{fullPath}'. The file is expected to ship with the host build output. {readResult.FirstErrorMessage}");
             }
+
+            _cachedShimScript = readResult.Value;
 
             return _cachedShimScript;
         }

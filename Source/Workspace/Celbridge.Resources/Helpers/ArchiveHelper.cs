@@ -27,7 +27,7 @@ public static class ArchiveHelper
 
     /// <summary>
     /// Adds a project-tree file to a zip archive under the specified entry name,
-    /// reading the source through the chokepoint so containment validation
+    /// reading the source through the gateway so containment validation
     /// applies uniformly to archive sources.
     /// </summary>
     public static async Task<Result> AddFileToArchiveAsync(

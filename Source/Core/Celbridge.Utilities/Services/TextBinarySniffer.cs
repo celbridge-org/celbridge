@@ -1,5 +1,7 @@
 using System.Buffers;
 using System.Text;
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 
 namespace Celbridge.Utilities;
 
@@ -10,6 +12,13 @@ namespace Celbridge.Utilities;
 public class TextBinarySniffer : ITextBinarySniffer
 {
     private const int SampleSize = 8192;
+
+    private readonly IFileSystem _fileSystem;
+
+    public TextBinarySniffer(IFileSystem fileSystem)
+    {
+        _fileSystem = fileSystem;
+    }
 
     /// <summary>
     /// Known binary file extensions for fast-path detection.
@@ -69,21 +78,22 @@ public class TextBinarySniffer : ITextBinarySniffer
             return Result<bool>.Fail("File path is null or empty");
         }
 
-        if (!File.Exists(path))
+        var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(path));
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return Result<bool>.Fail($"File does not exist: {path}");
         }
 
-        try
-        {
-            using var stream = File.OpenRead(path);
-            return Result<bool>.Ok(IsTextStream(stream));
-        }
-        catch (Exception ex)
+        var openResult = SyncRunner.Run(() => _fileSystem.OpenReadAsync(path));
+        if (openResult.IsFailure)
         {
             return Result<bool>.Fail($"Failed to read file: {path}")
-                .WithException(ex);
+                .WithErrors(openResult);
         }
+
+        using var stream = openResult.Value;
+        return Result<bool>.Ok(IsTextStream(stream));
     }
 
     /// <summary>

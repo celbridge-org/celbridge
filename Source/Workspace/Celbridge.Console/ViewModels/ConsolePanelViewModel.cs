@@ -113,7 +113,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
         // Snapshot the project file contents so subsequent changes can be
-        // detected. The hash read goes through the file storage chokepoint,
+        // detected. The hash read goes through the file storage gateway,
         // which is async; fire-and-forget here since the constructor is sync
         // and the snapshot is only consulted on later change events.
         _ = StoreProjectFileHashAsync();

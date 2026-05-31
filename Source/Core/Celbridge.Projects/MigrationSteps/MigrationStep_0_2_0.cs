@@ -71,7 +71,14 @@ public class MigrationStep_0_2_0 : IMigrationStep
         }
 
         // Read the original file
-        var originalText = await File.ReadAllTextAsync(context.ProjectFilePath);
+        var readResult = await context.FileSystem.ReadAllTextAsync(context.ProjectFilePath);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read project file: '{context.ProjectFilePath}'")
+                .WithErrors(readResult);
+        }
+
+        var originalText = readResult.Value;
 
         // Remove the old [shortcuts...] sections
         var updatedText = RemoveLegacyShortcutsSections(originalText);

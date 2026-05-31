@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -66,7 +67,8 @@ public class DocumentLayoutStoreTests
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            _workspaceWrapper);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
 
         _store = new DocumentLayoutStore(

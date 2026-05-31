@@ -4,7 +4,6 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
 using Celbridge.Search;
@@ -47,7 +46,7 @@ public interface IWorkspaceService
     IResourceService ResourceService { get; }
 
     /// <summary>
-    /// Returns the chokepoint file-system layer for project resources.
+    /// Returns the gateway file-system layer for project resources.
     /// </summary>
     IFileStorage FileStorage { get; }
 
@@ -65,7 +64,7 @@ public interface IWorkspaceService
 
     /// <summary>
     /// Returns the sidecar service: validation helpers plus read / mutate /
-    /// write operations over .cel sidecar files via the file-system chokepoint.
+    /// write operations over .cel sidecar files via the file-system gateway.
     /// </summary>
     ISidecarService SidecarService { get; }
 
@@ -108,11 +107,6 @@ public interface IWorkspaceService
     /// Returns the Activity Service associated with the workspace.
     /// </summary>
     IActivityService ActivityService { get; }
-
-    /// <summary>
-    /// Returns the Generative AI Service associated with the workspace.
-    /// </summary>
-    IGenerativeAIService GenerativeAIService { get; }
 
     /// <summary>
     /// Returns the Data Transfer Service associated with the workspace.

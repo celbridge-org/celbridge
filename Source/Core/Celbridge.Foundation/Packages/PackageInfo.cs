@@ -2,7 +2,7 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Discovery origin of a package. Determines whether file reads cross the
-/// IFileStorage chokepoint (Project) or stay on direct File.* IO (Bundled,
+/// IFileStorage gateway (Project) or stay on direct File.* IO (Bundled,
 /// until the bundled-from-assembly migration lands).
 /// </summary>
 public enum PackageOrigin
@@ -16,7 +16,7 @@ public enum PackageOrigin
     /// <summary>
     /// User package discovered under the project's packages/ folder. Read
     /// sites resolve a ResourceKey via IResourceRegistry and read through
-    /// IFileStorage so the chokepoint contract holds for every project-tree
+    /// IFileStorage so the gateway contract holds for every project-tree
     /// byte.
     /// </summary>
     Project

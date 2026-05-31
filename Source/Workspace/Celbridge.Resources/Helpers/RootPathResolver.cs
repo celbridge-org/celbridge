@@ -4,12 +4,14 @@ namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for a single
-/// root. Validates that resolved paths stay within the root's backing folder
-/// and do not traverse through symlinks, junctions, or other reparse points;
-/// maintains a cache of verified directory paths to avoid repeated filesystem
-/// stat calls. One instance serves exactly one root; its owning root handler
-/// constructs it with that root's name and backing location.
+/// root, validating that resolved paths stay within the root's backing folder
+/// and do not traverse symlinks, junctions, or other reparse points.
 /// </summary>
+/// <remarks>
+/// Reparse-point detection uses File.GetAttributes directly; the gateway does
+/// not surface reparse-point flags.
+/// </remarks>
+[AllowDirectFileSystemAccess]
 public class RootPathResolver
 {
     private readonly string _rootName;

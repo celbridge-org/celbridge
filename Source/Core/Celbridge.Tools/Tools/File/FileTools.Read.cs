@@ -27,7 +27,7 @@ public partial class FileTools
         var infoResult = await fileStorage.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
-            // Surface the chokepoint's failure verbatim so case-mismatch
+            // Surface the gateway's failure verbatim so case-mismatch
             // errors (which carry the canonical key) reach the caller. The
             // generic "resource not found" message only fires when the
             // resolve succeeded but the resource genuinely is not a file.

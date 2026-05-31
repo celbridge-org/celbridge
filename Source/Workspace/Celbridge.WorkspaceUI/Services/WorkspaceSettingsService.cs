@@ -1,15 +1,21 @@
+using Celbridge.FileSystem;
 using Celbridge.Projects;
+using Celbridge.Resources;
 
 namespace Celbridge.WorkspaceUI.Services;
 
 public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
 {
+    private readonly IFileSystem _fileSystem;
+
     public IWorkspaceSettings? WorkspaceSettings { get; private set; }
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
-    public WorkspaceSettingsService()
+    public WorkspaceSettingsService(IFileSystem fileSystem)
     {
+        _fileSystem = fileSystem;
+
         // Workaround so that this check is not performed when running tests
         if (ServiceLocator.ServiceProvider is not null)
         {
@@ -31,7 +37,11 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
         // Create the workspace settings database if it doesn't exist yet
         //
 
-        if (!File.Exists(databaseFilePath))
+        var infoResult = await _fileSystem.GetInfoAsync(databaseFilePath);
+        bool databaseExists = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File;
+
+        if (!databaseExists)
         {
             var createResult = await CreateWorkspaceSettingsAsync(databaseFilePath);
             if (createResult.IsFailure)
@@ -57,10 +67,10 @@ public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
     {
         try
         {
-            var createResult = await Services.WorkspaceSettings.CreateWorkspaceSettingsAsync(databasePath);
+            var createResult = await Services.WorkspaceSettings.CreateWorkspaceSettingsAsync(_fileSystem, databasePath);
             return createResult;
         }
-        catch (Exception ex) 
+        catch (Exception ex)
         {
             return Result.Fail($"An exception occurred when creating the workspace settings database.")
                 .WithException(ex); ;

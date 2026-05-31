@@ -1,4 +1,6 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
 
@@ -31,7 +33,7 @@ public class EditorStatePersistenceTests
 
         _databaseFilePath = Path.Combine(_workspaceFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
-        _workspaceSettingsService = new WorkspaceSettingsService();
+        _workspaceSettingsService = new WorkspaceSettingsService(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var createResult = await _workspaceSettingsService.CreateWorkspaceSettingsAsync(_databaseFilePath);
         createResult.IsSuccess.Should().BeTrue();
 

@@ -1,6 +1,5 @@
 using System.Text;
 using Celbridge.Logging;
-using Celbridge.Projects;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -8,13 +7,10 @@ namespace Celbridge.Resources.Services;
 
 public sealed class FileStorage : IFileStorage
 {
-    // Buffer size used when opening file streams. Matches the default System.IO
-    // FileStream buffer size when none is supplied.
-    private const int StreamBufferSize = 4096;
-
     private readonly ILogger<FileStorage> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystem _fileSystem;
     private readonly SidecarCascade _sidecarCascade;
     private readonly ReferenceRewriter _referenceRewriter;
 
@@ -26,13 +22,15 @@ public sealed class FileStorage : IFileStorage
     public FileStorage(
         ILogger<FileStorage> logger,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
-        _sidecarCascade = new SidecarCascade(logger, workspaceWrapper);
-        _referenceRewriter = new ReferenceRewriter(logger, workspaceWrapper, this);
+        _fileSystem = fileSystem;
+        _sidecarCascade = new SidecarCascade(logger, workspaceWrapper, fileSystem);
+        _referenceRewriter = new ReferenceRewriter(logger, workspaceWrapper, this, fileSystem);
     }
 
     public async Task<Result<byte[]>> ReadAllBytesAsync(ResourceKey resource)
@@ -45,13 +43,7 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        return await FileStorageInternals.RunWithRetryAsync<byte[]>(
-            _logger,
-            operationLabel: "Read",
-            resourceLabel: resource,
-            resourcePath: resourcePath,
-            operation: () => File.ReadAllBytesAsync(resourcePath),
-            shouldRetry: IsTransientReadIOException);
+        return await _fileSystem.ReadAllBytesAsync(resourcePath);
     }
 
     public async Task<Result<string>> ReadAllTextAsync(ResourceKey resource)
@@ -64,13 +56,7 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        return await FileStorageInternals.RunWithRetryAsync<string>(
-            _logger,
-            operationLabel: "Read",
-            resourceLabel: resource,
-            resourcePath: resourcePath,
-            operation: () => File.ReadAllTextAsync(resourcePath),
-            shouldRetry: IsTransientReadIOException);
+        return await _fileSystem.ReadAllTextAsync(resourcePath);
     }
 
     public async Task<Result<Stream>> OpenReadAsync(ResourceKey resource)
@@ -83,45 +69,22 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        return await FileStorageInternals.RunWithRetryAsync<Stream>(
-            _logger,
-            operationLabel: "Read",
-            resourceLabel: resource,
-            resourcePath: resourcePath,
-            operation: () => Task.FromResult<Stream>(new FileStream(
-                resourcePath,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read,
-                StreamBufferSize,
-                useAsync: true)),
-            shouldRetry: IsTransientReadIOException);
-    }
-
-    // Reads short-circuit FileNotFoundException and DirectoryNotFoundException
-    // so a genuinely missing file fails immediately rather than burning the
-    // retry budget on a hopeless case.
-    private static bool IsTransientReadIOException(IOException ex)
-    {
-        return ex is not FileNotFoundException
-            and not DirectoryNotFoundException;
+        return await _fileSystem.OpenReadAsync(resourcePath);
     }
 
     public Task<Result> WriteAllBytesAsync(ResourceKey resource, byte[] bytes)
     {
-        return WriteWithRetryAsync(resource, bytes);
+        return WriteBytesAsync(resource, bytes);
     }
 
     public Task<Result> WriteAllTextAsync(ResourceKey resource, string content)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
-        return WriteWithRetryAsync(resource, bytes);
+        return WriteBytesAsync(resource, bytes);
     }
 
     public async Task<Result<Stream>> OpenWriteAsync(ResourceKey resource)
     {
-        await Task.CompletedTask;
-
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -131,7 +94,7 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        var ensureParentResult = EnsureParentFolderExists(resourcePath, resource);
+        var ensureParentResult = await EnsureParentFolderExistsAsync(resourcePath, resource);
         if (ensureParentResult.IsFailure)
         {
             return Result.Fail(ensureParentResult);
@@ -146,12 +109,13 @@ public sealed class FileStorage : IFileStorage
             // Unlike the buffered-bytes write paths, this stream writes directly
             // to the destination: a crash or unhandled exception before the
             // stream is fully written and disposed truncates the file in place.
-            var stream = new FileStream(
+            const int streamBufferSize = 4096;
+            Stream stream = new FileStream(
                 resourcePath,
                 FileMode.Create,
                 FileAccess.Write,
                 FileShare.None,
-                StreamBufferSize,
+                streamBufferSize,
                 useAsync: true);
             return stream;
         }
@@ -188,8 +152,15 @@ public sealed class FileStorage : IFileStorage
         }
         var destPath = resolveDestResult.Value;
 
-        bool sourceIsFile = File.Exists(sourcePath);
-        bool sourceIsFolder = Directory.Exists(sourcePath);
+        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
+        if (sourceInfoResult.IsFailure)
+        {
+            return Result.Fail(sourceInfoResult);
+        }
+        var sourceInfo = sourceInfoResult.Value;
+
+        bool sourceIsFile = sourceInfo.Kind == StorageItemKind.File;
+        bool sourceIsFolder = sourceInfo.Kind == StorageItemKind.Folder;
         if (!sourceIsFile
             && !sourceIsFolder)
         {
@@ -203,10 +174,17 @@ public sealed class FileStorage : IFileStorage
         }
 
         bool isSameLocation = string.Equals(sourcePath, destPath, StringComparison.OrdinalIgnoreCase);
-        if (!isSameLocation
-            && (File.Exists(destPath) || Directory.Exists(destPath)))
+        if (!isSameLocation)
         {
-            return Result.Fail($"Destination already exists: '{dest}'");
+            var destInfoResult = await _fileSystem.GetInfoAsync(destPath);
+            if (destInfoResult.IsFailure)
+            {
+                return Result.Fail(destInfoResult);
+            }
+            if (destInfoResult.Value.Kind != StorageItemKind.NotFound)
+            {
+                return Result.Fail($"Destination already exists: '{dest}'");
+            }
         }
 
         var updatedReferencers = new List<ResourceKey>();
@@ -223,43 +201,47 @@ public sealed class FileStorage : IFileStorage
 
         // Capture descendant keys (folders only) before the disk move so the
         // post-move eager-notify can drop their stale source-side index
-        // entries. After Directory.Move the source path is gone and the
-        // enumeration is no longer possible.
-        var sourceDescendantKeys = sourceIsFolder
-            ? EnumerateDescendantKeys(rootHandlerRegistry, sourcePath)
-            : Array.Empty<ResourceKey>();
-
-        try
+        // entries. After Move the source path is gone and the enumeration
+        // is no longer possible.
+        IReadOnlyList<ResourceKey> sourceDescendantKeys;
+        if (sourceIsFolder)
         {
-            var destParent = Path.GetDirectoryName(destPath);
-            if (!string.IsNullOrEmpty(destParent)
-                && !Directory.Exists(destParent))
-            {
-                Directory.CreateDirectory(destParent);
-            }
+            sourceDescendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, sourcePath);
+        }
+        else
+        {
+            sourceDescendantKeys = Array.Empty<ResourceKey>();
+        }
 
-            if (sourceIsFile)
+        var destParent = Path.GetDirectoryName(destPath);
+        if (!string.IsNullOrEmpty(destParent))
+        {
+            var ensureParentResult = await _fileSystem.CreateFolderAsync(destParent);
+            if (ensureParentResult.IsFailure)
             {
-                // Clear read-only so the move itself is not blocked by an
-                // attribute the user has explicitly chosen to override by
-                // invoking a move on the file.
-                FileStorageInternals.ClearReadOnlyIfSet(sourcePath);
-                await FileStorageInternals.RetryTransientIOAsync(_logger, "Move", sourcePath, () => File.Move(sourcePath, destPath));
-            }
-            else
-            {
-                await FileStorageInternals.RetryTransientIOAsync(_logger, "Move", sourcePath, () => Directory.Move(sourcePath, destPath));
+                return Result.Fail($"Failed to create destination parent folder: '{destParent}'")
+                    .WithErrors(ensureParentResult);
             }
         }
-        catch (UnauthorizedAccessException ex)
+
+        Result moveResult;
+        if (sourceIsFile)
         {
-            return Result.Fail($"Failed to move resource '{source}' to '{dest}': access denied (permissions or file in use).")
-                .WithException(ex);
+            // Clear read-only so the move itself is not blocked by an
+            // attribute the user has explicitly chosen to override by
+            // invoking a move on the file.
+            _ = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            moveResult = await _fileSystem.MoveFileAsync(sourcePath, destPath);
         }
-        catch (Exception ex)
+        else
+        {
+            moveResult = await _fileSystem.MoveFolderAsync(sourcePath, destPath);
+        }
+
+        if (moveResult.IsFailure)
         {
             return Result.Fail($"Failed to move resource: '{source}' to '{dest}'")
-                .WithException(ex);
+                .WithErrors(moveResult);
         }
 
         var sidecarOutcome = await _sidecarCascade.TryMoveAsync(source, dest);
@@ -289,10 +271,8 @@ public sealed class FileStorage : IFileStorage
             }
         }
 
-        await Task.CompletedTask;
-
-        var moveResult = new MoveResult(updatedReferencers, skippedReferencers, sidecarOutcome);
-        return moveResult;
+        var result = new MoveResult(updatedReferencers, skippedReferencers, sidecarOutcome);
+        return result;
     }
 
     // Maps a descendant of the source folder to the equivalent key under the
@@ -340,8 +320,15 @@ public sealed class FileStorage : IFileStorage
         }
         var destPath = resolveDestResult.Value;
 
-        bool sourceIsFile = File.Exists(sourcePath);
-        bool sourceIsFolder = Directory.Exists(sourcePath);
+        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
+        if (sourceInfoResult.IsFailure)
+        {
+            return Result.Fail(sourceInfoResult);
+        }
+        var sourceInfo = sourceInfoResult.Value;
+
+        bool sourceIsFile = sourceInfo.Kind == StorageItemKind.File;
+        bool sourceIsFolder = sourceInfo.Kind == StorageItemKind.Folder;
         if (!sourceIsFile
             && !sourceIsFolder)
         {
@@ -354,40 +341,50 @@ public sealed class FileStorage : IFileStorage
             return Result.Fail($"Root '{dest.Root}' is read-only.");
         }
 
-        if (File.Exists(destPath)
-            || Directory.Exists(destPath))
+        var destInfoResult = await _fileSystem.GetInfoAsync(destPath);
+        if (destInfoResult.IsFailure)
+        {
+            return Result.Fail(destInfoResult);
+        }
+        if (destInfoResult.Value.Kind != StorageItemKind.NotFound)
         {
             return Result.Fail($"Destination already exists: '{dest}'");
         }
 
-        try
+        var destParent = Path.GetDirectoryName(destPath);
+        if (!string.IsNullOrEmpty(destParent))
         {
-            var destParent = Path.GetDirectoryName(destPath);
-            if (!string.IsNullOrEmpty(destParent)
-                && !Directory.Exists(destParent))
+            var ensureParentResult = await _fileSystem.CreateFolderAsync(destParent);
+            if (ensureParentResult.IsFailure)
             {
-                Directory.CreateDirectory(destParent);
-            }
-
-            if (sourceIsFile)
-            {
-                await FileStorageInternals.RetryTransientIOAsync(_logger, "Copy", sourcePath, () => File.Copy(sourcePath, destPath));
-            }
-            else
-            {
-                await FileStorageInternals.RetryTransientIOAsync(_logger, "Copy", sourcePath, () => CopyFolderRecursive(sourcePath, destPath));
+                return Result.Fail($"Failed to create destination parent folder: '{destParent}'")
+                    .WithErrors(ensureParentResult);
             }
         }
-        catch (Exception ex)
+
+        if (sourceIsFile)
         {
-            return Result.Fail($"Failed to copy resource: '{source}' to '{dest}'")
-                .WithException(ex);
+            var copyResult = await _fileSystem.CopyFileAsync(sourcePath, destPath);
+            if (copyResult.IsFailure)
+            {
+                return Result.Fail($"Failed to copy resource: '{source}' to '{dest}'")
+                    .WithErrors(copyResult);
+            }
+        }
+        else
+        {
+            var copyResult = await CopyFolderRecursiveAsync(sourcePath, destPath);
+            if (copyResult.IsFailure)
+            {
+                return Result.Fail($"Failed to copy resource: '{source}' to '{dest}'")
+                    .WithErrors(copyResult);
+            }
         }
 
         var sidecarOutcome = _sidecarCascade.TryCopy(source, dest);
 
-        var copyResult = new CopyResult(sidecarOutcome);
-        return copyResult;
+        var result = new CopyResult(sidecarOutcome);
+        return result;
     }
 
     public async Task<Result<DeleteResult>> DeleteAsync(ResourceKey source)
@@ -402,8 +399,15 @@ public sealed class FileStorage : IFileStorage
         }
         var sourcePath = resolveResult.Value;
 
-        bool sourceIsFile = File.Exists(sourcePath);
-        bool sourceIsFolder = Directory.Exists(sourcePath);
+        var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
+        if (sourceInfoResult.IsFailure)
+        {
+            return Result.Fail(sourceInfoResult);
+        }
+        var sourceInfo = sourceInfoResult.Value;
+
+        bool sourceIsFile = sourceInfo.Kind == StorageItemKind.File;
+        bool sourceIsFolder = sourceInfo.Kind == StorageItemKind.Folder;
         if (!sourceIsFile
             && !sourceIsFolder)
         {
@@ -420,37 +424,37 @@ public sealed class FileStorage : IFileStorage
 
         // Capture descendant keys (folders only) before the disk delete so the
         // post-delete eager-notify can drop their stale index entries too.
-        var descendantKeys = sourceIsFolder
-            ? EnumerateDescendantKeys(rootHandlerRegistry, sourcePath)
-            : Array.Empty<ResourceKey>();
+        IReadOnlyList<ResourceKey> descendantKeys;
+        if (sourceIsFolder)
+        {
+            descendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, sourcePath);
+        }
+        else
+        {
+            descendantKeys = Array.Empty<ResourceKey>();
+        }
 
-        try
+        Result deleteResult;
+        if (sourceIsFile)
         {
-            if (sourceIsFile)
-            {
-                // Clear read-only so File.Delete doesn't trip on the attribute.
-                // Matches OS Explorer's "delete read-only file?" behaviour
-                // (proceed when the user explicitly invokes delete).
-                FileStorageInternals.ClearReadOnlyIfSet(sourcePath);
-                await FileStorageInternals.RetryTransientIOAsync(_logger, "Delete", sourcePath, () => File.Delete(sourcePath));
-            }
-            else
-            {
-                // Recursive delete fails on any contained read-only file, so
-                // strip the attribute throughout the subtree first.
-                FileStorageInternals.ClearReadOnlyRecursive(sourcePath);
-                await FileStorageInternals.RetryTransientIOAsync(_logger, "Delete", sourcePath, () => Directory.Delete(sourcePath, recursive: true));
-            }
+            // Clear read-only so the delete doesn't trip on the attribute.
+            // Matches OS Explorer's "delete read-only file?" behaviour
+            // (proceed when the user explicitly invokes delete).
+            _ = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            deleteResult = await _fileSystem.DeleteFileAsync(sourcePath);
         }
-        catch (UnauthorizedAccessException ex)
+        else
         {
-            return Result.Fail($"Failed to delete resource '{source}': access denied (permissions or file in use).")
-                .WithException(ex);
+            // Recursive delete fails on any contained read-only file, so
+            // strip the attribute throughout the subtree first.
+            await ClearReadOnlyAttributesRecursiveAsync(sourcePath);
+            deleteResult = await _fileSystem.DeleteFolderAsync(sourcePath, recursive: true);
         }
-        catch (Exception ex)
+
+        if (deleteResult.IsFailure)
         {
             return Result.Fail($"Failed to delete resource: '{source}'")
-                .WithException(ex);
+                .WithErrors(deleteResult);
         }
 
         if (source.Root == ResourceKey.DefaultRoot)
@@ -468,40 +472,38 @@ public sealed class FileStorage : IFileStorage
             }
         }
 
-        var deleteResult = new DeleteResult(sidecarOutcome);
-        return deleteResult;
+        var result = new DeleteResult(sidecarOutcome);
+        return result;
     }
 
     // Returns the resource keys of every file inside a folder that exists on
     // disk. Used to capture descendant keys before a recursive delete or move
     // so eager-notify can drop their stale entries from the reference index.
-    private static IReadOnlyList<ResourceKey> EnumerateDescendantKeys(IRootHandlerRegistry rootHandlerRegistry, string folderPath)
+    private async Task<IReadOnlyList<ResourceKey>> EnumerateDescendantKeysAsync(IRootHandlerRegistry rootHandlerRegistry, string folderPath)
     {
         var keys = new List<ResourceKey>();
-        try
-        {
-            foreach (var file in Directory.EnumerateFiles(folderPath, "*", SearchOption.AllDirectories))
-            {
-                var keyResult = rootHandlerRegistry.GetResourceKey(file);
-                if (keyResult.IsSuccess)
-                {
-                    keys.Add(keyResult.Value);
-                }
-            }
-        }
-        catch
+        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: true);
+        if (enumerateResult.IsFailure)
         {
             // Best effort. A failure here just means descendant keys won't be
             // eager-notified; the watcher events still arrive eventually and
             // clean up the index.
+            return keys;
+        }
+
+        foreach (var file in enumerateResult.Value)
+        {
+            var keyResult = rootHandlerRegistry.GetResourceKey(file);
+            if (keyResult.IsSuccess)
+            {
+                keys.Add(keyResult.Value);
+            }
         }
         return keys;
     }
 
     public async Task<Result> CreateFolderAsync(ResourceKey folder)
     {
-        await Task.CompletedTask;
-
         var resolveResult = ResolvePath(folder);
         if (resolveResult.IsFailure)
         {
@@ -516,30 +518,28 @@ public sealed class FileStorage : IFileStorage
             return Result.Fail($"Root '{folder.Root}' is read-only.");
         }
 
-        if (File.Exists(folderPath))
+        var infoResult = await _fileSystem.GetInfoAsync(folderPath);
+        if (infoResult.IsFailure)
+        {
+            return Result.Fail(infoResult);
+        }
+        if (infoResult.Value.Kind == StorageItemKind.File)
         {
             return Result.Fail($"Cannot create folder; a file already exists at: '{folder}'");
         }
 
-        try
-        {
-            // Directory.CreateDirectory is idempotent: existing folders return
-            // the DirectoryInfo without error, and missing intermediate parents
-            // are created in the same call.
-            Directory.CreateDirectory(folderPath);
-            return Result.Ok();
-        }
-        catch (Exception ex)
+        var createResult = await _fileSystem.CreateFolderAsync(folderPath);
+        if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create folder: '{folder}'")
-                .WithException(ex);
+                .WithErrors(createResult);
         }
+
+        return Result.Ok();
     }
 
     public async Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource)
     {
-        await Task.CompletedTask;
-
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -548,48 +548,11 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        try
-        {
-            // File.Exists, FileInfo.Length, and FileInfo.LastWriteTimeUtc share
-            // the same underlying stat() call; populating the rich record costs
-            // no more than a plain existence probe.
-            var fileInfo = new FileInfo(resourcePath);
-            if (fileInfo.Exists)
-            {
-                var fileResult = new StorageItemInfo(
-                    Kind: StorageItemKind.File,
-                    Size: fileInfo.Length,
-                    ModifiedUtc: fileInfo.LastWriteTimeUtc);
-                return fileResult;
-            }
-
-            var directoryInfo = new DirectoryInfo(resourcePath);
-            if (directoryInfo.Exists)
-            {
-                var folderResult = new StorageItemInfo(
-                    Kind: StorageItemKind.Folder,
-                    Size: 0,
-                    ModifiedUtc: directoryInfo.LastWriteTimeUtc);
-                return folderResult;
-            }
-
-            var notFoundResult = new StorageItemInfo(
-                Kind: StorageItemKind.NotFound,
-                Size: 0,
-                ModifiedUtc: default);
-            return notFoundResult;
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to get info for resource: '{resource}'")
-                .WithException(ex);
-        }
+        return await _fileSystem.GetInfoAsync(resourcePath);
     }
 
     public async Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder)
     {
-        await Task.CompletedTask;
-
         var resolveResult = ResolvePath(folder);
         if (resolveResult.IsFailure)
         {
@@ -598,38 +561,70 @@ public sealed class FileStorage : IFileStorage
         }
         var folderPath = resolveResult.Value;
 
-        if (!Directory.Exists(folderPath))
+        var folderInfoResult = await _fileSystem.GetInfoAsync(folderPath);
+        if (folderInfoResult.IsFailure)
+        {
+            return Result.Fail(folderInfoResult);
+        }
+        if (folderInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return Result.Fail($"Resource is not a folder: '{folder}'");
         }
 
-        try
-        {
-            // EnumerateFileSystemInfos populates each entry's metadata in the
-            // single OS directory listing, avoiding a separate stat per child.
-            var directoryInfo = new DirectoryInfo(folderPath);
-            var entries = new List<FolderItem>();
-            foreach (var info in directoryInfo.EnumerateFileSystemInfos())
-            {
-                var childKey = folder.Combine(info.Name);
-
-                bool isFolder = info is DirectoryInfo;
-                long size = info is FileInfo file ? file.Length : 0;
-
-                entries.Add(new FolderItem(
-                    Resource: childKey,
-                    IsFolder: isFolder,
-                    Size: size,
-                    ModifiedUtc: info.LastWriteTimeUtc));
-            }
-
-            return entries;
-        }
-        catch (Exception ex)
+        var filesResult = await _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: false);
+        if (filesResult.IsFailure)
         {
             return Result.Fail($"Failed to enumerate folder: '{folder}'")
-                .WithException(ex);
+                .WithErrors(filesResult);
         }
+
+        var foldersResult = await _fileSystem.EnumerateFoldersAsync(folderPath);
+        if (foldersResult.IsFailure)
+        {
+            return Result.Fail($"Failed to enumerate folder: '{folder}'")
+                .WithErrors(foldersResult);
+        }
+
+        var entries = new List<FolderItem>();
+
+        foreach (var filePath in filesResult.Value)
+        {
+            var fileName = Path.GetFileName(filePath);
+            var childKey = folder.Combine(fileName);
+            var infoResult = await _fileSystem.GetInfoAsync(filePath);
+            if (infoResult.IsFailure)
+            {
+                continue;
+            }
+            var info = infoResult.Value;
+
+            entries.Add(new FolderItem(
+                Resource: childKey,
+                IsFolder: false,
+                Size: info.Size,
+                ModifiedUtc: info.ModifiedUtc));
+        }
+
+        foreach (var subFolderPath in foldersResult.Value)
+        {
+            var subFolderName = Path.GetFileName(subFolderPath);
+            var childKey = folder.Combine(subFolderName);
+            var infoResult = await _fileSystem.GetInfoAsync(subFolderPath);
+            if (infoResult.IsFailure)
+            {
+                continue;
+            }
+            var info = infoResult.Value;
+
+            entries.Add(new FolderItem(
+                Resource: childKey,
+                IsFolder: true,
+                Size: 0,
+                ModifiedUtc: info.ModifiedUtc));
+        }
+
+        IReadOnlyList<FolderItem> result = entries;
+        return Result<IReadOnlyList<FolderItem>>.Ok(result);
     }
 
     public async Task<Result<string>> ComputeHashAsync(ResourceKey resource)
@@ -661,28 +656,75 @@ public sealed class FileStorage : IFileStorage
             || handler.Capabilities.IsWritable;
     }
 
-    // Recursive folder copy used by the chokepoint's CopyAsync path. Stays
-    // internal to the FS layer so the chokepoint owns the destination structure.
-    private static void CopyFolderRecursive(string sourceFolder, string destFolder)
+    // Recursive folder copy used by CopyAsync. Stays here because the gateway
+    // exposes only single-file copy at this layer; recursive composition is a
+    // resource-layer concern (Phase 2 will hoist this into the typed copy result).
+    private async Task<Result> CopyFolderRecursiveAsync(string sourceFolder, string destFolder)
     {
-        Directory.CreateDirectory(destFolder);
+        var createResult = await _fileSystem.CreateFolderAsync(destFolder);
+        if (createResult.IsFailure)
+        {
+            return createResult;
+        }
 
-        foreach (var file in Directory.GetFiles(sourceFolder))
+        var filesResult = await _fileSystem.EnumerateFilesAsync(sourceFolder, "*", recursive: false);
+        if (filesResult.IsFailure)
+        {
+            return Result.Fail(filesResult);
+        }
+        foreach (var file in filesResult.Value)
         {
             var fileName = Path.GetFileName(file);
             var destFile = Path.Combine(destFolder, fileName);
-            File.Copy(file, destFile);
+            var copyResult = await _fileSystem.CopyFileAsync(file, destFile);
+            if (copyResult.IsFailure)
+            {
+                return copyResult;
+            }
         }
 
-        foreach (var subFolder in Directory.GetDirectories(sourceFolder))
+        var foldersResult = await _fileSystem.EnumerateFoldersAsync(sourceFolder);
+        if (foldersResult.IsFailure)
+        {
+            return Result.Fail(foldersResult);
+        }
+        foreach (var subFolder in foldersResult.Value)
         {
             var folderName = Path.GetFileName(subFolder);
             var destSubFolder = Path.Combine(destFolder, folderName);
-            CopyFolderRecursive(subFolder, destSubFolder);
+            var recursiveResult = await CopyFolderRecursiveAsync(subFolder, destSubFolder);
+            if (recursiveResult.IsFailure)
+            {
+                return recursiveResult;
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    // Recursive read-only clear before a recursive delete: Directory.Delete
+    // fails on any contained read-only file, so strip the attribute throughout
+    // the subtree first. Best-effort and silent on individual failures.
+    private async Task ClearReadOnlyAttributesRecursiveAsync(string folder)
+    {
+        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: true);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+        foreach (var file in enumerateResult.Value)
+        {
+            _ = await _fileSystem.SetAttributesAsync(file, FileSystemAttributes.ReadOnly, set: false);
         }
     }
 
-    private async Task<Result> WriteWithRetryAsync(ResourceKey resource, byte[] bytes)
+    // Writes bytes directly to the destination via the IFileSystem gateway.
+    // No staging or atomic-replace dance: the gateway's retry policy absorbs
+    // transient sharing violations, and a crash mid-write leaves the file
+    // truncated for that single resource (acceptable for a desktop editor where
+    // saves run continuously and the in-memory buffer is the source of truth).
+    // Watchers see a single Changed event per save.
+    private async Task<Result> WriteBytesAsync(ResourceKey resource, byte[] bytes)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -694,95 +736,48 @@ public sealed class FileStorage : IFileStorage
         }
         var resourcePath = resolveResult.Value;
 
-        var ensureParentResult = EnsureParentFolderExists(resourcePath, resource);
+        var ensureParentResult = await EnsureParentFolderExistsAsync(resourcePath, resource);
         if (ensureParentResult.IsFailure)
         {
             return ensureParentResult;
         }
 
-        // Stage all in-flight temp files in <project>/.celbridge/staging-fs/.
-        // Centralising them keeps user-visible folders clean of orphans after
-        // a crash, and the workspace wipes the folder on load to clear any
-        // stragglers from a prior session. The .celbridge folder is filtered
-        // by ResourceMonitor, so no spurious watcher events fire for the
-        // intermediate write.
-        var stagingFolder = Path.Combine(
-            resourceRegistry.ProjectFolderPath,
-            ProjectConstants.CelbridgeFolder,
-            ProjectConstants.StagingFsFolder);
-        try
+        // Clear read-only so the write is not blocked by an attribute the user
+        // already chose to override by saving.
+        _ = await _fileSystem.SetAttributesAsync(resourcePath, FileSystemAttributes.ReadOnly, set: false);
+
+        var writeResult = await _fileSystem.WriteAllBytesAsync(resourcePath, bytes);
+        if (writeResult.IsFailure)
         {
-            Directory.CreateDirectory(stagingFolder);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail($"Failed to create staging folder: '{stagingFolder}'")
-                .WithException(ex);
+            return Result.Fail($"Failed to write file: '{resource}'")
+                .WithErrors(writeResult);
         }
 
-        var runResult = await FileStorageInternals.RunWithRetryAsync<bool>(
-            _logger,
-            operationLabel: "Write",
-            resourceLabel: resource,
-            resourcePath: resourcePath,
-            operation: async () =>
-            {
-                await WriteAtomicAsync(_logger, resourcePath, stagingFolder, bytes);
-                return true;
-            });
-
-        return runResult.IsSuccess ? Result.Ok() : Result.Fail(runResult);
+        return Result.Ok();
     }
 
-    private static Result EnsureParentFolderExists(string resourcePath, ResourceKey resource)
+    private async Task<Result> EnsureParentFolderExistsAsync(string resourcePath, ResourceKey resource)
     {
         var parentFolder = Path.GetDirectoryName(resourcePath);
-        if (string.IsNullOrEmpty(parentFolder)
-            || Directory.Exists(parentFolder))
+        if (string.IsNullOrEmpty(parentFolder))
         {
             return Result.Ok();
         }
 
-        try
+        var infoResult = await _fileSystem.GetInfoAsync(parentFolder);
+        if (infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder)
         {
-            Directory.CreateDirectory(parentFolder);
             return Result.Ok();
         }
-        catch (Exception ex)
+
+        var createResult = await _fileSystem.CreateFolderAsync(parentFolder);
+        if (createResult.IsFailure)
         {
             return Result.Fail($"Failed to create parent folder for resource: '{resource}'")
-                .WithException(ex);
+                .WithErrors(createResult);
         }
-    }
 
-    // Writes bytes to a uniquely-named temp file inside the project's central
-    // staging folder, then atomically replaces the destination via File.Move.
-    // A unique filename per write prevents concurrent writers to the same
-    // destination from clobbering each other's intermediate state.
-    private static async Task WriteAtomicAsync(ILogger logger, string resourcePath, string stagingFolder, byte[] bytes)
-    {
-        var tempPath = Path.Combine(stagingFolder, Guid.NewGuid().ToString("N") + ".tmp");
-
-        try
-        {
-            await File.WriteAllBytesAsync(tempPath, bytes);
-            await FileStorageInternals.RetryTransientIOAsync(logger, "Atomic rename", resourcePath, () => File.Move(tempPath, resourcePath, overwrite: true));
-        }
-        catch
-        {
-            try
-            {
-                if (File.Exists(tempPath))
-                {
-                    File.Delete(tempPath);
-                }
-            }
-            catch
-            {
-                // Best-effort cleanup. The original exception describes the real failure.
-            }
-
-            throw;
-        }
+        return Result.Ok();
     }
 }

@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Runtime.Versioning;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Utilities;
 
@@ -14,10 +15,14 @@ public class PythonInstaller : IPythonInstaller
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string UVTempFileName = "uv.zip";
 
+    private readonly IFileSystem _fileSystem;
     private readonly ILogger<PythonInstaller> _logger;
 
-    public PythonInstaller(ILogger<PythonInstaller> logger)
+    public PythonInstaller(
+        IFileSystem fileSystem,
+        ILogger<PythonInstaller> logger)
     {
+        _fileSystem = fileSystem;
         _logger = logger;
     }
 
@@ -29,7 +34,7 @@ public class PythonInstaller : IPythonInstaller
             var localFolder = ApplicationData.Current.LocalFolder;
             var pythonFolderPath = Path.Combine(localFolder.Path, PythonFolderName);
 
-            bool needsReinstall = IsInstallRequired(pythonFolderPath, appVersion);
+            bool needsReinstall = await IsInstallRequiredAsync(pythonFolderPath, appVersion);
 
             if (needsReinstall)
             {
@@ -47,10 +52,13 @@ public class PythonInstaller : IPythonInstaller
         }
     }
 
-    private bool IsInstallRequired(string pythonFolderPath, string currentVersion)
+    private async Task<bool> IsInstallRequiredAsync(string pythonFolderPath, string currentVersion)
     {
         // If the python folder doesn't exist, we need to install
-        if (!Directory.Exists(pythonFolderPath))
+        var pythonFolderInfoResult = await _fileSystem.GetInfoAsync(pythonFolderPath);
+        bool pythonFolderExists = pythonFolderInfoResult.IsSuccess
+            && pythonFolderInfoResult.Value.Kind == StorageItemKind.Folder;
+        if (!pythonFolderExists)
         {
             _logger.LogDebug("Python reinstall required: pythonFolder does not exist at {Path}", pythonFolderPath);
             return true;
@@ -59,7 +67,10 @@ public class PythonInstaller : IPythonInstaller
         var installedVersionPath = Path.Combine(pythonFolderPath, InstalledVersionFileName);
 
         // If version file doesn't exist, we need to install
-        if (!File.Exists(installedVersionPath))
+        var installedVersionInfoResult = await _fileSystem.GetInfoAsync(installedVersionPath);
+        bool installedVersionExists = installedVersionInfoResult.IsSuccess
+            && installedVersionInfoResult.Value.Kind == StorageItemKind.File;
+        if (!installedVersionExists)
         {
             _logger.LogDebug("Python reinstall required: installed_version.txt missing at {Path}", installedVersionPath);
             return true;
@@ -68,8 +79,14 @@ public class PythonInstaller : IPythonInstaller
         // Read the installed version and compare.
         // The installed version file contains both the app version and the build version
         // (separated by a newline) so that changes to either trigger a reinstall.
-        var installedVersionContent = File.ReadAllText(installedVersionPath).Trim();
-        var expectedVersionContent = GetVersionContent(currentVersion);
+        var readResult = await _fileSystem.ReadAllTextAsync(installedVersionPath);
+        if (readResult.IsFailure)
+        {
+            _logger.LogDebug("Python reinstall required: installed_version.txt unreadable at {Path}", installedVersionPath);
+            return true;
+        }
+        var installedVersionContent = readResult.Value.Trim();
+        var expectedVersionContent = await GetVersionContentAsync(currentVersion);
 
         if (!string.Equals(expectedVersionContent, installedVersionContent, StringComparison.Ordinal))
         {
@@ -89,47 +106,40 @@ public class PythonInstaller : IPythonInstaller
     /// and compared on subsequent runs to detect when either the app or the Python
     /// package has changed.
     /// </summary>
-    private static string GetVersionContent(string appVersion)
+    private async Task<string> GetVersionContentAsync(string appVersion)
     {
+        // Non-critical: if we can't hash the wheel, the app version alone
+        // still triggers reinstalls on app updates.
         var wheelHash = "";
-        try
+        var installedLocation = Package.Current.InstalledLocation;
+        var assetsFolder = Path.Combine(installedLocation.Path, PythonAssetsFolder);
+        var enumerateFilesResult = await _fileSystem.EnumerateFilesAsync(assetsFolder, WheelFilePattern, recursive: false);
+        if (enumerateFilesResult.IsSuccess
+            && enumerateFilesResult.Value.Count > 0)
         {
-            var installedLocation = Package.Current.InstalledLocation;
-            var assetsFolder = Path.Combine(installedLocation.Path, PythonAssetsFolder);
-            var wheelFiles = Directory.GetFiles(assetsFolder, WheelFilePattern);
-            if (wheelFiles.Length > 0)
-            {
-                wheelHash = FileHashHelper.HashFileContents(wheelFiles[0]);
-            }
-        }
-        catch
-        {
-            // Non-critical: if we can't hash the wheel, the app version
-            // alone will still trigger reinstalls on app updates.
+            wheelHash = FileHashHelper.HashFileContents(enumerateFilesResult.Value[0]);
         }
 
         return $"{appVersion}\n{wheelHash}";
     }
 
     [SupportedOSPlatform("windows10.0.10240.0")]
-    private static async Task ReinstallAsync(StorageFolder localFolder, string pythonFolderPath, string currentVersion)
+    private async Task ReinstallAsync(StorageFolder localFolder, string pythonFolderPath, string currentVersion)
     {
         // Delete existing folder if it exists (handles upgrade scenario).
-        // A clean delete ensures no stale data remains from a previous install.
-        // Use retry logic as files may be locked by a previous Python process.
-        if (Directory.Exists(pythonFolderPath))
+        var pythonFolderInfoResult = await _fileSystem.GetInfoAsync(pythonFolderPath);
+        bool pythonFolderExists = pythonFolderInfoResult.IsSuccess
+            && pythonFolderInfoResult.Value.Kind == StorageItemKind.Folder;
+        if (pythonFolderExists)
         {
-            try
-            {
-                await DeleteDirectoryWithRetryAsync(pythonFolderPath);
-            }
-            catch (Exception ex)
+            var deleteResult = await _fileSystem.DeleteFolderAsync(pythonFolderPath, recursive: true);
+            if (deleteResult.IsFailure)
             {
                 throw new InvalidOperationException(
                     $"Failed to delete existing Python folder '{pythonFolderPath}'. " +
                     "A previous Python process may still be running with locked files. " +
                     "Close all Celbridge instances and try again.",
-                    ex);
+                    deleteResult.FirstException);
             }
         }
 
@@ -149,11 +159,11 @@ public class PythonInstaller : IPythonInstaller
         // This signals that the install completed successfully and includes both the app
         // version and the build version so that changes to either trigger a reinstall.
         var versionFile = Path.Combine(pythonFolderPath, InstalledVersionFileName);
-        var versionContent = GetVersionContent(currentVersion);
-        await File.WriteAllTextAsync(versionFile, versionContent);
+        var versionContent = await GetVersionContentAsync(currentVersion);
+        await _fileSystem.WriteAllTextAsync(versionFile, versionContent);
     }
 
-    private static async Task CopyStorageFolderAsync(StorageFolder sourceFolder, string destinationPath)
+    private async Task CopyStorageFolderAsync(StorageFolder sourceFolder, string destinationPath)
     {
         if (sourceFolder == null)
         {
@@ -165,16 +175,20 @@ public class PythonInstaller : IPythonInstaller
             throw new ArgumentException("Destination path must not be empty", nameof(destinationPath));
         }
 
-        Directory.CreateDirectory(destinationPath);
+        await _fileSystem.CreateFolderAsync(destinationPath);
 
         var files = await sourceFolder.GetFilesAsync();
         foreach (var file in files)
         {
             var targetFilePath = Path.Combine(destinationPath, file.Name);
+            // Buffer the source stream into memory then write through the
+            // filesystem abstraction. Python assets are small individual files
+            // (scripts and wheels), so loading them fully into memory is fine.
             using (var sourceStream = await file.OpenStreamForReadAsync())
-            using (var destinationStream = File.Create(targetFilePath))
+            using (var bufferStream = new MemoryStream())
             {
-                await sourceStream.CopyToAsync(destinationStream);
+                await sourceStream.CopyToAsync(bufferStream);
+                await _fileSystem.WriteAllBytesAsync(targetFilePath, bufferStream.ToArray());
             }
         }
 
@@ -184,34 +198,5 @@ public class PythonInstaller : IPythonInstaller
             var subfolderPath = Path.Combine(destinationPath, subfolder.Name);
             await CopyStorageFolderAsync(subfolder, subfolderPath);
         }
-    }
-
-    /// <summary>
-    /// Deletes a directory with retry logic to handle locked files.
-    /// Files may be locked by a previous Python process that hasn't fully exited yet.
-    /// </summary>
-    private static async Task DeleteDirectoryWithRetryAsync(string directoryPath, int maxRetries = 5, int delayMs = 500)
-    {
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                Directory.Delete(directoryPath, recursive: true);
-                return;
-            }
-            catch (UnauthorizedAccessException) when (attempt < maxRetries)
-            {
-                // Files may be locked - wait and retry
-                await Task.Delay(delayMs * attempt);
-            }
-            catch (IOException) when (attempt < maxRetries)
-            {
-                // Files may be in use - wait and retry
-                await Task.Delay(delayMs * attempt);
-            }
-        }
-
-        // Final attempt without catching - let it throw if it fails
-        Directory.Delete(directoryPath, recursive: true);
     }
 }

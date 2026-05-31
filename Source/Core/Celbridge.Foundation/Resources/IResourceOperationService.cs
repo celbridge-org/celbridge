@@ -14,7 +14,7 @@ public interface IBatchScope : IDisposable
 /// <summary>
 /// The workspace-scoped resource operation service. Layers session-local undo
 /// and redo, batched grouping, and soft-delete trash on top of the IFileStorage
-/// chokepoint. Every method names its target with a ResourceKey; external
+/// gateway. Every method names its target with a ResourceKey; external
 /// imports keep a string source path because the source lies outside the
 /// registry by definition.
 /// </summary>
@@ -54,20 +54,20 @@ public interface IResourceOperationService
     /// <summary>
     /// Imports a file from outside the project into a registry-addressable
     /// destination. The source path is taken as-is; the destination receives
-    /// containment validation through the chokepoint.
+    /// containment validation through the gateway.
     /// </summary>
     Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
     /// Imports a folder from outside the project into a registry-addressable
     /// destination. The source is enumerated recursively; each file lands at
-    /// its corresponding destination key through the chokepoint.
+    /// its corresponding destination key through the gateway.
     /// </summary>
     Task<Result> ImportExternalFolderAsync(string sourcePath, ResourceKey dest);
 
     /// <summary>
     /// Copies or moves the resource depending on the transfer mode. Dispatches
-    /// file vs folder internally via the chokepoint's GetInfoAsync probe.
+    /// file vs folder internally via the gateway's GetInfoAsync probe.
     /// </summary>
     Task<Result> TransferAsync(ResourceKey source, ResourceKey dest, DataTransferMode mode);
 

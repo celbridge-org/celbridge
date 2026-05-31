@@ -5,7 +5,7 @@ namespace Celbridge.Packages;
 /// <summary>
 /// Reader used for project packages. Reverse-resolves the absolute path to a
 /// ResourceKey via IResourceRegistry and routes every read through IFileStorage
-/// so the chokepoint contract holds for project-tree bytes.
+/// so the gateway contract holds for project-tree bytes.
 ///
 /// IPackageReader is sync to match its sync callers (PackageManifestLoader,
 /// PackageLocalizationService) but IFileStorage is genuinely async. Each call

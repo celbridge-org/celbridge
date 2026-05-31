@@ -1,5 +1,6 @@
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 
 namespace Celbridge.Tests.Resources;
 
@@ -249,7 +250,8 @@ public class ResourceClassifierTests
             new Celbridge.Messaging.Services.MessengerService(),
             new ProjectTreeBuilder(new Celbridge.UserInterface.Services.FileIconService()),
             classifier,
-            new RootHandlerRegistry());
+            new RootHandlerRegistry(),
+            TestFileSystem.CreateLocal());
         registry.InitializeProjectRoot(_projectFolderPath);
         return registry;
     }

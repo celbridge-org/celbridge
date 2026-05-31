@@ -1,6 +1,7 @@
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Tools;
 using Celbridge.Workspace;
 
@@ -39,7 +40,8 @@ public class WebViewScreenshotResolverTests
         _fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
     }
 
     [TearDown]

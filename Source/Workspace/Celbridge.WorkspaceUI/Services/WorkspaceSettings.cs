@@ -1,3 +1,5 @@
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 using Celbridge.WorkspaceUI.Models;
 using SQLite;
 using System.Text.Json;
@@ -119,7 +121,8 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
     }
 
-    public static async Task<Result> CreateWorkspaceSettingsAsync(string databasePath)
+    [AllowDirectFileSystemAccess]
+    public static async Task<Result> CreateWorkspaceSettingsAsync(IFileSystem fileSystem, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
@@ -129,12 +132,21 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
             var parentFolder = Path.GetDirectoryName(databasePath);
             Guard.IsNotNull(parentFolder);
 
-            if (!Directory.Exists(parentFolder))
+            var parentInfoResult = await fileSystem.GetInfoAsync(parentFolder);
+            bool parentExists = parentInfoResult.IsSuccess
+                && parentInfoResult.Value.Kind == StorageItemKind.Folder;
+
+            if (!parentExists)
             {
-                Directory.CreateDirectory(parentFolder);
+                var createFolderResult = await fileSystem.CreateFolderAsync(parentFolder);
+                if (createFolderResult.IsFailure)
+                {
+                    return createFolderResult;
+                }
 
 #if WINDOWS
-                // Hide the folder in windows explorer
+                // Hide the folder in windows explorer. File attribute mutation
+                // is outside the IFileSystem gateway scope.
                 var attributes = File.GetAttributes(parentFolder);
                 File.SetAttributes(parentFolder, attributes | System.IO.FileAttributes.Hidden);
 #endif

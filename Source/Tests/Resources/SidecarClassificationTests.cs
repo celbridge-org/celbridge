@@ -2,6 +2,7 @@ using Celbridge.Explorer.Services;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
 
 namespace Celbridge.Tests.Resources;
@@ -33,7 +34,8 @@ public class SidecarClassificationTests
             new MessengerService(),
             new ProjectTreeBuilder(new FileIconService()),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
-            new RootHandlerRegistry());
+            new RootHandlerRegistry(),
+            TestFileSystem.CreateLocal());
         _registry.InitializeProjectRoot(_projectFolderPath);
     }
 

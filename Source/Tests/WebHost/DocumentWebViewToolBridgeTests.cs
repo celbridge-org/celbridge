@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Celbridge.Commands;
+using Celbridge.FileSystem.Services;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 
@@ -10,6 +12,7 @@ public partial class DocumentWebViewToolBridgeTests
 {
     private ICommandService _commandService = null!;
     private ILogger<DocumentWebViewToolBridge> _logger = null!;
+    private IFileSystem _fileSystem = null!;
     private DocumentWebViewToolBridge _bridge = null!;
     private ResourceKey _resource;
 
@@ -18,6 +21,7 @@ public partial class DocumentWebViewToolBridgeTests
     {
         _commandService = Substitute.For<ICommandService>();
         _logger = Substitute.For<ILogger<DocumentWebViewToolBridge>>();
+        _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
 
         ResourceKey.TryCreate("docs/readme.md", out _resource).Should().BeTrue();
 
@@ -29,7 +33,7 @@ public partial class DocumentWebViewToolBridgeTests
             IsSupported: false,
             Reason: $"UNSUPPORTED:{_resource}"));
 
-        _bridge = new DocumentWebViewToolBridge(_commandService, _logger);
+        _bridge = new DocumentWebViewToolBridge(_commandService, _logger, _fileSystem);
     }
 
     private void StubSupport(WebViewToolSupport support)
@@ -114,7 +118,7 @@ public partial class DocumentWebViewToolBridgeTests
     {
         // Use a short content-ready timeout so the test does not wait through the
         // production default (5 seconds) on every run.
-        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, TimeSpan.FromMilliseconds(100));
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));
         fastBridge.Register(
             _resource,
             evalAsync: _ => Task.FromResult("\"ok\""),
@@ -152,7 +156,7 @@ public partial class DocumentWebViewToolBridgeTests
     {
         // Use a short content-ready timeout so the test does not hang on the
         // 5-second production default if the gate is not properly opened.
-        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, TimeSpan.FromMilliseconds(100));
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));
         fastBridge.Register(
             _resource,
             evalAsync: _ => Task.FromResult("\"ok\""),
@@ -173,7 +177,7 @@ public partial class DocumentWebViewToolBridgeTests
     [Test]
     public async Task NotifyContentLoading_AfterFailure_ClearsTheFailureReason()
     {
-        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, TimeSpan.FromMilliseconds(100));
+        var fastBridge = new DocumentWebViewToolBridge(_commandService, _logger, _fileSystem, TimeSpan.FromMilliseconds(100));
         fastBridge.Register(
             _resource,
             evalAsync: _ => Task.FromResult("\"ok\""),

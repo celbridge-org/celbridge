@@ -258,7 +258,7 @@ public sealed class SidecarService : ISidecarService
 
     // The shared read-modify-write engine behind every typed mutator. Loads the
     // current sidecar state into mutable working copies, runs the supplied
-    // mutation, then writes the composed result back through the chokepoint.
+    // mutation, then writes the composed result back through the gateway.
     // The pre-mutation compose is captured up front so the post-mutation compose
     // can be compared against it; when they match the write is skipped, so a
     // no-op mutate (AddTagAsync with an already-present tag, SetFieldAsync to

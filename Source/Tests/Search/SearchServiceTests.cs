@@ -1,5 +1,7 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Resources;
 using Celbridge.Search.Services;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -39,7 +41,7 @@ public class SearchServiceTests
         _searchService = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             _workspaceWrapper,
-            new TextBinarySniffer());
+            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())));
 
         // After construction, the workspace is "loaded" so SearchAsync proceeds past its early return.
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);

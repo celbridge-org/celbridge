@@ -11,6 +11,7 @@ public class ResourceRegistry : IResourceRegistry
     private readonly IProjectTreeBuilder _projectTreeBuilder;
     private readonly IResourceClassifier _resourceClassifier;
     private readonly RootHandlerRegistry _rootHandlerRegistry;
+    private readonly IFileSystem _fileSystem;
 
     // Sidecar tracking state, refreshed on each UpdateResourceRegistry pass.
     // The report is rebuilt atomically per pass so readers always see a coherent
@@ -43,13 +44,15 @@ public class ResourceRegistry : IResourceRegistry
         IMessengerService messengerService,
         IProjectTreeBuilder projectTreeBuilder,
         IResourceClassifier resourceClassifier,
-        RootHandlerRegistry rootHandlerRegistry)
+        RootHandlerRegistry rootHandlerRegistry,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
         _projectTreeBuilder = projectTreeBuilder;
         _resourceClassifier = resourceClassifier;
         _rootHandlerRegistry = rootHandlerRegistry;
+        _fileSystem = fileSystem;
     }
 
     public ResourceKey GetResourceKey(IResource resource)
@@ -122,8 +125,9 @@ public class ResourceRegistry : IResourceRegistry
         // Tree miss. Either the resource is new (not on disk yet — pass
         // through for create flows) or the case is wrong. Check disk to find
         // out which.
-        if (!File.Exists(absolutePath)
-            && !Directory.Exists(absolutePath))
+        var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(absolutePath));
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
             return Result.Ok();
         }
@@ -184,7 +188,7 @@ public class ResourceRegistry : IResourceRegistry
             // returns the report, which is swapped under the lock alongside
             // the tree reference. The root handler registry is handed in so
             // per-sidecar path resolution goes through the same reparse-point
-            // chokepoint as every other resource operation.
+            // gateway as every other resource operation.
             var sidecarReport = _resourceClassifier.ClassifyResources(newRoot, _rootHandlerRegistry);
 
             Volatile.Write(ref _projectFolder, newRoot);
@@ -285,7 +289,9 @@ public class ResourceRegistry : IResourceRegistry
             }
             var resourcePath = resolveResult.Value;
 
-            if (!File.Exists(resourcePath) && !Directory.Exists(resourcePath))
+            var infoResult = SyncRunner.Run(() => _fileSystem.GetInfoAsync(resourcePath));
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind == StorageItemKind.NotFound)
             {
                 return Result.Fail($"Resource does not exist: '{resourceKey}'");
             }
@@ -319,7 +325,7 @@ public class ResourceRegistry : IResourceRegistry
     /// Returns the actual case-sensitive path from the file system.
     /// Fails if the file does not exist.
     /// </summary>
-    private static Result<string> GetRealPath(string path)
+    private Result<string> GetRealPath(string path)
     {
         try
         {
@@ -353,17 +359,41 @@ public class ResourceRegistry : IResourceRegistry
             var currentPath = root;
             foreach (var segment in segments)
             {
-                // Try to find the actual entry with correct casing
-                var entries = Directory.GetFileSystemEntries(currentPath, segment);
+                // Try to find the actual entry with correct casing. Probe files
+                // matching the literal segment name, then fall back to folders
+                // when no file matches. Combines into the equivalent of
+                // Directory.GetFileSystemEntries(currentPath, segment).
+                string? matchedEntry = null;
 
-                if (entries.Length == 0)
+                var matchedFilesResult = SyncRunner.Run(() => _fileSystem.EnumerateFilesAsync(currentPath, segment, recursive: false));
+                if (matchedFilesResult.IsSuccess
+                    && matchedFilesResult.Value.Count > 0)
+                {
+                    matchedEntry = matchedFilesResult.Value[0];
+                }
+                else
+                {
+                    var matchedFoldersResult = SyncRunner.Run(() => _fileSystem.EnumerateFoldersAsync(currentPath));
+                    if (matchedFoldersResult.IsSuccess)
+                    {
+                        foreach (var folder in matchedFoldersResult.Value)
+                        {
+                            if (Path.GetFileName(folder).Equals(segment, StringComparison.OrdinalIgnoreCase))
+                            {
+                                matchedEntry = folder;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (matchedEntry is null)
                 {
                     // This shouldn't happen since we verified the path exists, but handle it gracefully
                     return Result<string>.Fail($"Path segment not found: '{segment}' in '{currentPath}'");
                 }
 
-                // Use the first match (there should only be one on case-insensitive systems)
-                currentPath = entries[0];
+                currentPath = matchedEntry;
             }
 
             return currentPath;

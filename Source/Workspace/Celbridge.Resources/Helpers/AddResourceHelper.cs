@@ -12,15 +12,18 @@ public class AddResourceHelper
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileTemplateService _fileTemplateService;
     private readonly ICommandService _commandService;
+    private readonly IFileSystem _fileSystem;
 
     public AddResourceHelper(
         IWorkspaceWrapper workspaceWrapper,
         IFileTemplateService fileTemplateService,
-        ICommandService commandService)
+        ICommandService commandService,
+        IFileSystem fileSystem)
     {
         _workspaceWrapper = workspaceWrapper;
         _fileTemplateService = fileTemplateService;
         _commandService = commandService;
+        _fileSystem = fileSystem;
     }
 
     /// <summary>
@@ -58,7 +61,7 @@ public class AddResourceHelper
 
         // Fail if the parent folder for a new file does not exist.
         // Folder creation is allowed to materialize missing intermediate
-        // ancestors via the chokepoint's idempotent CreateFolderAsync.
+        // ancestors via the gateway's idempotent CreateFolderAsync.
         if (resourceType == ResourceType.File)
         {
             var parentKey = destResource.GetParent();
@@ -75,7 +78,7 @@ public class AddResourceHelper
 
         var createResult = resourceType == ResourceType.File
             ? await CreateFileAsync(sourcePath, destResource, resourceOpService, fileStorage)
-            : await CreateFolderAsync(sourcePath, destResource, resourceOpService, fileStorage);
+            : await CreateFolderAsync(sourcePath, destResource, resourceOpService, fileStorage, _fileSystem);
 
         if (createResult.IsFailure)
         {
@@ -122,7 +125,7 @@ public class AddResourceHelper
         if (string.IsNullOrEmpty(sourcePath))
         {
             // Create a new empty file. The template service still consumes a
-            // path to discriminate by file extension; the chokepoint write
+            // path to discriminate by file extension; the gateway write
             // takes the resource key.
             var destPathResult = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ResolveResourcePath(destResource);
             if (destPathResult.IsFailure)
@@ -141,7 +144,9 @@ public class AddResourceHelper
         }
 
         // Copy from source path
-        if (!File.Exists(sourcePath))
+        var sourceFileInfo = await _fileSystem.GetInfoAsync(sourcePath);
+        if (sourceFileInfo.IsFailure
+            || sourceFileInfo.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Failed to create resource. Source file '{sourcePath}' does not exist.");
         }
@@ -153,7 +158,8 @@ public class AddResourceHelper
         string sourcePath,
         ResourceKey destResource,
         IResourceOperationService opService,
-        IFileStorage fileStorage)
+        IFileStorage fileStorage,
+        IFileSystem fileSystem)
     {
         var infoResult = await fileStorage.GetInfoAsync(destResource);
         if (infoResult.IsSuccess
@@ -175,7 +181,9 @@ public class AddResourceHelper
         }
 
         // Copy from source path
-        if (!Directory.Exists(sourcePath))
+        var sourceFolderInfo = await fileSystem.GetInfoAsync(sourcePath);
+        if (sourceFolderInfo.IsFailure
+            || sourceFolderInfo.Value.Kind != StorageItemKind.Folder)
         {
             return Result.Fail($"Failed to create resource. Source folder '{sourcePath}' does not exist.");
         }

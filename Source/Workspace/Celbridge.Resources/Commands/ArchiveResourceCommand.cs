@@ -48,7 +48,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         return result;
     }
 
-    // Recursive walk via the chokepoint to collect every descendant file
+    // Recursive walk via the gateway to collect every descendant file
     // together with the relative archive entry name. Mirrors the prior
     // Directory.GetFiles(..., AllDirectories) traversal but routes through
     // EnumerateFolderAsync so the read side honours the same containment

@@ -58,7 +58,7 @@ public partial class SpreadsheetTools : AgentToolBase
         return resourceKey;
     }
 
-    // Opens a read-only stream on the workbook via the file storage chokepoint.
+    // Opens a read-only stream on the workbook via the file storage gateway.
     // Caller disposes.
     private async Task<Result<Stream>> OpenWorkbookStreamAsync(ResourceKey resource)
     {

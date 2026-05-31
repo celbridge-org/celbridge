@@ -48,7 +48,7 @@ public class SearchService : ISearchService, IDisposable
     }
 
     // Decides whether a file should be included in a search. Probes the file
-    // through the chokepoint so the size check honours the same containment
+    // through the gateway so the size check honours the same containment
     // validation as the read that follows. Internal for the test suite.
     internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath)
     {
@@ -249,7 +249,7 @@ public class SearchService : ISearchService, IDisposable
                 return null;
             }
 
-            // Stream the file via the chokepoint so reads pick up the same
+            // Stream the file via the gateway so reads pick up the same
             // containment validation as writes and large files do not load
             // fully into memory.
             var openResult = await FileStorage.OpenReadAsync(resourceKey);

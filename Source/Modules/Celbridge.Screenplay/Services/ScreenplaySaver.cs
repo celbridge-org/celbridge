@@ -2,6 +2,7 @@ using Celbridge.Activities;
 using Celbridge.Dialog;
 using Celbridge.Entities;
 using Celbridge.Explorer;
+using Celbridge.FileSystem;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;
@@ -41,19 +42,22 @@ public class ScreenplaySaver
     private readonly IEntityService _entityService;
     private readonly IActivityService _activityService;
     private readonly IWorkspaceSettings _workspaceSettings;
+    private readonly IFileSystem _fileSystem;
 
     private record SceneData(ResourceKey SceneResource, string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
 
     public ScreenplaySaver(
         IMessengerService messengerService,
         IDialogService dialogService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem)
     {
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _entityService = workspaceWrapper.WorkspaceService.EntityService;
         _activityService = workspaceWrapper.WorkspaceService.ActivityService;
         _workspaceSettings = workspaceWrapper.WorkspaceService.WorkspaceSettings;
+        _fileSystem = fileSystem;
     }
 
     public async Task<Result> SaveScreenplay(ResourceKey screenplayResource)
@@ -80,7 +84,13 @@ public class ScreenplaySaver
             }
 
             // Find all .scene files in the screenplay folder
-            var sceneFiles = Directory.GetFiles(screenplayFolder, "*.scene", SearchOption.AllDirectories).ToList();
+            var enumerateResult = await _fileSystem.EnumerateFilesAsync(screenplayFolder, "*.scene", recursive: true);
+            if (enumerateResult.IsFailure)
+            {
+                return Result.Fail($"Failed to enumerate scene files in folder '{screenplayFolder}'")
+                    .WithErrors(enumerateResult);
+            }
+            var sceneFiles = enumerateResult.Value.ToList();
             if (sceneFiles.Count == 0)
             {
                 return Result.Fail($"No scene files found in folder '{screenplayFolder}'");

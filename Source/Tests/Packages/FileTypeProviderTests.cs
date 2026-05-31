@@ -1,9 +1,12 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
+using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -66,13 +69,16 @@ public class PackageServiceDocumentTypeTests
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
 
-        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
-        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper);
+        var fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
 
-        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper);
+        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
+        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
+
+        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper, fileSystem);
         _service = new PackageService(messengerService, registry);
     }
 

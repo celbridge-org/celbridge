@@ -1,10 +1,13 @@
 using Celbridge.Console;
+using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
+using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -62,13 +65,16 @@ public class PackageServiceTests
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
 
-        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
-        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper);
+        var fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
 
-        var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper);
+        var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
+        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
+
+        var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper, fileSystem);
         _service = new PackageService(_messengerService, registry);
     }
 
@@ -364,7 +370,7 @@ public class PackageServiceTests
         {
             Directory.CreateDirectory(secondFolder);
 
-            // Repoint the workspace-bound chokepoint at the second folder so the
+            // Repoint the workspace-bound gateway at the second folder so the
             // second discovery probes secondFolder/packages instead of the original.
             _resourceRegistry.ProjectFolderPath.Returns(secondFolder);
             _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>

@@ -192,7 +192,7 @@ public partial class FileTools
     }
 
     /// <summary>
-    /// Streams a file via the chokepoint's OpenReadAsync and returns it as a
+    /// Streams a file via the gateway's OpenReadAsync and returns it as a
     /// line array. Avoids loading the full content into memory and routes the
     /// read through containment validation. Returns an empty array on failure
     /// so callers can treat missing or unreadable files as zero matches.

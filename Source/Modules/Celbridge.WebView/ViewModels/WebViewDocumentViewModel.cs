@@ -82,7 +82,7 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
         // The .webview.cel file is a standalone .cel form: SidecarService.ReadAsync
         // treats the resource itself as the storage, parses the TOML frontmatter
-        // through SidecarHelper, and routes IO via the chokepoint so this read
+        // through SidecarHelper, and routes IO via the gateway so this read
         // coordinates with concurrent writes from the inspector panel.
         var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
         var readResult = await sidecarService.ReadAsync(FileResource);

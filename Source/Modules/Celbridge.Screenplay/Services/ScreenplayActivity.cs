@@ -426,8 +426,7 @@ public class ScreenplayActivity : IActivity
             var alertTitleText = _localizerService.GetString("Screenplay_LoadFailedTitle");
 
             string alertBodyText;
-            var exception = loadResult.FirstException;
-            if (exception != null && exception is IOException)
+            if (loadResult.HasException<IOException>())
             {
                 // Excel file is open in another application
                 alertBodyText = _localizerService.GetString("Screenplay_AccessErrorMessage");
@@ -466,8 +465,7 @@ public class ScreenplayActivity : IActivity
         if (saveResult.IsFailure)
         {
             string alertBodyText;
-            var exception = saveResult.FirstException;
-            if (exception != null && exception is IOException)
+            if (saveResult.HasException<IOException>())
             {
                 // Excel file is open in another application
                 alertBodyText = _localizerService.GetString("Screenplay_AccessErrorMessage");

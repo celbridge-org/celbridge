@@ -1,6 +1,8 @@
 using Celbridge.Commands;
+using Celbridge.FileSystem;
 using Celbridge.Navigation;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
@@ -18,6 +20,7 @@ public partial class MainMenuViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
+    private readonly IFileSystem _fileSystem;
     private readonly MainMenuUtils _mainMenuUtils;
 
     [ObservableProperty]
@@ -30,6 +33,7 @@ public partial class MainMenuViewModel : ObservableObject
         IEditorSettings editorSettings,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
+        IFileSystem fileSystem,
         MainMenuUtils mainMenuUtils)
     {
         _messengerService = messengerService;
@@ -38,6 +42,7 @@ public partial class MainMenuViewModel : ObservableObject
         _editorSettings = editorSettings;
         _workspaceWrapper = workspaceWrapper;
         _projectService = projectService;
+        _fileSystem = fileSystem;
         _mainMenuUtils = mainMenuUtils;
     }
 
@@ -137,9 +142,11 @@ public partial class MainMenuViewModel : ObservableObject
     /// <summary>
     /// Opens a specific project from the recent projects list.
     /// </summary>
-    public void OpenRecentProject(string projectFilePath)
+    public async Task OpenRecentProjectAsync(string projectFilePath)
     {
-        if (!File.Exists(projectFilePath))
+        var infoResult = await _fileSystem.GetInfoAsync(projectFilePath);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return;
         }

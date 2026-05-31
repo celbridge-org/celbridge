@@ -11,15 +11,18 @@ public sealed class TrashService : ITrashService
     private readonly ILogger<TrashService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystem _fileSystem;
 
     public TrashService(
         ILogger<TrashService> logger,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
     }
 
     private IResourceRegistry ResourceRegistry =>
@@ -51,8 +54,15 @@ public sealed class TrashService : ITrashService
         }
         var originalPath = resolveResult.Value;
 
-        bool isFile = File.Exists(originalPath);
-        bool isFolder = Directory.Exists(originalPath);
+        var infoResult = await _fileSystem.GetInfoAsync(originalPath);
+        if (infoResult.IsFailure)
+        {
+            return Result<TrashEntry>.Fail(infoResult);
+        }
+        var info = infoResult.Value;
+
+        bool isFile = info.Kind == StorageItemKind.File;
+        bool isFolder = info.Kind == StorageItemKind.Folder;
         if (!isFile
             && !isFolder)
         {
@@ -105,11 +115,15 @@ public sealed class TrashService : ITrashService
         if (sidecarKeyResult.IsSuccess)
         {
             var sidecarPathResult = ResourceRegistry.ResolveResourcePath(sidecarKeyResult.Value);
-            if (sidecarPathResult.IsSuccess
-                && File.Exists(sidecarPathResult.Value))
+            if (sidecarPathResult.IsSuccess)
             {
-                sidecarOriginalPath = sidecarPathResult.Value;
-                sidecarTrashPath = trashPath + SidecarHelper.Extension;
+                var sidecarInfoResult = await _fileSystem.GetInfoAsync(sidecarPathResult.Value);
+                if (sidecarInfoResult.IsSuccess
+                    && sidecarInfoResult.Value.Kind == StorageItemKind.File)
+                {
+                    sidecarOriginalPath = sidecarPathResult.Value;
+                    sidecarTrashPath = trashPath + SidecarHelper.Extension;
+                }
             }
         }
 
@@ -119,7 +133,9 @@ public sealed class TrashService : ITrashService
         if (entityService is not null)
         {
             var candidatePath = entityService.GetEntityDataPath(resource);
-            if (File.Exists(candidatePath))
+            var entityInfoResult = await _fileSystem.GetInfoAsync(candidatePath);
+            if (entityInfoResult.IsSuccess
+                && entityInfoResult.Value.Kind == StorageItemKind.File)
             {
                 entityDataOriginalPath = candidatePath;
                 var entityRelative = entityService.GetEntityDataRelativePath(resource);
@@ -127,30 +143,39 @@ public sealed class TrashService : ITrashService
             }
         }
 
-        try
+        _ = await _fileSystem.SetAttributesAsync(originalPath, FileSystemAttributes.ReadOnly, set: false);
+        var primaryMoveResult = await MoveFileWithDirectoryCreationAsync(originalPath, trashPath);
+        if (primaryMoveResult.IsFailure)
         {
-            FileStorageInternals.ClearReadOnlyIfSet(originalPath);
-            await MoveFileWithDirectoryCreationAsync(originalPath, trashPath);
+            _logger.LogError($"Failed to move resource to trash: '{resource}'. {primaryMoveResult.DiagnosticReport}");
+            return Result<TrashEntry>.Fail($"Failed to move resource to trash: '{resource}'")
+                .WithErrors(primaryMoveResult);
+        }
 
-            if (sidecarOriginalPath is not null
-                && sidecarTrashPath is not null)
+        if (sidecarOriginalPath is not null
+            && sidecarTrashPath is not null)
+        {
+            _ = await _fileSystem.SetAttributesAsync(sidecarOriginalPath, FileSystemAttributes.ReadOnly, set: false);
+            var sidecarMoveResult = await MoveFileWithDirectoryCreationAsync(sidecarOriginalPath, sidecarTrashPath);
+            if (sidecarMoveResult.IsFailure)
             {
-                FileStorageInternals.ClearReadOnlyIfSet(sidecarOriginalPath);
-                await MoveFileWithDirectoryCreationAsync(sidecarOriginalPath, sidecarTrashPath);
-            }
-
-            if (entityDataOriginalPath is not null
-                && entityDataTrashPath is not null)
-            {
-                FileStorageInternals.ClearReadOnlyIfSet(entityDataOriginalPath);
-                await MoveFileWithDirectoryCreationAsync(entityDataOriginalPath, entityDataTrashPath);
+                _logger.LogError($"Failed to move sidecar to trash: '{resource}'. {sidecarMoveResult.DiagnosticReport}");
+                return Result<TrashEntry>.Fail($"Failed to move sidecar to trash: '{resource}'")
+                    .WithErrors(sidecarMoveResult);
             }
         }
-        catch (Exception ex)
+
+        if (entityDataOriginalPath is not null
+            && entityDataTrashPath is not null)
         {
-            _logger.LogError(ex, $"Failed to move resource to trash: '{resource}'");
-            return Result<TrashEntry>.Fail($"Failed to move resource to trash: '{resource}'")
-                .WithException(ex);
+            _ = await _fileSystem.SetAttributesAsync(entityDataOriginalPath, FileSystemAttributes.ReadOnly, set: false);
+            var entityMoveResult = await MoveFileWithDirectoryCreationAsync(entityDataOriginalPath, entityDataTrashPath);
+            if (entityMoveResult.IsFailure)
+            {
+                _logger.LogError($"Failed to move entity data to trash: '{resource}'. {entityMoveResult.DiagnosticReport}");
+                return Result<TrashEntry>.Fail($"Failed to move entity data to trash: '{resource}'")
+                    .WithErrors(entityMoveResult);
+            }
         }
 
         var entityDataFiles = entityDataOriginalPath is not null && entityDataTrashPath is not null
@@ -179,22 +204,38 @@ public sealed class TrashService : ITrashService
         string trashBasePath,
         string trashId)
     {
-        var files = Directory.GetFiles(originalPath);
-        var directories = Directory.GetDirectories(originalPath);
-        bool wasEmpty = files.Length == 0
-            && directories.Length == 0;
+        var filesResult = await _fileSystem.EnumerateFilesAsync(originalPath, "*", recursive: false);
+        if (filesResult.IsFailure)
+        {
+            return Result<TrashEntry>.Fail($"Failed to enumerate folder for trash: '{resource}'")
+                .WithErrors(filesResult);
+        }
+        var foldersResult = await _fileSystem.EnumerateFoldersAsync(originalPath);
+        if (foldersResult.IsFailure)
+        {
+            return Result<TrashEntry>.Fail($"Failed to enumerate folder for trash: '{resource}'")
+                .WithErrors(foldersResult);
+        }
+        bool wasEmpty = filesResult.Value.Count == 0
+            && foldersResult.Value.Count == 0;
 
         var descendantKeys = new List<ResourceKey>();
         var entityDataFiles = new List<TrashedEntityDataFile>();
 
         if (!wasEmpty)
         {
-            // Walking once to gather descendant keys for messaging and entity-data
+            // Walk once to gather descendant keys for messaging and entity-data
             // pairs for trash. The trash folder lives outside the registry's reach,
-            // so direct System.IO here is deliberate; chokepoint dispatch would
+            // so direct enumeration here is intentional; gateway dispatch would
             // fail because the trash paths do not resolve to ResourceKeys.
             var entityService = EntityService;
-            foreach (var filePath in Directory.GetFiles(originalPath, "*", SearchOption.AllDirectories))
+            var recursiveFilesResult = await _fileSystem.EnumerateFilesAsync(originalPath, "*", recursive: true);
+            if (recursiveFilesResult.IsFailure)
+            {
+                return Result<TrashEntry>.Fail($"Failed to enumerate folder for trash: '{resource}'")
+                    .WithErrors(recursiveFilesResult);
+            }
+            foreach (var filePath in recursiveFilesResult.Value)
             {
                 var keyResult = ResourceRegistry.GetResourceKey(filePath);
                 if (keyResult.IsSuccess)
@@ -204,7 +245,9 @@ public sealed class TrashService : ITrashService
                     if (entityService is not null)
                     {
                         var entityDataPath = entityService.GetEntityDataPath(keyResult.Value);
-                        if (File.Exists(entityDataPath))
+                        var entityInfoResult = await _fileSystem.GetInfoAsync(entityDataPath);
+                        if (entityInfoResult.IsSuccess
+                            && entityInfoResult.Value.Kind == StorageItemKind.File)
                         {
                             var entityRelative = entityService.GetEntityDataRelativePath(keyResult.Value);
                             var entityTrashPath = Path.Combine(trashBasePath, entityRelative);
@@ -215,29 +258,38 @@ public sealed class TrashService : ITrashService
             }
         }
 
-        try
+        await ClearReadOnlyAttributesRecursiveAsync(originalPath);
+
+        if (wasEmpty)
         {
-            FileStorageInternals.ClearReadOnlyRecursive(originalPath);
-
-            if (wasEmpty)
+            var deleteResult = await _fileSystem.DeleteFolderAsync(originalPath, recursive: false);
+            if (deleteResult.IsFailure)
             {
-                Directory.Delete(originalPath);
-            }
-            else
-            {
-                foreach (var entityDataFile in entityDataFiles)
-                {
-                    await MoveFileWithDirectoryCreationAsync(entityDataFile.OriginalPath, entityDataFile.TrashPath);
-                }
-
-                await MoveDirectoryWithParentCreationAsync(originalPath, trashPath);
+                _logger.LogError($"Failed to remove empty folder for trash: '{resource}'. {deleteResult.DiagnosticReport}");
+                return Result<TrashEntry>.Fail($"Failed to move folder to trash: '{resource}'")
+                    .WithErrors(deleteResult);
             }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, $"Failed to move folder to trash: '{resource}'");
-            return Result<TrashEntry>.Fail($"Failed to move folder to trash: '{resource}'")
-                .WithException(ex);
+            foreach (var entityDataFile in entityDataFiles)
+            {
+                var entityMoveResult = await MoveFileWithDirectoryCreationAsync(entityDataFile.OriginalPath, entityDataFile.TrashPath);
+                if (entityMoveResult.IsFailure)
+                {
+                    _logger.LogError($"Failed to move entity data to trash: '{resource}'. {entityMoveResult.DiagnosticReport}");
+                    return Result<TrashEntry>.Fail($"Failed to move folder to trash: '{resource}'")
+                        .WithErrors(entityMoveResult);
+                }
+            }
+
+            var folderMoveResult = await MoveDirectoryWithParentCreationAsync(originalPath, trashPath);
+            if (folderMoveResult.IsFailure)
+            {
+                _logger.LogError($"Failed to move folder to trash: '{resource}'. {folderMoveResult.DiagnosticReport}");
+                return Result<TrashEntry>.Fail($"Failed to move folder to trash: '{resource}'")
+                    .WithErrors(folderMoveResult);
+            }
         }
 
         var entry = new TrashEntry(
@@ -257,115 +309,155 @@ public sealed class TrashService : ITrashService
 
     public async Task<Result> RestoreFromTrashAsync(TrashEntry entry)
     {
-        try
+        if (entry.WasFolder)
         {
-            if (entry.WasFolder)
+            if (entry.WasEmptyFolder)
             {
-                if (entry.WasEmptyFolder)
+                var createResult = await _fileSystem.CreateFolderAsync(entry.OriginalPath);
+                if (createResult.IsFailure)
                 {
-                    Directory.CreateDirectory(entry.OriginalPath);
-                }
-                else
-                {
-                    if (!Directory.Exists(entry.TrashPath))
-                    {
-                        return Result.Fail($"Trash folder does not exist: '{entry.TrashPath}'");
-                    }
-
-                    await MoveDirectoryWithParentCreationAsync(entry.TrashPath, entry.OriginalPath);
-
-                    foreach (var entityDataFile in entry.EntityDataFiles)
-                    {
-                        if (File.Exists(entityDataFile.TrashPath))
-                        {
-                            await MoveFileWithDirectoryCreationAsync(entityDataFile.TrashPath, entityDataFile.OriginalPath);
-                        }
-                    }
-
-                    CleanupEmptyParentDirectories(entry.TrashPath);
+                    return Result.Fail($"Failed to restore empty folder: '{entry.OriginalResource}'")
+                        .WithErrors(createResult);
                 }
             }
             else
             {
-                if (!File.Exists(entry.TrashPath))
+                var trashInfoResult = await _fileSystem.GetInfoAsync(entry.TrashPath);
+                if (trashInfoResult.IsFailure
+                    || trashInfoResult.Value.Kind != StorageItemKind.Folder)
                 {
-                    return Result.Fail($"Trash file does not exist: '{entry.TrashPath}'");
+                    return Result.Fail($"Trash folder does not exist: '{entry.TrashPath}'");
                 }
 
-                await MoveFileWithDirectoryCreationAsync(entry.TrashPath, entry.OriginalPath);
-
-                if (entry.SidecarOriginalPath is not null
-                    && entry.SidecarTrashPath is not null
-                    && File.Exists(entry.SidecarTrashPath))
+                var moveResult = await MoveDirectoryWithParentCreationAsync(entry.TrashPath, entry.OriginalPath);
+                if (moveResult.IsFailure)
                 {
-                    await MoveFileWithDirectoryCreationAsync(entry.SidecarTrashPath, entry.SidecarOriginalPath);
+                    return Result.Fail($"Failed to restore folder from trash: '{entry.OriginalResource}'")
+                        .WithErrors(moveResult);
                 }
 
                 foreach (var entityDataFile in entry.EntityDataFiles)
                 {
-                    if (File.Exists(entityDataFile.TrashPath))
+                    var trashEntityInfoResult = await _fileSystem.GetInfoAsync(entityDataFile.TrashPath);
+                    if (trashEntityInfoResult.IsSuccess
+                        && trashEntityInfoResult.Value.Kind == StorageItemKind.File)
                     {
-                        await MoveFileWithDirectoryCreationAsync(entityDataFile.TrashPath, entityDataFile.OriginalPath);
+                        var restoreResult = await MoveFileWithDirectoryCreationAsync(entityDataFile.TrashPath, entityDataFile.OriginalPath);
+                        if (restoreResult.IsFailure)
+                        {
+                            return Result.Fail($"Failed to restore entity data from trash: '{entry.OriginalResource}'")
+                                .WithErrors(restoreResult);
+                        }
                     }
                 }
 
-                CleanupEmptyParentDirectories(entry.TrashPath);
+                await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
+            }
+        }
+        else
+        {
+            var trashFileInfoResult = await _fileSystem.GetInfoAsync(entry.TrashPath);
+            if (trashFileInfoResult.IsFailure
+                || trashFileInfoResult.Value.Kind != StorageItemKind.File)
+            {
+                return Result.Fail($"Trash file does not exist: '{entry.TrashPath}'");
             }
 
-            return Result.Ok();
+            var moveResult = await MoveFileWithDirectoryCreationAsync(entry.TrashPath, entry.OriginalPath);
+            if (moveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to restore file from trash: '{entry.OriginalResource}'")
+                    .WithErrors(moveResult);
+            }
+
+            if (entry.SidecarOriginalPath is not null
+                && entry.SidecarTrashPath is not null)
+            {
+                var sidecarInfoResult = await _fileSystem.GetInfoAsync(entry.SidecarTrashPath);
+                if (sidecarInfoResult.IsSuccess
+                    && sidecarInfoResult.Value.Kind == StorageItemKind.File)
+                {
+                    var sidecarRestoreResult = await MoveFileWithDirectoryCreationAsync(entry.SidecarTrashPath, entry.SidecarOriginalPath);
+                    if (sidecarRestoreResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to restore sidecar from trash: '{entry.OriginalResource}'")
+                            .WithErrors(sidecarRestoreResult);
+                    }
+                }
+            }
+
+            foreach (var entityDataFile in entry.EntityDataFiles)
+            {
+                var trashEntityInfoResult = await _fileSystem.GetInfoAsync(entityDataFile.TrashPath);
+                if (trashEntityInfoResult.IsSuccess
+                    && trashEntityInfoResult.Value.Kind == StorageItemKind.File)
+                {
+                    var restoreResult = await MoveFileWithDirectoryCreationAsync(entityDataFile.TrashPath, entityDataFile.OriginalPath);
+                    if (restoreResult.IsFailure)
+                    {
+                        return Result.Fail($"Failed to restore entity data from trash: '{entry.OriginalResource}'")
+                            .WithErrors(restoreResult);
+                    }
+                }
+            }
+
+            await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to restore resource from trash: '{entry.OriginalResource}'");
-            return Result.Fail($"Failed to restore resource from trash: '{entry.OriginalResource}'")
-                .WithException(ex);
-        }
+
+        return Result.Ok();
     }
 
     public async Task<Result> PurgeAsync(TrashEntry entry)
     {
-        await Task.CompletedTask;
+        // Purge runs when an undo entry is evicted or the redo stack is
+        // cleared. It is best-effort cleanup; orphaned bytes inside the trash
+        // folder are wiped on the next workspace load. Logged at Warning on
+        // failure because a failure here can indicate a real problem (locked
+        // file, permissions, disk error) that the user benefits from seeing.
         try
         {
             if (entry.WasFolder)
             {
-                if (!entry.WasEmptyFolder
-                    && Directory.Exists(entry.TrashPath))
+                if (!entry.WasEmptyFolder)
                 {
-                    Directory.Delete(entry.TrashPath, recursive: true);
-                    CleanupEmptyParentDirectories(entry.TrashPath);
+                    var trashInfoResult = await _fileSystem.GetInfoAsync(entry.TrashPath);
+                    if (trashInfoResult.IsSuccess
+                        && trashInfoResult.Value.Kind == StorageItemKind.Folder)
+                    {
+                        var deleteResult = await _fileSystem.DeleteFolderAsync(entry.TrashPath, recursive: true);
+                        if (deleteResult.IsFailure)
+                        {
+                            _logger.LogWarning($"Best-effort trash purge failed for resource: '{entry.OriginalResource}'. {deleteResult.DiagnosticReport}");
+                        }
+                        await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
+                    }
                 }
 
                 foreach (var entityDataFile in entry.EntityDataFiles)
                 {
-                    DeleteFileIfExists(entityDataFile.TrashPath);
-                    CleanupEmptyParentDirectories(entityDataFile.TrashPath);
+                    await DeleteFileIfExistsAsync(entityDataFile.TrashPath);
+                    await CleanupEmptyParentDirectoriesAsync(entityDataFile.TrashPath);
                 }
             }
             else
             {
-                DeleteFileIfExists(entry.TrashPath);
+                await DeleteFileIfExistsAsync(entry.TrashPath);
 
                 if (entry.SidecarTrashPath is not null)
                 {
-                    DeleteFileIfExists(entry.SidecarTrashPath);
+                    await DeleteFileIfExistsAsync(entry.SidecarTrashPath);
                 }
 
                 foreach (var entityDataFile in entry.EntityDataFiles)
                 {
-                    DeleteFileIfExists(entityDataFile.TrashPath);
+                    await DeleteFileIfExistsAsync(entityDataFile.TrashPath);
                 }
 
-                CleanupEmptyParentDirectories(entry.TrashPath);
+                await CleanupEmptyParentDirectoriesAsync(entry.TrashPath);
             }
         }
         catch (Exception ex)
         {
-            // Purge runs when an undo entry is evicted or the redo stack is
-            // cleared. It is best-effort cleanup; orphaned bytes inside the trash
-            // folder are wiped on the next workspace load. Logged at Warning
-            // because a failure here can indicate a real problem (locked file,
-            // permissions, disk error) that the user benefits from seeing.
             _logger.LogWarning(ex, $"Best-effort trash purge failed for resource: '{entry.OriginalResource}'");
         }
 
@@ -373,45 +465,87 @@ public sealed class TrashService : ITrashService
     }
 
     // Move a file into the trash subtree, creating any missing parent folders
-    // first. Retries briefly on transient IOException for the sharing-violation
-    // race that follows AV / indexer / sync clients touching a newly-created file.
-    private async Task MoveFileWithDirectoryCreationAsync(string sourcePath, string destPath)
+    // first. The gateway's retry policy handles transient sharing violations
+    // from antivirus, indexers, and sync clients.
+    private async Task<Result> MoveFileWithDirectoryCreationAsync(string sourcePath, string destPath)
     {
         var destFolder = Path.GetDirectoryName(destPath)!;
-        Directory.CreateDirectory(destFolder);
-        await FileStorageInternals.RetryTransientIOAsync(_logger, "Trash move", sourcePath, () => File.Move(sourcePath, destPath));
+        var createResult = await _fileSystem.CreateFolderAsync(destFolder);
+        if (createResult.IsFailure)
+        {
+            return createResult;
+        }
+        return await _fileSystem.MoveFileAsync(sourcePath, destPath);
     }
 
-    private async Task MoveDirectoryWithParentCreationAsync(string sourcePath, string destPath)
+    private async Task<Result> MoveDirectoryWithParentCreationAsync(string sourcePath, string destPath)
     {
         var destParentFolder = Path.GetDirectoryName(destPath)!;
-        Directory.CreateDirectory(destParentFolder);
-        await FileStorageInternals.RetryTransientIOAsync(_logger, "Trash move", sourcePath, () => Directory.Move(sourcePath, destPath));
+        var createResult = await _fileSystem.CreateFolderAsync(destParentFolder);
+        if (createResult.IsFailure)
+        {
+            return createResult;
+        }
+        return await _fileSystem.MoveFolderAsync(sourcePath, destPath);
     }
 
-    private static void DeleteFileIfExists(string path)
+    private async Task DeleteFileIfExistsAsync(string path)
     {
-        if (File.Exists(path))
+        var infoResult = await _fileSystem.GetInfoAsync(path);
+        if (infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File)
         {
-            File.Delete(path);
+            var deleteResult = await _fileSystem.DeleteFileAsync(path);
+            _ = deleteResult;
+        }
+    }
+
+    private async Task ClearReadOnlyAttributesRecursiveAsync(string folder)
+    {
+        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: true);
+        if (enumerateResult.IsFailure)
+        {
+            return;
+        }
+        foreach (var file in enumerateResult.Value)
+        {
+            _ = await _fileSystem.SetAttributesAsync(file, FileSystemAttributes.ReadOnly, set: false);
         }
     }
 
     // Walk up from the start path removing every empty parent folder until
     // either a non-empty folder or a top-level boundary is hit. Trash bookkeeping
     // would otherwise accrue empty per-GUID folders after every purge.
-    private static void CleanupEmptyParentDirectories(string startPath)
+    private async Task CleanupEmptyParentDirectoriesAsync(string startPath)
     {
         try
         {
             var folder = Path.GetDirectoryName(startPath);
-            while (!string.IsNullOrEmpty(folder)
-                && Directory.Exists(folder))
+            while (!string.IsNullOrEmpty(folder))
             {
-                if (Directory.GetFiles(folder).Length == 0
-                    && Directory.GetDirectories(folder).Length == 0)
+                var folderInfoResult = await _fileSystem.GetInfoAsync(folder);
+                if (folderInfoResult.IsFailure
+                    || folderInfoResult.Value.Kind != StorageItemKind.Folder)
                 {
-                    Directory.Delete(folder);
+                    break;
+                }
+
+                var filesResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: false);
+                var foldersResult = await _fileSystem.EnumerateFoldersAsync(folder);
+                if (filesResult.IsFailure
+                    || foldersResult.IsFailure)
+                {
+                    break;
+                }
+
+                if (filesResult.Value.Count == 0
+                    && foldersResult.Value.Count == 0)
+                {
+                    var deleteResult = await _fileSystem.DeleteFolderAsync(folder, recursive: false);
+                    if (deleteResult.IsFailure)
+                    {
+                        break;
+                    }
                     folder = Path.GetDirectoryName(folder);
                 }
                 else

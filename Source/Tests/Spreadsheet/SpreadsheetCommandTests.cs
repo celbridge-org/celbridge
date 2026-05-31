@@ -4,6 +4,7 @@ using Celbridge.Resources.Services;
 using Celbridge.Spreadsheet;
 using Celbridge.Spreadsheet.Commands;
 using Celbridge.Spreadsheet.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -56,7 +57,8 @@ public class SpreadsheetCommandTests
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            _workspaceWrapper);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
     }
 

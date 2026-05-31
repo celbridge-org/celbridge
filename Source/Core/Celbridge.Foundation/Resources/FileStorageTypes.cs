@@ -95,35 +95,3 @@ public record FolderItem(
     bool IsFolder,
     long Size,
     DateTime ModifiedUtc);
-
-/// <summary>
-/// Discriminates the outcome of a GetInfoAsync probe.
-/// </summary>
-public enum StorageItemKind
-{
-    /// <summary>
-    /// The resource does not exist at the resolved path.
-    /// </summary>
-    NotFound,
-
-    /// <summary>
-    /// The resource exists and is a file.
-    /// </summary>
-    File,
-
-    /// <summary>
-    /// The resource exists and is a folder.
-    /// </summary>
-    Folder,
-}
-
-/// <summary>
-/// Metadata for a single resource, returned by GetInfoAsync. Size is the
-/// file size in bytes for File; 0 for Folder and NotFound. ModifiedUtc is
-/// the last-modified timestamp for File and Folder; default(DateTime) for
-/// NotFound.
-/// </summary>
-public record StorageItemInfo(
-    StorageItemKind Kind,
-    long Size,
-    DateTime ModifiedUtc);

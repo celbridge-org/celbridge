@@ -3,6 +3,7 @@ using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -50,12 +51,13 @@ public class DocumentViewModelTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, workspaceWrapper);
+        _fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, workspaceWrapper, TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(_fileStorage);
 
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
         services.AddSingleton(workspaceWrapper);
+        services.AddSingleton<IFileSystem>(TestFileSystem.CreateLocal());
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
         _vm = new TestDocumentViewModel(_fileStorage);
@@ -91,7 +93,7 @@ public class DocumentViewModelTests
     public async Task LoadDocument_ReturnsFailure_WhenFileIsMissing()
     {
         // Point the registry at a path that doesn't exist on disk so the
-        // chokepoint-routed read fails. Setting FilePath alone is not enough
+        // gateway-routed read fails. Setting FilePath alone is not enough
         // because the read goes through ResolveResourcePath(FileResource).
         var missingPath = Path.Combine(_tempFolder, "nonexistent.md");
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
@@ -144,7 +146,7 @@ public class DocumentViewModelTests
         var failingWrapper = Substitute.For<IWorkspaceWrapper>();
         failingWrapper.WorkspaceService.Returns(failingWorkspaceService);
 
-        var failingFileSystem = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, failingWrapper);
+        var failingFileSystem = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, failingWrapper, TestFileSystem.CreateLocal());
 
         var failingVm = new TestDocumentViewModel(failingFileSystem)
         {
@@ -264,7 +266,7 @@ public class DocumentViewModelTests
     public async Task OnResourceChanged_DoesNotRaiseReload_AfterOwnSaveCompletes()
     {
         // After we save, the cache holds the size + mtime of our own write.
-        // A watcher event for that same write (the self-event the chokepoint's
+        // A watcher event for that same write (the self-event the gateway's
         // atomic write produces) probes the disk, finds the metadata unchanged
         // from the cache, and returns without raising ReloadRequested. This is
         // the test that proves the Excel-flash regression is gone.

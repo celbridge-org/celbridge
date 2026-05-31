@@ -146,7 +146,7 @@ public class DocumentEditorPreferenceStoreTests
     {
         // The sidecar file itself does not have its own sidecar pairing; the
         // store must not call ReadAsync on a sidecar resource (which would
-        // recurse pointlessly through the chokepoint).
+        // recurse pointlessly through the gateway).
         _sidecarService.IsSidecarKey(Arg.Any<ResourceKey>()).Returns(true);
 
         var result = await _store.GetSidecarPreferenceAsync(new ResourceKey("doc.cel"));

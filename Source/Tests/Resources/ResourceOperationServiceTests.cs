@@ -4,6 +4,7 @@ using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -87,18 +88,21 @@ public class ResourceOperationServiceTests
         _fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            _workspaceWrapper);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(_fileStorage);
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
             Substitute.For<IMessengerService>(),
-            _workspaceWrapper);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.TrashService.Returns(_trashService);
 
         _operationService = new ResourceOperationService(
             Substitute.For<ILogger<ResourceOperationService>>(),
-            _workspaceWrapper);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
     }
 
     [TearDown]

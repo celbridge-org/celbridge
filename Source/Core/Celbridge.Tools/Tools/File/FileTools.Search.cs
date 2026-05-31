@@ -29,7 +29,7 @@ public partial class FileTools
         var isFolderSearch = string.Equals(type, "folder", StringComparison.OrdinalIgnoreCase);
 
         // When the pattern carries a non-default root prefix (logs:, temp:), walk
-        // that root's filesystem tree via the chokepoint. Patterns with no prefix
+        // that root's filesystem tree via the gateway. Patterns with no prefix
         // or the project: prefix fall through to the existing in-memory tree path.
         var patternRoot = ExtractRootPrefix(pattern);
         if (patternRoot is not null

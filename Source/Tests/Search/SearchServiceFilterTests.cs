@@ -1,7 +1,10 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Search.Services;
+using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Search;
@@ -32,17 +35,18 @@ public class SearchServiceFilterTests
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
         workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
-        // Wire a real FileStorage so size + existence probes hit disk through the chokepoint.
+        // Wire a real FileStorage so size + existence probes hit disk through the gateway.
         var fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
         workspaceService.FileStorage.Returns(fileStorage);
 
         _service = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
             workspaceWrapper,
-            new TextBinarySniffer());
+            new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>())));
     }
 
     [TearDown]

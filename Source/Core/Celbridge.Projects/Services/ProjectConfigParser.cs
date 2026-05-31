@@ -1,4 +1,6 @@
 using System.Globalization;
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -18,14 +20,34 @@ public static class ProjectConfigParser
     /// </summary>
     public static Result<ProjectConfig> ParseFromFile(string configFilePath)
     {
+        // Static class cannot receive DI, so fall back to the service locator
+        // to acquire the file system gateway.
+        var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+        return ParseFromFile(configFilePath, fileSystem);
+    }
+
+    /// <summary>
+    /// Parses a project config from a .celbridge file using the supplied file system.
+    /// Returns an empty config if the file doesn't exist.
+    /// </summary>
+    public static Result<ProjectConfig> ParseFromFile(string configFilePath, IFileSystem fileSystem)
+    {
         try
         {
-            if (!File.Exists(configFilePath))
+            var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(configFilePath));
+            if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
             {
                 return Result<ProjectConfig>.Ok(new ProjectConfig());
             }
 
-            var text = File.ReadAllText(configFilePath);
+            var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(configFilePath));
+            if (readResult.IsFailure)
+            {
+                return Result<ProjectConfig>.Fail($"Failed to read TOML file: {configFilePath}")
+                    .WithErrors(readResult);
+            }
+
+            var text = readResult.Value;
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
             {

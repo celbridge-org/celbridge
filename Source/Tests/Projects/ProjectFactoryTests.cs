@@ -1,3 +1,4 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Tests.Migration.TestHelpers;
@@ -11,13 +12,15 @@ namespace Celbridge.Tests.Projects;
 public class ProjectFactoryTests
 {
     private ILogger<ProjectFactory> _mockLogger = null!;
+    private IFileSystem _fileSystem = null!;
     private ProjectFactory _factory = null!;
 
     [SetUp]
     public void Setup()
     {
         _mockLogger = MigrationTestHelper.CreateMockLogger<ProjectFactory>();
-        _factory = new ProjectFactory(_mockLogger);
+        _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
+        _factory = new ProjectFactory(_mockLogger, _fileSystem);
     }
 
     #region Input Validation Tests

@@ -29,7 +29,6 @@
     <ProjectReference Include="..\Celbridge.Entities\Celbridge.Entities.csproj" />
     <ProjectReference Include="..\Celbridge.Explorer\Celbridge.Explorer.csproj" />
     <ProjectReference Include="..\Celbridge.Packages\Celbridge.Packages.csproj" />
-    <ProjectReference Include="..\Celbridge.GenerativeAI\Celbridge.GenerativeAI.csproj" />
     <ProjectReference Include="..\Celbridge.Inspector\Celbridge.Inspector.csproj" />
     <ProjectReference Include="..\Celbridge.Python\Celbridge.Python.csproj" />
     <ProjectReference Include="..\Celbridge.Resources\Celbridge.Resources.csproj" />

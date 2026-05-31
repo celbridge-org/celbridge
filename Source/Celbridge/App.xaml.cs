@@ -10,6 +10,8 @@ using Celbridge.WebHost;
 using Microsoft.Extensions.Localization;
 
 #if WINDOWS
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Windows.ApplicationModel.Activation;
 #endif
@@ -32,12 +34,19 @@ public partial class App : Application
     private FullscreenToolbar? _fullscreenToolbar;
 #endif
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         // Catch all types of unhandled exceptions
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         this.UnhandledException += OnAppUnhandledException;
+
+#if DEBUG
+        // Log a one-line entry for every first-chance exception in the
+        // process, naming the throw site. Helps trace the "Exception thrown"
+        // lines that the debugger surfaces back to a specific call site.
+        Celbridge.Logging.FirstChanceExceptionLogger.Install();
+#endif
 
         SetupLoggingEnvironment();
 
@@ -150,7 +159,10 @@ public partial class App : Application
                 {
                     var projectFile = storageFile.Path;
                     logger.LogDebug($"Launched with project file: {projectFile}");
-                    if (File.Exists(projectFile))
+                    var fileSystem = Host.Services.GetRequiredService<IFileSystem>();
+                    var projectFileInfo = await fileSystem.GetInfoAsync(projectFile);
+                    if (projectFileInfo.IsSuccess
+                        && projectFileInfo.Value.Kind == StorageItemKind.File)
                     {
                         var editorSettings = Host.Services.GetRequiredService<IEditorSettings>();
                         editorSettings.PreviousProject = projectFile;
@@ -285,6 +297,7 @@ public partial class App : Application
     {
         Server.ServiceConfiguration.ConfigureServices(services);
         Commands.ServiceConfiguration.ConfigureServices(services);
+        FileSystem.ServiceConfiguration.ConfigureServices(services);
         Logging.ServiceConfiguration.ConfigureServices(services);
         Messaging.ServiceConfiguration.ConfigureServices(services);
         Modules.ServiceConfiguration.ConfigureServices(services);

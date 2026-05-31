@@ -5,9 +5,11 @@ using System.Runtime.Versioning;
 using System.Text;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Console;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Utilities;
@@ -37,6 +39,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IPythonInstaller _pythonInstaller;
+    private readonly IFileSystem _fileSystem;
     private readonly ILogger<PythonService> _logger;
     private readonly ITcpTransport _tcpTransport;
     private CancellationTokenSource? _rpcCancellationTokenSource;
@@ -53,6 +56,7 @@ public class PythonService : IPythonService, IDisposable
         IMessengerService messengerService,
         IFeatureFlags featureFlags,
         IPythonInstaller pythonInstaller,
+        IFileSystem fileSystem,
         ILogger<PythonService> logger,
         ITcpTransport tcpTransport)
     {
@@ -63,6 +67,7 @@ public class PythonService : IPythonService, IDisposable
         _messengerService = messengerService;
         _featureFlags = featureFlags;
         _pythonInstaller = pythonInstaller;
+        _fileSystem = fileSystem;
         _logger = logger;
         _tcpTransport = tcpTransport;
     }
@@ -110,7 +115,7 @@ public class PythonService : IPythonService, IDisposable
             // Load the saved fingerprint once for use in both the pre-install check
             // and the offline mode comparison later.
             var cacheDir = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder);
-            var savedFingerprint = LoadSavedFingerprint(cacheDir);
+            var savedFingerprint = await LoadSavedFingerprintAsync(cacheDir);
 
             // If no fingerprint file exists, delete the installer's version marker BEFORE
             // the installer runs. This ensures the installer re-extracts assets (including
@@ -120,7 +125,7 @@ public class PythonService : IPythonService, IDisposable
                 _logger.LogInformation("No Python fingerprint found, will force full reinstall");
                 var pythonFolderForCleanup = Path.Combine(
                     ApplicationData.Current.LocalFolder.Path, "Python");
-                DeleteInstalledVersionMarker(pythonFolderForCleanup);
+                await DeleteInstalledVersionMarkerAsync(pythonFolderForCleanup);
             }
 
             var installResult = await _pythonInstaller.InstallPythonAsync(appVersion);
@@ -139,7 +144,10 @@ public class PythonService : IPythonService, IDisposable
             // Get uv exe path (Windows/macOS/Linux)
             var uvFileName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
             var uvExePath = Path.Combine(pythonFolder, uvFileName);
-            if (!File.Exists(uvExePath))
+            var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
+            bool uvExeExists = uvExeInfoResult.IsSuccess
+                && uvExeInfoResult.Value.Kind == StorageItemKind.File;
+            if (!uvExeExists)
             {
                 var errorMessage = new ConsoleErrorMessage(
                     ConsoleErrorType.PythonHostPreInitError,
@@ -153,13 +161,13 @@ public class PythonService : IPythonService, IDisposable
 
             // Set where uv installs Python interpreters
             var uvPythonInstallDir = Path.Combine(pythonFolder, UVPythonInstallsFolderName);
-            Directory.CreateDirectory(uvPythonInstallDir);
+            await _fileSystem.CreateFolderAsync(uvPythonInstallDir);
 
             // Prepare the per-process environment variables for the terminal.
             // These are injected into the child process environment block rather than set
             // process-wide, so multiple terminals can have different configurations.
             var ipythonDir = Path.Combine(workingDir, ProjectConstants.CelbridgeFolder, ProjectConstants.PythonFolder, IPythonCacheFolderName);
-            Directory.CreateDirectory(ipythonDir);
+            await _fileSystem.CreateFolderAsync(ipythonDir);
 
             var configuration = environmentInfo.Configuration;
             var celbridgeVersion = configuration == "Debug" ? $"{appVersion} (Debug)" : $"{appVersion}";
@@ -194,7 +202,7 @@ public class PythonService : IPythonService, IDisposable
             };
 
             // Get the path to the celbridge wheel file
-            var findCelbridgeWheelResult = FindWheelFile(pythonFolder, "celbridge");
+            var findCelbridgeWheelResult = await FindWheelFileAsync(pythonFolder, "celbridge");
             if (findCelbridgeWheelResult.IsFailure)
             {
                 return Result.Fail("Failed to find celbridge wheel file")
@@ -224,7 +232,7 @@ public class PythonService : IPythonService, IDisposable
             // per-interpreter __pycache__) are deliberately excluded so the hash is
             // stable across sessions.
             var wheelHash = FileHashHelper.HashFileContents(celbridgeWheelPath);
-            var installStateHash = ComputeInstallStateHash(pythonFolder);
+            var installStateHash = await ComputeInstallStateHashAsync(pythonFolder);
             var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, wheelHash, pythonPackages, installStateHash);
             var useOfflineMode = currentFingerprint == savedFingerprint;
 
@@ -249,9 +257,9 @@ public class PythonService : IPythonService, IDisposable
                 // a full reinstall of the Python interpreter, packages, and tools.
                 // The installed version marker was already deleted before the installer ran.
                 _logger.LogInformation("No Python fingerprint found, clearing uv cache for full reinstall");
-                ClearUvCache(uvCacheDir);
-                ClearUvCache(uvToolsFolder);
-                ClearUvCache(uvBinFolder);
+                await ClearUvCacheAsync(uvCacheDir);
+                await ClearUvCacheAsync(uvToolsFolder);
+                await ClearUvCacheAsync(uvBinFolder);
             }
             else
             {
@@ -260,7 +268,10 @@ public class PythonService : IPythonService, IDisposable
 
             // Install the celbridge package as a uv tool so the 'celbridge' command is
             // available on PATH for the user to type in the terminal after exiting the REPL.
-            var shouldInstallTool = !useOfflineMode || !Directory.Exists(uvBinFolder);
+            var uvBinFolderInfo = await _fileSystem.GetInfoAsync(uvBinFolder);
+            bool uvBinFolderExists = uvBinFolderInfo.IsSuccess
+                && uvBinFolderInfo.Value.Kind == StorageItemKind.Folder;
+            var shouldInstallTool = !useOfflineMode || !uvBinFolderExists;
             if (shouldInstallTool)
             {
                 await InstallCelbridgeToolAsync(
@@ -336,10 +347,14 @@ public class PythonService : IPythonService, IDisposable
             // passed to uv, without spamming the info log on every load.
             try
             {
-                if (Directory.Exists(uvPythonInstallDir))
+                var installDirInfo = await _fileSystem.GetInfoAsync(uvPythonInstallDir);
+                bool installDirExists = installDirInfo.IsSuccess
+                    && installDirInfo.Value.Kind == StorageItemKind.Folder;
+                if (installDirExists)
                 {
-                    var installEntries = Directory.GetDirectories(uvPythonInstallDir)
-                        .Select(d => Path.GetFileName(d))
+                    var enumerateFoldersResult = await _fileSystem.EnumerateFoldersAsync(uvPythonInstallDir);
+                    var installEntries = enumerateFoldersResult.Value
+                        .Select(folder => Path.GetFileName(folder))
                         .ToList();
                     _logger.LogDebug(
                         "uv_python_installs ('{Path}') contains [{Entries}]",
@@ -380,11 +395,12 @@ public class PythonService : IPythonService, IDisposable
         _logger.LogInformation("Python RPC connection {ConnectionId} established", connectionId);
         _hadConnection = true;
 
-        // Save the fingerprint on the first successful connection.
-        // This means subsequent runs can use offline mode.
+        // Save the fingerprint on the first successful connection so subsequent
+        // runs can use offline mode. Block on the async save here because this
+        // event handler is sync and the operation is small and non-critical.
         if (!_fingerprintSaved)
         {
-            SaveFingerprint(_pendingCacheDir, _pendingFingerprint);
+            SaveFingerprintAsync(_pendingCacheDir, _pendingFingerprint).GetAwaiter().GetResult();
             _fingerprintSaved = true;
         }
 
@@ -498,23 +514,18 @@ public class PythonService : IPythonService, IDisposable
     /// against a previously-saved value indicates the install has drifted and
     /// offline mode is unsafe.
     /// </summary>
-    private static string ComputeInstallStateHash(string pythonFolder)
+    private async Task<string> ComputeInstallStateHashAsync(string pythonFolder)
     {
         var sb = new StringBuilder();
 
         // uv binary file size catches an app update that bundles a new uv.
         var uvExeName = OperatingSystem.IsWindows() ? UVExecutableNameWindows : UVExecutableName;
         var uvExePath = Path.Combine(pythonFolder, uvExeName);
-        if (File.Exists(uvExePath))
+        var uvExeInfoResult = await _fileSystem.GetInfoAsync(uvExePath);
+        if (uvExeInfoResult.IsSuccess
+            && uvExeInfoResult.Value.Kind == StorageItemKind.File)
         {
-            try
-            {
-                sb.AppendLine($"uv|{new FileInfo(uvExePath).Length}");
-            }
-            catch
-            {
-                sb.AppendLine("uv|?");
-            }
+            sb.AppendLine($"uv|{uvExeInfoResult.Value.Size}");
         }
         else
         {
@@ -537,17 +548,23 @@ public class PythonService : IPythonService, IDisposable
         // Other uv_cache subfolders (environments-v*, sdists-*, etc.) and the
         // regenerated uv_tools / uv_bin are deliberately excluded as volatile.
         var uvCacheDir = Path.Combine(pythonFolder, UVCacheFolderName);
-        if (Directory.Exists(uvCacheDir))
+        var uvCacheInfoResult = await _fileSystem.GetInfoAsync(uvCacheDir);
+        if (uvCacheInfoResult.IsSuccess
+            && uvCacheInfoResult.Value.Kind == StorageItemKind.Folder)
         {
-            string[] wheelsFolders;
-            try
+            var wheelsFolders = new List<string>();
+            var enumerateFoldersResult = await _fileSystem.EnumerateFoldersAsync(uvCacheDir);
+            if (enumerateFoldersResult.IsSuccess)
             {
-                wheelsFolders = Directory.GetDirectories(uvCacheDir, "wheels-v*");
-                Array.Sort(wheelsFolders, StringComparer.Ordinal);
-            }
-            catch
-            {
-                wheelsFolders = Array.Empty<string>();
+                foreach (var folder in enumerateFoldersResult.Value)
+                {
+                    var folderName = Path.GetFileName(folder);
+                    if (folderName.StartsWith("wheels-v", StringComparison.Ordinal))
+                    {
+                        wheelsFolders.Add(folder);
+                    }
+                }
+                wheelsFolders.Sort(StringComparer.Ordinal);
             }
 
             foreach (var wheelsFolder in wheelsFolders)
@@ -598,104 +615,100 @@ public class PythonService : IPythonService, IDisposable
     /// Loads the previously saved config fingerprint from the cache folder.
     /// Returns null if no fingerprint file exists.
     /// </summary>
-    private static string? LoadSavedFingerprint(string cacheDir)
+    private async Task<string?> LoadSavedFingerprintAsync(string cacheDir)
     {
         var filePath = Path.Combine(cacheDir, PythonFingerprintFileName);
-        if (!File.Exists(filePath))
+        var fingerprintInfoResult = await _fileSystem.GetInfoAsync(filePath);
+        bool fingerprintExists = fingerprintInfoResult.IsSuccess
+            && fingerprintInfoResult.Value.Kind == StorageItemKind.File;
+        if (!fingerprintExists)
         {
             return null;
         }
 
-        try
-        {
-            return File.ReadAllText(filePath).Trim();
-        }
-        catch
+        var readResult = await _fileSystem.ReadAllTextAsync(filePath);
+        if (readResult.IsFailure)
         {
             return null;
         }
+
+        var fingerprintText = readResult.Value;
+        return fingerprintText.Trim();
     }
 
     /// <summary>
     /// Saves the current config fingerprint to the cache folder.
     /// </summary>
-    private static void SaveFingerprint(string cacheDir, string fingerprint)
+    private async Task SaveFingerprintAsync(string cacheDir, string fingerprint)
     {
-        try
+        // Non-critical: failures here just mean the next run uses online mode.
+        var createFolderResult = await _fileSystem.CreateFolderAsync(cacheDir);
+        if (createFolderResult.IsFailure)
         {
-            Directory.CreateDirectory(cacheDir);
-            var filePath = Path.Combine(cacheDir, PythonFingerprintFileName);
-            File.WriteAllText(filePath, fingerprint);
+            return;
         }
-        catch
-        {
-            // Non-critical: failing to save the fingerprint just means
-            // the next run will use online mode.
-        }
+
+        var filePath = Path.Combine(cacheDir, PythonFingerprintFileName);
+        await _fileSystem.WriteAllTextAsync(filePath, fingerprint);
     }
 
     /// <summary>
     /// Clears the uv package cache folder to force a full reinstall of the Python
     /// interpreter and all packages on the next uv run.
     /// </summary>
-    private static void ClearUvCache(string uvCacheFolder)
+    private async Task ClearUvCacheAsync(string uvCacheFolder)
     {
-        try
+        // Non-critical: if we can't clear the cache, uv still checks for
+        // updates in online mode.
+        var cacheInfoResult = await _fileSystem.GetInfoAsync(uvCacheFolder);
+        if (cacheInfoResult.IsFailure
+            || cacheInfoResult.Value.Kind != StorageItemKind.Folder)
         {
-            if (Directory.Exists(uvCacheFolder))
-            {
-                Directory.Delete(uvCacheFolder, recursive: true);
-            }
+            return;
         }
-        catch
-        {
-            // Non-critical: if we can't clear the cache, uv will still
-            // check for updates in online mode.
-        }
+
+        await _fileSystem.DeleteFolderAsync(uvCacheFolder, recursive: true);
     }
 
     /// <summary>
     /// Deletes the installed version marker file so that PythonInstaller treats
     /// the next run as a fresh install, re-extracting the wheel and uv assets.
     /// </summary>
-    private static void DeleteInstalledVersionMarker(string pythonFolder)
+    private async Task DeleteInstalledVersionMarkerAsync(string pythonFolder)
     {
-        try
+        // Non-critical: PythonInstaller still checks the version content on failure.
+        var markerPath = Path.Combine(pythonFolder, InstalledVersionFileName);
+        var markerInfoResult = await _fileSystem.GetInfoAsync(markerPath);
+        bool markerExists = markerInfoResult.IsSuccess
+            && markerInfoResult.Value.Kind == StorageItemKind.File;
+        if (!markerExists)
         {
-            var markerPath = Path.Combine(pythonFolder, InstalledVersionFileName);
-            if (File.Exists(markerPath))
-            {
-                File.Delete(markerPath);
-            }
+            return;
         }
-        catch
-        {
-            // Non-critical: PythonInstaller will still check the version content.
-        }
+
+        await _fileSystem.DeleteFileAsync(markerPath);
     }
 
     /// <summary>
     /// Finds a wheel file for the specified package in the given folder.
     /// </summary>
-    private static Result<string> FindWheelFile(string folderPath, string packageName)
+    private async Task<Result<string>> FindWheelFileAsync(string folderPath, string packageName)
     {
-        try
-        {
-            var searchPattern = $"{packageName}-*.whl";
-            var wheelFiles = Directory.GetFiles(folderPath, searchPattern, SearchOption.TopDirectoryOnly);
-
-            if (wheelFiles.Length == 0)
-            {
-                return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");
-            }
-
-            return Result<string>.Ok(wheelFiles[0]);
-        }
-        catch (Exception ex)
+        var searchPattern = $"{packageName}-*.whl";
+        var enumerateFilesResult = await _fileSystem.EnumerateFilesAsync(folderPath, searchPattern, recursive: false);
+        if (enumerateFilesResult.IsFailure)
         {
             return Result<string>.Fail($"Error searching for wheel files for package '{packageName}'")
-                .WithException(ex);
+                .WithErrors(enumerateFilesResult);
         }
+
+        var wheelFiles = enumerateFilesResult.Value;
+        if (wheelFiles.Count == 0)
+        {
+            return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");
+        }
+
+        return Result<string>.Ok(wheelFiles[0]);
     }
 
     private bool _disposed;

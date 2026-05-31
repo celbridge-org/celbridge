@@ -346,19 +346,14 @@ public static class SidecarHelper
     /// </summary>
     public static CelFileStatus Inspect(string absolutePath, ILogger logger)
     {
-        // Direct read rather than via IFileStorage: Inspect runs synchronously
-        // inside ResourceClassifier during UpdateResourceRegistry, the absolute
-        // path has already been resolved through the root handler registry, and
-        // a transient read failure is benign (the file gets classified Broken
-        // and the next registry pass reclassifies it).
-        string text;
-        try
+        // Inspect runs synchronously inside ResourceClassifier during
+        // UpdateResourceRegistry. In production the call routes through the
+        // gateway; the direct-read fallback is for the test paths that
+        // construct a registry without standing up the DI host.
+        var text = ReadSidecarText(absolutePath);
+        if (text is null)
         {
-            text = File.ReadAllText(absolutePath);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, $"sidecar pairing: failed to read '{absolutePath}'");
+            logger.LogWarning($"sidecar pairing: failed to read '{absolutePath}'");
             return CelFileStatus.Broken;
         }
 
@@ -370,6 +365,26 @@ public static class SidecarHelper
         }
 
         return CelFileStatus.Healthy;
+    }
+
+    [AllowDirectFileSystemAccess]
+    private static string? ReadSidecarText(string absolutePath)
+    {
+        if (ServiceLocator.ServiceProvider is not null)
+        {
+            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+            var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(absolutePath));
+            return readResult.IsSuccess ? readResult.Value : null;
+        }
+
+        try
+        {
+            return File.ReadAllText(absolutePath);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     // One physical line plus the line terminator that follows it. The

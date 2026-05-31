@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Celbridge.ApplicationEnvironment;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
+using Celbridge.Resources;
 using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
@@ -49,15 +51,18 @@ public class ProjectMigrationService : IProjectMigrationService
     private readonly ILogger<ProjectMigrationService> _logger;
     private readonly IEnvironmentService _environmentService;
     private readonly MigrationStepRegistry _migrationRegistry;
+    private readonly IFileSystem _fileSystem;
 
     public ProjectMigrationService(
         ILogger<ProjectMigrationService> logger,
         IEnvironmentService environmentService,
-        IMigrationStepRegistry migrationRegistry)
+        IMigrationStepRegistry migrationRegistry,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _environmentService = environmentService;
         _migrationRegistry = (MigrationStepRegistry)migrationRegistry;
+        _fileSystem = fileSystem;
         _migrationRegistry.Initialize();
     }
 
@@ -98,14 +103,24 @@ public class ProjectMigrationService : IProjectMigrationService
     {
         try
         {
-            if (!File.Exists(projectFilePath))
+            var infoResult = await _fileSystem.GetInfoAsync(projectFilePath);
+            if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
             {
                 return ParseResult.Failure(
                     ParseFailureReason.FileNotFound,
                     Result.Fail($"Project file does not exist: '{projectFilePath}'"));
             }
 
-            var text = await File.ReadAllTextAsync(projectFilePath);
+            var readResult = await _fileSystem.ReadAllTextAsync(projectFilePath);
+            if (readResult.IsFailure)
+            {
+                return ParseResult.Failure(
+                    ParseFailureReason.Other,
+                    Result.Fail($"Failed to read project file: '{projectFilePath}'")
+                        .WithErrors(readResult));
+            }
+
+            var text = readResult.Value;
             var parse = Toml.Parse(text);
 
             if (parse.HasErrors)
@@ -259,19 +274,17 @@ public class ProjectMigrationService : IProjectMigrationService
         // Line endings are normalized for the current platform.
         Func<string, Task<Result>> writeProjectFileAsync = async (content) =>
         {
-            try
-            {
-                // Normalize line endings to platform standard before writing
-                var normalizedContent = LineEndingHelper.ConvertLineEndings(content, LineEndingHelper.PlatformDefault);
+            // Normalize line endings to platform standard before writing
+            var normalizedContent = LineEndingHelper.ConvertLineEndings(content, LineEndingHelper.PlatformDefault);
 
-                await File.WriteAllTextAsync(projectFilePath, normalizedContent);
-                return Result.Ok();
-            }
-            catch (Exception ex)
+            var writeResult = await _fileSystem.WriteAllTextAsync(projectFilePath, normalizedContent);
+            if (writeResult.IsFailure)
             {
                 return Result.Fail("Failed to write project file")
-                    .WithException(ex);
+                    .WithErrors(writeResult);
             }
+
+            return Result.Ok();
         };
 
         var context = new MigrationContext
@@ -282,7 +295,8 @@ public class ProjectMigrationService : IProjectMigrationService
             Configuration = root,
             Logger = _logger,
             OriginalVersion = projectVersion,
-            WriteProjectFileAsync = writeProjectFileAsync
+            WriteProjectFileAsync = writeProjectFileAsync,
+            FileSystem = _fileSystem
         };
 
         // Execute migration steps in order
@@ -468,75 +482,79 @@ public class ProjectMigrationService : IProjectMigrationService
 
     private async Task<Result> WriteApplicationVersionAsync(string projectFilePath, string projectVersion, string applicationVersion)
     {
-        try
+        var readResult = await _fileSystem.ReadAllTextAsync(projectFilePath);
+        if (readResult.IsFailure)
         {
-            var originalText = await File.ReadAllTextAsync(projectFilePath);
-
-            // Normalize to \n for processing
-            var normalizedText = originalText.Replace("\r\n", "\n").Replace("\r", "\n");
-
-            var updatedText = normalizedText;
-
-            // Update existing celbridge-version line in [celbridge] section
-            // Pattern matches: optional whitespace, celbridge-version, =, quoted version
-            var pattern = @"^(\s*)celbridge-version\s*=\s*""[^""]*""";
-            var match = Regex.Match(updatedText, pattern, RegexOptions.Multiline);
-
-            if (match.Success)
-            {
-                // Preserve the original indentation from capture group 1
-                var leadingWhitespace = match.Groups[1].Value;
-                updatedText = Regex.Replace(
-                    updatedText,
-                    pattern,
-                    $"{leadingWhitespace}celbridge-version = \"{applicationVersion}\"",
-                    RegexOptions.Multiline);
-            }
-            else
-            {
-                // No existing celbridge-version line found
-                // This should only happen if the file is corrupted or in old format
-                return Result.Fail("Cannot update version: no celbridge-version line found in project file");
-            }
-
-            // Only write if content actually changed
-            if (updatedText != normalizedText)
-            {
-                // Normalize line endings to platform standard before writing
-                updatedText = LineEndingHelper.ConvertLineEndings(updatedText, LineEndingHelper.PlatformDefault);
-
-                await File.WriteAllTextAsync(projectFilePath, updatedText);
-                _logger.LogInformation("Updated project file with application version {ApplicationVersion}", applicationVersion);
-            }
-
-            return Result.Ok();
+            return Result.Fail("Failed to read project file when updating application version")
+                .WithErrors(readResult);
         }
-        catch (Exception ex)
+
+        var originalText = readResult.Value;
+
+        // Normalize to \n for processing
+        var normalizedText = originalText.Replace("\r\n", "\n").Replace("\r", "\n");
+
+        var updatedText = normalizedText;
+
+        // Update existing celbridge-version line in [celbridge] section
+        // Pattern matches: optional whitespace, celbridge-version, =, quoted version
+        var pattern = @"^(\s*)celbridge-version\s*=\s*""[^""]*""";
+        var match = Regex.Match(updatedText, pattern, RegexOptions.Multiline);
+
+        if (match.Success)
         {
-            return Result.Fail("Failed to write application version to project file")
-                .WithException(ex);
+            // Preserve the original indentation from capture group 1
+            var leadingWhitespace = match.Groups[1].Value;
+            updatedText = Regex.Replace(
+                updatedText,
+                pattern,
+                $"{leadingWhitespace}celbridge-version = \"{applicationVersion}\"",
+                RegexOptions.Multiline);
         }
+        else
+        {
+            // No existing celbridge-version line found
+            // This should only happen if the file is corrupted or in old format
+            return Result.Fail("Cannot update version: no celbridge-version line found in project file");
+        }
+
+        // Only write if content actually changed
+        if (updatedText != normalizedText)
+        {
+            // Normalize line endings to platform standard before writing
+            updatedText = LineEndingHelper.ConvertLineEndings(updatedText, LineEndingHelper.PlatformDefault);
+
+            var writeResult = await _fileSystem.WriteAllTextAsync(projectFilePath, updatedText);
+            if (writeResult.IsFailure)
+            {
+                return Result.Fail("Failed to write application version to project file")
+                    .WithErrors(writeResult);
+            }
+
+            _logger.LogInformation("Updated project file with application version {ApplicationVersion}", applicationVersion);
+        }
+
+        return Result.Ok();
     }
 
     private async Task<Result<TomlTable>> ReadProjectConfigAsync(string projectFilePath)
     {
-        try
-        {
-            var text = await File.ReadAllTextAsync(projectFilePath);
-            var parse = Toml.Parse(text);
-
-            if (parse.HasErrors)
-            {
-                return Result<TomlTable>.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
-            }
-
-            var root = parse.ToModel();
-            return Result<TomlTable>.Ok(root);
-        }
-        catch (Exception ex)
+        var readResult = await _fileSystem.ReadAllTextAsync(projectFilePath);
+        if (readResult.IsFailure)
         {
             return Result<TomlTable>.Fail("Failed to refresh configuration from project file")
-                .WithException(ex);
+                .WithErrors(readResult);
         }
+
+        var text = readResult.Value;
+        var parse = Toml.Parse(text);
+
+        if (parse.HasErrors)
+        {
+            return Result<TomlTable>.Fail($"Failed to parse project TOML file: {string.Join("; ", parse.Diagnostics)}");
+        }
+
+        var root = parse.ToModel();
+        return Result<TomlTable>.Ok(root);
     }
 }

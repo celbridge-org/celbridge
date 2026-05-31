@@ -24,7 +24,7 @@ public static class WebViewScreenshotResolver
     /// reference and an auto-named file is generated inside it. Otherwise
     /// the saveTo value is used verbatim and its extension is checked
     /// against the format. Collision probing for auto-named files routes
-    /// through the chokepoint so the lookup honours the same containment
+    /// through the gateway so the lookup honours the same containment
     /// validation as the screenshot save that follows.
     /// </summary>
     public static async Task<Result<ResourceKey>> ResolveAsync(string saveTo, string format, IFileStorage fileStorage)

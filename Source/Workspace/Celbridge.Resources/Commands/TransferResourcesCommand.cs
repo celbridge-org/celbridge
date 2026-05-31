@@ -16,15 +16,18 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
+    private readonly IFileSystem _fileSystem;
 
     public TransferResourcesCommand(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        ICommandService commandService)
+        ICommandService commandService,
+        IFileSystem fileSystem)
     {
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
         _commandService = commandService;
+        _fileSystem = fileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -112,7 +115,9 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     {
         if (item.ResourceType == ResourceType.File)
         {
-            if (!File.Exists(item.SourcePath))
+            var sourceFileInfo = await _fileSystem.GetInfoAsync(item.SourcePath);
+            if (sourceFileInfo.IsFailure
+                || sourceFileInfo.Value.Kind != StorageItemKind.File)
             {
                 return Result.Fail($"Source file does not exist: {item.SourcePath}");
             }
@@ -121,7 +126,9 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         }
         else if (item.ResourceType == ResourceType.Folder)
         {
-            if (!Directory.Exists(item.SourcePath))
+            var sourceFolderInfo = await _fileSystem.GetInfoAsync(item.SourcePath);
+            if (sourceFolderInfo.IsFailure
+                || sourceFolderInfo.Value.Kind != StorageItemKind.Folder)
             {
                 return Result.Fail($"Source folder does not exist: {item.SourcePath}");
             }

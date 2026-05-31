@@ -17,7 +17,6 @@ public static class ServiceConfiguration
 
         services.AddTransient<IResourceService, ResourceService>();
         services.AddTransient<IResourceTransferService, ResourceTransferService>();
-        services.AddTransient<IResourceRegistryDumper, ResourceRegistryDumper>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
         services.AddTransient<IFileStorage, FileStorage>();

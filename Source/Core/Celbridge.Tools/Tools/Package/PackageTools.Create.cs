@@ -1,8 +1,9 @@
 using System.Text;
 using System.Text.Json;
+using Celbridge.FileSystem;
+using Celbridge.Resources;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Directory = System.IO.Directory;
 
 namespace Celbridge.Tools;
 
@@ -30,6 +31,7 @@ public partial class PackageTools
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var fileStorage = workspaceService.FileStorage;
+        var fileSystem = GetRequiredService<IFileSystem>();
 
         var packageResource = ResourceKey.Create($"packages/{packageName}");
         var resolveResult = resourceRegistry.ResolveResourcePath(packageResource);
@@ -41,7 +43,9 @@ public partial class PackageTools
         }
         var packageFolderPath = resolveResult.Value;
 
-        if (Directory.Exists(packageFolderPath))
+        var packageInfoResult = await fileSystem.GetInfoAsync(packageFolderPath);
+        if (packageInfoResult.IsSuccess
+            && packageInfoResult.Value.Kind == StorageItemKind.Folder)
         {
             return ToolResponse.Error($"Package already exists: 'packages/{packageName}'");
         }

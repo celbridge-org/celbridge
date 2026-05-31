@@ -4,10 +4,12 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using Celbridge.FileSystem;
 using Microsoft.Win32.SafeHandles;
 
 namespace Celbridge.Console.Services;
 
+[AllowDirectFileSystemAccess]
 public sealed class ConPtyTerminal : IDisposable
 {
     private IntPtr _pseudoConsoleHandle = IntPtr.Zero;

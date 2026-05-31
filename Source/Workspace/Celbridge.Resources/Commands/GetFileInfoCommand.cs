@@ -115,7 +115,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         return Result.Fail($"Resource not found: '{Resource}'");
     }
 
-    // Streams the file via the chokepoint and counts lines without loading
+    // Streams the file via the gateway and counts lines without loading
     // the entire content into memory. Used for the LineCount field on the
     // FileInfoSnapshot when the resource is text.
     private static async Task<int> CountLinesAsync(IFileStorage fileStorage, ResourceKey resource)

@@ -1,4 +1,5 @@
 using Celbridge.Projects.Services;
+using Celbridge.Resources;
 
 namespace Celbridge.Projects.MigrationSteps;
 
@@ -17,7 +18,7 @@ public class MigrationStep_0_2_7 : IMigrationStep
 
     public async Task<Result> ApplyAsync(MigrationContext context)
     {
-        var renameResult = RenameProjectFiles(context);
+        var renameResult = await RenameProjectFilesAsync(context);
         if (renameResult.IsFailure)
         {
             return renameResult;
@@ -36,55 +37,60 @@ public class MigrationStep_0_2_7 : IMigrationStep
     /// Walks the project folder recursively and renames every *.webapp file to *.webview.
     /// Skips the project metadata folder so internal data files are left untouched.
     /// </summary>
-    private Result RenameProjectFiles(MigrationContext context)
+    private async Task<Result> RenameProjectFilesAsync(MigrationContext context)
     {
-        try
+        var projectDataFolderPath = Path.GetFullPath(context.ProjectDataFolderPath);
+
+        var enumerateResult = await context.FileSystem.EnumerateFilesAsync(
+            context.ProjectFolderPath,
+            $"*{OldExtension}",
+            recursive: true);
+
+        if (enumerateResult.IsFailure)
         {
-            var projectDataFolderPath = Path.GetFullPath(context.ProjectDataFolderPath);
+            return Result.Fail($"Failed to enumerate '{OldExtension}' files in project folder")
+                .WithErrors(enumerateResult);
+        }
 
-            var matches = Directory.EnumerateFiles(
-                context.ProjectFolderPath,
-                $"*{OldExtension}",
-                SearchOption.AllDirectories);
+        int renamedCount = 0;
+        foreach (var oldPath in enumerateResult.Value)
+        {
+            var fullOldPath = Path.GetFullPath(oldPath);
 
-            int renamedCount = 0;
-            foreach (var oldPath in matches)
+            // Skip anything inside the metadata folder. Metadata uses its own format and
+            // its contents are ephemeral, so any stale references regenerate on next use.
+            if (fullOldPath.StartsWith(projectDataFolderPath, StringComparison.OrdinalIgnoreCase))
             {
-                var fullOldPath = Path.GetFullPath(oldPath);
-
-                // Skip anything inside the metadata folder. Metadata uses its own format and
-                // its contents are ephemeral, so any stale references regenerate on next use.
-                if (fullOldPath.StartsWith(projectDataFolderPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var newPath = Path.ChangeExtension(fullOldPath, NewExtension);
-
-                // Defensive: an existing target file would imply a partially completed migration
-                // or a manual rename. Leave both files in place and surface the conflict.
-                if (File.Exists(newPath))
-                {
-                    return Result.Fail(
-                        $"Cannot rename '{fullOldPath}' to '{newPath}'. Target file already exists.");
-                }
-
-                File.Move(fullOldPath, newPath);
-                renamedCount++;
+                continue;
             }
 
-            if (renamedCount > 0)
+            var newPath = Path.ChangeExtension(fullOldPath, NewExtension);
+
+            // Defensive: an existing target file would imply a partially completed migration
+            // or a manual rename. Leave both files in place and surface the conflict.
+            var existingInfo = await context.FileSystem.GetInfoAsync(newPath);
+            if (existingInfo.IsSuccess && existingInfo.Value.Kind == StorageItemKind.File)
             {
-                context.Logger.LogInformation($"Renamed {renamedCount} '{OldExtension}' file(s) to '{NewExtension}'");
+                return Result.Fail(
+                    $"Cannot rename '{fullOldPath}' to '{newPath}'. Target file already exists.");
             }
 
-            return Result.Ok();
+            var moveResult = await context.FileSystem.MoveFileAsync(fullOldPath, newPath);
+            if (moveResult.IsFailure)
+            {
+                return Result.Fail($"Failed to rename '{fullOldPath}' to '{newPath}'")
+                    .WithErrors(moveResult);
+            }
+
+            renamedCount++;
         }
-        catch (Exception ex)
+
+        if (renamedCount > 0)
         {
-            return Result.Fail($"Failed to rename '{OldExtension}' files in project folder")
-                .WithException(ex);
+            context.Logger.LogInformation($"Renamed {renamedCount} '{OldExtension}' file(s) to '{NewExtension}'");
         }
+
+        return Result.Ok();
     }
 
     /// <summary>
@@ -94,35 +100,34 @@ public class MigrationStep_0_2_7 : IMigrationStep
     /// </summary>
     private async Task<Result> RewriteProjectConfigAsync(MigrationContext context)
     {
-        try
+        var readResult = await context.FileSystem.ReadAllTextAsync(context.ProjectFilePath);
+        if (readResult.IsFailure)
         {
-            var originalText = await File.ReadAllTextAsync(context.ProjectFilePath);
+            return Result.Fail($"Failed to read project config: '{context.ProjectFilePath}'")
+                .WithErrors(readResult);
+        }
 
-            var updatedText = originalText
-                .Replace($"{OldExtension}\"", $"{NewExtension}\"")
-                .Replace($"{OldExtension}'", $"{NewExtension}'");
+        var originalText = readResult.Value;
 
-            if (updatedText == originalText)
-            {
-                return Result.Ok();
-            }
+        var updatedText = originalText
+            .Replace($"{OldExtension}\"", $"{NewExtension}\"")
+            .Replace($"{OldExtension}'", $"{NewExtension}'");
 
-            var writeResult = await context.WriteProjectFileAsync(updatedText);
-            if (writeResult.IsFailure)
-            {
-                return Result.Fail($"Failed to write rewritten project config: '{context.ProjectFilePath}'")
-                    .WithErrors(writeResult);
-            }
-
-            context.Logger.LogInformation(
-                $"Rewrote '{OldExtension}' references in project config: '{context.ProjectFilePath}'");
-
+        if (updatedText == originalText)
+        {
             return Result.Ok();
         }
-        catch (Exception ex)
+
+        var writeResult = await context.WriteProjectFileAsync(updatedText);
+        if (writeResult.IsFailure)
         {
-            return Result.Fail("Failed to rewrite project config")
-                .WithException(ex);
+            return Result.Fail($"Failed to write rewritten project config: '{context.ProjectFilePath}'")
+                .WithErrors(writeResult);
         }
+
+        context.Logger.LogInformation(
+            $"Rewrote '{OldExtension}' references in project config: '{context.ProjectFilePath}'");
+
+        return Result.Ok();
     }
 }

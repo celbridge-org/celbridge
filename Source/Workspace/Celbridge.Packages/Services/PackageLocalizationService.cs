@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 
@@ -25,17 +26,20 @@ public class PackageLocalizationService : IPackageLocalizationService
         AllowTrailingCommas = true
     };
 
-    private static readonly IPackageReader BundledReader = new DirectPackageReader();
-
     private readonly ILogger<PackageLocalizationService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystem _fileSystem;
+    private readonly IPackageReader _bundledReader;
 
     public PackageLocalizationService(
         ILogger<PackageLocalizationService> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
+        _bundledReader = new DirectPackageReader(fileSystem);
     }
 
     public Dictionary<string, string> LoadStrings(PackageInfo package, string? locale = null)
@@ -65,7 +69,7 @@ public class PackageLocalizationService : IPackageLocalizationService
         return new Dictionary<string, string>();
     }
 
-    // Project packages route through the chokepoint by reverse-resolving the path
+    // Project packages route through the gateway by reverse-resolving the path
     // to a ResourceKey; bundled packages stay on direct File.* IO. The project
     // reader is constructed on demand because the workspace-scoped IFileStorage
     // and IResourceRegistry must be looked up at call time.
@@ -78,7 +82,7 @@ public class PackageLocalizationService : IPackageLocalizationService
             return new FileStoragePackageReader(fileStorage, resourceRegistry);
         }
 
-        return BundledReader;
+        return _bundledReader;
     }
 
     private Dictionary<string, string>? TryLoadJsonFile(IPackageReader reader, string path)

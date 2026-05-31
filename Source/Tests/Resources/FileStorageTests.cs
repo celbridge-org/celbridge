@@ -1,7 +1,8 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -56,7 +57,8 @@ public class FileStorageTests
         _fileStorage = new FileStorage(
             Substitute.For<ILogger<FileStorage>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
     }
 
     [TearDown]
@@ -138,27 +140,18 @@ public class FileStorageTests
     }
 
     [Test]
-    public async Task WriteAllBytesAsync_StagesTempInCelbridgeStagingFolder_AndLeavesNoOrphan()
+    public async Task WriteAllBytesAsync_LeavesNoSiblingTempFile()
     {
-        // Atomic writes stage temp files in <project>/.celbridge/staging-fs/, not
-        // alongside the destination. After a successful write the staging folder
-        // exists (next caller may use it) but contains no leftover .tmp file.
+        // Direct write: no staging or atomic-replace dance, so no temp files
+        // should appear next to the destination.
         var resource = new ResourceKey("clean.bin");
         var path = Path.Combine(_tempFolder, "clean.bin");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
 
         await _fileStorage.WriteAllBytesAsync(resource, new byte[] { 0x42 });
 
-        // No sibling temp file next to the destination.
         File.Exists(path + ".tmp").Should().BeFalse();
-
-        // Central staging folder exists but is empty.
-        var stagingFolder = Path.Combine(
-            _tempFolder,
-            ProjectConstants.CelbridgeFolder,
-            ProjectConstants.StagingFsFolder);
-        Directory.Exists(stagingFolder).Should().BeTrue();
-        Directory.GetFiles(stagingFolder).Should().BeEmpty();
+        Directory.EnumerateFiles(_tempFolder, "*.tmp").Should().BeEmpty();
     }
 
     [Test]
@@ -314,7 +307,7 @@ public class FileStorageTests
     public async Task GetInfoAsync_ResolvesViaRegistry_ForNonDefaultRoot()
     {
         // Non-default-root callers route through IResourceRegistry the same way
-        // default-root callers do: the chokepoint hands the key off, the
+        // default-root callers do: the gateway hands the key off, the
         // registry resolves it to an absolute path, and the on-disk probe is
         // identical. This test pins the contract end-to-end against a temp:
         // key so a future regression in the resolution wiring surfaces here.

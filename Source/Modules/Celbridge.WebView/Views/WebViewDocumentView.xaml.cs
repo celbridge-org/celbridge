@@ -3,10 +3,12 @@ using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Documents.Views;
+using Celbridge.FileSystem;
 using Celbridge.Host;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
+using Celbridge.Resources;
 using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
@@ -245,7 +247,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             }
 
             // temp:/ is wiped on workspace load, so the downloads sub-folder
-            // may not exist yet. Ensure it via the chokepoint before the user
+            // may not exist yet. Ensure it via the gateway before the user
             // can trigger a download.
             var downloadsFolder = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}");
             await FileStorage.CreateFolderAsync(downloadsFolder);
@@ -531,99 +533,110 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
         _messengerService.Send(message);
     }
 
-    private void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
+    private async void CoreWebView2_DownloadStarting(CoreWebView2 sender, CoreWebView2DownloadStartingEventArgs args)
     {
-        var downloadPath = args.ResultFilePath;
-        if (string.IsNullOrEmpty(downloadPath))
+        // WebView2 reads args mutations only after the handler completes the
+        // deferral. Without the deferral, an await mid-handler would let the
+        // runtime proceed with the original args before our overrides land.
+        var deferral = args.GetDeferral();
+        try
         {
-            args.Cancel = true;
-            return;
-        }
-
-        var filename = Path.GetFileName(downloadPath);
-
-        // Downloads land under project:downloads/ so the project root stays
-        // uncluttered when a session produces multiple downloads.
-        var requestedDestResource = new ResourceKey($"{ProjectConstants.DownloadsFolder}/{filename}");
-        var resolveResult = ResourceRegistry.ResolveResourcePath(requestedDestResource);
-        if (resolveResult.IsFailure)
-        {
-            args.Cancel = true;
-            return;
-        }
-        var requestedPath = resolveResult.Value;
-        var getResult = GetUniquePath(requestedPath);
-        if (getResult.IsFailure)
-        {
-            args.Cancel = true;
-            return;
-        }
-        var savePath = getResult.Value;
-
-        var getResourceResult = ResourceRegistry.GetResourceKey(savePath);
-        if (getResourceResult.IsFailure)
-        {
-            args.Cancel = true;
-            return;
-        }
-        var saveResourceKey = getResourceResult.Value;
-
-        // Stage the download under the project's temp: root so the staging
-        // location lives alongside the rest of the workspace's scratch space
-        // and the wipe-on-load policy bounds orphan accumulation.
-        var extension = Path.GetExtension(filename);
-        var randomName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
-        var downloadResource = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}/{randomName}{extension}");
-        var resolveTempResult = ResourceRegistry.ResolveResourcePath(downloadResource);
-        if (resolveTempResult.IsFailure)
-        {
-            args.Cancel = true;
-            return;
-        }
-        var tempPath = resolveTempResult.Value;
-        args.ResultFilePath = tempPath;
-
-        args.DownloadOperation.StateChanged += async (s, e) =>
-        {
-            // Async-void event handler: any escaping exception ends up on the
-            // SynchronizationContext's unhandled-exception channel, so wrap
-            // the body so a WebView-side failure can't crash the host.
-            try
+            var downloadPath = args.ResultFilePath;
+            if (string.IsNullOrEmpty(downloadPath))
             {
-                if (s.State == CoreWebView2DownloadState.Completed)
-                {
-                    var importResult = await _commandService.ExecuteAsync<IAddResourceCommand>(command =>
-                    {
-                        command.ResourceType = ResourceType.File;
-                        command.SourcePath = tempPath;
-                        command.DestResource = saveResourceKey;
-                    });
+                args.Cancel = true;
+                return;
+            }
 
-                    // Move semantics: the chokepoint doesn't support cross-root
-                    // moves (temp: -> project:), so the import above copied
-                    // bytes. Delete the staging copy here so we don't carry two
-                    // copies on disk until temp: is wiped on next workspace load.
-                    if (importResult.IsSuccess)
+            var filename = Path.GetFileName(downloadPath);
+
+            // Downloads land under project:downloads/ so the project root stays
+            // uncluttered when a session produces multiple downloads.
+            var requestedDestResource = new ResourceKey($"{ProjectConstants.DownloadsFolder}/{filename}");
+            var resolveResult = ResourceRegistry.ResolveResourcePath(requestedDestResource);
+            if (resolveResult.IsFailure)
+            {
+                args.Cancel = true;
+                return;
+            }
+            var requestedPath = resolveResult.Value;
+            var getResult = await GetUniquePathAsync(requestedPath);
+            if (getResult.IsFailure)
+            {
+                args.Cancel = true;
+                return;
+            }
+            var savePath = getResult.Value;
+
+            var getResourceResult = ResourceRegistry.GetResourceKey(savePath);
+            if (getResourceResult.IsFailure)
+            {
+                args.Cancel = true;
+                return;
+            }
+            var saveResourceKey = getResourceResult.Value;
+
+            // Stage the download under the project's temp: root so the staging
+            // location lives alongside the rest of the workspace's scratch space
+            // and the wipe-on-load policy bounds orphan accumulation.
+            var extension = Path.GetExtension(filename);
+            var randomName = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
+            var downloadResource = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}/{randomName}{extension}");
+            var resolveTempResult = ResourceRegistry.ResolveResourcePath(downloadResource);
+            if (resolveTempResult.IsFailure)
+            {
+                args.Cancel = true;
+                return;
+            }
+            var tempPath = resolveTempResult.Value;
+            args.ResultFilePath = tempPath;
+
+            args.DownloadOperation.StateChanged += async (s, e) =>
+            {
+                // Async-void event handler: any escaping exception ends up on the
+                // SynchronizationContext's unhandled-exception channel, so wrap
+                // the body so a WebView-side failure can't crash the host.
+                try
+                {
+                    if (s.State == CoreWebView2DownloadState.Completed)
+                    {
+                        var importResult = await _commandService.ExecuteAsync<IAddResourceCommand>(command =>
+                        {
+                            command.ResourceType = ResourceType.File;
+                            command.SourcePath = tempPath;
+                            command.DestResource = saveResourceKey;
+                        });
+
+                        // Move semantics: the gateway doesn't support cross-root
+                        // moves (temp: -> project:), so the import above copied
+                        // bytes. Delete the staging copy here so we don't carry two
+                        // copies on disk until temp: is wiped on next workspace load.
+                        if (importResult.IsSuccess)
+                        {
+                            await FileStorage.DeleteAsync(downloadResource);
+                        }
+                    }
+                    else if (s.State == CoreWebView2DownloadState.Interrupted)
                     {
                         await FileStorage.DeleteAsync(downloadResource);
                     }
                 }
-                else if (s.State == CoreWebView2DownloadState.Interrupted)
+                catch (Exception ex)
                 {
-                    await FileStorage.DeleteAsync(downloadResource);
+                    _logger.LogError(ex, "Download state change handler failed");
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Download state change handler failed");
-            }
-        };
+            };
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     // Returns a path that doesn't collide with an existing file or folder by
     // appending " (N)" before any extension. Used to resolve the user's chosen
     // download destination if a file with the same name already exists.
-    private static Result<string> GetUniquePath(string path)
+    private static async Task<Result<string>> GetUniquePathAsync(string path)
     {
         try
         {
@@ -635,9 +648,19 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             string uniqueName = Path.GetFileName(path);
             int count = 1;
 
-            while (File.Exists(Path.Combine(directoryPath, uniqueName)) ||
-                Directory.Exists(Path.Combine(directoryPath, uniqueName)))
+            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+
+            while (true)
             {
+                var candidatePath = Path.Combine(directoryPath, uniqueName);
+                var infoResult = await fileSystem.GetInfoAsync(candidatePath);
+                bool exists = infoResult.IsSuccess
+                    && infoResult.Value.Kind != StorageItemKind.NotFound;
+                if (!exists)
+                {
+                    break;
+                }
+
                 if (!string.IsNullOrEmpty(extension))
                 {
                     uniqueName = $"{nameWithoutExtension} ({count}){extension}";

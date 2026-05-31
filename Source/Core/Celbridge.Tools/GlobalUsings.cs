@@ -1,6 +1,7 @@
 global using Celbridge.Core;
 global using Celbridge.DataTransfer;
 global using Celbridge.Explorer;
+global using Celbridge.FileSystem;
 global using Celbridge.Logging;
 global using Celbridge.Packages;
 global using Celbridge.Resources;

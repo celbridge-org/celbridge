@@ -23,7 +23,7 @@ public class SidecarServiceTests
         _fileStorage = Substitute.For<IFileStorage>();
         // Default: nothing exists on disk. Tests opt-in per resource.
         _fileStorage.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default))));
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None))));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.FileStorage.Returns(_fileStorage);
@@ -53,7 +53,7 @@ public class SidecarServiceTests
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
         _fileStorage.GetInfoAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _fileStorage.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
 
@@ -74,7 +74,7 @@ public class SidecarServiceTests
         var standaloneCel = new ResourceKey("design.widget.cel");
 
         _fileStorage.GetInfoAsync(standaloneCel)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _fileStorage.ReadAllTextAsync(standaloneCel)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"celbridge.code-editor.code-document\"\n")));
 
@@ -146,7 +146,7 @@ public class SidecarServiceTests
         var existingContent = "title = \"My Design\"\nversion = 1\n";
 
         _fileStorage.GetInfoAsync(standaloneCel)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _fileStorage.ReadAllTextAsync(standaloneCel)
             .Returns(Task.FromResult(Result<string>.Ok(existingContent)));
 
@@ -177,7 +177,7 @@ public class SidecarServiceTests
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
         _fileStorage.GetInfoAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _fileStorage.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
 
@@ -197,7 +197,7 @@ public class SidecarServiceTests
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
         _fileStorage.GetInfoAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _fileStorage.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("tags = [\"hero\", \"sprite\"]\n")));
 

@@ -4,8 +4,8 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
+using Celbridge.FileSystem;
 using Celbridge.Packages;
-using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Logging;
 using Celbridge.Projects;
@@ -35,7 +35,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IPythonService PythonService { get; }
     public IEntityService EntityService { get; }
     public IActivityService ActivityService { get; }
-    public IGenerativeAIService GenerativeAIService { get; }
     public IDataTransferService DataTransferService { get; }
 
     public WorkspacePanel ActivePanel { get; set; }
@@ -51,7 +50,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
         IMessengerService messengerService,
-        IProjectService projectService)
+        IProjectService projectService,
+        IFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -73,7 +73,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         PythonService = serviceProvider.GetRequiredService<IPythonService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
-        GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         //
@@ -87,7 +86,10 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             ProjectConstants.CelbridgeFolder,
             ProjectConstants.SettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
-        Directory.CreateDirectory(workspaceSettingsFolder);
+        // Sync constructor; the folder creation is bounded and infrequent
+        // (once per workspace open) so blocking on the async gateway here
+        // is acceptable.
+        SyncRunner.Run(() => fileSystem.CreateFolderAsync(workspaceSettingsFolder));
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
@@ -205,7 +207,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (SearchService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
                 (EntityService as IDisposable)!.Dispose();
-                (GenerativeAIService as IDisposable)!.Dispose();
                 (ActivityService as IDisposable)!.Dispose();
             }
 
