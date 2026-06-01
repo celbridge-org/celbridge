@@ -11,7 +11,7 @@ public class ProjectService : IProjectService
     private readonly IEditorSettings _editorSettings;
     private readonly ProjectFactory _projectFactory;
     private readonly IProjectTemplateService _projectTemplateService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public IProject? CurrentProject { get; private set; }
 
@@ -19,7 +19,7 @@ public class ProjectService : IProjectService
         IEditorSettings editorSettings,
         ProjectFactory projectFactory,
         IProjectTemplateService projectTemplateService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _editorSettings = editorSettings;
         _projectFactory = projectFactory;

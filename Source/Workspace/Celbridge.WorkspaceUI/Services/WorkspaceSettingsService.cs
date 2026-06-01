@@ -6,13 +6,13 @@ namespace Celbridge.WorkspaceUI.Services;
 
 public class WorkspaceSettingsService : IWorkspaceSettingsService, IDisposable
 {
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public IWorkspaceSettings? WorkspaceSettings { get; private set; }
 
     public string? WorkspaceSettingsFolderPath { get; set; }
 
-    public WorkspaceSettingsService(IFileSystem fileSystem)
+    public WorkspaceSettingsService(ILocalFileSystem fileSystem)
     {
         _fileSystem = fileSystem;
 

@@ -26,12 +26,12 @@ public class ResourceOperationService : IResourceOperationService
 
     private FileOperationBatch? _currentBatch;
 
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public ResourceOperationService(
         ILogger<ResourceOperationService> logger,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;

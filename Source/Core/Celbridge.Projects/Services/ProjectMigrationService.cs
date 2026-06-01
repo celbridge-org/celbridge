@@ -51,13 +51,13 @@ public class ProjectMigrationService : IProjectMigrationService
     private readonly ILogger<ProjectMigrationService> _logger;
     private readonly IEnvironmentService _environmentService;
     private readonly MigrationStepRegistry _migrationRegistry;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public ProjectMigrationService(
         ILogger<ProjectMigrationService> logger,
         IEnvironmentService environmentService,
         IMigrationStepRegistry migrationRegistry,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _environmentService = environmentService;

@@ -10,11 +10,11 @@ namespace Celbridge.Projects.Services;
 public class ProjectFactory
 {
     private readonly ILogger<ProjectFactory> _logger;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public ProjectFactory(
         ILogger<ProjectFactory> logger,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _fileSystem = fileSystem;

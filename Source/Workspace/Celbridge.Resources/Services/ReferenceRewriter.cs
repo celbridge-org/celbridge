@@ -13,9 +13,9 @@ internal sealed class ReferenceRewriter
     private readonly ILogger _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceFileSystem _resourceFileSystem;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
-    public ReferenceRewriter(ILogger logger, IWorkspaceWrapper workspaceWrapper, IResourceFileSystem resourceFileSystem, IFileSystem fileSystem)
+    public ReferenceRewriter(ILogger logger, IWorkspaceWrapper workspaceWrapper, IResourceFileSystem resourceFileSystem, ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;

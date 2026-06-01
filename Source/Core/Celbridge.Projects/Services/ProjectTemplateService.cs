@@ -14,13 +14,13 @@ public class ProjectTemplateService : IProjectTemplateService
     private readonly List<ProjectTemplate> _templates;
     private readonly IEnvironmentService _environmentService;
     private readonly IPythonConfigService _pythonConfigService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public ProjectTemplateService(
         IStringLocalizer stringLocalizer,
         IEnvironmentService environmentService,
         IPythonConfigService pythonConfigService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _environmentService = environmentService;
         _pythonConfigService = pythonConfigService;

@@ -11,13 +11,13 @@ public sealed class TrashService : ITrashService
     private readonly ILogger<TrashService> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public TrashService(
         ILogger<TrashService> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;

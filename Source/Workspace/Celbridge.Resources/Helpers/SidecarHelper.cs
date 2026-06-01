@@ -372,7 +372,7 @@ public static class SidecarHelper
     {
         if (ServiceLocator.ServiceProvider is not null)
         {
-            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
             var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(absolutePath));
             return readResult.IsSuccess ? readResult.Value : null;
         }

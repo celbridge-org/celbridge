@@ -12,13 +12,13 @@ public class AddResourceHelper
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileTemplateService _fileTemplateService;
     private readonly ICommandService _commandService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public AddResourceHelper(
         IWorkspaceWrapper workspaceWrapper,
         IFileTemplateService fileTemplateService,
         ICommandService commandService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _workspaceWrapper = workspaceWrapper;
         _fileTemplateService = fileTemplateService;
@@ -159,7 +159,7 @@ public class AddResourceHelper
         ResourceKey destResource,
         IResourceOperationService opService,
         IResourceFileSystem resourceFileSystem,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         var infoResult = await resourceFileSystem.GetInfoAsync(destResource);
         if (infoResult.IsSuccess

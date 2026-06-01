@@ -22,7 +22,7 @@ public static class ProjectConfigParser
     {
         // Static class cannot receive DI, so fall back to the service locator
         // to acquire the file system gateway.
-        var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
         return ParseFromFile(configFilePath, fileSystem);
     }
 
@@ -30,7 +30,7 @@ public static class ProjectConfigParser
     /// Parses a project config from a .celbridge file using the supplied file system.
     /// Returns an empty config if the file doesn't exist.
     /// </summary>
-    public static Result<ProjectConfig> ParseFromFile(string configFilePath, IFileSystem fileSystem)
+    public static Result<ProjectConfig> ParseFromFile(string configFilePath, ILocalFileSystem fileSystem)
     {
         try
         {

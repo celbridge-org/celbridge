@@ -17,7 +17,7 @@ public class ResourceService : IResourceService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public IResourceRegistry Registry { get; }
     public IRootHandlerRegistry RootHandlerRegistry { get; }
@@ -37,7 +37,7 @@ public class ResourceService : IResourceService, IDisposable
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
         IResourceOperationService resourceOperationService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);

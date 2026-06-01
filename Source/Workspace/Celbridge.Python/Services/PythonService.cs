@@ -39,7 +39,7 @@ public class PythonService : IPythonService, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IFeatureFlags _featureFlags;
     private readonly IPythonInstaller _pythonInstaller;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger<PythonService> _logger;
     private readonly ITcpTransport _tcpTransport;
     private CancellationTokenSource? _rpcCancellationTokenSource;
@@ -56,7 +56,7 @@ public class PythonService : IPythonService, IDisposable
         IMessengerService messengerService,
         IFeatureFlags featureFlags,
         IPythonInstaller pythonInstaller,
-        IFileSystem fileSystem,
+        ILocalFileSystem fileSystem,
         ILogger<PythonService> logger,
         ITcpTransport tcpTransport)
     {

@@ -5,12 +5,12 @@ using Celbridge.Resources;
 namespace Celbridge.Tests.FileSystem;
 
 /// <summary>
-/// In-memory <see cref="IFileSystem"/> for tests. Records every call so tests
+/// In-memory <see cref="ILocalFileSystem"/> for tests. Records every call so tests
 /// can assert call sequences without bespoke spy infrastructure. Paths are
 /// case-sensitive — the gateway contract is path-string-in / path-string-out,
 /// so the fake matches what the caller passed exactly.
 /// </summary>
-public sealed class FakeFileSystem : IFileSystem
+public sealed class FakeFileSystem : ILocalFileSystem
 {
     public sealed record FileEntry(byte[] Bytes, DateTime ModifiedUtc, FileSystemAttributes Attributes);
 

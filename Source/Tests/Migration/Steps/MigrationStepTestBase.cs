@@ -13,7 +13,7 @@ public abstract class MigrationStepTestBase<T>
     where T : IMigrationStep, new()
 {
     protected ILogger<MigrationContext> MockLogger { get; private set; } = null!;
-    protected IFileSystem FileSystem { get; private set; } = null!;
+    protected ILocalFileSystem FileSystem { get; private set; } = null!;
     protected T MigrationStep { get; private set; } = default!;
 
     [SetUp]

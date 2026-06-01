@@ -7,9 +7,9 @@ namespace Celbridge.UserInterface.Services;
 
 public class FilePickerService : IFilePickerService
 {
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
-    public FilePickerService(IFileSystem fileSystem)
+    public FilePickerService(ILocalFileSystem fileSystem)
     {
         _fileSystem = fileSystem;
     }

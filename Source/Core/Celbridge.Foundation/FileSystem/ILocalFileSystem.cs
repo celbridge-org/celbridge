@@ -1,7 +1,7 @@
 namespace Celbridge.FileSystem;
 
 /// <summary>
-/// Portable file attribute bits surfaced through IFileSystem. Each backend
+/// Portable file attribute bits surfaced through ILocalFileSystem. Each backend
 /// supports the subset that maps to its native concepts: the local backend
 /// models ReadOnly and Hidden as DOS file-attribute bits; remote backends
 /// translate to ACL or permission probes.
@@ -85,12 +85,12 @@ public record StorageItemInfo(
     FileSystemAttributes Attributes);
 
 /// <summary>
-/// Single gateway for every product-code filesystem read and write. Path-based
-/// and ignorant of ResourceKey; the resource layer composes this for raw IO.
-/// Async throughout so a future remote backend (S3, Google Drive) can honor the
-/// contract over the network.
+/// Path-based gateway for local-substrate filesystem reads and writes. The
+/// resource layer composes this for raw IO against project: and other on-disk
+/// roots; remote-substrate backends bypass this interface and implement
+/// IResourceFileSystem directly against their API client.
 /// </summary>
-public interface IFileSystem
+public interface ILocalFileSystem
 {
     /// <summary>
     /// Reads the full byte content of the file at the given absolute path.

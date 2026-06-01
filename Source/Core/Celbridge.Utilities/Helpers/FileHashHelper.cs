@@ -23,7 +23,7 @@ public static class FileHashHelper
     {
         try
         {
-            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
             var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(filePath));
             if (infoResult.IsFailure
@@ -76,7 +76,7 @@ public static class FileHashHelper
     /// </summary>
     public static string HashFolderStructure(string folderPath, int maxDepth = 3)
     {
-        var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
         var rootInfoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(folderPath));
         if (rootInfoResult.IsFailure

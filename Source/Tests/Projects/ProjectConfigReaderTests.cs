@@ -11,7 +11,7 @@ namespace Celbridge.Tests.Projects;
 public class ProjectConfigReaderTests
 {
     private ILogger<ProjectConfigReader> _mockLogger = null!;
-    private IFileSystem _fileSystem = null!;
+    private ILocalFileSystem _fileSystem = null!;
     private ProjectConfigReader _reader = null!;
 
     [SetUp]

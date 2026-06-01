@@ -22,11 +22,11 @@ public record ProjectMetadata(
 public class ProjectConfigReader
 {
     private readonly ILogger<ProjectConfigReader> _logger;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public ProjectConfigReader(
         ILogger<ProjectConfigReader> logger,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _fileSystem = fileSystem;

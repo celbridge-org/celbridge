@@ -13,9 +13,9 @@ public class TextBinarySniffer : ITextBinarySniffer
 {
     private const int SampleSize = 8192;
 
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
-    public TextBinarySniffer(IFileSystem fileSystem)
+    public TextBinarySniffer(ILocalFileSystem fileSystem)
     {
         _fileSystem = fileSystem;
     }

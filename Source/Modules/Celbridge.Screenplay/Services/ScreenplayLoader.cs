@@ -14,9 +14,9 @@ public class ScreenplayLoader
 {
     private IResourceRegistry _resourceRegistry;
     private IWorkspaceWrapper _workspaceWrapper;
-    private IFileSystem _fileSystem;
+    private ILocalFileSystem _fileSystem;
 
-    public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper, IFileSystem fileSystem)
+    public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper, ILocalFileSystem fileSystem)
     {
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;

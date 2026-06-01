@@ -66,7 +66,7 @@ public partial class PackageTools
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileSystem = GetRequiredService<IFileSystem>();
+        var fileSystem = GetRequiredService<ILocalFileSystem>();
 
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveSourceResult.IsFailure)
@@ -121,7 +121,7 @@ public partial class PackageTools
                 foreach (var filePath in filePaths)
                 {
                     // Reparse-point check still uses System.IO directly: file
-                    // attribute introspection is outside the IFileSystem gateway.
+                    // attribute introspection is outside the ILocalFileSystem gateway.
                     var fileAttributes = File.GetAttributes(filePath);
                     if (fileAttributes.HasFlag(FileAttributes.ReparsePoint))
                     {
@@ -165,7 +165,7 @@ public partial class PackageTools
         return ToolResponse.Success(json);
     }
 
-    private static async Task<Result> ValidatePackageManifestAsync(IFileSystem fileSystem, string manifestPath)
+    private static async Task<Result> ValidatePackageManifestAsync(ILocalFileSystem fileSystem, string manifestPath)
     {
         var manifestInfoResult = await fileSystem.GetInfoAsync(manifestPath);
         if (manifestInfoResult.IsFailure

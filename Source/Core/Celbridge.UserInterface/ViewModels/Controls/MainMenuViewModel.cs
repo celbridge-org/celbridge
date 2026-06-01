@@ -20,7 +20,7 @@ public partial class MainMenuViewModel : ObservableObject
     private readonly IEditorSettings _editorSettings;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IProjectService _projectService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly MainMenuUtils _mainMenuUtils;
 
     [ObservableProperty]
@@ -33,7 +33,7 @@ public partial class MainMenuViewModel : ObservableObject
         IEditorSettings editorSettings,
         IWorkspaceWrapper workspaceWrapper,
         IProjectService projectService,
-        IFileSystem fileSystem,
+        ILocalFileSystem fileSystem,
         MainMenuUtils mainMenuUtils)
     {
         _messengerService = messengerService;

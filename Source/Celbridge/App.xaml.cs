@@ -159,7 +159,7 @@ public partial class App : Application
                 {
                     var projectFile = storageFile.Path;
                     logger.LogDebug($"Launched with project file: {projectFile}");
-                    var fileSystem = Host.Services.GetRequiredService<IFileSystem>();
+                    var fileSystem = Host.Services.GetRequiredService<ILocalFileSystem>();
                     var projectFileInfo = await fileSystem.GetInfoAsync(projectFile);
                     if (projectFileInfo.IsSuccess
                         && projectFileInfo.Value.Kind == StorageItemKind.File)

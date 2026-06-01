@@ -15,7 +15,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
     private readonly IProjectTemplateService _templateService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -54,7 +54,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
         IProjectService projectService,
         IFilePickerService filePickerService,
         IProjectTemplateService templateService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _editorSettings = editorSettings;
         _projectService = projectService;
@@ -200,7 +200,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
     }
 
     // Synchronous existence probes invoked from PropertyChanged. The handler
-    // is sync and high-frequency on each keystroke, so the IFileSystem stat
+    // is sync and high-frequency on each keystroke, so the ILocalFileSystem stat
     // call is unwrapped via GetAwaiter().GetResult() to keep the API uniform
     // without re-architecting the dialog around async property change.
     private bool FolderExists(string path)

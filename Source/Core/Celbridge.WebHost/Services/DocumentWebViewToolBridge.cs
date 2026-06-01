@@ -24,14 +24,14 @@ public partial class DocumentWebViewToolBridge : IDocumentWebViewToolBridge
     private readonly TimeSpan _contentReadyTimeout;
     private readonly ICommandService _commandService;
     private readonly ILogger<DocumentWebViewToolBridge> _logger;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
-    public DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, IFileSystem fileSystem)
+    public DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, ILocalFileSystem fileSystem)
         : this(commandService, logger, fileSystem, DefaultContentReadyTimeout) { }
 
     // Test-friendly constructor so unit tests can use a short timeout without
     // waiting through the 5-second default for every gated-but-never-ready case.
-    internal DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, IFileSystem fileSystem, TimeSpan contentReadyTimeout)
+    internal DocumentWebViewToolBridge(ICommandService commandService, ILogger<DocumentWebViewToolBridge> logger, ILocalFileSystem fileSystem, TimeSpan contentReadyTimeout)
     {
         _contentReadyTimeout = contentReadyTimeout;
         _commandService = commandService;

@@ -56,7 +56,7 @@ public class DocumentViewModelTests
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
         services.AddSingleton(workspaceWrapper);
-        services.AddSingleton<IFileSystem>(TestFileSystem.CreateLocal());
+        services.AddSingleton<ILocalFileSystem>(TestFileSystem.CreateLocal());
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
         _vm = new TestDocumentViewModel(_resourceFileSystem);

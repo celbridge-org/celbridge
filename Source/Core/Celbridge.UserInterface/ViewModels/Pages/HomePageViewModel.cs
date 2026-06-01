@@ -16,7 +16,7 @@ public partial class HomePageViewModel : ObservableObject
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
     private readonly IProjectService _projectService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly MainMenuUtils _mainMenuUtils;
 
     public HomePageViewModel(
@@ -26,7 +26,7 @@ public partial class HomePageViewModel : ObservableObject
         IProjectService projectService,
         IFilePickerService filePickerService,
         IDialogService dialogService,
-        IFileSystem fileSystem,
+        ILocalFileSystem fileSystem,
         MainMenuUtils mainMenuUtils)
     {
         _logger = logger;

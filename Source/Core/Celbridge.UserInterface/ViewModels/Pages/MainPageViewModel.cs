@@ -15,7 +15,7 @@ public partial class MainPageViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
     private readonly IUndoService _undoService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public MainPageViewModel(
         Logging.ILogger<MainPageViewModel> logger,
@@ -24,7 +24,7 @@ public partial class MainPageViewModel : ObservableObject
         ICommandService commandService,
         IEditorSettings editorSettings,
         IUndoService undoService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;

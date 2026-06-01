@@ -47,7 +47,7 @@ public static class EntityUtils
     /// </summary>
     public static async Task<Result<EntityData>> LoadEntityDataFileAsync(string entityDataPath, JsonSchema entitySchema, ComponentConfigRegistry configRegistry)
     {
-        var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
         var readResult = await fileSystem.ReadAllTextAsync(entityDataPath);
         if (readResult.IsFailure)

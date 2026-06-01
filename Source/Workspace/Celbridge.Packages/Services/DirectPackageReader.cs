@@ -13,19 +13,19 @@ namespace Celbridge.Packages;
 /// </summary>
 public sealed class DirectPackageReader : IPackageReader
 {
-    // Lazy default IFileSystem for the parameterless constructor — used by
+    // Lazy default ILocalFileSystem for the parameterless constructor — used by
     // PackageManifestLoader.LoadPackage and tests that aren't wired through DI.
-    private static IFileSystem? _defaultFileSystem;
+    private static ILocalFileSystem? _defaultFileSystem;
     private static readonly object _defaultFileSystemLock = new();
 
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public DirectPackageReader()
         : this(GetDefaultFileSystem())
     {
     }
 
-    public DirectPackageReader(IFileSystem fileSystem)
+    public DirectPackageReader(ILocalFileSystem fileSystem)
     {
         _fileSystem = fileSystem;
     }
@@ -61,7 +61,7 @@ public sealed class DirectPackageReader : IPackageReader
         return readResult.Value;
     }
 
-    private static IFileSystem GetDefaultFileSystem()
+    private static ILocalFileSystem GetDefaultFileSystem()
     {
         if (_defaultFileSystem is not null)
         {

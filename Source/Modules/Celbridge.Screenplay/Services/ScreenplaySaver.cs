@@ -42,7 +42,7 @@ public class ScreenplaySaver
     private readonly IEntityService _entityService;
     private readonly IActivityService _activityService;
     private readonly IWorkspaceSettings _workspaceSettings;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     private record SceneData(ResourceKey SceneResource, string Category, string Namespace, IComponentProxy SceneComponent, List<IComponentProxy> DialogueComponents);
 
@@ -50,7 +50,7 @@ public class ScreenplaySaver
         IMessengerService messengerService,
         IDialogService dialogService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _messengerService = messengerService;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;

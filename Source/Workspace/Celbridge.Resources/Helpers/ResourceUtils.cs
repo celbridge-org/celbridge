@@ -9,7 +9,7 @@ public class ResourceUtils
 #if WINDOWS
         try
         {
-            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
             var infoResult = await fileSystem.GetInfoAsync(path);
             bool fileExists = infoResult.IsSuccess
                 && infoResult.Value.Kind == StorageItemKind.File;
@@ -49,7 +49,7 @@ public class ResourceUtils
 #if WINDOWS
         try
         {
-            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
             var infoResult = await fileSystem.GetInfoAsync(path);
             bool fileExists = infoResult.IsSuccess
                 && infoResult.Value.Kind == StorageItemKind.File;

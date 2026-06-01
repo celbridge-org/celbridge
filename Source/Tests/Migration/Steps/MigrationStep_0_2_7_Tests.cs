@@ -14,7 +14,7 @@ namespace Celbridge.Tests.Migration.Steps;
 public class MigrationStep_0_2_7_Tests
 {
     private ILogger<MigrationContext> _mockLogger = null!;
-    private IFileSystem _fileSystem = null!;
+    private ILocalFileSystem _fileSystem = null!;
     private MigrationStep_0_2_7 _step = null!;
     private string _projectFolderPath = null!;
     private string _projectFilePath = null!;

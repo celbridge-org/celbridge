@@ -80,7 +80,7 @@ public class Module : IModule
         // have a license to distribute them. If the library is not present, we skip
         // registering the package.
         var libraryFolder = Path.Combine(packageFolder, LibraryFolderName);
-        var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
         var libraryInfoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(libraryFolder));
         bool libraryFolderExists = libraryInfoResult.IsSuccess

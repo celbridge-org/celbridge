@@ -16,7 +16,7 @@ public class ProjectMigrationServiceTests
     private ILogger<MigrationStepRegistry> _mockRegistryLogger = null!;
     private IEnvironmentService _mockEnvironmentService = null!;
     private MigrationStepRegistry _registry = null!;
-    private IFileSystem _fileSystem = null!;
+    private ILocalFileSystem _fileSystem = null!;
 
     [SetUp]
     public void Setup()

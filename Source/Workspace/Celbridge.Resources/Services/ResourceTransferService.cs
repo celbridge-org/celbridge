@@ -11,7 +11,7 @@ public class ResourceTransferService : IResourceTransferService
 {
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry =>
@@ -20,7 +20,7 @@ public class ResourceTransferService : IResourceTransferService
     public ResourceTransferService(
         ICommandService commandService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;

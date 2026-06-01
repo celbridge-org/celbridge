@@ -15,11 +15,11 @@ public class PythonInstaller : IPythonInstaller
     private const string WheelFilePattern = "celbridge-*.whl";
     private const string UVTempFileName = "uv.zip";
 
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger<PythonInstaller> _logger;
 
     public PythonInstaller(
-        IFileSystem fileSystem,
+        ILocalFileSystem fileSystem,
         ILogger<PythonInstaller> logger)
     {
         _fileSystem = fileSystem;

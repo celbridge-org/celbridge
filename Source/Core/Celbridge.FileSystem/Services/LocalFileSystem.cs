@@ -4,14 +4,14 @@ using Celbridge.Resources;
 namespace Celbridge.FileSystem.Services;
 
 /// <summary>
-/// v1 implementation of <see cref="IFileSystem"/>. A thin pass-through to the
+/// v1 implementation of <see cref="ILocalFileSystem"/>. A thin pass-through to the
 /// System.IO static facades with a uniform bounded-retry policy applied to
 /// every transient IOException (sharing violations from antivirus, indexers,
 /// cloud-sync clients). The only direct-System.IO call site in product code;
 /// all other consumers go through this layer.
 /// </summary>
 [AllowDirectFileSystemAccess]
-public sealed class LocalFileSystem : IFileSystem
+public sealed class LocalFileSystem : ILocalFileSystem
 {
     private const int StreamBufferSize = 4096;
 

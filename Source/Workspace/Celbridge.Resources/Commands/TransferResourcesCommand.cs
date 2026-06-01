@@ -16,13 +16,13 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     public TransferResourcesCommand(
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         ICommandService commandService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;

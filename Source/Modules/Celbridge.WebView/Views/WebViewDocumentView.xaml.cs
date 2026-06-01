@@ -648,7 +648,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             string uniqueName = Path.GetFileName(path);
             int count = 1;
 
-            var fileSystem = ServiceLocator.AcquireService<IFileSystem>();
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
             while (true)
             {

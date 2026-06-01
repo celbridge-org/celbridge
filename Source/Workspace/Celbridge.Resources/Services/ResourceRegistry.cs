@@ -11,7 +11,7 @@ public class ResourceRegistry : IResourceRegistry
     private readonly IProjectTreeBuilder _projectTreeBuilder;
     private readonly IResourceClassifier _resourceClassifier;
     private readonly RootHandlerRegistry _rootHandlerRegistry;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     // Sidecar tracking state, refreshed on each UpdateResourceRegistry pass.
     // The report is rebuilt atomically per pass so readers always see a coherent
@@ -45,7 +45,7 @@ public class ResourceRegistry : IResourceRegistry
         IProjectTreeBuilder projectTreeBuilder,
         IResourceClassifier resourceClassifier,
         RootHandlerRegistry rootHandlerRegistry,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;

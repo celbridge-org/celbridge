@@ -16,7 +16,7 @@ public class EntityRegistry
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     private readonly ConcurrentDictionary<ResourceKey, Entity> _entityCache = new(); // Cache for entity objects
     private readonly ConcurrentDictionary<ResourceKey, bool> _modifiedEntities = new(); // Track modified entities
@@ -29,7 +29,7 @@ public class EntityRegistry
         IMessengerService messengerService,
         IProjectService projectService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -494,7 +494,7 @@ public class EntityRegistry
     // converting all of them to async would ripple beyond Celbridge.Entities,
     // so we block here at the boundary instead. SyncRunner.Run schedules the
     // async work on the thread pool so the awaits inside AcquireEntityAsync
-    // (which hit IFileSystem) cannot deadlock waiting for the captured
+    // (which hit ILocalFileSystem) cannot deadlock waiting for the captured
     // SynchronizationContext that this call is itself blocking.
     public Result<Entity> AcquireEntity(ResourceKey resource)
     {

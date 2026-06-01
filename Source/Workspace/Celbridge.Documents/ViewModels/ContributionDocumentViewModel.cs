@@ -13,7 +13,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
     /// <summary>
@@ -24,7 +24,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
     public ContributionDocumentViewModel(
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem,
+        ILocalFileSystem fileSystem,
         IEnumerable<IDocumentContentProvider> contentProviders)
     {
         _workspaceWrapper = workspaceWrapper;

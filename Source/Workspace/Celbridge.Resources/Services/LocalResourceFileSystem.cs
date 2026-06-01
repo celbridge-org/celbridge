@@ -10,7 +10,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     private readonly ILogger<LocalResourceFileSystem> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly SidecarCascade _sidecarCascade;
     private readonly ReferenceRewriter _referenceRewriter;
 
@@ -23,7 +23,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         ILogger<LocalResourceFileSystem> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -710,7 +710,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
     }
 
-    // Writes bytes directly to the destination via the IFileSystem gateway.
+    // Writes bytes directly to the destination via the ILocalFileSystem gateway.
     // No staging or atomic-replace dance: the gateway's retry policy absorbs
     // transient sharing violations, and a crash mid-write leaves the file
     // truncated for that single resource (acceptable for a desktop editor where

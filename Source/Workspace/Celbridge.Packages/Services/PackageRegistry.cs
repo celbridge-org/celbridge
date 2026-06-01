@@ -26,7 +26,7 @@ public class PackageRegistry
     private readonly IFeatureFlags _featureFlags;
     private readonly IPackageLocalizationService _localizationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
@@ -42,7 +42,7 @@ public class PackageRegistry
         IFeatureFlags featureFlags,
         IPackageLocalizationService localizationService,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _moduleService = moduleService;

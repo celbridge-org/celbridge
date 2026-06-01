@@ -28,13 +28,13 @@ public class PackageLocalizationService : IPackageLocalizationService
 
     private readonly ILogger<PackageLocalizationService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly IPackageReader _bundledReader;
 
     public PackageLocalizationService(
         ILogger<PackageLocalizationService> logger,
         IWorkspaceWrapper workspaceWrapper,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;

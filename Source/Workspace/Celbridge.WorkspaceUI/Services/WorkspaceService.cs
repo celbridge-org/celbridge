@@ -51,7 +51,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         ILogger<WorkspaceService> logger,
         IMessengerService messengerService,
         IProjectService projectService,
-        IFileSystem fileSystem)
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;

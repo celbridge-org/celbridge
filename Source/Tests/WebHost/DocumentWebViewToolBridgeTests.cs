@@ -12,7 +12,7 @@ public partial class DocumentWebViewToolBridgeTests
 {
     private ICommandService _commandService = null!;
     private ILogger<DocumentWebViewToolBridge> _logger = null!;
-    private IFileSystem _fileSystem = null!;
+    private ILocalFileSystem _fileSystem = null!;
     private DocumentWebViewToolBridge _bridge = null!;
     private ResourceKey _resource;
 

@@ -360,7 +360,7 @@ internal class ImportExternalOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly IResourceFileSystem _resourceFileSystem;
-    private readonly IFileSystem _fileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger _logger;
 
     public ImportExternalOperation(
@@ -368,7 +368,7 @@ internal class ImportExternalOperation : FileOperation
         ResourceKey dest,
         bool isFolder,
         IResourceFileSystem resourceFileSystem,
-        IFileSystem fileSystem,
+        ILocalFileSystem fileSystem,
         ILogger logger)
     {
         _sourcePath = sourcePath;

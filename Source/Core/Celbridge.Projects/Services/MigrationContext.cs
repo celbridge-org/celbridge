@@ -49,5 +49,5 @@ public class MigrationContext
     /// <summary>
     /// File system gateway used by migration steps for all read, write, and enumeration operations.
     /// </summary>
-    public required IFileSystem FileSystem { get; init; }
+    public required ILocalFileSystem FileSystem { get; init; }
 }

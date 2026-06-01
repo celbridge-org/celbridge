@@ -12,7 +12,7 @@ namespace Celbridge.Tests.Projects;
 public class ProjectFactoryTests
 {
     private ILogger<ProjectFactory> _mockLogger = null!;
-    private IFileSystem _fileSystem = null!;
+    private ILocalFileSystem _fileSystem = null!;
     private ProjectFactory _factory = null!;
 
     [SetUp]
