@@ -4,28 +4,28 @@ namespace Celbridge.Packages;
 
 /// <summary>
 /// Reader used for project packages. Reverse-resolves the absolute path to a
-/// ResourceKey via IResourceRegistry and routes every read through IFileStorage
+/// ResourceKey via IResourceRegistry and routes every read through IResourceFileSystem
 /// so the gateway contract holds for project-tree bytes.
 ///
 /// IPackageReader is sync to match its sync callers (PackageManifestLoader,
-/// PackageLocalizationService) but IFileStorage is genuinely async. Each call
+/// PackageLocalizationService) but IResourceFileSystem is genuinely async. Each call
 /// is dispatched through Task.Run before the blocking wait so the async work
 /// starts on a thread-pool thread whose continuations do not try to resume on
 /// the caller's SynchronizationContext. Without that, calling this reader from
 /// the UI thread (workspace load, template fetch) deadlocks: the await
-/// continuations inside FileStorage would post back to the UI thread the
+/// continuations inside the gateway would post back to the UI thread the
 /// outer GetResult is blocking.
 /// </summary>
-public sealed class FileStoragePackageReader : IPackageReader
+public sealed class ResourceFileSystemPackageReader : IPackageReader
 {
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly IResourceRegistry _resourceRegistry;
 
-    public FileStoragePackageReader(
-        IFileStorage fileStorage,
+    public ResourceFileSystemPackageReader(
+        IResourceFileSystem resourceFileSystem,
         IResourceRegistry resourceRegistry)
     {
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
         _resourceRegistry = resourceRegistry;
     }
 
@@ -37,7 +37,7 @@ public sealed class FileStoragePackageReader : IPackageReader
             return false;
         }
 
-        var infoResult = Task.Run(() => _fileStorage.GetInfoAsync(keyResult.Value))
+        var infoResult = Task.Run(() => _resourceFileSystem.GetInfoAsync(keyResult.Value))
             .GetAwaiter()
             .GetResult();
         if (infoResult.IsFailure)
@@ -57,7 +57,7 @@ public sealed class FileStoragePackageReader : IPackageReader
                 .WithErrors(keyResult);
         }
 
-        return Task.Run(() => _fileStorage.ReadAllTextAsync(keyResult.Value))
+        return Task.Run(() => _resourceFileSystem.ReadAllTextAsync(keyResult.Value))
             .GetAwaiter()
             .GetResult();
     }
@@ -71,7 +71,7 @@ public sealed class FileStoragePackageReader : IPackageReader
                 .WithErrors(keyResult);
         }
 
-        return Task.Run(() => _fileStorage.ReadAllBytesAsync(keyResult.Value))
+        return Task.Run(() => _resourceFileSystem.ReadAllBytesAsync(keyResult.Value))
             .GetAwaiter()
             .GetResult();
     }

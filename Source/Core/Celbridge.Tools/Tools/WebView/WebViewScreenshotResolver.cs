@@ -27,7 +27,7 @@ public static class WebViewScreenshotResolver
     /// through the gateway so the lookup honours the same containment
     /// validation as the screenshot save that follows.
     /// </summary>
-    public static async Task<Result<ResourceKey>> ResolveAsync(string saveTo, string format, IFileStorage fileStorage)
+    public static async Task<Result<ResourceKey>> ResolveAsync(string saveTo, string format, IResourceFileSystem resourceFileSystem)
     {
         var extension = ExtensionForFormat(format);
         if (extension is null)
@@ -58,7 +58,7 @@ public static class WebViewScreenshotResolver
         {
             var folderResource = key;
             var folderPath = key.Path;
-            var fileName = await GenerateAutoNameAsync(extension, fileStorage, folderResource);
+            var fileName = await GenerateAutoNameAsync(extension, resourceFileSystem, folderResource);
             var combined = string.IsNullOrEmpty(folderPath) ? fileName : folderPath + "/" + fileName;
             if (!ResourceKey.TryCreate(combined, out var fileKey))
             {
@@ -82,7 +82,7 @@ public static class WebViewScreenshotResolver
         return key;
     }
 
-    private static async Task<string> GenerateAutoNameAsync(string extension, IFileStorage fileStorage, ResourceKey folderResource)
+    private static async Task<string> GenerateAutoNameAsync(string extension, IResourceFileSystem resourceFileSystem, ResourceKey folderResource)
     {
         // Prefer the clean unsuffixed name. In the common case (no collision)
         // the agent gets `screenshot-20260430-090238.jpg` rather than a noisy
@@ -92,7 +92,7 @@ public static class WebViewScreenshotResolver
         var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
         var primary = $"screenshot-{timestamp}.{extension}";
-        if (!await ExistsAsync(fileStorage, folderResource, primary))
+        if (!await ExistsAsync(resourceFileSystem, folderResource, primary))
         {
             return primary;
         }
@@ -100,7 +100,7 @@ public static class WebViewScreenshotResolver
         for (int seq = 1; seq <= 999; seq++)
         {
             var candidate = $"screenshot-{timestamp}-{seq}.{extension}";
-            if (!await ExistsAsync(fileStorage, folderResource, candidate))
+            if (!await ExistsAsync(resourceFileSystem, folderResource, candidate))
             {
                 return candidate;
             }
@@ -136,10 +136,10 @@ public static class WebViewScreenshotResolver
         return !string.IsNullOrEmpty(extension);
     }
 
-    private static async Task<bool> ExistsAsync(IFileStorage fileStorage, ResourceKey folderResource, string fileName)
+    private static async Task<bool> ExistsAsync(IResourceFileSystem resourceFileSystem, ResourceKey folderResource, string fileName)
     {
         var candidateKey = folderResource.IsEmpty ? new ResourceKey(fileName) : folderResource.Combine(fileName);
-        var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
         return infoResult.IsSuccess
             && infoResult.Value.Kind != StorageItemKind.NotFound;
     }

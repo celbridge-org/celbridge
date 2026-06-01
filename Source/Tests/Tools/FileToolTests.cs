@@ -45,14 +45,14 @@ public class FileToolTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real FileStorage against the temp folder so the
+        // Wire a real LocalResourceFileSystem against the temp folder so the
         // gateway reads tests rely on probe and read the actual files.
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
             workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(fileStorage);
+        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }

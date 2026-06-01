@@ -41,8 +41,8 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
             return Result.Fail("New sheet name is required.");
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -93,7 +93,7 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
                 ColorScaleCopyHelper.Reapply(duplicate, colorScaleSnapshots);
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

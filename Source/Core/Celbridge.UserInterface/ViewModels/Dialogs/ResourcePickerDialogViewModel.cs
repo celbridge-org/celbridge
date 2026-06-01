@@ -9,7 +9,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
     private IResourceRegistry? _registry;
-    private IFileStorage? _fileStorage;
+    private IResourceFileSystem? _resourceFileSystem;
     private List<string> _extensions = [];
     private List<ResourcePickerItem> _allItems = [];
     private bool _showPreview;
@@ -52,7 +52,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         _registry = workspaceService.ResourceService.Registry;
-        _fileStorage = workspaceService.FileStorage;
+        _resourceFileSystem = workspaceService.ResourceFileSystem;
         _showPreview = showPreview;
         _extensions = extensions
             .Select(e => e.TrimStart('.').ToLowerInvariant())
@@ -80,7 +80,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
     private async void UpdatePreview()
     {
-        if (!_showPreview || SelectedItem is null || _registry is null || _fileStorage is null)
+        if (!_showPreview || SelectedItem is null || _registry is null || _resourceFileSystem is null)
         {
             PreviewImageVisibility = Visibility.Collapsed;
             PreviewImage = null;
@@ -97,7 +97,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         }
         var resourcePath = resolveResult.Value;
 
-        var infoResult = await _fileStorage.GetInfoAsync(selectedItem.ResourceKey);
+        var infoResult = await _resourceFileSystem.GetInfoAsync(selectedItem.ResourceKey);
         // The selection can change while the probe is in flight; the late
         // result must not overwrite a newer selection's preview.
         if (!ReferenceEquals(selectedItem, SelectedItem))

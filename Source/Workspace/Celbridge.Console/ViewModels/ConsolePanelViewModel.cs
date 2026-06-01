@@ -295,8 +295,8 @@ public partial class ConsolePanelViewModel : ObservableObject
             return;
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
         if (hashResult.IsFailure)
         {
             _originalProjectFileHash = null;
@@ -313,8 +313,8 @@ public partial class ConsolePanelViewModel : ObservableObject
             return;
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
         if (hashResult.IsFailure)
         {
             // If we can't read the file, hide the banner

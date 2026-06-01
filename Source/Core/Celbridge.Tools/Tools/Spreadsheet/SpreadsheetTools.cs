@@ -37,8 +37,8 @@ public partial class SpreadsheetTools : AgentToolBase
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to inspect workbook: '{resourceKey}'")
@@ -63,9 +63,9 @@ public partial class SpreadsheetTools : AgentToolBase
     private async Task<Result<Stream>> OpenWorkbookStreamAsync(ResourceKey resource)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var openResult = await fileStorage.OpenReadAsync(resource);
+        var openResult = await resourceFileSystem.OpenReadAsync(resource);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to open workbook: '{resource}'")

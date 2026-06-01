@@ -25,7 +25,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceFileSystem;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
     private IResourceScanner ResourceScanner => _workspaceWrapper.WorkspaceService.ResourceScanner;
     private ISidecarService SidecarService => _workspaceWrapper.WorkspaceService.SidecarService;
@@ -68,7 +68,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
         var folderResources = new List<ResourceKey>();
         foreach (var resource in Resources)
         {
-            var folderInfoResult = await FileStorage.GetInfoAsync(resource);
+            var folderInfoResult = await ResourceFileSystem.GetInfoAsync(resource);
             if (folderInfoResult.IsSuccess
                 && folderInfoResult.Value.Kind == StorageItemKind.Folder)
             {
@@ -183,12 +183,12 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                 var sidecarKeyResult = SidecarService.GetSidecarKey(resource);
                 if (sidecarKeyResult.IsSuccess)
                 {
-                    var sidecarInfoResult = await FileStorage.GetInfoAsync(sidecarKeyResult.Value);
+                    var sidecarInfoResult = await ResourceFileSystem.GetInfoAsync(sidecarKeyResult.Value);
                     sidecarPresent = sidecarInfoResult.IsSuccess
                         && sidecarInfoResult.Value.Kind == StorageItemKind.File;
                 }
 
-                var infoResult = await FileStorage.GetInfoAsync(resource);
+                var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
                 if (infoResult.IsFailure)
                 {
                     _logger.LogWarning($"Cannot delete resource because info probe failed: '{resource}'");

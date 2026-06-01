@@ -277,8 +277,8 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(fileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -381,8 +381,8 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var changeDocumentResource = async Task () =>
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-            var infoResult = await fileStorage.GetInfoAsync(message.NewResource);
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var infoResult = await resourceFileSystem.GetInfoAsync(message.NewResource);
             Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == StorageItemKind.File);
 
             var changeResult = await DocumentsPanel.ChangeDocumentResource(oldResource, oldDocumentType, newResource, newResourcePath, newDocumentType);

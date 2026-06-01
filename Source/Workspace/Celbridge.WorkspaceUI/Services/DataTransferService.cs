@@ -116,8 +116,8 @@ public class DataTransferService : IDataTransferService, IDisposable
         }
         var destFolderPath = resolveResult.Value;
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var destInfoResult = await fileStorage.GetInfoAsync(destFolderResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var destInfoResult = await resourceFileSystem.GetInfoAsync(destFolderResource);
         if (destInfoResult.IsFailure
             || destInfoResult.Value.Kind != StorageItemKind.Folder)
         {

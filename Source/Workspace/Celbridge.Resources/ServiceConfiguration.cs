@@ -19,7 +19,7 @@ public static class ServiceConfiguration
         services.AddTransient<IResourceTransferService, ResourceTransferService>();
         services.AddTransient<IResourceNameValidator, ResourceNameValidator>();
         services.AddTransient<IResourceMonitor, ResourceMonitor>();
-        services.AddTransient<IFileStorage, FileStorage>();
+        services.AddTransient<IResourceFileSystem, LocalResourceFileSystem>();
         services.AddTransient<ITrashService, TrashService>();
         services.AddTransient<IResourceScanner, ResourceScanner>();
         services.AddTransient<ISidecarService, SidecarService>();

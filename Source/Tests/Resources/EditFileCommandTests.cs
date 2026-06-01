@@ -37,8 +37,8 @@ public class EditFileCommandTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper, TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(fileStorage);
+        var resourceFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), Substitute.For<IMessengerService>(), _workspaceWrapper, TestFileSystem.CreateLocal());
+        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
     }
 
     [TearDown]

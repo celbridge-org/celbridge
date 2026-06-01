@@ -71,12 +71,12 @@ public partial class PackageTools
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceFileSystem;
 
         // Stage the downloaded zip under temp: so it lives in .celbridge/temp/
         // (created at workspace load) and is reachable through the gateway.
         var tempArchiveResource = new ResourceKey($"temp:{packageName}.zip");
-        var writeArchiveResult = await fileStorage.WriteAllBytesAsync(tempArchiveResource, downloadResult.Value);
+        var writeArchiveResult = await resourceFileSystem.WriteAllBytesAsync(tempArchiveResource, downloadResult.Value);
         if (writeArchiveResult.IsFailure)
         {
             return ToolResponse.Error($"Failed to write downloaded package: {writeArchiveResult.FirstErrorMessage}");
@@ -107,7 +107,7 @@ public partial class PackageTools
         {
             // Best-effort cleanup of the staged archive; a failure here does
             // not change the install outcome the caller sees.
-            await fileStorage.DeleteAsync(tempArchiveResource);
+            await resourceFileSystem.DeleteAsync(tempArchiveResource);
         }
     }
 }

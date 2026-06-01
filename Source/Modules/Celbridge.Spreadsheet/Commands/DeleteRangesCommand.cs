@@ -58,8 +58,8 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
         var rowsBySheet = new Dictionary<string, SortedSet<int>>(StringComparer.Ordinal);
         var columnsBySheet = new Dictionary<string, SortedSet<int>>(StringComparer.Ordinal);
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -121,7 +121,7 @@ public class DeleteRangesCommand : CommandBase, IDeleteRangesCommand
                 }
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

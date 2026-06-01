@@ -144,8 +144,8 @@ public partial class DocumentTabViewModel : ObservableObject
                 // rename temp" save pattern used by some editors and coding agents. Check if the file
                 // still exists on disk before closing. The resource registry may not have caught up
                 // with the rename yet.
-                var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-                var infoResult = await fileStorage.GetInfoAsync(FileResource);
+                var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+                var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
                 if (infoResult.IsSuccess
                     && infoResult.Value.Kind == StorageItemKind.File)
                 {
@@ -184,8 +184,8 @@ public partial class DocumentTabViewModel : ObservableObject
     {
         Guard.IsNotNull(DocumentView);
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var closeInfoResult = await fileStorage.GetInfoAsync(FileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var closeInfoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (closeInfoResult.IsFailure
             || closeInfoResult.Value.Kind != StorageItemKind.File)
         {

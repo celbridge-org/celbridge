@@ -22,9 +22,9 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             // Surface the gateway's failure verbatim so case-mismatch
@@ -38,7 +38,7 @@ public partial class FileTools
             return ToolResponse.Error($"Resource not found: '{resourceKey}'. file_read addresses resources by resource key, not arbitrary disk paths — only files under a registered root (e.g. 'project:', 'temp:', 'logs:') can be read.");
         }
 
-        var readResult = await fileStorage.ReadAllTextAsync(resourceKey);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(resourceKey);
         if (readResult.IsFailure)
         {
             return ToolResponse.Error(readResult.FirstErrorMessage);

@@ -58,7 +58,7 @@ public static class PackageManifestLoader
     /// origin tags the resulting PackageInfo so downstream read sites can pick the right IO path.
     /// reader is the file-read primitive used for every byte the loader pulls; when null a
     /// DirectPackageReader is used, which preserves the legacy direct-disk behaviour for
-    /// callers (tests, bundled discovery) that have no IFileStorage to route through.
+    /// callers (tests, bundled discovery) that have no IResourceFileSystem to route through.
     /// </summary>
     public static Result<Package> LoadPackage(
         string packageTomlPath,

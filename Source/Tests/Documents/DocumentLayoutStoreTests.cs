@@ -62,14 +62,14 @@ public class DocumentLayoutStoreTests
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real FileStorage so GetInfoAsync probes the actual disk
+        // Wire a real LocalResourceFileSystem so GetInfoAsync probes the actual disk
         // paths the registry resolves to.
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(fileStorage);
+        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
 
         _store = new DocumentLayoutStore(
             _workspaceWrapper,
@@ -203,7 +203,7 @@ public class DocumentLayoutStoreTests
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
         // ResolveResourcePath returns a path that does not exist on disk.
-        // FileStorage.GetInfoAsync reports NotFound; the restore skips.
+        // ResourceFileSystem.GetInfoAsync reports NotFound; the restore skips.
         var missingPath = Path.Combine(_tempFolder, "does_not_exist.md");
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Ok(missingPath));

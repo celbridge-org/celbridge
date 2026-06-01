@@ -38,9 +38,9 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceFileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -48,12 +48,12 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
                 .WithErrors(infoResult);
         }
 
-        return await ReplaceOnDisk(fileStorage);
+        return await ReplaceOnDisk(resourceFileSystem);
     }
 
-    private async Task<Result> ReplaceOnDisk(IFileStorage fileStorage)
+    private async Task<Result> ReplaceOnDisk(IResourceFileSystem resourceFileSystem)
     {
-        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
         {
             return Result.Fail($"Failed to read file: '{FileResource}'")
@@ -82,7 +82,7 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
 
         if (replacementCount > 0)
         {
-            var writeResult = await fileStorage.WriteAllTextAsync(FileResource, newContent);
+            var writeResult = await resourceFileSystem.WriteAllTextAsync(FileResource, newContent);
             if (writeResult.IsFailure)
             {
                 return writeResult;

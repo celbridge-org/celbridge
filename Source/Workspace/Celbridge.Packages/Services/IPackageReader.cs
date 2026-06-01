@@ -4,7 +4,7 @@ namespace Celbridge.Packages;
 /// Synchronous file-read primitives used by the package layer to load
 /// manifests, localization, templates, and extensions lists. The interface
 /// keeps PackageManifestLoader and PackageLocalizationService unaware of
-/// whether the bytes ultimately come from disk (bundled) or from IFileStorage
+/// whether the bytes ultimately come from disk (bundled) or from IResourceFileSystem
 /// (project), so each loader can stay on a single sync code path.
 /// </summary>
 public interface IPackageReader

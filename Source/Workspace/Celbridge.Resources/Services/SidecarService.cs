@@ -52,16 +52,16 @@ public sealed class SidecarService : ISidecarService
         }
         var sidecarKey = resolveResult.Value;
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(sidecarKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(sidecarKey);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
             return new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null);
         }
 
-        var readResult = await fileStorage.ReadAllTextAsync(sidecarKey);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(sidecarKey);
         if (readResult.IsFailure)
         {
             return new SidecarReadResult(SidecarReadOutcome.Broken, null, readResult.FirstErrorMessage);
@@ -319,8 +319,8 @@ public sealed class SidecarService : ISidecarService
             return Result.Ok();
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var writeResult = await fileStorage.WriteAllTextAsync(sidecarKey, canonicalAfter);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var writeResult = await resourceFileSystem.WriteAllTextAsync(sidecarKey, canonicalAfter);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to write sidecar '{sidecarKey}'.")

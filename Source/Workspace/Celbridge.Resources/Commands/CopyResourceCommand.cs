@@ -36,7 +36,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
-    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceFileSystem;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
     private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
 
@@ -173,7 +173,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // Resolve destination to handle folder drops
         var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
 
-        var infoResult = await FileStorage.GetInfoAsync(sourceResource);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)
         {
             return new CopyResourceOutcome(

@@ -10,7 +10,7 @@ namespace Celbridge.Resources.Services;
 /// One-shot, stateless on-demand scanner over the project's text files. The
 /// rename cascade, ProjectCheckCommand, and the data_find_tag tool all consume
 /// the same instance. Each call walks the registry's known files in parallel
-/// via IFileStorage; the OS page cache absorbs repeated reads. No
+/// via IResourceFileSystem; the OS page cache absorbs repeated reads. No
 /// in-memory index, no persistent cache.
 /// </summary>
 public sealed class ResourceScanner : IResourceScanner
@@ -160,13 +160,12 @@ public sealed class ResourceScanner : IResourceScanner
             .ToList();
     }
 
-    // Reads a file through IFileStorage so atomic-read + retry semantics
-    // apply uniformly. Returns null on any read failure; the caller treats
-    // unreadable files as empty (they simply don't contribute matches).
+    // Returns null on any read failure; the caller treats unreadable files as
+    // empty (they simply don't contribute matches).
     private async Task<string?> ReadFileTextAsync(ResourceKey resource)
     {
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var readResult = await fileStorage.ReadAllTextAsync(resource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var readResult = await resourceFileSystem.ReadAllTextAsync(resource);
         if (readResult.IsFailure)
         {
             _logger.LogDebug($"scanner: read failed for {resource} ({readResult.FirstErrorMessage})");
@@ -261,7 +260,7 @@ public sealed class ResourceScanner : IResourceScanner
     private async Task EnumerateProjectSidecarFilesAsync(Func<ResourceKey, ResourceKey, Task> visit)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
         var files = registry.GetAllFileResources(ResourceKey.DefaultRoot);
 
         await Parallel.ForEachAsync(files, async (file, _) =>
@@ -279,7 +278,7 @@ public sealed class ResourceScanner : IResourceScanner
                 return;
             }
 
-            var infoResult = await fileStorage.GetInfoAsync(parentKey.Value);
+            var infoResult = await resourceFileSystem.GetInfoAsync(parentKey.Value);
             if (infoResult.IsFailure
                 || infoResult.Value.Kind == StorageItemKind.NotFound)
             {

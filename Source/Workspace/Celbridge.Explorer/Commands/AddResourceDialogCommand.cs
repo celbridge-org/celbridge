@@ -186,7 +186,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFolderName = string.Empty;
@@ -196,7 +196,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             var candidateName = _stringLocalizer.GetString(DefaultFolderNameKey, folderNumber).ToString();
 
             var candidateKey = parentFolderKey.Combine(candidateName);
-            var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+            var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind == StorageItemKind.NotFound)
             {
@@ -221,7 +221,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension
@@ -239,7 +239,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             candidateName = Path.ChangeExtension(candidateName, extension);
 
             var candidateKey = parentFolderKey.Combine(candidateName);
-            var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+            var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind == StorageItemKind.NotFound)
             {

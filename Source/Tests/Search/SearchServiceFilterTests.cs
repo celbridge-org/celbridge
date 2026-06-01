@@ -35,13 +35,13 @@ public class SearchServiceFilterTests
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
         workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
-        // Wire a real FileStorage so size + existence probes hit disk through the gateway.
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        // Wire a real LocalResourceFileSystem so size + existence probes hit disk through the gateway.
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
             workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(fileStorage);
+        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
 
         _service = new SearchService(
             Substitute.For<ILogger<SearchService>>(),

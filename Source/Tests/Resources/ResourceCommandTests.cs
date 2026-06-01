@@ -69,14 +69,14 @@ public class ResourceCommandTests
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         // ListFolderContentsCommand and GetFileTreeCommand route through the
-        // FileStorage gateway, so the workspace needs a real instance
+        // LocalResourceFileSystem gateway, so the workspace needs a real instance
         // (a Substitute would return null for EnumerateFolderAsync).
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(fileStorage);
+        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
     }
 
     [TearDown]

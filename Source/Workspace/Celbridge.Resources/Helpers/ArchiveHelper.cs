@@ -32,11 +32,11 @@ public static class ArchiveHelper
     /// </summary>
     public static async Task<Result> AddFileToArchiveAsync(
         ZipArchive zipArchive,
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey sourceResource,
         string entryName)
     {
-        var openResult = await fileStorage.OpenReadAsync(sourceResource);
+        var openResult = await resourceFileSystem.OpenReadAsync(sourceResource);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to read source file for archive: '{sourceResource}'")

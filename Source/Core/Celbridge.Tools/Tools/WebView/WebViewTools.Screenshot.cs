@@ -60,8 +60,8 @@ public partial class WebViewTools
                 return ToolResponse.Error("No project is currently loaded. webview_screenshot requires an open project to resolve its save destination.");
             }
 
-            var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
-            var resolveResult = await WebViewScreenshotResolver.ResolveAsync(saveTo, format, fileStorage);
+            var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resolveResult = await WebViewScreenshotResolver.ResolveAsync(saveTo, format, resourceFileSystem);
             if (resolveResult.IsFailure)
             {
                 return ToolResponse.Error(resolveResult);

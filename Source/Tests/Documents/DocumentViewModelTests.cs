@@ -17,7 +17,7 @@ namespace Celbridge.Tests.Documents;
 public class DocumentViewModelTests
 {
     private IMessengerService _messengerService = null!;
-    private IFileStorage _fileStorage = null!;
+    private IResourceFileSystem _resourceFileSystem = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private TestDocumentViewModel _vm = null!;
     private string _tempFolder = null!;
@@ -34,10 +34,9 @@ public class DocumentViewModelTests
         _tempFilePath = Path.Combine(_tempFolder, "test.md");
         File.WriteAllText(_tempFilePath, string.Empty);
 
-        // Wire a real FileStorage over a substituted workspace hierarchy
-        // whose registry maps the test's resource key to the temp file path. The
-        // layer's atomic write + retry semantics are exercised directly against
-        // the temp folder.
+        // Wire a real LocalResourceFileSystem over a substituted workspace hierarchy
+        // whose registry maps the test's resource key to the temp file path. Save
+        // and reload paths are exercised directly against the temp folder.
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(Result<string>.Ok(_tempFilePath));
@@ -51,8 +50,8 @@ public class DocumentViewModelTests
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        _fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, workspaceWrapper, TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(_fileStorage);
+        _resourceFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), _messengerService, workspaceWrapper, TestFileSystem.CreateLocal());
+        workspaceService.ResourceFileSystem.Returns(_resourceFileSystem);
 
         var services = new ServiceCollection();
         services.AddSingleton(_messengerService);
@@ -60,7 +59,7 @@ public class DocumentViewModelTests
         services.AddSingleton<IFileSystem>(TestFileSystem.CreateLocal());
         ServiceLocator.Initialize(services.BuildServiceProvider());
 
-        _vm = new TestDocumentViewModel(_fileStorage);
+        _vm = new TestDocumentViewModel(_resourceFileSystem);
         _vm.FileResource = new ResourceKey("test.md");
         _vm.FilePath = _tempFilePath;
     }
@@ -146,7 +145,7 @@ public class DocumentViewModelTests
         var failingWrapper = Substitute.For<IWorkspaceWrapper>();
         failingWrapper.WorkspaceService.Returns(failingWorkspaceService);
 
-        var failingFileSystem = new FileStorage(Substitute.For<ILogger<FileStorage>>(), _messengerService, failingWrapper, TestFileSystem.CreateLocal());
+        var failingFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), _messengerService, failingWrapper, TestFileSystem.CreateLocal());
 
         var failingVm = new TestDocumentViewModel(failingFileSystem)
         {
@@ -247,7 +246,7 @@ public class DocumentViewModelTests
         // the interleave and the reload fires. Same-length interleaves slip
         // past this check and rely on the watcher's subsequent event.
         var externalContent = "external content that overrode our save";
-        var savingVm = new ExternalWriteDocumentViewModel(_fileStorage, _tempFilePath, externalContent);
+        var savingVm = new ExternalWriteDocumentViewModel(_resourceFileSystem, _tempFilePath, externalContent);
         savingVm.FileResource = new ResourceKey("interleave.md");
         savingVm.FilePath = _tempFilePath;
 
@@ -267,9 +266,9 @@ public class DocumentViewModelTests
     {
         // After we save, the cache holds the size + mtime of our own write.
         // A watcher event for that same write (the self-event the gateway's
-        // atomic write produces) probes the disk, finds the metadata unchanged
-        // from the cache, and returns without raising ReloadRequested. This is
-        // the test that proves the Excel-flash regression is gone.
+        // write produces) probes the disk, finds the metadata unchanged from
+        // the cache, and returns without raising ReloadRequested. This is the
+        // test that proves the Excel-flash regression is gone.
         var saveResult = await _vm.SaveDocumentContent("first save");
         saveResult.IsSuccess.Should().BeTrue();
 
@@ -288,11 +287,11 @@ public class DocumentViewModelTests
     /// </summary>
     private sealed class TestDocumentViewModel : DocumentViewModel
     {
-        private readonly IFileStorage _fileStorage;
+        private readonly IResourceFileSystem _resourceFileSystem;
 
-        public TestDocumentViewModel(IFileStorage fileStorage)
+        public TestDocumentViewModel(IResourceFileSystem resourceFileSystem)
         {
-            _fileStorage = fileStorage;
+            _resourceFileSystem = resourceFileSystem;
             EnableFileChangeMonitoring();
         }
 
@@ -314,7 +313,7 @@ public class DocumentViewModelTests
             SaveTimer = SaveDelay;
         }
 
-        protected override IFileStorage GetFileSystem() => _fileStorage;
+        protected override IResourceFileSystem GetFileSystem() => _resourceFileSystem;
     }
 
     /// <summary>
@@ -327,14 +326,14 @@ public class DocumentViewModelTests
     /// </summary>
     private sealed class ExternalWriteDocumentViewModel : DocumentViewModel
     {
-        private readonly IFileStorage _fileStorage;
+        private readonly IResourceFileSystem _resourceFileSystem;
         private readonly string _injectedFilePath;
         private readonly string _externalContent;
         private bool _hasInjected;
 
-        public ExternalWriteDocumentViewModel(IFileStorage fileStorage, string filePath, string externalContent)
+        public ExternalWriteDocumentViewModel(IResourceFileSystem resourceFileSystem, string filePath, string externalContent)
         {
-            _fileStorage = fileStorage;
+            _resourceFileSystem = resourceFileSystem;
             _injectedFilePath = filePath;
             _externalContent = externalContent;
             EnableFileChangeMonitoring();
@@ -347,7 +346,7 @@ public class DocumentViewModelTests
             return SaveTextToFileAsync(text);
         }
 
-        protected override IFileStorage GetFileSystem() => _fileStorage;
+        protected override IResourceFileSystem GetFileSystem() => _resourceFileSystem;
 
         public override async Task UpdateFileTrackingInfoAsync()
         {

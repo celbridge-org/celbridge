@@ -13,7 +13,7 @@ public interface IBatchScope : IDisposable
 
 /// <summary>
 /// The workspace-scoped resource operation service. Layers session-local undo
-/// and redo, batched grouping, and soft-delete trash on top of the IFileStorage
+/// and redo, batched grouping, and soft-delete trash on top of the IResourceFileSystem
 /// gateway. Every method names its target with a ResourceKey; external
 /// imports keep a string source path because the source lies outside the
 /// registry by definition.

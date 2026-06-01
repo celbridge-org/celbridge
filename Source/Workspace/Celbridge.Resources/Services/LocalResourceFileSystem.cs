@@ -5,9 +5,9 @@ using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
-public sealed class FileStorage : IFileStorage
+public sealed class LocalResourceFileSystem : IResourceFileSystem
 {
-    private readonly ILogger<FileStorage> _logger;
+    private readonly ILogger<LocalResourceFileSystem> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IFileSystem _fileSystem;
@@ -19,8 +19,8 @@ public sealed class FileStorage : IFileStorage
     // and only the ResourceService instance has ProjectFolderPath set. The
     // file-system layer resolves the live registry through the workspace wrapper
     // at call time.
-    public FileStorage(
-        ILogger<FileStorage> logger,
+    public LocalResourceFileSystem(
+        ILogger<LocalResourceFileSystem> logger,
         IMessengerService messengerService,
         IWorkspaceWrapper workspaceWrapper,
         IFileSystem fileSystem)
@@ -100,38 +100,16 @@ public sealed class FileStorage : IFileStorage
             return Result.Fail(ensureParentResult);
         }
 
-        try
-        {
-            // FileShare.None (not FileShare.Read) is deliberate: while a write
-            // stream is open no other process can read partial bytes. The
-            // trade-off is that another reader hitting the file mid-write sees
-            // a sharing-violation IOException, not stale-or-partial content.
-            // Unlike the buffered-bytes write paths, this stream writes directly
-            // to the destination: a crash or unhandled exception before the
-            // stream is fully written and disposed truncates the file in place.
-            const int streamBufferSize = 4096;
-            Stream stream = new FileStream(
-                resourcePath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                streamBufferSize,
-                useAsync: true);
-            return stream;
-        }
-        catch (Exception ex)
-        {
-            var failure = Result.Fail($"Failed to open write stream for resource: '{resource}'")
-                .WithException(ex);
-            return failure;
-        }
+        return await _fileSystem.OpenWriteAsync(resourcePath, WriteMode.Truncate);
     }
 
     public async Task<Result<MoveResult>> MoveAsync(ResourceKey source, ResourceKey dest)
     {
         if (source.Root != dest.Root)
         {
-            return Result.Fail($"Cross-root move not supported: '{source}' to '{dest}'");
+            return Result.Fail(
+                $"MoveAsync requires source and destination on the same root: '{source}' to '{dest}'. " +
+                "For cross-root moves, compose CopyAsync followed by DeleteAsync.");
         }
 
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
@@ -206,7 +184,7 @@ public sealed class FileStorage : IFileStorage
         IReadOnlyList<ResourceKey> sourceDescendantKeys;
         if (sourceIsFolder)
         {
-            sourceDescendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, sourcePath);
+            sourceDescendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, source, sourcePath);
         }
         else
         {
@@ -427,7 +405,7 @@ public sealed class FileStorage : IFileStorage
         IReadOnlyList<ResourceKey> descendantKeys;
         if (sourceIsFolder)
         {
-            descendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, sourcePath);
+            descendantKeys = await EnumerateDescendantKeysAsync(rootHandlerRegistry, source, sourcePath);
         }
         else
         {
@@ -447,7 +425,8 @@ public sealed class FileStorage : IFileStorage
         {
             // Recursive delete fails on any contained read-only file, so
             // strip the attribute throughout the subtree first.
-            await ClearReadOnlyAttributesRecursiveAsync(sourcePath);
+            var deleteValidator = ResolvePathValidator(rootHandlerRegistry, source);
+            await ClearReadOnlyAttributesRecursiveAsync(sourcePath, deleteValidator);
             deleteResult = await _fileSystem.DeleteFolderAsync(sourcePath, recursive: true);
         }
 
@@ -479,10 +458,11 @@ public sealed class FileStorage : IFileStorage
     // Returns the resource keys of every file inside a folder that exists on
     // disk. Used to capture descendant keys before a recursive delete or move
     // so eager-notify can drop their stale entries from the reference index.
-    private async Task<IReadOnlyList<ResourceKey>> EnumerateDescendantKeysAsync(IRootHandlerRegistry rootHandlerRegistry, string folderPath)
+    private async Task<IReadOnlyList<ResourceKey>> EnumerateDescendantKeysAsync(IRootHandlerRegistry rootHandlerRegistry, ResourceKey folder, string folderPath)
     {
         var keys = new List<ResourceKey>();
-        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: true);
+        var validator = ResolvePathValidator(rootHandlerRegistry, folder);
+        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: true, validateEntry: validator);
         if (enumerateResult.IsFailure)
         {
             // Best effort. A failure here just means descendant keys won't be
@@ -500,6 +480,18 @@ public sealed class FileStorage : IFileStorage
             }
         }
         return keys;
+    }
+
+    // Looks up the registered root handler for the key and returns its path
+    // validator predicate, or null when no handler is registered. The
+    // gateway's EnumerateFilesAsync treats null as "no validation runs".
+    private static Func<string, bool>? ResolvePathValidator(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
+    {
+        if (rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler))
+        {
+            return handler.PathValidator;
+        }
+        return null;
     }
 
     public async Task<Result> CreateFolderAsync(ResourceKey folder)
@@ -705,9 +697,9 @@ public sealed class FileStorage : IFileStorage
     // Recursive read-only clear before a recursive delete: Directory.Delete
     // fails on any contained read-only file, so strip the attribute throughout
     // the subtree first. Best-effort and silent on individual failures.
-    private async Task ClearReadOnlyAttributesRecursiveAsync(string folder)
+    private async Task ClearReadOnlyAttributesRecursiveAsync(string folder, Func<string, bool>? validator)
     {
-        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: true);
+        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: true, validateEntry: validator);
         if (enumerateResult.IsFailure)
         {
             return;

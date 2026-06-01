@@ -46,9 +46,9 @@ public interface IWorkspaceService
     IResourceService ResourceService { get; }
 
     /// <summary>
-    /// Returns the gateway file-system layer for project resources.
+    /// Returns the resource-key-aware file-system gateway for the workspace.
     /// </summary>
-    IFileStorage FileStorage { get; }
+    IResourceFileSystem ResourceFileSystem { get; }
 
     /// <summary>
     /// Returns the soft-delete trash service: move-to-trash, restore, and purge

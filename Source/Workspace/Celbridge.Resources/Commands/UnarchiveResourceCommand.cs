@@ -55,7 +55,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceFileSystem;
 
         if (!ResourceKey.IsValidKey(ArchiveResource))
         {
@@ -78,7 +78,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
         }
         var destinationPath = resolveDestinationResult.Value;
 
-        var archiveInfoResult = await fileStorage.GetInfoAsync(ArchiveResource);
+        var archiveInfoResult = await resourceFileSystem.GetInfoAsync(ArchiveResource);
         if (archiveInfoResult.IsFailure
             || archiveInfoResult.Value.Kind != StorageItemKind.File)
         {
@@ -90,7 +90,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         try
         {
-            var openArchiveResult = await fileStorage.OpenReadAsync(ArchiveResource);
+            var openArchiveResult = await resourceFileSystem.OpenReadAsync(ArchiveResource);
             if (openArchiveResult.IsFailure)
             {
                 return Result.Fail($"Failed to open archive: '{ArchiveResource}'")
@@ -149,7 +149,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 if (!Overwrite)
                 {
                     var entryResource = DestinationResource.Combine(entryName);
-                    var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
+                    var existingInfoResult = await resourceFileSystem.GetInfoAsync(entryResource);
                     if (existingInfoResult.IsSuccess
                         && existingInfoResult.Value.Kind == StorageItemKind.File)
                     {
@@ -175,7 +175,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             // Create the destination folder and any missing ancestors through
             // the operation service so the whole chain lands in the unarchive's
             // undo batch.
-            var destInfoResult = await fileStorage.GetInfoAsync(DestinationResource);
+            var destInfoResult = await resourceFileSystem.GetInfoAsync(DestinationResource);
             if (destInfoResult.IsFailure)
             {
                 return Result.Fail($"Failed to probe destination resource: '{DestinationResource}'")
@@ -192,7 +192,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 var ancestorKey = DestinationResource.GetParent();
                 while (!ancestorKey.IsEmpty)
                 {
-                    var ancestorInfoResult = await fileStorage.GetInfoAsync(ancestorKey);
+                    var ancestorInfoResult = await resourceFileSystem.GetInfoAsync(ancestorKey);
                     if (ancestorInfoResult.IsFailure)
                     {
                         return Result.Fail($"Failed to probe ancestor resource: '{ancestorKey}'")
@@ -228,7 +228,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
             foreach (var folderPath in foldersToCreate.OrderBy(path => path.Length))
             {
                 var folderKey = BuildDescendantKey(DestinationResource, destinationPath, folderPath);
-                var folderInfoResult = await fileStorage.GetInfoAsync(folderKey);
+                var folderInfoResult = await resourceFileSystem.GetInfoAsync(folderKey);
                 if (folderInfoResult.IsFailure)
                 {
                     return Result.Fail($"Failed to probe folder resource: '{folderKey}'")
@@ -257,7 +257,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
                 // If overwriting, delete existing file first so it's preserved in trash for undo
                 if (Overwrite)
                 {
-                    var existingInfoResult = await fileStorage.GetInfoAsync(entryResource);
+                    var existingInfoResult = await resourceFileSystem.GetInfoAsync(entryResource);
                     if (existingInfoResult.IsSuccess
                         && existingInfoResult.Value.Kind == StorageItemKind.File)
                     {

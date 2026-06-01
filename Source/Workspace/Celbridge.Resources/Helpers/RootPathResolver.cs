@@ -124,6 +124,37 @@ public class RootPathResolver
     }
 
     /// <summary>
+    /// Predicate for recursive gateway enumerations. Returns true when the
+    /// absolute path is contained within this resolver's backing location and
+    /// traverses no reparse point along its segments. Reuses the verified-folder
+    /// cache so the hot path costs at most one stat per unseen folder.
+    /// </summary>
+    public bool IsPathSafe(string absolutePath)
+    {
+        try
+        {
+            var normalizedPath = Path.GetFullPath(absolutePath);
+            var comparison = GetPathComparison();
+
+            bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
+            bool isUnderBacking = normalizedPath.StartsWith(_normalizedBackingWithSeparator, comparison);
+
+            if (!isBackingRoot
+                && !isUnderBacking)
+            {
+                return false;
+            }
+
+            var reparseResult = CheckForReparsePoints(normalizedPath, _normalizedBackingWithSeparator);
+            return reparseResult.IsSuccess;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Clears the cache of verified directory paths. Call this when the directory
     /// structure may have changed (e.g. after ResourceMonitor triggers a registry sync).
     /// </summary>

@@ -50,8 +50,8 @@ public class InspectorFactory : IInspectorFactory
     {
         try
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-            var infoResult = await fileStorage.GetInfoAsync(resource);
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var infoResult = await resourceFileSystem.GetInfoAsync(resource);
             if (infoResult.IsFailure)
             {
                 return Result<IInspector>.Fail($"Failed to probe resource: '{resource}'")

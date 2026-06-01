@@ -6,21 +6,20 @@ namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Rewrites "project:" reference literals across the project tree when a
-/// resource is renamed or moved. Reads and writes go back through IFileStorage
-/// so referencer files inherit the gateway's atomic-write semantics.
+/// resource is renamed or moved.
 /// </summary>
 internal sealed class ReferenceRewriter
 {
     private readonly ILogger _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly IFileSystem _fileSystem;
 
-    public ReferenceRewriter(ILogger logger, IWorkspaceWrapper workspaceWrapper, IFileStorage fileStorage, IFileSystem fileSystem)
+    public ReferenceRewriter(ILogger logger, IWorkspaceWrapper workspaceWrapper, IResourceFileSystem resourceFileSystem, IFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
         _fileSystem = fileSystem;
     }
 
@@ -69,7 +68,7 @@ internal sealed class ReferenceRewriter
 
         foreach (var referencer in orderedReferencers)
         {
-            var readResult = await _fileStorage.ReadAllTextAsync(referencer);
+            var readResult = await _resourceFileSystem.ReadAllTextAsync(referencer);
             if (readResult.IsFailure)
             {
                 var message = $"read failed for '{referencer}'";
@@ -96,7 +95,7 @@ internal sealed class ReferenceRewriter
                 continue;
             }
 
-            var writeResult = await _fileStorage.WriteAllTextAsync(referencer, rewritten);
+            var writeResult = await _resourceFileSystem.WriteAllTextAsync(referencer, rewritten);
             if (writeResult.IsFailure)
             {
                 var classification = await ClassifyReferencerWriteFailureAsync(referencer, writeResult);

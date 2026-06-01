@@ -36,7 +36,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceFileSystem;
 
         var failedResources = new List<ResourceKey>();
         var failureDetails = new List<string>();
@@ -45,7 +45,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         {
             var resource = fileEdit.Resource;
 
-            var applyResult = await ApplyEditsToDisk(resourceRegistry, fileStorage, resource, fileEdit.Edits);
+            var applyResult = await ApplyEditsToDisk(resourceRegistry, resourceFileSystem, resource, fileEdit.Edits);
             if (applyResult.IsFailure)
             {
                 _logger.LogWarning($"Failed to apply edits to file on disk: {resource}");
@@ -87,11 +87,11 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
 
     private static async Task<Result> ApplyEditsToDisk(
         IResourceRegistry resourceRegistry,
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey resource,
         List<RangeEdit> edits)
     {
-        var infoResult = await fileStorage.GetInfoAsync(resource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(resource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -102,7 +102,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
         // Read the file's existing content to capture its line-ending style and
         // trailing-newline state. Both must be preserved across the edit so the
         // file's on-disk format does not silently drift.
-        var readResult = await fileStorage.ReadAllTextAsync(resource);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(resource);
         if (readResult.IsFailure)
         {
             return Result.Fail($"Failed to read file: '{resource}'")
@@ -174,7 +174,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
             output += originalSeparator;
         }
 
-        var writeResult = await fileStorage.WriteAllTextAsync(resource, output);
+        var writeResult = await resourceFileSystem.WriteAllTextAsync(resource, output);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to write edits to file: '{resource}'")

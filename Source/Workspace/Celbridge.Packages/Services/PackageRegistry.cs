@@ -165,7 +165,7 @@ public class PackageRegistry
     // first contribution that handles the extension and declares a default template.
     // The reader is chosen by package origin: bundled packages stay on direct File.*
     // because their bytes live outside any registry root, project packages route
-    // through IFileStorage by reverse-resolving the template path.
+    // through IResourceFileSystem by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -214,15 +214,15 @@ public class PackageRegistry
     // Selects the file-read primitive that matches a package's discovery origin.
     // Project packages are read through the gateway; bundled packages stay on
     // direct File.* IO. The project reader is constructed on demand because the
-    // workspace-scoped IFileStorage and IResourceRegistry must be looked up at
+    // workspace-scoped IResourceFileSystem and IResourceRegistry must be looked up at
     // call time rather than cached.
     private IPackageReader GetReaderForPackage(PackageInfo package)
     {
         if (package.Origin == PackageOrigin.Project)
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            return new FileStoragePackageReader(fileStorage, resourceRegistry);
+            return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         }
 
         return _bundledReader;
@@ -313,23 +313,23 @@ public class PackageRegistry
         }
 
         var packagesResource = new ResourceKey(PackagesFolderName);
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var packagesInfoResult = await fileStorage.GetInfoAsync(packagesResource);
+        var packagesInfoResult = await resourceFileSystem.GetInfoAsync(packagesResource);
         if (packagesInfoResult.IsFailure
             || packagesInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return failures;
         }
 
-        var enumerateResult = await fileStorage.EnumerateFolderAsync(packagesResource);
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(packagesResource);
         if (enumerateResult.IsFailure)
         {
             return failures;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var projectReader = new FileStoragePackageReader(fileStorage, resourceRegistry);
+        var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         var candidates = new List<Package>();
 
         foreach (var item in enumerateResult.Value)
@@ -340,7 +340,7 @@ public class PackageRegistry
             }
 
             var manifestResource = item.Resource.Combine(ManifestFileName);
-            var manifestInfoResult = await fileStorage.GetInfoAsync(manifestResource);
+            var manifestInfoResult = await resourceFileSystem.GetInfoAsync(manifestResource);
             if (manifestInfoResult.IsFailure
                 || manifestInfoResult.Value.Kind != StorageItemKind.File)
             {

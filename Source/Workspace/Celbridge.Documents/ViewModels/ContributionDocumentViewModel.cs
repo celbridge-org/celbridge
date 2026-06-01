@@ -74,8 +74,8 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -84,7 +84,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
         if (IsBinary)
         {
-            var bytesResult = await fileStorage.ReadAllBytesAsync(FileResource);
+            var bytesResult = await resourceFileSystem.ReadAllBytesAsync(FileResource);
             if (bytesResult.IsFailure)
             {
                 return await GetDefaultTemplateContentAsync();
@@ -99,7 +99,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
             return Convert.ToBase64String(bytes);
         }
 
-        var textResult = await fileStorage.ReadAllTextAsync(FileResource);
+        var textResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (textResult.IsFailure)
         {
             return await GetDefaultTemplateContentAsync();
@@ -286,7 +286,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Reads the default template content from the manifest's template file.
     /// Returns empty string if no default template is declared or the file cannot be read.
-    /// Routes through IFileStorage when the template path is registry-addressable;
+    /// Routes through IResourceFileSystem when the template path is registry-addressable;
     /// falls back to direct read for packages installed outside the project tree.
     /// </summary>
     private async Task<string> GetDefaultTemplateContentAsync()
@@ -309,8 +309,8 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         var keyResult = _resourceRegistry.GetResourceKey(templatePath);
         if (keyResult.IsSuccess)
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-            var textResult = await fileStorage.ReadAllTextAsync(keyResult.Value);
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var textResult = await resourceFileSystem.ReadAllTextAsync(keyResult.Value);
             return textResult.IsSuccess ? textResult.Value : string.Empty;
         }
 

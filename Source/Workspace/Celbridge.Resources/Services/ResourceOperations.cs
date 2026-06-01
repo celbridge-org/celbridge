@@ -62,44 +62,44 @@ internal class CreateOperation : FileOperation
     private readonly ResourceKey _resource;
     private readonly bool _isFile;
     private readonly byte[]? _content;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
 
-    public CreateOperation(ResourceKey resource, byte[] content, IFileStorage fileStorage)
+    public CreateOperation(ResourceKey resource, byte[] content, IResourceFileSystem resourceFileSystem)
     {
         _resource = resource;
         _isFile = true;
         _content = content;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
-    public CreateOperation(ResourceKey resource, IFileStorage fileStorage)
+    public CreateOperation(ResourceKey resource, IResourceFileSystem resourceFileSystem)
     {
         _resource = resource;
         _isFile = false;
         _content = null;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
         if (_isFile)
         {
-            var infoResult = await _fileStorage.GetInfoAsync(_resource);
+            var infoResult = await _resourceFileSystem.GetInfoAsync(_resource);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind != StorageItemKind.NotFound)
             {
                 return Result.Fail($"Resource already exists: '{_resource}'");
             }
 
-            return await _fileStorage.WriteAllBytesAsync(_resource, _content!);
+            return await _resourceFileSystem.WriteAllBytesAsync(_resource, _content!);
         }
 
-        return await _fileStorage.CreateFolderAsync(_resource);
+        return await _resourceFileSystem.CreateFolderAsync(_resource);
     }
 
     public override async Task<Result> UndoAsync()
     {
-        var infoResult = await _fileStorage.GetInfoAsync(_resource);
+        var infoResult = await _resourceFileSystem.GetInfoAsync(_resource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
@@ -110,7 +110,7 @@ internal class CreateOperation : FileOperation
         {
             // Only remove an empty folder. If the user filled it after the
             // original create, leave the contents alone.
-            var enumerateResult = await _fileStorage.EnumerateFolderAsync(_resource);
+            var enumerateResult = await _resourceFileSystem.EnumerateFolderAsync(_resource);
             if (enumerateResult.IsFailure
                 || enumerateResult.Value.Count > 0)
             {
@@ -118,7 +118,7 @@ internal class CreateOperation : FileOperation
             }
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_resource);
+        var deleteResult = await _resourceFileSystem.DeleteAsync(_resource);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -136,7 +136,7 @@ internal class CopyOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly string _sourcePath;
     private readonly string _destPath;
 
@@ -149,7 +149,7 @@ internal class CopyOperation : FileOperation
         string sourcePath,
         string destPath,
         EntityFileHelper entityHelper,
-        IFileStorage fileStorage)
+        IResourceFileSystem resourceFileSystem)
     {
         _source = source;
         _dest = dest;
@@ -157,7 +157,7 @@ internal class CopyOperation : FileOperation
         _sourcePath = sourcePath;
         _destPath = destPath;
         _entityHelper = entityHelper;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -167,7 +167,7 @@ internal class CopyOperation : FileOperation
             _entityHelper.CopyEntityDataFile(_sourcePath, _destPath);
         }
 
-        var copyResult = await _fileStorage.CopyAsync(_source, _dest);
+        var copyResult = await _resourceFileSystem.CopyAsync(_source, _dest);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
@@ -193,7 +193,7 @@ internal class CopyOperation : FileOperation
             _entityHelper.DeleteEntityDataFile(_destPath);
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_dest);
+        var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -211,7 +211,7 @@ internal class MoveOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly string _sourcePath;
     private readonly string _destPath;
 
@@ -224,7 +224,7 @@ internal class MoveOperation : FileOperation
         string sourcePath,
         string destPath,
         EntityFileHelper entityHelper,
-        IFileStorage fileStorage)
+        IResourceFileSystem resourceFileSystem)
     {
         _source = source;
         _dest = dest;
@@ -232,7 +232,7 @@ internal class MoveOperation : FileOperation
         _sourcePath = sourcePath;
         _destPath = destPath;
         _entityHelper = entityHelper;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -248,7 +248,7 @@ internal class MoveOperation : FileOperation
             _entityHelper.MoveEntityDataFile(_sourcePath, _destPath);
         }
 
-        var moveResult = await _fileStorage.MoveAsync(_source, _dest);
+        var moveResult = await _resourceFileSystem.MoveAsync(_source, _dest);
         if (moveResult.IsFailure)
         {
             // Best-effort rollback of the entity-data cascade so the bytes
@@ -289,7 +289,7 @@ internal class MoveOperation : FileOperation
             _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
         }
 
-        var moveResult = await _fileStorage.MoveAsync(_dest, _source);
+        var moveResult = await _resourceFileSystem.MoveAsync(_dest, _source);
         return moveResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(moveResult);
@@ -359,7 +359,7 @@ internal class ImportExternalOperation : FileOperation
     private readonly string _sourcePath;
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
 
@@ -367,14 +367,14 @@ internal class ImportExternalOperation : FileOperation
         string sourcePath,
         ResourceKey dest,
         bool isFolder,
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         IFileSystem fileSystem,
         ILogger logger)
     {
         _sourcePath = sourcePath;
         _dest = dest;
         _isFolder = isFolder;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
         _fileSystem = fileSystem;
         _logger = logger;
     }
@@ -390,7 +390,7 @@ internal class ImportExternalOperation : FileOperation
                 return Result.Fail($"Source folder does not exist: '{_sourcePath}'");
             }
 
-            var infoResult = await _fileStorage.GetInfoAsync(_dest);
+            var infoResult = await _resourceFileSystem.GetInfoAsync(_dest);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind != StorageItemKind.NotFound)
             {
@@ -407,7 +407,7 @@ internal class ImportExternalOperation : FileOperation
             return Result.Fail($"Source file does not exist: '{_sourcePath}'");
         }
 
-        var destInfoResult = await _fileStorage.GetInfoAsync(_dest);
+        var destInfoResult = await _resourceFileSystem.GetInfoAsync(_dest);
         if (destInfoResult.IsSuccess
             && destInfoResult.Value.Kind != StorageItemKind.NotFound)
         {
@@ -421,19 +421,19 @@ internal class ImportExternalOperation : FileOperation
             return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_dest}'")
                 .WithErrors(readResult);
         }
-        return await _fileStorage.WriteAllBytesAsync(_dest, readResult.Value);
+        return await _resourceFileSystem.WriteAllBytesAsync(_dest, readResult.Value);
     }
 
     public override async Task<Result> UndoAsync()
     {
-        var infoResult = await _fileStorage.GetInfoAsync(_dest);
+        var infoResult = await _resourceFileSystem.GetInfoAsync(_dest);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
             return Result.Ok();
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_dest);
+        var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -441,7 +441,7 @@ internal class ImportExternalOperation : FileOperation
 
     private async Task<Result> ImportFolderAsync(string sourceFolderPath, ResourceKey destinationFolder)
     {
-        var createResult = await _fileStorage.CreateFolderAsync(destinationFolder);
+        var createResult = await _resourceFileSystem.CreateFolderAsync(destinationFolder);
         if (createResult.IsFailure)
         {
             return createResult;
@@ -461,7 +461,7 @@ internal class ImportExternalOperation : FileOperation
             {
                 return Result.Fail(readResult);
             }
-            var writeResult = await _fileStorage.WriteAllBytesAsync(destinationFile, readResult.Value);
+            var writeResult = await _resourceFileSystem.WriteAllBytesAsync(destinationFile, readResult.Value);
             if (writeResult.IsFailure)
             {
                 return writeResult;

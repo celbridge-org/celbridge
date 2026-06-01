@@ -16,7 +16,7 @@ public static class FileHashHelper
     /// Computes a SHA256 hash of a file's contents by reading the path directly.
     /// Intended for files that live outside the resource system (e.g. the Python
     /// install folder); resource-tracked files should hash via
-    /// IFileStorage.ComputeHashAsync so the read goes through the gateway.
+    /// IResourceFileSystem.ComputeHashAsync so the read goes through the gateway.
     /// Returns empty string if the file doesn't exist or can't be read.
     /// </summary>
     public static string HashFileContents(string filePath)

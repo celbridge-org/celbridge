@@ -74,8 +74,8 @@ internal static class SpreadsheetHelper
             return Result.Fail($"Resource is not an .xlsx workbook: '{fileResource}'");
         }
 
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(fileResource);
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to inspect workbook: '{fileResource}'")
@@ -101,10 +101,10 @@ internal static class SpreadsheetHelper
     /// dispose it; the underlying stream is owned by the workbook.
     /// </summary>
     public static async Task<Result<XLWorkbook>> LoadWorkbookAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey fileResource)
     {
-        var bytesResult = await fileStorage.ReadAllBytesAsync(fileResource);
+        var bytesResult = await resourceFileSystem.ReadAllBytesAsync(fileResource);
         if (bytesResult.IsFailure)
         {
             return Result.Fail($"Failed to read workbook: '{fileResource}'")
@@ -131,7 +131,7 @@ internal static class SpreadsheetHelper
     /// Evaluates formulas before saving so cached values stay fresh.
     /// </summary>
     public static async Task<Result> SaveWorkbookAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey fileResource,
         XLWorkbook workbook)
     {
@@ -148,7 +148,7 @@ internal static class SpreadsheetHelper
                 .WithException(ex);
         }
 
-        var writeResult = await fileStorage.WriteAllBytesAsync(fileResource, bytes);
+        var writeResult = await resourceFileSystem.WriteAllBytesAsync(fileResource, bytes);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to save workbook: '{fileResource}'")

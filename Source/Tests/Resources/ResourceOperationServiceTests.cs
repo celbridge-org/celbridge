@@ -20,7 +20,7 @@ public class ResourceOperationServiceTests
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
-    private FileStorage _fileStorage = null!;
+    private LocalResourceFileSystem _resourceFileSystem = null!;
     private TrashService _trashService = null!;
     private ResourceOperationService _operationService = null!;
 
@@ -49,7 +49,7 @@ public class ResourceOperationServiceTests
             return Result<string>.Ok(Path.Combine(_tempFolder, relativePath));
         });
 
-        // Inverse mapping (used by FileStorage's descendant-key enumeration on
+        // Inverse mapping (used by LocalResourceFileSystem's descendant-key enumeration on
         // folder moves and deletes).
         _resourceRegistry.GetResourceKey(Arg.Any<string>()).Returns(call =>
         {
@@ -85,12 +85,12 @@ public class ResourceOperationServiceTests
         var sidecarService = new SidecarService(_workspaceWrapper);
         workspaceService.SidecarService.Returns(sidecarService);
 
-        _fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        _resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(_fileStorage);
+        workspaceService.ResourceFileSystem.Returns(_resourceFileSystem);
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),

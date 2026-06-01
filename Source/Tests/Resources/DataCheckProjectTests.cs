@@ -74,12 +74,12 @@ public class DataCheckProjectTests
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             _messengerService,
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.FileStorage.Returns(fileStorage);
+        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
 
         var scanner = new ResourceScanner(
             Substitute.For<ILogger<ResourceScanner>>(),

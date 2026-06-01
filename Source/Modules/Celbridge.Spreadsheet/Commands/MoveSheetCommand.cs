@@ -40,8 +40,8 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
             return Result.Fail($"Position must be 1 or greater, was {Position}.");
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -66,7 +66,7 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
             if (worksheet.Position != Position)
             {
                 worksheet.Position = Position;
-                var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+                var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
                 if (saveResult.IsFailure)
                 {
                     return Result.Fail(saveResult);

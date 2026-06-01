@@ -7,7 +7,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Wraps the IFileStorage gateway and the ITrashService soft-delete layer
+/// Wraps the IResourceFileSystem gateway and the ITrashService soft-delete layer
 /// with a session-local undo/redo stack and batched grouping. Public methods
 /// accept ResourceKey; external imports keep a string source path because the
 /// source is outside the registry by definition. All disk I/O routes through
@@ -44,15 +44,15 @@ public class ResourceOperationService : IResourceOperationService
     private IResourceRegistry ResourceRegistry =>
         _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-    private IFileStorage FileStorage =>
-        _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceFileSystem ResourceFileSystem =>
+        _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
     private ITrashService TrashService =>
         _workspaceWrapper.WorkspaceService.TrashService;
 
     public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {
-        var operation = new CreateOperation(resource, content, FileStorage);
+        var operation = new CreateOperation(resource, content, ResourceFileSystem);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -65,7 +65,7 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> CreateFolderAsync(ResourceKey resource)
     {
-        var operation = new CreateOperation(resource, FileStorage);
+        var operation = new CreateOperation(resource, ResourceFileSystem);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -94,7 +94,7 @@ public class ResourceOperationService : IResourceOperationService
         }
         var destPath = destPathResult.Value;
 
-        var infoResult = await FileStorage.GetInfoAsync(source);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
@@ -111,7 +111,7 @@ public class ResourceOperationService : IResourceOperationService
             sourcePath,
             destPath,
             entityHelper,
-            FileStorage);
+            ResourceFileSystem);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
@@ -142,7 +142,7 @@ public class ResourceOperationService : IResourceOperationService
         }
         var destPath = destPathResult.Value;
 
-        var infoResult = await FileStorage.GetInfoAsync(source);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
@@ -159,7 +159,7 @@ public class ResourceOperationService : IResourceOperationService
             sourcePath,
             destPath,
             entityHelper,
-            FileStorage);
+            ResourceFileSystem);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
@@ -189,7 +189,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, FileStorage, _fileSystem, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, ResourceFileSystem, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -204,7 +204,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, FileStorage, _fileSystem, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, ResourceFileSystem, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)

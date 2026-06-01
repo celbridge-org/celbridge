@@ -9,10 +9,9 @@ namespace Celbridge.Resources.Services;
 public sealed partial record ParsedReference(int StartIndex, int EndIndex, ResourceKey Key);
 
 /// <summary>
-/// Parser for "project:" reference literals. Shared by
-/// <see cref="ResourceScanner"/> (detection) and <see cref="FileStorage"/>
-/// (rewrite cascade) so the two paths stay in sync on what counts as a
-/// valid reference.
+/// Parser for "project:" reference literals. The shared definition of what
+/// counts as a tracked reference; detection and rewrite paths both go through
+/// here.
 /// </summary>
 public static class ResourceReferenceParser
 {

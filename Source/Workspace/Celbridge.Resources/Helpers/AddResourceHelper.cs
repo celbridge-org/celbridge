@@ -57,7 +57,7 @@ public class AddResourceHelper
         // Create the resource on disk
         //
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
         // Fail if the parent folder for a new file does not exist.
         // Folder creation is allowed to materialize missing intermediate
@@ -67,7 +67,7 @@ public class AddResourceHelper
             var parentKey = destResource.GetParent();
             if (!parentKey.IsEmpty)
             {
-                var parentInfoResult = await fileStorage.GetInfoAsync(parentKey);
+                var parentInfoResult = await resourceFileSystem.GetInfoAsync(parentKey);
                 if (parentInfoResult.IsFailure
                     || parentInfoResult.Value.Kind != StorageItemKind.Folder)
                 {
@@ -77,8 +77,8 @@ public class AddResourceHelper
         }
 
         var createResult = resourceType == ResourceType.File
-            ? await CreateFileAsync(sourcePath, destResource, resourceOpService, fileStorage)
-            : await CreateFolderAsync(sourcePath, destResource, resourceOpService, fileStorage, _fileSystem);
+            ? await CreateFileAsync(sourcePath, destResource, resourceOpService, resourceFileSystem)
+            : await CreateFolderAsync(sourcePath, destResource, resourceOpService, resourceFileSystem, _fileSystem);
 
         if (createResult.IsFailure)
         {
@@ -113,9 +113,9 @@ public class AddResourceHelper
         string sourcePath,
         ResourceKey destResource,
         IResourceOperationService opService,
-        IFileStorage fileStorage)
+        IResourceFileSystem resourceFileSystem)
     {
-        var infoResult = await fileStorage.GetInfoAsync(destResource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(destResource);
         if (infoResult.IsSuccess
             && infoResult.Value.Kind != StorageItemKind.NotFound)
         {
@@ -158,10 +158,10 @@ public class AddResourceHelper
         string sourcePath,
         ResourceKey destResource,
         IResourceOperationService opService,
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         IFileSystem fileSystem)
     {
-        var infoResult = await fileStorage.GetInfoAsync(destResource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(destResource);
         if (infoResult.IsSuccess
             && infoResult.Value.Kind != StorageItemKind.NotFound)
         {

@@ -23,9 +23,9 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             return ToolResponse.Error(infoResult);
@@ -35,7 +35,7 @@ public partial class FileTools
             return ToolResponse.Error($"File not found: '{resourceKey}'");
         }
 
-        var bytesResult = await fileStorage.ReadAllBytesAsync(resourceKey);
+        var bytesResult = await resourceFileSystem.ReadAllBytesAsync(resourceKey);
         if (bytesResult.IsFailure)
         {
             return ToolResponse.Error(bytesResult.FirstErrorMessage);

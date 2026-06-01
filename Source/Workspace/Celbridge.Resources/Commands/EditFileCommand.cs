@@ -33,9 +33,9 @@ public class EditFileCommand : CommandBase, IEditFileCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceFileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -43,7 +43,7 @@ public class EditFileCommand : CommandBase, IEditFileCommand
                 .WithErrors(infoResult);
         }
 
-        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
         {
             return Result.Fail($"Failed to read file: '{FileResource}'")
@@ -71,7 +71,7 @@ public class EditFileCommand : CommandBase, IEditFileCommand
         var newContent = buildResult.NewContent;
         var replacementStarts = buildResult.ReplacementStarts;
 
-        var writeResult = await fileStorage.WriteAllTextAsync(FileResource, newContent);
+        var writeResult = await resourceFileSystem.WriteAllTextAsync(FileResource, newContent);
         if (writeResult.IsFailure)
         {
             return writeResult;

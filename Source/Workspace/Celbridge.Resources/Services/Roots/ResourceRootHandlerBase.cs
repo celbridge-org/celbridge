@@ -36,6 +36,8 @@ public abstract class ResourceRootHandlerBase : IResourceRootHandler
         return _pathResolver.GetResourceKey(absolutePath);
     }
 
+    public Func<string, bool> PathValidator => _pathResolver.IsPathSafe;
+
     public void InvalidatePathCache()
     {
         _pathResolver.InvalidateCache();

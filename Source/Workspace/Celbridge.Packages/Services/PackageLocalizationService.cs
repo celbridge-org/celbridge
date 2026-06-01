@@ -71,15 +71,15 @@ public class PackageLocalizationService : IPackageLocalizationService
 
     // Project packages route through the gateway by reverse-resolving the path
     // to a ResourceKey; bundled packages stay on direct File.* IO. The project
-    // reader is constructed on demand because the workspace-scoped IFileStorage
+    // reader is constructed on demand because the workspace-scoped IResourceFileSystem
     // and IResourceRegistry must be looked up at call time.
     private IPackageReader GetReaderForPackage(PackageInfo package)
     {
         if (package.Origin == PackageOrigin.Project)
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            return new FileStoragePackageReader(fileStorage, resourceRegistry);
+            return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         }
 
         return _bundledReader;

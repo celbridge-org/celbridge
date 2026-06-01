@@ -54,12 +54,12 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
     // EnumerateFolderAsync so the read side honours the same containment
     // validation as the write side.
     private static async Task CollectArchiveEntriesAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey folder,
         string relativePrefix,
         List<(ResourceKey Resource, string RelativePath)> entries)
     {
-        var enumerateResult = await fileStorage.EnumerateFolderAsync(folder);
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folder);
         if (enumerateResult.IsFailure)
         {
             return;
@@ -74,7 +74,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
 
             if (item.IsFolder)
             {
-                await CollectArchiveEntriesAsync(fileStorage, item.Resource, childRelative, entries);
+                await CollectArchiveEntriesAsync(resourceFileSystem, item.Resource, childRelative, entries);
             }
             else
             {
@@ -93,7 +93,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceFileSystem;
 
         if (!ResourceKey.IsValidKey(SourceResource))
         {
@@ -105,7 +105,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return Result.Fail($"Invalid archive resource key: '{ArchiveResource}'");
         }
 
-        var sourceInfoResult = await fileStorage.GetInfoAsync(SourceResource);
+        var sourceInfoResult = await resourceFileSystem.GetInfoAsync(SourceResource);
         if (sourceInfoResult.IsFailure)
         {
             return Result.Fail($"Failed to probe source resource: '{SourceResource}'")
@@ -119,7 +119,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return Result.Fail($"Resource not found: '{SourceResource}'");
         }
 
-        var archiveInfoResult = await fileStorage.GetInfoAsync(ArchiveResource);
+        var archiveInfoResult = await resourceFileSystem.GetInfoAsync(ArchiveResource);
         bool archiveExists = archiveInfoResult.IsSuccess
             && archiveInfoResult.Value.Kind == StorageItemKind.File;
 
@@ -155,7 +155,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
 
                     if (ArchiveHelper.ShouldIncludeFile(fileName, includeRegexes, excludeRegexes))
                     {
-                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, fileStorage, SourceResource, fileName);
+                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, resourceFileSystem, SourceResource, fileName);
                         if (addResult.IsFailure)
                         {
                             return addResult;
@@ -166,7 +166,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
                 else
                 {
                     var fileEntries = new List<(ResourceKey Resource, string RelativePath)>();
-                    await CollectArchiveEntriesAsync(fileStorage, SourceResource, string.Empty, fileEntries);
+                    await CollectArchiveEntriesAsync(resourceFileSystem, SourceResource, string.Empty, fileEntries);
 
                     foreach (var (fileResource, relativePath) in fileEntries)
                     {
@@ -175,7 +175,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
                             continue;
                         }
 
-                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, fileStorage, fileResource, relativePath);
+                        var addResult = await ArchiveHelper.AddFileToArchiveAsync(zipArchive, resourceFileSystem, fileResource, relativePath);
                         if (addResult.IsFailure)
                         {
                             return addResult;
@@ -201,7 +201,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
             return createResult;
         }
 
-        var archiveProbeResult = await fileStorage.GetInfoAsync(ArchiveResource);
+        var archiveProbeResult = await resourceFileSystem.GetInfoAsync(ArchiveResource);
         long archiveSize = archiveProbeResult.IsSuccess
             ? archiveProbeResult.Value.Size
             : archiveBytes.Length;

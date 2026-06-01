@@ -250,7 +250,7 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             // may not exist yet. Ensure it via the gateway before the user
             // can trigger a download.
             var downloadsFolder = new ResourceKey($"temp:{ProjectConstants.DownloadsFolder}");
-            await FileStorage.CreateFolderAsync(downloadsFolder);
+            await ResourceFileSystem.CreateFolderAsync(downloadsFolder);
 
             _webView.CoreWebView2.DownloadStarting -= CoreWebView2_DownloadStarting;
             _webView.CoreWebView2.DownloadStarting += CoreWebView2_DownloadStarting;
@@ -613,12 +613,12 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
                         // copies on disk until temp: is wiped on next workspace load.
                         if (importResult.IsSuccess)
                         {
-                            await FileStorage.DeleteAsync(downloadResource);
+                            await ResourceFileSystem.DeleteAsync(downloadResource);
                         }
                     }
                     else if (s.State == CoreWebView2DownloadState.Interrupted)
                     {
-                        await FileStorage.DeleteAsync(downloadResource);
+                        await ResourceFileSystem.DeleteAsync(downloadResource);
                     }
                 }
                 catch (Exception ex)
