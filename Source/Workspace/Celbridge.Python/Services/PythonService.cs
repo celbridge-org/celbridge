@@ -231,7 +231,7 @@ public class PythonService : IPythonService, IDisposable
             // uv writes to during normal operation (uv_cache, uv_tools, uv_bin, and
             // per-interpreter __pycache__) are deliberately excluded so the hash is
             // stable across sessions.
-            var wheelHash = FileHashHelper.HashFileContents(celbridgeWheelPath);
+            var wheelHash = await FileHashHelper.HashFileContentsAsync(celbridgeWheelPath);
             var installStateHash = await ComputeInstallStateHashAsync(pythonFolder);
             var currentFingerprint = ComputeConfigFingerprint(appVersion, pythonVersion!, celbridgeWheelPath, wheelHash, pythonPackages, installStateHash);
             var useOfflineMode = currentFingerprint == savedFingerprint;

@@ -119,7 +119,7 @@ public class PythonInstaller : IPythonInstaller
             var wheelFile = enumerateFilesResult.Value.FirstOrDefault(entry => !entry.IsFolder);
             if (wheelFile is not null)
             {
-                wheelHash = FileHashHelper.HashFileContents(wheelFile.FullPath);
+                wheelHash = await FileHashHelper.HashFileContentsAsync(wheelFile.FullPath);
             }
         }
 

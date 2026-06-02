@@ -20,20 +20,20 @@ public static class FileHashHelper
     /// IResourceFileSystem.ComputeHashAsync so the read goes through the gateway.
     /// Returns empty string if the file doesn't exist or can't be read.
     /// </summary>
-    public static string HashFileContents(string filePath)
+    public static async Task<string> HashFileContentsAsync(string filePath)
     {
         try
         {
             var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
-            var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(filePath));
+            var infoResult = await fileSystem.GetInfoAsync(filePath);
             if (infoResult.IsFailure
                 || infoResult.Value.Kind != StorageItemKind.File)
             {
                 return string.Empty;
             }
 
-            var bytesResult = SyncRunner.Run(() => fileSystem.ReadAllBytesAsync(filePath));
+            var bytesResult = await fileSystem.ReadAllBytesAsync(filePath);
             if (bytesResult.IsFailure)
             {
                 return string.Empty;
