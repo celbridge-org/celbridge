@@ -1,7 +1,5 @@
-using System.Collections.Concurrent;
 using Celbridge.Logging;
 using Celbridge.Workspace;
-using ThreadingTimer = System.Threading.Timer;
 using Timer = System.Timers.Timer;
 
 namespace Celbridge.Resources.Services;
@@ -11,44 +9,23 @@ namespace Celbridge.Resources.Services;
 /// changes and schedules debounced resource updates.
 /// </summary>
 /// <remarks>
-/// Uses FileSystemWatcher directly because the gateway does not surface watcher
-/// events, hence the AllowDirectFileSystemAccess exemption.
+/// Wraps one IFileSystemMonitor per watched root for the raw substrate events
+/// and keeps the domain half: path-to-ResourceKey mapping, policy filtering,
+/// messenger dispatch, and the project-tree registry debounce.
 /// </remarks>
-[AllowDirectFileSystemAccess]
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
     private const int UpdateDebounceMs = 250;
 
-    // A single File.WriteAllBytes on Windows generates multiple FileSystemWatcher
-    // Changed events (truncate, write, close). This per-path trailing-edge
-    // debounce coalesces that burst into one settled-state notification. The
-    // window also gives the writer time to release the handle before consumers
-    // probe size or read content.
-    private const int ChangedDebounceMs = 75;
-
     private sealed class WatchedRoot
     {
         public IResourceRootHandler Handler { get; }
-        public FileSystemWatcher Watcher { get; }
+        public IFileSystemMonitor Monitor { get; }
 
-        public WatchedRoot(IResourceRootHandler handler, FileSystemWatcher watcher)
+        public WatchedRoot(IResourceRootHandler handler, IFileSystemMonitor monitor)
         {
             Handler = handler;
-            Watcher = watcher;
-        }
-    }
-
-    // Per-path debounce slot for Changed events. The handler is kept latest-wins
-    // because a path is always served by a single root in practice (the watchers
-    // are per-root); this just guards against pathological cross-root races.
-    private sealed class ChangedDebounceEntry
-    {
-        public IResourceRootHandler Handler;
-        public ThreadingTimer? Timer;
-
-        public ChangedDebounceEntry(IResourceRootHandler handler)
-        {
-            Handler = handler;
+            Monitor = monitor;
         }
     }
 
@@ -56,6 +33,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystemMonitorFactory _fileSystemMonitorFactory;
 
     private readonly object _updateLock = new();
 
@@ -63,21 +41,18 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private Timer? _updateDebounceTimer;
     private bool _isDisposed;
 
-    // Case-insensitive: Windows file paths are case-insensitive and watcher
-    // events can surface different casings for the same on-disk file.
-    private readonly ConcurrentDictionary<string, ChangedDebounceEntry> _changedDebounceEntries =
-        new(StringComparer.OrdinalIgnoreCase);
-
     public ResourceMonitor(
         ILogger<ResourceMonitor> logger,
         IDispatcher dispatcher,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystemMonitorFactory fileSystemMonitorFactory)
     {
         _logger = logger;
         _dispatcher = dispatcher;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystemMonitorFactory = fileSystemMonitorFactory;
     }
 
     public Result Initialize()
@@ -89,7 +64,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
-            // Spin up one FileSystemWatcher per registered root that opted in via Capabilities.IsWatched.
+            // Spin up one file system monitor per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
             // returns the configured registry instance here.
             var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
@@ -100,15 +75,19 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                     continue;
                 }
 
-                if (!Directory.Exists(handler.BackingLocation))
+                var monitor = _fileSystemMonitorFactory.Create(handler.BackingLocation);
+                monitor.FileSystemChanged += (sender, monitorEvent) => OnFileSystemChanged(handler, monitorEvent);
+
+                var startResult = monitor.Start();
+                if (startResult.IsFailure)
                 {
-                    _logger.LogWarning(
-                        $"Backing folder for root '{handler.RootName}' does not exist: {handler.BackingLocation}");
+                    _logger.LogWarning(startResult,
+                        $"Resource monitoring not started for root '{handler.RootName}'");
+                    monitor.Dispose();
                     continue;
                 }
 
-                var watcher = CreateWatcher(handler);
-                _watchedRoots.Add(new WatchedRoot(handler, watcher));
+                _watchedRoots.Add(new WatchedRoot(handler, monitor));
 
                 _logger.LogDebug(
                     $"Resource monitoring started for root '{handler.RootName}' at: {handler.BackingLocation}");
@@ -121,29 +100,6 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return Result.Fail("Failed to initialize resource monitor")
                 .WithException(ex);
         }
-    }
-
-    private FileSystemWatcher CreateWatcher(IResourceRootHandler handler)
-    {
-        var watcher = new FileSystemWatcher(handler.BackingLocation)
-        {
-            NotifyFilter = NotifyFilters.FileName
-                         | NotifyFilters.DirectoryName
-                         | NotifyFilters.LastWrite
-                         | NotifyFilters.Size,
-            IncludeSubdirectories = true,
-            EnableRaisingEvents = false
-        };
-
-        // Closures capture the handler so each event knows which root it belongs to.
-        watcher.Created += (sender, e) => OnFileSystemCreated(handler, e);
-        watcher.Changed += (sender, e) => OnFileSystemChanged(handler, e);
-        watcher.Deleted += (sender, e) => OnFileSystemDeleted(handler, e);
-        watcher.Renamed += (sender, e) => OnFileSystemRenamed(handler, e);
-        watcher.Error += OnFileSystemError;
-
-        watcher.EnableRaisingEvents = true;
-        return watcher;
     }
 
     public void Shutdown()
@@ -161,20 +117,9 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                 _updateDebounceTimer = null;
             }
 
-            // Drain any in-flight per-path Changed debounce timers. Dispose
-            // before clearing so a timer that fires mid-shutdown finds an
-            // empty dict and exits via the TryRemove guard.
-            foreach (var pair in _changedDebounceEntries)
-            {
-                pair.Value.Timer?.Dispose();
-            }
-            _changedDebounceEntries.Clear();
-
             foreach (var watchedRoot in _watchedRoots)
             {
-                var watcher = watchedRoot.Watcher;
-                watcher.EnableRaisingEvents = false;
-                watcher.Dispose();
+                watchedRoot.Monitor.Dispose();
             }
             _watchedRoots.Clear();
 
@@ -186,129 +131,90 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
     }
 
-    private void OnFileSystemCreated(IResourceRootHandler handler, FileSystemEventArgs e)
+    private void OnFileSystemChanged(IResourceRootHandler handler, FileSystemMonitorEvent monitorEvent)
     {
-        if (ShouldIgnorePath(handler, e.FullPath))
+        switch (monitorEvent.Kind)
+        {
+            case FileSystemMonitorEventKind.Created:
+                HandleCreated(handler, monitorEvent.Path);
+                break;
+
+            case FileSystemMonitorEventKind.Changed:
+                HandleChanged(handler, monitorEvent.Path);
+                break;
+
+            case FileSystemMonitorEventKind.Deleted:
+                HandleDeleted(handler, monitorEvent.Path);
+                break;
+
+            case FileSystemMonitorEventKind.Renamed:
+                HandleRenamed(handler, monitorEvent.OldPath!, monitorEvent.Path);
+                break;
+        }
+    }
+
+    private void HandleCreated(IResourceRootHandler handler, string fullPath)
+    {
+        if (ShouldIgnorePath(handler, fullPath))
         {
             return;
         }
 
         // Send granular notification for listeners (e.g., document editors)
-        OnResourceCreated(handler, e.FullPath);
+        OnResourceCreated(handler, fullPath);
 
         // Also notify as changed because some save patterns (atomic temp-write
         // followed by replace of an existing destination, used by the in-app
         // file writer and many external editors) surface as a Created event on
         // the destination rather than a Changed or Renamed event. Listeners
         // that watch for content changes need to react in that case too.
-        OnResourceChanged(handler, e.FullPath);
+        OnResourceChanged(handler, fullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemChanged(IResourceRootHandler handler, FileSystemEventArgs e)
+    private void HandleChanged(IResourceRootHandler handler, string fullPath)
     {
-        if (ShouldIgnorePath(handler, e.FullPath))
+        if (ShouldIgnorePath(handler, fullPath))
         {
             return;
         }
 
-        EnqueueChangedEvent(handler, e.FullPath);
-    }
-
-    // Per-path trailing-edge debounce: each Changed event resets the timer for
-    // its path. When the timer expires we emit a single ResourceChangedMessage
-    // for the settled state and schedule the project-tree refresh. Created /
-    // Deleted / Renamed are not debounced because they carry distinct semantics
-    // and listeners need each one.
-    private void EnqueueChangedEvent(IResourceRootHandler handler, string fullPath)
-    {
-        if (_isDisposed)
-        {
-            return;
-        }
-
-        _changedDebounceEntries.AddOrUpdate(
-            fullPath,
-            addValueFactory: _ =>
-            {
-                var entry = new ChangedDebounceEntry(handler);
-                entry.Timer = new ThreadingTimer(
-                    callback: state => OnChangedDebounceElapsed(fullPath),
-                    state: null,
-                    dueTime: ChangedDebounceMs,
-                    period: Timeout.Infinite);
-                return entry;
-            },
-            updateValueFactory: (_, existing) =>
-            {
-                existing.Handler = handler;
-                existing.Timer?.Change(ChangedDebounceMs, Timeout.Infinite);
-                return existing;
-            });
-    }
-
-    private void OnChangedDebounceElapsed(string fullPath)
-    {
-        if (!_changedDebounceEntries.TryRemove(fullPath, out var entry))
-        {
-            return;
-        }
-
-        entry.Timer?.Dispose();
-
-        if (_isDisposed)
-        {
-            return;
-        }
-
-        OnResourceChanged(entry.Handler, fullPath);
-        ScheduleResourceUpdateIfProjectRoot(entry.Handler);
-    }
-
-    private void OnFileSystemDeleted(IResourceRootHandler handler, FileSystemEventArgs e)
-    {
-        if (ShouldIgnorePath(handler, e.FullPath))
-        {
-            return;
-        }
-
-        OnResourceDeleted(handler, e.FullPath);
+        OnResourceChanged(handler, fullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemRenamed(IResourceRootHandler handler, RenamedEventArgs e)
+    private void HandleDeleted(IResourceRootHandler handler, string fullPath)
+    {
+        if (ShouldIgnorePath(handler, fullPath))
+        {
+            return;
+        }
+
+        OnResourceDeleted(handler, fullPath);
+
+        ScheduleResourceUpdateIfProjectRoot(handler);
+    }
+
+    private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
     {
         // Only check the new path for ignore rules. The old path may no longer exist on disk
         // (the rename has already completed), so File.GetAttributes would throw and cause the
         // event to be incorrectly ignored. This is critical for editors and coding agents that
         // use a "write temp, delete original, rename temp" save pattern.
-        if (ShouldIgnorePath(handler, e.FullPath))
+        if (ShouldIgnorePath(handler, newFullPath))
         {
             return;
         }
 
-        OnResourceRenamed(handler, e.OldFullPath, e.FullPath);
+        OnResourceRenamed(handler, oldFullPath, newFullPath);
 
         // Also notify as changed since content may have been updated
         // (handles applications that use rename as part of save, e.g., Excel)
-        OnResourceChanged(handler, e.FullPath);
+        OnResourceChanged(handler, newFullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
-    }
-
-    private void OnFileSystemError(object sender, ErrorEventArgs e)
-    {
-        var exception = e.GetException();
-        if (exception is not null)
-        {
-            _logger.LogError(exception, "File system watcher error");
-        }
-        else
-        {
-            _logger.LogError("File system watcher error (no exception attached)");
-        }
     }
 
     private void ScheduleResourceUpdateIfProjectRoot(IResourceRootHandler handler)

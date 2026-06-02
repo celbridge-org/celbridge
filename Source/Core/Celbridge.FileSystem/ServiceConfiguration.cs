@@ -8,5 +8,6 @@ public static class ServiceConfiguration
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<ILocalFileSystem, LocalFileSystem>();
+        services.AddSingleton<IFileSystemMonitorFactory, FileSystemMonitorFactory>();
     }
 }
