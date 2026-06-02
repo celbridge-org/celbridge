@@ -35,7 +35,7 @@ public class ResourceCommandTests
     private const string FileContents = "Line one\nLine two\nLine three\n";
 
     [SetUp]
-    public void Setup()
+    public async Task Setup()
     {
         _projectFolderPath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceCommandTests)}/{Guid.NewGuid():N}");
         Directory.CreateDirectory(_projectFolderPath);
@@ -54,9 +54,9 @@ public class ResourceCommandTests
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
-        _resourceRegistry.UpdateResourceRegistry();
+        await _resourceRegistry.UpdateResourceRegistryAsync();
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);

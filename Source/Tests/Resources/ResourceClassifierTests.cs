@@ -49,7 +49,7 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void StandaloneCelWithMultiPartExtensionRegistration_IsNotReportedAsOrphan()
+    public async Task StandaloneCelWithMultiPartExtensionRegistration_IsNotReportedAsOrphan()
     {
         // A .cel file whose multi-part extension is claimed by a registered
         // editor factory is a standalone .cel form (e.g. foo.webview.cel,
@@ -62,7 +62,7 @@ public class ResourceClassifierTests
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = registry.GetSidecarReport();
         report.Orphan.Should().NotContain(new ResourceKey("feature.note.cel"));
@@ -70,7 +70,7 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void BareCelExtensionRegistration_DoesNotPreventOrphanReport()
+    public async Task BareCelExtensionRegistration_DoesNotPreventOrphanReport()
     {
         // The ".cel" extension is also registered as a generic code-editor
         // language (for syntax highlighting), and that registration must not
@@ -85,14 +85,14 @@ public class ResourceClassifierTests
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = registry.GetSidecarReport();
         report.Orphan.Should().Contain(new ResourceKey("orphaned.png.cel"));
     }
 
     [Test]
-    public void OrphanCelWithNoFactoryClaim_IsStillReportedAsOrphan()
+    public async Task OrphanCelWithNoFactoryClaim_IsStillReportedAsOrphan()
     {
         // When the editor registry is wired up but no factory claims the
         // file, the .cel is a genuine orphan that the user needs to repair.
@@ -102,14 +102,14 @@ public class ResourceClassifierTests
 
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = registry.GetSidecarReport();
         report.Orphan.Should().Contain(new ResourceKey("scratch.unknown.cel"));
     }
 
     [Test]
-    public void ParentedSidecar_IsNeverConsultedAgainstEditorRegistry()
+    public async Task ParentedSidecar_IsNeverConsultedAgainstEditorRegistry()
     {
         // A .cel that pairs with a sibling parent is never a candidate for
         // standalone-form classification, so the editor registry must not
@@ -124,7 +124,7 @@ public class ResourceClassifierTests
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         editorRegistry.DidNotReceive().IsExtensionSupported(Arg.Any<string>());
 
@@ -134,7 +134,7 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void NestedFolders_PairCorrectly_AndReportUsesRelativeKeys()
+    public async Task NestedFolders_PairCorrectly_AndReportUsesRelativeKeys()
     {
         // Make sure the pairing pass walks nested folders and produces project-
         // relative keys (not just leaf names). Catches a regression where the
@@ -146,7 +146,7 @@ public class ResourceClassifierTests
 
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var noteResource = registry.GetResource(new ResourceKey("subfolder/note.md")).Value as IFileResource;
         noteResource!.Sidecar.Should().NotBeNull();
@@ -158,11 +158,11 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void EmptyTree_ProducesEmptyReport()
+    public async Task EmptyTree_ProducesEmptyReport()
     {
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = registry.GetSidecarReport();
         report.Healthy.Should().BeEmpty();
@@ -171,27 +171,27 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void Classify_PlainDataFileWithoutSidecar_IsPlainData()
+    public async Task Classify_PlainDataFileWithoutSidecar_IsPlainData()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var file = registry.GetResource(new ResourceKey("notes.md")).Value as IFileResource;
         file!.FileKind.Should().Be(FileKind.PlainData);
     }
 
     [Test]
-    public void Classify_PairedSidecarAndParent_AssignsExpectedKinds()
+    public async Task Classify_PairedSidecarAndParent_AssignsExpectedKinds()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"), "tags = []\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var parent = registry.GetResource(new ResourceKey("notes.md")).Value as IFileResource;
         var sidecar = registry.GetResource(new ResourceKey("notes.md.cel")).Value as IFileResource;
@@ -201,7 +201,7 @@ public class ResourceClassifierTests
     }
 
     [Test]
-    public void Classify_RegisteredStandaloneCel_IsStandalone()
+    public async Task Classify_RegisteredStandaloneCel_IsStandalone()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "page.webview.cel"),
             "source_url = \"https://example.com\"\n");
@@ -211,33 +211,33 @@ public class ResourceClassifierTests
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier(editorRegistry);
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var file = registry.GetResource(new ResourceKey("page.webview.cel")).Value as IFileResource;
         file!.FileKind.Should().Be(FileKind.Standalone);
     }
 
     [Test]
-    public void Classify_ParentlessUnregisteredCel_IsOrphan()
+    public async Task Classify_ParentlessUnregisteredCel_IsOrphan()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "tags = []\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var file = registry.GetResource(new ResourceKey("lonely.cel")).Value as IFileResource;
         file!.FileKind.Should().Be(FileKind.Orphan);
     }
 
     [Test]
-    public void Classify_DoubleCelExtension_IsInvalidSidecar()
+    public async Task Classify_DoubleCelExtension_IsInvalidSidecar()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "stray.cel.cel"), "broken\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifierWithNoFactories();
         var registry = BuildRegistry(classifier);
-        registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var file = registry.GetResource(new ResourceKey("stray.cel.cel")).Value as IFileResource;
         file!.FileKind.Should().Be(FileKind.InvalidSidecar);
@@ -248,7 +248,7 @@ public class ResourceClassifierTests
         var registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new Celbridge.Messaging.Services.MessengerService(),
-            ProjectTreeBuilderTestHelper.Build(new Celbridge.UserInterface.Services.FileIconService()),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, new Celbridge.UserInterface.Services.FileIconService()),
             classifier,
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());

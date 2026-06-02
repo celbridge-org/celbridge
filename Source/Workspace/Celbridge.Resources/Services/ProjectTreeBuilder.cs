@@ -4,14 +4,11 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Builds the in-memory project tree from disk, deferring visibility filtering
-/// to the workspace-scoped policy engine.
+/// Builds the in-memory project tree by enumerating the project root through the
+/// resource file-system gateway. Visibility filtering lives in the gateway's
+/// policy evaluation, so the builder no longer touches the file system directly
+/// or applies its own filters.
 /// </summary>
-/// <remarks>
-/// Walks the project folder directly with Directory.GetDirectories / GetFiles,
-/// hence the AllowDirectFileSystemAccess exemption.
-/// </remarks>
-[AllowDirectFileSystemAccess]
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
     private readonly IFileIconService _fileIconService;
@@ -23,89 +20,78 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         _workspaceWrapper = workspaceWrapper;
     }
 
-    public IFolderResource BuildTree(string projectFolderPath)
+    public async Task<Result<IFolderResource>> BuildTreeAsync()
     {
         var root = new FolderResource(string.Empty, null);
-        SynchronizeFolder(root, projectFolderPath, projectFolderPath);
-        return root;
+
+        var synchronizeResult = await SynchronizeFolderAsync(root, ResourceKey.Empty);
+        if (synchronizeResult.IsFailure)
+        {
+            return Result<IFolderResource>.Fail("Failed to build the project tree.")
+                .WithErrors(synchronizeResult);
+        }
+
+        return Result<IFolderResource>.Ok(root);
     }
 
-    private void SynchronizeFolder(FolderResource folderResource, string folderPath, string projectFolderPath)
+    private async Task<Result> SynchronizeFolderAsync(FolderResource folderResource, ResourceKey folderKey)
     {
-        var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
 
-        var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
-        subFolderPaths.RemoveAll(path => ShouldFilter(path, projectFolderPath, isFolder: true, policy));
-
-        var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
-        filePaths.RemoveAll(path => ShouldFilter(path, projectFolderPath, isFolder: false, policy));
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderKey);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to enumerate folder: '{folderKey}'")
+                .WithErrors(enumerateResult);
+        }
+        var folderItems = enumerateResult.Value;
 
         // Children rebuild from scratch on every call so stale TreeViewNode.Content
         // references do not survive a rapid undo/redo cycle.
         folderResource.Children.Clear();
 
-        foreach (var subFolderPath in subFolderPaths)
+        foreach (var folderItem in folderItems)
         {
-            var folderName = Path.GetFileName(subFolderPath);
-            var childFolder = new FolderResource(folderName, folderResource);
-            SynchronizeFolder(childFolder, subFolderPath, projectFolderPath);
-            folderResource.AddChild(childFolder);
+            var childName = folderItem.Resource.ResourceName;
+
+            if (folderItem.IsFolder)
+            {
+                var childFolder = new FolderResource(childName, folderResource);
+
+                var childResult = await SynchronizeFolderAsync(childFolder, folderItem.Resource);
+                if (childResult.IsFailure)
+                {
+                    return childResult;
+                }
+
+                folderResource.AddChild(childFolder);
+            }
+            else
+            {
+                var fileExtension = GetFileExtension(childName);
+
+                var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
+                var iconDefinition = getIconResult.IsSuccess
+                    ? getIconResult.Value
+                    : _fileIconService.DefaultFileIcon;
+
+                folderResource.AddChild(new FileResource(childName, folderResource, iconDefinition));
+            }
         }
 
-        foreach (var filePath in filePaths)
-        {
-            var fileName = Path.GetFileName(filePath);
-            var fileExtension = Path.GetExtension(filePath).TrimStart('.');
-
-            var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
-            var iconDefinition = getIconResult.IsSuccess
-                ? getIconResult.Value
-                : _fileIconService.DefaultFileIcon;
-
-            folderResource.AddChild(new FileResource(fileName, folderResource, iconDefinition));
-        }
-
-        folderResource.Children = folderResource.Children
-            .OrderBy(child => child is IFolderResource ? 0 : 1)
-            .ThenBy(child => child.Name, StringComparer.Ordinal)
-            .ToList();
+        // EnumerateFolderAsync yields folders-first, ordinal order, which matches
+        // the tree's required ordering, so no re-sort is needed here.
+        return Result.Ok();
     }
 
-    private static bool ShouldFilter(string fullPath, string projectFolderPath, bool isFolder, IResourcePolicy policy)
+    private static string GetFileExtension(string fileName)
     {
-        var keyResult = BuildProjectKey(fullPath, projectFolderPath);
-        if (keyResult.IsFailure)
+        int lastDotIndex = fileName.LastIndexOf('.');
+        if (lastDotIndex < 0)
         {
-            return true;
+            return string.Empty;
         }
 
-        var policyResult = policy.Evaluate(keyResult.Value, ResourceAction.List, isFolder);
-        return policyResult.IsFailure;
-    }
-
-    private static Result<ResourceKey> BuildProjectKey(string fullPath, string projectFolderPath)
-    {
-        var trimmedProjectPath = projectFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!fullPath.StartsWith(trimmedProjectPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return Result<ResourceKey>.Fail($"Path is outside the project folder: '{fullPath}'");
-        }
-
-        var relativePath = fullPath
-            .Substring(trimmedProjectPath.Length)
-            .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Replace(Path.DirectorySeparatorChar, '/')
-            .Replace(Path.AltDirectorySeparatorChar, '/');
-
-        if (string.IsNullOrEmpty(relativePath))
-        {
-            return ResourceKey.Empty;
-        }
-
-        if (!ResourceKey.TryCreate(relativePath, out var key))
-        {
-            return Result<ResourceKey>.Fail($"Invalid resource key derived from path: '{relativePath}'");
-        }
-        return key;
+        return fileName.Substring(lastDotIndex + 1);
     }
 }

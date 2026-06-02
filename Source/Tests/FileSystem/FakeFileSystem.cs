@@ -208,11 +208,19 @@ public sealed class FakeFileSystem : ILocalFileSystem
         var entries = new List<FileSystemEntry>(folderPaths.Count + filePaths.Count);
         foreach (var folder in folderPaths)
         {
-            entries.Add(new FileSystemEntry(folder, IsFolder: true));
+            entries.Add(new FileSystemEntry(folder, IsFolder: true, Size: 0, ModifiedUtc: DateTime.UtcNow));
         }
         foreach (var file in filePaths)
         {
-            entries.Add(new FileSystemEntry(file, IsFolder: false));
+            long size = 0;
+            DateTime modifiedUtc = default;
+            if (_files.TryGetValue(file, out var fileEntry))
+            {
+                size = fileEntry.Bytes.Length;
+                modifiedUtc = fileEntry.ModifiedUtc;
+            }
+
+            entries.Add(new FileSystemEntry(file, IsFolder: false, Size: size, ModifiedUtc: modifiedUtc));
         }
 
         IReadOnlyList<FileSystemEntry> list = entries;

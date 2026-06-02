@@ -138,7 +138,7 @@ public class WorkspaceLoader
             }
 
             // Update resource registry immediately to ensure we are up to date
-            var updateResult = resourceService.UpdateResources();
+            var updateResult = await resourceService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
                 return Result.Fail("Failed to update resources")

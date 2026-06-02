@@ -36,7 +36,7 @@ public class PackageServiceTests
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
         {
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
@@ -374,7 +374,7 @@ public class PackageServiceTests
             // Repoint the workspace-bound gateway at the second folder so the
             // second discovery probes secondFolder/packages instead of the original.
             _resourceRegistry.ProjectFolderPath.Returns(secondFolder);
-            _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+            _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
             {
                 var key = callInfo.Arg<ResourceKey>();
                 return Result<string>.Ok(Path.Combine(secondFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));

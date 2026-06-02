@@ -68,8 +68,11 @@ public interface IResourceRegistry
     /// Validates path containment and checks for symlinks/junctions.
     /// The path will be generated even if the resource does not exist yet in the project.
     /// Fails if the path escapes the project folder or traverses a reparse point.
+    /// When validateCase is true (the default) a project-root key whose on-disk
+    /// case differs from the supplied case is rejected; pass false on the listing
+    /// path, where child keys are re-derived from disk-canonical names anyway.
     /// </summary>
-    Result<string> ResolveResourcePath(ResourceKey resource);
+    Result<string> ResolveResourcePath(ResourceKey resource, bool validateCase = true);
 
     /// <summary>
     /// Normalizes the resource key so that it matches the exact casing as it exists on disk.
@@ -86,7 +89,7 @@ public interface IResourceRegistry
     /// <summary>
     /// Updates the registry to mirror the current state of the files and folders in the project folder.
     /// </summary>
-    Result UpdateResourceRegistry();
+    Task<Result> UpdateResourceRegistryAsync();
 
     /// <summary>
     /// Returns all file resources for the project root with their resource keys and absolute paths.

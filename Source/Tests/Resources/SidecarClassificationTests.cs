@@ -32,7 +32,7 @@ public class SidecarClassificationTests
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
-            ProjectTreeBuilderTestHelper.Build(),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
@@ -62,35 +62,35 @@ public class SidecarClassificationTests
     }
 
     [Test]
-    public void MalformedTomlPrefix_ClassifiedAsBroken_BytesUntouched()
+    public async Task MalformedTomlPrefix_ClassifiedAsBroken_BytesUntouched()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
         var originalContent = "not = valid = toml = !!!";
         File.WriteAllText(sidecarPath, originalContent);
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
     [Test]
-    public void UnterminatedTomlString_ClassifiedAsBroken_BytesUntouched()
+    public async Task UnterminatedTomlString_ClassifiedAsBroken_BytesUntouched()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
         var originalContent = "key = \"unterminated\nstring = true\n";
         File.WriteAllText(sidecarPath, originalContent);
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
     [Test]
-    public void MergeConflictMarkers_ClassifiedAsBroken_BytesUntouched()
+    public async Task MergeConflictMarkers_ClassifiedAsBroken_BytesUntouched()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
@@ -102,7 +102,7 @@ public class SidecarClassificationTests
             ">>>>>>> branch\n";
         File.WriteAllText(sidecarPath, originalContent);
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
@@ -110,7 +110,7 @@ public class SidecarClassificationTests
     }
 
     [Test]
-    public void DuplicateBlockNames_ClassifiedAsBroken_BytesUntouched()
+    public async Task DuplicateBlockNames_ClassifiedAsBroken_BytesUntouched()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
@@ -120,27 +120,27 @@ public class SidecarClassificationTests
             "+++ \"a\"\nsecond";
         File.WriteAllText(sidecarPath, originalContent);
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
     [Test]
-    public void BomAndCrlf_ClassifiedAsHealthy()
+    public async Task BomAndCrlf_ClassifiedAsHealthy()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
         var content = "﻿key = \"value\"\r\n";
         File.WriteAllText(sidecarPath, content);
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Healthy);
     }
 
     [Test]
-    public void ProjectLoads_EvenWhenSidecarStateIsBroken()
+    public async Task ProjectLoads_EvenWhenSidecarStateIsBroken()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "good.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "good.png.cel"),
@@ -150,7 +150,7 @@ public class SidecarClassificationTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.png.cel"),
             "malformed = \n");
 
-        var result = _registry.UpdateResourceRegistry();
+        var result = await _registry.UpdateResourceRegistryAsync();
         result.IsSuccess.Should().BeTrue();
 
         GetParentSidecar("good.png")!.Status.Should().Be(CelFileStatus.Healthy);

@@ -160,22 +160,26 @@ public sealed class LocalFileSystem : ILocalFileSystem
             var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
             var entries = new List<FileSystemEntry>();
 
-            // EnumerateDirectories and EnumerateFiles each report a single kind,
-            // so the entry kind is known without an extra stat per item. The OS
-            // enumeration order is unspecified (NTFS comes back name-sorted, ext4
-            // hash-arbitrary), so each group is sorted by ordinal path to give a
-            // deterministic, cross-platform-stable result for every consumer.
+            // Enumerating through DirectoryInfo yields FileInfo / DirectoryInfo
+            // objects whose Length and LastWriteTimeUtc are populated from the
+            // directory walk itself, so size and modified-time cost no extra stat
+            // per item. EnumerateDirectories and EnumerateFiles each report a
+            // single kind. The OS enumeration order is unspecified (NTFS comes
+            // back name-sorted, ext4 hash-arbitrary), so each group is sorted by
+            // ordinal path to give a deterministic, cross-platform-stable result
+            // for every consumer.
+            var directoryInfo = new DirectoryInfo(path);
 
-            var folderPaths = Directory.EnumerateDirectories(path, pattern, searchOption).OrderBy(folder => folder, StringComparer.Ordinal);
-            foreach (var folderPath in folderPaths)
+            var folderInfos = directoryInfo.EnumerateDirectories(pattern, searchOption).OrderBy(folder => folder.FullName, StringComparer.Ordinal);
+            foreach (var folderInfo in folderInfos)
             {
-                entries.Add(new FileSystemEntry(folderPath, IsFolder: true));
+                entries.Add(new FileSystemEntry(folderInfo.FullName, IsFolder: true, Size: 0, ModifiedUtc: folderInfo.LastWriteTimeUtc));
             }
 
-            var filePaths = Directory.EnumerateFiles(path, pattern, searchOption).OrderBy(file => file, StringComparer.Ordinal);
-            foreach (var filePath in filePaths)
+            var fileInfos = directoryInfo.EnumerateFiles(pattern, searchOption).OrderBy(file => file.FullName, StringComparer.Ordinal);
+            foreach (var fileInfo in fileInfos)
             {
-                entries.Add(new FileSystemEntry(filePath, IsFolder: false));
+                entries.Add(new FileSystemEntry(fileInfo.FullName, IsFolder: false, Size: fileInfo.Length, ModifiedUtc: fileInfo.LastWriteTimeUtc));
             }
 
             IReadOnlyList<FileSystemEntry> list = entries;

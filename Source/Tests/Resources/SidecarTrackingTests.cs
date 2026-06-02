@@ -26,7 +26,7 @@ public class SidecarTrackingTests
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
-            ProjectTreeBuilderTestHelper.Build(),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
@@ -50,11 +50,11 @@ public class SidecarTrackingTests
     }
 
     [Test]
-    public void FileWithNoSidecar_HasNullSidecar()
+    public async Task FileWithNoSidecar_HasNullSidecar()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var resourceResult = _registry.GetResource(new ResourceKey("foo.png"));
         resourceResult.IsSuccess.Should().BeTrue();
@@ -63,13 +63,13 @@ public class SidecarTrackingTests
     }
 
     [Test]
-    public void HealthySidecar_IsPairedWithStatusHealthy()
+    public async Task HealthySidecar_IsPairedWithStatusHealthy()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "tags = [\"meeting\"]\n");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var resourceResult = _registry.GetResource(new ResourceKey("foo.png"));
         resourceResult.IsSuccess.Should().BeTrue();
@@ -80,19 +80,19 @@ public class SidecarTrackingTests
     }
 
     [Test]
-    public void OrphanSidecar_AppearsInReportOrphan()
+    public async Task OrphanSidecar_AppearsInReportOrphan()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "tags = [\"x\"]\n");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = _registry.GetSidecarReport();
         report.Orphan.Should().Contain(new ResourceKey("foo.png.cel"));
     }
 
     [Test]
-    public void CelCelFile_AppearsInReportBroken()
+    public async Task CelCelFile_AppearsInReportBroken()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
@@ -100,7 +100,7 @@ public class SidecarTrackingTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel.cel"),
             "should = \"not be paired\"\n");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = _registry.GetSidecarReport();
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel.cel"));
@@ -113,13 +113,13 @@ public class SidecarTrackingTests
     }
 
     [Test]
-    public void UnparseableSidecar_AppearsInReportBroken()
+    public async Task UnparseableSidecar_AppearsInReportBroken()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "not = valid = toml = !!!");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = _registry.GetSidecarReport();
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
@@ -129,30 +129,30 @@ public class SidecarTrackingTests
     }
 
     [Test]
-    public void DeletingSidecar_FlipsParentToNullSidecar()
+    public async Task DeletingSidecar_FlipsParentToNullSidecar()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
         File.WriteAllText(sidecarPath, "tags = [\"x\"]\n");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var parent1 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
         parent1!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
 
         File.Delete(sidecarPath);
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var parent2 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
         parent2!.Sidecar.Should().BeNull();
     }
 
     [Test]
-    public void BrokenOrphan_AppearsInBothBrokenAndOrphan()
+    public async Task BrokenOrphan_AppearsInBothBrokenAndOrphan()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "loose = invalid toml here = !!!");
 
-        _registry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var report = _registry.GetSidecarReport();
         report.Broken.Should().Contain(new ResourceKey("lonely.cel"));

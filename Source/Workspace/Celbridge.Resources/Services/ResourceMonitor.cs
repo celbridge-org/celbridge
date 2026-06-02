@@ -362,11 +362,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
 
         // Marshal to UI thread since UpdateResources may trigger UI updates via message
-        _dispatcher.TryEnqueue(() =>
+        _dispatcher.TryEnqueue(async () =>
         {
             var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-            var result = resourceService.UpdateResources();
+            var result = await resourceService.UpdateResourcesAsync();
             if (result.IsFailure)
             {
                 _logger.LogWarning(result, "Failed to refresh resources");

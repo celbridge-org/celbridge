@@ -42,5 +42,5 @@ public interface IResourceService
     /// <summary>
     /// Refreshes the resource registry immediately.
     /// </summary>
-    Result UpdateResources();
+    Task<Result> UpdateResourcesAsync();
 }

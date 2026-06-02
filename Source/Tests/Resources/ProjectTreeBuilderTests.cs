@@ -4,7 +4,7 @@ using Celbridge.Resources.Services;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Direct tests for the project tree builder: disk-to-tree walk, hidden-name
+/// Direct tests for the project tree builder: gateway-driven walk, policy-based
 /// filtering, folders-before-files ordering, fresh instances on every call.
 /// Targets the builder rather than going through ResourceRegistry so the
 /// project-scope filter rules can be exercised cleanly.
@@ -25,7 +25,7 @@ public class ProjectTreeBuilderTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
-        _builder = ProjectTreeBuilderTestHelper.Build();
+        _builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath);
     }
 
     [TearDown]
@@ -45,10 +45,12 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public void BuildTree_ProducesFolderResource_WithProjectAsRoot()
+    public async Task BuildTree_ProducesFolderResource_WithProjectAsRoot()
     {
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         tree.Should().NotBeNull();
         tree.Name.Should().BeEmpty();
         tree.ParentFolder.Should().BeNull();
@@ -56,14 +58,16 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public void BuildTree_AddsFilesAndFolders()
+    public async Task BuildTree_AddsFilesAndFolders()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "root.txt"), "x");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "sub"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "sub", "child.md"), "y");
 
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         tree.Children.Should().HaveCount(2);
 
         // Folders sort before files; "sub" comes first.
@@ -79,7 +83,7 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public void BuildTree_ExcludesDotPrefixedFiles_AndDotPrefixedFolders()
+    public async Task BuildTree_ExcludesDotPrefixedFiles_AndDotPrefixedFolders()
     {
         // Leading-dot names are project-hidden (covers .celbridge plus any
         // editor scratch files like .gitignore, .vscode/, etc.).
@@ -88,13 +92,15 @@ public class ProjectTreeBuilderTests
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, ".vscode"));
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "src"));
 
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         tree.Children.Select(c => c.Name).Should().BeEquivalentTo(new[] { "src", "visible.txt" });
     }
 
     [Test]
-    public void BuildTree_ShowsFileWithWindowsHiddenAttribute()
+    public async Task BuildTree_ShowsFileWithWindowsHiddenAttribute()
     {
         // Visibility is decided by patterns, not the OS hidden attribute, so a
         // normally-named file stays visible even when Windows marks it hidden.
@@ -108,26 +114,30 @@ public class ProjectTreeBuilderTests
         File.WriteAllText(hiddenFilePath, "x");
         File.SetAttributes(hiddenFilePath, File.GetAttributes(hiddenFilePath) | FileAttributes.Hidden);
 
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         tree.Children.Select(c => c.Name).Should().Contain("notes.txt");
     }
 
     [Test]
-    public void BuildTree_ExcludesPyCacheFolders()
+    public async Task BuildTree_ExcludesPyCacheFolders()
     {
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "scripts", "__pycache__"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "scripts", "__pycache__", "x.pyc"), "");
         File.WriteAllText(Path.Combine(_projectFolderPath, "scripts", "main.py"), "");
 
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         var scripts = (FolderResource)tree.Children.Single(c => c.Name == "scripts");
         scripts.Children.Select(c => c.Name).Should().BeEquivalentTo(new[] { "main.py" });
     }
 
     [Test]
-    public void BuildTree_ExcludesPythonLibFolder_OnlyWhenParentIsPython()
+    public async Task BuildTree_ExcludesPythonLibFolder_OnlyWhenParentIsPython()
     {
         // Python/Lib is excluded (virtualenv pip packages). A "Lib" folder
         // anywhere else stays — the exclusion is keyed on the parent name.
@@ -138,8 +148,10 @@ public class ProjectTreeBuilderTests
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "OtherProject", "Lib"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "OtherProject", "Lib", "thing.txt"), "");
 
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         var python = (FolderResource)tree.Children.Single(c => c.Name == "Python");
         python.Children.Select(c => c.Name).Should().BeEquivalentTo(new[] { "main.py" });
 
@@ -149,12 +161,17 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public void BuildTree_ReturnsFreshInstances_EveryCall()
+    public async Task BuildTree_ReturnsFreshInstances_EveryCall()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "stable.txt"), "x");
 
-        var first = _builder.BuildTree(_projectFolderPath);
-        var second = _builder.BuildTree(_projectFolderPath);
+        var firstResult = await _builder.BuildTreeAsync();
+        var secondResult = await _builder.BuildTreeAsync();
+
+        firstResult.IsSuccess.Should().BeTrue();
+        secondResult.IsSuccess.Should().BeTrue();
+        var first = firstResult.Value;
+        var second = secondResult.Value;
 
         // Each call rebuilds the tree from scratch so stale UI-bound references
         // do not survive an undo/redo or rapid rebuild.
@@ -163,12 +180,14 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public void BuildTree_FilesGetIcons()
+    public async Task BuildTree_FilesGetIcons()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.txt"), "x");
 
-        var tree = _builder.BuildTree(_projectFolderPath);
+        var buildResult = await _builder.BuildTreeAsync();
 
+        buildResult.IsSuccess.Should().BeTrue();
+        var tree = buildResult.Value;
         var file = (FileResource)tree.Children.Single();
         file.Icon.Should().NotBeNull();
     }

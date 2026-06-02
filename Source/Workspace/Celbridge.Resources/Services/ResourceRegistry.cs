@@ -76,7 +76,7 @@ public class ResourceRegistry : IResourceRegistry
         return ResolveResourcePath(resourceKey);
     }
 
-    public Result<string> ResolveResourcePath(ResourceKey resource)
+    public Result<string> ResolveResourcePath(ResourceKey resource, bool validateCase = true)
     {
         var resolveResult = _rootHandlerRegistry.ResolveResourcePath(resource);
         if (resolveResult.IsFailure)
@@ -92,8 +92,13 @@ public class ResourceRegistry : IResourceRegistry
         // scanner (both Ordinal-case-sensitive) would treat it as a separate
         // resource, leaving the project in an inconsistent state. The case
         // check requires the project tree, so it stays on the registry rather
-        // than moving down into the root handler registry.
-        if (resource.Root == ResourceKey.DefaultRoot)
+        // than moving down into the root handler registry. The listing path
+        // skips it (validateCase false): enumeration re-derives every child key
+        // from the disk-canonical name, so the result is canonical regardless of
+        // the folder key's case, and the on-disk casing probe is wasted work for
+        // every folder on a full tree rebuild.
+        if (resource.Root == ResourceKey.DefaultRoot
+            && validateCase)
         {
             var caseCheck = EnsureProjectKeyCaseMatchesDisk(resource, absolutePath);
             if (caseCheck.IsFailure)
@@ -171,7 +176,7 @@ public class ResourceRegistry : IResourceRegistry
         return ResourceTreeNavigator.FindResource(_projectFolder, resource);
     }
 
-    public Result UpdateResourceRegistry()
+    public async Task<Result> UpdateResourceRegistryAsync()
     {
         try
         {
@@ -181,7 +186,13 @@ public class ResourceRegistry : IResourceRegistry
             // iterators on Children remain valid even if a swap happens during a read.
             // Volatile.Write adds a release fence so the tree's construction writes are
             // visible before the new reference (a no-op on x64, required on ARM64).
-            var newRoot = (FolderResource)_projectTreeBuilder.BuildTree(ProjectFolderPath);
+            var buildResult = await _projectTreeBuilder.BuildTreeAsync();
+            if (buildResult.IsFailure)
+            {
+                return Result.Fail("Failed to build the project tree.")
+                    .WithErrors(buildResult);
+            }
+            var newRoot = (FolderResource)buildResult.Value;
 
             // Sidecar pairing runs on the new tree before publication. The
             // classifier sets each parent FileResource.Sidecar in place and

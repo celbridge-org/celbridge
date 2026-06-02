@@ -651,7 +651,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        var resolveResult = ResolvePath(folder);
+        // Listing skips the disk case-consistency probe: child keys below come
+        // from the disk-canonical names returned by the enumeration, so they are
+        // canonical regardless of the folder key's case.
+        var resolveResult = ResolvePath(folder, validateCase: false);
         if (resolveResult.IsFailure)
         {
             return Result.Fail($"Failed to resolve path for resource: '{folder}'")
@@ -679,7 +682,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         var entries = new List<FolderItem>();
 
         // EnumerateAsync already returns a deterministic folders-first, ordinal
-        // order, so no re-sort is needed here.
+        // order with size and modified-time populated from the directory walk,
+        // so neither a re-sort nor a per-child stat is needed here.
         foreach (var entry in enumerateResult.Value)
         {
             var childName = Path.GetFileName(entry.FullPath);
@@ -688,18 +692,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             {
                 continue;
             }
-            var infoResult = await _fileSystem.GetInfoAsync(entry.FullPath);
-            if (infoResult.IsFailure)
-            {
-                continue;
-            }
-            var info = infoResult.Value;
 
             entries.Add(new FolderItem(
                 Resource: childKey,
                 IsFolder: entry.IsFolder,
-                Size: entry.IsFolder ? 0 : info.Size,
-                ModifiedUtc: info.ModifiedUtc));
+                Size: entry.Size,
+                ModifiedUtc: entry.ModifiedUtc));
         }
 
         IReadOnlyList<FolderItem> result = entries;
@@ -718,10 +716,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return FileHashHelper.HashBytes(readResult.Value);
     }
 
-    private Result<string> ResolvePath(ResourceKey resource)
+    private Result<string> ResolvePath(ResourceKey resource, bool validateCase = true)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        return resourceRegistry.ResolveResourcePath(resource);
+        return resourceRegistry.ResolveResourcePath(resource, validateCase);
     }
 
     // Resolves the workspace-scoped policy engine through the wrapper and

@@ -84,9 +84,10 @@ public record StorageItemInfo(
 /// A single entry returned by EnumerateAsync. FullPath is the absolute path on
 /// the substrate. IsFolder true means a directory; false means "not a directory"
 /// (a regular file, but on POSIX also a symlink, FIFO, socket, or device), so a
-/// non-folder is not guaranteed to be a readable regular file.
-/// </summary>
-public record FileSystemEntry(string FullPath, bool IsFolder);
+/// non-folder is not guaranteed to be a readable regular file. Size and ModifiedUtc
+/// carry the metadata the directory walk already surfaces for free; Size is 0 for
+/// folders.
+public record FileSystemEntry(string FullPath, bool IsFolder, long Size, DateTime ModifiedUtc);
 
 /// <summary>
 /// Path-based gateway for local-substrate filesystem reads and writes. The

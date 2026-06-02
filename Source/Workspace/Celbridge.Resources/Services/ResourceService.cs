@@ -118,9 +118,11 @@ public class ResourceService : IResourceService, IDisposable
 #endif
     }
 
-    private void OnResourceUpdateRequestedMessage(object recipient, RequestResourceRegistryUpdateMessage message)
+    // Fire-and-forget sink for the request message: the registry build is async,
+    // so the handler awaits it and logs on failure rather than propagating.
+    private async void OnResourceUpdateRequestedMessage(object recipient, RequestResourceRegistryUpdateMessage message)
     {
-        var updateResult = UpdateResources();
+        var updateResult = await UpdateResourcesAsync();
         if (updateResult.IsFailure)
         {
             _logger.LogWarning(updateResult, "Failed to update resources after command execution");
@@ -132,9 +134,9 @@ public class ResourceService : IResourceService, IDisposable
         Monitor.ScheduleResourceUpdate();
     }
 
-    public Result UpdateResources()
+    public async Task<Result> UpdateResourcesAsync()
     {
-        var updateResult = Registry.UpdateResourceRegistry();
+        var updateResult = await Registry.UpdateResourceRegistryAsync();
         if (updateResult.IsFailure)
         {
             return Result.Fail("Failed to update resources")

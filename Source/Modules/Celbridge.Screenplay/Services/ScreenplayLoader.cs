@@ -77,7 +77,7 @@ public class ScreenplayLoader
 
             // Update the resource registry to delete any existing entity data files before
             // we add the .scene files.
-            var updateResult = resourceRegistry.UpdateResourceRegistry();
+            var updateResult = await resourceRegistry.UpdateResourceRegistryAsync();
             if (updateResult.IsFailure)
             {
                 return Result.Fail($"Failed to update resource registry")

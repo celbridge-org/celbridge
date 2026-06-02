@@ -38,7 +38,7 @@ public class ResourceOperationServiceTests
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
 
         // Map every key under the default root to a path under the temp folder.
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(call =>
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(call =>
         {
             var key = call.Arg<ResourceKey>();
             if (key.IsEmpty)
