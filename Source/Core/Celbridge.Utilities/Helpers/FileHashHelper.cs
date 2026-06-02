@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using Celbridge.FileSystem;
 using Celbridge.Resources;
 using Path = System.IO.Path;
@@ -74,11 +75,11 @@ public static class FileHashHelper
     /// like Python's Lib/site-packages while still surfacing the changes that
     /// matter for install-state validation.
     /// </summary>
-    public static string HashFolderStructure(string folderPath, int maxDepth = 3)
+    public static async Task<string> HashFolderStructureAsync(string folderPath, int maxDepth = 3)
     {
         var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
 
-        var rootInfoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(folderPath));
+        var rootInfoResult = await fileSystem.GetInfoAsync(folderPath);
         if (rootInfoResult.IsFailure
             || rootInfoResult.Value.Kind != StorageItemKind.Folder)
         {
@@ -97,41 +98,41 @@ public static class FileHashHelper
                 continue;
             }
 
-            var filesResult = SyncRunner.Run(() => fileSystem.EnumerateFilesAsync(currentPath, "*", recursive: false));
-            var foldersResult = SyncRunner.Run(() => fileSystem.EnumerateFoldersAsync(currentPath));
+            var enumerateResult = await fileSystem.EnumerateAsync(currentPath, "*", recursive: false);
 
             // Best effort: a child we cannot enumerate is treated as
             // contributing nothing to the hash. Same as it being absent.
-            if (filesResult.IsFailure
-                && foldersResult.IsFailure)
+            if (enumerateResult.IsFailure)
             {
                 continue;
             }
 
-            if (foldersResult.IsSuccess)
+            foreach (var child in enumerateResult.Value)
             {
-                foreach (var child in foldersResult.Value)
+                if (!child.IsFolder)
                 {
-                    var relativePath = Path.GetRelativePath(folderPath, child);
-                    entries.Add($"D|{relativePath}");
-                    stack.Push((child, depth + 1));
+                    continue;
                 }
+                var relativePath = Path.GetRelativePath(folderPath, child.FullPath);
+                entries.Add($"D|{relativePath}");
+                stack.Push((child.FullPath, depth + 1));
             }
 
-            if (filesResult.IsSuccess)
+            foreach (var child in enumerateResult.Value)
             {
-                foreach (var child in filesResult.Value)
+                if (child.IsFolder)
                 {
-                    var relativePath = Path.GetRelativePath(folderPath, child);
-                    long size = 0;
-                    var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(child));
-                    if (infoResult.IsSuccess
-                        && infoResult.Value.Kind == StorageItemKind.File)
-                    {
-                        size = infoResult.Value.Size;
-                    }
-                    entries.Add($"F|{relativePath}|{size}");
+                    continue;
                 }
+                var relativePath = Path.GetRelativePath(folderPath, child.FullPath);
+                long size = 0;
+                var infoResult = await fileSystem.GetInfoAsync(child.FullPath);
+                if (infoResult.IsSuccess
+                    && infoResult.Value.Kind == StorageItemKind.File)
+                {
+                    size = infoResult.Value.Size;
+                }
+                entries.Add($"F|{relativePath}|{size}");
             }
         }
 

@@ -1,5 +1,4 @@
 using System.Text;
-using Celbridge.Resources;
 
 namespace Celbridge.FileSystem.Services;
 
@@ -152,46 +151,40 @@ public sealed class LocalFileSystem : ILocalFileSystem
         }
     }
 
-    public Task<Result<IReadOnlyList<string>>> EnumerateFilesAsync(string path, string pattern, bool recursive, Func<string, bool>? validateEntry = null)
+    public async Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive)
     {
+        await Task.CompletedTask;
+
         try
         {
             var searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            var results = new List<string>();
-            foreach (var entry in Directory.EnumerateFiles(path, pattern, searchOption))
+            var entries = new List<FileSystemEntry>();
+
+            // EnumerateDirectories and EnumerateFiles each report a single kind,
+            // so the entry kind is known without an extra stat per item. The OS
+            // enumeration order is unspecified (NTFS comes back name-sorted, ext4
+            // hash-arbitrary), so each group is sorted by ordinal path to give a
+            // deterministic, cross-platform-stable result for every consumer.
+
+            var folderPaths = Directory.EnumerateDirectories(path, pattern, searchOption).OrderBy(folder => folder, StringComparer.Ordinal);
+            foreach (var folderPath in folderPaths)
             {
-                if (validateEntry is not null
-                    && !validateEntry(entry))
-                {
-                    continue;
-                }
-                results.Add(entry);
+                entries.Add(new FileSystemEntry(folderPath, IsFolder: true));
             }
 
-            IReadOnlyList<string> list = results;
-            return Task.FromResult(Result<IReadOnlyList<string>>.Ok(list));
-        }
-        catch (Exception ex)
-        {
-            var failure = Result.Fail($"Failed to enumerate files at: '{path}'")
-                .WithException(ex);
-            return Task.FromResult<Result<IReadOnlyList<string>>>(failure);
-        }
-    }
+            var filePaths = Directory.EnumerateFiles(path, pattern, searchOption).OrderBy(file => file, StringComparer.Ordinal);
+            foreach (var filePath in filePaths)
+            {
+                entries.Add(new FileSystemEntry(filePath, IsFolder: false));
+            }
 
-    public Task<Result<IReadOnlyList<string>>> EnumerateFoldersAsync(string path)
-    {
-        try
-        {
-            var folders = Directory.EnumerateDirectories(path).ToList();
-            IReadOnlyList<string> list = folders;
-            return Task.FromResult(Result<IReadOnlyList<string>>.Ok(list));
+            IReadOnlyList<FileSystemEntry> list = entries;
+            return Result<IReadOnlyList<FileSystemEntry>>.Ok(list);
         }
         catch (Exception ex)
         {
-            var failure = Result.Fail($"Failed to enumerate folders at: '{path}'")
+            return Result.Fail($"Failed to enumerate entries at: '{path}'")
                 .WithException(ex);
-            return Task.FromResult<Result<IReadOnlyList<string>>>(failure);
         }
     }
 
@@ -311,18 +304,6 @@ public sealed class LocalFileSystem : ILocalFileSystem
                 }
             }
 
-            if ((mask & FileSystemAttributes.Hidden) != 0)
-            {
-                if (set)
-                {
-                    currentNative |= System.IO.FileAttributes.Hidden;
-                }
-                else
-                {
-                    currentNative &= ~System.IO.FileAttributes.Hidden;
-                }
-            }
-
             File.SetAttributes(path, currentNative);
             return Result.Ok();
         }
@@ -349,11 +330,6 @@ public sealed class LocalFileSystem : ILocalFileSystem
         if ((native & System.IO.FileAttributes.ReadOnly) != 0)
         {
             portable |= FileSystemAttributes.ReadOnly;
-        }
-
-        if ((native & System.IO.FileAttributes.Hidden) != 0)
-        {
-            portable |= FileSystemAttributes.Hidden;
         }
 
         return portable;

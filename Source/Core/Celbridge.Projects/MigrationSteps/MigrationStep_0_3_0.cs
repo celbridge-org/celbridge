@@ -44,7 +44,7 @@ public class MigrationStep_0_3_0 : IMigrationStep
 
     private async Task<Result> ConvertWebViewFilesAsync(MigrationContext context, string projectDataFolderPath)
     {
-        var enumerateResult = await context.FileSystem.EnumerateFilesAsync(
+        var enumerateResult = await context.FileSystem.EnumerateAsync(
             context.ProjectFolderPath,
             $"*{WebViewOldExtension}",
             recursive: true);
@@ -56,7 +56,7 @@ public class MigrationStep_0_3_0 : IMigrationStep
         }
 
         int convertedCount = 0;
-        foreach (var oldPath in enumerateResult.Value)
+        foreach (var oldPath in enumerateResult.Value.Where(entry => !entry.IsFolder).Select(entry => entry.FullPath))
         {
             var fullOldPath = Path.GetFullPath(oldPath);
             if (IsInsideMetaDataFolder(fullOldPath, projectDataFolderPath))

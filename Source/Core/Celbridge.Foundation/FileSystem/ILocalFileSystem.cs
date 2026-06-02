@@ -3,8 +3,10 @@ namespace Celbridge.FileSystem;
 /// <summary>
 /// Portable file attribute bits surfaced through ILocalFileSystem. Each backend
 /// supports the subset that maps to its native concepts: the local backend
-/// models ReadOnly and Hidden as DOS file-attribute bits; remote backends
-/// translate to ACL or permission probes.
+/// models ReadOnly as the DOS read-only bit; remote backends translate to ACL
+/// or permission probes. There is deliberately no Hidden flag: visibility is
+/// pattern-based (the resource policy, not the OS hidden attribute), and the
+/// attribute is a no-op to set on POSIX anyway.
 /// </summary>
 [Flags]
 public enum FileSystemAttributes
@@ -19,12 +21,6 @@ public enum FileSystemAttributes
     /// backends, derived from write-access permission.
     /// </summary>
     ReadOnly = 1 << 0,
-
-    /// <summary>
-    /// The item is hidden from default enumeration. On Windows, the DOS hidden
-    /// bit; on POSIX-style backends, conventionally a leading-dot name.
-    /// </summary>
-    Hidden = 1 << 1,
 }
 
 /// <summary>
@@ -85,10 +81,19 @@ public record StorageItemInfo(
     FileSystemAttributes Attributes);
 
 /// <summary>
+/// A single entry returned by EnumerateAsync. FullPath is the absolute path on
+/// the substrate. IsFolder true means a directory; false means "not a directory"
+/// (a regular file, but on POSIX also a symlink, FIFO, socket, or device), so a
+/// non-folder is not guaranteed to be a readable regular file.
+/// </summary>
+public record FileSystemEntry(string FullPath, bool IsFolder);
+
+/// <summary>
 /// Path-based gateway for local-substrate filesystem reads and writes. The
 /// resource layer composes this for raw IO against project: and other on-disk
 /// roots; remote-substrate backends bypass this interface and implement
-/// IResourceFileSystem directly against their API client.
+/// IResourceFileSystem directly against their API client. Methods mirror the
+/// System.IO File and Directory primitives one-to-one.
 /// </summary>
 public interface ILocalFileSystem
 {
@@ -131,16 +136,14 @@ public interface ILocalFileSystem
     Task<Result<StorageItemInfo>> GetInfoAsync(string path);
 
     /// <summary>
-    /// Enumerates files matching the pattern under the given folder, either the
-    /// immediate level or the full subtree. Entries are filtered by validateEntry
-    /// when provided.
+    /// Enumerates the files and folders matching the pattern under the given
+    /// folder, either the immediate level or the full subtree. Each entry is
+    /// tagged as a file or a folder. Results are deterministic across platforms:
+    /// folders first, then files, each group ordered by ordinal full path. The
+    /// OS enumeration order is unspecified (NTFS returns name-sorted, ext4
+    /// hash-arbitrary), so the substrate sorts to give every consumer one view.
     /// </summary>
-    Task<Result<IReadOnlyList<string>>> EnumerateFilesAsync(string path, string pattern, bool recursive, Func<string, bool>? validateEntry = null);
-
-    /// <summary>
-    /// Enumerates the immediate child folders of the given folder.
-    /// </summary>
-    Task<Result<IReadOnlyList<string>>> EnumerateFoldersAsync(string path);
+    Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive);
 
     /// <summary>
     /// Moves a file from source to destination. The destination's parent folder
@@ -156,7 +159,8 @@ public interface ILocalFileSystem
 
     /// <summary>
     /// Copies a single file from source to destination. The destination's parent
-    /// folder must exist.
+    /// folder must exist. There is no folder counterpart: .NET has no native
+    /// Directory.Copy, so recursive folder copy is composed in the resource layer.
     /// </summary>
     Task<Result> CopyFileAsync(string source, string dest);
 

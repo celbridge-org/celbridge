@@ -92,10 +92,14 @@ public sealed class TrashService : ITrashService
             // via UI-thread dispatch; subscribers must treat these messages as
             // idempotent.
             var entry = moveResult.Value;
-            _messengerService.Send(new ResourceDeletedMessage(entry.OriginalResource));
+
+            var entryMessage = new ResourceDeletedMessage(entry.OriginalResource);
+            _messengerService.Send(entryMessage);
+
             foreach (var descendant in entry.DescendantKeys)
             {
-                _messengerService.Send(new ResourceDeletedMessage(descendant));
+                var descendantMessage = new ResourceDeletedMessage(descendant);
+                _messengerService.Send(descendantMessage);
             }
         }
 
@@ -204,20 +208,13 @@ public sealed class TrashService : ITrashService
         string trashBasePath,
         string trashId)
     {
-        var filesResult = await _fileSystem.EnumerateFilesAsync(originalPath, "*", recursive: false);
-        if (filesResult.IsFailure)
+        var topLevelResult = await _fileSystem.EnumerateAsync(originalPath, "*", recursive: false);
+        if (topLevelResult.IsFailure)
         {
             return Result<TrashEntry>.Fail($"Failed to enumerate folder for trash: '{resource}'")
-                .WithErrors(filesResult);
+                .WithErrors(topLevelResult);
         }
-        var foldersResult = await _fileSystem.EnumerateFoldersAsync(originalPath);
-        if (foldersResult.IsFailure)
-        {
-            return Result<TrashEntry>.Fail($"Failed to enumerate folder for trash: '{resource}'")
-                .WithErrors(foldersResult);
-        }
-        bool wasEmpty = filesResult.Value.Count == 0
-            && foldersResult.Value.Count == 0;
+        bool wasEmpty = topLevelResult.Value.Count == 0;
 
         var descendantKeys = new List<ResourceKey>();
         var entityDataFiles = new List<TrashedEntityDataFile>();
@@ -225,35 +222,42 @@ public sealed class TrashService : ITrashService
         if (!wasEmpty)
         {
             // Walk once to gather descendant keys for messaging and entity-data
-            // pairs for trash. The trash folder lives outside the registry's reach,
-            // so direct enumeration here is intentional; gateway dispatch would
-            // fail because the trash paths do not resolve to ResourceKeys.
+            // pairs for trash. Both nested files and nested sub-folders are
+            // first-class resources, so every entry contributes its key to the
+            // fan-out; entity data is keyed per resource and trashed for files.
+            // The trash folder lives outside the registry's reach, so direct
+            // enumeration here is intentional; gateway dispatch would fail
+            // because the trash paths do not resolve to ResourceKeys.
             var entityService = EntityService;
-            var recursiveFilesResult = await _fileSystem.EnumerateFilesAsync(originalPath, "*", recursive: true);
-            if (recursiveFilesResult.IsFailure)
+            var descendantsResult = await _fileSystem.EnumerateAsync(originalPath, "*", recursive: true);
+            if (descendantsResult.IsFailure)
             {
                 return Result<TrashEntry>.Fail($"Failed to enumerate folder for trash: '{resource}'")
-                    .WithErrors(recursiveFilesResult);
+                    .WithErrors(descendantsResult);
             }
-            foreach (var filePath in recursiveFilesResult.Value)
+            foreach (var descendant in descendantsResult.Value)
             {
-                var keyResult = ResourceRegistry.GetResourceKey(filePath);
-                if (keyResult.IsSuccess)
+                var keyResult = ResourceRegistry.GetResourceKey(descendant.FullPath);
+                if (keyResult.IsFailure)
                 {
-                    descendantKeys.Add(keyResult.Value);
+                    continue;
+                }
+                descendantKeys.Add(keyResult.Value);
 
-                    if (entityService is not null)
-                    {
-                        var entityDataPath = entityService.GetEntityDataPath(keyResult.Value);
-                        var entityInfoResult = await _fileSystem.GetInfoAsync(entityDataPath);
-                        if (entityInfoResult.IsSuccess
-                            && entityInfoResult.Value.Kind == StorageItemKind.File)
-                        {
-                            var entityRelative = entityService.GetEntityDataRelativePath(keyResult.Value);
-                            var entityTrashPath = Path.Combine(trashBasePath, entityRelative);
-                            entityDataFiles.Add(new TrashedEntityDataFile(entityDataPath, entityTrashPath));
-                        }
-                    }
+                if (descendant.IsFolder
+                    || entityService is null)
+                {
+                    continue;
+                }
+
+                var entityDataPath = entityService.GetEntityDataPath(keyResult.Value);
+                var entityInfoResult = await _fileSystem.GetInfoAsync(entityDataPath);
+                if (entityInfoResult.IsSuccess
+                    && entityInfoResult.Value.Kind == StorageItemKind.File)
+                {
+                    var entityRelative = entityService.GetEntityDataRelativePath(keyResult.Value);
+                    var entityTrashPath = Path.Combine(trashBasePath, entityRelative);
+                    entityDataFiles.Add(new TrashedEntityDataFile(entityDataPath, entityTrashPath));
                 }
             }
         }
@@ -502,14 +506,18 @@ public sealed class TrashService : ITrashService
 
     private async Task ClearReadOnlyAttributesRecursiveAsync(string folder)
     {
-        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: true);
+        var enumerateResult = await _fileSystem.EnumerateAsync(folder, "*", recursive: true);
         if (enumerateResult.IsFailure)
         {
             return;
         }
-        foreach (var file in enumerateResult.Value)
+        foreach (var entry in enumerateResult.Value)
         {
-            _ = await _fileSystem.SetAttributesAsync(file, FileSystemAttributes.ReadOnly, set: false);
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+            _ = await _fileSystem.SetAttributesAsync(entry.FullPath, FileSystemAttributes.ReadOnly, set: false);
         }
     }
 
@@ -530,16 +538,13 @@ public sealed class TrashService : ITrashService
                     break;
                 }
 
-                var filesResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: false);
-                var foldersResult = await _fileSystem.EnumerateFoldersAsync(folder);
-                if (filesResult.IsFailure
-                    || foldersResult.IsFailure)
+                var enumerateResult = await _fileSystem.EnumerateAsync(folder, "*", recursive: false);
+                if (enumerateResult.IsFailure)
                 {
                     break;
                 }
 
-                if (filesResult.Value.Count == 0
-                    && foldersResult.Value.Count == 0)
+                if (enumerateResult.Value.Count == 0)
                 {
                     var deleteResult = await _fileSystem.DeleteFolderAsync(folder, recursive: false);
                     if (deleteResult.IsFailure)

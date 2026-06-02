@@ -1,41 +1,44 @@
-using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Builds the in-memory project tree from disk, applying built-in folder and
-/// file visibility filters along the way.
+/// Builds the in-memory project tree from disk, deferring visibility filtering
+/// to the workspace-scoped policy engine.
 /// </summary>
 /// <remarks>
-/// Uses File.GetAttributes directly because the gateway does not surface the
-/// Windows hidden flag.
+/// Walks the project folder directly with Directory.GetDirectories / GetFiles,
+/// hence the AllowDirectFileSystemAccess exemption.
 /// </remarks>
 [AllowDirectFileSystemAccess]
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
     private readonly IFileIconService _fileIconService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ProjectTreeBuilder(IFileIconService fileIconService)
+    public ProjectTreeBuilder(IFileIconService fileIconService, IWorkspaceWrapper workspaceWrapper)
     {
         _fileIconService = fileIconService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
     public IFolderResource BuildTree(string projectFolderPath)
     {
         var root = new FolderResource(string.Empty, null);
-        SynchronizeFolder(root, projectFolderPath);
+        SynchronizeFolder(root, projectFolderPath, projectFolderPath);
         return root;
     }
 
-    private void SynchronizeFolder(FolderResource folderResource, string folderPath)
+    private void SynchronizeFolder(FolderResource folderResource, string folderPath, string projectFolderPath)
     {
-        bool isProjectFolder = folderResource.ParentFolder is null;
+        var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+
         var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
-        RemoveHiddenFolders(subFolderPaths, isProjectFolder);
+        subFolderPaths.RemoveAll(path => ShouldFilter(path, projectFolderPath, isFolder: true, policy));
 
         var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
-        RemoveHiddenFiles(filePaths);
+        filePaths.RemoveAll(path => ShouldFilter(path, projectFolderPath, isFolder: false, policy));
 
         // Children rebuild from scratch on every call so stale TreeViewNode.Content
         // references do not survive a rapid undo/redo cycle.
@@ -45,7 +48,7 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         {
             var folderName = Path.GetFileName(subFolderPath);
             var childFolder = new FolderResource(folderName, folderResource);
-            SynchronizeFolder(childFolder, subFolderPath);
+            SynchronizeFolder(childFolder, subFolderPath, projectFolderPath);
             folderResource.AddChild(childFolder);
         }
 
@@ -64,70 +67,45 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 
         folderResource.Children = folderResource.Children
             .OrderBy(child => child is IFolderResource ? 0 : 1)
-            .ThenBy(child => child.Name)
+            .ThenBy(child => child.Name, StringComparer.Ordinal)
             .ToList();
     }
 
-    private static void RemoveHiddenFolders(List<string> folderPaths, bool isProjectFolder)
+    private static bool ShouldFilter(string fullPath, string projectFolderPath, bool isFolder, IResourcePolicy policy)
     {
-        folderPaths.RemoveAll(path =>
+        var keyResult = BuildProjectKey(fullPath, projectFolderPath);
+        if (keyResult.IsFailure)
         {
-            if (Path.GetFileName(path).StartsWith('.'))
-            {
-                // Hidden by leading dot. Includes the .celbridge metadata folder.
-                return true;
-            }
+            return true;
+        }
 
-#if WINDOWS
-            var attributes = File.GetAttributes(path);
-            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
-            {
-                return true;
-            }
-#endif
-            var dirInfo = new DirectoryInfo(path);
-
-            if (isProjectFolder
-                && dirInfo.Name == LegacyConstants.MetaDataFolder)
-            {
-                return true;
-            }
-
-            if (dirInfo.Name == "__pycache__")
-            {
-                return true;
-            }
-
-            // Python/Lib carries pip packages and is excluded so the user sees
-            // their project, not their virtualenv internals.
-            if (dirInfo.Name == "Lib"
-                && dirInfo.Parent?.Name == "Python")
-            {
-                return true;
-            }
-
-            return false;
-        });
+        var policyResult = policy.Evaluate(keyResult.Value, ResourceAction.List, isFolder);
+        return policyResult.IsFailure;
     }
 
-    private static void RemoveHiddenFiles(List<string> filePaths)
+    private static Result<ResourceKey> BuildProjectKey(string fullPath, string projectFolderPath)
     {
-        filePaths.RemoveAll(path =>
+        var trimmedProjectPath = projectFolderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!fullPath.StartsWith(trimmedProjectPath, StringComparison.OrdinalIgnoreCase))
         {
-            if (Path.GetFileName(path).StartsWith('.'))
-            {
-                return true;
-            }
+            return Result<ResourceKey>.Fail($"Path is outside the project folder: '{fullPath}'");
+        }
 
-#if WINDOWS
-            var attributes = File.GetAttributes(path);
-            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
-            {
-                return true;
-            }
-#endif
+        var relativePath = fullPath
+            .Substring(trimmedProjectPath.Length)
+            .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Replace(Path.DirectorySeparatorChar, '/')
+            .Replace(Path.AltDirectorySeparatorChar, '/');
 
-            return false;
-        });
+        if (string.IsNullOrEmpty(relativePath))
+        {
+            return ResourceKey.Empty;
+        }
+
+        if (!ResourceKey.TryCreate(relativePath, out var key))
+        {
+            return Result<ResourceKey>.Fail($"Invalid resource key derived from path: '{relativePath}'");
+        }
+        return key;
     }
 }

@@ -89,9 +89,9 @@ public class Module : IModule
         bool isLibraryPresent = false;
         if (libraryFolderExists)
         {
-            var enumerateResult = SyncRunner.Run(() => fileSystem.EnumerateFilesAsync(libraryFolder, "*.js", recursive: true));
+            var enumerateResult = SyncRunner.Run(() => fileSystem.EnumerateAsync(libraryFolder, "*.js", recursive: true));
             isLibraryPresent = enumerateResult.IsSuccess
-                && enumerateResult.Value.Count > 0;
+                && enumerateResult.Value.Any(entry => !entry.IsFolder);
         }
 
         if (!isLibraryPresent)

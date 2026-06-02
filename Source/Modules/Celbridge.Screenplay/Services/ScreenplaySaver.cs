@@ -84,13 +84,16 @@ public class ScreenplaySaver
             }
 
             // Find all .scene files in the screenplay folder
-            var enumerateResult = await _fileSystem.EnumerateFilesAsync(screenplayFolder, "*.scene", recursive: true);
+            var enumerateResult = await _fileSystem.EnumerateAsync(screenplayFolder, "*.scene", recursive: true);
             if (enumerateResult.IsFailure)
             {
                 return Result.Fail($"Failed to enumerate scene files in folder '{screenplayFolder}'")
                     .WithErrors(enumerateResult);
             }
-            var sceneFiles = enumerateResult.Value.ToList();
+            var sceneFiles = enumerateResult.Value
+                .Where(entry => !entry.IsFolder)
+                .Select(entry => entry.FullPath)
+                .ToList();
             if (sceneFiles.Count == 0)
             {
                 return Result.Fail($"No scene files found in folder '{screenplayFolder}'");

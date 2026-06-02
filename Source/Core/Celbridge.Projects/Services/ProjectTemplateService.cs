@@ -144,38 +144,39 @@ public class ProjectTemplateService : IProjectTemplateService
             }
 
             // Move all files and folders from staging to the final project location
-            var stagedFilesResult = await _fileSystem.EnumerateFilesAsync(tempStagingPath!, "*", recursive: false);
-            if (stagedFilesResult.IsFailure)
+            var stagedEntriesResult = await _fileSystem.EnumerateAsync(tempStagingPath!, "*", recursive: false);
+            if (stagedEntriesResult.IsFailure)
             {
-                return Result.Fail($"Failed to enumerate staged files: {tempStagingPath}")
-                    .WithErrors(stagedFilesResult);
+                return Result.Fail($"Failed to enumerate staged items: {tempStagingPath}")
+                    .WithErrors(stagedEntriesResult);
             }
 
-            foreach (var file in stagedFilesResult.Value)
+            foreach (var entry in stagedEntriesResult.Value)
             {
-                var destFile = Path.Combine(projectPath, Path.GetFileName(file));
-                var moveFileResult = await _fileSystem.MoveFileAsync(file, destFile);
+                if (entry.IsFolder)
+                {
+                    continue;
+                }
+                var destFile = Path.Combine(projectPath, Path.GetFileName(entry.FullPath));
+                var moveFileResult = await _fileSystem.MoveFileAsync(entry.FullPath, destFile);
                 if (moveFileResult.IsFailure)
                 {
-                    return Result.Fail($"Failed to move staged file to final location: {file}")
+                    return Result.Fail($"Failed to move staged file to final location: {entry.FullPath}")
                         .WithErrors(moveFileResult);
                 }
             }
 
-            var stagedFoldersResult = await _fileSystem.EnumerateFoldersAsync(tempStagingPath!);
-            if (stagedFoldersResult.IsFailure)
+            foreach (var entry in stagedEntriesResult.Value)
             {
-                return Result.Fail($"Failed to enumerate staged folders: {tempStagingPath}")
-                    .WithErrors(stagedFoldersResult);
-            }
-
-            foreach (var stagedFolder in stagedFoldersResult.Value)
-            {
-                var destFolder = Path.Combine(projectPath, Path.GetFileName(stagedFolder));
-                var moveFolderResult = await _fileSystem.MoveFolderAsync(stagedFolder, destFolder);
+                if (!entry.IsFolder)
+                {
+                    continue;
+                }
+                var destFolder = Path.Combine(projectPath, Path.GetFileName(entry.FullPath));
+                var moveFolderResult = await _fileSystem.MoveFolderAsync(entry.FullPath, destFolder);
                 if (moveFolderResult.IsFailure)
                 {
-                    return Result.Fail($"Failed to move staged folder to final location: {stagedFolder}")
+                    return Result.Fail($"Failed to move staged folder to final location: {entry.FullPath}")
                         .WithErrors(moveFolderResult);
                 }
             }

@@ -113,11 +113,14 @@ public class PythonInstaller : IPythonInstaller
         var wheelHash = "";
         var installedLocation = Package.Current.InstalledLocation;
         var assetsFolder = Path.Combine(installedLocation.Path, PythonAssetsFolder);
-        var enumerateFilesResult = await _fileSystem.EnumerateFilesAsync(assetsFolder, WheelFilePattern, recursive: false);
-        if (enumerateFilesResult.IsSuccess
-            && enumerateFilesResult.Value.Count > 0)
+        var enumerateFilesResult = await _fileSystem.EnumerateAsync(assetsFolder, WheelFilePattern, recursive: false);
+        if (enumerateFilesResult.IsSuccess)
         {
-            wheelHash = FileHashHelper.HashFileContents(enumerateFilesResult.Value[0]);
+            var wheelFile = enumerateFilesResult.Value.FirstOrDefault(entry => !entry.IsFolder);
+            if (wheelFile is not null)
+            {
+                wheelHash = FileHashHelper.HashFileContents(wheelFile.FullPath);
+            }
         }
 
         return $"{appVersion}\n{wheelHash}";

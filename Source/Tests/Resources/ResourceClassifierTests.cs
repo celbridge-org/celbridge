@@ -248,7 +248,7 @@ public class ResourceClassifierTests
         var registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new Celbridge.Messaging.Services.MessengerService(),
-            new ProjectTreeBuilder(new Celbridge.UserInterface.Services.FileIconService()),
+            ProjectTreeBuilderTestHelper.Build(new Celbridge.UserInterface.Services.FileIconService()),
             classifier,
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());

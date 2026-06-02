@@ -51,6 +51,13 @@ public interface IWorkspaceService
     IResourceFileSystem ResourceFileSystem { get; }
 
     /// <summary>
+    /// Returns the workspace's resource policy engine. Decides whether a given
+    /// (resource, action) is allowed by the project's [resources] configuration
+    /// and the built-in default rules.
+    /// </summary>
+    IResourcePolicy ResourcePolicy { get; }
+
+    /// <summary>
     /// Returns the soft-delete trash service: move-to-trash, restore, and purge
     /// operations used by the resource operation service for undoable deletes.
     /// </summary>

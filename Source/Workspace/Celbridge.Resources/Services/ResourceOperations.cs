@@ -447,16 +447,21 @@ internal class ImportExternalOperation : FileOperation
             return createResult;
         }
 
-        var filesResult = await _fileSystem.EnumerateFilesAsync(sourceFolderPath, "*", recursive: false);
-        if (filesResult.IsFailure)
+        var enumerateResult = await _fileSystem.EnumerateAsync(sourceFolderPath, "*", recursive: false);
+        if (enumerateResult.IsFailure)
         {
-            return Result.Fail(filesResult);
+            return Result.Fail(enumerateResult);
         }
-        foreach (var file in filesResult.Value)
+
+        foreach (var entry in enumerateResult.Value)
         {
-            var fileName = Path.GetFileName(file);
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+            var fileName = Path.GetFileName(entry.FullPath);
             var destinationFile = destinationFolder.Combine(fileName);
-            var readResult = await _fileSystem.ReadAllBytesAsync(file);
+            var readResult = await _fileSystem.ReadAllBytesAsync(entry.FullPath);
             if (readResult.IsFailure)
             {
                 return Result.Fail(readResult);
@@ -468,16 +473,15 @@ internal class ImportExternalOperation : FileOperation
             }
         }
 
-        var foldersResult = await _fileSystem.EnumerateFoldersAsync(sourceFolderPath);
-        if (foldersResult.IsFailure)
+        foreach (var entry in enumerateResult.Value)
         {
-            return Result.Fail(foldersResult);
-        }
-        foreach (var subFolder in foldersResult.Value)
-        {
-            var folderName = Path.GetFileName(subFolder);
+            if (!entry.IsFolder)
+            {
+                continue;
+            }
+            var folderName = Path.GetFileName(entry.FullPath);
             var destinationSubFolder = destinationFolder.Combine(folderName);
-            var recurseResult = await ImportFolderAsync(subFolder, destinationSubFolder);
+            var recurseResult = await ImportFolderAsync(entry.FullPath, destinationSubFolder);
             if (recurseResult.IsFailure)
             {
                 return recurseResult;

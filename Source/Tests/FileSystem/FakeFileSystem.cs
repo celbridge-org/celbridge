@@ -164,63 +164,59 @@ public sealed class FakeFileSystem : ILocalFileSystem
         return Task.FromResult<Result<StorageItemInfo>>(notFound);
     }
 
-    public Task<Result<IReadOnlyList<string>>> EnumerateFilesAsync(string path, string pattern, bool recursive, Func<string, bool>? validateEntry = null)
+    public Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive)
     {
-        Record($"EnumerateFilesAsync('{path}', '{pattern}', recursive={recursive})");
+        Record($"EnumerateAsync('{path}', '{pattern}', recursive={recursive})");
         var normalizedPath = NormalizeFolder(path);
-        var matches = new List<string>();
+
+        var folderPaths = new List<string>();
+        lock (_foldersLock)
+        {
+            foreach (var folder in _folders)
+            {
+                if (!IsUnder(folder, normalizedPath, recursive))
+                {
+                    continue;
+                }
+                if (!MatchesPattern(GetName(folder), pattern))
+                {
+                    continue;
+                }
+                folderPaths.Add(folder);
+            }
+        }
+
+        var filePaths = new List<string>();
         foreach (var filePath in _files.Keys)
         {
             if (!IsUnder(filePath, normalizedPath, recursive))
             {
                 continue;
             }
-            var fileName = GetName(filePath);
-            if (!MatchesPattern(fileName, pattern))
+            if (!MatchesPattern(GetName(filePath), pattern))
             {
                 continue;
             }
-            if (validateEntry is not null
-                && !validateEntry(filePath))
-            {
-                continue;
-            }
-            matches.Add(filePath);
+            filePaths.Add(filePath);
         }
 
-        IReadOnlyList<string> list = matches;
-        return Task.FromResult(Result<IReadOnlyList<string>>.Ok(list));
-    }
+        // Match LocalFileSystem's contract: folders first, then files, each
+        // group ordered by ordinal path, so tests observe a deterministic order.
+        folderPaths.Sort(StringComparer.Ordinal);
+        filePaths.Sort(StringComparer.Ordinal);
 
-    public Task<Result<IReadOnlyList<string>>> EnumerateFoldersAsync(string path)
-    {
-        Record($"EnumerateFoldersAsync('{path}')");
-        var normalizedPath = NormalizeFolder(path);
-        var matches = new List<string>();
-        lock (_foldersLock)
+        var entries = new List<FileSystemEntry>(folderPaths.Count + filePaths.Count);
+        foreach (var folder in folderPaths)
         {
-            foreach (var folder in _folders)
-            {
-                if (folder.Length <= normalizedPath.Length)
-                {
-                    continue;
-                }
-                if (!folder.StartsWith(normalizedPath, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-                var suffix = folder.Substring(normalizedPath.Length);
-                if (suffix.Contains('/')
-                    || suffix.Contains('\\'))
-                {
-                    continue;
-                }
-                matches.Add(folder);
-            }
+            entries.Add(new FileSystemEntry(folder, IsFolder: true));
+        }
+        foreach (var file in filePaths)
+        {
+            entries.Add(new FileSystemEntry(file, IsFolder: false));
         }
 
-        IReadOnlyList<string> list = matches;
-        return Task.FromResult(Result<IReadOnlyList<string>>.Ok(list));
+        IReadOnlyList<FileSystemEntry> list = entries;
+        return Task.FromResult(Result<IReadOnlyList<FileSystemEntry>>.Ok(list));
     }
 
     public Task<Result> MoveFileAsync(string source, string dest)

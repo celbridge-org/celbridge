@@ -1,7 +1,5 @@
-using Celbridge.Resources;
 using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
-using Celbridge.UserInterface.Services;
 
 namespace Celbridge.Tests.Resources;
 
@@ -27,7 +25,7 @@ public class ProjectTreeBuilderTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
-        _builder = new ProjectTreeBuilder(new FileIconService());
+        _builder = ProjectTreeBuilderTestHelper.Build();
     }
 
     [TearDown]
@@ -93,6 +91,26 @@ public class ProjectTreeBuilderTests
         var tree = _builder.BuildTree(_projectFolderPath);
 
         tree.Children.Select(c => c.Name).Should().BeEquivalentTo(new[] { "src", "visible.txt" });
+    }
+
+    [Test]
+    public void BuildTree_ShowsFileWithWindowsHiddenAttribute()
+    {
+        // Visibility is decided by patterns, not the OS hidden attribute, so a
+        // normally-named file stays visible even when Windows marks it hidden.
+        // This keeps the resource tree identical across platforms.
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("Windows hidden attribute is only settable on Windows.");
+        }
+
+        var hiddenFilePath = Path.Combine(_projectFolderPath, "notes.txt");
+        File.WriteAllText(hiddenFilePath, "x");
+        File.SetAttributes(hiddenFilePath, File.GetAttributes(hiddenFilePath) | FileAttributes.Hidden);
+
+        var tree = _builder.BuildTree(_projectFolderPath);
+
+        tree.Children.Select(c => c.Name).Should().Contain("notes.txt");
     }
 
     [Test]

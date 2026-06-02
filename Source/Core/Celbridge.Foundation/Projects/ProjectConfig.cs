@@ -8,11 +8,39 @@ public sealed record class ProjectConfig
     public ProjectSection Project { get; init; } = new();
     public CelbridgeSection Celbridge { get; init; } = new();
     public ShortcutsSection Shortcuts { get; init; } = new();
+    public ResourcesSection Resources { get; init; } = new();
 
     /// <summary>
     /// Feature flags dictionary from [features] section.
     /// </summary>
     public IReadOnlyDictionary<string, bool> Features { get; init; } = new Dictionary<string, bool>();
+}
+
+/// <summary>
+/// Models the [resources] section from the .celbridge project config.
+/// Inputs to the workspace-scoped policy engine: include declares the
+/// resources surface, exclude subtracts from it, and locked freezes paths so
+/// they cannot be modified, moved, renamed, or deleted.
+/// </summary>
+public sealed record class ResourcesSection
+{
+    /// <summary>
+    /// Patterns included in the project. Template default is "*"; users wanting
+    /// lockdown replace this list with explicit patterns (e.g. ["src/**"]).
+    /// </summary>
+    public IReadOnlyList<string> Include { get; init; } = new[] { "*" };
+
+    /// <summary>
+    /// Patterns to remove from the included set. Empty by default.
+    /// </summary>
+    public IReadOnlyList<string> Exclude { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Patterns matching resources frozen in place: content cannot be written
+    /// and neither the resource nor any ancestor folder can be moved, renamed,
+    /// or deleted. Applies to every caller, including the in-app editor.
+    /// </summary>
+    public IReadOnlyList<string> Locked { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>

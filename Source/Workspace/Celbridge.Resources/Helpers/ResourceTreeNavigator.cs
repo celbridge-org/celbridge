@@ -49,10 +49,16 @@ public static class ResourceTreeNavigator
     /// <summary>
     /// Walks the segments of the supplied key and returns the matching node
     /// under the root, or a failure result if no match exists. An empty key
-    /// resolves to the root itself.
+    /// resolves to the root itself. Matching is case-sensitive by default; pass
+    /// ignoreCase to reconcile a miscased key to its canonical node. Comparison
+    /// is always ordinal — resource keys are filesystem names, not linguistic text.
     /// </summary>
-    public static Result<IResource> FindResource(IFolderResource root, ResourceKey resource)
+    public static Result<IResource> FindResource(IFolderResource root, ResourceKey resource, bool ignoreCase = false)
     {
+        var comparison = ignoreCase
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
         if (resource.IsEmpty)
         {
             return Result<IResource>.Ok(root);
@@ -69,7 +75,7 @@ public static class ResourceTreeNavigator
             foreach (var childResource in searchFolder.Children)
             {
                 if (childResource is IFolderResource childFolder
-                    && childFolder.Name == segment)
+                    && string.Equals(childFolder.Name, segment, comparison))
                 {
                     if (segmentIndex == segments.Length - 1)
                     {
@@ -80,7 +86,7 @@ public static class ResourceTreeNavigator
                     break;
                 }
                 else if (childResource is IFileResource childFile
-                         && childFile.Name == segment
+                         && string.Equals(childFile.Name, segment, comparison)
                          && segmentIndex == segments.Length - 1)
                 {
                     return Result<IResource>.Ok(childFile);

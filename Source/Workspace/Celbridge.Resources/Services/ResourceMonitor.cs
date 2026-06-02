@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Celbridge.Logging;
-using Celbridge.Projects;
 using Celbridge.Workspace;
 using ThreadingTimer = System.Threading.Timer;
 using Timer = System.Timers.Timer;
@@ -12,8 +11,8 @@ namespace Celbridge.Resources.Services;
 /// changes and schedules debounced resource updates.
 /// </summary>
 /// <remarks>
-/// Uses FileSystemWatcher and File.GetAttributes directly because the gateway
-/// does not surface watcher events or the Windows hidden / system flags.
+/// Uses FileSystemWatcher directly because the gateway does not surface watcher
+/// events, hence the AllowDirectFileSystemAccess exemption.
 /// </remarks>
 [AllowDirectFileSystemAccess]
 public class ResourceMonitor : IResourceMonitor, IDisposable
@@ -451,113 +450,23 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
+    // Drops a watcher event when its path cannot be keyed, or when a project-root
+    // key is denied List by the policy engine. Events from non-project roots are
+    // already confined to their backing folder and need no policy check.
     private bool ShouldIgnorePath(IResourceRootHandler handler, string fullPath)
     {
-        var fileName = Path.GetFileName(fullPath);
-
-        // Unix hidden files start with '.'. Trailing '~' catches the backup
-        // files written by Emacs and many other editors (e.g. "foo.md~").
-        if (fileName.StartsWith(".")
-            || fileName.StartsWith("~")
-            || fileName.EndsWith(".tmp")
-            || fileName.EndsWith("~"))
+        var keyResult = handler.GetResourceKey(fullPath);
+        if (keyResult.IsFailure)
         {
             return true;
         }
 
-        // External-editor atomic-write temp files commonly use the shape
-        // "<original>.tmp.<pid>.<random>" (e.g. "foo.md.tmp.5912.c2e6892eb512" from
-        // Claude Code's editor). EndsWith(".tmp") above doesn't catch these, so
-        // match ".tmp." anywhere in the filename.
-        if (fileName.Contains(".tmp.", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        // Swap files (.swp/.swo/.swn from Vim), partial-download files
-        // (.crdownload from Chrome/Edge, .part from Firefox/wget).
-        if (fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".swo", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".swn", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".crdownload", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".part", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        // Office temporary files. Excel writes lock files like "~$filename.xlsx";
-        // Word writes temporary files prefixed "~WRL".
-        if (fileName.StartsWith("~$")
-            || fileName.StartsWith("~WRL"))
-        {
-            return true;
-        }
-
-        // Python build artifacts: compiled (.pyc), optimised (.pyo),
-        // dynamic-module (.pyd), and the __pycache__ folder.
-        if (fileName.EndsWith(".pyc")
-            || fileName.EndsWith(".pyo")
-            || fileName.EndsWith(".pyd")
-            || fileName.StartsWith("__pycache__"))
-        {
-            return true;
-        }
-
-        // Folder filters run before the disk-probing Windows attribute check so
-        // paths under .celbridge/ (SQLite db-journal files appear and vanish
-        // between the watcher event and our attribute read), bin/, obj/, etc.
-        // never reach File.GetAttributes and never throw FileNotFoundException
-        // in the catch handler below.
-
-        // Only the project watcher needs to suppress the visible legacy "celbridge" folder
-        // and the new hidden ".celbridge" folder at the project root. Non-project watchers
-        // are already scoped inside their own backing location.
         if (handler.RootName == ResourceKey.DefaultRoot)
         {
-            var projectFolder = handler.BackingLocation.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var relativePath = fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase)
-                ? fullPath.Substring(projectFolder.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                : string.Empty;
-
-            if (!string.IsNullOrEmpty(relativePath))
+            var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+            var policyResult = policy.Evaluate(keyResult.Value, ResourceAction.List, isFolder: false);
+            if (policyResult.IsFailure)
             {
-                var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
-
-                if (firstSegment.Equals(LegacyConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase)
-                    || firstSegment.Equals(ProjectConstants.CelbridgeFolder, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-
-        // Ignore tool folders at any depth.
-        var pathParts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (pathParts.Any(part =>
-                part.Equals(".vs", StringComparison.OrdinalIgnoreCase)
-                || part.Equals("bin", StringComparison.OrdinalIgnoreCase)
-                || part.Equals("obj", StringComparison.OrdinalIgnoreCase)
-                || part.Equals(".git", StringComparison.OrdinalIgnoreCase)
-                || part.Equals("__pycache__", StringComparison.OrdinalIgnoreCase)))
-        {
-            return true;
-        }
-
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                var attributes = File.GetAttributes(fullPath);
-                if ((attributes & System.IO.FileAttributes.Hidden) != 0
-                    || (attributes & System.IO.FileAttributes.System) != 0)
-                {
-                    return true;
-                }
-            }
-            catch (Exception)
-            {
-                // File may have been deleted between the event firing and reading attributes.
-                // Treat as "ignore" to avoid race condition issues.
                 return true;
             }
         }

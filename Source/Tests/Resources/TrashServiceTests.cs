@@ -165,6 +165,41 @@ public class TrashServiceTests
     }
 
     [Test]
+    public async Task MoveToTrashAsync_NonEmptyFolder_CapturesNestedSubFolderKeys()
+    {
+        // Folders are first-class resources, so the descendant capture must cover
+        // nested sub-folders too - including empty ones, which carry no files for
+        // the file walk to surface.
+        var resource = new ResourceKey("folder");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+
+        var nestedFolderPath = Path.Combine(folderPath, "nested");
+        Directory.CreateDirectory(nestedFolderPath);
+        var deepFilePath = Path.Combine(nestedFolderPath, "deep.txt");
+        await File.WriteAllTextAsync(deepFilePath, "deep");
+
+        var emptyFolderPath = Path.Combine(folderPath, "empty");
+        Directory.CreateDirectory(emptyFolderPath);
+
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(folderPath));
+        _resourceRegistry.GetResourceKey(deepFilePath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested/deep.txt")));
+        _resourceRegistry.GetResourceKey(nestedFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested")));
+        _resourceRegistry.GetResourceKey(emptyFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/empty")));
+
+        var result = await _trashService.MoveToTrashAsync(resource);
+
+        result.IsSuccess.Should().BeTrue();
+        var entry = result.Value;
+        entry.DescendantKeys.Select(key => key.Path).Should().BeEquivalentTo(new[]
+        {
+            "folder/nested/deep.txt",
+            "folder/nested",
+            "folder/empty",
+        });
+    }
+
+    [Test]
     public async Task RestoreFromTrashAsync_File_RestoresOriginalContent()
     {
         var resource = new ResourceKey("restore.txt");

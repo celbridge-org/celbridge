@@ -94,13 +94,16 @@ public class EntityRegistry
 
             // Find all the entity files in the Entities folder.
             // Note that an entity .json file may correspond to either a file or folder resource.
-            var enumerateFilesResult = await _fileSystem.EnumerateFilesAsync(entitiesFolderPath, "*.json", recursive: true);
+            var enumerateFilesResult = await _fileSystem.EnumerateAsync(entitiesFolderPath, "*.json", recursive: true);
             if (enumerateFilesResult.IsFailure)
             {
                 return Result.Fail($"Failed to enumerate entity files in: '{entitiesFolderPath}'")
                     .WithErrors(enumerateFilesResult);
             }
-            var entityFiles = enumerateFilesResult.Value;
+            var entityFiles = enumerateFilesResult.Value
+                .Where(entry => !entry.IsFolder)
+                .Select(entry => entry.FullPath)
+                .ToList();
 
             foreach (var entityFile in entityFiles)
             {
@@ -148,16 +151,13 @@ public class EntityRegistry
             var subFolders = await GetAllSubfoldersAsync(entitiesFolderPath);
             foreach (var folder in subFolders)
             {
-                var filesInFolder = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: false);
-                var foldersInFolder = await _fileSystem.EnumerateFoldersAsync(folder);
-                if (filesInFolder.IsFailure
-                    || foldersInFolder.IsFailure)
+                var entriesInFolder = await _fileSystem.EnumerateAsync(folder, "*", recursive: false);
+                if (entriesInFolder.IsFailure)
                 {
                     continue;
                 }
 
-                if (filesInFolder.Value.Count == 0
-                    && foldersInFolder.Value.Count == 0)
+                if (entriesInFolder.Value.Count == 0)
                 {
                     var deleteFolderResult = await _fileSystem.DeleteFolderAsync(folder, recursive: false);
                     if (deleteFolderResult.IsFailure)
@@ -188,16 +188,20 @@ public class EntityRegistry
         while (pending.Count > 0)
         {
             var current = pending.Dequeue();
-            var childResult = await _fileSystem.EnumerateFoldersAsync(current);
+            var childResult = await _fileSystem.EnumerateAsync(current, "*", recursive: false);
             if (childResult.IsFailure)
             {
                 continue;
             }
 
-            foreach (var child in childResult.Value)
+            foreach (var entry in childResult.Value)
             {
-                collected.Add(child);
-                pending.Enqueue(child);
+                if (!entry.IsFolder)
+                {
+                    continue;
+                }
+                collected.Add(entry.FullPath);
+                pending.Enqueue(entry.FullPath);
             }
         }
 

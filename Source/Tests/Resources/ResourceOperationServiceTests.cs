@@ -75,6 +75,7 @@ public class ResourceOperationServiceTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
         workspaceService.ResourceScanner.Returns(resourceScanner);
+        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -200,5 +201,92 @@ public class ResourceOperationServiceTests
         var undoResult = await _operationService.UndoAsync();
         undoResult.IsSuccess.Should().BeTrue();
         File.Exists(Path.Combine(_tempFolder, "a.txt")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task DeleteAsync_DeniesByPolicy_WhenFolderIsLocked()
+    {
+        // Stand up a real policy with the assets/ folder locked. The trash-based
+        // delete bypasses IResourceFileSystem.DeleteAsync, so this guard at the
+        // service entry is the load-bearing one.
+        var section = new ResourcesSection
+        {
+            Include = new[] { "*" },
+            Locked = new[] { "assets" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourcePolicy.Returns(policy);
+
+        var assetsFolder = Path.Combine(_tempFolder, "assets");
+        Directory.CreateDirectory(assetsFolder);
+        await File.WriteAllTextAsync(Path.Combine(assetsFolder, "logo.png"), "x");
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("assets"));
+
+        deleteResult.IsFailure.Should().BeTrue();
+        deleteResult.HasException<PolicyDenialError>().Should().BeTrue();
+        Directory.Exists(assetsFolder).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task DeleteAsync_DeniesFolderDelete_WhenContentsAreLocked()
+    {
+        // locked = ["Data/**"] only matches files INSIDE Data, not the Data
+        // folder key itself. Deleting Data must still fail because the cascade
+        // would silently remove locked descendants.
+        var section = new ResourcesSection
+        {
+            Include = new[] { "*" },
+            Locked = new[] { "Data/**" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourcePolicy.Returns(policy);
+
+        var dataFolder = Path.Combine(_tempFolder, "Data");
+        Directory.CreateDirectory(dataFolder);
+        await File.WriteAllTextAsync(Path.Combine(dataFolder, "REPORT.md"), "x");
+
+        var deleteResult = await _operationService.DeleteAsync(new ResourceKey("Data"));
+
+        deleteResult.IsFailure.Should().BeTrue();
+        deleteResult.HasException<PolicyDenialError>().Should().BeTrue();
+        Directory.Exists(dataFolder).Should().BeTrue();
+        File.Exists(Path.Combine(dataFolder, "REPORT.md")).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task MoveAsync_DeniesFolderMove_WhenContentsAreLocked()
+    {
+        // Moving (or renaming) Data would relocate the locked Data/REPORT.md,
+        // changing its path. The structural cascade must refuse the move so the
+        // locked resource stays frozen in place.
+        var section = new ResourcesSection
+        {
+            Include = new[] { "*" },
+            Locked = new[] { "Data/**" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourcePolicy.Returns(policy);
+
+        var dataFolder = Path.Combine(_tempFolder, "Data");
+        Directory.CreateDirectory(dataFolder);
+        await File.WriteAllTextAsync(Path.Combine(dataFolder, "REPORT.md"), "x");
+
+        var moveResult = await _operationService.MoveAsync(new ResourceKey("Data"), new ResourceKey("Archive"));
+
+        moveResult.IsFailure.Should().BeTrue();
+        moveResult.HasException<PolicyDenialError>().Should().BeTrue();
+        Directory.Exists(dataFolder).Should().BeTrue();
+        Directory.Exists(Path.Combine(_tempFolder, "Archive")).Should().BeFalse();
+    }
+
+    private static ResourcePolicy BuildPolicyForLocked(ResourcesSection section)
+    {
+        var config = new ProjectConfig { Resources = section };
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(config);
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+        return new ResourcePolicy(projectService);
     }
 }

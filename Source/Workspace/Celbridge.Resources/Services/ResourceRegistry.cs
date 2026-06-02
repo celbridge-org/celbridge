@@ -322,18 +322,62 @@ public class ResourceRegistry : IResourceRegistry
     }
 
     /// <summary>
-    /// Returns the actual case-sensitive path from the file system.
-    /// Fails if the file does not exist.
+    /// Returns the disk-canonical (case-preserved) form of an existing path.
+    /// Resolves from the in-memory registry tree when the path is a project
+    /// resource the tree already tracks, and falls back to walking the file
+    /// system otherwise. Fails if the path cannot be resolved.
     /// </summary>
     private Result<string> GetRealPath(string path)
     {
+        if (string.IsNullOrEmpty(path))
+        {
+            return Result<string>.Fail("Path is null or empty");
+        }
+
+        // Fast path: the registry tree is built from disk and stores names in
+        // their canonical case, so a node found here (matched case-insensitively)
+        // yields the canonical path without touching disk. This keeps the common
+        // case - reconciling a miscased key for a tracked resource - an in-memory
+        // lookup that stays consistent with the rest of the registry.
+        var cachedPath = TryGetRealPathFromTree(path);
+        if (cachedPath is not null)
+        {
+            return cachedPath;
+        }
+
+        // Fallback: the path is outside the project, or the resource is not yet
+        // in the tree (a new file, or a pending registry rebuild). Recover the
+        // case by walking the file system segment by segment.
+        return GetRealPathFromDisk(path);
+    }
+
+    // Resolves the canonical path from the cached project tree, or null when the
+    // tree cannot answer (non-project path, root itself, or no matching node).
+    private string? TryGetRealPathFromTree(string path)
+    {
+        var keyResult = GetResourceKey(path);
+        if (keyResult.IsFailure
+            || keyResult.Value.Root != ResourceKey.DefaultRoot
+            || keyResult.Value.IsEmpty)
+        {
+            return null;
+        }
+
+        var nodeResult = ResourceTreeNavigator.FindResource(_projectFolder, keyResult.Value, ignoreCase: true);
+        if (nodeResult.IsFailure)
+        {
+            return null;
+        }
+
+        var canonicalKey = ResourceTreeNavigator.BuildKey(nodeResult.Value);
+        var canonicalRelative = canonicalKey.Path.Replace('/', Path.DirectorySeparatorChar);
+        return Path.Combine(ProjectFolderPath, canonicalRelative);
+    }
+
+    private Result<string> GetRealPathFromDisk(string path)
+    {
         try
         {
-            if (string.IsNullOrEmpty(path))
-            {
-                return Result<string>.Fail("Path is null or empty");
-            }
-
             // Get the full path first
             var fullPath = Path.GetFullPath(path);
 
@@ -365,22 +409,25 @@ public class ResourceRegistry : IResourceRegistry
                 // Directory.GetFileSystemEntries(currentPath, segment).
                 string? matchedEntry = null;
 
-                var matchedFilesResult = SyncRunner.Run(() => _fileSystem.EnumerateFilesAsync(currentPath, segment, recursive: false));
-                if (matchedFilesResult.IsSuccess
-                    && matchedFilesResult.Value.Count > 0)
+                var matchedFilesResult = SyncRunner.Run(() => _fileSystem.EnumerateAsync(currentPath, segment, recursive: false));
+                var matchedFile = matchedFilesResult.IsSuccess
+                    ? matchedFilesResult.Value.FirstOrDefault(entry => !entry.IsFolder)
+                    : null;
+                if (matchedFile is not null)
                 {
-                    matchedEntry = matchedFilesResult.Value[0];
+                    matchedEntry = matchedFile.FullPath;
                 }
                 else
                 {
-                    var matchedFoldersResult = SyncRunner.Run(() => _fileSystem.EnumerateFoldersAsync(currentPath));
-                    if (matchedFoldersResult.IsSuccess)
+                    var allEntriesResult = SyncRunner.Run(() => _fileSystem.EnumerateAsync(currentPath, "*", recursive: false));
+                    if (allEntriesResult.IsSuccess)
                     {
-                        foreach (var folder in matchedFoldersResult.Value)
+                        foreach (var entry in allEntriesResult.Value)
                         {
-                            if (Path.GetFileName(folder).Equals(segment, StringComparison.OrdinalIgnoreCase))
+                            if (entry.IsFolder
+                                && Path.GetFileName(entry.FullPath).Equals(segment, StringComparison.OrdinalIgnoreCase))
                             {
-                                matchedEntry = folder;
+                                matchedEntry = entry.FullPath;
                                 break;
                             }
                         }

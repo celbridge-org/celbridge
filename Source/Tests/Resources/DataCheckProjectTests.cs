@@ -52,7 +52,7 @@ public class DataCheckProjectTests
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            new ProjectTreeBuilder(fileIconService),
+            ProjectTreeBuilderTestHelper.Build(fileIconService),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             _rootHandlerRegistry,
             TestFileSystem.CreateLocal());
@@ -69,6 +69,7 @@ public class DataCheckProjectTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);

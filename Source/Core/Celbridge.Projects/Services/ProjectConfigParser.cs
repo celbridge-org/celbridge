@@ -72,6 +72,7 @@ public static class ProjectConfigParser
         var projectSection = new ProjectSection();
         var celbridgeSection = new CelbridgeSection();
         var shortcutsSection = new ShortcutsSection();
+        var resourcesSection = new ResourcesSection();
 
         // [project]
         if (root.TryGetValue("project", out var projectObject) &&
@@ -156,13 +157,45 @@ public static class ProjectConfigParser
             }
         }
 
+        // [resources]
+        if (root.TryGetValue("resources", out var resourcesObject) &&
+            resourcesObject is TomlTable resourcesTable)
+        {
+            resourcesSection = resourcesSection with
+            {
+                Include = ReadStringList(resourcesTable, "include") ?? resourcesSection.Include,
+                Exclude = ReadStringList(resourcesTable, "exclude") ?? resourcesSection.Exclude,
+                Locked = ReadStringList(resourcesTable, "locked") ?? resourcesSection.Locked,
+            };
+        }
+
         return new ProjectConfig
         {
             Project = projectSection,
             Celbridge = celbridgeSection,
             Shortcuts = shortcutsSection,
+            Resources = resourcesSection,
             Features = featuresDict
         };
+    }
+
+    private static IReadOnlyList<string>? ReadStringList(TomlTable table, string key)
+    {
+        if (!table.TryGetValue(key, out var value)
+            || value is not TomlArray array)
+        {
+            return null;
+        }
+
+        var items = new List<string>(array.Count);
+        foreach (var entry in array)
+        {
+            if (entry is string s)
+            {
+                items.Add(s);
+            }
+        }
+        return items;
     }
 
     private static ShortcutsSection ParseShortcutsArray(TomlTableArray shortcutsArray)

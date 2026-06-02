@@ -46,6 +46,7 @@ public class DocumentViewModelTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -141,6 +142,7 @@ public class DocumentViewModelTests
 
         var failingWorkspaceService = Substitute.For<IWorkspaceService>();
         failingWorkspaceService.ResourceService.Returns(failingResourceService);
+        failingWorkspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
 
         var failingWrapper = Substitute.For<IWorkspaceWrapper>();
         failingWrapper.WorkspaceService.Returns(failingWorkspaceService);

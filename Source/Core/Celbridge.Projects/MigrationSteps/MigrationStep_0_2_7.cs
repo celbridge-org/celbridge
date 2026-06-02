@@ -41,7 +41,7 @@ public class MigrationStep_0_2_7 : IMigrationStep
     {
         var projectDataFolderPath = Path.GetFullPath(context.ProjectDataFolderPath);
 
-        var enumerateResult = await context.FileSystem.EnumerateFilesAsync(
+        var enumerateResult = await context.FileSystem.EnumerateAsync(
             context.ProjectFolderPath,
             $"*{OldExtension}",
             recursive: true);
@@ -53,7 +53,7 @@ public class MigrationStep_0_2_7 : IMigrationStep
         }
 
         int renamedCount = 0;
-        foreach (var oldPath in enumerateResult.Value)
+        foreach (var oldPath in enumerateResult.Value.Where(entry => !entry.IsFolder).Select(entry => entry.FullPath))
         {
             var fullOldPath = Path.GetFullPath(oldPath);
 

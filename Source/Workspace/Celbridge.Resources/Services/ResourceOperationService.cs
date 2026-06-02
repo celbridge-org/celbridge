@@ -151,6 +151,16 @@ public class ResourceOperationService : IResourceOperationService
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
 
+        // Moving or renaming a folder relocates every descendant, which changes
+        // the path of any locked resource inside it. Walk the subtree and refuse
+        // the move if any descendant is locked, freezing the locked resource's
+        // path as well as its content.
+        var policyGateResult = await EvaluateStructuralChangeAsync(source, isFolder);
+        if (policyGateResult.IsFailure)
+        {
+            return Result.Fail(policyGateResult);
+        }
+
         var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
         var operation = new MoveOperation(
             source,
@@ -174,6 +184,21 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> DeleteAsync(ResourceKey resource)
     {
+        // The soft-delete path bypasses IResourceFileSystem because TrashService
+        // moves files into .celbridge/trash/ directly through the gateway. The
+        // policy gate that lives on IResourceFileSystem.DeleteAsync would never
+        // run, so the check is repeated here at the service entry. isFolder is
+        // probed so folder-only locked patterns deny correctly.
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        var policyGateResult = await EvaluateStructuralChangeAsync(resource, isFolder);
+        if (policyGateResult.IsFailure)
+        {
+            return policyGateResult;
+        }
+
         var operation = new DeleteOperation(resource, TrashService);
         var result = await operation.ExecuteAsync();
 
@@ -183,6 +208,53 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         return result;
+    }
+
+    // Evaluates the policy on a structural-change target (delete or move) and,
+    // for folders, on every descendant. A locked descendant blocks the change
+    // because delete moves the whole subtree to trash and move relocates it as
+    // one unit; allowing the parent change while a child is locked would break
+    // the locked resource's frozen-in-place guarantee.
+    private async Task<Result> EvaluateStructuralChangeAsync(ResourceKey resource, bool isFolder)
+    {
+        var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+
+        var directResult = policy.Evaluate(resource, ResourceAction.Write, isFolder);
+        if (directResult.IsFailure)
+        {
+            return Result.Fail(directResult);
+        }
+
+        if (!isFolder)
+        {
+            return Result.Ok();
+        }
+
+        var enumerateResult = await ResourceFileSystem.EnumerateFolderAsync(resource);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Ok();
+        }
+
+        foreach (var entry in enumerateResult.Value)
+        {
+            var childResult = policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder);
+            if (childResult.IsFailure)
+            {
+                return Result.Fail(childResult);
+            }
+
+            if (entry.IsFolder)
+            {
+                var nestedResult = await EvaluateStructuralChangeAsync(entry.Resource, isFolder: true);
+                if (nestedResult.IsFailure)
+                {
+                    return nestedResult;
+                }
+            }
+        }
+
+        return Result.Ok();
     }
 
     public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest)

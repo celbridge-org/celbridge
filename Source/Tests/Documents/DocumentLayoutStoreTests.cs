@@ -57,6 +57,7 @@ public class DocumentLayoutStoreTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
         workspaceService.ResourceService.Returns(resourceService);
+        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();

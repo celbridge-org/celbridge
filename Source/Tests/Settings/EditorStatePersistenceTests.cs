@@ -8,7 +8,7 @@ namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// Locks in the persistence shape used by DocumentsService for editor state:
-/// a Dictionary&lt;string, string&gt; keyed by resource key. A schema change here would silently
+/// a Dictionary<string, string> keyed by resource key. A schema change here would silently
 /// break state restoration after a workspace reload, which is hard to debug at runtime, so
 /// we want a fast unit-level signal.
 ///

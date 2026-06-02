@@ -352,9 +352,10 @@ public class PythonService : IPythonService, IDisposable
                     && installDirInfo.Value.Kind == StorageItemKind.Folder;
                 if (installDirExists)
                 {
-                    var enumerateFoldersResult = await _fileSystem.EnumerateFoldersAsync(uvPythonInstallDir);
+                    var enumerateFoldersResult = await _fileSystem.EnumerateAsync(uvPythonInstallDir, "*", recursive: false);
                     var installEntries = enumerateFoldersResult.Value
-                        .Select(folder => Path.GetFileName(folder))
+                        .Where(entry => entry.IsFolder)
+                        .Select(entry => Path.GetFileName(entry.FullPath))
                         .ToList();
                     _logger.LogDebug(
                         "uv_python_installs ('{Path}') contains [{Entries}]",
@@ -535,7 +536,7 @@ public class PythonService : IPythonService, IDisposable
         // Depth 1 over uv_python_installs/ enumerates the interpreter folder names
         // (e.g. cpython-3.13.6-windows-x86_64-none) without descending into Lib/
         // where __pycache__ writes would destabilise the hash.
-        var installsHash = FileHashHelper.HashFolderStructure(
+        var installsHash = await FileHashHelper.HashFolderStructureAsync(
             Path.Combine(pythonFolder, UVPythonInstallsFolderName),
             maxDepth: 1);
         sb.AppendLine($"installs|{installsHash}");
@@ -553,15 +554,19 @@ public class PythonService : IPythonService, IDisposable
             && uvCacheInfoResult.Value.Kind == StorageItemKind.Folder)
         {
             var wheelsFolders = new List<string>();
-            var enumerateFoldersResult = await _fileSystem.EnumerateFoldersAsync(uvCacheDir);
+            var enumerateFoldersResult = await _fileSystem.EnumerateAsync(uvCacheDir, "*", recursive: false);
             if (enumerateFoldersResult.IsSuccess)
             {
-                foreach (var folder in enumerateFoldersResult.Value)
+                foreach (var entry in enumerateFoldersResult.Value)
                 {
-                    var folderName = Path.GetFileName(folder);
+                    if (!entry.IsFolder)
+                    {
+                        continue;
+                    }
+                    var folderName = Path.GetFileName(entry.FullPath);
                     if (folderName.StartsWith("wheels-v", StringComparison.Ordinal))
                     {
-                        wheelsFolders.Add(folder);
+                        wheelsFolders.Add(entry.FullPath);
                     }
                 }
                 wheelsFolders.Sort(StringComparer.Ordinal);
@@ -570,7 +575,7 @@ public class PythonService : IPythonService, IDisposable
             foreach (var wheelsFolder in wheelsFolders)
             {
                 var folderName = Path.GetFileName(wheelsFolder);
-                var wheelsHash = FileHashHelper.HashFolderStructure(wheelsFolder, maxDepth: 3);
+                var wheelsHash = await FileHashHelper.HashFolderStructureAsync(wheelsFolder, maxDepth: 3);
                 sb.AppendLine($"wheels|{folderName}|{wheelsHash}");
             }
         }
@@ -695,14 +700,17 @@ public class PythonService : IPythonService, IDisposable
     private async Task<Result<string>> FindWheelFileAsync(string folderPath, string packageName)
     {
         var searchPattern = $"{packageName}-*.whl";
-        var enumerateFilesResult = await _fileSystem.EnumerateFilesAsync(folderPath, searchPattern, recursive: false);
+        var enumerateFilesResult = await _fileSystem.EnumerateAsync(folderPath, searchPattern, recursive: false);
         if (enumerateFilesResult.IsFailure)
         {
             return Result<string>.Fail($"Error searching for wheel files for package '{packageName}'")
                 .WithErrors(enumerateFilesResult);
         }
 
-        var wheelFiles = enumerateFilesResult.Value;
+        var wheelFiles = enumerateFilesResult.Value
+            .Where(entry => !entry.IsFolder)
+            .Select(entry => entry.FullPath)
+            .ToList();
         if (wheelFiles.Count == 0)
         {
             return Result<string>.Fail($"No wheel files found for package '{packageName}' in '{folderPath}'");

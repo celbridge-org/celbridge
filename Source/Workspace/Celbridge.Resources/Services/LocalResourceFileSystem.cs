@@ -1,5 +1,6 @@
 using System.Text;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 
@@ -35,6 +36,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<byte[]>> ReadAllBytesAsync(ResourceKey resource)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Read, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -48,6 +55,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<string>> ReadAllTextAsync(ResourceKey resource)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Read, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -61,6 +74,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<Stream>> OpenReadAsync(ResourceKey resource)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Read, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -74,17 +93,35 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public Task<Result> WriteAllBytesAsync(ResourceKey resource, byte[] bytes)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Task.FromResult<Result>(Result.Fail(policyResult));
+        }
+
         return WriteBytesAsync(resource, bytes);
     }
 
     public Task<Result> WriteAllTextAsync(ResourceKey resource, string content)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Task.FromResult<Result>(Result.Fail(policyResult));
+        }
+
         var bytes = Encoding.UTF8.GetBytes(content);
         return WriteBytesAsync(resource, bytes);
     }
 
     public async Task<Result<Stream>> OpenWriteAsync(ResourceKey resource)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -145,6 +182,20 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Source resource does not exist: '{source}'");
         }
 
+        // Policy runs after the kind probe so folder-only locked patterns
+        // deny on the actual on-disk shape.
+        var sourcePolicy = EvaluatePolicy(source, ResourceAction.Write, isFolder: sourceIsFolder);
+        if (sourcePolicy.IsFailure)
+        {
+            return Result.Fail(sourcePolicy);
+        }
+
+        var destPolicy = EvaluatePolicy(dest, ResourceAction.Write, isFolder: sourceIsFolder);
+        if (destPolicy.IsFailure)
+        {
+            return Result.Fail(destPolicy);
+        }
+
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
         if (!IsRootWritable(rootHandlerRegistry, dest))
         {
@@ -177,10 +228,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        // Capture descendant keys (folders only) before the disk move so the
-        // post-move eager-notify can drop their stale source-side index
-        // entries. After Move the source path is gone and the enumeration
-        // is no longer possible.
+        // Capture descendant keys before the disk move so the post-move
+        // eager-notify can drop their stale source-side index entries and
+        // announce each descendant's move. After Move the source path is gone
+        // and the enumeration is no longer possible.
         IReadOnlyList<ResourceKey> sourceDescendantKeys;
         if (sourceIsFolder)
         {
@@ -313,6 +364,18 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Source resource does not exist: '{source}'");
         }
 
+        var sourcePolicy = EvaluatePolicy(source, ResourceAction.Read, isFolder: sourceIsFolder);
+        if (sourcePolicy.IsFailure)
+        {
+            return Result.Fail(sourcePolicy);
+        }
+
+        var destPolicy = EvaluatePolicy(dest, ResourceAction.Write, isFolder: sourceIsFolder);
+        if (destPolicy.IsFailure)
+        {
+            return Result.Fail(destPolicy);
+        }
+
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
         if (!IsRootWritable(rootHandlerRegistry, dest))
         {
@@ -392,6 +455,14 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Resource does not exist: '{source}'");
         }
 
+        // Policy runs after the kind probe so folder-only locked patterns
+        // deny on the actual on-disk shape rather than guessing.
+        var policyResult = EvaluatePolicy(source, ResourceAction.Write, isFolder: sourceIsFolder);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
         if (!IsRootWritable(rootHandlerRegistry, source))
         {
@@ -400,8 +471,9 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         var sidecarOutcome = _sidecarCascade.TryDelete(source);
 
-        // Capture descendant keys (folders only) before the disk delete so the
-        // post-delete eager-notify can drop their stale index entries too.
+        // Capture descendant keys before the disk delete so the post-delete
+        // eager-notify can drop their stale index entries and announce each
+        // descendant's removal too.
         IReadOnlyList<ResourceKey> descendantKeys;
         if (sourceIsFolder)
         {
@@ -455,14 +527,16 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return result;
     }
 
-    // Returns the resource keys of every file inside a folder that exists on
-    // disk. Used to capture descendant keys before a recursive delete or move
-    // so eager-notify can drop their stale entries from the reference index.
+    // Returns the resource keys of every descendant of a folder that exists on
+    // disk, both nested files and nested sub-folders. Used to capture descendant
+    // keys before a recursive delete or move so eager-notify can drop their stale
+    // entries from the reference index and announce each descendant's removal.
     private async Task<IReadOnlyList<ResourceKey>> EnumerateDescendantKeysAsync(IRootHandlerRegistry rootHandlerRegistry, ResourceKey folder, string folderPath)
     {
         var keys = new List<ResourceKey>();
         var validator = ResolvePathValidator(rootHandlerRegistry, folder);
-        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: true, validateEntry: validator);
+
+        var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, "*", recursive: true);
         if (enumerateResult.IsFailure)
         {
             // Best effort. A failure here just means descendant keys won't be
@@ -471,20 +545,27 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return keys;
         }
 
-        foreach (var file in enumerateResult.Value)
+        foreach (var entry in enumerateResult.Value)
         {
-            var keyResult = rootHandlerRegistry.GetResourceKey(file);
+            if (validator is not null
+                && !validator(entry.FullPath))
+            {
+                continue;
+            }
+            var keyResult = rootHandlerRegistry.GetResourceKey(entry.FullPath);
             if (keyResult.IsSuccess)
             {
                 keys.Add(keyResult.Value);
             }
         }
+
         return keys;
     }
 
     // Looks up the registered root handler for the key and returns its path
-    // validator predicate, or null when no handler is registered. The
-    // gateway's EnumerateFilesAsync treats null as "no validation runs".
+    // validator predicate, or null when no handler is registered. Callers that
+    // walk a subtree apply it to each enumerated entry; a null predicate means
+    // no entries are filtered out.
     private static Func<string, bool>? ResolvePathValidator(IRootHandlerRegistry rootHandlerRegistry, ResourceKey key)
     {
         if (rootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler))
@@ -496,6 +577,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result> CreateFolderAsync(ResourceKey folder)
     {
+        var policyResult = EvaluatePolicy(folder, ResourceAction.Write, isFolder: true);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var resolveResult = ResolvePath(folder);
         if (resolveResult.IsFailure)
         {
@@ -532,6 +619,12 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<StorageItemInfo>> GetInfoAsync(ResourceKey resource)
     {
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Read, isFolder: false);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
         var resolveResult = ResolvePath(resource);
         if (resolveResult.IsFailure)
         {
@@ -545,6 +638,19 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<IReadOnlyList<FolderItem>>> EnumerateFolderAsync(ResourceKey folder)
     {
+        // List access to the folder itself is policy-gated; if the folder is
+        // not visible, the enumeration call resolves to "no such resource"
+        // semantics with a Result.Fail so callers don't mistake a denied
+        // listing for an empty folder.
+        if (!folder.IsEmpty)
+        {
+            var folderPolicy = EvaluatePolicy(folder, ResourceAction.List, isFolder: true);
+            if (folderPolicy.IsFailure)
+            {
+                return Result.Fail(folderPolicy);
+            }
+        }
+
         var resolveResult = ResolvePath(folder);
         if (resolveResult.IsFailure)
         {
@@ -563,27 +669,26 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Resource is not a folder: '{folder}'");
         }
 
-        var filesResult = await _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: false);
-        if (filesResult.IsFailure)
+        var enumerateResult = await _fileSystem.EnumerateAsync(folderPath, "*", recursive: false);
+        if (enumerateResult.IsFailure)
         {
             return Result.Fail($"Failed to enumerate folder: '{folder}'")
-                .WithErrors(filesResult);
-        }
-
-        var foldersResult = await _fileSystem.EnumerateFoldersAsync(folderPath);
-        if (foldersResult.IsFailure)
-        {
-            return Result.Fail($"Failed to enumerate folder: '{folder}'")
-                .WithErrors(foldersResult);
+                .WithErrors(enumerateResult);
         }
 
         var entries = new List<FolderItem>();
 
-        foreach (var filePath in filesResult.Value)
+        // EnumerateAsync already returns a deterministic folders-first, ordinal
+        // order, so no re-sort is needed here.
+        foreach (var entry in enumerateResult.Value)
         {
-            var fileName = Path.GetFileName(filePath);
-            var childKey = folder.Combine(fileName);
-            var infoResult = await _fileSystem.GetInfoAsync(filePath);
+            var childName = Path.GetFileName(entry.FullPath);
+            var childKey = folder.Combine(childName);
+            if (EvaluatePolicy(childKey, ResourceAction.List, isFolder: entry.IsFolder).IsFailure)
+            {
+                continue;
+            }
+            var infoResult = await _fileSystem.GetInfoAsync(entry.FullPath);
             if (infoResult.IsFailure)
             {
                 continue;
@@ -592,26 +697,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
             entries.Add(new FolderItem(
                 Resource: childKey,
-                IsFolder: false,
-                Size: info.Size,
-                ModifiedUtc: info.ModifiedUtc));
-        }
-
-        foreach (var subFolderPath in foldersResult.Value)
-        {
-            var subFolderName = Path.GetFileName(subFolderPath);
-            var childKey = folder.Combine(subFolderName);
-            var infoResult = await _fileSystem.GetInfoAsync(subFolderPath);
-            if (infoResult.IsFailure)
-            {
-                continue;
-            }
-            var info = infoResult.Value;
-
-            entries.Add(new FolderItem(
-                Resource: childKey,
-                IsFolder: true,
-                Size: 0,
+                IsFolder: entry.IsFolder,
+                Size: entry.IsFolder ? 0 : info.Size,
                 ModifiedUtc: info.ModifiedUtc));
         }
 
@@ -637,6 +724,16 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return resourceRegistry.ResolveResourcePath(resource);
     }
 
+    // Resolves the workspace-scoped policy engine through the wrapper and
+    // evaluates the supplied action against the resource. Returns Result.Ok
+    // when the action is allowed, Result.Fail (with a PolicyDenialError
+    // attached as an exception) when denied.
+    private Result EvaluatePolicy(ResourceKey resource, ResourceAction action, bool isFolder)
+    {
+        var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+        return policy.Evaluate(resource, action, isFolder);
+    }
+
     // In production the caller always invokes IsRootWritable after ResolvePath
     // has succeeded, so a registered handler is guaranteed to be present. Unit
     // tests that stub ResolveResourcePath directly can reach this without a
@@ -659,32 +756,36 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return createResult;
         }
 
-        var filesResult = await _fileSystem.EnumerateFilesAsync(sourceFolder, "*", recursive: false);
-        if (filesResult.IsFailure)
+        var enumerateResult = await _fileSystem.EnumerateAsync(sourceFolder, "*", recursive: false);
+        if (enumerateResult.IsFailure)
         {
-            return Result.Fail(filesResult);
+            return Result.Fail(enumerateResult);
         }
-        foreach (var file in filesResult.Value)
+
+        foreach (var entry in enumerateResult.Value)
         {
-            var fileName = Path.GetFileName(file);
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+            var fileName = Path.GetFileName(entry.FullPath);
             var destFile = Path.Combine(destFolder, fileName);
-            var copyResult = await _fileSystem.CopyFileAsync(file, destFile);
+            var copyResult = await _fileSystem.CopyFileAsync(entry.FullPath, destFile);
             if (copyResult.IsFailure)
             {
                 return copyResult;
             }
         }
 
-        var foldersResult = await _fileSystem.EnumerateFoldersAsync(sourceFolder);
-        if (foldersResult.IsFailure)
+        foreach (var entry in enumerateResult.Value)
         {
-            return Result.Fail(foldersResult);
-        }
-        foreach (var subFolder in foldersResult.Value)
-        {
-            var folderName = Path.GetFileName(subFolder);
+            if (!entry.IsFolder)
+            {
+                continue;
+            }
+            var folderName = Path.GetFileName(entry.FullPath);
             var destSubFolder = Path.Combine(destFolder, folderName);
-            var recursiveResult = await CopyFolderRecursiveAsync(subFolder, destSubFolder);
+            var recursiveResult = await CopyFolderRecursiveAsync(entry.FullPath, destSubFolder);
             if (recursiveResult.IsFailure)
             {
                 return recursiveResult;
@@ -699,14 +800,23 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     // the subtree first. Best-effort and silent on individual failures.
     private async Task ClearReadOnlyAttributesRecursiveAsync(string folder, Func<string, bool>? validator)
     {
-        var enumerateResult = await _fileSystem.EnumerateFilesAsync(folder, "*", recursive: true, validateEntry: validator);
+        var enumerateResult = await _fileSystem.EnumerateAsync(folder, "*", recursive: true);
         if (enumerateResult.IsFailure)
         {
             return;
         }
-        foreach (var file in enumerateResult.Value)
+        foreach (var entry in enumerateResult.Value)
         {
-            _ = await _fileSystem.SetAttributesAsync(file, FileSystemAttributes.ReadOnly, set: false);
+            if (entry.IsFolder)
+            {
+                continue;
+            }
+            if (validator is not null
+                && !validator(entry.FullPath))
+            {
+                continue;
+            }
+            _ = await _fileSystem.SetAttributesAsync(entry.FullPath, FileSystemAttributes.ReadOnly, set: false);
         }
     }
 

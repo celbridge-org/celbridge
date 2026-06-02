@@ -79,13 +79,13 @@ public class ResourceService : IResourceService, IDisposable
         // temp:/ is wiped on every workspace load. The contract is that nothing
         // under temp: survives a reload; consumers needing persistence write
         // under project: instead.
-        TryClearFolderContents(celbridgeTempFolder);
+        TryDeleteFolder(celbridgeTempFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTempFolder));
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeLogsFolder));
 
         // Trash is cleared on every workspace load; undo history lives in memory only,
         // so previous-session trash content has no live handles.
-        TryClearFolderContents(celbridgeTrashFolder);
+        TryDeleteFolder(celbridgeTrashFolder);
         SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTrashFolder));
 
         // Discard the legacy <project>/celbridge/trash/ folder. The sibling
@@ -184,41 +184,9 @@ public class ResourceService : IResourceService, IDisposable
         Dispose(false);
     }
 
-    // Removes every child item under the given folder while leaving the folder itself in place.
-    // Used to clear .celbridge/trash/ on every workspace load without disturbing the folder layout.
-    private void TryClearFolderContents(string folderPath)
-    {
-        var folderInfo = SyncRunner.Run(() => _fileSystem.GetInfoAsync(folderPath));
-        if (folderInfo.IsFailure
-            || folderInfo.Value.Kind != StorageItemKind.Folder)
-        {
-            return;
-        }
-
-        var filesResult = SyncRunner.Run(() => _fileSystem.EnumerateFilesAsync(folderPath, "*", recursive: false));
-        if (filesResult.IsSuccess)
-        {
-            foreach (var file in filesResult.Value)
-            {
-                var deleteResult = SyncRunner.Run(() => _fileSystem.DeleteFileAsync(file));
-                _ = deleteResult;
-            }
-        }
-
-        var foldersResult = SyncRunner.Run(() => _fileSystem.EnumerateFoldersAsync(folderPath));
-        if (foldersResult.IsSuccess)
-        {
-            foreach (var subFolder in foldersResult.Value)
-            {
-                var deleteResult = SyncRunner.Run(() => _fileSystem.DeleteFolderAsync(subFolder, recursive: true));
-                _ = deleteResult;
-            }
-        }
-    }
-
-    // Best-effort folder removal used at workspace open and close for legacy
-    // cleanup. Failures are swallowed because nothing downstream depends on the
-    // folder being gone — the workspace makes another attempt next time.
+    // Best-effort recursive folder removal. Failures are swallowed because
+    // nothing downstream depends on the folder being gone — the workspace makes
+    // another attempt next time.
     private void TryDeleteFolder(string folderPath)
     {
         var folderInfo = SyncRunner.Run(() => _fileSystem.GetInfoAsync(folderPath));

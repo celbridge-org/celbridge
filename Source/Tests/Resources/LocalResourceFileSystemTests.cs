@@ -17,7 +17,9 @@ public class LocalResourceFileSystemTests
 {
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
+    private IRootHandlerRegistry _rootHandlerRegistry = null!;
     private IResourceScanner _resourceScanner = null!;
+    private IMessengerService _messengerService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
 
     [SetUp]
@@ -32,21 +34,30 @@ public class LocalResourceFileSystemTests
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempFolder);
+        // Default to failure for any unstubbed resolve; specific tests override
+        // with success results for the keys they exercise.
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
+            .Returns(Result<string>.Fail("not stubbed"));
 
         _resourceScanner = Substitute.For<IResourceScanner>();
         _resourceScanner.FindReferencersAsync(Arg.Any<ResourceKey>()).Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
         _resourceScanner.FindAllReferencedTargetsAsync().Returns(Task.FromResult<IReadOnlyList<ResourceKey>>(Array.Empty<ResourceKey>()));
 
-        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
-        rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
+        _rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
+        _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
+        // Default to failure for any unstubbed resolve; folder operations stub
+        // the descendant paths they exercise.
+        _rootHandlerRegistry.GetResourceKey(Arg.Any<string>())
+            .Returns(Result<ResourceKey>.Fail("not stubbed"));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlerRegistry.Returns(rootHandlerRegistry);
+        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
         workspaceService.ResourceScanner.Returns(_resourceScanner);
+        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -54,9 +65,11 @@ public class LocalResourceFileSystemTests
         var sidecarService = new SidecarService(workspaceWrapper);
         workspaceService.SidecarService.Returns(sidecarService);
 
+        _messengerService = Substitute.For<IMessengerService>();
+
         _resourceFileSystem = new LocalResourceFileSystem(
             Substitute.For<ILogger<LocalResourceFileSystem>>(),
-            Substitute.For<IMessengerService>(),
+            _messengerService,
             workspaceWrapper,
             TestFileSystem.CreateLocal());
     }
@@ -625,6 +638,45 @@ public class LocalResourceFileSystemTests
         var result = await _resourceFileSystem.DeleteAsync(sourceKey);
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task DeleteAsync_Folder_FansOutDeleteMessages_ForNestedSubFolders()
+    {
+        // Folders are first-class resources, so deleting a folder must announce
+        // the removal of nested sub-folders too - including empty ones the file
+        // walk cannot surface - not just the files beneath them.
+        var folderKey = new ResourceKey("folder");
+        var folderPath = Path.Combine(_tempFolder, "folder");
+        Directory.CreateDirectory(folderPath);
+
+        var nestedFolderPath = Path.Combine(folderPath, "nested");
+        Directory.CreateDirectory(nestedFolderPath);
+        var deepFilePath = Path.Combine(nestedFolderPath, "deep.txt");
+        await File.WriteAllTextAsync(deepFilePath, "deep");
+
+        var emptyFolderPath = Path.Combine(folderPath, "empty");
+        Directory.CreateDirectory(emptyFolderPath);
+
+        _resourceRegistry.ResolveResourcePath(folderKey).Returns(Result<string>.Ok(folderPath));
+        _rootHandlerRegistry.GetResourceKey(deepFilePath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested/deep.txt")));
+        _rootHandlerRegistry.GetResourceKey(nestedFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/nested")));
+        _rootHandlerRegistry.GetResourceKey(emptyFolderPath).Returns(Result<ResourceKey>.Ok(new ResourceKey("folder/empty")));
+
+        var deletedKeys = new List<ResourceKey>();
+        _messengerService.Send(Arg.Do<ResourceDeletedMessage>(message => deletedKeys.Add(message.Resource)));
+
+        var result = await _resourceFileSystem.DeleteAsync(folderKey);
+
+        result.IsSuccess.Should().BeTrue();
+        Directory.Exists(folderPath).Should().BeFalse();
+        deletedKeys.Select(key => key.Path).Should().BeEquivalentTo(new[]
+        {
+            "folder",
+            "folder/nested/deep.txt",
+            "folder/nested",
+            "folder/empty",
+        });
     }
 
     [Test]

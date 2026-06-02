@@ -111,12 +111,15 @@ public partial class PackageTools
             using var memoryStream = new MemoryStream();
             using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
             {
-                var enumerateResult = await fileSystem.EnumerateFilesAsync(sourcePath, "*", recursive: true);
+                var enumerateResult = await fileSystem.EnumerateAsync(sourcePath, "*", recursive: true);
                 if (enumerateResult.IsFailure)
                 {
                     return ToolResponse.Error($"Failed to enumerate package files: {enumerateResult.FirstErrorMessage}");
                 }
-                var filePaths = enumerateResult.Value;
+                var filePaths = enumerateResult.Value
+                    .Where(entry => !entry.IsFolder)
+                    .Select(entry => entry.FullPath)
+                    .ToList();
 
                 foreach (var filePath in filePaths)
                 {

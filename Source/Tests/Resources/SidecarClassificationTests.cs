@@ -32,7 +32,7 @@ public class SidecarClassificationTests
         _registry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
-            new ProjectTreeBuilder(new FileIconService()),
+            ProjectTreeBuilderTestHelper.Build(),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
