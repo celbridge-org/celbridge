@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -54,6 +55,22 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
         }
         var resource = getResult.Value;
 
+        // Pre-check the policy before opening the rename dialog: a locked or
+        // path-frozen resource cannot be renamed, so explain why rather than
+        // accepting a new name the operation layer would then refuse. The user
+        // just triggered the rename, so the message names only the file and the
+        // reason.
+        var operations = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+        var canModifyResult = await operations.CanModifyResourceAsync(Resource);
+        if (canModifyResult.IsFailure)
+        {
+            var cannotRenameTitle = _stringLocalizer.GetString("ResourceTree_CannotRename");
+            var reasonText = PolicyDenialFormatter.FormatReason(canModifyResult, resource.Name, _stringLocalizer);
+            await _dialogService.ShowAlertDialogAsync(cannotRenameTitle, reasonText);
+
+            return Result.Ok();
+        }
+
         var resourceName = resource.Name;
 
         // Select only the filename part without the extension
@@ -66,6 +83,7 @@ public class RenameResourceDialogCommand : CommandBase, IRenameResourceDialogCom
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = resource.ParentFolder;
+        validator.ValidateAsFolder = resource is IFolderResource;
         validator.ValidNames.Add(resourceName); // The original name is always valid when renaming
 
         var enterNewNameString = _stringLocalizer.GetString("ResourceTree_EnterNewName");

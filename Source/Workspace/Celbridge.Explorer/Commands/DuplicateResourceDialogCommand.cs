@@ -78,6 +78,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = resource.ParentFolder;
+        validator.ValidateAsFolder = resource is IFolderResource;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             duplicateResourceString,

@@ -67,18 +67,72 @@ public sealed partial class ResourceTree
         if (e.Data?.Properties?.ContainsKey("DraggedResources") == true)
         {
             // Internal drag - check if target is valid (folder or file)
-            var canDrop = targetItem?.Resource is IFolderResource or IFileResource;
+            var targetIsValid = targetItem?.Resource is IFolderResource or IFileResource;
+            if (!targetIsValid)
+            {
+                return (CanDrop: false, IsInternalDrag: true);
+            }
+
+            var destFolder = ResolveDropTargetFolder(targetItem!.Resource);
+            var draggedResources = e.Data.Properties["DraggedResources"] as List<IResource>;
+            var canDrop = CanDropInto(destFolder, draggedResources);
             return (canDrop, IsInternalDrag: true);
         }
 
         // Check for external drag (from File Explorer, etc.)
         if (e.DataView?.Contains(StandardDataFormats.StorageItems) == true)
         {
-            // External drag - allow drop on folder, file (uses parent), or empty space (project folder)
-            return (CanDrop: true, IsInternalDrag: false);
+            // External drag - allow drop on folder, file (uses parent), or empty space (project folder).
+            // The dropped item names are not available synchronously here, so the
+            // folder-level policy check covers read-only roots, hidden folders, and
+            // fully-locked folders; the per-item visibility gate enforces the rest
+            // when the transfer runs.
+            var destFolder = ResolveDropTargetFolder(targetItem?.Resource);
+            var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
+            var canDrop = _operationService.CanAddToFolder(destFolderKey).IsSuccess;
+            return (canDrop, IsInternalDrag: false);
         }
 
         return (CanDrop: false, IsInternalDrag: false);
+    }
+
+    // Predicts whether the dragged resources can land in the destination folder:
+    // the folder must accept additions (writable root, visible, not fully locked)
+    // and every dragged item's destination key must itself be a permitted resource
+    // (not hidden by the ignore-file, not locked). Mirrors the gate the move/copy
+    // executor enforces so the no-drop cursor never disagrees with the outcome.
+    private bool CanDropInto(IFolderResource destFolder, List<IResource>? draggedResources)
+    {
+        var destFolderKey = _resourceRegistry.GetResourceKey(destFolder);
+        if (_operationService.CanAddToFolder(destFolderKey).IsFailure)
+        {
+            return false;
+        }
+
+        if (draggedResources is null)
+        {
+            return true;
+        }
+
+        foreach (var resource in draggedResources)
+        {
+            var sourceKey = _resourceRegistry.GetResourceKey(resource);
+
+            // A no-op move back into the resource's current folder is always fine.
+            if (sourceKey.GetParent() == destFolderKey)
+            {
+                continue;
+            }
+
+            var destKey = destFolderKey.Combine(resource.Name);
+            bool isFolder = resource is IFolderResource;
+            if (_operationService.CanCreateResource(destKey, isFolder).IsFailure)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void ApplyDragVisuals(DragEventArgs e, (bool CanDrop, bool IsInternalDrag) dropInfo)

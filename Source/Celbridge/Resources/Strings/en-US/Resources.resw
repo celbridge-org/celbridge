@@ -195,6 +195,24 @@
   <data name="ResourceTree_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="ResourceTree_CannotDelete" xml:space="preserve">
+    <value>Cannot delete</value>
+  </data>
+  <data name="ResourceTree_CannotRename" xml:space="preserve">
+    <value>Cannot rename</value>
+  </data>
+  <data name="Policy_Locked_Single" xml:space="preserve">
+    <value>'{0}' is locked.</value>
+  </data>
+  <data name="Policy_Locked_Multiple" xml:space="preserve">
+    <value>{0} items are locked.</value>
+  </data>
+  <data name="Policy_Excluded_Single" xml:space="preserve">
+    <value>'{0}' is excluded by the project configuration.</value>
+  </data>
+  <data name="Policy_ReadOnly_Single" xml:space="preserve">
+    <value>'{0}' is in a read-only location.</value>
+  </data>
   <data name="ResourceTree_DeleteFileFailed" xml:space="preserve">
     <value>Failed to delete file '{0}'</value>
   </data>

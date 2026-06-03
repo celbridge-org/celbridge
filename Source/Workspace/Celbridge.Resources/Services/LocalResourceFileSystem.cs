@@ -93,10 +93,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public Task<Result> WriteAllBytesAsync(ResourceKey resource, byte[] bytes)
     {
-        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: false);
-        if (policyResult.IsFailure)
+        var gateResult = EvaluateWriteDestination(resource, isFolder: false);
+        if (gateResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail(policyResult));
+            return Task.FromResult<Result>(Result.Fail(gateResult));
         }
 
         return WriteBytesAsync(resource, bytes);
@@ -104,10 +104,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public Task<Result> WriteAllTextAsync(ResourceKey resource, string content)
     {
-        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: false);
-        if (policyResult.IsFailure)
+        var gateResult = EvaluateWriteDestination(resource, isFolder: false);
+        if (gateResult.IsFailure)
         {
-            return Task.FromResult<Result>(Result.Fail(policyResult));
+            return Task.FromResult<Result>(Result.Fail(gateResult));
         }
 
         var bytes = Encoding.UTF8.GetBytes(content);
@@ -116,10 +116,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result<Stream>> OpenWriteAsync(ResourceKey resource)
     {
-        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: false);
-        if (policyResult.IsFailure)
+        var gateResult = EvaluateWriteDestination(resource, isFolder: false);
+        if (gateResult.IsFailure)
         {
-            return Result.Fail(policyResult);
+            return Result.Fail(gateResult);
         }
 
         var resolveResult = ResolvePath(resource);
@@ -190,7 +190,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(sourcePolicy);
         }
 
-        var destPolicy = EvaluatePolicy(dest, ResourceAction.Write, isFolder: sourceIsFolder);
+        var destPolicy = EvaluateWriteDestination(dest, isFolder: sourceIsFolder);
         if (destPolicy.IsFailure)
         {
             return Result.Fail(destPolicy);
@@ -370,7 +370,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(sourcePolicy);
         }
 
-        var destPolicy = EvaluatePolicy(dest, ResourceAction.Write, isFolder: sourceIsFolder);
+        var destPolicy = EvaluateWriteDestination(dest, isFolder: sourceIsFolder);
         if (destPolicy.IsFailure)
         {
             return Result.Fail(destPolicy);
@@ -577,10 +577,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
     public async Task<Result> CreateFolderAsync(ResourceKey folder)
     {
-        var policyResult = EvaluatePolicy(folder, ResourceAction.Write, isFolder: true);
-        if (policyResult.IsFailure)
+        var gateResult = EvaluateWriteDestination(folder, isFolder: true);
+        if (gateResult.IsFailure)
         {
-            return Result.Fail(policyResult);
+            return Result.Fail(gateResult);
         }
 
         var resolveResult = ResolvePath(folder);
@@ -730,6 +730,23 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     {
         var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
         return policy.Evaluate(resource, action, isFolder);
+    }
+
+    // Gate for the destination of a create, write, move, or copy. The Write
+    // (lock) check is paired with a List (visibility) check so the operation
+    // refuses to produce a resource the ignore-file would immediately hide,
+    // rather than silently writing a file that never enters the registry. Raw
+    // non-resource writes that intentionally land on a hidden path stay
+    // available through ILocalFileSystem.
+    private Result EvaluateWriteDestination(ResourceKey resource, bool isFolder)
+    {
+        var writeResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder);
+        if (writeResult.IsFailure)
+        {
+            return writeResult;
+        }
+
+        return EvaluatePolicy(resource, ResourceAction.List, isFolder);
     }
 
     // In production the caller always invokes IsRootWritable after ResolvePath

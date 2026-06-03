@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 
@@ -51,7 +52,35 @@ public class DeleteResourceDialogCommand : CommandBase, IDeleteResourceDialogCom
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var operations = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
         var deleteString = _stringLocalizer.GetString("ResourceTree_Delete");
+
+        // Pre-check the policy before confirming: a locked or path-frozen
+        // resource cannot be deleted, so explain why rather than asking the user
+        // to confirm a delete the operation layer would then refuse. The user
+        // just triggered the delete, so the message names only the blocked file
+        // (or the count, for a multi-selection) and the reason.
+        var blockedResources = new List<(string Name, Result Failure)>();
+        foreach (var resourceKey in Resources)
+        {
+            var canModifyResult = await operations.CanModifyResourceAsync(resourceKey);
+            if (canModifyResult.IsFailure)
+            {
+                blockedResources.Add((resourceKey.ResourceName, canModifyResult));
+            }
+        }
+
+        if (blockedResources.Count > 0)
+        {
+            var cannotDeleteTitle = _stringLocalizer.GetString("ResourceTree_CannotDelete");
+            string messageText = blockedResources.Count == 1
+                ? PolicyDenialFormatter.FormatReason(blockedResources[0].Failure, blockedResources[0].Name, _stringLocalizer)
+                : _stringLocalizer.GetString("Policy_Locked_Multiple", blockedResources.Count);
+
+            await _dialogService.ShowAlertDialogAsync(cannotDeleteTitle, messageText);
+
+            return Result.Ok();
+        }
 
         string confirmDeleteString;
 

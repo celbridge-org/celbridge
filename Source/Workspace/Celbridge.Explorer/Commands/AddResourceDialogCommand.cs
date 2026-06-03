@@ -83,6 +83,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
+        validator.ValidateAsFolder = false;
 
         // Select only the filename part without the extension
         var extensionIndex = defaultFileName.LastIndexOf('.');
@@ -142,6 +143,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
+        validator.ValidateAsFolder = true;
 
         var titleString = _stringLocalizer.GetString(AddFolderTitleKey);
         var nameString = _stringLocalizer.GetString(FolderNameKey);

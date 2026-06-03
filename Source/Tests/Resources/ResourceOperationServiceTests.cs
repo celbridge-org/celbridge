@@ -278,7 +278,229 @@ public class ResourceOperationServiceTests
         Directory.Exists(Path.Combine(_tempFolder, "Archive")).Should().BeFalse();
     }
 
+    [Test]
+    public async Task CreateFileAsync_DeniesByPolicy_WhenDestinationIgnored()
+    {
+        // Part A destination-visibility gate: creating a resource the ignore-file
+        // would immediately hide is refused rather than silently writing an
+        // invisible file.
+        var policy = BuildPolicyForIgnore("*.log\n");
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = await _operationService.CreateFileAsync(new ResourceKey("notes.log"), new byte[] { 0x01 });
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "notes.log")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task CreateFileAsync_Succeeds_WhenAddResurfacesIgnoredDestination()
+    {
+        // The .mcp.json-style granular add path still resolves: the ignore-file
+        // hides every dotfile, but an add pattern brings the destination back
+        // into the resource set, so the create is allowed.
+        var section = new ResourcesSection
+        {
+            Add = new[] { ".mcp.json" },
+        };
+        var policy = BuildPolicyForIgnore(".*\n", section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = await _operationService.CreateFileAsync(new ResourceKey(".mcp.json"), new byte[] { 0x01 });
+
+        result.IsSuccess.Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, ".mcp.json")).Should().BeTrue();
+    }
+
+    [Test]
+    public async Task CreateFolderAsync_DeniesByPolicy_WhenDestinationIgnored()
+    {
+        var policy = BuildPolicyForIgnore("build/\n");
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = await _operationService.CreateFolderAsync(new ResourceKey("build"));
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+        Directory.Exists(Path.Combine(_tempFolder, "build")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task MoveAsync_DeniesByPolicy_WhenDestinationIgnored()
+    {
+        var policy = BuildPolicyForIgnore("*.log\n");
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var sourcePath = Path.Combine(_tempFolder, "a.txt");
+        await File.WriteAllTextAsync(sourcePath, "hello");
+
+        var result = await _operationService.MoveAsync(new ResourceKey("a.txt"), new ResourceKey("a.log"));
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+        File.Exists(sourcePath).Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "a.log")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task CopyAsync_DeniesByPolicy_WhenDestinationIgnored()
+    {
+        var policy = BuildPolicyForIgnore("*.log\n");
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var sourcePath = Path.Combine(_tempFolder, "a.txt");
+        await File.WriteAllTextAsync(sourcePath, "hello");
+
+        var result = await _operationService.CopyAsync(new ResourceKey("a.txt"), new ResourceKey("a.log"));
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+        File.Exists(Path.Combine(_tempFolder, "a.log")).Should().BeFalse();
+    }
+
+    [Test]
+    public async Task GetLockStateAsync_ReturnsLocked_WhenOwnKeyLocked()
+    {
+        var section = new ResourcesSection
+        {
+            Lock = new[] { "assets" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var assetsFolder = Path.Combine(_tempFolder, "assets");
+        Directory.CreateDirectory(assetsFolder);
+
+        var state = await _operationService.GetLockStateAsync(new ResourceKey("assets"));
+
+        state.Should().Be(ResourceLockState.Locked);
+    }
+
+    [Test]
+    public async Task GetLockStateAsync_ReturnsContainsLocked_WhenDescendantLocked()
+    {
+        // lock = ["Data/**"] freezes descendants but not the Data key itself, so
+        // the folder is path-frozen rather than fully locked.
+        var section = new ResourcesSection
+        {
+            Lock = new[] { "Data/**" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var dataFolder = Path.Combine(_tempFolder, "Data");
+        Directory.CreateDirectory(dataFolder);
+        await File.WriteAllTextAsync(Path.Combine(dataFolder, "REPORT.md"), "x");
+
+        var state = await _operationService.GetLockStateAsync(new ResourceKey("Data"));
+
+        state.Should().Be(ResourceLockState.ContainsLocked);
+    }
+
+    [Test]
+    public async Task GetLockStateAsync_ReturnsNone_ForUnlockedFile()
+    {
+        var sourcePath = Path.Combine(_tempFolder, "notes.txt");
+        await File.WriteAllTextAsync(sourcePath, "x");
+
+        var state = await _operationService.GetLockStateAsync(new ResourceKey("notes.txt"));
+
+        state.Should().Be(ResourceLockState.None);
+    }
+
+    [Test]
+    public async Task CanModifyResourceAsync_Fails_WhenFolderContainsLockedDescendant()
+    {
+        var section = new ResourcesSection
+        {
+            Lock = new[] { "Data/**" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var dataFolder = Path.Combine(_tempFolder, "Data");
+        Directory.CreateDirectory(dataFolder);
+        await File.WriteAllTextAsync(Path.Combine(dataFolder, "REPORT.md"), "x");
+
+        var result = await _operationService.CanModifyResourceAsync(new ResourceKey("Data"));
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+    }
+
+    [Test]
+    public void CanCreateResource_Fails_WhenDestinationIgnored()
+    {
+        var policy = BuildPolicyForIgnore("*.log\n");
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = _operationService.CanCreateResource(new ResourceKey("notes.log"), isFolder: false);
+
+        result.IsFailure.Should().BeTrue();
+        result.HasException<PolicyDenialError>().Should().BeTrue();
+    }
+
+    [Test]
+    public void CanCreateResource_Succeeds_WhenAddResurfacesDestination()
+    {
+        var section = new ResourcesSection
+        {
+            Add = new[] { ".mcp.json" },
+        };
+        var policy = BuildPolicyForIgnore(".*\n", section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = _operationService.CanCreateResource(new ResourceKey(".mcp.json"), isFolder: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Test]
+    public void CanAddToFolder_Fails_WhenFolderOwnKeyLocked()
+    {
+        var section = new ResourcesSection
+        {
+            Lock = new[] { "assets" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = _operationService.CanAddToFolder(new ResourceKey("assets"));
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public void CanAddToFolder_Succeeds_WhenOnlyDescendantsLocked()
+    {
+        // A pattern that locks only descendants (Data/**) leaves the folder
+        // itself addable; new siblings are not frozen.
+        var section = new ResourcesSection
+        {
+            Lock = new[] { "Data/**" },
+        };
+        var policy = BuildPolicyForLocked(section);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
+
+        var result = _operationService.CanAddToFolder(new ResourceKey("Data"));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
     private static ResourcePolicy BuildPolicyForLocked(ResourcesSection section)
+    {
+        // No ignore-file on disk, so the ignore baseline is empty and only the
+        // lock list gates the write path under test.
+        return BuildPolicy(section, ignoreFileContent: null);
+    }
+
+    private static ResourcePolicy BuildPolicyForIgnore(string ignoreFileContent, ResourcesSection? section = null)
+    {
+        return BuildPolicy(section ?? new ResourcesSection(), ignoreFileContent);
+    }
+
+    private static ResourcePolicy BuildPolicy(ResourcesSection section, string? ignoreFileContent)
     {
         var config = new ProjectConfig { Resources = section };
         var project = Substitute.For<IProject>();
@@ -287,11 +509,11 @@ public class ResourceOperationServiceTests
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
 
-        // No ignore-file on disk, so the ignore baseline is empty and only the
-        // lock list gates the write path under test.
         var fileSystem = Substitute.For<ILocalFileSystem>();
-        fileSystem.ReadAllTextAsync(Arg.Any<string>())
-            .Returns(Task.FromResult(Result<string>.Fail("ignore-file not found")));
+        var readResult = ignoreFileContent is null
+            ? Result<string>.Fail("ignore-file not found")
+            : Result<string>.Ok(ignoreFileContent);
+        fileSystem.ReadAllTextAsync(Arg.Any<string>()).Returns(Task.FromResult(readResult));
 
         return new ResourcePolicy(projectService, fileSystem);
     }

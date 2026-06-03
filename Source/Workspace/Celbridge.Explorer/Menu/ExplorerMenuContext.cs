@@ -17,6 +17,19 @@ public record ExplorerMenuContext(
 ) : IMenuContext
 {
     /// <summary>
+    /// True when every selected resource can be deleted, renamed, moved, or cut
+    /// (none locked, path-frozen, or under a read-only root). Precomputed when
+    /// the context is built so the synchronous GetState can read it.
+    /// </summary>
+    public bool CanModifySelection { get; init; } = true;
+
+    /// <summary>
+    /// True when new resources can be added into the target folder (writable
+    /// root, visible folder, folder not itself locked). Precomputed at build time.
+    /// </summary>
+    public bool CanAddToTargetFolder { get; init; } = true;
+
+    /// <summary>
     /// True when exactly one resource is selected.
     /// </summary>
     public bool HasSingleSelection => SelectedResources.Count == 1;

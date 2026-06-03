@@ -50,6 +50,12 @@ public class ResourceOperationService : IResourceOperationService
     private ITrashService TrashService =>
         _workspaceWrapper.WorkspaceService.ResourceService.Trash;
 
+    private IResourcePolicy Policy =>
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+
+    private IRootHandlerRegistry RootHandlerRegistry =>
+        _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
+
     public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {
         var operation = new CreateOperation(resource, content, ResourceFileSystem);
@@ -255,6 +261,116 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         return Result.Ok();
+    }
+
+    public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)
+    {
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        var directResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
+        if (directResult.IsFailure)
+        {
+            return ResourceLockState.Locked;
+        }
+
+        if (!isFolder)
+        {
+            return ResourceLockState.None;
+        }
+
+        var containsLocked = await ContainsLockedDescendantAsync(resource);
+
+        return containsLocked
+            ? ResourceLockState.ContainsLocked
+            : ResourceLockState.None;
+    }
+
+    // Walks the subtree looking for any descendant whose own key is write-locked.
+    // The resource's own lock is checked by the caller; this answers only the
+    // path-freeze question.
+    private async Task<bool> ContainsLockedDescendantAsync(ResourceKey folder)
+    {
+        var enumerateResult = await ResourceFileSystem.EnumerateFolderAsync(folder);
+        if (enumerateResult.IsFailure)
+        {
+            return false;
+        }
+
+        foreach (var entry in enumerateResult.Value)
+        {
+            if (Policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder).IsFailure)
+            {
+                return true;
+            }
+
+            if (entry.IsFolder
+                && await ContainsLockedDescendantAsync(entry.Resource))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public async Task<Result> CanModifyResourceAsync(ResourceKey resource)
+    {
+        if (!IsRootWritable(resource))
+        {
+            return Result.Fail($"Root '{resource.Root}' is read-only.");
+        }
+
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        return await EvaluateStructuralChangeAsync(resource, isFolder);
+    }
+
+    public Result CanCreateResource(ResourceKey destination, bool isFolder)
+    {
+        if (!IsRootWritable(destination))
+        {
+            return Result.Fail($"Root '{destination.Root}' is read-only.");
+        }
+
+        var listResult = Policy.Evaluate(destination, ResourceAction.List, isFolder);
+        if (listResult.IsFailure)
+        {
+            return listResult;
+        }
+
+        return Policy.Evaluate(destination, ResourceAction.Write, isFolder);
+    }
+
+    public Result CanAddToFolder(ResourceKey folder)
+    {
+        if (!IsRootWritable(folder))
+        {
+            return Result.Fail($"Root '{folder.Root}' is read-only.");
+        }
+
+        var listResult = Policy.Evaluate(folder, ResourceAction.List, isFolder: true);
+        if (listResult.IsFailure)
+        {
+            return listResult;
+        }
+
+        // A folder whose own key is write-locked (a bare-name lock such as "Data")
+        // blocks every new child. A pattern that locks only descendants (such as
+        // "Data/**") leaves the folder addable; the per-name CanCreateResource
+        // check catches a specific locked child at create time.
+        return Policy.Evaluate(folder, ResourceAction.Write, isFolder: true);
+    }
+
+    // Treats a root with no registered handler as writable so unit tests that
+    // stub the registry directly do not need to populate the handler dictionary.
+    private bool IsRootWritable(ResourceKey key)
+    {
+        return !RootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
+            || handler.Capabilities.IsWritable;
     }
 
     public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest)

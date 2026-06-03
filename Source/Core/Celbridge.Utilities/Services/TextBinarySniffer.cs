@@ -193,17 +193,28 @@ public class TextBinarySniffer : ITextBinarySniffer
     /// </summary>
     private bool IsValidUtf8(ReadOnlySpan<byte> bytes)
     {
-        // Strict mode: throw on invalid sequences
-        var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-        try
+        // Decode one scalar at a time so a multibyte character truncated by the
+        // fixed-size sample window is reported as NeedMoreData (a valid prefix)
+        // rather than as a hard failure. This avoids the throwing-decoder log
+        // spam and defers the well-formedness rules to the runtime instead of a
+        // hand-rolled boundary check.
+        var remaining = bytes;
+        while (!remaining.IsEmpty)
         {
-            utf8.GetCharCount(bytes);
-            return true;
+            var status = Rune.DecodeFromUtf8(remaining, out _, out int bytesConsumed);
+            if (status == OperationStatus.Done)
+            {
+                remaining = remaining[bytesConsumed..];
+                continue;
+            }
+
+            // NeedMoreData: the sample ends partway through an otherwise-valid
+            // sequence (cut off by the read window), so treat it as valid UTF-8.
+            // InvalidData: a malformed sequence, so the sample is not UTF-8.
+            return status == OperationStatus.NeedMoreData;
         }
-        catch (DecoderFallbackException)
-        {
-            return false;
-        }
+
+        return true;
     }
 
     /// <summary>
@@ -296,34 +307,28 @@ public class TextBinarySniffer : ITextBinarySniffer
     /// </summary>
     private bool IsValidUtf32(ReadOnlySpan<byte> bytes)
     {
-        // Need at least 4 bytes for UTF-32
-        if (bytes.Length < 4)
+        // Need at least 4 bytes for UTF-32, and a whole number of code units.
+        if (bytes.Length < 4
+            || bytes.Length % 4 != 0)
         {
             return false;
         }
 
-        try
-        {
-            var encoding = new UTF32Encoding(bigEndian: false, byteOrderMark: false, throwOnInvalidCharacters: true);
-            var chars = encoding.GetChars(bytes.ToArray());
-            
-            // Validate that decoded text looks reasonable (not mostly control characters)
-            return IsDecodedTextValid(chars);
-        }
-        catch
-        {
-            // Try big-endian UTF-32
-            try
-            {
-                var encoding = new UTF32Encoding(bigEndian: true, byteOrderMark: false, throwOnInvalidCharacters: true);
-                var chars = encoding.GetChars(bytes.ToArray());
-                return IsDecodedTextValid(chars);
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        return TryDecodeUtf32(bytes, bigEndian: false)
+            || TryDecodeUtf32(bytes, bigEndian: true);
+    }
+
+    /// <summary>
+    /// Attempts to decode bytes as UTF-32 and validates the result.
+    /// </summary>
+    private bool TryDecodeUtf32(ReadOnlySpan<byte> bytes, bool bigEndian)
+    {
+        // Replacement fallback (not exception) keeps invalid data from raising a
+        // first-chance DecoderFallbackException on every binary-file sniff:
+        // invalid code points decode to U+FFFD, which IsDecodedTextValid rejects.
+        var encoding = new UTF32Encoding(bigEndian, byteOrderMark: false, throwOnInvalidCharacters: false);
+        var chars = encoding.GetChars(bytes.ToArray());
+        return IsDecodedTextValid(chars);
     }
 
     /// <summary>
@@ -331,20 +336,11 @@ public class TextBinarySniffer : ITextBinarySniffer
     /// </summary>
     private bool TryDecodeUtf16(ReadOnlySpan<byte> bytes, Encoding encoding)
     {
-        try
-        {
-            var decoder = encoding.GetDecoder();
-            decoder.Fallback = DecoderFallback.ExceptionFallback;
-            
-            var chars = encoding.GetChars(bytes.ToArray());
-            
-            // Validate that decoded text looks reasonable
-            return IsDecodedTextValid(chars);
-        }
-        catch
-        {
-            return false;
-        }
+        // The supplied encodings use replacement fallback, so invalid units
+        // decode to U+FFFD rather than throwing; IsDecodedTextValid then rejects
+        // a sample that is mostly replacement characters.
+        var chars = encoding.GetChars(bytes.ToArray());
+        return IsDecodedTextValid(chars);
     }
 
     /// <summary>
