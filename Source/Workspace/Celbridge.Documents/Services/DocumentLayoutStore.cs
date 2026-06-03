@@ -251,7 +251,7 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
             if (infoResult.IsFailure
                 || infoResult.Value.Kind != StorageItemKind.File)
@@ -321,7 +321,7 @@ public class DocumentLayoutStore
         }
         var normalizedResource = normalizeResult.Value;
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var infoResult = await resourceFileSystem.GetInfoAsync(normalizedResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)

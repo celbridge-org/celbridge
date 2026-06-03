@@ -34,7 +34,7 @@ public class RemoveSheetCommand : CommandBase, IRemoveSheetCommand
             return Result.Fail("Sheet name is required.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

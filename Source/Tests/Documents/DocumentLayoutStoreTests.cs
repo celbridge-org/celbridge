@@ -57,7 +57,7 @@ public class DocumentLayoutStoreTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -70,7 +70,7 @@ public class DocumentLayoutStoreTests
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         _store = new DocumentLayoutStore(
             _workspaceWrapper,

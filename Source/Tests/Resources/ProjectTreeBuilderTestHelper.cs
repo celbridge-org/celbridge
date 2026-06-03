@@ -37,7 +37,7 @@ internal static class ProjectTreeBuilderTestHelper
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -47,7 +47,7 @@ internal static class ProjectTreeBuilderTestHelper
             Substitute.For<IMessengerService>(),
             workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         return new ProjectTreeBuilder(fileIconService ?? new FileIconService(), workspaceWrapper);
     }

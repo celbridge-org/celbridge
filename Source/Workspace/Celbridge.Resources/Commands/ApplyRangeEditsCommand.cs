@@ -36,7 +36,7 @@ public class ApplyRangeEditsCommand : CommandBase, IApplyRangeEditsCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceFileSystem = workspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         var failedResources = new List<ResourceKey>();
         var failureDetails = new List<string>();

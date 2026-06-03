@@ -93,7 +93,7 @@ public class ArchiveResourceCommand : CommandBase, IArchiveResourceCommand
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
         var resourceOpService = workspaceService.ResourceService.OperationService;
-        var resourceFileSystem = workspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         if (!ResourceKey.IsValidKey(SourceResource))
         {

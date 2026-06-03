@@ -26,7 +26,7 @@ public class SidecarServiceTests
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None))));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceFileSystem.Returns(_resourceFileSystem);
+        workspaceService.ResourceService.FileSystem.Returns(_resourceFileSystem);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);

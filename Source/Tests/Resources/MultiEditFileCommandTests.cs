@@ -33,13 +33,13 @@ public class MultiEditFileCommandTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var resourceFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), Substitute.For<IMessengerService>(), _workspaceWrapper, TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
     }
 
     [TearDown]

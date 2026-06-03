@@ -90,7 +90,7 @@ public partial class FileTools
         // only verification signal a caller has for a truncated edit, so
         // stripping their context would leave bare positions with no evidence.
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         string[]? fileLines = null;
         if (resultValue.AffectedRanges.Count > 0)

@@ -20,7 +20,7 @@ public partial class DataTools
         {
             return sidecarError;
         }
-        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.SidecarService;
+        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.SidecarService;
         if (!sidecarService.IsValidBlockName(blockId))
         {
             return ToolResponse.Error($"block_id '{blockId}' does not match the block-naming rules (lowercase letters, digits, hyphens, dotted segments).");

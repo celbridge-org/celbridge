@@ -40,7 +40,7 @@ public class MoveSheetCommand : CommandBase, IMoveSheetCommand
             return Result.Fail($"Position must be 1 or greater, was {Position}.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

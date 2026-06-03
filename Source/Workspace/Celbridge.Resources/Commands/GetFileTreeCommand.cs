@@ -26,7 +26,7 @@ public class GetFileTreeCommand : CommandBase, IGetFileTreeCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         // EnumerateFolderAsync at the root surfaces a missing-or-not-a-folder
         // error to the caller; deeper recursion silently skips unreadable

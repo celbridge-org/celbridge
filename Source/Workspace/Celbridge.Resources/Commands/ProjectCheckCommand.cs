@@ -39,7 +39,7 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var registry = workspaceService.ResourceService.Registry;
-        var scanner = workspaceService.ResourceScanner;
+        var scanner = workspaceService.ResourceService.Scanner;
 
         var brokenReferences = new List<BrokenReference>();
         foreach (var target in await scanner.FindAllReferencedTargetsAsync())
@@ -93,7 +93,7 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
     {
         try
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var content = FormatReport(report);
             var writeResult = await resourceFileSystem.WriteAllTextAsync(ReportFileResource, content);
             if (writeResult.IsFailure)

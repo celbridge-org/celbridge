@@ -71,7 +71,7 @@ public partial class PackageTools
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
-        var resourceFileSystem = workspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         // Stage the downloaded zip under temp: so it lives in .celbridge/temp/
         // (created at workspace load) and is reachable through the gateway.

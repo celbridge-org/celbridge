@@ -36,7 +36,7 @@ public class WriteBinaryFileCommand : CommandBase, IWriteBinaryFileCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceFileSystem = workspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         var writeResult = await resourceFileSystem.WriteAllBytesAsync(FileResource, bytes);
         if (writeResult.IsFailure)

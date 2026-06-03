@@ -52,7 +52,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         _registry = workspaceService.ResourceService.Registry;
-        _resourceFileSystem = workspaceService.ResourceFileSystem;
+        _resourceFileSystem = workspaceService.ResourceService.FileSystem;
         _showPreview = showPreview;
         _extensions = extensions
             .Select(e => e.TrimStart('.').ToLowerInvariant())

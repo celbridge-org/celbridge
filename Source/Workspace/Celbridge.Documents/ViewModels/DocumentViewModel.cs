@@ -264,7 +264,7 @@ public abstract partial class DocumentViewModel : ObservableObject
     protected virtual IResourceFileSystem GetFileSystem()
     {
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-        return workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        return workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     }
 
     /// <summary>

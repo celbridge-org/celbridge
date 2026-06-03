@@ -57,7 +57,7 @@ public class AddResourceHelper
         // Create the resource on disk
         //
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         // Fail if the parent folder for a new file does not exist.
         // Folder creation is allowed to materialize missing intermediate

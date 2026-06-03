@@ -369,7 +369,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         if (handler.RootName == ResourceKey.DefaultRoot)
         {
-            var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+            var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
             var policyResult = policy.Evaluate(keyResult.Value, ResourceAction.List, isFolder: false);
             if (policyResult.IsFailure)
             {

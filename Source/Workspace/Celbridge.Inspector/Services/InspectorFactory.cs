@@ -50,7 +50,7 @@ public class InspectorFactory : IInspectorFactory
     {
         try
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var infoResult = await resourceFileSystem.GetInfoAsync(resource);
             if (infoResult.IsFailure)
             {

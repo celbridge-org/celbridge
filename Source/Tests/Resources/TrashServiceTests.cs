@@ -52,7 +52,7 @@ public class TrashServiceTests
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
         var sidecarService = new SidecarService(_workspaceWrapper);
-        workspaceService.SidecarService.Returns(sidecarService);
+        resourceService.SidecarService.Returns(sidecarService);
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),

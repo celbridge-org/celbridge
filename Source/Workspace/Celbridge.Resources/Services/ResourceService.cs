@@ -24,6 +24,11 @@ public class ResourceService : IResourceService, IDisposable
     public IResourceMonitor Monitor { get; }
     public IResourceTransferService TransferService { get; }
     public IResourceOperationService OperationService { get; }
+    public IResourceFileSystem FileSystem { get; }
+    public IResourcePolicy Policy { get; }
+    public ITrashService TrashService { get; }
+    public IResourceScanner Scanner { get; }
+    public ISidecarService SidecarService { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
@@ -37,6 +42,11 @@ public class ResourceService : IResourceService, IDisposable
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
         IResourceOperationService resourceOperationService,
+        IResourceFileSystem resourceFileSystem,
+        IResourcePolicy resourcePolicy,
+        ITrashService trashService,
+        IResourceScanner resourceScanner,
+        ISidecarService sidecarService,
         ILocalFileSystem fileSystem)
     {
         // Only the workspace service is allowed to instantiate this service
@@ -64,6 +74,11 @@ public class ResourceService : IResourceService, IDisposable
         Monitor = resourceMonitor;
         TransferService = resourceTransferService;
         OperationService = resourceOperationService;
+        FileSystem = resourceFileSystem;
+        Policy = resourcePolicy;
+        TrashService = trashService;
+        Scanner = resourceScanner;
+        SidecarService = sidecarService;
 
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         Registry.InitializeProjectRoot(projectFolderPath);

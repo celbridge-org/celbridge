@@ -69,7 +69,7 @@ public class DataCheckProjectTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
@@ -80,12 +80,12 @@ public class DataCheckProjectTests
             _messengerService,
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         var scanner = new ResourceScanner(
             Substitute.For<ILogger<ResourceScanner>>(),
             _workspaceWrapper);
-        workspaceService.ResourceScanner.Returns(scanner);
+        resourceService.Scanner.Returns(scanner);
 
         _command = new ProjectCheckCommand(
             Substitute.For<ILogger<ProjectCheckCommand>>(),

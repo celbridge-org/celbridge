@@ -74,7 +74,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
@@ -309,7 +309,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         var keyResult = _resourceRegistry.GetResourceKey(templatePath);
         if (keyResult.IsSuccess)
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var textResult = await resourceFileSystem.ReadAllTextAsync(keyResult.Value);
             return textResult.IsSuccess ? textResult.Value : string.Empty;
         }

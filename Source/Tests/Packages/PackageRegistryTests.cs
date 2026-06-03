@@ -58,7 +58,7 @@ public class PackageServiceTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -68,7 +68,7 @@ public class PackageServiceTests
             Substitute.For<IMessengerService>(),
             workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         var fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
 

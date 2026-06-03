@@ -38,7 +38,7 @@ public class ReplaceFileCommand : CommandBase, IReplaceFileCommand
         }
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceFileSystem = workspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure

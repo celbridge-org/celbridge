@@ -105,7 +105,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 
     private async Task<Result<AppliedViewState>> ApplyViewStateToWorkbookAsync(ResourceKey workbookResource)
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

@@ -277,7 +277,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
@@ -381,7 +381,7 @@ public class DocumentsService : IDocumentsService, IDisposable
 
         var changeDocumentResource = async Task () =>
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var infoResult = await resourceFileSystem.GetInfoAsync(message.NewResource);
             Guard.IsTrue(infoResult.IsSuccess && infoResult.Value.Kind == StorageItemKind.File);
 

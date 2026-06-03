@@ -30,7 +30,7 @@ public class SearchServiceFilterTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -42,7 +42,7 @@ public class SearchServiceFilterTests
             Substitute.For<IMessengerService>(),
             workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         _service = new SearchService(
             Substitute.For<ILogger<SearchService>>(),

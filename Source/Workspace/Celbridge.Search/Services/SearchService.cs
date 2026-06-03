@@ -27,7 +27,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly TextReplacer _textReplacer;
     private bool _disposed;
 
-    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
     private IWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.WorkspaceSettings;
 

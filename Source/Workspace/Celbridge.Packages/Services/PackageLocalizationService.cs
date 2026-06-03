@@ -77,7 +77,7 @@ public class PackageLocalizationService : IPackageLocalizationService
     {
         if (package.Origin == PackageOrigin.Project)
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
             return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         }

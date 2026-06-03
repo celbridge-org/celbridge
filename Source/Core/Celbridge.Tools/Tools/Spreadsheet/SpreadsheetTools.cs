@@ -37,7 +37,7 @@ public partial class SpreadsheetTools : AgentToolBase
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var infoResult = await resourceFileSystem.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
@@ -63,7 +63,7 @@ public partial class SpreadsheetTools : AgentToolBase
     private async Task<Result<Stream>> OpenWorkbookStreamAsync(ResourceKey resource)
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var openResult = await resourceFileSystem.OpenReadAsync(resource);
         if (openResult.IsFailure)

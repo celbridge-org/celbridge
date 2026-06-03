@@ -37,7 +37,7 @@ public abstract partial class DocumentView : UserControl, IDocumentView
             if (_resourceFileSystem is null)
             {
                 var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
-                _resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+                _resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             }
             return _resourceFileSystem;
         }

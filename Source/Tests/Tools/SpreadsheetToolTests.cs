@@ -49,7 +49,7 @@ public class SpreadsheetToolTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -59,7 +59,7 @@ public class SpreadsheetToolTests
             Substitute.For<IMessengerService>(),
             workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(resourceFileSystem);
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
         _services.GetRequiredService<ISpreadsheetReader>().Returns(_reader);

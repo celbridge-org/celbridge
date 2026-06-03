@@ -74,7 +74,7 @@ internal static class SpreadsheetHelper
             return Result.Fail($"Resource is not an .xlsx workbook: '{fileResource}'");
         }
 
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure)
         {

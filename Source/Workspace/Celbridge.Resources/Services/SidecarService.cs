@@ -52,7 +52,7 @@ public sealed class SidecarService : ISidecarService
         }
         var sidecarKey = resolveResult.Value;
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var infoResult = await resourceFileSystem.GetInfoAsync(sidecarKey);
         if (infoResult.IsFailure
@@ -319,7 +319,7 @@ public sealed class SidecarService : ISidecarService
             return Result.Ok();
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var writeResult = await resourceFileSystem.WriteAllTextAsync(sidecarKey, canonicalAfter);
         if (writeResult.IsFailure)
         {

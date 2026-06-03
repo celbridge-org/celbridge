@@ -41,7 +41,7 @@ public class DuplicateSheetCommand : CommandBase, IDuplicateSheetCommand
             return Result.Fail("New sheet name is required.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

@@ -74,8 +74,8 @@ public class ResourceOperationServiceTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourceScanner.Returns(resourceScanner);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Scanner.Returns(resourceScanner);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -84,21 +84,21 @@ public class ResourceOperationServiceTests
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
         var sidecarService = new SidecarService(_workspaceWrapper);
-        workspaceService.SidecarService.Returns(sidecarService);
+        resourceService.SidecarService.Returns(sidecarService);
 
         _resourceFileSystem = new LocalResourceFileSystem(
             Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.ResourceFileSystem.Returns(_resourceFileSystem);
+        resourceService.FileSystem.Returns(_resourceFileSystem);
 
         _trashService = new TrashService(
             Substitute.For<ILogger<TrashService>>(),
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        workspaceService.TrashService.Returns(_trashService);
+        resourceService.TrashService.Returns(_trashService);
 
         _operationService = new ResourceOperationService(
             Substitute.For<ILogger<ResourceOperationService>>(),
@@ -215,7 +215,7 @@ public class ResourceOperationServiceTests
             Locked = new[] { "assets" },
         };
         var policy = BuildPolicyForLocked(section);
-        _workspaceWrapper.WorkspaceService.ResourcePolicy.Returns(policy);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
 
         var assetsFolder = Path.Combine(_tempFolder, "assets");
         Directory.CreateDirectory(assetsFolder);
@@ -240,7 +240,7 @@ public class ResourceOperationServiceTests
             Locked = new[] { "Data/**" },
         };
         var policy = BuildPolicyForLocked(section);
-        _workspaceWrapper.WorkspaceService.ResourcePolicy.Returns(policy);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
 
         var dataFolder = Path.Combine(_tempFolder, "Data");
         Directory.CreateDirectory(dataFolder);
@@ -266,7 +266,7 @@ public class ResourceOperationServiceTests
             Locked = new[] { "Data/**" },
         };
         var policy = BuildPolicyForLocked(section);
-        _workspaceWrapper.WorkspaceService.ResourcePolicy.Returns(policy);
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
 
         var dataFolder = Path.Combine(_tempFolder, "Data");
         Directory.CreateDirectory(dataFolder);

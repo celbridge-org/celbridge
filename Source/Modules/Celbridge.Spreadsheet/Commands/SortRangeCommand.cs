@@ -47,7 +47,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
             return Result.Fail($"Range '{Range}' must not include a sheet qualifier.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

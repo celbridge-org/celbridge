@@ -53,7 +53,7 @@ public class FormatRangesCommand : CommandBase, IFormatRangesCommand
         int totalPropertiesApplied = 0;
         bool anyAutoFitApplied = false;
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

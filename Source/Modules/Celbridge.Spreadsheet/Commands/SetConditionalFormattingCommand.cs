@@ -54,7 +54,7 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
             return Result.Fail("At least one rule is required when clearExisting is false.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

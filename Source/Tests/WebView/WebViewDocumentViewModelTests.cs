@@ -25,7 +25,7 @@ public class WebViewDocumentViewModelTests
 
         _sidecarService = Substitute.For<ISidecarService>();
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.SidecarService.Returns(_sidecarService);
+        workspaceService.ResourceService.SidecarService.Returns(_sidecarService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);

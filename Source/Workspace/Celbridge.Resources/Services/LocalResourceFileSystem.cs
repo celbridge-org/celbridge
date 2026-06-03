@@ -728,7 +728,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
     // attached as an exception) when denied.
     private Result EvaluatePolicy(ResourceKey resource, ResourceAction action, bool isFolder)
     {
-        var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+        var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
         return policy.Evaluate(resource, action, isFolder);
     }
 

@@ -295,7 +295,7 @@ public partial class ConsolePanelViewModel : ObservableObject
             return;
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
         if (hashResult.IsFailure)
         {
@@ -313,7 +313,7 @@ public partial class ConsolePanelViewModel : ObservableObject
             return;
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
         if (hashResult.IsFailure)
         {

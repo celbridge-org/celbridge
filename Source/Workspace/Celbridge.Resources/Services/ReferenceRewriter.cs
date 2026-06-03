@@ -38,7 +38,7 @@ internal sealed class ReferenceRewriter
         List<ResourceKey> updatedReferencers,
         List<SkippedReferencer> skippedReferencers)
     {
-        var scanner = _workspaceWrapper.WorkspaceService.ResourceScanner;
+        var scanner = _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
 
         var referencerSet = new HashSet<ResourceKey>();
         foreach (var referencer in await scanner.FindReferencersAsync(source))

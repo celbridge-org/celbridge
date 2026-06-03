@@ -26,7 +26,7 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var separatorResult = await ResolveTargetSeparatorAsync(resourceFileSystem);
         if (separatorResult.IsFailure)

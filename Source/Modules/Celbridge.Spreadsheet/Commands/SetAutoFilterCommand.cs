@@ -43,7 +43,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
             return Result.Fail($"Auto-filter range must be an A1 cell range like 'A1:F100', was '{Range}'.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

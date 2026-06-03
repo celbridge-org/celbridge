@@ -41,7 +41,7 @@ public class FreezePanesCommand : CommandBase, IFreezePanesCommand
             return Result.Fail("Rows and Columns must be non-negative.");
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

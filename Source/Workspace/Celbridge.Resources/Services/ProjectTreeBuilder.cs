@@ -36,7 +36,7 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 
     private async Task<Result> SynchronizeFolderAsync(FolderResource folderResource, ResourceKey folderKey)
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderKey);
         if (enumerateResult.IsFailure)

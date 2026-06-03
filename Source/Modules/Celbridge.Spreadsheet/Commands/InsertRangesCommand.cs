@@ -60,7 +60,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
         var rowsBySheet = new Dictionary<string, List<AxisRange>>(StringComparer.Ordinal);
         var columnsBySheet = new Dictionary<string, List<AxisRange>>(StringComparer.Ordinal);
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

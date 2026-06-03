@@ -21,7 +21,7 @@ public partial class FileTools
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
         var rootHandlerRegistry = resourceService.RootHandlerRegistry;
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var regexPattern = GlobHelper.PathGlobToRegex(pattern);
         var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);

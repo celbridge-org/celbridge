@@ -39,7 +39,7 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var entries = new List<ReadManyFileEntry>();
         foreach (var resourceString in resourceKeys)

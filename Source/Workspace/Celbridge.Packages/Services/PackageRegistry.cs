@@ -220,7 +220,7 @@ public class PackageRegistry
     {
         if (package.Origin == PackageOrigin.Project)
         {
-            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
             return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         }
@@ -313,7 +313,7 @@ public class PackageRegistry
         }
 
         var packagesResource = new ResourceKey(PackagesFolderName);
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var packagesInfoResult = await resourceFileSystem.GetInfoAsync(packagesResource);
         if (packagesInfoResult.IsFailure

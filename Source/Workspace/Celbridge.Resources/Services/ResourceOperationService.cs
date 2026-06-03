@@ -45,10 +45,10 @@ public class ResourceOperationService : IResourceOperationService
         _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     private IResourceFileSystem ResourceFileSystem =>
-        _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
     private ITrashService TrashService =>
-        _workspaceWrapper.WorkspaceService.TrashService;
+        _workspaceWrapper.WorkspaceService.ResourceService.TrashService;
 
     public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {
@@ -217,7 +217,7 @@ public class ResourceOperationService : IResourceOperationService
     // the locked resource's frozen-in-place guarantee.
     private async Task<Result> EvaluateStructuralChangeAsync(ResourceKey resource, bool isFolder)
     {
-        var policy = _workspaceWrapper.WorkspaceService.ResourcePolicy;
+        var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
 
         var directResult = policy.Evaluate(resource, ResourceAction.Write, isFolder);
         if (directResult.IsFailure)

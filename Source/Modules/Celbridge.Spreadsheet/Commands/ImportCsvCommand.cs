@@ -79,7 +79,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
         int totalRowCount = 0;
         int sheetsCreated = 0;
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {

@@ -25,10 +25,10 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IDialogService _dialogService;
 
-    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
-    private IResourceScanner ResourceScanner => _workspaceWrapper.WorkspaceService.ResourceScanner;
-    private ISidecarService SidecarService => _workspaceWrapper.WorkspaceService.SidecarService;
+    private IResourceScanner ResourceScanner => _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
+    private ISidecarService SidecarService => _workspaceWrapper.WorkspaceService.ResourceService.SidecarService;
 
     public DeleteResourceCommand(
         ILogger<DeleteResourceCommand> logger,

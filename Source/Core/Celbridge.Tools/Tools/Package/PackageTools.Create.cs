@@ -30,7 +30,7 @@ public partial class PackageTools
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceFileSystem = workspaceService.ResourceFileSystem;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
         var fileSystem = GetRequiredService<ILocalFileSystem>();
 
         var packageResource = ResourceKey.Create($"packages/{packageName}");

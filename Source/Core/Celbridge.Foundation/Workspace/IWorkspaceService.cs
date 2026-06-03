@@ -46,36 +46,6 @@ public interface IWorkspaceService
     IResourceService ResourceService { get; }
 
     /// <summary>
-    /// Returns the resource-key-aware file-system gateway for the workspace.
-    /// </summary>
-    IResourceFileSystem ResourceFileSystem { get; }
-
-    /// <summary>
-    /// Returns the workspace's resource policy engine. Decides whether a given
-    /// (resource, action) is allowed by the project's [resources] configuration
-    /// and the built-in default rules.
-    /// </summary>
-    IResourcePolicy ResourcePolicy { get; }
-
-    /// <summary>
-    /// Returns the soft-delete trash service: move-to-trash, restore, and purge
-    /// operations used by the resource operation service for undoable deletes.
-    /// </summary>
-    ITrashService TrashService { get; }
-
-    /// <summary>
-    /// Returns the on-demand scanner over project text and sidecar files,
-    /// used by the rename cascade, tag queries, and the project-health check.
-    /// </summary>
-    IResourceScanner ResourceScanner { get; }
-
-    /// <summary>
-    /// Returns the sidecar service: validation helpers plus read / mutate /
-    /// write operations over .cel sidecar files via the file-system gateway.
-    /// </summary>
-    ISidecarService SidecarService { get; }
-
-    /// <summary>
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }

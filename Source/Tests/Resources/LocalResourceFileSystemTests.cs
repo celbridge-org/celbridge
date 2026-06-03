@@ -56,14 +56,14 @@ public class LocalResourceFileSystemTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        workspaceService.ResourceScanner.Returns(_resourceScanner);
-        workspaceService.ResourcePolicy.Returns(TestResourcePolicy.CreateDefault());
+        resourceService.Scanner.Returns(_resourceScanner);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var sidecarService = new SidecarService(workspaceWrapper);
-        workspaceService.SidecarService.Returns(sidecarService);
+        resourceService.SidecarService.Returns(sidecarService);
 
         _messengerService = Substitute.For<IMessengerService>();
 

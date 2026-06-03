@@ -29,7 +29,7 @@ public sealed class TrashService : ITrashService
         _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
     private ISidecarService SidecarService =>
-        _workspaceWrapper.WorkspaceService.SidecarService;
+        _workspaceWrapper.WorkspaceService.ResourceService.SidecarService;
 
     // Entity service is workspace-scoped and may be unavailable during workspace
     // teardown. Trash operations are tolerant of a null entity service and skip

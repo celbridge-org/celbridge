@@ -48,7 +48,7 @@ public class DocumentViewFactoryTests
         resourceService.Registry.Returns(_resourceRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.SidecarService.Returns(_sidecarService);
+        resourceService.SidecarService.Returns(_sidecarService);
         workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
         workspaceService.ResourceService.Returns(resourceService);
 

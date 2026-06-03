@@ -164,7 +164,7 @@ public sealed class ResourceScanner : IResourceScanner
     // empty (they simply don't contribute matches).
     private async Task<string?> ReadFileTextAsync(ResourceKey resource)
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var readResult = await resourceFileSystem.ReadAllTextAsync(resource);
         if (readResult.IsFailure)
         {
@@ -260,7 +260,7 @@ public sealed class ResourceScanner : IResourceScanner
     private async Task EnumerateProjectSidecarFilesAsync(Func<ResourceKey, ResourceKey, Task> visit)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var files = registry.GetAllFileResources(ResourceKey.DefaultRoot);
 
         await Parallel.ForEachAsync(files, async (file, _) =>

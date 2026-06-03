@@ -186,7 +186,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFolderName = string.Empty;
@@ -221,7 +221,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceFileSystem;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension
