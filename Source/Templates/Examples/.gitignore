@@ -1,5 +1,10 @@
 # Files matched here are excluded from the Celbridge resource set (and from git).
-# Edit freely. The .git/ and .celbridge/ folders are reserved and always hidden.
+# Edit freely. Celbridge always hides the reserved .git/ and .celbridge/ folders from
+# its resource set; .celbridge/ is listed below so git ignores it too. Your project's
+# *.celbridge file is not matched by this pattern and stays tracked.
+
+# Celbridge project metadata
+.celbridge/
 
 # Build output
 bin/
