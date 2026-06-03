@@ -94,7 +94,7 @@ public partial class DataTools : AgentToolBase
     /// </summary>
     private CallToolResult? ValidateNotSidecarKey(ResourceKey resource, string original)
     {
-        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.SidecarService;
+        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.Sidecars;
         if (sidecarService.IsSidecarKey(resource))
         {
             return ToolResponse.Error($"Resource '{original}' is a .cel sidecar key. Pass the parent resource key instead.");

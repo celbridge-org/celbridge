@@ -41,7 +41,7 @@ public class AddResourceHelper
 
         var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
-        var resourceOpService = resourceService.OperationService;
+        var resourceOpService = resourceService.Operations;
 
         //
         // Validate the resource key

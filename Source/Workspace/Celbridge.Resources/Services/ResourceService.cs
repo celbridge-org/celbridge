@@ -20,15 +20,15 @@ public class ResourceService : IResourceService, IDisposable
     private readonly ILocalFileSystem _fileSystem;
 
     public IResourceRegistry Registry { get; }
-    public IRootHandlerRegistry RootHandlerRegistry { get; }
+    public IRootHandlerRegistry RootHandlers { get; }
     public IResourceMonitor Monitor { get; }
-    public IResourceTransferService TransferService { get; }
-    public IResourceOperationService OperationService { get; }
+    public IResourceTransferService Transfers { get; }
+    public IResourceOperationService Operations { get; }
     public IResourceFileSystem FileSystem { get; }
     public IResourcePolicy Policy { get; }
-    public ITrashService TrashService { get; }
+    public ITrashService Trash { get; }
     public IResourceScanner Scanner { get; }
-    public ISidecarService SidecarService { get; }
+    public ISidecarService Sidecars { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
@@ -61,7 +61,7 @@ public class ResourceService : IResourceService, IDisposable
         // RootHandlerRegistry and ResourceRegistry are constructed together so
         // they share the same root-handler instance
         var rootHandlerRegistry = new RootHandlerRegistry();
-        RootHandlerRegistry = rootHandlerRegistry;
+        RootHandlers = rootHandlerRegistry;
 
         Registry = new ResourceRegistry(
             registryLogger,
@@ -72,13 +72,13 @@ public class ResourceService : IResourceService, IDisposable
             fileSystem);
 
         Monitor = resourceMonitor;
-        TransferService = resourceTransferService;
-        OperationService = resourceOperationService;
+        Transfers = resourceTransferService;
+        Operations = resourceOperationService;
         FileSystem = resourceFileSystem;
         Policy = resourcePolicy;
-        TrashService = trashService;
+        Trash = trashService;
         Scanner = resourceScanner;
-        SidecarService = sidecarService;
+        Sidecars = sidecarService;
 
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         Registry.InitializeProjectRoot(projectFolderPath);

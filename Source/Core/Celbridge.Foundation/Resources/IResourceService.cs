@@ -16,7 +16,7 @@ public interface IResourceService
     /// Use this rather than IResourceRegistry when only cross-root path/key
     /// dispatch is required.
     /// </summary>
-    IRootHandlerRegistry RootHandlerRegistry { get; }
+    IRootHandlerRegistry RootHandlers { get; }
 
     /// <summary>
     /// Returns the Resource Monitor associated with the current project.
@@ -26,12 +26,12 @@ public interface IResourceService
     /// <summary>
     /// Returns the Resource Transfer Service associated with the workspace.
     /// </summary>
-    IResourceTransferService TransferService { get; }
+    IResourceTransferService Transfers { get; }
 
     /// <summary>
     /// Returns the Resource Operation Service associated with the workspace.
     /// </summary>
-    IResourceOperationService OperationService { get; }
+    IResourceOperationService Operations { get; }
 
     /// <summary>
     /// Returns the resource-key-aware file-system gateway for the workspace.
@@ -49,7 +49,7 @@ public interface IResourceService
     /// Returns the soft-delete trash service: move-to-trash, restore, and purge
     /// operations used by the resource operation service for undoable deletes.
     /// </summary>
-    ITrashService TrashService { get; }
+    ITrashService Trash { get; }
 
     /// <summary>
     /// Returns the on-demand scanner over project text and sidecar files,
@@ -61,7 +61,7 @@ public interface IResourceService
     /// Returns the sidecar service: validation helpers plus read / mutate /
     /// write operations over .cel sidecar files via the file-system gateway.
     /// </summary>
-    ISidecarService SidecarService { get; }
+    ISidecarService Sidecars { get; }
 
     /// <summary>
     /// Schedules a resource update.

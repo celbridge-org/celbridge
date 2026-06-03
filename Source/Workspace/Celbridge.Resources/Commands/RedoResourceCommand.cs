@@ -21,7 +21,7 @@ public class RedoResourceCommand : CommandBase, IRedoResourceCommand
             return Result.Fail("Workspace is not loaded");
         }
 
-        var resourceOpService = _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
+        var resourceOpService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
 
         if (!resourceOpService.CanRedo)
         {

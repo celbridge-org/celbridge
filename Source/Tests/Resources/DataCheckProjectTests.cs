@@ -65,7 +65,7 @@ public class DataCheckProjectTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);

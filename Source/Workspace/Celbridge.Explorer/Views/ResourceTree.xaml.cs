@@ -36,7 +36,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
 

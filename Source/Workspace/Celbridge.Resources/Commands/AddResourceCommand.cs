@@ -80,7 +80,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         // If the destination resource is a existing folder, resolve the destination resource to a file in
         // that folder with the same name as the source file.
-        var transferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        var transferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
         var resolvedDestResource = transferService.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();
@@ -109,7 +109,7 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
         // If the destination resource is a existing folder, resolve the destination resource to a folder in
         // that folder with the same name as the source folder.
-        var transferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        var transferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
         var resolvedDestResource = transferService.ResolveSourcePathDestinationResource(sourcePath, destResource);
 
         var commandService = ServiceLocator.AcquireService<ICommandService>();

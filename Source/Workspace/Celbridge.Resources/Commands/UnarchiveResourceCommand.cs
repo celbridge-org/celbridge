@@ -54,7 +54,7 @@ public class UnarchiveResourceCommand : CommandBase, IUnarchiveResourceCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
+        var resourceOpService = workspaceService.ResourceService.Operations;
         var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         if (!ResourceKey.IsValidKey(ArchiveResource))

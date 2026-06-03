@@ -52,7 +52,7 @@ public class LocalResourceFileSystemTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -63,7 +63,7 @@ public class LocalResourceFileSystemTests
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         var sidecarService = new SidecarService(workspaceWrapper);
-        resourceService.SidecarService.Returns(sidecarService);
+        resourceService.Sidecars.Returns(sidecarService);
 
         _messengerService = Substitute.For<IMessengerService>();
 

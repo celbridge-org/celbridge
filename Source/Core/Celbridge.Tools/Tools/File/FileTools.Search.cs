@@ -20,7 +20,7 @@ public partial class FileTools
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
-        var rootHandlerRegistry = resourceService.RootHandlerRegistry;
+        var rootHandlerRegistry = resourceService.RootHandlers;
         var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var regexPattern = GlobHelper.PathGlobToRegex(pattern);

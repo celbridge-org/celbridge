@@ -194,7 +194,7 @@ internal sealed class SidecarCascade
     // a .cel file).
     private ResourceKey? AppendSidecarSuffix(ResourceKey key)
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         var result = sidecarService.GetSidecarKey(key);
         if (result.IsSuccess)
         {

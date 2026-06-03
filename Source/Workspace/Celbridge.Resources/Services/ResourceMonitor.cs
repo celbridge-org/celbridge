@@ -67,7 +67,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             // Spin up one file system monitor per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
             // returns the configured registry instance here.
-            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
             foreach (var handler in rootHandlerRegistry.RootHandlers.Values)
             {
                 if (!handler.Capabilities.IsWatched)

@@ -44,8 +44,8 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
 
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
-        var transferService = workspaceService.ResourceService.TransferService;
+        var resourceOpService = workspaceService.ResourceService.Operations;
+        var transferService = workspaceService.ResourceService.Transfers;
 
         // Filter out any items where the destination resource already exists
         TransferItems.RemoveAll(item => resourceRegistry.GetResource(item.DestResource).IsSuccess);

@@ -75,7 +75,7 @@ public class DocumentEditorPreferenceStore
     /// </summary>
     public async Task<Result<DocumentEditorId>> GetSidecarPreferenceAsync(ResourceKey fileResource)
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         if (sidecarService.IsSidecarKey(fileResource))
         {
             // The sidecar file itself does not have a sidecar pairing of its

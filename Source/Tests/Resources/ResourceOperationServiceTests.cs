@@ -70,7 +70,7 @@ public class ResourceOperationServiceTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlerRegistry.Returns(rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -84,7 +84,7 @@ public class ResourceOperationServiceTests
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
 
         var sidecarService = new SidecarService(_workspaceWrapper);
-        resourceService.SidecarService.Returns(sidecarService);
+        resourceService.Sidecars.Returns(sidecarService);
 
         _resourceFileSystem = new LocalResourceFileSystem(
             Substitute.For<ILogger<LocalResourceFileSystem>>(),
@@ -98,7 +98,7 @@ public class ResourceOperationServiceTests
             Substitute.For<IMessengerService>(),
             _workspaceWrapper,
             TestFileSystem.CreateLocal());
-        resourceService.TrashService.Returns(_trashService);
+        resourceService.Trash.Returns(_trashService);
 
         _operationService = new ResourceOperationService(
             Substitute.For<ILogger<ResourceOperationService>>(),

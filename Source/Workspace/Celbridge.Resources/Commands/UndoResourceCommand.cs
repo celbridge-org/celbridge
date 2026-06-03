@@ -21,7 +21,7 @@ public class UndoResourceCommand : CommandBase, IUndoResourceCommand
             return Result.Fail("Workspace is not loaded");
         }
 
-        var resourceOpService = _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
+        var resourceOpService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
 
         if (!resourceOpService.CanUndo)
         {

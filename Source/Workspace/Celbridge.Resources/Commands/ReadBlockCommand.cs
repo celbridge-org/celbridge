@@ -30,7 +30,7 @@ public sealed class ReadBlockCommand : CommandBase, IReadBlockCommand
             return Result.Fail($"block_id '{BlockId}' does not match the block-naming rules.");
         }
 
-        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         var readResult = await sidecarService.ReadAsync(Resource);
         if (readResult.IsFailure)
         {

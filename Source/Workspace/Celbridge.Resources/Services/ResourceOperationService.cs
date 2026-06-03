@@ -48,7 +48,7 @@ public class ResourceOperationService : IResourceOperationService
         _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
     private ITrashService TrashService =>
-        _workspaceWrapper.WorkspaceService.ResourceService.TrashService;
+        _workspaceWrapper.WorkspaceService.ResourceService.Trash;
 
     public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {

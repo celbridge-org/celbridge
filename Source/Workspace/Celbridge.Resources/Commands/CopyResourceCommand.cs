@@ -37,8 +37,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     private readonly ICommandService _commandService;
 
     private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-    private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
-    private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+    private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+    private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.Transfers;
 
     public CopyResourceCommand(
         ILogger<CopyResourceCommand> logger,

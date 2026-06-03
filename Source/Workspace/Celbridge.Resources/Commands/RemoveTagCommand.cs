@@ -22,7 +22,7 @@ public sealed class RemoveTagCommand : CommandBase, IRemoveTagCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         return await sidecarService.RemoveTagAsync(Resource, Tag);
     }
 }

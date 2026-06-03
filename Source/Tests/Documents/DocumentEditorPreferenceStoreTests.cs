@@ -29,7 +29,7 @@ public class DocumentEditorPreferenceStoreTests
         _workspaceSettings.GetPropertyAsync<string>(Arg.Any<string>()).Returns(Task.FromResult<string?>(null));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.SidecarService.Returns(_sidecarService);
+        workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
         workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();

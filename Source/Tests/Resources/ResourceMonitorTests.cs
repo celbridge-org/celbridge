@@ -57,7 +57,7 @@ public class ResourceMonitorTests
         rootHandlerRegistry.RootHandlers.Returns(_rootHandlers);
 
         var resourceService = Substitute.For<IResourceService>();
-        resourceService.RootHandlerRegistry.Returns(rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(rootHandlerRegistry);
 
         _policy = Substitute.For<IResourcePolicy>();
         _policy.Evaluate(Arg.Any<ResourceKey>(), ResourceAction.List, Arg.Any<bool>())

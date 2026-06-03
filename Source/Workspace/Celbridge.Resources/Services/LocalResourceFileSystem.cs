@@ -196,7 +196,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(destPolicy);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, dest))
         {
             return Result.Fail($"Root '{dest.Root}' is read-only.");
@@ -376,7 +376,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(destPolicy);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, dest))
         {
             return Result.Fail($"Root '{dest.Root}' is read-only.");
@@ -463,7 +463,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail(policyResult);
         }
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, source))
         {
             return Result.Fail($"Root '{source.Root}' is read-only.");
@@ -591,7 +591,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
         var folderPath = resolveResult.Value;
 
-        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+        var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
         if (!IsRootWritable(rootHandlerRegistry, folder))
         {
             return Result.Fail($"Root '{folder.Root}' is read-only.");
