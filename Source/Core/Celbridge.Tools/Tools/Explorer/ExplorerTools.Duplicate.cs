@@ -70,6 +70,15 @@ public partial class ExplorerTools
             return ToolResponse.Error(copyResult);
         }
 
+        // Duplicate copies a single resource, so a non-empty FailedResources is a
+        // total failure. Surface it as an error rather than reporting a created
+        // resource that was actually refused (destination locked, read-only root).
+        var detail = copyResult.Value;
+        if (detail.FailedResources.Count > 0)
+        {
+            return ToolResponse.Error(detail.FailedResources[0].Message);
+        }
+
         var payload = new
         {
             status = "ok",

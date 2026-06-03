@@ -17,6 +17,8 @@ The compact `"ok"` is reserved for the no-side-effect case: the move touched no 
 
 Both the compact `"ok"` string and the JSON `{"status":"ok", ...}` object indicate overall success — the difference is that the compact form means zero observable side effects, while the JSON form means at least one reference was rewritten or one cascade step ran. An agent that only branches on `response.status == "ok"` misses the compact-vs-JSON distinction; branch on the response shape (string vs object) first.
 
+**`partial_failure` is a successful response, not an error.** Every status above — including `partial_failure` — comes back with the tool's success flag set. A move that was *entirely* refused (its only resource is locked, or its destination is hidden by the project's resource policy) still returns success with `status: "partial_failure"` and the reason in `failedResources[].message`. The tool reports an error (the MCP `isError` flag) only when the batch could not run at all — for example an invalid resource key. So never treat a non-error response as proof the move happened: confirm `status == "ok"` (or that `failedResources` is empty) before assuming the source moved. This mirrors `explorer_delete` and `explorer_copy`, which report per-resource refusals the same way.
+
 ```json
 {
   "status": "ok" | "ok_with_skipped_referencers" | "partial_failure",
@@ -25,7 +27,10 @@ Both the compact `"ok"` string and the JSON `{"status":"ok", ...}` object indica
     { "resource": "project:locked.md", "reason": "ReadOnly", "message": "file is read-only" },
     ...
   ],
-  "failedResources": ["project:source.txt", ...]
+  "failedResources": [
+    { "resource": "project:source.txt", "message": "Write of 'project:keep.tmp' was denied by the [resources].ignore-file pattern '*.tmp'." },
+    ...
+  ]
 }
 ```
 
@@ -34,10 +39,10 @@ Resource keys appear in their canonical `root:path` form (with the explicit `pro
 - `status`:
   - `"ok"` — every cascade step succeeded; `updatedReferencers` may be non-empty.
   - `"ok_with_skipped_referencers"` — the move itself completed but the cascade left some references stale (see `skippedReferencers`).
-  - `"partial_failure"` — one or more resources in the batch failed mechanically (see `failedResources`).
+  - `"partial_failure"` — one or more resources in the batch were refused or failed (see `failedResources`). Still a success-flagged response.
 - `updatedReferencers` lists the files whose references were rewritten.
 - `skippedReferencers` lists the files the cascade couldn't update. `reason` is one of `ReadFailed` / `WriteFailed` / `ReadOnly` / `PermissionDenied`. `ReadOnly` is the DOS read-only attribute (trivially clearable); `PermissionDenied` is an ACL / POSIX denial (needs the right account or admin). The reference is left as-is and will surface via `data_check_project`. Re-running the move after the blocker clears (clear the read-only flag, grant write access, close the editor that holds the lock) completes the cascade idempotently.
-- `failedResources` lists source resources whose bytes operation failed.
+- `failedResources` lists the resources whose move was refused or failed, each with the `message` explaining why. This is where **policy denials** surface: a destination hidden by the project's resource policy (ignore-file or `[resources].remove`), or a source or destination frozen by `[resources].lock`, appears here with the reason — not as a tool error.
 
 ## Gotchas
 
