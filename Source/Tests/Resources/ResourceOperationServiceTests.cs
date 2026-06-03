@@ -1,4 +1,5 @@
 using Celbridge.Entities;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
@@ -211,8 +212,7 @@ public class ResourceOperationServiceTests
         // service entry is the load-bearing one.
         var section = new ResourcesSection
         {
-            Include = new[] { "*" },
-            Locked = new[] { "assets" },
+            Lock = new[] { "assets" },
         };
         var policy = BuildPolicyForLocked(section);
         _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
@@ -236,8 +236,7 @@ public class ResourceOperationServiceTests
         // would silently remove locked descendants.
         var section = new ResourcesSection
         {
-            Include = new[] { "*" },
-            Locked = new[] { "Data/**" },
+            Lock = new[] { "Data/**" },
         };
         var policy = BuildPolicyForLocked(section);
         _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
@@ -262,8 +261,7 @@ public class ResourceOperationServiceTests
         // locked resource stays frozen in place.
         var section = new ResourcesSection
         {
-            Include = new[] { "*" },
-            Locked = new[] { "Data/**" },
+            Lock = new[] { "Data/**" },
         };
         var policy = BuildPolicyForLocked(section);
         _workspaceWrapper.WorkspaceService.ResourceService.Policy.Returns(policy);
@@ -285,8 +283,16 @@ public class ResourceOperationServiceTests
         var config = new ProjectConfig { Resources = section };
         var project = Substitute.For<IProject>();
         project.Config.Returns(config);
+        project.ProjectFolderPath.Returns(@"C:\fake\project");
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
-        return new ResourcePolicy(projectService);
+
+        // No ignore-file on disk, so the ignore baseline is empty and only the
+        // lock list gates the write path under test.
+        var fileSystem = Substitute.For<ILocalFileSystem>();
+        fileSystem.ReadAllTextAsync(Arg.Any<string>())
+            .Returns(Task.FromResult(Result<string>.Fail("ignore-file not found")));
+
+        return new ResourcePolicy(projectService, fileSystem);
     }
 }

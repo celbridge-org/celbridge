@@ -1,0 +1,38 @@
+# Files matched here are excluded from the Celbridge resource set (and from git).
+# Edit freely. The .git/ and .celbridge/ folders are reserved and always hidden.
+
+# Build output
+bin/
+obj/
+.vs/
+node_modules/
+
+# Editor and tooling
+.vscode/
+.idea/
+.claude/
+.mcp.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment and secrets
+.env
+
+# OS cruft
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.swn
+*.crdownload
+*.part
+~$*

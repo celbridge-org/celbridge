@@ -163,9 +163,10 @@ public static class ProjectConfigParser
         {
             resourcesSection = resourcesSection with
             {
-                Include = ReadStringList(resourcesTable, "include") ?? resourcesSection.Include,
-                Exclude = ReadStringList(resourcesTable, "exclude") ?? resourcesSection.Exclude,
-                Locked = ReadStringList(resourcesTable, "locked") ?? resourcesSection.Locked,
+                IgnoreFile = ReadString(resourcesTable, "ignore-file") ?? resourcesSection.IgnoreFile,
+                Add = ReadStringList(resourcesTable, "add") ?? resourcesSection.Add,
+                Remove = ReadStringList(resourcesTable, "remove") ?? resourcesSection.Remove,
+                Lock = ReadStringList(resourcesTable, "lock") ?? resourcesSection.Lock,
             };
         }
 
@@ -177,6 +178,19 @@ public static class ProjectConfigParser
             Resources = resourcesSection,
             Features = featuresDict
         };
+    }
+
+    // Returns the string value for the key, or null when the key is absent or
+    // not a string. An empty string in the config is returned as-is so callers
+    // can distinguish "set to empty" from "not set" (e.g. ignore-file = "").
+    private static string? ReadString(TomlTable table, string key)
+    {
+        if (table.TryGetValue(key, out var value)
+            && value is string s)
+        {
+            return s;
+        }
+        return null;
     }
 
     private static IReadOnlyList<string>? ReadStringList(TomlTable table, string key)

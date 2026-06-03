@@ -117,23 +117,6 @@ public sealed class ResourcePathMatcher
         return _regex.IsMatch(resourcePath);
     }
 
-    /// <summary>
-    /// Returns true if either this pattern or its trailing-slash-equivalent
-    /// matches the supplied literal. Used by the built-in override mechanism:
-    /// a user writes the literal pattern from the built-in list to suppress it,
-    /// and "bin" or "bin/" must both override the built-in "bin/".
-    /// </summary>
-    public static bool LiteralEquivalent(string left, string right)
-    {
-        if (string.Equals(left, right, StringComparison.Ordinal))
-        {
-            return true;
-        }
-        var leftTrimmed = left.TrimEnd('/');
-        var rightTrimmed = right.TrimEnd('/');
-        return string.Equals(leftTrimmed, rightTrimmed, StringComparison.Ordinal);
-    }
-
     private static Regex BuildRegex(string pattern)
     {
         var builder = new StringBuilder();

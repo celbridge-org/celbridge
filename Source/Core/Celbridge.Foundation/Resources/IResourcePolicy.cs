@@ -33,25 +33,27 @@ public enum PolicyRuleSource
     SystemAllow,
 
     /// <summary>
-    /// Built-in default-exclude rule (OS noise, build artefacts, leading-dot rule).
-    /// Suppressed per-pattern by writing the literal pattern into [resources].include.
-    /// </summary>
-    BuiltinExclude,
-
-    /// <summary>
-    /// Match against [resources].include. A key that fails this rule is not a
-    /// resource — it is invisible to enumeration, watcher events drop, and reads
+    /// Match against the project's ignore-file (gitignore-format). A path the
+    /// ignore-file matches is not a resource unless an Add pattern brings it
+    /// back: it is invisible to enumeration, watcher events drop, and reads
     /// resolve to "no such resource".
     /// </summary>
-    ProjectInclude,
+    IgnoreFile,
 
     /// <summary>
-    /// Match against [resources].exclude. Subtracts from the included set.
+    /// Match against [resources].add. Brings a path into the resource set even
+    /// when the ignore-file hides it.
     /// </summary>
-    ProjectExclude,
+    ProjectAdd,
 
     /// <summary>
-    /// Match against [resources].locked. Gates every structural change (content
+    /// Match against [resources].remove. Drops a path from the resource set.
+    /// Takes precedence over Add and the ignore baseline.
+    /// </summary>
+    ProjectRemove,
+
+    /// <summary>
+    /// Match against [resources].lock. Gates every structural change (content
     /// write, delete, move, rename) on the resource and freezes its path so no
     /// ancestor folder can be moved, renamed, or deleted. The resource stays
     /// visible and readable.
@@ -135,10 +137,10 @@ public sealed class PolicyDenialError : Exception
         {
             PolicyRuleSource.SystemDeny => "system policy",
             PolicyRuleSource.SystemAllow => "system policy",
-            PolicyRuleSource.BuiltinExclude => "built-in default-exclude",
-            PolicyRuleSource.ProjectInclude => "[resources].include",
-            PolicyRuleSource.ProjectExclude => "[resources].exclude",
-            PolicyRuleSource.ProjectLocked => "[resources].locked",
+            PolicyRuleSource.IgnoreFile => "[resources].ignore-file",
+            PolicyRuleSource.ProjectAdd => "[resources].add",
+            PolicyRuleSource.ProjectRemove => "[resources].remove",
+            PolicyRuleSource.ProjectLocked => "[resources].lock",
             _ => rule.Source.ToString(),
         };
 

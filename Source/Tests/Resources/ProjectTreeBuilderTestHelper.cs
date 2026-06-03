@@ -1,4 +1,5 @@
 using Celbridge.Messaging;
+using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
@@ -10,14 +11,18 @@ namespace Celbridge.Tests.Resources;
 
 /// <summary>
 /// Builds a ProjectTreeBuilder wired to a real LocalResourceFileSystem over the
-/// supplied project folder, with a default-permissive [resources] policy. The
-/// builder now enumerates through the gateway, so the helper stands up the
-/// resource file system and a registry that resolves keys to paths under the
-/// project folder.
+/// supplied project folder. By default the [resources] policy is permissive; pass
+/// useProjectIgnoreFile to build a real policy that reads the project's ignore-file
+/// from disk (write the file before calling Build, since the policy compiles once).
+/// The builder enumerates through the gateway, so the helper stands up the resource
+/// file system and a registry that resolves keys to paths under the project folder.
 /// </summary>
 internal static class ProjectTreeBuilderTestHelper
 {
-    public static ProjectTreeBuilder Build(string projectFolderPath, IFileIconService? fileIconService = null)
+    public static ProjectTreeBuilder Build(
+        string projectFolderPath,
+        IFileIconService? fileIconService = null,
+        bool useProjectIgnoreFile = false)
     {
         var resourceRegistry = Substitute.For<IResourceRegistry>();
         resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
@@ -37,7 +42,12 @@ internal static class ProjectTreeBuilderTestHelper
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
-        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
+
+        // Build the policy into a local before configuring the substitute: when
+        // it stands up its own substitutes, doing so inline inside Returns(...)
+        // would corrupt NSubstitute's last-call context.
+        var policy = BuildPolicy(projectFolderPath, useProjectIgnoreFile);
+        resourceService.Policy.Returns(policy);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -50,5 +60,22 @@ internal static class ProjectTreeBuilderTestHelper
         resourceService.FileSystem.Returns(resourceFileSystem);
 
         return new ProjectTreeBuilder(fileIconService ?? new FileIconService(), workspaceWrapper);
+    }
+
+    private static IResourcePolicy BuildPolicy(string projectFolderPath, bool useProjectIgnoreFile)
+    {
+        if (!useProjectIgnoreFile)
+        {
+            return TestResourcePolicy.CreateDefault();
+        }
+
+        var project = Substitute.For<IProject>();
+        project.Config.Returns(new ProjectConfig());
+        project.ProjectFolderPath.Returns(projectFolderPath);
+
+        var projectService = Substitute.For<IProjectService>();
+        projectService.CurrentProject.Returns(project);
+
+        return new ResourcePolicy(projectService, TestFileSystem.CreateLocal());
     }
 }

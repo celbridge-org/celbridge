@@ -83,20 +83,25 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_ExcludesDotPrefixedFiles_AndDotPrefixedFolders()
+    public async Task BuildTree_ExcludesPathsMatchedByIgnoreFile()
     {
-        // Leading-dot names are project-hidden (covers .celbridge plus any
-        // editor scratch files like .gitignore, .vscode/, etc.).
-        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), "x");
+        // Visibility is driven by the ignore-file. Leading-dot names are no longer
+        // hidden by a blanket rule, so a dotfile not listed in the ignore-file
+        // (.editorconfig) stays visible while listed entries (.vscode/) are hidden.
+        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), ".vscode/\nsecret.txt\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, ".editorconfig"), "x");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "secret.txt"), "x");
         File.WriteAllText(Path.Combine(_projectFolderPath, "visible.txt"), "y");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, ".vscode"));
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "src"));
 
-        var buildResult = await _builder.BuildTreeAsync();
+        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, useProjectIgnoreFile: true);
+        var buildResult = await builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();
-        var tree = buildResult.Value;
-        tree.Children.Select(c => c.Name).Should().BeEquivalentTo(new[] { "src", "visible.txt" });
+        var names = buildResult.Value.Children.Select(c => c.Name).ToList();
+        names.Should().Contain(new[] { "src", "visible.txt", ".editorconfig" });
+        names.Should().NotContain(new[] { ".vscode", "secret.txt" });
     }
 
     [Test]
@@ -122,13 +127,15 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_ExcludesPyCacheFolders()
+    public async Task BuildTree_ExcludesPyCacheFolders_ViaIgnoreFile()
     {
+        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), "__pycache__/\n");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "scripts", "__pycache__"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "scripts", "__pycache__", "x.pyc"), "");
         File.WriteAllText(Path.Combine(_projectFolderPath, "scripts", "main.py"), "");
 
-        var buildResult = await _builder.BuildTreeAsync();
+        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, useProjectIgnoreFile: true);
+        var buildResult = await builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();
         var tree = buildResult.Value;
@@ -137,10 +144,11 @@ public class ProjectTreeBuilderTests
     }
 
     [Test]
-    public async Task BuildTree_ExcludesPythonLibFolder_OnlyWhenParentIsPython()
+    public async Task BuildTree_AnchoredIgnorePattern_ExcludesOnlyAtThatPath()
     {
-        // Python/Lib is excluded (virtualenv pip packages). A "Lib" folder
-        // anywhere else stays — the exclusion is keyed on the parent name.
+        // An anchored ignore pattern (Python/Lib/) excludes only that path. A
+        // "Lib" folder elsewhere stays, because the pattern is rooted, not bare.
+        File.WriteAllText(Path.Combine(_projectFolderPath, ".gitignore"), "Python/Lib/\n");
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "Python", "Lib"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "Python", "Lib", "pkg.py"), "");
         File.WriteAllText(Path.Combine(_projectFolderPath, "Python", "main.py"), "");
@@ -148,7 +156,8 @@ public class ProjectTreeBuilderTests
         Directory.CreateDirectory(Path.Combine(_projectFolderPath, "OtherProject", "Lib"));
         File.WriteAllText(Path.Combine(_projectFolderPath, "OtherProject", "Lib", "thing.txt"), "");
 
-        var buildResult = await _builder.BuildTreeAsync();
+        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, useProjectIgnoreFile: true);
+        var buildResult = await builder.BuildTreeAsync();
 
         buildResult.IsSuccess.Should().BeTrue();
         var tree = buildResult.Value;

@@ -96,14 +96,4 @@ public class ResourcePathMatcherTests
         matcher.IsMatch("foo/bar", isFolder: false).Should().BeTrue();
         matcher.IsMatch("very/deep/nested/path", isFolder: false).Should().BeTrue();
     }
-
-    [Test]
-    public void LiteralEquivalent_HandlesTrailingSlash()
-    {
-        ResourcePathMatcher.LiteralEquivalent("bin", "bin/").Should().BeTrue();
-        ResourcePathMatcher.LiteralEquivalent("bin/", "bin").Should().BeTrue();
-        ResourcePathMatcher.LiteralEquivalent("bin", "bin").Should().BeTrue();
-        ResourcePathMatcher.LiteralEquivalent("bin", "obj").Should().BeFalse();
-        ResourcePathMatcher.LiteralEquivalent("node_*", "node_modules").Should().BeFalse();
-    }
 }

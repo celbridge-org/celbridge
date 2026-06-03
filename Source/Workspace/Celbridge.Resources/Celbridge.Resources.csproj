@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" />
+    <PackageReference Include="Ignore" />
     <PackageReference Include="Tomlyn" />
   </ItemGroup>
 

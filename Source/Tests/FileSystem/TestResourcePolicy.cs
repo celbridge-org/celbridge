@@ -11,7 +11,11 @@ internal static class TestResourcePolicy
 {
     public static ResourcePolicy CreateDefault()
     {
-        return new ResourcePolicy(new NullProjectService());
+        // With a null CurrentProject the engine has no project folder to resolve
+        // an ignore-file against, so it never touches the file system. Passing
+        // null keeps this helper allocation-free and side-effect free for inlining
+        // inside NSubstitute Returns(...).
+        return new ResourcePolicy(new NullProjectService(), fileSystem: null!);
     }
 
     // A hand-written stub rather than an NSubstitute mock so CreateDefault
