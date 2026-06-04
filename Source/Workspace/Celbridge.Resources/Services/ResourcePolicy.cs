@@ -47,7 +47,9 @@ public sealed class ResourcePolicy : IResourcePolicy
     private readonly List<CompiledPolicyRule> _remove;
     private readonly List<CompiledPolicyRule> _lock;
 
-    private readonly IIgnoreFileMatcher _ignoreFileMatcher;
+    // Empty until InitializeAsync reads the ignore-file and replaces it, so
+    // Evaluate stays safe to call before initialization runs.
+    private IIgnoreFileMatcher _ignoreFileMatcher;
     private readonly CompiledPolicyRule _ignoreRule;
 
     // Static leading paths of the add patterns, used to decide whether the
@@ -57,40 +59,47 @@ public sealed class ResourcePolicy : IResourcePolicy
 
     private readonly IReadOnlyList<IPolicyRule> _compiledRules;
 
+    private readonly IProject? _project;
+    private readonly ResourcesSection _resourcesSection;
+    private readonly ILocalFileSystem _fileSystem;
+
     public IReadOnlyList<IPolicyRule> CompiledRules => _compiledRules;
 
     public ResourcePolicy(IProjectService projectService, ILocalFileSystem fileSystem)
     {
-        var project = projectService.CurrentProject;
-        var resourcesSection = project?.Config.Resources ?? new ResourcesSection();
+        _fileSystem = fileSystem;
+        _project = projectService.CurrentProject;
+        _resourcesSection = _project?.Config.Resources ?? new ResourcesSection();
 
         _systemDeny = BuildSystemDenyRules();
         _systemAllow = BuildSystemAllowRules();
         _add = CompileProjectRules(
-            resourcesSection.Add,
+            _resourcesSection.Add,
             PolicyRuleSource.ProjectAdd,
             ResourceAction.List | ResourceAction.Read,
             "Pattern from the project '[resources].add' list.");
         _remove = CompileProjectRules(
-            resourcesSection.Remove,
+            _resourcesSection.Remove,
             PolicyRuleSource.ProjectRemove,
             ResourceAction.List | ResourceAction.Read,
             "Pattern from the project '[resources].remove' list.");
         _lock = CompileProjectRules(
-            resourcesSection.Lock,
+            _resourcesSection.Lock,
             PolicyRuleSource.ProjectLocked,
             ResourceAction.Write,
             "Pattern from the project '[resources].lock' list. The resource is frozen in place.");
 
-        _ignoreFileMatcher = BuildIgnoreFileMatcher(project, resourcesSection, fileSystem);
+        // The ignore-file read happens in InitializeAsync, not here, so
+        // construction does no IO. The baseline is an empty ignore set until then.
+        _ignoreFileMatcher = new IgnoreFileMatcher(Array.Empty<string>());
         _ignoreRule = new CompiledPolicyRule(
             source: PolicyRuleSource.IgnoreFile,
-            pattern: string.IsNullOrEmpty(resourcesSection.IgnoreFile) ? "(disabled)" : resourcesSection.IgnoreFile,
+            pattern: string.IsNullOrEmpty(_resourcesSection.IgnoreFile) ? "(disabled)" : _resourcesSection.IgnoreFile,
             gatedActions: ResourceAction.List | ResourceAction.Read,
             description: "The resource is excluded by the project ignore-file. Add it to '[resources].add' to make it a resource.",
             matcher: null);
 
-        _addPrefixes = BuildAddPrefixes(resourcesSection.Add);
+        _addPrefixes = BuildAddPrefixes(_resourcesSection.Add);
 
         var combined = new List<IPolicyRule>();
         combined.AddRange(_systemDeny);
@@ -100,6 +109,12 @@ public sealed class ResourcePolicy : IResourcePolicy
         combined.AddRange(_remove);
         combined.AddRange(_lock);
         _compiledRules = combined;
+    }
+
+    public async Task<Result> InitializeAsync()
+    {
+        _ignoreFileMatcher = await BuildIgnoreFileMatcherAsync(_project, _resourcesSection, _fileSystem);
+        return Result.Ok();
     }
 
     public Result Evaluate(ResourceKey resource, ResourceAction action, bool isFolder = false)
@@ -316,7 +331,7 @@ public sealed class ResourcePolicy : IResourcePolicy
         return rules;
     }
 
-    private static IIgnoreFileMatcher BuildIgnoreFileMatcher(
+    private static async Task<IIgnoreFileMatcher> BuildIgnoreFileMatcherAsync(
         IProject? project,
         ResourcesSection resourcesSection,
         ILocalFileSystem fileSystem)
@@ -330,7 +345,7 @@ public sealed class ResourcePolicy : IResourcePolicy
         }
 
         var ignoreFilePath = Path.Combine(project.ProjectFolderPath, resourcesSection.IgnoreFile);
-        var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(ignoreFilePath));
+        var readResult = await fileSystem.ReadAllTextAsync(ignoreFilePath);
         if (readResult.IsFailure)
         {
             // A missing ignore-file means an empty ignore set, not a fallback to

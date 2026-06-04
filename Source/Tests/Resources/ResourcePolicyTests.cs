@@ -32,7 +32,9 @@ public class ResourcePolicyTests
             : Result<string>.Ok(ignoreFileContent);
         fileSystem.ReadAllTextAsync(Arg.Any<string>()).Returns(Task.FromResult(readResult));
 
-        return new ResourcePolicy(projectService, fileSystem);
+        var policy = new ResourcePolicy(projectService, fileSystem);
+        policy.InitializeAsync().GetAwaiter().GetResult();
+        return policy;
     }
 
     [Test]

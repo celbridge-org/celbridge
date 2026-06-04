@@ -84,12 +84,7 @@ internal sealed class SidecarCascade
         return SidecarOutcome.Cascaded;
     }
 
-    public SidecarOutcome TryCopy(ResourceKey source, ResourceKey dest)
-    {
-        return SyncRunner.Run(() => TryCopyAsync(source, dest));
-    }
-
-    private async Task<SidecarOutcome> TryCopyAsync(ResourceKey source, ResourceKey dest)
+    public async Task<SidecarOutcome> TryCopyAsync(ResourceKey source, ResourceKey dest)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         var destSidecar = AppendSidecarSuffix(dest);
@@ -151,12 +146,7 @@ internal sealed class SidecarCascade
         return SidecarOutcome.Cascaded;
     }
 
-    public SidecarOutcome TryDelete(ResourceKey source)
-    {
-        return SyncRunner.Run(() => TryDeleteAsync(source));
-    }
-
-    private async Task<SidecarOutcome> TryDeleteAsync(ResourceKey source)
+    public async Task<SidecarOutcome> TryDeleteAsync(ResourceKey source)
     {
         var sourceSidecar = AppendSidecarSuffix(source);
         if (sourceSidecar is null)

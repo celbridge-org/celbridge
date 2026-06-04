@@ -76,6 +76,8 @@ internal static class ProjectTreeBuilderTestHelper
         var projectService = Substitute.For<IProjectService>();
         projectService.CurrentProject.Returns(project);
 
-        return new ResourcePolicy(projectService, TestFileSystem.CreateLocal());
+        var policy = new ResourcePolicy(projectService, TestFileSystem.CreateLocal());
+        policy.InitializeAsync().GetAwaiter().GetResult();
+        return policy;
     }
 }

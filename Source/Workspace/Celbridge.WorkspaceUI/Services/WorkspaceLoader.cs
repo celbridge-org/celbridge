@@ -113,6 +113,20 @@ public class WorkspaceLoader
 
             var resourceService = workspaceService.ResourceService;
 
+            // Initialize the resource policy before the monitor, package scan, and
+            // first registry build, each of which consults the policy engine.
+            var initPolicyResult = await resourceService.Policy.InitializeAsync();
+
+            // InitializeAsync degrades a missing or unreadable ignore-file to an
+            // empty ignore set, so it does not currently fail. This branch is the
+            // intended handling once [resources] config validation can fail: warn
+            // and continue rather than fail project load, because the *.celbridge
+            // config stays reachable (system-allow) for the user to correct.
+            if (initPolicyResult.IsFailure)
+            {
+                _logger.LogWarning(initPolicyResult, "Failed to initialize resource policy");
+            }
+
             // Start file system watchers now that the wrapper is fully populated.
             // The monitor cannot be initialized in ResourceService's constructor because
             // it reaches into the workspace via IWorkspaceWrapper, which is only set up

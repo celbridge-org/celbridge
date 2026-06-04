@@ -21,6 +21,7 @@ public class ResourceOperationServiceTests
     private string _tempFolder = null!;
     private IResourceRegistry _resourceRegistry = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private IResourceService _resourceService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
     private TrashService _trashService = null!;
     private ResourceOperationService _operationService = null!;
@@ -70,6 +71,7 @@ public class ResourceOperationServiceTests
         rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
 
         var resourceService = Substitute.For<IResourceService>();
+        _resourceService = resourceService;
         resourceService.Registry.Returns(_resourceRegistry);
         resourceService.RootHandlers.Returns(rootHandlerRegistry);
 
@@ -410,6 +412,46 @@ public class ResourceOperationServiceTests
     }
 
     [Test]
+    public async Task CanModifyResourceAsync_FailsClosed_WhenSubtreeEnumerationFails()
+    {
+        // A folder whose contents cannot be enumerated cannot be proven free of
+        // locked descendants, so the structural-change gate refuses the change.
+        var failingFileSystem = Substitute.For<IResourceFileSystem>();
+        failingFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Result<StorageItemInfo>.Ok(
+                new StorageItemInfo(StorageItemKind.Folder, 0, default, FileSystemAttributes.None)));
+        failingFileSystem.EnumerateFolderAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult<Result<IReadOnlyList<FolderItem>>>(
+                Result<IReadOnlyList<FolderItem>>.Fail("enumeration failed")));
+        _resourceService.FileSystem.Returns(failingFileSystem);
+
+        var result = await _operationService.CanModifyResourceAsync(new ResourceKey("somefolder"));
+
+        result.IsFailure.Should().BeTrue();
+        // The block is an unverifiable-subtree failure, not a matched lock rule.
+        result.HasException<PolicyDenialError>().Should().BeFalse();
+    }
+
+    [Test]
+    public async Task GetLockStateAsync_ReturnsNone_WhenSubtreeEnumerationFails()
+    {
+        // The display path fails open: an unreadable subtree leaves the badge as
+        // None rather than implying a lock that cannot be seen.
+        var failingFileSystem = Substitute.For<IResourceFileSystem>();
+        failingFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Result<StorageItemInfo>.Ok(
+                new StorageItemInfo(StorageItemKind.Folder, 0, default, FileSystemAttributes.None)));
+        failingFileSystem.EnumerateFolderAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult<Result<IReadOnlyList<FolderItem>>>(
+                Result<IReadOnlyList<FolderItem>>.Fail("enumeration failed")));
+        _resourceService.FileSystem.Returns(failingFileSystem);
+
+        var state = await _operationService.GetLockStateAsync(new ResourceKey("somefolder"));
+
+        state.Should().Be(ResourceLockState.None);
+    }
+
+    [Test]
     public async Task CanModifyResourceAsync_Fails_WhenFolderContainsLockedDescendant()
     {
         var section = new ResourcesSection
@@ -515,6 +557,8 @@ public class ResourceOperationServiceTests
             : Result<string>.Ok(ignoreFileContent);
         fileSystem.ReadAllTextAsync(Arg.Any<string>()).Returns(Task.FromResult(readResult));
 
-        return new ResourcePolicy(projectService, fileSystem);
+        var policy = new ResourcePolicy(projectService, fileSystem);
+        policy.InitializeAsync().GetAwaiter().GetResult();
+        return policy;
     }
 }

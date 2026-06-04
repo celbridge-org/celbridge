@@ -145,7 +145,16 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
             },
             updateValueFactory: (_, existing) =>
             {
-                existing.Timer?.Change(ChangedDebounceMs, Timeout.Infinite);
+                // A concurrent OnChangedDebounceElapsed may dispose this timer
+                // between the lookup and here. Treat the race as the burst already
+                // settling rather than letting the watcher callback throw.
+                try
+                {
+                    existing.Timer?.Change(ChangedDebounceMs, Timeout.Infinite);
+                }
+                catch (ObjectDisposedException)
+                {
+                }
                 return existing;
             });
     }
@@ -169,6 +178,13 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
 
     private void Raise(FileSystemMonitorEvent monitorEvent)
     {
+        // A watcher callback queued before Dispose may still fire after it. Drop
+        // it so listeners never see an event from a monitor that has shut down.
+        if (_isDisposed)
+        {
+            return;
+        }
+
         FileSystemChanged?.Invoke(this, monitorEvent);
     }
 

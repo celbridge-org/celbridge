@@ -182,7 +182,7 @@ public sealed class LocalFileSystem : ILocalFileSystem
             }
 
             IReadOnlyList<FileSystemEntry> list = entries;
-            return Result<IReadOnlyList<FileSystemEntry>>.Ok(list);
+            return list.OkResult();
         }
         catch (Exception ex)
         {

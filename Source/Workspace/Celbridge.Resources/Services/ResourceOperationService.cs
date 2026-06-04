@@ -223,9 +223,7 @@ public class ResourceOperationService : IResourceOperationService
     // the locked resource's frozen-in-place guarantee.
     private async Task<Result> EvaluateStructuralChangeAsync(ResourceKey resource, bool isFolder)
     {
-        var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
-
-        var directResult = policy.Evaluate(resource, ResourceAction.Write, isFolder);
+        var directResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
         if (directResult.IsFailure)
         {
             return Result.Fail(directResult);
@@ -236,31 +234,7 @@ public class ResourceOperationService : IResourceOperationService
             return Result.Ok();
         }
 
-        var enumerateResult = await ResourceFileSystem.EnumerateFolderAsync(resource);
-        if (enumerateResult.IsFailure)
-        {
-            return Result.Ok();
-        }
-
-        foreach (var entry in enumerateResult.Value)
-        {
-            var childResult = policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder);
-            if (childResult.IsFailure)
-            {
-                return Result.Fail(childResult);
-            }
-
-            if (entry.IsFolder)
-            {
-                var nestedResult = await EvaluateStructuralChangeAsync(entry.Resource, isFolder: true);
-                if (nestedResult.IsFailure)
-                {
-                    return nestedResult;
-                }
-            }
-        }
-
-        return Result.Ok();
+        return await FindLockingDescendantAsync(resource);
     }
 
     public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)
@@ -280,39 +254,53 @@ public class ResourceOperationService : IResourceOperationService
             return ResourceLockState.None;
         }
 
-        var containsLocked = await ContainsLockedDescendantAsync(resource);
+        // Only a matched lock rule means path-frozen. An enumeration failure
+        // leaves the badge as None rather than implying a lock that cannot be
+        // seen. The structural-change executor, in contrast, fails closed.
+        var descendantResult = await FindLockingDescendantAsync(resource);
+        if (descendantResult.IsFailure
+            && descendantResult.HasException<PolicyDenialError>())
+        {
+            return ResourceLockState.ContainsLocked;
+        }
 
-        return containsLocked
-            ? ResourceLockState.ContainsLocked
-            : ResourceLockState.None;
+        return ResourceLockState.None;
     }
 
-    // Walks the subtree looking for any descendant whose own key is write-locked.
-    // The resource's own lock is checked by the caller; this answers only the
-    // path-freeze question.
-    private async Task<bool> ContainsLockedDescendantAsync(ResourceKey folder)
+    // Walks a folder's subtree for the first descendant whose own key is
+    // write-locked. Returns Ok when none is found. A locked descendant gives a
+    // failure carrying a PolicyDenialError that names it, and an unreadable
+    // subtree gives a plain failure. Structural-change callers treat both failure
+    // kinds as blocking (fail closed), because a subtree that cannot be read might
+    // hide a locked resource the delete or move would relocate.
+    private async Task<Result> FindLockingDescendantAsync(ResourceKey folder)
     {
         var enumerateResult = await ResourceFileSystem.EnumerateFolderAsync(folder);
         if (enumerateResult.IsFailure)
         {
-            return false;
+            return Result.Fail($"Cannot verify lock state of folder contents: '{folder}'")
+                .WithErrors(enumerateResult);
         }
 
         foreach (var entry in enumerateResult.Value)
         {
-            if (Policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder).IsFailure)
+            var childResult = Policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder);
+            if (childResult.IsFailure)
             {
-                return true;
+                return Result.Fail(childResult);
             }
 
-            if (entry.IsFolder
-                && await ContainsLockedDescendantAsync(entry.Resource))
+            if (entry.IsFolder)
             {
-                return true;
+                var nestedResult = await FindLockingDescendantAsync(entry.Resource);
+                if (nestedResult.IsFailure)
+                {
+                    return nestedResult;
+                }
             }
         }
 
-        return false;
+        return Result.Ok();
     }
 
     public async Task<Result> CanModifyResourceAsync(ResourceKey resource)

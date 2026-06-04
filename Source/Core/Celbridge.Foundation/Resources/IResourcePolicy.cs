@@ -156,6 +156,13 @@ public sealed class PolicyDenialError : Exception
 public interface IResourcePolicy
 {
     /// <summary>
+    /// Reads the project ignore-file and compiles the ignore set. Until this runs
+    /// the ignore set is empty, so call it once before the policy is first
+    /// evaluated. Safe to call again to recompile the ignore set in place.
+    /// </summary>
+    Task<Result> InitializeAsync();
+
+    /// <summary>
     /// Returns Result.Ok on allow, Result.Fail on deny. The failure carries a
     /// PolicyDenialError describing the matched rule via WithException(); the
     /// FirstErrorMessage is the formatted denial text. The isFolder hint lets

@@ -202,6 +202,10 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Root '{dest.Root}' is read-only.");
         }
 
+        // Case-insensitive comparison assumes a Windows (case-insensitive) volume,
+        // the project's primary target. A case-only rename (foo to Foo) resolves to
+        // the same path here, so the destination-exists check below is skipped to
+        // let the rename through. On a case-sensitive volume this would be Ordinal.
         bool isSameLocation = string.Equals(sourcePath, destPath, StringComparison.OrdinalIgnoreCase);
         if (!isSameLocation)
         {
@@ -259,7 +263,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             // Clear read-only so the move itself is not blocked by an
             // attribute the user has explicitly chosen to override by
             // invoking a move on the file.
-            _ = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            if (clearReadOnlyResult.IsFailure)
+            {
+                _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before moving '{source}'");
+            }
             moveResult = await _fileSystem.MoveFileAsync(sourcePath, destPath);
         }
         else
@@ -422,7 +430,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             }
         }
 
-        var sidecarOutcome = _sidecarCascade.TryCopy(source, dest);
+        var sidecarOutcome = await _sidecarCascade.TryCopyAsync(source, dest);
 
         var result = new CopyResult(sidecarOutcome);
         return result;
@@ -469,7 +477,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return Result.Fail($"Root '{source.Root}' is read-only.");
         }
 
-        var sidecarOutcome = _sidecarCascade.TryDelete(source);
+        var sidecarOutcome = await _sidecarCascade.TryDeleteAsync(source);
 
         // Capture descendant keys before the disk delete so the post-delete
         // eager-notify can drop their stale index entries and announce each
@@ -490,7 +498,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             // Clear read-only so the delete doesn't trip on the attribute.
             // Matches OS Explorer's "delete read-only file?" behaviour
             // (proceed when the user explicitly invokes delete).
-            _ = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(sourcePath, FileSystemAttributes.ReadOnly, set: false);
+            if (clearReadOnlyResult.IsFailure)
+            {
+                _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before deleting '{source}'");
+            }
             deleteResult = await _fileSystem.DeleteFileAsync(sourcePath);
         }
         else
@@ -701,7 +713,7 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         }
 
         IReadOnlyList<FolderItem> result = entries;
-        return Result<IReadOnlyList<FolderItem>>.Ok(result);
+        return result.OkResult();
     }
 
     public async Task<Result<string>> ComputeHashAsync(ResourceKey resource)
@@ -861,7 +873,11 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
 
         // Clear read-only so the write is not blocked by an attribute the user
         // already chose to override by saving.
-        _ = await _fileSystem.SetAttributesAsync(resourcePath, FileSystemAttributes.ReadOnly, set: false);
+        var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(resourcePath, FileSystemAttributes.ReadOnly, set: false);
+        if (clearReadOnlyResult.IsFailure)
+        {
+            _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before writing '{resource}'");
+        }
 
         var writeResult = await _fileSystem.WriteAllBytesAsync(resourcePath, bytes);
         if (writeResult.IsFailure)
