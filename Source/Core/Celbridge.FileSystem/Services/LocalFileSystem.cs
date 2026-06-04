@@ -9,7 +9,6 @@ namespace Celbridge.FileSystem.Services;
 /// cloud-sync clients). The only direct-System.IO call site in product code;
 /// all other consumers go through this layer.
 /// </summary>
-[AllowDirectFileSystemAccess]
 public sealed class LocalFileSystem : ILocalFileSystem
 {
     private const int StreamBufferSize = 4096;

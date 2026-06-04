@@ -6,7 +6,6 @@ namespace Celbridge.FileSystem.Services;
 /// sync clients). Three attempts at 50/100/150ms backoff catches the common
 /// short locks; non-IO exceptions propagate immediately.
 /// </summary>
-[AllowDirectFileSystemAccess]
 internal static class RetryPolicy
 {
     public const int MaxAttempts = 3;

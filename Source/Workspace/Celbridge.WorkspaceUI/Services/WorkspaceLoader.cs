@@ -1,5 +1,6 @@
 using System.Text;
 using Celbridge.Console;
+using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Projects;
 using Celbridge.Resources;
@@ -71,10 +72,7 @@ public class WorkspaceLoader
         //
         var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
         projectFolderPath = Path.GetFullPath(projectFolderPath);
-        if (Path.Exists(projectFolderPath))
-        {
-            Directory.SetCurrentDirectory(projectFolderPath);
-        }
+        SetProcessWorkingFolder(projectFolderPath);
 
         //
         // Acquire the workspace settings
@@ -226,6 +224,18 @@ public class WorkspaceLoader
         }
 
         return Result.Ok();
+    }
+
+    // Sets the process working folder to the loaded project. Directory.SetCurrentDirectory
+    // sets process-global state that the ILocalFileSystem gateway does not model, so this
+    // stays a direct System.IO carve-out.
+    [AllowDirectFileSystemAccess]
+    private static void SetProcessWorkingFolder(string folderPath)
+    {
+        if (Path.Exists(folderPath))
+        {
+            Directory.SetCurrentDirectory(folderPath);
+        }
     }
 
     // Runs the project consistency check and hands the report to ProjectCheckReporter.

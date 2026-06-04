@@ -7,10 +7,8 @@ namespace Celbridge.FileSystem.Services;
 /// FileSystemWatcher-backed implementation of ILocalFileSystem's watch
 /// counterpart. Owns one watcher over the backing folder subtree and coalesces
 /// the burst of Changed events a single write emits into one settled
-/// notification. The only watcher call site in product code, hence the
-/// AllowDirectFileSystemAccess exemption.
+/// notification. The only watcher call site in product code.
 /// </summary>
-[AllowDirectFileSystemAccess]
 public sealed class FileSystemMonitor : IFileSystemMonitor
 {
     // A single File.WriteAllBytes on Windows generates multiple FileSystemWatcher

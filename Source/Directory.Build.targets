@@ -1,2 +1,23 @@
-﻿<Project>
+<Project>
+
+  <!--
+    Distribute the Celbridge.FileSystem.Analyzers gateway analyzer (CEL_FS_001)
+    to every product project. OutputItemType="Analyzer" with
+    ReferenceOutputAssembly="false" adds it as an analyzer only, not a compile
+    reference, while still letting MSBuild order the analyzer build first.
+
+    The analyzer project cannot reference itself. Test projects opt out here and
+    wire their own reference (see Celbridge.Tests.csproj) so they can also
+    instantiate the analyzer for unit tests.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Celbridge.FileSystem.Analyzers' and '$(IsTestProject)' != 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Core\Celbridge.FileSystem.Analyzers\Celbridge.FileSystem.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="IsTestProject" />
+  </ItemGroup>
+
 </Project>

@@ -1,7 +1,5 @@
 using System.Reflection;
 using System.Xml.Linq;
-using Celbridge.FileSystem;
-using Celbridge.Resources;
 using ModelContextProtocol.Server;
 using Path = System.IO.Path;
 
