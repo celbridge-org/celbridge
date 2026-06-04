@@ -678,15 +678,15 @@ class TestSpreadsheet:
             [
                 {
                     "type": "colorScale3",
-                    "lowColor": "#FF0000",
+                    "minColor": "#FF0000",
                     "midColor": "#FFFF00",
-                    "highColor": "#00FF00",
-                    "lowType": "number",
-                    "lowValue": "0",
+                    "maxColor": "#00FF00",
+                    "minType": "number",
+                    "minValue": "0",
                     "midType": "percentile",
                     "midValue": "50",
-                    "highType": "number",
-                    "highValue": "10",
+                    "maxType": "number",
+                    "maxValue": "10",
                 }
             ],
         )

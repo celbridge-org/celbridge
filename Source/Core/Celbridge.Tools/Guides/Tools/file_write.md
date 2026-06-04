@@ -17,3 +17,7 @@ Pass `\n` or `\r\n` in `content` indifferently; the tool converts to the chosen 
 ## Returns
 
 A JSON object with `lineCount` — the line count of the written content.
+
+## Gotchas
+
+- Writes go straight to disk. If the file is open in an editor, the buffer reloads from disk and Monaco's undo history is wiped — the write is not Ctrl-Z-revertable.

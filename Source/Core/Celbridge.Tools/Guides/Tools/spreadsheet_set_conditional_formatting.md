@@ -10,8 +10,8 @@ Each rule has a `type` field plus the inputs that type needs, and (for non-color
 
 | Type | Inputs |
 |---|---|
-| `colorScale2` | `lowColor`, `highColor` |
-| `colorScale3` | `lowColor`, `midColor`, `highColor` |
+| `colorScale2` | `minColor`, `maxColor` |
+| `colorScale3` | `minColor`, `midColor`, `maxColor` |
 | `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`, `equal`, `notEqual` | `value` |
 | `between`, `notBetween` | `value`, `value2` |
 | `containsText`, `doesNotContainText`, `beginsWith`, `endsWith` | `text` |
@@ -25,13 +25,15 @@ Each rule has a `type` field plus the inputs that type needs, and (for non-color
 - `backgroundColor`, `fontColor` — CSS hex strings (`#RRGGBB`).
 - `bold`, `italic` — booleans.
 
+`minColor` is the colour at the low end of the value range; `maxColor` is the colour at the high end.
+
 ## Color-scale stop thresholds
 
-Color-scale rules accept optional thresholds via `lowType`/`lowValue`, `midType`/`midValue`, `highType`/`highValue`:
+Color-scale rules accept optional thresholds via `minType`/`minValue`, `midType`/`midValue`, `maxType`/`maxValue`:
 
-- `lowType` / `highType` default to `min` / `max` (range minimum/maximum).
+- `minType` / `maxType` default to `min` / `max` (range minimum/maximum).
 - `midType` defaults to `percent` at value `50`.
-- Supported types: `min`, `max` (low/high only), `number`, `percent`, `percentile`, `formula` (value is the formula string with or without leading `=`).
+- Supported types: `min`, `max` (minType/maxType only), `number`, `percent`, `percentile`, `formula` (value is the formula string with or without leading `=`).
 
 ## clearExisting
 

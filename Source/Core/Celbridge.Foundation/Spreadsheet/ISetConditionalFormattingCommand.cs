@@ -16,18 +16,18 @@ namespace Celbridge.Spreadsheet;
 /// predicates use Text. Formula rules use Formula (an Excel formula string,
 /// with or without a leading "="). Top/bottom rules use Value as the integer
 /// count (items for "top"/"bottom"; percent 1-100 for "topPercent"/"bottomPercent").
-/// Color scales use LowColor / HighColor (and MidColor for colorScale3); each
+/// Color scales use MinColor / MaxColor (and MidColor for colorScale3); each
 /// stop's threshold is controlled by the corresponding *Type / *Value pair
 /// (see below). Other formatting fields are ignored for color scales. All
 /// non-color-scale rule types may set BackgroundColor, FontColor, Bold and
 /// Italic to drive the matched-cell formatting.
 ///
 /// Color-scale stop types (case-insensitive):
-///   LowType: "min" (default - lowest value in range), "number", "percent",
+///   MinType: "min" (default - lowest value in range), "number", "percent",
 ///     "percentile", "formula".
 ///   MidType (colorScale3 only): "percent" (default at value "50"),
 ///     "number", "percentile", "formula".
-///   HighType: "max" (default - highest value in range), "number", "percent",
+///   MaxType: "max" (default - highest value in range), "number", "percent",
 ///     "percentile", "formula".
 /// When a stop type other than "min"/"max"/default is used, the corresponding
 /// *Value is required; "number"/"percent"/"percentile" parse as a number,
@@ -45,15 +45,15 @@ public record ConditionalFormatRule(
     string? FontColor = null,
     bool? Bold = null,
     bool? Italic = null,
-    string? LowColor = null,
+    string? MinColor = null,
     string? MidColor = null,
-    string? HighColor = null,
-    string? LowType = null,
-    string? LowValue = null,
+    string? MaxColor = null,
+    string? MinType = null,
+    string? MinValue = null,
     string? MidType = null,
     string? MidValue = null,
-    string? HighType = null,
-    string? HighValue = null);
+    string? MaxType = null,
+    string? MaxValue = null);
 
 /// <summary>
 /// Result populated by ISetConditionalFormattingCommand on success.

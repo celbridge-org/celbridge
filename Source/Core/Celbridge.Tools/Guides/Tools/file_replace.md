@@ -36,5 +36,6 @@ A JSON object with:
 
 ## Gotchas
 
+- Edits write straight to disk. If the file is open in an editor, the buffer reloads from disk and Monaco's undo history is wiped — the edit is not Ctrl-Z-revertable.
 - **Literal `searchText` matches substrings by default.** Replacing `the` with `THE` will hit `the` inside `other`, producing `oTHEr`. The simplest fix is `matchWord: true`, which constrains the match to word boundaries. Alternatively, set `useRegex: true` and wrap the pattern in `\b...\b`, or extend `searchText` with surrounding context (a leading or trailing space, punctuation, newline).
 - The `fromLine`/`toLine` scope applies line-by-line: a multi-line regex pattern will not match across line breaks within the scope. For example, `useRegex: true` with `searchText: "import .+\\nfrom"` and `fromLine: 1, toLine: 20` will find nothing, because each candidate line is matched in isolation — the `\n` never appears inside the line being tested. Drop the scope (`fromLine: 0, toLine: 0`) when the pattern needs to span line breaks.
