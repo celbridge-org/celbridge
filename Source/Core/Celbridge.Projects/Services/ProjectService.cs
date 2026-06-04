@@ -1,5 +1,3 @@
-using Celbridge.FileSystem;
-using Celbridge.Resources;
 using Celbridge.Settings;
 
 namespace Celbridge.Projects.Services;

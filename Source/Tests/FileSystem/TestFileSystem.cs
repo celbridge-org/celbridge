@@ -1,6 +1,4 @@
 using Celbridge.FileSystem.Services;
-using Celbridge.Logging;
-using NSubstitute;
 
 namespace Celbridge.Tests.FileSystem;
 

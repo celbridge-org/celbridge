@@ -2,7 +2,6 @@ using System.Text;
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.Logging;
-using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;

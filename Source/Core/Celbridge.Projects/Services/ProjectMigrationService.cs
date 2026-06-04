@@ -1,8 +1,6 @@
 using System.Text.RegularExpressions;
 using Celbridge.ApplicationEnvironment;
-using Celbridge.FileSystem;
 using Celbridge.Logging;
-using Celbridge.Resources;
 using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;

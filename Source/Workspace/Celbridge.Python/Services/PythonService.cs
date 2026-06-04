@@ -9,7 +9,6 @@ using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.Utilities;

@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.WebView.Services;
 using Celbridge.Workspace;

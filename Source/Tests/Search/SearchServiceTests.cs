@@ -2,7 +2,6 @@ using Celbridge.FileSystem.Services;
 using Celbridge.Resources;
 using Celbridge.Search.Services;
 using Celbridge.Tests.Migration.TestHelpers;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Search;

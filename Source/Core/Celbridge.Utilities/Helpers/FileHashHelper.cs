@@ -1,8 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using Celbridge.FileSystem;
-using Celbridge.Resources;
 using Path = System.IO.Path;
 
 namespace Celbridge.Utilities;

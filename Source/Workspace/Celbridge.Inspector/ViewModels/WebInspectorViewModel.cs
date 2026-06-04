@@ -1,7 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;

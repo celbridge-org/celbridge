@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Celbridge.Resources;
 using ModelContextProtocol.Server;
 using Path = System.IO.Path;
 

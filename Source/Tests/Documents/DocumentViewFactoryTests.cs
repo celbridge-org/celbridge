@@ -1,8 +1,6 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Resources;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests.Documents;
 

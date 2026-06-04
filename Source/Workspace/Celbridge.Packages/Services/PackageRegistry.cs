@@ -1,8 +1,6 @@
 using Celbridge.Documents;
-using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Modules;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 

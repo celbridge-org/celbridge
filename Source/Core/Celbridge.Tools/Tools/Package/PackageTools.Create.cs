@@ -1,7 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Celbridge.FileSystem;
-using Celbridge.Resources;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 

@@ -2,7 +2,6 @@ using Celbridge.Activities;
 using Celbridge.Dialog;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.FileSystem;
 using Celbridge.Messaging;
 using Celbridge.Screenplay.Components;
 using Celbridge.Workspace;

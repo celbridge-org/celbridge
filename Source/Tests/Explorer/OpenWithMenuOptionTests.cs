@@ -4,7 +4,6 @@ using Celbridge.Dialog;
 using Celbridge.Explorer.Menu;
 using Celbridge.Explorer.Menu.Options;
 using Celbridge.Resources;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 

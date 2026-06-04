@@ -1,14 +1,11 @@
-using Celbridge.Explorer.Services;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;

@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text;
-using Celbridge.Resources;
 
 namespace Celbridge.Tests.FileSystem;
 

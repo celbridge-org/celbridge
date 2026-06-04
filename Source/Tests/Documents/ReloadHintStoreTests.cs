@@ -1,6 +1,3 @@
-using Celbridge.Documents;
-using Celbridge.Documents.Services;
-
 namespace Celbridge.Tests.Documents;
 
 /// <summary>

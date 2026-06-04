@@ -3,7 +3,6 @@ using Celbridge.ContextMenu;
 using Celbridge.Dialog;
 using Celbridge.Documents;
 using Celbridge.Logging;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 

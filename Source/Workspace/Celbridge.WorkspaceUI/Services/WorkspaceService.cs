@@ -4,7 +4,6 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.FileSystem;
 using Celbridge.Packages;
 using Celbridge.Inspector;
 using Celbridge.Logging;

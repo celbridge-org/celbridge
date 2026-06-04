@@ -1,6 +1,4 @@
-using Celbridge.FileSystem;
 using Celbridge.Projects;
-using Celbridge.Resources;
 
 namespace Celbridge.WorkspaceUI.Services;
 

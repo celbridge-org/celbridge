@@ -1,10 +1,8 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
 using Celbridge.FilePicker;
-using Celbridge.FileSystem;
 using Celbridge.Navigation;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.UserInterface.Services;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;

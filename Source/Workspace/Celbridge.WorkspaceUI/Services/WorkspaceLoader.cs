@@ -1,9 +1,7 @@
 using System.Text;
 using Celbridge.Console;
-using Celbridge.FileSystem;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;

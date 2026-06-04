@@ -1,17 +1,11 @@
 using System.IO.Compression;
 using System.Text.Json;
-using Celbridge.FileSystem;
-using Celbridge.Resources;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Tomlyn;
 using Tomlyn.Model;
 using File = System.IO.File;
-using FileAccess = System.IO.FileAccess;
 using FileAttributes = System.IO.FileAttributes;
-using FileMode = System.IO.FileMode;
-using FileShare = System.IO.FileShare;
-using FileStream = System.IO.FileStream;
 using MemoryStream = System.IO.MemoryStream;
 using Path = System.IO.Path;
 

@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Celbridge.Commands;
 using Celbridge.Dialog;
-using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
 using Celbridge.Host;
@@ -13,7 +12,6 @@ using Celbridge.UserInterface;
 using Celbridge.WebHost;
 using Celbridge.WebHost.Services;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Web.WebView2.Core;
 

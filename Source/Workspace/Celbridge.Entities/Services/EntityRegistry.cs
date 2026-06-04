@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Celbridge.Entities.Models;
-using Celbridge.FileSystem;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Workspace;

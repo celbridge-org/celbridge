@@ -1,5 +1,3 @@
-using Celbridge.FileSystem;
-using Celbridge.Resources;
 using Celbridge.WorkspaceUI.Models;
 using SQLite;
 using System.Text.Json;

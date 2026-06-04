@@ -3,7 +3,6 @@ using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
-using Uno.Extensions;
 
 namespace Celbridge.Tests.Resources;
 

@@ -1,7 +1,4 @@
-using Celbridge.Entities;
-using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Projects;
 using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;

@@ -1,6 +1,3 @@
-using Celbridge.Entities;
-using Celbridge.FileSystem;
-using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Projects;
 using Celbridge.Resources;

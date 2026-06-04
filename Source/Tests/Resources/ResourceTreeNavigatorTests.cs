@@ -1,4 +1,3 @@
-using Celbridge.Resources;
 using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Models;
 using Celbridge.UserInterface;

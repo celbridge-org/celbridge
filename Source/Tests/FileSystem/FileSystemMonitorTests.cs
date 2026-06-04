@@ -1,5 +1,4 @@
 using Celbridge.FileSystem.Services;
-using Celbridge.Logging;
 
 namespace Celbridge.Tests.FileSystem;
 

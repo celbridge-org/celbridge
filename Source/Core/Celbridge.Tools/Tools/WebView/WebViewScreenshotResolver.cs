@@ -1,5 +1,4 @@
 using System.Globalization;
-using Celbridge.Resources;
 using Path = System.IO.Path;
 
 namespace Celbridge.Tools;

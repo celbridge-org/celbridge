@@ -1,8 +1,6 @@
 using System.IO.Compression;
 using Celbridge.ApplicationEnvironment;
-using Celbridge.FileSystem;
 using Celbridge.Python;
-using Celbridge.Resources;
 using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Projects.Services;

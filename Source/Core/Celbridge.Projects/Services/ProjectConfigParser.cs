@@ -1,6 +1,4 @@
 using System.Globalization;
-using Celbridge.FileSystem;
-using Celbridge.Resources;
 using Tomlyn;
 using Tomlyn.Model;
 

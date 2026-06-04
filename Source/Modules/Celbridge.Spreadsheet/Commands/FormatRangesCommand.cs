@@ -1,6 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
-using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 

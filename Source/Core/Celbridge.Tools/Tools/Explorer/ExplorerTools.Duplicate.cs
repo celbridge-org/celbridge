@@ -1,9 +1,4 @@
 using System.Text.Json;
-using Celbridge.DataTransfer;
-using Celbridge.Explorer;
-using Celbridge.Resources;
-using Celbridge.Utilities;
-using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 

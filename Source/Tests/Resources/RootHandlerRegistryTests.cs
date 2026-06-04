@@ -1,4 +1,3 @@
-using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
 

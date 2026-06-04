@@ -1,8 +1,6 @@
 using Celbridge.Commands;
-using Celbridge.FileSystem;
 using Celbridge.Navigation;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.Settings;
 
 namespace Celbridge.UserInterface.ViewModels.Pages;
