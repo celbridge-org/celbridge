@@ -121,7 +121,6 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
     }
 
-    [AllowDirectFileSystemAccess]
     public static async Task<Result> CreateWorkspaceSettingsAsync(ILocalFileSystem fileSystem, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
@@ -143,13 +142,6 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
                 {
                     return createFolderResult;
                 }
-
-#if WINDOWS
-                // Hide the folder in windows explorer. File attribute mutation
-                // is outside the ILocalFileSystem gateway scope.
-                var attributes = File.GetAttributes(parentFolder);
-                File.SetAttributes(parentFolder, attributes | System.IO.FileAttributes.Hidden);
-#endif
             }
 
             // Create and initialize the workspace settings database
