@@ -1,12 +1,8 @@
 namespace Celbridge.FileSystem;
 
 /// <summary>
-/// Portable file attribute bits surfaced through ILocalFileSystem. Each backend
-/// supports the subset that maps to its native concepts: the local backend
-/// models ReadOnly as the DOS read-only bit; remote backends translate to ACL
-/// or permission probes. There is deliberately no Hidden flag: visibility is
-/// pattern-based (the resource policy, not the OS hidden attribute), and the
-/// attribute is a no-op to set on POSIX anyway.
+/// Portable file attribute flags surfaced through ILocalFileSystem. Each backend
+/// supports the subset that maps to its native concepts.
 /// </summary>
 [Flags]
 public enum FileSystemAttributes
@@ -68,11 +64,8 @@ public enum StorageItemKind
 }
 
 /// <summary>
-/// Metadata for a single storage item returned by GetInfoAsync. Size is the
-/// file size in bytes for File, 0 for Folder and NotFound. ModifiedUtc is the
-/// last-modified timestamp for File and Folder, default(DateTime) for NotFound.
-/// Attributes carries the portable flags the backend resolved; flags the
-/// backend does not model are absent.
+/// Metadata returned by GetInfoAsync: the item's kind, size in bytes (0 for
+/// folders and missing items), last-modified time, and portable attribute flags.
 /// </summary>
 public record StorageItemInfo(
     StorageItemKind Kind,
@@ -81,20 +74,18 @@ public record StorageItemInfo(
     FileSystemAttributes Attributes);
 
 /// <summary>
-/// A single entry returned by EnumerateAsync. FullPath is the absolute path on
-/// the substrate. IsFolder true means a directory; false means "not a directory"
-/// (a regular file, but on POSIX also a symlink, FIFO, socket, or device), so a
-/// non-folder is not guaranteed to be a readable regular file. Size and ModifiedUtc
-/// carry the metadata the directory walk already surfaces for free; Size is 0 for
-/// folders.
+/// A file or folder entry returned by EnumerateAsync, with its absolute path and
+/// the size and modified-time from the directory walk. IsFolder is false for
+/// anything that is not a directory, so a non-folder is not guaranteed to be a
+/// readable regular file. Size is 0 for folders.
+/// </summary>
 public record FileSystemEntry(string FullPath, bool IsFolder, long Size, DateTime ModifiedUtc);
 
 /// <summary>
 /// Path-based gateway for local-substrate filesystem reads and writes. The
-/// resource layer composes this for raw IO against project: and other on-disk
-/// roots; remote-substrate backends bypass this interface and implement
-/// IResourceFileSystem directly against their API client. Methods mirror the
-/// System.IO File and Directory primitives one-to-one.
+/// resource layer composes it for raw IO against project: and other on-disk
+/// roots. Remote-substrate backends bypass this interface and implement
+/// IResourceFileSystem directly against their API client.
 /// </summary>
 public interface ILocalFileSystem
 {
@@ -137,12 +128,10 @@ public interface ILocalFileSystem
     Task<Result<StorageItemInfo>> GetInfoAsync(string path);
 
     /// <summary>
-    /// Enumerates the files and folders matching the pattern under the given
-    /// folder, either the immediate level or the full subtree. Each entry is
-    /// tagged as a file or a folder. Results are deterministic across platforms:
-    /// folders first, then files, each group ordered by ordinal full path. The
-    /// OS enumeration order is unspecified (NTFS returns name-sorted, ext4
-    /// hash-arbitrary), so the substrate sorts to give every consumer one view.
+    /// Enumerates the files and folders matching the pattern under the given folder,
+    /// either the immediate level or the full subtree. Results are deterministic
+    /// across platforms: folders first, then files, each group ordered by ordinal
+    /// full path.
     /// </summary>
     Task<Result<IReadOnlyList<FileSystemEntry>>> EnumerateAsync(string path, string pattern, bool recursive);
 
@@ -160,8 +149,8 @@ public interface ILocalFileSystem
 
     /// <summary>
     /// Copies a single file from source to destination. The destination's parent
-    /// folder must exist. There is no folder counterpart: .NET has no native
-    /// Directory.Copy, so recursive folder copy is composed in the resource layer.
+    /// folder must exist. Recursive folder copy has no gateway counterpart and is
+    /// composed in the resource layer.
     /// </summary>
     Task<Result> CopyFileAsync(string source, string dest);
 

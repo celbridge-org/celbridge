@@ -14,7 +14,9 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
     private readonly IFileIconService _fileIconService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ProjectTreeBuilder(IFileIconService fileIconService, IWorkspaceWrapper workspaceWrapper)
+    public ProjectTreeBuilder(
+        IFileIconService fileIconService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _fileIconService = fileIconService;
         _workspaceWrapper = workspaceWrapper;

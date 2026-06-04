@@ -7,11 +7,8 @@ using Tomlyn.Model;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// One-shot, stateless on-demand scanner over the project's text files. The
-/// rename cascade, ProjectCheckCommand, and the data_find_tag tool all consume
-/// the same instance. Each call walks the registry's known files in parallel
-/// via IResourceFileSystem; the OS page cache absorbs repeated reads. No
-/// in-memory index, no persistent cache.
+/// Stateless, on-demand scanner that searches the project's text files for
+/// resource references and tags.
 /// </summary>
 public sealed class ResourceScanner : IResourceScanner
 {

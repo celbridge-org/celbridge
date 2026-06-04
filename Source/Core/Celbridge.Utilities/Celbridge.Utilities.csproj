@@ -23,7 +23,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Celbridge.FileSystem\Celbridge.FileSystem.csproj" />
     <ProjectReference Include="..\Celbridge.Foundation\Celbridge.Foundation.csproj" />
   </ItemGroup>
   

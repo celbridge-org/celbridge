@@ -4,9 +4,9 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Packages;
 using Celbridge.Inspector;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Search;
@@ -45,8 +45,7 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         IServiceProvider serviceProvider,
         ILogger<WorkspaceService> logger,
         IMessengerService messengerService,
-        IProjectService projectService,
-        ILocalFileSystem fileSystem)
+        IProjectService projectService)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -77,10 +76,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             ProjectConstants.CelbridgeFolder,
             ProjectConstants.SettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
-        // Sync constructor; the folder creation is bounded and infrequent
-        // (once per workspace open) so blocking on the async gateway here
-        // is acceptable.
-        SyncRunner.Run(() => fileSystem.CreateFolderAsync(workspaceSettingsFolder));
+
+        // The folder itself is created on demand by AcquireWorkspaceSettingsAsync.
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);

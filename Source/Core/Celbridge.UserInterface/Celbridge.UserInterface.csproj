@@ -24,7 +24,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Core\Celbridge.FileSystem\Celbridge.FileSystem.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.Foundation\Celbridge.Foundation.csproj" />
     <ProjectReference Include="..\..\Core\Celbridge.WebHost\Celbridge.WebHost.csproj" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-namespace Celbridge.FileSystem;
+namespace Celbridge.Utilities;
 
 /// <summary>
 /// Runs an async operation from a sync call site without deadlocking on a

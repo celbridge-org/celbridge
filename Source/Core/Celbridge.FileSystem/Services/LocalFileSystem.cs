@@ -3,11 +3,9 @@ using System.Text;
 namespace Celbridge.FileSystem.Services;
 
 /// <summary>
-/// v1 implementation of <see cref="ILocalFileSystem"/>. A thin pass-through to the
-/// System.IO static facades with a uniform bounded-retry policy applied to
-/// every transient IOException (sharing violations from antivirus, indexers,
-/// cloud-sync clients). The only direct-System.IO call site in product code;
-/// all other consumers go through this layer.
+/// Passes filesystem calls through to the System.IO facades, wrapping each in a
+/// bounded retry that absorbs the transient sharing violations antivirus,
+/// indexers, and cloud-sync clients cause.
 /// </summary>
 public sealed class LocalFileSystem : ILocalFileSystem
 {

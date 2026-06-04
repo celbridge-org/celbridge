@@ -15,7 +15,10 @@ internal sealed class SidecarCascade
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ILocalFileSystem _fileSystem;
 
-    public SidecarCascade(ILogger logger, IWorkspaceWrapper workspaceWrapper, ILocalFileSystem fileSystem)
+    public SidecarCascade(
+        ILogger logger,
+        IWorkspaceWrapper workspaceWrapper,
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;

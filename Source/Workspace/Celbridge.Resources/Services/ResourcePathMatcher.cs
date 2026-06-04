@@ -20,11 +20,8 @@ public enum PathMatchTarget
 }
 
 /// <summary>
-/// Five-rule pattern matcher for the resource policy engine. Anchoring depends
-/// on whether the pattern contains a path separator: a bare name with no slash
-/// matches at any depth; a pattern with a slash anchors at the path root. '*'
-/// matches a single segment; '**' matches recursively. A trailing '/' restricts
-/// to folders.
+/// Compiles a glob-style resource path pattern into a reusable matcher for the
+/// resource policy engine.
 /// </summary>
 public sealed class ResourcePathMatcher
 {

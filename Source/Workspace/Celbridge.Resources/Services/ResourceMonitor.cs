@@ -5,14 +5,9 @@ using Timer = System.Timers.Timer;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Watches each registered root that advertises IsWatched for file system
-/// changes and schedules debounced resource updates.
+/// Translates raw file system watch events on watched roots into resource-level
+/// change notifications and registry updates.
 /// </summary>
-/// <remarks>
-/// Wraps one IFileSystemMonitor per watched root for the raw substrate events
-/// and keeps the domain half: path-to-ResourceKey mapping, policy filtering,
-/// messenger dispatch, and the project-tree registry debounce.
-/// </remarks>
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
     private const int UpdateDebounceMs = 250;
