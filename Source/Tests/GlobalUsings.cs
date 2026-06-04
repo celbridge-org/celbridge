@@ -1,5 +1,6 @@
 global using Celbridge.Core;
 global using Celbridge.Documents;
+global using Celbridge.FileSystem;
 global using Celbridge.Logging;
 global using Celbridge.Utilities;
 global using Celbridge.Documents.Services;

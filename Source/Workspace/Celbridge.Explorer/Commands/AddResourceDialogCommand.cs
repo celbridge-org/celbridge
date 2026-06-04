@@ -83,6 +83,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
+        validator.ValidateAsFolder = false;
 
         // Select only the filename part without the extension
         var extensionIndex = defaultFileName.LastIndexOf('.');
@@ -142,6 +143,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = parentFolder;
+        validator.ValidateAsFolder = true;
 
         var titleString = _stringLocalizer.GetString(AddFolderTitleKey);
         var nameString = _stringLocalizer.GetString(FolderNameKey);
@@ -186,7 +188,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var parentFolderKey = resourceRegistry.GetResourceKey(parentFolder);
 
         string defaultFolderName = string.Empty;
@@ -196,7 +198,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             var candidateName = _stringLocalizer.GetString(DefaultFolderNameKey, folderNumber).ToString();
 
             var candidateKey = parentFolderKey.Combine(candidateName);
-            var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+            var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind == StorageItemKind.NotFound)
             {
@@ -221,7 +223,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var editorSettings = _serviceProvider.GetRequiredService<IEditorSettings>();
 
         // Get the previously saved extension
@@ -239,7 +241,7 @@ public class AddResourceDialogCommand : CommandBase, IAddResourceDialogCommand
             candidateName = Path.ChangeExtension(candidateName, extension);
 
             var candidateKey = parentFolderKey.Combine(candidateName);
-            var infoResult = await fileStorage.GetInfoAsync(candidateKey);
+            var infoResult = await resourceFileSystem.GetInfoAsync(candidateKey);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind == StorageItemKind.NotFound)
             {

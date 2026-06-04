@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Explorer;
-using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.WebView.Services;
 using Celbridge.Workspace;
@@ -82,9 +81,9 @@ public partial class WebViewDocumentViewModel : DocumentViewModel
 
         // The .webview.cel file is a standalone .cel form: SidecarService.ReadAsync
         // treats the resource itself as the storage, parses the TOML frontmatter
-        // through SidecarHelper, and routes IO via the chokepoint so this read
+        // through SidecarHelper, and routes IO via the gateway so this read
         // coordinates with concurrent writes from the inspector panel.
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         var readResult = await sidecarService.ReadAsync(FileResource);
         if (readResult.IsFailure)
         {

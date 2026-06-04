@@ -18,14 +18,34 @@ public static class ProjectConfigParser
     /// </summary>
     public static Result<ProjectConfig> ParseFromFile(string configFilePath)
     {
+        // Static class cannot receive DI, so fall back to the service locator
+        // to acquire the file system gateway.
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+        return ParseFromFile(configFilePath, fileSystem);
+    }
+
+    /// <summary>
+    /// Parses a project config from a .celbridge file using the supplied file system.
+    /// Returns an empty config if the file doesn't exist.
+    /// </summary>
+    public static Result<ProjectConfig> ParseFromFile(string configFilePath, ILocalFileSystem fileSystem)
+    {
         try
         {
-            if (!File.Exists(configFilePath))
+            var infoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(configFilePath));
+            if (infoResult.IsFailure || infoResult.Value.Kind != StorageItemKind.File)
             {
                 return Result<ProjectConfig>.Ok(new ProjectConfig());
             }
 
-            var text = File.ReadAllText(configFilePath);
+            var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(configFilePath));
+            if (readResult.IsFailure)
+            {
+                return Result<ProjectConfig>.Fail($"Failed to read TOML file: {configFilePath}")
+                    .WithErrors(readResult);
+            }
+
+            var text = readResult.Value;
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
             {
@@ -50,6 +70,7 @@ public static class ProjectConfigParser
         var projectSection = new ProjectSection();
         var celbridgeSection = new CelbridgeSection();
         var shortcutsSection = new ShortcutsSection();
+        var resourcesSection = new ResourcesSection();
 
         // [project]
         if (root.TryGetValue("project", out var projectObject) &&
@@ -134,13 +155,59 @@ public static class ProjectConfigParser
             }
         }
 
+        // [resources]
+        if (root.TryGetValue("resources", out var resourcesObject) &&
+            resourcesObject is TomlTable resourcesTable)
+        {
+            resourcesSection = resourcesSection with
+            {
+                IgnoreFile = ReadString(resourcesTable, "ignore-file") ?? resourcesSection.IgnoreFile,
+                Add = ReadStringList(resourcesTable, "add") ?? resourcesSection.Add,
+                Remove = ReadStringList(resourcesTable, "remove") ?? resourcesSection.Remove,
+                Lock = ReadStringList(resourcesTable, "lock") ?? resourcesSection.Lock,
+            };
+        }
+
         return new ProjectConfig
         {
             Project = projectSection,
             Celbridge = celbridgeSection,
             Shortcuts = shortcutsSection,
+            Resources = resourcesSection,
             Features = featuresDict
         };
+    }
+
+    // Returns the string value for the key, or null when the key is absent or
+    // not a string. An empty string in the config is returned as-is so callers
+    // can distinguish "set to empty" from "not set" (e.g. ignore-file = "").
+    private static string? ReadString(TomlTable table, string key)
+    {
+        if (table.TryGetValue(key, out var value)
+            && value is string s)
+        {
+            return s;
+        }
+        return null;
+    }
+
+    private static IReadOnlyList<string>? ReadStringList(TomlTable table, string key)
+    {
+        if (!table.TryGetValue(key, out var value)
+            || value is not TomlArray array)
+        {
+            return null;
+        }
+
+        var items = new List<string>(array.Count);
+        foreach (var entry in array)
+        {
+            if (entry is string s)
+            {
+                items.Add(s);
+            }
+        }
+        return items;
     }
 
     private static ShortcutsSection ParseShortcutsArray(TomlTableArray shortcutsArray)

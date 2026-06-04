@@ -8,11 +8,48 @@ public sealed record class ProjectConfig
     public ProjectSection Project { get; init; } = new();
     public CelbridgeSection Celbridge { get; init; } = new();
     public ShortcutsSection Shortcuts { get; init; } = new();
+    public ResourcesSection Resources { get; init; } = new();
 
     /// <summary>
     /// Feature flags dictionary from [features] section.
     /// </summary>
     public IReadOnlyDictionary<string, bool> Features { get; init; } = new Dictionary<string, bool>();
+}
+
+/// <summary>
+/// Models the [resources] section from the .celbridge project config.
+/// Inputs to the workspace-scoped policy engine. The resource set is computed
+/// as (not ignored by the ignore-file, or matched by Add) and not matched by
+/// Remove. Lock is a separate axis that freezes paths in place.
+/// </summary>
+public sealed record class ResourcesSection
+{
+    /// <summary>
+    /// Path to a gitignore-format file (relative to the project root) whose
+    /// matched files are excluded from the resource set. Defaults to ".gitignore".
+    /// An empty string disables the ignore baseline, so every on-disk path below
+    /// the system tier is a candidate resource.
+    /// </summary>
+    public string IgnoreFile { get; init; } = ".gitignore";
+
+    /// <summary>
+    /// Patterns that add resources back into the set even when the ignore-file
+    /// hides them (e.g. "Python/.venv/**"). Empty by default.
+    /// </summary>
+    public IReadOnlyList<string> Add { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Patterns that drop resources from the set entirely. Takes precedence over
+    /// Add and the ignore baseline. Empty by default.
+    /// </summary>
+    public IReadOnlyList<string> Remove { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Patterns matching resources frozen in place: content cannot be written
+    /// and neither the resource nor any ancestor folder can be moved, renamed,
+    /// or deleted. Applies to every caller, including the in-app editor.
+    /// </summary>
+    public IReadOnlyList<string> Lock { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>

@@ -25,17 +25,20 @@ public class PackageLocalizationService : IPackageLocalizationService
         AllowTrailingCommas = true
     };
 
-    private static readonly IPackageReader BundledReader = new DirectPackageReader();
-
     private readonly ILogger<PackageLocalizationService> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILocalFileSystem _fileSystem;
+    private readonly IPackageReader _bundledReader;
 
     public PackageLocalizationService(
         ILogger<PackageLocalizationService> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
+        _bundledReader = new DirectPackageReader(fileSystem);
     }
 
     public Dictionary<string, string> LoadStrings(PackageInfo package, string? locale = null)
@@ -65,20 +68,20 @@ public class PackageLocalizationService : IPackageLocalizationService
         return new Dictionary<string, string>();
     }
 
-    // Project packages route through the chokepoint by reverse-resolving the path
+    // Project packages route through the gateway by reverse-resolving the path
     // to a ResourceKey; bundled packages stay on direct File.* IO. The project
-    // reader is constructed on demand because the workspace-scoped IFileStorage
+    // reader is constructed on demand because the workspace-scoped IResourceFileSystem
     // and IResourceRegistry must be looked up at call time.
     private IPackageReader GetReaderForPackage(PackageInfo package)
     {
         if (package.Origin == PackageOrigin.Project)
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            return new FileStoragePackageReader(fileStorage, resourceRegistry);
+            return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         }
 
-        return BundledReader;
+        return _bundledReader;
     }
 
     private Dictionary<string, string>? TryLoadJsonFile(IPackageReader reader, string path)

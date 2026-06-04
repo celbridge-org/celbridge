@@ -90,12 +90,12 @@ public partial class FileTools
         // only verification signal a caller has for a truncated edit, so
         // stripping their context would leave bare positions with no evidence.
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         string[]? fileLines = null;
         if (resultValue.AffectedRanges.Count > 0)
         {
-            fileLines = await ReadFileLinesForContextAsync(fileStorage, fileResourceKey);
+            fileLines = await ReadFileLinesForContextAsync(resourceFileSystem, fileResourceKey);
         }
 
         var affectedLines = new List<MultiEditAffectedLineRange>(resultValue.AffectedRanges.Count);

@@ -13,6 +13,7 @@ public partial class MainPageViewModel : ObservableObject
     private readonly ICommandService _commandService;
     private readonly IEditorSettings _editorSettings;
     private readonly IUndoService _undoService;
+    private readonly ILocalFileSystem _fileSystem;
 
     public MainPageViewModel(
         Logging.ILogger<MainPageViewModel> logger,
@@ -20,7 +21,8 @@ public partial class MainPageViewModel : ObservableObject
         INavigationService navigationService,
         ICommandService commandService,
         IEditorSettings editorSettings,
-        IUndoService undoService)
+        IUndoService undoService,
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _messengerService = messengerService;
@@ -28,18 +30,26 @@ public partial class MainPageViewModel : ObservableObject
         _commandService = commandService;
         _editorSettings = editorSettings;
         _undoService = undoService;
+        _fileSystem = fileSystem;
 
         // Register for undo/redo messages
         _messengerService.Register<UndoRequestedMessage>(this, OnUndoRequested);
         _messengerService.Register<RedoRequestedMessage>(this, OnRedoRequested);
     }
 
-    public void OnMainPage_Loaded()
+    public async Task OnMainPage_LoadedAsync()
     {
         // Open the previous project if one was loaded last time we ran the application.
         var previousProjectFile = _editorSettings.PreviousProject;
-        if (!string.IsNullOrEmpty(previousProjectFile) &&
-            File.Exists(previousProjectFile))
+        bool previousProjectExists = false;
+        if (!string.IsNullOrEmpty(previousProjectFile))
+        {
+            var infoResult = await _fileSystem.GetInfoAsync(previousProjectFile);
+            previousProjectExists = infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.File;
+        }
+
+        if (previousProjectExists)
         {
             _commandService.Execute<ILoadProjectCommand>((command) =>
             {

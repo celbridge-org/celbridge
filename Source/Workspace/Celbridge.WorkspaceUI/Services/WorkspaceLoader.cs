@@ -2,7 +2,6 @@ using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.Server;
 using Celbridge.Settings;
 using Celbridge.UserInterface;
@@ -71,10 +70,7 @@ public class WorkspaceLoader
         //
         var projectFolderPath = _workspaceWrapper.WorkspaceService.ResourceService.Registry.ProjectFolderPath;
         projectFolderPath = Path.GetFullPath(projectFolderPath);
-        if (Path.Exists(projectFolderPath))
-        {
-            Directory.SetCurrentDirectory(projectFolderPath);
-        }
+        SetProcessWorkingFolder(projectFolderPath);
 
         //
         // Acquire the workspace settings
@@ -115,6 +111,20 @@ public class WorkspaceLoader
 
             var resourceService = workspaceService.ResourceService;
 
+            // Initialize the resource policy before the monitor, package scan, and
+            // first registry build, each of which consults the policy engine.
+            var initPolicyResult = await resourceService.Policy.InitializeAsync();
+
+            // InitializeAsync degrades a missing or unreadable ignore-file to an
+            // empty ignore set, so it does not currently fail. This branch is the
+            // intended handling once [resources] config validation can fail: warn
+            // and continue rather than fail project load, because the *.celbridge
+            // config stays reachable (system-allow) for the user to correct.
+            if (initPolicyResult.IsFailure)
+            {
+                _logger.LogWarning(initPolicyResult, "Failed to initialize resource policy");
+            }
+
             // Start file system watchers now that the wrapper is fully populated.
             // The monitor cannot be initialized in ResourceService's constructor because
             // it reaches into the workspace via IWorkspaceWrapper, which is only set up
@@ -138,7 +148,7 @@ public class WorkspaceLoader
             }
 
             // Update resource registry immediately to ensure we are up to date
-            var updateResult = resourceService.UpdateResources();
+            var updateResult = await resourceService.UpdateResourcesAsync();
             if (updateResult.IsFailure)
             {
                 return Result.Fail("Failed to update resources")
@@ -226,6 +236,18 @@ public class WorkspaceLoader
         }
 
         return Result.Ok();
+    }
+
+    // Sets the process working folder to the loaded project. Directory.SetCurrentDirectory
+    // sets process-global state that the ILocalFileSystem gateway does not model, so this
+    // stays a direct System.IO carve-out.
+    [AllowDirectFileSystemAccess]
+    private static void SetProcessWorkingFolder(string folderPath)
+    {
+        if (Path.Exists(folderPath))
+        {
+            Directory.SetCurrentDirectory(folderPath);
+        }
     }
 
     // Runs the project consistency check and hands the report to ProjectCheckReporter.

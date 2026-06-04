@@ -11,6 +11,7 @@ public class ResourceTransferService : IResourceTransferService
 {
     private readonly ICommandService _commandService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILocalFileSystem _fileSystem;
 
     private IResourceRegistry? _resourceRegistry;
     private IResourceRegistry ResourceRegistry =>
@@ -18,10 +19,12 @@ public class ResourceTransferService : IResourceTransferService
 
     public ResourceTransferService(
         ICommandService commandService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ILocalFileSystem fileSystem)
     {
         _commandService = commandService;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
     }
 
     public async Task<Result<IResourceTransfer>> CreateResourceTransferAsync(List<string> sourcePaths, ResourceKey destFolderResource, DataTransferMode transferMode)
@@ -57,8 +60,8 @@ public class ResourceTransferService : IResourceTransferService
             }
             var destFolderPath = resolveResult.Value;
 
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-            var destInfoResult = await fileStorage.GetInfoAsync(destFolderResource);
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            var destInfoResult = await resourceFileSystem.GetInfoAsync(destFolderResource);
             if (destInfoResult.IsFailure
                 || destInfoResult.Value.Kind != StorageItemKind.Folder)
             {
@@ -78,11 +81,14 @@ public class ResourceTransferService : IResourceTransferService
                 }
 
                 ResourceType resourceType = ResourceType.Invalid;
-                if (File.Exists(sourcePath))
+                var sourceInfoResult = await _fileSystem.GetInfoAsync(sourcePath);
+                if (sourceInfoResult.IsSuccess
+                    && sourceInfoResult.Value.Kind == StorageItemKind.File)
                 {
                     resourceType = ResourceType.File;
                 }
-                else if (Directory.Exists(sourcePath))
+                else if (sourceInfoResult.IsSuccess
+                    && sourceInfoResult.Value.Kind == StorageItemKind.Folder)
                 {
                     resourceType = ResourceType.Folder;
                 }

@@ -27,7 +27,7 @@ public class SearchService : ISearchService, IDisposable
     private readonly TextReplacer _textReplacer;
     private bool _disposed;
 
-    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
     private IResourceRegistry ResourceRegistry => _workspaceWrapper.WorkspaceService.ResourceService.Registry;
     private IWorkspaceSettings WorkspaceSettings => _workspaceWrapper.WorkspaceService.WorkspaceSettings;
 
@@ -48,11 +48,11 @@ public class SearchService : ISearchService, IDisposable
     }
 
     // Decides whether a file should be included in a search. Probes the file
-    // through the chokepoint so the size check honours the same containment
+    // through the gateway so the size check honours the same containment
     // validation as the read that follows. Internal for the test suite.
     internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath)
     {
-        var infoResult = await FileStorage.GetInfoAsync(resource);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -249,10 +249,10 @@ public class SearchService : ISearchService, IDisposable
                 return null;
             }
 
-            // Stream the file via the chokepoint so reads pick up the same
+            // Stream the file via the gateway so reads pick up the same
             // containment validation as writes and large files do not load
             // fully into memory.
-            var openResult = await FileStorage.OpenReadAsync(resourceKey);
+            var openResult = await ResourceFileSystem.OpenReadAsync(resourceKey);
             if (openResult.IsFailure)
             {
                 return null;
@@ -351,7 +351,7 @@ public class SearchService : ISearchService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var readResult = await FileStorage.ReadAllTextAsync(resource);
+            var readResult = await ResourceFileSystem.ReadAllTextAsync(resource);
             if (readResult.IsFailure)
             {
                 return new ReplaceResult(false, 0);
@@ -370,7 +370,7 @@ public class SearchService : ISearchService, IDisposable
                 return new ReplaceResult(true, 0);
             }
 
-            var writeResult = await FileStorage.WriteAllTextAsync(resource, newContent);
+            var writeResult = await ResourceFileSystem.WriteAllTextAsync(resource, newContent);
             if (writeResult.IsFailure)
             {
                 return new ReplaceResult(false, 0);
@@ -425,7 +425,7 @@ public class SearchService : ISearchService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var readResult = await FileStorage.ReadAllTextAsync(resource);
+            var readResult = await ResourceFileSystem.ReadAllTextAsync(resource);
             if (readResult.IsFailure)
             {
                 return new ReplaceMatchResult(false);
@@ -446,7 +446,7 @@ public class SearchService : ISearchService, IDisposable
                 return new ReplaceMatchResult(false);
             }
 
-            var writeResult = await FileStorage.WriteAllTextAsync(resource, newContent);
+            var writeResult = await ResourceFileSystem.WriteAllTextAsync(resource, newContent);
             if (writeResult.IsFailure)
             {
                 return new ReplaceMatchResult(false);

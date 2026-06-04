@@ -1,5 +1,3 @@
-using Celbridge.Utilities;
-
 namespace Celbridge.Tests.Utilities;
 
 /// <summary>

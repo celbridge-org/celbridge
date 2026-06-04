@@ -1,7 +1,5 @@
 using System.Globalization;
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
-using Celbridge.Spreadsheet.Services;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -79,8 +77,8 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
         int totalRowCount = 0;
         int sheetsCreated = 0;
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -133,7 +131,7 @@ public class ImportCsvCommand : CommandBase, IImportCsvCommand
                 totalRowCount += parsedRows.Count;
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

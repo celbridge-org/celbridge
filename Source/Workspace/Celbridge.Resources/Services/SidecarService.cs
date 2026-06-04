@@ -52,16 +52,16 @@ public sealed class SidecarService : ISidecarService
         }
         var sidecarKey = resolveResult.Value;
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(sidecarKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(sidecarKey);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
             return new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null);
         }
 
-        var readResult = await fileStorage.ReadAllTextAsync(sidecarKey);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(sidecarKey);
         if (readResult.IsFailure)
         {
             return new SidecarReadResult(SidecarReadOutcome.Broken, null, readResult.FirstErrorMessage);
@@ -258,7 +258,7 @@ public sealed class SidecarService : ISidecarService
 
     // The shared read-modify-write engine behind every typed mutator. Loads the
     // current sidecar state into mutable working copies, runs the supplied
-    // mutation, then writes the composed result back through the chokepoint.
+    // mutation, then writes the composed result back through the gateway.
     // The pre-mutation compose is captured up front so the post-mutation compose
     // can be compared against it; when they match the write is skipped, so a
     // no-op mutate (AddTagAsync with an already-present tag, SetFieldAsync to
@@ -319,8 +319,8 @@ public sealed class SidecarService : ISidecarService
             return Result.Ok();
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var writeResult = await fileStorage.WriteAllTextAsync(sidecarKey, canonicalAfter);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var writeResult = await resourceFileSystem.WriteAllTextAsync(sidecarKey, canonicalAfter);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to write sidecar '{sidecarKey}'.")

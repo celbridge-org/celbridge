@@ -26,9 +26,9 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var separatorResult = await ResolveTargetSeparatorAsync(fileStorage);
+        var separatorResult = await ResolveTargetSeparatorAsync(resourceFileSystem);
         if (separatorResult.IsFailure)
         {
             return separatorResult;
@@ -37,23 +37,23 @@ public class WriteFileCommand : CommandBase, IWriteFileCommand
 
         var contentToWrite = LineEndingHelper.ConvertLineEndings(Content, targetSeparator);
 
-        return await fileStorage.WriteAllTextAsync(FileResource, contentToWrite);
+        return await resourceFileSystem.WriteAllTextAsync(FileResource, contentToWrite);
     }
 
     // Preserve the existing file's line endings on overwrite. For a new file,
     // honour whatever the caller's content already uses (so a CSV exporter
     // emitting CRLF lands as CRLF on disk); fall back to the platform default
     // when neither has line endings to detect.
-    private async Task<Result<string>> ResolveTargetSeparatorAsync(IFileStorage fileStorage)
+    private async Task<Result<string>> ResolveTargetSeparatorAsync(IResourceFileSystem resourceFileSystem)
     {
-        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
             return LineEndingHelper.DetectSeparatorOrDefault(Content);
         }
 
-        var readResult = await fileStorage.ReadAllTextAsync(FileResource);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (readResult.IsFailure)
         {
             return Result<string>.Fail($"Failed to read existing file: '{FileResource}'")

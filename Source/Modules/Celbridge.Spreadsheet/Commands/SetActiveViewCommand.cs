@@ -1,6 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Documents;
-using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -105,8 +103,8 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
 
     private async Task<Result<AppliedViewState>> ApplyViewStateToWorkbookAsync(ResourceKey workbookResource)
     {
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -221,7 +219,7 @@ public class SetActiveViewCommand : CommandBase, ISetActiveViewCommand
             var documentsService = _workspaceWrapper.WorkspaceService.DocumentsService;
             documentsService.RegisterReloadHint(workbookResource, ReloadHint.DiskWinsOnViewState);
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

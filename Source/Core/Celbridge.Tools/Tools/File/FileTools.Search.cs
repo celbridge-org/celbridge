@@ -20,8 +20,8 @@ public partial class FileTools
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceService = workspaceWrapper.WorkspaceService.ResourceService;
         var resourceRegistry = resourceService.Registry;
-        var rootHandlerRegistry = resourceService.RootHandlerRegistry;
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var rootHandlerRegistry = resourceService.RootHandlers;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         var regexPattern = GlobHelper.PathGlobToRegex(pattern);
         var regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
@@ -29,7 +29,7 @@ public partial class FileTools
         var isFolderSearch = string.Equals(type, "folder", StringComparison.OrdinalIgnoreCase);
 
         // When the pattern carries a non-default root prefix (logs:, temp:), walk
-        // that root's filesystem tree via the chokepoint. Patterns with no prefix
+        // that root's filesystem tree via the gateway. Patterns with no prefix
         // or the project: prefix fall through to the existing in-memory tree path.
         var patternRoot = ExtractRootPrefix(pattern);
         if (patternRoot is not null
@@ -37,7 +37,7 @@ public partial class FileTools
             && rootHandlerRegistry.RootHandlers.ContainsKey(patternRoot))
         {
             return await SearchNonDefaultRootAsync(
-                fileStorage, patternRoot, regex, isFolderSearch, includeMetadata);
+                resourceFileSystem, patternRoot, regex, isFolderSearch, includeMetadata);
         }
 
         if (isFolderSearch)
@@ -54,7 +54,7 @@ public partial class FileTools
                 var results = new List<SearchResultWithMetadata>();
                 foreach (var folderKey in matchingFolders)
                 {
-                    var infoResult = await fileStorage.GetInfoAsync(folderKey);
+                    var infoResult = await resourceFileSystem.GetInfoAsync(folderKey);
                     if (infoResult.IsFailure
                         || infoResult.Value.Kind != StorageItemKind.Folder)
                     {
@@ -83,7 +83,7 @@ public partial class FileTools
             var results = new List<SearchResultWithMetadata>();
             foreach (var match in matches)
             {
-                var infoResult = await fileStorage.GetInfoAsync(match.Resource);
+                var infoResult = await resourceFileSystem.GetInfoAsync(match.Resource);
                 if (infoResult.IsFailure
                     || infoResult.Value.Kind != StorageItemKind.File)
                 {
@@ -114,7 +114,7 @@ public partial class FileTools
     }
 
     private async Task<CallToolResult> SearchNonDefaultRootAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         string rootName,
         Regex regex,
         bool isFolderSearch,
@@ -122,7 +122,7 @@ public partial class FileTools
     {
         var rootKey = new ResourceKey(rootName + ":");
         var allEntries = new List<FolderItem>();
-        await CollectRecursiveAsync(fileStorage, rootKey, allEntries);
+        await CollectRecursiveAsync(resourceFileSystem, rootKey, allEntries);
 
         var matches = allEntries
             .Where(entry => entry.IsFolder == isFolderSearch)
@@ -145,11 +145,11 @@ public partial class FileTools
     }
 
     private static async Task CollectRecursiveAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey folder,
         List<FolderItem> entries)
     {
-        var enumerateResult = await fileStorage.EnumerateFolderAsync(folder);
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folder);
         if (enumerateResult.IsFailure)
         {
             return;
@@ -160,7 +160,7 @@ public partial class FileTools
             entries.Add(entry);
             if (entry.IsFolder)
             {
-                await CollectRecursiveAsync(fileStorage, entry.Resource, entries);
+                await CollectRecursiveAsync(resourceFileSystem, entry.Resource, entries);
             }
         }
     }

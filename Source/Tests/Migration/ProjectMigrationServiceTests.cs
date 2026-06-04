@@ -1,4 +1,5 @@
 using Celbridge.ApplicationEnvironment;
+using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
 using Celbridge.Projects.Services;
 using Celbridge.Tests.Migration.TestHelpers;
@@ -15,6 +16,7 @@ public class ProjectMigrationServiceTests
     private ILogger<MigrationStepRegistry> _mockRegistryLogger = null!;
     private IEnvironmentService _mockEnvironmentService = null!;
     private MigrationStepRegistry _registry = null!;
+    private ILocalFileSystem _fileSystem = null!;
 
     [SetUp]
     public void Setup()
@@ -23,6 +25,7 @@ public class ProjectMigrationServiceTests
         _mockRegistryLogger = MigrationTestHelper.CreateMockLogger<MigrationStepRegistry>();
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService("1.0.0");
         _registry = new MigrationStepRegistry(_mockRegistryLogger);
+        _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
     }
 
     #region File Validation Tests
@@ -31,7 +34,7 @@ public class ProjectMigrationServiceTests
     public async Task CheckMigrationAsync_NonExistentFile_ReturnsFailedStatus()
     {
         // Arrange
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "nonexistent.celbridge");
 
         // Act
@@ -47,7 +50,7 @@ public class ProjectMigrationServiceTests
     public async Task CheckMigrationAsync_InvalidToml_ReturnsInvalidConfig()
     {
         // Arrange
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateInvalidTomlFile();
 
         try
@@ -75,7 +78,7 @@ public class ProjectMigrationServiceTests
         // Arrange
         var appVersion = "1.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile(appVersion);
 
         try
@@ -101,7 +104,7 @@ public class ProjectMigrationServiceTests
         // Arrange
         var appVersion = "1.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile("<application-version>");
 
         try
@@ -139,7 +142,7 @@ public class ProjectMigrationServiceTests
         var appVersion = "1.0.0";
         var projectVersion = "2.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
 
         try
@@ -167,7 +170,7 @@ public class ProjectMigrationServiceTests
     {
         // Arrange
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService("1.0.0");
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile("");
 
         try
@@ -190,7 +193,7 @@ public class ProjectMigrationServiceTests
     {
         // Arrange
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService("1.0.0");
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile("not.a.version");
 
         try
@@ -218,7 +221,7 @@ public class ProjectMigrationServiceTests
         // Arrange
         var appVersion = "0.1.5";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
 
         // Create file with legacy "version" property (pre-0.1.5)
         var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4");
@@ -250,7 +253,7 @@ public class ProjectMigrationServiceTests
         var registry = new MigrationStepRegistry(_mockRegistryLogger);
         registry.Initialize();
 
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry, _fileSystem);
 
         // Create file with legacy "version" property (pre-0.1.5)
         var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4");
@@ -277,7 +280,7 @@ public class ProjectMigrationServiceTests
         // Arrange
         var appVersion = "0.1.5";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
 
         // Create file with legacy 4-part version
         var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4.2");
@@ -308,7 +311,7 @@ public class ProjectMigrationServiceTests
         var appVersion = "1.0.1";
         var projectVersion = "1.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
 
         try
@@ -339,7 +342,7 @@ public class ProjectMigrationServiceTests
         var appVersion = "1.0.1";
         var projectVersion = "1.0.0";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile(projectVersion);
 
         try
@@ -379,7 +382,7 @@ public class ProjectMigrationServiceTests
         var registry = new MigrationStepRegistry(_mockRegistryLogger);
         registry.Initialize();
 
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry, _fileSystem);
         var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: projectVersion);
 
         try

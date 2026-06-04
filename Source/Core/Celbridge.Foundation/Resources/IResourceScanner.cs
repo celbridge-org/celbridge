@@ -3,8 +3,7 @@ namespace Celbridge.Resources;
 /// <summary>
 /// On-demand scanner over the project's text and sidecar files. Each call
 /// walks the registry's known files in parallel; no in-memory index is
-/// maintained between calls. Reads go through IFileStorage so the
-/// chokepoint's atomic-read + retry semantics apply uniformly.
+/// maintained between calls.
 /// </summary>
 public interface IResourceScanner
 {

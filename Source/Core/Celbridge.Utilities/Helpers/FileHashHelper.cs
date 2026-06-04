@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Celbridge.FileSystem;
 using Path = System.IO.Path;
 
 namespace Celbridge.Utilities;
@@ -14,18 +15,29 @@ public static class FileHashHelper
     /// Computes a SHA256 hash of a file's contents by reading the path directly.
     /// Intended for files that live outside the resource system (e.g. the Python
     /// install folder); resource-tracked files should hash via
-    /// IFileStorage.ComputeHashAsync so the read goes through the chokepoint.
+    /// IResourceFileSystem.ComputeHashAsync so the read goes through the gateway.
     /// Returns empty string if the file doesn't exist or can't be read.
     /// </summary>
-    public static string HashFileContents(string filePath)
+    public static async Task<string> HashFileContentsAsync(string filePath)
     {
         try
         {
-            if (File.Exists(filePath))
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+
+            var infoResult = await fileSystem.GetInfoAsync(filePath);
+            if (infoResult.IsFailure
+                || infoResult.Value.Kind != StorageItemKind.File)
             {
-                var fileBytes = File.ReadAllBytes(filePath);
-                return HashBytes(fileBytes);
+                return string.Empty;
             }
+
+            var bytesResult = await fileSystem.ReadAllBytesAsync(filePath);
+            if (bytesResult.IsFailure)
+            {
+                return string.Empty;
+            }
+
+            return HashBytes(bytesResult.Value);
         }
         catch
         {
@@ -61,9 +73,13 @@ public static class FileHashHelper
     /// like Python's Lib/site-packages while still surfacing the changes that
     /// matter for install-state validation.
     /// </summary>
-    public static string HashFolderStructure(string folderPath, int maxDepth = 3)
+    public static async Task<string> HashFolderStructureAsync(string folderPath, int maxDepth = 3)
     {
-        if (!Directory.Exists(folderPath))
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+
+        var rootInfoResult = await fileSystem.GetInfoAsync(folderPath);
+        if (rootInfoResult.IsFailure
+            || rootInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return string.Empty;
         }
@@ -80,40 +96,41 @@ public static class FileHashHelper
                 continue;
             }
 
-            string[] children;
-            try
+            var enumerateResult = await fileSystem.EnumerateAsync(currentPath, "*", recursive: false);
+
+            // Best effort: a child we cannot enumerate is treated as
+            // contributing nothing to the hash. Same as it being absent.
+            if (enumerateResult.IsFailure)
             {
-                children = Directory.GetFileSystemEntries(currentPath);
-            }
-            catch
-            {
-                // Best effort: a child we cannot enumerate is treated as
-                // contributing nothing to the hash. Same as it being absent.
                 continue;
             }
 
-            foreach (var child in children)
+            foreach (var child in enumerateResult.Value)
             {
-                var relativePath = Path.GetRelativePath(folderPath, child);
-                if (Directory.Exists(child))
+                if (!child.IsFolder)
                 {
-                    entries.Add($"D|{relativePath}");
-                    stack.Push((child, depth + 1));
+                    continue;
                 }
-                else
+                var relativePath = Path.GetRelativePath(folderPath, child.FullPath);
+                entries.Add($"D|{relativePath}");
+                stack.Push((child.FullPath, depth + 1));
+            }
+
+            foreach (var child in enumerateResult.Value)
+            {
+                if (child.IsFolder)
                 {
-                    long size = 0;
-                    try
-                    {
-                        size = new FileInfo(child).Length;
-                    }
-                    catch
-                    {
-                        // Treat unreadable file metadata as size 0; the entry's
-                        // presence still contributes to the hash.
-                    }
-                    entries.Add($"F|{relativePath}|{size}");
+                    continue;
                 }
+                var relativePath = Path.GetRelativePath(folderPath, child.FullPath);
+                long size = 0;
+                var infoResult = await fileSystem.GetInfoAsync(child.FullPath);
+                if (infoResult.IsSuccess
+                    && infoResult.Value.Kind == StorageItemKind.File)
+                {
+                    size = infoResult.Value.Size;
+                }
+                entries.Add($"F|{relativePath}|{size}");
             }
         }
 

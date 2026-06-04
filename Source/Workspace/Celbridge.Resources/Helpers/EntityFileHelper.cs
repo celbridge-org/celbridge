@@ -5,6 +5,7 @@ namespace Celbridge.Resources.Helpers;
 /// <summary>
 /// Helper class for performing file operations that preserve associated entity data files.
 /// </summary>
+[AllowDirectFileSystemAccess]
 internal class EntityFileHelper
 {
     private readonly IEntityService? _entityService;
@@ -193,7 +194,7 @@ internal class EntityFileHelper
     /// Returns a list of (originalPath, trashPath) pairs for entity data files that were moved.
     /// </summary>
     public List<(string OriginalPath, string TrashPath)> MoveFolderEntityDataFilesToTrash(
-        string folderPath, 
+        string folderPath,
         string trashBasePath,
         string projectFolderPath)
     {

@@ -31,7 +31,7 @@ public sealed class SetFieldCommand : CommandBase, ISetFieldCommand
             return Result.Fail("Value is null.");
         }
 
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         return await sidecarService.SetFieldAsync(Resource, Field, Value);
     }
 }

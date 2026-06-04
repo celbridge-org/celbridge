@@ -7,7 +7,7 @@ namespace Celbridge.Tests.Server;
 /// Tests for McpToolBridge.ReadSchemaType. The MCP SDK emits a JSON Schema
 /// `"type"` as either a literal string or an array (e.g. "[\"integer\", \"null\"]"
 /// for a nullable value-type parameter). Earlier code called
-/// JsonNode.GetValue&lt;string&gt;() unconditionally and threw
+/// JsonNode.GetValue<string>() unconditionally and threw
 /// InvalidOperationException on the array shape, crashing tool registration.
 /// </summary>
 [TestFixture]

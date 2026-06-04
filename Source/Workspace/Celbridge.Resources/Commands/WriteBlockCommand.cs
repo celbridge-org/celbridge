@@ -24,7 +24,7 @@ public sealed class WriteBlockCommand : CommandBase, IWriteBlockCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         return await sidecarService.WriteBlockAsync(Resource, BlockId, Content);
     }
 }

@@ -37,8 +37,20 @@ public class CutMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canCut = context.HasAnySelection && !context.SelectionContainsProjectFolder;
-        return new MenuItemState(IsVisible: true, IsEnabled: canCut);
+        // Cut implies a later move, so a locked or path-frozen resource cannot be
+        // cut. Copy stays available because copying never modifies the source.
+        if (!context.HasAnySelection
+            || context.SelectionContainsProjectFolder)
+        {
+            return new MenuItemState(IsVisible: true, IsEnabled: false);
+        }
+
+        if (!context.CanModifySelection)
+        {
+            return new MenuItemState(IsVisible: true, IsEnabled: false);
+        }
+
+        return new MenuItemState(IsVisible: true, IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)

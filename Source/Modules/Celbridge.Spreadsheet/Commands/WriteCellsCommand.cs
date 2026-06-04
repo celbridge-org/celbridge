@@ -39,8 +39,8 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
             return Result.Fail("At least one edit is required.");
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -98,7 +98,7 @@ public class WriteCellsCommand : CommandBase, IWriteCellsCommand
                 }
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

@@ -72,7 +72,11 @@ public partial class ExplorerTools
                 reason = s.Reason.ToString(),
                 message = s.Message,
             }).ToArray(),
-            failedResources = detail.FailedResources.Select(r => r.ToString()).ToArray(),
+            failedResources = detail.FailedResources.Select(r => new
+            {
+                resource = r.Resource.ToString(),
+                message = r.Message,
+            }).ToArray(),
         };
 
         return ToolResponse.Success(JsonSerializer.Serialize(payload, JsonOptions));

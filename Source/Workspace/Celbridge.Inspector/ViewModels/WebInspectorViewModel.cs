@@ -1,7 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Messaging;
-using Celbridge.Resources;
 using Celbridge.WebHost;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -166,10 +165,10 @@ public partial class WebInspectorViewModel : InspectorViewModel
     private async Task LoadWebViewAsync(ResourceKey resource)
     {
         // The .webview.cel file is a standalone .cel form, so SidecarService
-        // treats the resource itself as the storage. Parse and chokepoint IO
+        // treats the resource itself as the storage. Parse and gateway IO
         // live in the sidecar service; this method just plucks 'source_url'
         // from the frontmatter and posts it back to the inspector field.
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         var readResult = await sidecarService.ReadAsync(resource);
         if (readResult.IsFailure)
         {
@@ -207,7 +206,7 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
     private async Task SaveWebViewAsync(ResourceKey resource, string sourceUrl)
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         var setResult = await sidecarService.SetFieldAsync(resource, SourceUrlFieldName, sourceUrl);
         if (setResult.IsFailure)
         {

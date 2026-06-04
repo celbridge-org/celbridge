@@ -4,10 +4,9 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.Packages;
-using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Logging;
+using Celbridge.Packages;
 using Celbridge.Projects;
 using Celbridge.Python;
 using Celbridge.Search;
@@ -23,10 +22,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IWorkspaceSettings WorkspaceSettings => WorkspaceSettingsService.WorkspaceSettings!;
     public IPackageService PackageService { get; }
     public IResourceService ResourceService { get; }
-    public IFileStorage FileStorage { get; }
-    public ITrashService TrashService { get; }
-    public IResourceScanner ResourceScanner { get; }
-    public ISidecarService SidecarService { get; }
     public IExplorerService ExplorerService { get; }
     public IDocumentsService DocumentsService { get; }
     public IInspectorService InspectorService { get; }
@@ -35,7 +30,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
     public IPythonService PythonService { get; }
     public IEntityService EntityService { get; }
     public IActivityService ActivityService { get; }
-    public IGenerativeAIService GenerativeAIService { get; }
     public IDataTransferService DataTransferService { get; }
 
     public WorkspacePanel ActivePanel { get; set; }
@@ -61,10 +55,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         WorkspaceSettingsService = serviceProvider.GetRequiredService<IWorkspaceSettingsService>();
         PackageService = serviceProvider.GetRequiredService<IPackageService>();
         ResourceService = serviceProvider.GetRequiredService<IResourceService>();
-        FileStorage = serviceProvider.GetRequiredService<IFileStorage>();
-        TrashService = serviceProvider.GetRequiredService<ITrashService>();
-        ResourceScanner = serviceProvider.GetRequiredService<IResourceScanner>();
-        SidecarService = serviceProvider.GetRequiredService<ISidecarService>();
         ExplorerService = serviceProvider.GetRequiredService<IExplorerService>();
         DocumentsService = serviceProvider.GetRequiredService<IDocumentsService>();
         InspectorService = serviceProvider.GetRequiredService<IInspectorService>();
@@ -73,7 +63,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
         PythonService = serviceProvider.GetRequiredService<IPythonService>();
         EntityService = serviceProvider.GetRequiredService<IEntityService>();
         ActivityService = serviceProvider.GetRequiredService<IActivityService>();
-        GenerativeAIService = serviceProvider.GetRequiredService<IGenerativeAIService>();
         DataTransferService = serviceProvider.GetRequiredService<IDataTransferService>();
 
         //
@@ -87,7 +76,8 @@ public class WorkspaceService : IWorkspaceService, IDisposable
             ProjectConstants.CelbridgeFolder,
             ProjectConstants.SettingsFolder);
         Guard.IsNotNullOrEmpty(workspaceSettingsFolder);
-        Directory.CreateDirectory(workspaceSettingsFolder);
+
+        // The folder itself is created on demand by AcquireWorkspaceSettingsAsync.
         WorkspaceSettingsService.WorkspaceSettingsFolderPath = workspaceSettingsFolder;
 
         _messengerService.Register<WorkspaceStateDirtyMessage>(this, OnWorkspaceStateDirtyMessage);
@@ -205,7 +195,6 @@ public class WorkspaceService : IWorkspaceService, IDisposable
                 (SearchService as IDisposable)!.Dispose();
                 (DataTransferService as IDisposable)!.Dispose();
                 (EntityService as IDisposable)!.Dispose();
-                (GenerativeAIService as IDisposable)!.Dispose();
                 (ActivityService as IDisposable)!.Dispose();
             }
 

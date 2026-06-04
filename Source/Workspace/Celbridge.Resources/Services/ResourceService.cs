@@ -17,12 +17,18 @@ public class ResourceService : IResourceService, IDisposable
     private readonly ICommandService _commandService;
     private readonly IMessengerService _messengerService;
     private readonly IProjectService _projectService;
+    private readonly ILocalFileSystem _fileSystem;
 
     public IResourceRegistry Registry { get; }
-    public IRootHandlerRegistry RootHandlerRegistry { get; }
+    public IRootHandlerRegistry RootHandlers { get; }
     public IResourceMonitor Monitor { get; }
-    public IResourceTransferService TransferService { get; }
-    public IResourceOperationService OperationService { get; }
+    public IResourceTransferService Transfers { get; }
+    public IResourceOperationService Operations { get; }
+    public IResourceFileSystem FileSystem { get; }
+    public IResourcePolicy Policy { get; }
+    public ITrashService Trash { get; }
+    public IResourceScanner Scanner { get; }
+    public ISidecarService Sidecars { get; }
 
     public ResourceService(
         ILogger<ResourceService> logger,
@@ -35,7 +41,13 @@ public class ResourceService : IResourceService, IDisposable
         IResourceClassifier resourceClassifier,
         IResourceMonitor resourceMonitor,
         IResourceTransferService resourceTransferService,
-        IResourceOperationService resourceOperationService)
+        IResourceOperationService resourceOperationService,
+        IResourceFileSystem resourceFileSystem,
+        IResourcePolicy resourcePolicy,
+        ITrashService trashService,
+        IResourceScanner resourceScanner,
+        ISidecarService sidecarService,
+        ILocalFileSystem fileSystem)
     {
         // Only the workspace service is allowed to instantiate this service
         Guard.IsFalse(workspaceWrapper.IsWorkspacePageLoaded);
@@ -44,84 +56,62 @@ public class ResourceService : IResourceService, IDisposable
         _commandService = commandService;
         _messengerService = messengerService;
         _projectService = projectService;
+        _fileSystem = fileSystem;
 
         // RootHandlerRegistry and ResourceRegistry are constructed together so
         // they share the same root-handler instance
         var rootHandlerRegistry = new RootHandlerRegistry();
-        RootHandlerRegistry = rootHandlerRegistry;
+        RootHandlers = rootHandlerRegistry;
 
         Registry = new ResourceRegistry(
             registryLogger,
             messengerService,
             projectTreeBuilder,
             resourceClassifier,
-            rootHandlerRegistry);
+            rootHandlerRegistry,
+            fileSystem);
 
         Monitor = resourceMonitor;
-        TransferService = resourceTransferService;
-        OperationService = resourceOperationService;
+        Transfers = resourceTransferService;
+        Operations = resourceOperationService;
+        FileSystem = resourceFileSystem;
+        Policy = resourcePolicy;
+        Trash = trashService;
+        Scanner = resourceScanner;
+        Sidecars = sidecarService;
 
         var projectFolderPath = _projectService.CurrentProject!.ProjectFolderPath;
         Registry.InitializeProjectRoot(projectFolderPath);
 
-        // Build the new .celbridge/ hidden folder layout: temp/, logs/, trash/,
-        // staging-fs/. These need to exist before downstream services start reading
-        // or watching them.
+        // Build the .celbridge/ hidden folder layout: temp/, logs/, trash/.
+        // These need to exist before downstream services start reading or
+        // watching them.
         var celbridgeFolder = Path.Combine(projectFolderPath, ProjectConstants.CelbridgeFolder);
         var celbridgeTempFolder = Path.Combine(celbridgeFolder, ProjectConstants.TempFolder);
         var celbridgeLogsFolder = Path.Combine(celbridgeFolder, ProjectConstants.LogsFolder);
         var celbridgeTrashFolder = Path.Combine(celbridgeFolder, ProjectConstants.TrashFolder);
-        var celbridgeStagingFsFolder = Path.Combine(celbridgeFolder, ProjectConstants.StagingFsFolder);
 
         // temp:/ is wiped on every workspace load. The contract is that nothing
         // under temp: survives a reload; consumers needing persistence write
         // under project: instead.
-        TryClearFolderContents(celbridgeTempFolder);
-        Directory.CreateDirectory(celbridgeTempFolder);
-        Directory.CreateDirectory(celbridgeLogsFolder);
+        TryDeleteFolder(celbridgeTempFolder);
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTempFolder));
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeLogsFolder));
 
         // Trash is cleared on every workspace load; undo history lives in memory only,
         // so previous-session trash content has no live handles.
-        TryClearFolderContents(celbridgeTrashFolder);
-        Directory.CreateDirectory(celbridgeTrashFolder);
+        TryDeleteFolder(celbridgeTrashFolder);
+        SyncRunner.Run(() => _fileSystem.CreateFolderAsync(celbridgeTrashFolder));
 
-        // staging-fs/ holds in-flight temp files for the resource file-system
-        // chokepoint. Wipe orphans from a prior session crash before downstream
-        // services start writing.
-        TryClearFolderContents(celbridgeStagingFsFolder);
-        Directory.CreateDirectory(celbridgeStagingFsFolder);
-
-        // Legacy <project>/celbridge/.trash/ from before this redesign: discard.
-        // The other legacy <project>/celbridge/.cache/ folder is left alone
-        // (no live data; it retires alongside the entity service).
+        // Discard the legacy <project>/celbridge/trash/ folder. The sibling
+        // <project>/celbridge/cache/ has no live data and retires alongside
+        // the entity service.
         var legacyTrashFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TrashFolder);
-        if (Directory.Exists(legacyTrashFolder))
-        {
-            try
-            {
-                Directory.Delete(legacyTrashFolder, true);
-            }
-            catch
-            {
-                // Best effort cleanup - ignore errors
-            }
-        }
+        TryDeleteFolder(legacyTrashFolder);
 
-        // Clean up the legacy temp folder from previous sessions. The atomic-write
-        // staging area has moved to .celbridge/staging-fs/; any orphans here are
-        // from before the chokepoint landed.
+        // Discard the legacy <project>/celbridge/temp/ folder.
         var legacyTempFolder = Path.Combine(projectFolderPath, LegacyConstants.MetaDataFolder, LegacyConstants.TempFolder);
-        if (Directory.Exists(legacyTempFolder))
-        {
-            try
-            {
-                Directory.Delete(legacyTempFolder, true);
-            }
-            catch
-            {
-                // Best effort cleanup - ignore errors
-            }
-        }
+        TryDeleteFolder(legacyTempFolder);
 
         rootHandlerRegistry.RegisterRootHandler(new TempRootHandler(celbridgeTempFolder));
         rootHandlerRegistry.RegisterRootHandler(new LogsRootHandler(celbridgeLogsFolder));
@@ -143,9 +133,11 @@ public class ResourceService : IResourceService, IDisposable
 #endif
     }
 
-    private void OnResourceUpdateRequestedMessage(object recipient, RequestResourceRegistryUpdateMessage message)
+    // Fire-and-forget sink for the request message: the registry build is async,
+    // so the handler awaits it and logs on failure rather than propagating.
+    private async void OnResourceUpdateRequestedMessage(object recipient, RequestResourceRegistryUpdateMessage message)
     {
-        var updateResult = UpdateResources();
+        var updateResult = await UpdateResourcesAsync();
         if (updateResult.IsFailure)
         {
             _logger.LogWarning(updateResult, "Failed to update resources after command execution");
@@ -157,9 +149,9 @@ public class ResourceService : IResourceService, IDisposable
         Monitor.ScheduleResourceUpdate();
     }
 
-    public Result UpdateResources()
+    public async Task<Result> UpdateResourcesAsync()
     {
-        var updateResult = Registry.UpdateResourceRegistry();
+        var updateResult = await Registry.UpdateResourceRegistryAsync();
         if (updateResult.IsFailure)
         {
             return Result.Fail("Failed to update resources")
@@ -197,17 +189,7 @@ public class ResourceService : IResourceService, IDisposable
                     Registry.ProjectFolderPath,
                     ProjectConstants.CelbridgeFolder,
                     ProjectConstants.TrashFolder);
-                if (Directory.Exists(trashFolderPath))
-                {
-                    try
-                    {
-                        Directory.Delete(trashFolderPath, true);
-                    }
-                    catch
-                    {
-                        // Best effort cleanup - ignore errors
-                    }
-                }
+                TryDeleteFolder(trashFolderPath);
             }
 
             _disposed = true;
@@ -219,37 +201,19 @@ public class ResourceService : IResourceService, IDisposable
         Dispose(false);
     }
 
-    // Removes every child item under the given folder while leaving the folder itself in place.
-    // Used to clear .celbridge/trash/ on every workspace load without disturbing the folder layout.
-    private static void TryClearFolderContents(string folderPath)
+    // Best-effort recursive folder removal. Failures are swallowed because
+    // nothing downstream depends on the folder being gone — the workspace makes
+    // another attempt next time.
+    private void TryDeleteFolder(string folderPath)
     {
-        if (!Directory.Exists(folderPath))
+        var folderInfo = SyncRunner.Run(() => _fileSystem.GetInfoAsync(folderPath));
+        if (folderInfo.IsFailure
+            || folderInfo.Value.Kind != StorageItemKind.Folder)
         {
             return;
         }
 
-        foreach (var file in Directory.EnumerateFiles(folderPath))
-        {
-            try
-            {
-                File.Delete(file);
-            }
-            catch
-            {
-                // Best effort - ignore errors
-            }
-        }
-
-        foreach (var subFolder in Directory.EnumerateDirectories(folderPath))
-        {
-            try
-            {
-                Directory.Delete(subFolder, true);
-            }
-            catch
-            {
-                // Best effort - ignore errors
-            }
-        }
+        var deleteResult = SyncRunner.Run(() => _fileSystem.DeleteFolderAsync(folderPath, recursive: true));
+        _ = deleteResult;
     }
 }

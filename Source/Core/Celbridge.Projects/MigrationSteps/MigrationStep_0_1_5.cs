@@ -14,13 +14,20 @@ public class MigrationStep_0_1_5 : IMigrationStep
 
     public async Task<Result> ApplyAsync(MigrationContext context)
     {
-        var originalText = await File.ReadAllTextAsync(context.ProjectFilePath);
-        
+        var readResult = await context.FileSystem.ReadAllTextAsync(context.ProjectFilePath);
+        if (readResult.IsFailure)
+        {
+            return Result.Fail($"Failed to read project file: '{context.ProjectFilePath}'")
+                .WithErrors(readResult);
+        }
+
+        var originalText = readResult.Value;
+
         // Check for legacy [celbridge] section format with "version" property (4-digit format)
         // Matches: [celbridge] line followed by a version = "..." line
         var legacyPattern = @"^[ \t]*\[celbridge\][ \t]*\r?\n[ \t]*version[ \t]*=[ \t]*""([^""]*)""[ \t]*\r?\n?";
         var legacyMatch = Regex.Match(originalText, legacyPattern, RegexOptions.Multiline);
-        
+
         if (legacyMatch.Success)
         {
             context.Logger.LogInformation("Converting legacy [celbridge] version property to celbridge-version format");
@@ -28,19 +35,25 @@ public class MigrationStep_0_1_5 : IMigrationStep
             // Extract the old version string and convert from legacy 4-digit format to new 3-digit format for v0.1.5
             var oldVersion = legacyMatch.Groups[1].Value;
             var newVersion = "0.1.5";
-            
+
             // Replace with new format: [celbridge].celbridge-version property
 
             var updatedText = Regex.Replace(
-                originalText, 
-                legacyPattern, 
+                originalText,
+                legacyPattern,
                 $"[celbridge]\ncelbridge-version = \"{newVersion}\"\n",
                 RegexOptions.Multiline);
-            
-            await File.WriteAllTextAsync(context.ProjectFilePath, updatedText);
+
+            var writeResult = await context.FileSystem.WriteAllTextAsync(context.ProjectFilePath, updatedText);
+            if (writeResult.IsFailure)
+            {
+                return Result.Fail($"Failed to write project file: '{context.ProjectFilePath}'")
+                    .WithErrors(writeResult);
+            }
+
             context.Logger.LogInformation("Converted legacy version property to celbridge-version format");
         }
-        
+
         return Result.Ok();
     }
 }

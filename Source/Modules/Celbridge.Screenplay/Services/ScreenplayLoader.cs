@@ -12,11 +12,13 @@ public class ScreenplayLoader
 {
     private IResourceRegistry _resourceRegistry;
     private IWorkspaceWrapper _workspaceWrapper;
+    private ILocalFileSystem _fileSystem;
 
-    public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper)
+    public ScreenplayLoader(IWorkspaceWrapper workspaceWrapper, ILocalFileSystem fileSystem)
     {
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _fileSystem = fileSystem;
     }
 
     public async Task<Result> LoadScreenplayAsync(ResourceKey workbookFile)
@@ -55,15 +57,25 @@ public class ScreenplayLoader
             using var workbook = new XLWorkbook(workbookFilePath);
 
             // Create a new screenplay folder for the screenplay
-            if (Directory.Exists(screenplayFolderPath))
+            var screenplayFolderInfo = await _fileSystem.GetInfoAsync(screenplayFolderPath);
+            if (screenplayFolderInfo.IsSuccess
+                && screenplayFolderInfo.Value.Kind == StorageItemKind.Folder)
             {
-                Directory.Delete(screenplayFolderPath, true);
+                var deleteFolderResult = await _fileSystem.DeleteFolderAsync(screenplayFolderPath, recursive: true);
+                if (deleteFolderResult.IsFailure)
+                {
+                    return deleteFolderResult;
+                }
             }
-            Directory.CreateDirectory(screenplayFolderPath);
+            var createScreenplayFolderResult = await _fileSystem.CreateFolderAsync(screenplayFolderPath);
+            if (createScreenplayFolderResult.IsFailure)
+            {
+                return createScreenplayFolderResult;
+            }
 
             // Update the resource registry to delete any existing entity data files before
             // we add the .scene files.
-            var updateResult = resourceRegistry.UpdateResourceRegistry();
+            var updateResult = await resourceRegistry.UpdateResourceRegistryAsync();
             if (updateResult.IsFailure)
             {
                 return Result.Fail($"Failed to update resource registry")
@@ -630,13 +642,27 @@ public class ScreenplayLoader
             var sceneFilePath = Path.Combine(sceneFolderPath, subFolder, $"{assetName}.scene");
             var sceneFolder = Path.GetDirectoryName(sceneFilePath);
 
-            if (!string.IsNullOrEmpty(sceneFolder) &&
-                !Directory.Exists(sceneFolder))
+            if (!string.IsNullOrEmpty(sceneFolder))
             {
-                Directory.CreateDirectory(sceneFolder);
+                var sceneFolderInfo = await _fileSystem.GetInfoAsync(sceneFolder);
+                bool sceneFolderExists = sceneFolderInfo.IsSuccess
+                    && sceneFolderInfo.Value.Kind == StorageItemKind.Folder;
+
+                if (!sceneFolderExists)
+                {
+                    var createSceneFolderResult = await _fileSystem.CreateFolderAsync(sceneFolder);
+                    if (createSceneFolderResult.IsFailure)
+                    {
+                        return createSceneFolderResult;
+                    }
+                }
             }
 
-            await File.WriteAllTextAsync(sceneFilePath, string.Empty);
+            var writeResult = await _fileSystem.WriteAllTextAsync(sceneFilePath, string.Empty);
+            if (writeResult.IsFailure)
+            {
+                return writeResult;
+            }
         }
         catch (Exception ex)
         {
@@ -656,10 +682,20 @@ public class ScreenplayLoader
             var entityFilePath = Path.Combine(entityFolderPath, subFolder, $"{assetName}.scene.json");
             var entityFolder = Path.GetDirectoryName(entityFilePath);
 
-            if (!string.IsNullOrEmpty(entityFolder) &&
-                !Directory.Exists(entityFolder))
+            if (!string.IsNullOrEmpty(entityFolder))
             {
-                Directory.CreateDirectory(entityFolder);
+                var entityFolderInfo = await _fileSystem.GetInfoAsync(entityFolder);
+                bool entityFolderExists = entityFolderInfo.IsSuccess
+                    && entityFolderInfo.Value.Kind == StorageItemKind.Folder;
+
+                if (!entityFolderExists)
+                {
+                    var createEntityFolderResult = await _fileSystem.CreateFolderAsync(entityFolder);
+                    if (createEntityFolderResult.IsFailure)
+                    {
+                        return createEntityFolderResult;
+                    }
+                }
             }
 
             // Generate component data for each line
@@ -742,9 +778,13 @@ public class ScreenplayLoader
             };
             var entityData = entity.ToJsonString(options);
 
-            await File.WriteAllTextAsync(entityFilePath, entityData);
+            var writeEntityResult = await _fileSystem.WriteAllTextAsync(entityFilePath, entityData);
+            if (writeEntityResult.IsFailure)
+            {
+                return writeEntityResult;
+            }
         }
-        catch (Exception ex) 
+        catch (Exception ex)
         {
             return Result.Fail($"An error occurred when saving a scene entity file")
                 .WithException(ex);

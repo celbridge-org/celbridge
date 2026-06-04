@@ -4,12 +4,12 @@ namespace Celbridge.Resources.Helpers;
 
 /// <summary>
 /// Resolves between resource keys and absolute filesystem paths for a single
-/// root. Validates that resolved paths stay within the root's backing folder
-/// and do not traverse through symlinks, junctions, or other reparse points;
-/// maintains a cache of verified directory paths to avoid repeated filesystem
-/// stat calls. One instance serves exactly one root; its owning root handler
-/// constructs it with that root's name and backing location.
+/// root, checking that paths stay within the backing folder. Reparse points
+/// (symlinks, junctions) are rejected best-effort via File.GetAttributes; the
+/// check is not atomic with the following I/O, so it is a containment filter,
+/// not a hardened boundary against symlink races.
 /// </summary>
+[AllowDirectFileSystemAccess]
 public class RootPathResolver
 {
     private readonly string _rootName;
@@ -118,6 +118,37 @@ public class RootPathResolver
         {
             return Result<ResourceKey>.Fail($"An exception occurred when getting the resource key for '{absolutePath}'.")
                 .WithException(ex);
+        }
+    }
+
+    /// <summary>
+    /// Predicate for recursive gateway enumerations. Returns true when the
+    /// absolute path is contained within this resolver's backing location and
+    /// traverses no reparse point along its segments. Reuses the verified-folder
+    /// cache so the hot path costs at most one stat per unseen folder.
+    /// </summary>
+    public bool IsPathSafe(string absolutePath)
+    {
+        try
+        {
+            var normalizedPath = Path.GetFullPath(absolutePath);
+            var comparison = GetPathComparison();
+
+            bool isBackingRoot = normalizedPath.Equals(_normalizedBackingTrimmed, comparison);
+            bool isUnderBacking = normalizedPath.StartsWith(_normalizedBackingWithSeparator, comparison);
+
+            if (!isBackingRoot
+                && !isUnderBacking)
+            {
+                return false;
+            }
+
+            var reparseResult = CheckForReparsePoints(normalizedPath, _normalizedBackingWithSeparator);
+            return reparseResult.IsSuccess;
+        }
+        catch
+        {
+            return false;
         }
     }
 

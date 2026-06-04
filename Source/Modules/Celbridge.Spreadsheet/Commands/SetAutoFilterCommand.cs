@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -43,8 +42,8 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
             return Result.Fail($"Auto-filter range must be an A1 cell range like 'A1:F100', was '{Range}'.");
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -96,7 +95,7 @@ public class SetAutoFilterCommand : CommandBase, ISetAutoFilterCommand
                 ResultValue = new SetAutoFilterResult(true, filterRange.RangeAddress.ToStringRelative());
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

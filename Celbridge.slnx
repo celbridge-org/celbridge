@@ -13,6 +13,8 @@
   <Folder Name="/Core/">
     <Project Path="Source/Core/Celbridge.Server/Celbridge.Server.csproj" />
     <Project Path="Source/Core/Celbridge.Commands/Celbridge.Commands.csproj" />
+    <Project Path="Source/Core/Celbridge.FileSystem/Celbridge.FileSystem.csproj" />
+    <Project Path="Source/Core/Celbridge.FileSystem.Analyzers/Celbridge.FileSystem.Analyzers.csproj" />
     <Project Path="Source/Core/Celbridge.Foundation/Celbridge.Foundation.csproj" />
     <Project Path="Source/Core/Celbridge.Host/Celbridge.Host.csproj" />
     <Project Path="Source/Core/Celbridge.Logging/Celbridge.Logging.csproj" />
@@ -41,7 +43,6 @@
     <Project Path="Source/Workspace/Celbridge.Entities/Celbridge.Entities.csproj" />
     <Project Path="Source/Workspace/Celbridge.Explorer/Celbridge.Explorer.csproj" />
     <Project Path="Source/Workspace/Celbridge.Packages/Celbridge.Packages.csproj" />
-    <Project Path="Source/Workspace/Celbridge.GenerativeAI/Celbridge.GenerativeAI.csproj" />
     <Project Path="Source/Workspace/Celbridge.Inspector/Celbridge.Inspector.csproj" />
     <Project Path="Source/Workspace/Celbridge.Python/Celbridge.Python.csproj" />
     <Project Path="Source/Workspace/Celbridge.Resources/Celbridge.Resources.csproj" />

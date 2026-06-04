@@ -1,6 +1,5 @@
 using Celbridge.Commands;
 using Celbridge.Logging;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
@@ -251,8 +250,8 @@ public class DocumentLayoutStore
                 continue;
             }
 
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-            var infoResult = await fileStorage.GetInfoAsync(fileResource);
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
             if (infoResult.IsFailure
                 || infoResult.Value.Kind != StorageItemKind.File)
             {
@@ -321,8 +320,8 @@ public class DocumentLayoutStore
         }
         var normalizedResource = normalizeResult.Value;
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(normalizedResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(normalizedResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {

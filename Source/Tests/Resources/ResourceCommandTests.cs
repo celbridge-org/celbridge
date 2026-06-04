@@ -1,12 +1,13 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
+using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.UserInterface.Services;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -32,7 +33,7 @@ public class ResourceCommandTests
     private const string FileContents = "Line one\nLine two\nLine three\n";
 
     [SetUp]
-    public void Setup()
+    public async Task Setup()
     {
         _projectFolderPath = Path.Combine(Path.GetTempPath(), $"Celbridge/{nameof(ResourceCommandTests)}/{Guid.NewGuid():N}");
         Directory.CreateDirectory(_projectFolderPath);
@@ -51,28 +52,30 @@ public class ResourceCommandTests
         var messengerService = new MessengerService();
         var fileIconService = new FileIconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
-        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, new ProjectTreeBuilder(fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry);
+        _resourceRegistry = new ResourceRegistry(Substitute.For<ILogger<ResourceRegistry>>(), messengerService, ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService), ResourceClassifierTestHelper.BuildEmptyStub(), _rootHandlerRegistry, TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
-        _resourceRegistry.UpdateResourceRegistry();
+        await _resourceRegistry.UpdateResourceRegistryAsync();
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
         // ListFolderContentsCommand and GetFileTreeCommand route through the
-        // FileStorage chokepoint, so the workspace needs a real instance
+        // LocalResourceFileSystem gateway, so the workspace needs a real instance
         // (a Substitute would return null for EnumerateFolderAsync).
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
-            _workspaceWrapper);
-        workspaceService.FileStorage.Returns(fileStorage);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
     }
 
     [TearDown]
@@ -89,7 +92,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileInfo_ForTextFile_ReportsTextAndLineCount()
     {
-        var textBinarySniffer = new TextBinarySniffer();
+        var textBinarySniffer = new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
         {
             Resource = new ResourceKey(RootFileName)
@@ -110,7 +113,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileInfo_ForBinaryFile_ReportsBinaryWithNoLineCount()
     {
-        var textBinarySniffer = new TextBinarySniffer();
+        var textBinarySniffer = new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
         {
             Resource = new ResourceKey(BinaryFileName)
@@ -130,7 +133,7 @@ public class ResourceCommandTests
     [Test]
     public async Task GetFileInfo_ForFolder_ReportsExistsButNotFile()
     {
-        var textBinarySniffer = new TextBinarySniffer();
+        var textBinarySniffer = new TextBinarySniffer(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var command = new GetFileInfoCommand(_workspaceWrapper, textBinarySniffer)
         {
             Resource = new ResourceKey(FolderName)

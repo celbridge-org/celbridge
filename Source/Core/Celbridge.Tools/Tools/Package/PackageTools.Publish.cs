@@ -4,16 +4,10 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using Tomlyn;
 using Tomlyn.Model;
-using Directory = System.IO.Directory;
 using File = System.IO.File;
-using FileAccess = System.IO.FileAccess;
 using FileAttributes = System.IO.FileAttributes;
-using FileMode = System.IO.FileMode;
-using FileShare = System.IO.FileShare;
-using FileStream = System.IO.FileStream;
 using MemoryStream = System.IO.MemoryStream;
 using Path = System.IO.Path;
-using SearchOption = System.IO.SearchOption;
 
 namespace Celbridge.Tools;
 
@@ -31,6 +25,7 @@ public partial class PackageTools
     [McpServerTool(Name = "package_publish", Destructive = true)]
     [ToolAlias("package.publish")]
     [RelatedGuides("resource_keys", "packages_overview", "silent_vs_interactive")]
+    [AllowDirectFileSystemAccess]
     public async partial Task<CallToolResult> Publish(string resource, string packageName, bool confirmWithUser = true)
     {
         if (!ResourceKey.TryCreate(resource, out var resourceKey))
@@ -65,6 +60,7 @@ public partial class PackageTools
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        var fileSystem = GetRequiredService<ILocalFileSystem>();
 
         var resolveSourceResult = resourceRegistry.ResolveResourcePath(resourceKey);
         if (resolveSourceResult.IsFailure)
@@ -73,14 +69,16 @@ public partial class PackageTools
         }
         var sourcePath = resolveSourceResult.Value;
 
-        if (!Directory.Exists(sourcePath))
+        var sourceInfoResult = await fileSystem.GetInfoAsync(sourcePath);
+        if (sourceInfoResult.IsFailure
+            || sourceInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return ToolResponse.Error($"Folder not found: '{resourceKey}'");
         }
 
         // Validate that the package manifest exists and is valid
         var manifestPath = Path.Combine(sourcePath, ManifestFileName);
-        var validateResult = ValidatePackageManifest(manifestPath);
+        var validateResult = await ValidatePackageManifestAsync(fileSystem, manifestPath);
         if (validateResult.IsFailure)
         {
             return ToolResponse.Error(validateResult);
@@ -107,10 +105,20 @@ public partial class PackageTools
             using var memoryStream = new MemoryStream();
             using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
             {
-                var filePaths = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
+                var enumerateResult = await fileSystem.EnumerateAsync(sourcePath, "*", recursive: true);
+                if (enumerateResult.IsFailure)
+                {
+                    return ToolResponse.Error($"Failed to enumerate package files: {enumerateResult.FirstErrorMessage}");
+                }
+                var filePaths = enumerateResult.Value
+                    .Where(entry => !entry.IsFolder)
+                    .Select(entry => entry.FullPath)
+                    .ToList();
 
                 foreach (var filePath in filePaths)
                 {
+                    // Reparse-point check still uses System.IO directly: file
+                    // attribute introspection is outside the ILocalFileSystem gateway.
                     var fileAttributes = File.GetAttributes(filePath);
                     if (fileAttributes.HasFlag(FileAttributes.ReparsePoint))
                     {
@@ -122,7 +130,12 @@ public partial class PackageTools
 
                     var entry = zipArchive.CreateEntry(entryName, CompressionLevel.Optimal);
                     using var entryStream = entry.Open();
-                    using var sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    var openResult = await fileSystem.OpenReadAsync(filePath);
+                    if (openResult.IsFailure)
+                    {
+                        return ToolResponse.Error($"Failed to open file for packaging '{filePath}': {openResult.FirstErrorMessage}");
+                    }
+                    using var sourceStream = openResult.Value;
                     await sourceStream.CopyToAsync(entryStream);
                     entryCount++;
                 }
@@ -149,23 +162,22 @@ public partial class PackageTools
         return ToolResponse.Success(json);
     }
 
-    private static Result ValidatePackageManifest(string manifestPath)
+    private static async Task<Result> ValidatePackageManifestAsync(ILocalFileSystem fileSystem, string manifestPath)
     {
-        if (!File.Exists(manifestPath))
+        var manifestInfoResult = await fileSystem.GetInfoAsync(manifestPath);
+        if (manifestInfoResult.IsFailure
+            || manifestInfoResult.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail(
                 $"Package manifest not found. Expected '{ManifestFileName}' in the package folder.");
         }
 
-        string tomlContent;
-        try
+        var readResult = await fileSystem.ReadAllTextAsync(manifestPath);
+        if (readResult.IsFailure)
         {
-            tomlContent = File.ReadAllText(manifestPath);
+            return Result.Fail($"Failed to read package manifest: {readResult.FirstErrorMessage}");
         }
-        catch (System.IO.IOException exception)
-        {
-            return Result.Fail($"Failed to read package manifest: {exception.Message}");
-        }
+        var tomlContent = readResult.Value;
 
         TomlTable tomlTable;
         try

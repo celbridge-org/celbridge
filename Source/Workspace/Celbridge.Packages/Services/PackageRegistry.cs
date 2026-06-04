@@ -1,7 +1,6 @@
 using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Modules;
-using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -25,27 +24,31 @@ public class PackageRegistry
     private readonly IFeatureFlags _featureFlags;
     private readonly IPackageLocalizationService _localizationService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly ILocalFileSystem _fileSystem;
 
     private List<Package> _bundledPackages = [];
     private List<Package> _projectPackages = [];
 
     // Bundled packages live outside any IResourceRegistry root so their reads
-    // stay on direct File.* IO. One reader is reused across the discovery and
-    // template-fetch paths to keep the bundled branch cheap.
-    private static readonly IPackageReader BundledReader = new DirectPackageReader();
+    // stay on direct File.* IO via the gateway. One reader is reused across
+    // the discovery and template-fetch paths to keep the bundled branch cheap.
+    private readonly IPackageReader _bundledReader;
 
     public PackageRegistry(
         ILogger<PackageRegistry> logger,
         IModuleService moduleService,
         IFeatureFlags featureFlags,
         IPackageLocalizationService localizationService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _moduleService = moduleService;
         _featureFlags = featureFlags;
         _localizationService = localizationService;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
+        _bundledReader = new DirectPackageReader(fileSystem);
     }
 
     public async Task<PackageDiscoveryReport> DiscoverPackagesAsync(string projectFolderPath)
@@ -160,7 +163,7 @@ public class PackageRegistry
     // first contribution that handles the extension and declares a default template.
     // The reader is chosen by package origin: bundled packages stay on direct File.*
     // because their bytes live outside any registry root, project packages route
-    // through IFileStorage by reverse-resolving the template path.
+    // through IResourceFileSystem by reverse-resolving the template path.
     public byte[]? GetDefaultTemplateContent(string fileExtension)
     {
         var normalizedExtension = fileExtension.ToLowerInvariant();
@@ -207,20 +210,20 @@ public class PackageRegistry
     }
 
     // Selects the file-read primitive that matches a package's discovery origin.
-    // Project packages are read through the chokepoint; bundled packages stay on
+    // Project packages are read through the gateway; bundled packages stay on
     // direct File.* IO. The project reader is constructed on demand because the
-    // workspace-scoped IFileStorage and IResourceRegistry must be looked up at
+    // workspace-scoped IResourceFileSystem and IResourceRegistry must be looked up at
     // call time rather than cached.
     private IPackageReader GetReaderForPackage(PackageInfo package)
     {
         if (package.Origin == PackageOrigin.Project)
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
             var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-            return new FileStoragePackageReader(fileStorage, resourceRegistry);
+            return new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         }
 
-        return BundledReader;
+        return _bundledReader;
     }
 
     private List<PackageLoadFailure> DiscoverBundledPackages()
@@ -232,7 +235,7 @@ public class PackageRegistry
         foreach (var descriptor in descriptors)
         {
             var manifestPath = Path.Combine(descriptor.Folder, ManifestFileName);
-            if (!BundledReader.Exists(manifestPath))
+            if (!_bundledReader.Exists(manifestPath))
             {
                 // A bundled package with no manifest is a build-time error.
                 // Either the descriptor folder is wrong or the package content
@@ -253,7 +256,7 @@ public class PackageRegistry
                 descriptor.Secrets,
                 descriptor.DevToolsBlocked,
                 origin: PackageOrigin.Bundled,
-                reader: BundledReader);
+                reader: _bundledReader);
             if (loadResult.IsFailure)
             {
                 _logger.LogError(loadResult, $"Failed to load bundled package: {manifestPath}");
@@ -308,23 +311,23 @@ public class PackageRegistry
         }
 
         var packagesResource = new ResourceKey(PackagesFolderName);
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var packagesInfoResult = await fileStorage.GetInfoAsync(packagesResource);
+        var packagesInfoResult = await resourceFileSystem.GetInfoAsync(packagesResource);
         if (packagesInfoResult.IsFailure
             || packagesInfoResult.Value.Kind != StorageItemKind.Folder)
         {
             return failures;
         }
 
-        var enumerateResult = await fileStorage.EnumerateFolderAsync(packagesResource);
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(packagesResource);
         if (enumerateResult.IsFailure)
         {
             return failures;
         }
 
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        var projectReader = new FileStoragePackageReader(fileStorage, resourceRegistry);
+        var projectReader = new ResourceFileSystemPackageReader(resourceFileSystem, resourceRegistry);
         var candidates = new List<Package>();
 
         foreach (var item in enumerateResult.Value)
@@ -335,7 +338,7 @@ public class PackageRegistry
             }
 
             var manifestResource = item.Resource.Combine(ManifestFileName);
-            var manifestInfoResult = await fileStorage.GetInfoAsync(manifestResource);
+            var manifestInfoResult = await resourceFileSystem.GetInfoAsync(manifestResource);
             if (manifestInfoResult.IsFailure
                 || manifestInfoResult.Value.Kind != StorageItemKind.File)
             {

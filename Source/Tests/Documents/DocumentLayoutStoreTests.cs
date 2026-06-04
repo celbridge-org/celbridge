@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Documents;
@@ -56,18 +57,20 @@ public class DocumentLayoutStoreTests
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
         workspaceService.ResourceService.Returns(resourceService);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
         workspaceService.DocumentsPanel.Returns(_documentsPanel);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        // Wire a real FileStorage so GetInfoAsync probes the actual disk
+        // Wire a real LocalResourceFileSystem so GetInfoAsync probes the actual disk
         // paths the registry resolves to.
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
-            _workspaceWrapper);
-        workspaceService.FileStorage.Returns(fileStorage);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         _store = new DocumentLayoutStore(
             _workspaceWrapper,
@@ -201,7 +204,7 @@ public class DocumentLayoutStoreTests
     public async Task RestorePanelStateAsync_InaccessibleFile_IsSkipped()
     {
         // ResolveResourcePath returns a path that does not exist on disk.
-        // FileStorage.GetInfoAsync reports NotFound; the restore skips.
+        // ResourceFileSystem.GetInfoAsync reports NotFound; the restore skips.
         var missingPath = Path.Combine(_tempFolder, "does_not_exist.md");
         _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>())
             .Returns(Result<string>.Ok(missingPath));

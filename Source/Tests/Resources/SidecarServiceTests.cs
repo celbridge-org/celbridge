@@ -14,19 +14,19 @@ namespace Celbridge.Tests.Resources;
 [TestFixture]
 public class SidecarServiceTests
 {
-    private IFileStorage _fileStorage = null!;
+    private IResourceFileSystem _resourceFileSystem = null!;
     private SidecarService _sidecarService = null!;
 
     [SetUp]
     public void Setup()
     {
-        _fileStorage = Substitute.For<IFileStorage>();
+        _resourceFileSystem = Substitute.For<IResourceFileSystem>();
         // Default: nothing exists on disk. Tests opt-in per resource.
-        _fileStorage.GetInfoAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default))));
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None))));
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.FileStorage.Returns(_fileStorage);
+        workspaceService.ResourceService.FileSystem.Returns(_resourceFileSystem);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -52,9 +52,9 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileStorage.GetInfoAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
-        _fileStorage.ReadAllTextAsync(siblingSidecar)
+        _resourceFileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
 
         var readResult = await _sidecarService.ReadAsync(regularFile);
@@ -73,9 +73,9 @@ public class SidecarServiceTests
         // bogus .cel.cel key).
         var standaloneCel = new ResourceKey("design.widget.cel");
 
-        _fileStorage.GetInfoAsync(standaloneCel)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
-        _fileStorage.ReadAllTextAsync(standaloneCel)
+        _resourceFileSystem.GetInfoAsync(standaloneCel)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(standaloneCel)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"celbridge.code-editor.code-document\"\n")));
 
         var readResult = await _sidecarService.ReadAsync(standaloneCel);
@@ -85,8 +85,8 @@ public class SidecarServiceTests
         readResult.Value.Content!.Frontmatter["editor"].Should().Be("celbridge.code-editor.code-document");
 
         // Belt-and-braces: the bogus .cel.cel key must never be touched.
-        await _fileStorage.DidNotReceive().GetInfoAsync(new ResourceKey("design.widget.cel.cel"));
-        await _fileStorage.DidNotReceive().ReadAllTextAsync(new ResourceKey("design.widget.cel.cel"));
+        await _resourceFileSystem.DidNotReceive().GetInfoAsync(new ResourceKey("design.widget.cel.cel"));
+        await _resourceFileSystem.DidNotReceive().ReadAllTextAsync(new ResourceKey("design.widget.cel.cel"));
     }
 
     [Test]
@@ -95,13 +95,13 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileStorage.WriteAllTextAsync(siblingSidecar, Arg.Any<string>())
+        _resourceFileSystem.WriteAllTextAsync(siblingSidecar, Arg.Any<string>())
             .Returns(Task.FromResult(Result.Ok()));
 
         var setResult = await _sidecarService.SetFieldAsync(regularFile, "editor", "acme.binary-editor");
 
         setResult.IsSuccess.Should().BeTrue();
-        await _fileStorage.Received(1).WriteAllTextAsync(
+        await _resourceFileSystem.Received(1).WriteAllTextAsync(
             siblingSidecar,
             Arg.Is<string>(text => text.Contains("editor") && text.Contains("acme.binary-editor")));
     }
@@ -116,7 +116,7 @@ public class SidecarServiceTests
         // not attempt to derive a .cel.cel sibling sidecar.
         var standaloneCel = new ResourceKey("design.widget.cel");
 
-        _fileStorage.WriteAllTextAsync(standaloneCel, Arg.Any<string>())
+        _resourceFileSystem.WriteAllTextAsync(standaloneCel, Arg.Any<string>())
             .Returns(Task.FromResult(Result.Ok()));
 
         var setResult = await _sidecarService.SetFieldAsync(
@@ -125,13 +125,13 @@ public class SidecarServiceTests
             "celbridge.code-editor.code-document");
 
         setResult.IsSuccess.Should().BeTrue();
-        await _fileStorage.Received(1).WriteAllTextAsync(
+        await _resourceFileSystem.Received(1).WriteAllTextAsync(
             standaloneCel,
             Arg.Is<string>(text => text.Contains("editor")
                 && text.Contains("celbridge.code-editor.code-document")));
 
         // The bogus .cel.cel key must never be touched.
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(
             new ResourceKey("design.widget.cel.cel"),
             Arg.Any<string>());
     }
@@ -145,13 +145,13 @@ public class SidecarServiceTests
         var standaloneCel = new ResourceKey("design.widget.cel");
         var existingContent = "title = \"My Design\"\nversion = 1\n";
 
-        _fileStorage.GetInfoAsync(standaloneCel)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
-        _fileStorage.ReadAllTextAsync(standaloneCel)
+        _resourceFileSystem.GetInfoAsync(standaloneCel)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(standaloneCel)
             .Returns(Task.FromResult(Result<string>.Ok(existingContent)));
 
         string? capturedWrite = null;
-        _fileStorage.WriteAllTextAsync(standaloneCel, Arg.Do<string>(text => capturedWrite = text))
+        _resourceFileSystem.WriteAllTextAsync(standaloneCel, Arg.Do<string>(text => capturedWrite = text))
             .Returns(Task.FromResult(Result.Ok()));
 
         var setResult = await _sidecarService.SetFieldAsync(
@@ -176,15 +176,15 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileStorage.GetInfoAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
-        _fileStorage.ReadAllTextAsync(siblingSidecar)
+        _resourceFileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
 
         var setResult = await _sidecarService.SetFieldAsync(regularFile, "editor", "acme.binary-editor");
 
         setResult.IsSuccess.Should().BeTrue();
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]
@@ -196,15 +196,15 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
-        _fileStorage.GetInfoAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default))));
-        _fileStorage.ReadAllTextAsync(siblingSidecar)
+        _resourceFileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<string>.Ok("tags = [\"hero\", \"sprite\"]\n")));
 
         var addResult = await _sidecarService.AddTagAsync(regularFile, "hero");
 
         addResult.IsSuccess.Should().BeTrue();
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]
@@ -224,7 +224,7 @@ public class SidecarServiceTests
 
         setResult.IsFailure.Should().BeTrue();
         setResult.FirstErrorMessage.Should().Contain("not indexable");
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]
@@ -240,7 +240,7 @@ public class SidecarServiceTests
 
         writeResult.IsFailure.Should().BeTrue();
         writeResult.FirstErrorMessage.Should().Contain("block-naming rules");
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]
@@ -256,7 +256,7 @@ public class SidecarServiceTests
 
         writeResult.IsFailure.Should().BeTrue();
         writeResult.FirstErrorMessage.Should().Contain("fence regex");
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]
@@ -326,7 +326,7 @@ public class SidecarServiceTests
         // SetField. The created file holds the new frontmatter and nothing else.
         var standaloneCel = new ResourceKey("new.widget.cel");
 
-        _fileStorage.WriteAllTextAsync(standaloneCel, Arg.Any<string>())
+        _resourceFileSystem.WriteAllTextAsync(standaloneCel, Arg.Any<string>())
             .Returns(Task.FromResult(Result.Ok()));
 
         var setResult = await _sidecarService.SetFieldAsync(
@@ -335,7 +335,7 @@ public class SidecarServiceTests
             "celbridge.code-editor.code-document");
 
         setResult.IsSuccess.Should().BeTrue();
-        await _fileStorage.Received(1).WriteAllTextAsync(
+        await _resourceFileSystem.Received(1).WriteAllTextAsync(
             standaloneCel,
             Arg.Is<string>(text => text.Contains("editor")));
     }
@@ -349,6 +349,6 @@ public class SidecarServiceTests
         var setResult = await _sidecarService.RemoveFieldAsync(new ResourceKey("photo.png"), "editor");
 
         setResult.IsSuccess.Should().BeTrue();
-        await _fileStorage.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 }

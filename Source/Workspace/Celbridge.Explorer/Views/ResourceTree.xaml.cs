@@ -18,6 +18,7 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
     private readonly ICommandService _commandService;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IResourceTransferService _resourceTransferService;
+    private readonly IResourceOperationService _operationService;
     private readonly IDocumentsService _documentsService;
     private readonly IMenuBuilder<ExplorerMenuContext> _menuBuilder;
     private readonly IDataTransferService _dataTransferService;
@@ -36,7 +37,8 @@ public sealed partial class ResourceTree : UserControl, IResourceTree
 
         var workspaceWrapper = ServiceLocator.AcquireService<IWorkspaceWrapper>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
-        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+        _resourceTransferService = workspaceWrapper.WorkspaceService.ResourceService.Transfers;
+        _operationService = workspaceWrapper.WorkspaceService.ResourceService.Operations;
         _documentsService = workspaceWrapper.WorkspaceService.DocumentsService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
 

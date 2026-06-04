@@ -1,3 +1,4 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Projects.Services;
 using Celbridge.Tests.Migration.TestHelpers;
 using Tomlyn;
@@ -8,16 +9,18 @@ namespace Celbridge.Tests.Migration.Steps;
 /// Base class for migration step tests providing common test infrastructure.
 /// Inherit from this class when creating tests for new migration steps.
 /// </summary>
-public abstract class MigrationStepTestBase<T> 
+public abstract class MigrationStepTestBase<T>
     where T : IMigrationStep, new()
 {
     protected ILogger<MigrationContext> MockLogger { get; private set; } = null!;
+    protected ILocalFileSystem FileSystem { get; private set; } = null!;
     protected T MigrationStep { get; private set; } = default!;
 
     [SetUp]
     public virtual void SetUp()
     {
         MockLogger = MigrationTestHelper.CreateMockLogger<MigrationContext>();
+        FileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
         MigrationStep = new T();
     }
 
@@ -84,7 +87,8 @@ public abstract class MigrationStepTestBase<T>
             Configuration = config,
             Logger = MockLogger,
             OriginalVersion = originalVersion,
-            WriteProjectFileAsync = writeProjectFileAsync
+            WriteProjectFileAsync = writeProjectFileAsync,
+            FileSystem = FileSystem
         };
     }
 

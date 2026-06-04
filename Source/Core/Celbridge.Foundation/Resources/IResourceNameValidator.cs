@@ -14,8 +14,14 @@ public interface IResourceNameValidator : IValidator
     IFolderResource? ParentFolder { get; set; }
 
     /// <summary>
-    /// Any name listed in ValidNames is always accepted as valid, even if it has the same name 
+    /// Any name listed in ValidNames is always accepted as valid, even if it has the same name
     /// as an existing resource in the ParentFolder.
     /// </summary>
     List<string> ValidNames { get; }
+
+    /// <summary>
+    /// Whether the proposed resource is a folder. Drives the folder-only pattern
+    /// hint when the entered name is checked against the resource policy.
+    /// </summary>
+    bool ValidateAsFolder { get; set; }
 }

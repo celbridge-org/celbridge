@@ -38,7 +38,7 @@ public class AddFolderMenuOption : IMenuOption<ExplorerMenuContext>
     {
         return new MenuItemState(
             IsVisible: context.IsSingleItemOrProjectFolderTargeted,
-            IsEnabled: true);
+            IsEnabled: context.CanAddToTargetFolder);
     }
 
     public void Execute(ExplorerMenuContext context)

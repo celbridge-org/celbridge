@@ -1,124 +1,99 @@
-using Celbridge.Projects;
 using Celbridge.UserInterface;
+using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
+/// <summary>
+/// Builds the in-memory project tree by enumerating the project root through the
+/// resource file-system gateway. Visibility filtering lives in the gateway's
+/// policy evaluation, so the builder no longer touches the file system directly
+/// or applies its own filters.
+/// </summary>
 public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 {
     private readonly IFileIconService _fileIconService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ProjectTreeBuilder(IFileIconService fileIconService)
+    public ProjectTreeBuilder(
+        IFileIconService fileIconService,
+        IWorkspaceWrapper workspaceWrapper)
     {
         _fileIconService = fileIconService;
+        _workspaceWrapper = workspaceWrapper;
     }
 
-    public IFolderResource BuildTree(string projectFolderPath)
+    public async Task<Result<IFolderResource>> BuildTreeAsync()
     {
         var root = new FolderResource(string.Empty, null);
-        SynchronizeFolder(root, projectFolderPath);
-        return root;
+
+        var synchronizeResult = await SynchronizeFolderAsync(root, ResourceKey.Empty);
+        if (synchronizeResult.IsFailure)
+        {
+            return Result<IFolderResource>.Fail("Failed to build the project tree.")
+                .WithErrors(synchronizeResult);
+        }
+
+        return Result<IFolderResource>.Ok(root);
     }
 
-    private void SynchronizeFolder(FolderResource folderResource, string folderPath)
+    private async Task<Result> SynchronizeFolderAsync(FolderResource folderResource, ResourceKey folderKey)
     {
-        bool isProjectFolder = folderResource.ParentFolder is null;
-        var subFolderPaths = Directory.GetDirectories(folderPath).OrderBy(d => d).ToList();
-        RemoveHiddenFolders(subFolderPaths, isProjectFolder);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var filePaths = Directory.GetFiles(folderPath).OrderBy(f => f).ToList();
-        RemoveHiddenFiles(filePaths);
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderKey);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Fail($"Failed to enumerate folder: '{folderKey}'")
+                .WithErrors(enumerateResult);
+        }
+        var folderItems = enumerateResult.Value;
 
         // Children rebuild from scratch on every call so stale TreeViewNode.Content
         // references do not survive a rapid undo/redo cycle.
         folderResource.Children.Clear();
 
-        foreach (var subFolderPath in subFolderPaths)
+        foreach (var folderItem in folderItems)
         {
-            var folderName = Path.GetFileName(subFolderPath);
-            var childFolder = new FolderResource(folderName, folderResource);
-            SynchronizeFolder(childFolder, subFolderPath);
-            folderResource.AddChild(childFolder);
+            var childName = folderItem.Resource.ResourceName;
+
+            if (folderItem.IsFolder)
+            {
+                var childFolder = new FolderResource(childName, folderResource);
+
+                var childResult = await SynchronizeFolderAsync(childFolder, folderItem.Resource);
+                if (childResult.IsFailure)
+                {
+                    return childResult;
+                }
+
+                folderResource.AddChild(childFolder);
+            }
+            else
+            {
+                var fileExtension = GetFileExtension(childName);
+
+                var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
+                var iconDefinition = getIconResult.IsSuccess
+                    ? getIconResult.Value
+                    : _fileIconService.DefaultFileIcon;
+
+                folderResource.AddChild(new FileResource(childName, folderResource, iconDefinition));
+            }
         }
 
-        foreach (var filePath in filePaths)
+        // EnumerateFolderAsync yields folders-first, ordinal order, which matches
+        // the tree's required ordering, so no re-sort is needed here.
+        return Result.Ok();
+    }
+
+    private static string GetFileExtension(string fileName)
+    {
+        int lastDotIndex = fileName.LastIndexOf('.');
+        if (lastDotIndex < 0)
         {
-            var fileName = Path.GetFileName(filePath);
-            var fileExtension = Path.GetExtension(filePath).TrimStart('.');
-
-            var getIconResult = _fileIconService.GetFileIconForExtension(fileExtension);
-            var iconDefinition = getIconResult.IsSuccess
-                ? getIconResult.Value
-                : _fileIconService.DefaultFileIcon;
-
-            folderResource.AddChild(new FileResource(fileName, folderResource, iconDefinition));
+            return string.Empty;
         }
 
-        folderResource.Children = folderResource.Children
-            .OrderBy(child => child is IFolderResource ? 0 : 1)
-            .ThenBy(child => child.Name)
-            .ToList();
-    }
-
-    private static void RemoveHiddenFolders(List<string> folderPaths, bool isProjectFolder)
-    {
-        folderPaths.RemoveAll(path =>
-        {
-            if (Path.GetFileName(path).StartsWith('.'))
-            {
-                // Hidden by leading dot. Includes the .celbridge metadata folder.
-                return true;
-            }
-
-#if WINDOWS
-            var attributes = File.GetAttributes(path);
-            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
-            {
-                return true;
-            }
-#endif
-            var dirInfo = new DirectoryInfo(path);
-
-            if (isProjectFolder
-                && dirInfo.Name == LegacyConstants.MetaDataFolder)
-            {
-                return true;
-            }
-
-            if (dirInfo.Name == "__pycache__")
-            {
-                return true;
-            }
-
-            // Python/Lib carries pip packages and is excluded so the user sees
-            // their project, not their virtualenv internals.
-            if (dirInfo.Name == "Lib"
-                && dirInfo.Parent?.Name == "Python")
-            {
-                return true;
-            }
-
-            return false;
-        });
-    }
-
-    private static void RemoveHiddenFiles(List<string> filePaths)
-    {
-        filePaths.RemoveAll(path =>
-        {
-            if (Path.GetFileName(path).StartsWith('.'))
-            {
-                return true;
-            }
-
-#if WINDOWS
-            var attributes = File.GetAttributes(path);
-            if ((attributes & System.IO.FileAttributes.Hidden) != 0)
-            {
-                return true;
-            }
-#endif
-
-            return false;
-        });
+        return fileName.Substring(lastDotIndex + 1);
     }
 }

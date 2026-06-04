@@ -2,6 +2,7 @@ using Celbridge.Messaging;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -31,12 +32,13 @@ public class WriteFileCommandTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(Substitute.For<ILogger<FileStorage>>(), Substitute.For<IMessengerService>(), _workspaceWrapper);
-        workspaceService.FileStorage.Returns(fileStorage);
+        var resourceFileSystem = new LocalResourceFileSystem(Substitute.For<ILogger<LocalResourceFileSystem>>(), Substitute.For<IMessengerService>(), _workspaceWrapper, TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
     }
 
     [TearDown]

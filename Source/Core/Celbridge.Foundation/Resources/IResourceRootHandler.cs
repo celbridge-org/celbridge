@@ -45,6 +45,13 @@ public interface IResourceRootHandler
     Result<ResourceKey> GetResourceKey(string absolutePath);
 
     /// <summary>
+    /// Returns true if the absolute path is safe to address as a resource
+    /// under this root. The specific safety checks are per-handler; consumers
+    /// treat a false result as a filter, not a recoverable error.
+    /// </summary>
+    Func<string, bool> PathValidator { get; }
+
+    /// <summary>
     /// Clears this handler's path-validator cache so subsequent resolves re-verify
     /// folders against the current filesystem state.
     /// </summary>

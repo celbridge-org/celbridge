@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Text;
 using Celbridge.Console;
 using Celbridge.Logging;
-using Celbridge.Messaging;
-using Celbridge.Resources;
 
 namespace Celbridge.WorkspaceUI.Services;
 

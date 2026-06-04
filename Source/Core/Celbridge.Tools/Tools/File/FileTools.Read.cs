@@ -22,12 +22,12 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
-            // Surface the chokepoint's failure verbatim so case-mismatch
+            // Surface the gateway's failure verbatim so case-mismatch
             // errors (which carry the canonical key) reach the caller. The
             // generic "resource not found" message only fires when the
             // resolve succeeded but the resource genuinely is not a file.
@@ -38,7 +38,7 @@ public partial class FileTools
             return ToolResponse.Error($"Resource not found: '{resourceKey}'. file_read addresses resources by resource key, not arbitrary disk paths — only files under a registered root (e.g. 'project:', 'temp:', 'logs:') can be read.");
         }
 
-        var readResult = await fileStorage.ReadAllTextAsync(resourceKey);
+        var readResult = await resourceFileSystem.ReadAllTextAsync(resourceKey);
         if (readResult.IsFailure)
         {
             return ToolResponse.Error(readResult.FirstErrorMessage);

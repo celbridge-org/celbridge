@@ -21,9 +21,9 @@ public class ListFolderContentsCommand : CommandBase, IListFolderContentsCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var enumerateResult = await fileStorage.EnumerateFolderAsync(Resource);
+        var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(Resource);
         if (enumerateResult.IsFailure)
         {
             return Result.Fail($"Resource not found: '{Resource}'")

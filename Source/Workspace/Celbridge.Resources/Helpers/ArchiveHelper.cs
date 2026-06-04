@@ -27,16 +27,16 @@ public static class ArchiveHelper
 
     /// <summary>
     /// Adds a project-tree file to a zip archive under the specified entry name,
-    /// reading the source through the chokepoint so containment validation
+    /// reading the source through the gateway so containment validation
     /// applies uniformly to archive sources.
     /// </summary>
     public static async Task<Result> AddFileToArchiveAsync(
         ZipArchive zipArchive,
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey sourceResource,
         string entryName)
     {
-        var openResult = await fileStorage.OpenReadAsync(sourceResource);
+        var openResult = await resourceFileSystem.OpenReadAsync(sourceResource);
         if (openResult.IsFailure)
         {
             return Result.Fail($"Failed to read source file for archive: '{sourceResource}'")

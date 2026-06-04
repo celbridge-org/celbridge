@@ -1,8 +1,6 @@
 using Celbridge.Documents.Helpers;
 using Celbridge.Resources;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Celbridge.Tests.Documents;
 
@@ -48,7 +46,7 @@ public class DocumentViewFactoryTests
         resourceService.Registry.Returns(_resourceRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.SidecarService.Returns(_sidecarService);
+        resourceService.Sidecars.Returns(_sidecarService);
         workspaceService.WorkspaceSettings.Returns(_workspaceSettings);
         workspaceService.ResourceService.Returns(resourceService);
 

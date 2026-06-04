@@ -27,7 +27,7 @@ public sealed partial class HomePage : Page
         _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
     }
 
-    private void RecentProjectButton_Click(object sender, RoutedEventArgs e)
+    private async void RecentProjectButton_Click(object sender, RoutedEventArgs e)
     {
         var button = sender as HyperlinkButton;
         Guard.IsNotNull(button);
@@ -39,6 +39,6 @@ public sealed partial class HomePage : Page
         }
 
         var projectFilePath = Path.Combine(recentProject.ProjectFolderPath, $"{recentProject.ProjectName}{ProjectConstants.ProjectFileExtension}");
-        ViewModel.OpenProject(projectFilePath);
+        await ViewModel.OpenProjectAsync(projectFilePath);
     }
 }

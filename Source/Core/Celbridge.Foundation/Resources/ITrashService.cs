@@ -9,8 +9,9 @@ public record TrashedEntityDataFile(string OriginalPath, string TrashPath);
 /// <summary>
 /// Bookkeeping for one soft-delete. Captures every path the trash service moved
 /// so a later RestoreFromTrashAsync or PurgeAsync can act on the exact same set.
-/// DescendantKeys are the resource keys of every file under the deleted folder,
-/// captured before the move so consumers can broadcast removal messages.
+/// DescendantKeys are the resource keys of every descendant under the deleted
+/// folder, both nested files and nested sub-folders, captured before the move
+/// so consumers can broadcast removal messages.
 /// </summary>
 public record TrashEntry(
     ResourceKey OriginalResource,

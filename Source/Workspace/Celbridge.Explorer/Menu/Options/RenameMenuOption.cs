@@ -36,13 +36,23 @@ public class RenameMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
+        bool isVisible = context.ClickedResource != null;
+
         // Cannot rename the project folder (whether clicked directly or in selection)
-        var canRename = context.ClickedResource != null &&
-                        !context.IsProjectFolderTargeted &&
-                        !context.SelectionContainsProjectFolder;
-        return new MenuItemState(
-            IsVisible: context.ClickedResource != null,
-            IsEnabled: canRename);
+        bool canRename = context.ClickedResource != null
+            && !context.IsProjectFolderTargeted
+            && !context.SelectionContainsProjectFolder;
+        if (!canRename)
+        {
+            return new MenuItemState(IsVisible: isVisible, IsEnabled: false);
+        }
+
+        if (!context.CanModifySelection)
+        {
+            return new MenuItemState(IsVisible: isVisible, IsEnabled: false);
+        }
+
+        return new MenuItemState(IsVisible: isVisible, IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)

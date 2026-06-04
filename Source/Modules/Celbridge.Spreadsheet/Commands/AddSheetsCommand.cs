@@ -1,7 +1,5 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
-using ClosedXML.Excel;
 
 namespace Celbridge.Spreadsheet.Commands;
 
@@ -48,8 +46,8 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
             }
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -72,7 +70,7 @@ public class AddSheetsCommand : CommandBase, IAddSheetsCommand
                 workbook.Worksheets.Add(sheetName);
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

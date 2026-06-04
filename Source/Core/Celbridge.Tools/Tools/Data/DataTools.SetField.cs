@@ -32,7 +32,7 @@ public partial class DataTools
         }
         var parsedValue = parseResult.Value;
 
-        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.SidecarService;
+        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.Sidecars;
         if (!sidecarService.IsIndexableValue(parsedValue))
         {
             return ToolResponse.Error($"Field '{field}' value is not indexable. Only scalar (string/number/bool) and list-of-scalar values are supported.");

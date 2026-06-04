@@ -8,6 +8,5 @@ public static class ServiceConfiguration
     {
         services.AddSingleton<IEnvironmentService, EnvironmentService>();
         services.AddSingleton<ITextBinarySniffer, TextBinarySniffer>();
-        services.AddTransient<IDumpFile, DumpFile>();
     }
 }

@@ -7,6 +7,15 @@ version = "0.1.0"
 requires-python = "<python-version>"
 dependencies = ["pandas", "openpyxl", "requests", "faker"]
 
+# Includes the files and folders the ignore-file allows, plus 'add', minus 'remove'.
+# 'lock' freezes resources so they can't be edited, moved, or deleted.
+# File patterns are globs, e.g. "Python/.venv/**"
+[resources]
+ignore-file = ".gitignore"
+add = []
+remove = [".gitignore"]
+lock = []
+
 # Shortcut buttons
 
 # Group header for Run Examples flyout menu

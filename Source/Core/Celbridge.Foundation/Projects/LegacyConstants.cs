@@ -34,8 +34,9 @@ public static class LegacyConstants
     public const string TrashFolder = ".trash";
 
     /// <summary>
-    /// Legacy in-flight atomic-write staging folder under celbridge/. Replaced
-    /// by ProjectConstants.StagingFsFolder under .celbridge/.
+    /// Legacy in-flight atomic-write staging folder under celbridge/. The
+    /// atomic-write staging design has been removed; cleanup of orphans from
+    /// prior sessions is still performed on workspace load.
     /// </summary>
     public const string TempFolder = ".temp";
 }

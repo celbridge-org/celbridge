@@ -78,8 +78,20 @@ public class Module : IModule
         // have a license to distribute them. If the library is not present, we skip
         // registering the package.
         var libraryFolder = Path.Combine(packageFolder, LibraryFolderName);
-        var isLibraryPresent = Directory.Exists(libraryFolder) &&
-                               Directory.EnumerateFiles(libraryFolder, "*.js", SearchOption.AllDirectories).Any();
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+
+        var libraryInfoResult = SyncRunner.Run(() => fileSystem.GetInfoAsync(libraryFolder));
+        bool libraryFolderExists = libraryInfoResult.IsSuccess
+            && libraryInfoResult.Value.Kind == StorageItemKind.Folder;
+
+        bool isLibraryPresent = false;
+        if (libraryFolderExists)
+        {
+            var enumerateResult = SyncRunner.Run(() => fileSystem.EnumerateAsync(libraryFolder, "*.js", recursive: true));
+            isLibraryPresent = enumerateResult.IsSuccess
+                && enumerateResult.Value.Any(entry => !entry.IsFolder);
+        }
+
         if (!isLibraryPresent)
         {
             var logger = ServiceLocator.AcquireService<ILogger<Module>>();

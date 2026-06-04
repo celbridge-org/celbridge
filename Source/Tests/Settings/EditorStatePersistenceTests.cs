@@ -1,4 +1,6 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 using Celbridge.WorkspaceUI.Services;
 
@@ -6,7 +8,7 @@ namespace Celbridge.Tests.Settings;
 
 /// <summary>
 /// Locks in the persistence shape used by DocumentsService for editor state:
-/// a Dictionary&lt;string, string&gt; keyed by resource key. A schema change here would silently
+/// a Dictionary<string, string> keyed by resource key. A schema change here would silently
 /// break state restoration after a workspace reload, which is hard to debug at runtime, so
 /// we want a fast unit-level signal.
 ///
@@ -31,7 +33,7 @@ public class EditorStatePersistenceTests
 
         _databaseFilePath = Path.Combine(_workspaceFolderPath, ProjectConstants.WorkspaceSettingsFile);
 
-        _workspaceSettingsService = new WorkspaceSettingsService();
+        _workspaceSettingsService = new WorkspaceSettingsService(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
         var createResult = await _workspaceSettingsService.CreateWorkspaceSettingsAsync(_databaseFilePath);
         createResult.IsSuccess.Should().BeTrue();
 

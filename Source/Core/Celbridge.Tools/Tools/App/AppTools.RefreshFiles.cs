@@ -9,10 +9,10 @@ public partial class AppTools
     [McpServerTool(Name = "app_refresh_files", ReadOnly = false, Idempotent = true)]
     [ToolAlias("app.refresh_files")]
     [RelatedGuides]
-    public partial CallToolResult RefreshFiles()
+    public async partial Task<CallToolResult> RefreshFiles()
     {
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var result = workspaceWrapper.WorkspaceService.ResourceService.UpdateResources();
+        var result = await workspaceWrapper.WorkspaceService.ResourceService.UpdateResourcesAsync();
         if (result.IsFailure)
         {
             var failure = Result.Fail("Failed to refresh file listing")

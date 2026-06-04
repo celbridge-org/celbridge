@@ -1,3 +1,4 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Projects;
 using Celbridge.Projects.MigrationSteps;
 using Celbridge.Projects.Services;
@@ -13,6 +14,7 @@ namespace Celbridge.Tests.Migration.Steps;
 public class MigrationStep_0_2_7_Tests
 {
     private ILogger<MigrationContext> _mockLogger = null!;
+    private ILocalFileSystem _fileSystem = null!;
     private MigrationStep_0_2_7 _step = null!;
     private string _projectFolderPath = null!;
     private string _projectFilePath = null!;
@@ -22,6 +24,7 @@ public class MigrationStep_0_2_7_Tests
     public void SetUp()
     {
         _mockLogger = MigrationTestHelper.CreateMockLogger<MigrationContext>();
+        _fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
         _step = new MigrationStep_0_2_7();
 
         _projectFolderPath = Path.Combine(Path.GetTempPath(), $"MigrationStep_0_2_7_{Guid.NewGuid():N}");
@@ -213,6 +216,7 @@ public class MigrationStep_0_2_7_Tests
             Logger = _mockLogger,
             OriginalVersion = "0.2.0",
             WriteProjectFileAsync = writeProjectFileAsync,
+            FileSystem = _fileSystem,
         };
     }
 }

@@ -41,7 +41,7 @@ public class UndoService : IUndoService
             }
 
             // Try file operation undo
-            var resourceOpService = workspaceService.ResourceService.OperationService;
+            var resourceOpService = workspaceService.ResourceService.Operations;
             if (resourceOpService.CanUndo)
             {
                 _ = UndoFileOperationAsync();
@@ -55,7 +55,7 @@ public class UndoService : IUndoService
     private async Task UndoFileOperationAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
+        var resourceOpService = workspaceService.ResourceService.Operations;
 
         var result = await resourceOpService.UndoAsync();
         if (result.IsSuccess)
@@ -90,7 +90,7 @@ public class UndoService : IUndoService
             }
 
             // Try file operation redo
-            var resourceOpService = workspaceService.ResourceService.OperationService;
+            var resourceOpService = workspaceService.ResourceService.Operations;
             if (resourceOpService.CanRedo)
             {
                 _ = RedoFileOperationAsync();
@@ -104,7 +104,7 @@ public class UndoService : IUndoService
     private async Task RedoFileOperationAsync()
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
-        var resourceOpService = workspaceService.ResourceService.OperationService;
+        var resourceOpService = workspaceService.ResourceService.Operations;
 
         var result = await resourceOpService.RedoAsync();
         if (result.IsSuccess)

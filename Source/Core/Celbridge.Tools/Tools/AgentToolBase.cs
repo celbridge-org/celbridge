@@ -50,7 +50,7 @@ public abstract class AgentToolBase
     }
 
     /// <summary>
-    /// Executes a command that produces a typed result and returns it as a <c>Result&lt;TResult&gt;</c>.
+    /// Executes a command that produces a typed result and returns it as a typed Result.
     /// Tools should branch on IsFailure and pass the failed Result to ToolResponse.Error so the
     /// agent sees the full message chain. On success, Value is guaranteed non-null.
     /// </summary>

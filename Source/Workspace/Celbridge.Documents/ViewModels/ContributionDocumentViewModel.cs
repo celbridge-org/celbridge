@@ -1,4 +1,3 @@
-using System.Text;
 using Celbridge.Packages;
 using Celbridge.Workspace;
 
@@ -13,6 +12,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IResourceRegistry _resourceRegistry;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly IReadOnlyList<IDocumentContentProvider> _contentProviders;
 
     /// <summary>
@@ -23,10 +23,12 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
     public ContributionDocumentViewModel(
         IWorkspaceWrapper workspaceWrapper,
+        ILocalFileSystem fileSystem,
         IEnumerable<IDocumentContentProvider> contentProviders)
     {
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
+        _fileSystem = fileSystem;
         _contentProviders = contentProviders.ToList().AsReadOnly();
 
         EnableFileChangeMonitoring();
@@ -71,8 +73,8 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
             return string.Empty;
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(FileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind != StorageItemKind.File)
         {
@@ -81,7 +83,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
 
         if (IsBinary)
         {
-            var bytesResult = await fileStorage.ReadAllBytesAsync(FileResource);
+            var bytesResult = await resourceFileSystem.ReadAllBytesAsync(FileResource);
             if (bytesResult.IsFailure)
             {
                 return await GetDefaultTemplateContentAsync();
@@ -96,7 +98,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
             return Convert.ToBase64String(bytes);
         }
 
-        var textResult = await fileStorage.ReadAllTextAsync(FileResource);
+        var textResult = await resourceFileSystem.ReadAllTextAsync(FileResource);
         if (textResult.IsFailure)
         {
             return await GetDefaultTemplateContentAsync();
@@ -283,7 +285,7 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
     /// <summary>
     /// Reads the default template content from the manifest's template file.
     /// Returns empty string if no default template is declared or the file cannot be read.
-    /// Routes through IFileStorage when the template path is registry-addressable;
+    /// Routes through IResourceFileSystem when the template path is registry-addressable;
     /// falls back to direct read for packages installed outside the project tree.
     /// </summary>
     private async Task<string> GetDefaultTemplateContentAsync()
@@ -306,27 +308,22 @@ public partial class ContributionDocumentViewModel : DocumentViewModel
         var keyResult = _resourceRegistry.GetResourceKey(templatePath);
         if (keyResult.IsSuccess)
         {
-            var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-            var textResult = await fileStorage.ReadAllTextAsync(keyResult.Value);
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            var textResult = await resourceFileSystem.ReadAllTextAsync(keyResult.Value);
             return textResult.IsSuccess ? textResult.Value : string.Empty;
         }
 
         // Template lives outside the project tree (bundled with the app's
         // packages). Treat as embedded resource.
-        if (!File.Exists(templatePath))
+        var infoResult = await _fileSystem.GetInfoAsync(templatePath);
+        if (infoResult.IsFailure
+            || infoResult.Value.Kind != StorageItemKind.File)
         {
             return string.Empty;
         }
 
-        try
-        {
-            await Task.CompletedTask;
-            return File.ReadAllText(templatePath, Encoding.UTF8);
-        }
-        catch
-        {
-            return string.Empty;
-        }
+        var readResult = await _fileSystem.ReadAllTextAsync(templatePath);
+        return readResult.IsSuccess ? readResult.Value : string.Empty;
     }
 
     /// <summary>

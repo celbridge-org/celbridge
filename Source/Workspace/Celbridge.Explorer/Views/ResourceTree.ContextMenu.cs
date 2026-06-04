@@ -76,6 +76,13 @@ public sealed partial class ResourceTree
         var contentDescription = _dataTransferService.GetClipboardContentDescription();
         var hasClipboardData = await CheckClipboardHasResources(contentDescription, clickedResource);
 
+        // Precompute the policy permissibility so the synchronous menu-option
+        // GetState calls read a settled answer rather than re-querying. This is
+        // the single source of truth the executor also uses, so the menu state
+        // cannot drift from enforcement.
+        var canModifySelection = await EvaluateSelectionModifiable(selectedResources, projectFolder);
+        var canAddToTargetFolder = EvaluateTargetFolderAddable(clickedResource);
+
         var context = new ExplorerMenuContext(
             ClickedResource: clickedResource,
             SelectedResources: selectedResources,
@@ -84,9 +91,47 @@ public sealed partial class ResourceTree
             HasClipboardData: hasClipboardData,
             ClipboardContentType: contentDescription.ContentType,
             ClipboardOperation: contentDescription.ContentOperation
-        );
+        )
+        {
+            CanModifySelection = canModifySelection,
+            CanAddToTargetFolder = canAddToTargetFolder,
+        };
 
         return context;
+    }
+
+    // Returns whether every selected resource can be deleted, renamed, moved, or
+    // cut. The pre-checked confirmation dialog surfaces the specific reason when
+    // the user attempts a blocked destructive action.
+    private async Task<bool> EvaluateSelectionModifiable(
+        IReadOnlyList<IResource> selectedResources,
+        IFolderResource projectFolder)
+    {
+        foreach (var resource in selectedResources)
+        {
+            if (resource == projectFolder)
+            {
+                continue;
+            }
+
+            var resourceKey = _resourceRegistry.GetResourceKey(resource);
+            var canModifyResult = await _operationService.CanModifyResourceAsync(resourceKey);
+            if (canModifyResult.IsFailure)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // Returns whether new resources can be added into the folder the menu would target.
+    private bool EvaluateTargetFolderAddable(IResource? clickedResource)
+    {
+        var targetFolder = ResolveDropTargetFolder(clickedResource);
+        var targetFolderKey = _resourceRegistry.GetResourceKey(targetFolder);
+
+        return _operationService.CanAddToFolder(targetFolderKey).IsSuccess;
     }
 
     private async Task<bool> CheckClipboardHasResources(

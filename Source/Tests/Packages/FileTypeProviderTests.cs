@@ -1,9 +1,12 @@
+using Celbridge.FileSystem.Services;
 using Celbridge.Packages;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
+using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -59,20 +62,24 @@ public class PackageServiceDocumentTypeTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
-        workspaceService.FileStorage.Returns(fileStorage);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
+
+        var fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
 
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
-        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper);
+        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper);
+        var registry = new PackageRegistry(logger, _moduleService, _featureFlags, localizationService, workspaceWrapper, fileSystem);
         _service = new PackageService(messengerService, registry);
     }
 

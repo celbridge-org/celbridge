@@ -44,4 +44,9 @@ public class MigrationContext
     /// Helper method to write the entire project file with updated content.
     /// </summary>
     public required Func<string, Task<Result>> WriteProjectFileAsync { get; init; }
+
+    /// <summary>
+    /// File system gateway used by migration steps for all read, write, and enumeration operations.
+    /// </summary>
+    public required ILocalFileSystem FileSystem { get; init; }
 }

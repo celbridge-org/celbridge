@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Dialog;
-using Celbridge.Resources;
 using Celbridge.Utilities;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
@@ -78,6 +77,7 @@ public class DuplicateResourceDialogCommand : CommandBase, IDuplicateResourceDia
 
         var validator = _serviceProvider.GetRequiredService<IResourceNameValidator>();
         validator.ParentFolder = resource.ParentFolder;
+        validator.ValidateAsFolder = resource is IFolderResource;
 
         var showResult = await _dialogService.ShowInputTextDialogAsync(
             duplicateResourceString,

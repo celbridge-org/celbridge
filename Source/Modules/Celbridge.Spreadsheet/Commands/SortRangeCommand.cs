@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -47,8 +46,8 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
             return Result.Fail($"Range '{Range}' must not include a sheet qualifier.");
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -86,7 +85,7 @@ public class SortRangeCommand : CommandBase, ISortRangeCommand
 
             sortRange.Sort(sortString, XLSortOrder.Ascending, MatchCase, ignoreBlanks: true);
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

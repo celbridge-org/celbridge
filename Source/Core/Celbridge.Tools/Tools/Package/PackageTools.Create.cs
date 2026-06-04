@@ -2,7 +2,6 @@ using System.Text;
 using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Directory = System.IO.Directory;
 
 namespace Celbridge.Tools;
 
@@ -29,7 +28,8 @@ public partial class PackageTools
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
         var workspaceService = workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
+        var fileSystem = GetRequiredService<ILocalFileSystem>();
 
         var packageResource = ResourceKey.Create($"packages/{packageName}");
         var resolveResult = resourceRegistry.ResolveResourcePath(packageResource);
@@ -41,7 +41,9 @@ public partial class PackageTools
         }
         var packageFolderPath = resolveResult.Value;
 
-        if (Directory.Exists(packageFolderPath))
+        var packageInfoResult = await fileSystem.GetInfoAsync(packageFolderPath);
+        if (packageInfoResult.IsSuccess
+            && packageInfoResult.Value.Kind == StorageItemKind.Folder)
         {
             return ToolResponse.Error($"Package already exists: 'packages/{packageName}'");
         }
@@ -55,7 +57,7 @@ public partial class PackageTools
         manifestContent.AppendLine("[contributes]");
 
         var manifestResource = ResourceKey.Create($"packages/{packageName}/{ManifestFileName}");
-        var writeManifestResult = await fileStorage.WriteAllTextAsync(manifestResource, manifestContent.ToString());
+        var writeManifestResult = await resourceFileSystem.WriteAllTextAsync(manifestResource, manifestContent.ToString());
         if (writeManifestResult.IsFailure)
         {
             return ToolResponse.Error($"Failed to create package: {writeManifestResult.FirstErrorMessage}");

@@ -1,10 +1,13 @@
 using Celbridge.Console;
+using Celbridge.FileSystem.Services;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
 using Celbridge.Settings;
+using Celbridge.Tests.FileSystem;
+using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Packages;
@@ -33,7 +36,7 @@ public class PackageServiceTests
 
         _resourceRegistry = Substitute.For<IResourceRegistry>();
         _resourceRegistry.ProjectFolderPath.Returns(_tempProjectFolder);
-        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+        _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
         {
             var key = callInfo.Arg<ResourceKey>();
             return Result<string>.Ok(Path.Combine(_tempProjectFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));
@@ -55,20 +58,24 @@ public class PackageServiceTests
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             Substitute.For<IMessengerService>(),
-            workspaceWrapper);
-        workspaceService.FileStorage.Returns(fileStorage);
+            workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
+
+        var fileSystem = new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>());
 
         var localizationLogger = Substitute.For<ILogger<PackageLocalizationService>>();
-        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper);
+        var localizationService = new PackageLocalizationService(localizationLogger, workspaceWrapper, fileSystem);
 
-        var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper);
+        var registry = new PackageRegistry(logger, _moduleService, featureFlags, localizationService, workspaceWrapper, fileSystem);
         _service = new PackageService(_messengerService, registry);
     }
 
@@ -364,10 +371,10 @@ public class PackageServiceTests
         {
             Directory.CreateDirectory(secondFolder);
 
-            // Repoint the workspace-bound chokepoint at the second folder so the
+            // Repoint the workspace-bound gateway at the second folder so the
             // second discovery probes secondFolder/packages instead of the original.
             _resourceRegistry.ProjectFolderPath.Returns(secondFolder);
-            _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>()).Returns(callInfo =>
+            _resourceRegistry.ResolveResourcePath(Arg.Any<ResourceKey>(), Arg.Any<bool>()).Returns(callInfo =>
             {
                 var key = callInfo.Arg<ResourceKey>();
                 return Result<string>.Ok(Path.Combine(secondFolder, key.Path.Replace('/', Path.DirectorySeparatorChar)));

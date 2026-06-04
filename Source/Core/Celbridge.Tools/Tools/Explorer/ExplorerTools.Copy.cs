@@ -35,8 +35,9 @@ public partial class ExplorerTools
         var detail = copyResult.Value;
 
         // Copy doesn't rewrite references, so SkippedReferencers is always empty
-        // here. FailedResources still matters: a batch where one resource failed
-        // mechanically (file locked etc.) surfaces the partial outcome.
+        // here. FailedResources still matters: a batch where one resource was
+        // refused (destination locked, hidden by the policy, etc.) surfaces the
+        // partial outcome with its reason rather than reporting a clean success.
         if (detail.FailedResources.Count == 0)
         {
             return ToolResponse.Success("ok");
@@ -45,7 +46,11 @@ public partial class ExplorerTools
         var payload = new
         {
             status = "partial_failure",
-            failedResources = detail.FailedResources.Select(r => r.ToString()).ToArray(),
+            failedResources = detail.FailedResources.Select(r => new
+            {
+                resource = r.Resource.ToString(),
+                message = r.Message,
+            }).ToArray(),
         };
 
         return ToolResponse.Success(JsonSerializer.Serialize(payload, JsonOptions));

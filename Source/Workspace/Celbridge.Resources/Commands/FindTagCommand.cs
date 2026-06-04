@@ -29,7 +29,7 @@ public sealed class FindTagCommand : CommandBase, IFindTagCommand
             return Result.Fail("Tag must be a non-empty string.");
         }
 
-        var scanner = _workspaceWrapper.WorkspaceService.ResourceScanner;
+        var scanner = _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
         ResultValue = await scanner.FindByTagAsync(Tag);
         return Result.Ok();
     }

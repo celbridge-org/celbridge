@@ -43,73 +43,81 @@ public class MigrationStep_0_3_0 : IMigrationStep
 
     private async Task<Result> ConvertWebViewFilesAsync(MigrationContext context, string projectDataFolderPath)
     {
-        try
+        var enumerateResult = await context.FileSystem.EnumerateAsync(
+            context.ProjectFolderPath,
+            $"*{WebViewOldExtension}",
+            recursive: true);
+
+        if (enumerateResult.IsFailure)
         {
-            var matches = Directory.EnumerateFiles(
-                context.ProjectFolderPath,
-                $"*{WebViewOldExtension}",
-                SearchOption.AllDirectories);
+            return Result.Fail($"Failed to enumerate '*{WebViewOldExtension}' files in project folder")
+                .WithErrors(enumerateResult);
+        }
 
-            int convertedCount = 0;
-            foreach (var oldPath in matches)
+        int convertedCount = 0;
+        foreach (var oldPath in enumerateResult.Value.Where(entry => !entry.IsFolder).Select(entry => entry.FullPath))
+        {
+            var fullOldPath = Path.GetFullPath(oldPath);
+            if (IsInsideMetaDataFolder(fullOldPath, projectDataFolderPath))
             {
-                var fullOldPath = Path.GetFullPath(oldPath);
-                if (IsInsideMetaDataFolder(fullOldPath, projectDataFolderPath))
-                {
-                    continue;
-                }
-
-                // EnumerateFiles uses a Windows-style trailing-wildcard match which also
-                // accepts longer extensions. Skip anything that already carries the new
-                // suffix so reruns do not double-convert.
-                if (fullOldPath.EndsWith(WebViewNewExtension, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var newPath = fullOldPath + ".cel";
-                var convertResult = await ConvertWebViewFileAsync(fullOldPath, newPath);
-                if (convertResult.IsFailure)
-                {
-                    return Result.Fail($"Failed to convert WebView file: '{fullOldPath}'")
-                        .WithErrors(convertResult);
-                }
-
-                File.Delete(fullOldPath);
-                convertedCount++;
+                continue;
             }
 
-            if (convertedCount > 0)
+            // EnumerateFiles uses a Windows-style trailing-wildcard match which also
+            // accepts longer extensions. Skip anything that already carries the new
+            // suffix so reruns do not double-convert.
+            if (fullOldPath.EndsWith(WebViewNewExtension, StringComparison.OrdinalIgnoreCase))
             {
-                context.Logger.LogInformation(
-                    $"Converted {convertedCount} '*{WebViewOldExtension}' file(s) to '*{WebViewNewExtension}'");
+                continue;
             }
 
-            return Result.Ok();
+            var newPath = fullOldPath + ".cel";
+            var convertResult = await ConvertWebViewFileAsync(context, fullOldPath, newPath);
+            if (convertResult.IsFailure)
+            {
+                return Result.Fail($"Failed to convert WebView file: '{fullOldPath}'")
+                    .WithErrors(convertResult);
+            }
+
+            var deleteResult = await context.FileSystem.DeleteFileAsync(fullOldPath);
+            if (deleteResult.IsFailure)
+            {
+                return Result.Fail($"Failed to delete legacy WebView file: '{fullOldPath}'")
+                    .WithErrors(deleteResult);
+            }
+
+            convertedCount++;
         }
-        catch (Exception ex)
+
+        if (convertedCount > 0)
         {
-            return Result.Fail($"Failed to convert '*{WebViewOldExtension}' files in project folder")
-                .WithException(ex);
+            context.Logger.LogInformation(
+                $"Converted {convertedCount} '*{WebViewOldExtension}' file(s) to '*{WebViewNewExtension}'");
         }
+
+        return Result.Ok();
     }
 
-    private async Task<Result> ConvertWebViewFileAsync(string oldPath, string newPath)
+    private async Task<Result> ConvertWebViewFileAsync(MigrationContext context, string oldPath, string newPath)
     {
-        try
+        var readResult = await context.FileSystem.ReadAllTextAsync(oldPath);
+        if (readResult.IsFailure)
         {
-            var originalText = await File.ReadAllTextAsync(oldPath);
-            var sourceUrl = ExtractSourceUrlFromJson(originalText);
-            var tomlText = BuildWebViewTomlContent(sourceUrl);
+            return Result.Fail($"Failed to read WebView file during conversion: '{oldPath}'")
+                .WithErrors(readResult);
+        }
 
-            await File.WriteAllTextAsync(newPath, tomlText);
-            return Result.Ok();
-        }
-        catch (Exception ex)
+        var sourceUrl = ExtractSourceUrlFromJson(readResult.Value);
+        var tomlText = BuildWebViewTomlContent(sourceUrl);
+
+        var writeResult = await context.FileSystem.WriteAllTextAsync(newPath, tomlText);
+        if (writeResult.IsFailure)
         {
-            return Result.Fail($"Failed to read or write WebView file during conversion: '{oldPath}'")
-                .WithException(ex);
+            return Result.Fail($"Failed to write WebView file during conversion: '{newPath}'")
+                .WithErrors(writeResult);
         }
+
+        return Result.Ok();
     }
 
     private static string BuildWebViewTomlContent(string sourceUrl)
@@ -207,36 +215,35 @@ public class MigrationStep_0_3_0 : IMigrationStep
 
     private async Task<Result> RewriteProjectConfigAsync(MigrationContext context)
     {
-        try
+        var readResult = await context.FileSystem.ReadAllTextAsync(context.ProjectFilePath);
+        if (readResult.IsFailure)
         {
-            var originalText = await File.ReadAllTextAsync(context.ProjectFilePath);
+            return Result.Fail($"Failed to read project config: '{context.ProjectFilePath}'")
+                .WithErrors(readResult);
+        }
 
-            // Rewrites are scoped to quoted occurrences so bare prose mentions of
-            // the old extension in comments stay untouched.
-            var updatedText = RewriteQuotedExtensions(originalText, WebViewOldExtension, WebViewNewExtension);
+        var originalText = readResult.Value;
 
-            if (updatedText == originalText)
-            {
-                return Result.Ok();
-            }
+        // Rewrites are scoped to quoted occurrences so bare prose mentions of
+        // the old extension in comments stay untouched.
+        var updatedText = RewriteQuotedExtensions(originalText, WebViewOldExtension, WebViewNewExtension);
 
-            var writeResult = await context.WriteProjectFileAsync(updatedText);
-            if (writeResult.IsFailure)
-            {
-                return Result.Fail($"Failed to write rewritten project config: '{context.ProjectFilePath}'")
-                    .WithErrors(writeResult);
-            }
-
-            context.Logger.LogInformation(
-                $"Rewrote renamed-resource references in project config: '{context.ProjectFilePath}'");
-
+        if (updatedText == originalText)
+        {
             return Result.Ok();
         }
-        catch (Exception ex)
+
+        var writeResult = await context.WriteProjectFileAsync(updatedText);
+        if (writeResult.IsFailure)
         {
-            return Result.Fail("Failed to rewrite project config")
-                .WithException(ex);
+            return Result.Fail($"Failed to write rewritten project config: '{context.ProjectFilePath}'")
+                .WithErrors(writeResult);
         }
+
+        context.Logger.LogInformation(
+            $"Rewrote renamed-resource references in project config: '{context.ProjectFilePath}'");
+
+        return Result.Ok();
     }
 
     private static string RewriteQuotedExtensions(string text, string oldExtension, string newExtension)

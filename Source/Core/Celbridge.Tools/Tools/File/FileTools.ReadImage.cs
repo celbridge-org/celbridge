@@ -36,9 +36,9 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        var infoResult = await fileStorage.GetInfoAsync(resourceKey);
+        var infoResult = await resourceFileSystem.GetInfoAsync(resourceKey);
         if (infoResult.IsFailure)
         {
             return ToolResponse.Error(infoResult);
@@ -66,7 +66,7 @@ public partial class FileTools
                 $"before calling file_read_image.");
         }
 
-        var bytesResult = await fileStorage.ReadAllBytesAsync(resourceKey);
+        var bytesResult = await resourceFileSystem.ReadAllBytesAsync(resourceKey);
         if (bytesResult.IsFailure)
         {
             return ToolResponse.Error(bytesResult.FirstErrorMessage);

@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Spreadsheet.Helpers;
 using Celbridge.Workspace;
 using ClosedXML.Excel;
 
@@ -60,8 +59,8 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
         var rowsBySheet = new Dictionary<string, List<AxisRange>>(StringComparer.Ordinal);
         var columnsBySheet = new Dictionary<string, List<AxisRange>>(StringComparer.Ordinal);
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(fileStorage, workbookResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var loadResult = await SpreadsheetHelper.LoadWorkbookAsync(resourceFileSystem, workbookResource);
         if (loadResult.IsFailure)
         {
             return Result.Fail(loadResult);
@@ -119,7 +118,7 @@ public class InsertRangesCommand : CommandBase, IInsertRangesCommand
                 }
             }
 
-            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(fileStorage, workbookResource, workbook);
+            var saveResult = await SpreadsheetHelper.SaveWorkbookAsync(resourceFileSystem, workbookResource, workbook);
             if (saveResult.IsFailure)
             {
                 return Result.Fail(saveResult);

@@ -6,12 +6,14 @@ public class ResourceUtils
 {
     public static async Task<Result> OpenApplication(string path)
     {
-        await Task.CompletedTask;
-
 #if WINDOWS
         try
         {
-            if (File.Exists(path))
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+            var infoResult = await fileSystem.GetInfoAsync(path);
+            bool fileExists = infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.File;
+            if (fileExists)
             {
                 StorageFile file = await StorageFile.GetFileFromPathAsync(path);
                 bool launchResult = await Launcher.LaunchFileAsync(file);
@@ -44,12 +46,14 @@ public class ResourceUtils
 
     public static async Task<Result> OpenFileManager(string path)
     {
-        await Task.CompletedTask;
-
 #if WINDOWS
         try
         {
-            if (File.Exists(path))
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+            var infoResult = await fileSystem.GetInfoAsync(path);
+            bool fileExists = infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.File;
+            if (fileExists)
             {
                 StorageFile file = await StorageFile.GetFileFromPathAsync(path);
                 StorageFolder storageFolder = await file.GetParentAsync();
@@ -65,7 +69,9 @@ public class ResourceUtils
             else
             {
                 string folder = string.Empty;
-                if (Directory.Exists(path))
+                bool folderExists = infoResult.IsSuccess
+                    && infoResult.Value.Kind == StorageItemKind.Folder;
+                if (folderExists)
                 {
                     folder = path;
                 }
@@ -73,7 +79,9 @@ public class ResourceUtils
                 {
                     // Try the parent folder
                     var parentFolder = Path.GetDirectoryName(path)!;
-                    if (Directory.Exists(parentFolder))
+                    var parentInfoResult = await fileSystem.GetInfoAsync(parentFolder);
+                    if (parentInfoResult.IsSuccess
+                        && parentInfoResult.Value.Kind == StorageItemKind.Folder)
                     {
                         folder = parentFolder;
                     }

@@ -4,7 +4,6 @@ using Celbridge.DataTransfer;
 using Celbridge.Documents;
 using Celbridge.Entities;
 using Celbridge.Explorer;
-using Celbridge.GenerativeAI;
 using Celbridge.Inspector;
 using Celbridge.Python;
 using Celbridge.Search;
@@ -47,29 +46,6 @@ public interface IWorkspaceService
     IResourceService ResourceService { get; }
 
     /// <summary>
-    /// Returns the chokepoint file-system layer for project resources.
-    /// </summary>
-    IFileStorage FileStorage { get; }
-
-    /// <summary>
-    /// Returns the soft-delete trash service: move-to-trash, restore, and purge
-    /// operations used by the resource operation service for undoable deletes.
-    /// </summary>
-    ITrashService TrashService { get; }
-
-    /// <summary>
-    /// Returns the on-demand scanner over project text and sidecar files,
-    /// used by the rename cascade, tag queries, and the project-health check.
-    /// </summary>
-    IResourceScanner ResourceScanner { get; }
-
-    /// <summary>
-    /// Returns the sidecar service: validation helpers plus read / mutate /
-    /// write operations over .cel sidecar files via the file-system chokepoint.
-    /// </summary>
-    ISidecarService SidecarService { get; }
-
-    /// <summary>
     /// Returns the Explorer Service associated with the workspace.
     /// </summary>
     IExplorerService ExplorerService { get; }
@@ -108,11 +84,6 @@ public interface IWorkspaceService
     /// Returns the Activity Service associated with the workspace.
     /// </summary>
     IActivityService ActivityService { get; }
-
-    /// <summary>
-    /// Returns the Generative AI Service associated with the workspace.
-    /// </summary>
-    IGenerativeAIService GenerativeAIService { get; }
 
     /// <summary>
     /// Returns the Data Transfer Service associated with the workspace.

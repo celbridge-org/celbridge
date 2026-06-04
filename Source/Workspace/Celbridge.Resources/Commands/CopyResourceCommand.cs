@@ -29,16 +29,16 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
     public CopyCommandResult ResultValue { get; private set; } = new(
         Array.Empty<ResourceKey>(),
         Array.Empty<SkippedReferencer>(),
-        Array.Empty<ResourceKey>());
+        Array.Empty<FailedResource>());
 
     private readonly ILogger<CopyResourceCommand> _logger;
     private readonly IMessengerService _messengerService;
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly ICommandService _commandService;
 
-    private IFileStorage FileStorage => _workspaceWrapper.WorkspaceService.FileStorage;
-    private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.OperationService;
-    private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.TransferService;
+    private IResourceFileSystem ResourceFileSystem => _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+    private IResourceOperationService ResourceOperationService => _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+    private IResourceTransferService ResourceTransferService => _workspaceWrapper.WorkspaceService.ResourceService.Transfers;
 
     public CopyResourceCommand(
         ILogger<CopyResourceCommand> logger,
@@ -68,8 +68,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // This prevents duplicate operations when both a folder and its contents are selected.
         var filteredResources = FilterRedundantResources(SourceResources);
 
-        List<ResourceKey> failedResources = new();
-        List<Result> failedOutcomes = new();
+        List<FailedResource> failedResources = new();
         List<ResourceKey> copiedFolders = new();
         List<ResourceKey> aggregatedUpdated = new();
         List<SkippedReferencer> aggregatedSkipped = new();
@@ -85,8 +84,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 if (outcome.Result.IsFailure)
                 {
                     _logger.LogError(outcome.Result.DiagnosticReport);
-                    failedResources.Add(sourceResource);
-                    failedOutcomes.Add(outcome.Result);
+                    failedResources.Add(new FailedResource(sourceResource, outcome.Result.FirstErrorMessage));
                 }
                 else if (outcome.ParentFolder.HasValue)
                 {
@@ -139,8 +137,8 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
             // ResourceOperationFailedMessage is a UI display channel and takes
             // a list of strings for the toast/banner. Convert from typed keys
             // to display names at this boundary; the structured CopyCommandResult
-            // above keeps the typed ResourceKey list for programmatic callers.
-            var failedDisplayNames = failedResources.Select(r => r.ResourceName).ToList();
+            // above keeps the typed list (with reasons) for programmatic callers.
+            var failedDisplayNames = failedResources.Select(r => r.Resource.ResourceName).ToList();
             var failedList = string.Join(", ", failedDisplayNames);
             _logger.LogWarning($"CopyResourceCommand completed with failures: {failedList}");
 
@@ -150,21 +148,14 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 : ResourceOperationType.Move;
             var failedMessage = new ResourceOperationFailedMessage(operationType, failedDisplayNames);
             _messengerService.Send(failedMessage);
-
-            // Propagate every per-resource failure into the bubble-up Result so
-            // the agent sees the FS-layer's specific message (e.g.
-            // "Destination already exists: '<key>'") via MessageChain. No outer
-            // wrapper is added; the inner messages already identify which
-            // resource(s) failed, and a generic summary string at the top would
-            // duplicate that detail.
-            var aggregated = Result.Fail();
-            foreach (var failedOutcome in failedOutcomes)
-            {
-                aggregated.WithErrors(failedOutcome);
-            }
-            return aggregated;
         }
 
+        // Per-resource failures are a partial-batch outcome reported through
+        // ResultValue.FailedResources (each with its reason), not a command
+        // failure: the batch ran end to end and every other resource was
+        // copied or moved. Result.Fail stays reserved for the batch being
+        // unable to run at all (workspace not loaded, handled at the top). This
+        // matches DeleteResourceCommand so both batch commands behave the same.
         return Result.Ok();
     }
 
@@ -173,7 +164,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         // Resolve destination to handle folder drops
         var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
 
-        var infoResult = await FileStorage.GetInfoAsync(sourceResource);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(sourceResource);
         if (infoResult.IsFailure)
         {
             return new CopyResourceOutcome(

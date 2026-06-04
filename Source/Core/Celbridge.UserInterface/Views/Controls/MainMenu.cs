@@ -223,7 +223,7 @@ public class MainMenu
     /// Handles item invoked events from the parent NavigationView.
     /// Call this from the parent's ItemInvoked handler.
     /// </summary>
-    public void HandleItemInvoked(NavigationViewItem invokedItem)
+    public async void HandleItemInvoked(NavigationViewItem invokedItem)
     {
         var tag = invokedItem.Tag?.ToString();
         if (string.IsNullOrEmpty(tag))
@@ -235,7 +235,7 @@ public class MainMenu
         if (tag.StartsWith(RecentProjectTagPrefix))
         {
             var projectFilePath = tag.Substring(RecentProjectTagPrefix.Length);
-            ViewModel.OpenRecentProject(projectFilePath);
+            await ViewModel.OpenRecentProjectAsync(projectFilePath);
             MenuItemInvoked?.Invoke(this, EventArgs.Empty);
             return;
         }

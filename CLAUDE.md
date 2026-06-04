@@ -88,9 +88,11 @@ python run_tests.py
 ## Architecture
 
 - Workspace-scoped services are transient and must NOT be injected via constructor DI. Access them through `_workspaceWrapper.WorkspaceService`:
-  - IWorkspaceSettingsService, IWorkspaceSettings, IResourceRegistry, IFileStorage, IResourceTransferService, IResourceOperationService, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
+  - Directly on the workspace service: IWorkspaceSettingsService, IWorkspaceSettings, IPythonService, IConsoleService, IDocumentsService, IExplorerService, IInspectorService, IDataTransferService, IEntityService, IGenerativeAIService, IActivityService
+  - The resource-domain services live under `WorkspaceService.ResourceService`: Registry, RootHandlers, Monitor, Transfers, Operations, FileSystem, Policy, Trash, Scanner, Sidecars (e.g. `_workspaceWrapper.WorkspaceService.ResourceService.FileSystem`)
 - Project configuration: use `IProjectService.CurrentProject` (singleton) to access the current project, and `project.Config` for its config. To parse `.celbridge` files outside of project loading, use `ProjectConfigParser.ParseFromFile()`
 - The Foundation project (`Core\Celbridge.Foundation`) should only contain abstractions (interfaces, abstract classes), never concrete implementations
+- Filesystem access goes through the `ILocalFileSystem` gateway, never the `System.IO` static facades (`File`, `Directory`, `FileInfo`, `DirectoryInfo`, `FileSystemWatcher`) directly. The `DirectFileSystemAccessAnalyzer` (`CEL_FS_001`, in `Celbridge.FileSystem.Analyzers`) fails the build on any direct use outside the `Celbridge.FileSystem` assembly. Legitimate exceptions (pre-DI bootstrap, embedded-resource reads, setting the process working directory) carry `[AllowDirectFileSystemAccess]` on the type or member. `System.IO.Path` (pure string manipulation) and stream types (`Stream`, `IOException`) are not gated
 - Never bypass `ICommandService` to call methods directly. Every important operation goes through the command service for automation and auditing support. If a command-based flow has a bug, fix it within the command service pattern (e.g., add new command options or fix the command handling logic)
 
 ## Save Model

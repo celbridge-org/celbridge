@@ -51,9 +51,9 @@ internal class FileOperationBatch : FileOperation
 
 /// <summary>
 /// Undoable create-file or create-folder operation. The folder variant runs
-/// through the chokepoint's idempotent CreateFolderAsync; undo deletes the
+/// through the gateway's idempotent CreateFolderAsync; undo deletes the
 /// folder only when it is still empty so user content added after creation is
-/// not silently wiped. The file variant writes bytes through the chokepoint;
+/// not silently wiped. The file variant writes bytes through the gateway;
 /// undo hard-deletes (no trash) since the user is reversing a just-created
 /// resource they did not previously want.
 /// </summary>
@@ -62,44 +62,44 @@ internal class CreateOperation : FileOperation
     private readonly ResourceKey _resource;
     private readonly bool _isFile;
     private readonly byte[]? _content;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
 
-    public CreateOperation(ResourceKey resource, byte[] content, IFileStorage fileStorage)
+    public CreateOperation(ResourceKey resource, byte[] content, IResourceFileSystem resourceFileSystem)
     {
         _resource = resource;
         _isFile = true;
         _content = content;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
-    public CreateOperation(ResourceKey resource, IFileStorage fileStorage)
+    public CreateOperation(ResourceKey resource, IResourceFileSystem resourceFileSystem)
     {
         _resource = resource;
         _isFile = false;
         _content = null;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
         if (_isFile)
         {
-            var infoResult = await _fileStorage.GetInfoAsync(_resource);
+            var infoResult = await _resourceFileSystem.GetInfoAsync(_resource);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind != StorageItemKind.NotFound)
             {
                 return Result.Fail($"Resource already exists: '{_resource}'");
             }
 
-            return await _fileStorage.WriteAllBytesAsync(_resource, _content!);
+            return await _resourceFileSystem.WriteAllBytesAsync(_resource, _content!);
         }
 
-        return await _fileStorage.CreateFolderAsync(_resource);
+        return await _resourceFileSystem.CreateFolderAsync(_resource);
     }
 
     public override async Task<Result> UndoAsync()
     {
-        var infoResult = await _fileStorage.GetInfoAsync(_resource);
+        var infoResult = await _resourceFileSystem.GetInfoAsync(_resource);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
@@ -110,7 +110,7 @@ internal class CreateOperation : FileOperation
         {
             // Only remove an empty folder. If the user filled it after the
             // original create, leave the contents alone.
-            var enumerateResult = await _fileStorage.EnumerateFolderAsync(_resource);
+            var enumerateResult = await _resourceFileSystem.EnumerateFolderAsync(_resource);
             if (enumerateResult.IsFailure
                 || enumerateResult.Value.Count > 0)
             {
@@ -118,7 +118,7 @@ internal class CreateOperation : FileOperation
             }
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_resource);
+        var deleteResult = await _resourceFileSystem.DeleteAsync(_resource);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -126,9 +126,9 @@ internal class CreateOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable copy of a file or folder through the chokepoint. The entity-data
+/// Undoable copy of a file or folder through the gateway. The entity-data
 /// cascade runs alongside via EntityFileHelper; the bytes-and-sidecar cascade
-/// runs inside the chokepoint's CopyAsync.
+/// runs inside the gateway's CopyAsync.
 /// </summary>
 internal class CopyOperation : FileOperation
 {
@@ -136,7 +136,7 @@ internal class CopyOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly string _sourcePath;
     private readonly string _destPath;
 
@@ -149,7 +149,7 @@ internal class CopyOperation : FileOperation
         string sourcePath,
         string destPath,
         EntityFileHelper entityHelper,
-        IFileStorage fileStorage)
+        IResourceFileSystem resourceFileSystem)
     {
         _source = source;
         _dest = dest;
@@ -157,7 +157,7 @@ internal class CopyOperation : FileOperation
         _sourcePath = sourcePath;
         _destPath = destPath;
         _entityHelper = entityHelper;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -167,7 +167,7 @@ internal class CopyOperation : FileOperation
             _entityHelper.CopyEntityDataFile(_sourcePath, _destPath);
         }
 
-        var copyResult = await _fileStorage.CopyAsync(_source, _dest);
+        var copyResult = await _resourceFileSystem.CopyAsync(_source, _dest);
         if (copyResult.IsFailure)
         {
             return Result.Fail(copyResult);
@@ -193,7 +193,7 @@ internal class CopyOperation : FileOperation
             _entityHelper.DeleteEntityDataFile(_destPath);
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_dest);
+        var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -201,7 +201,7 @@ internal class CopyOperation : FileOperation
 }
 
 /// <summary>
-/// Undoable move of a file or folder through the chokepoint. The chokepoint
+/// Undoable move of a file or folder through the gateway. The gateway
 /// handles references, the paired sidecar, and the source-removal broadcast;
 /// the inverse re-walks references in the opposite direction.
 /// </summary>
@@ -211,7 +211,7 @@ internal class MoveOperation : FileOperation
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
     private readonly EntityFileHelper _entityHelper;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
     private readonly string _sourcePath;
     private readonly string _destPath;
 
@@ -224,7 +224,7 @@ internal class MoveOperation : FileOperation
         string sourcePath,
         string destPath,
         EntityFileHelper entityHelper,
-        IFileStorage fileStorage)
+        IResourceFileSystem resourceFileSystem)
     {
         _source = source;
         _dest = dest;
@@ -232,7 +232,7 @@ internal class MoveOperation : FileOperation
         _sourcePath = sourcePath;
         _destPath = destPath;
         _entityHelper = entityHelper;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
     }
 
     public override async Task<Result> ExecuteAsync()
@@ -248,12 +248,12 @@ internal class MoveOperation : FileOperation
             _entityHelper.MoveEntityDataFile(_sourcePath, _destPath);
         }
 
-        var moveResult = await _fileStorage.MoveAsync(_source, _dest);
+        var moveResult = await _resourceFileSystem.MoveAsync(_source, _dest);
         if (moveResult.IsFailure)
         {
             // Best-effort rollback of the entity-data cascade so the bytes
             // stay paired with the source on failure. Errors here are swallowed
-            // because the chokepoint failure is the load-bearing problem; the
+            // because the gateway failure is the load-bearing problem; the
             // entity system is on its way out and the precise post-failure
             // state is not worth a partial-recovery report.
             try
@@ -289,7 +289,7 @@ internal class MoveOperation : FileOperation
             _entityHelper.MoveEntityDataFile(_destPath, _sourcePath);
         }
 
-        var moveResult = await _fileStorage.MoveAsync(_dest, _source);
+        var moveResult = await _resourceFileSystem.MoveAsync(_dest, _source);
         return moveResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(moveResult);
@@ -352,27 +352,30 @@ internal class DeleteOperation : FileOperation
 /// Undoable import of a file or folder from outside the project. External
 /// imports carry no inbound references or sidecars, so the cascade does not
 /// apply. Source bytes are read directly (the source is outside the registry);
-/// the destination flows through the chokepoint for containment validation.
+/// the destination flows through the gateway for containment validation.
 /// </summary>
 internal class ImportExternalOperation : FileOperation
 {
     private readonly string _sourcePath;
     private readonly ResourceKey _dest;
     private readonly bool _isFolder;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
+    private readonly ILocalFileSystem _fileSystem;
     private readonly ILogger _logger;
 
     public ImportExternalOperation(
         string sourcePath,
         ResourceKey dest,
         bool isFolder,
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
+        ILocalFileSystem fileSystem,
         ILogger logger)
     {
         _sourcePath = sourcePath;
         _dest = dest;
         _isFolder = isFolder;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
+        _fileSystem = fileSystem;
         _logger = logger;
     }
 
@@ -380,12 +383,14 @@ internal class ImportExternalOperation : FileOperation
     {
         if (_isFolder)
         {
-            if (!Directory.Exists(_sourcePath))
+            var sourceFolderInfo = await _fileSystem.GetInfoAsync(_sourcePath);
+            if (sourceFolderInfo.IsFailure
+                || sourceFolderInfo.Value.Kind != StorageItemKind.Folder)
             {
                 return Result.Fail($"Source folder does not exist: '{_sourcePath}'");
             }
 
-            var infoResult = await _fileStorage.GetInfoAsync(_dest);
+            var infoResult = await _resourceFileSystem.GetInfoAsync(_dest);
             if (infoResult.IsSuccess
                 && infoResult.Value.Kind != StorageItemKind.NotFound)
             {
@@ -395,41 +400,40 @@ internal class ImportExternalOperation : FileOperation
             return await ImportFolderAsync(_sourcePath, _dest);
         }
 
-        if (!File.Exists(_sourcePath))
+        var sourceFileInfo = await _fileSystem.GetInfoAsync(_sourcePath);
+        if (sourceFileInfo.IsFailure
+            || sourceFileInfo.Value.Kind != StorageItemKind.File)
         {
             return Result.Fail($"Source file does not exist: '{_sourcePath}'");
         }
 
-        var destInfoResult = await _fileStorage.GetInfoAsync(_dest);
+        var destInfoResult = await _resourceFileSystem.GetInfoAsync(_dest);
         if (destInfoResult.IsSuccess
             && destInfoResult.Value.Kind != StorageItemKind.NotFound)
         {
             return Result.Fail($"Destination already exists: '{_dest}'");
         }
 
-        try
+        var readResult = await _fileSystem.ReadAllBytesAsync(_sourcePath);
+        if (readResult.IsFailure)
         {
-            var bytes = await File.ReadAllBytesAsync(_sourcePath);
-            return await _fileStorage.WriteAllBytesAsync(_dest, bytes);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to import external file from '{SourcePath}' to '{Destination}'", _sourcePath, _dest);
+            _logger.LogError($"Failed to read external source file '{_sourcePath}'. {readResult.DiagnosticReport}");
             return Result.Fail($"Failed to import external file from '{_sourcePath}' to '{_dest}'")
-                .WithException(ex);
+                .WithErrors(readResult);
         }
+        return await _resourceFileSystem.WriteAllBytesAsync(_dest, readResult.Value);
     }
 
     public override async Task<Result> UndoAsync()
     {
-        var infoResult = await _fileStorage.GetInfoAsync(_dest);
+        var infoResult = await _resourceFileSystem.GetInfoAsync(_dest);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
             return Result.Ok();
         }
 
-        var deleteResult = await _fileStorage.DeleteAsync(_dest);
+        var deleteResult = await _resourceFileSystem.DeleteAsync(_dest);
         return deleteResult.IsSuccess
             ? Result.Ok()
             : Result.Fail(deleteResult);
@@ -437,42 +441,51 @@ internal class ImportExternalOperation : FileOperation
 
     private async Task<Result> ImportFolderAsync(string sourceFolderPath, ResourceKey destinationFolder)
     {
-        var createResult = await _fileStorage.CreateFolderAsync(destinationFolder);
+        var createResult = await _resourceFileSystem.CreateFolderAsync(destinationFolder);
         if (createResult.IsFailure)
         {
             return createResult;
         }
 
-        try
+        var enumerateResult = await _fileSystem.EnumerateAsync(sourceFolderPath, "*", recursive: false);
+        if (enumerateResult.IsFailure)
         {
-            foreach (var file in Directory.GetFiles(sourceFolderPath))
-            {
-                var fileName = Path.GetFileName(file);
-                var destinationFile = destinationFolder.Combine(fileName);
-                var bytes = await File.ReadAllBytesAsync(file);
-                var writeResult = await _fileStorage.WriteAllBytesAsync(destinationFile, bytes);
-                if (writeResult.IsFailure)
-                {
-                    return writeResult;
-                }
-            }
+            return Result.Fail(enumerateResult);
+        }
 
-            foreach (var subFolder in Directory.GetDirectories(sourceFolderPath))
+        foreach (var entry in enumerateResult.Value)
+        {
+            if (entry.IsFolder)
             {
-                var folderName = Path.GetFileName(subFolder);
-                var destinationSubFolder = destinationFolder.Combine(folderName);
-                var recurseResult = await ImportFolderAsync(subFolder, destinationSubFolder);
-                if (recurseResult.IsFailure)
-                {
-                    return recurseResult;
-                }
+                continue;
+            }
+            var fileName = Path.GetFileName(entry.FullPath);
+            var destinationFile = destinationFolder.Combine(fileName);
+            var readResult = await _fileSystem.ReadAllBytesAsync(entry.FullPath);
+            if (readResult.IsFailure)
+            {
+                return Result.Fail(readResult);
+            }
+            var writeResult = await _resourceFileSystem.WriteAllBytesAsync(destinationFile, readResult.Value);
+            if (writeResult.IsFailure)
+            {
+                return writeResult;
             }
         }
-        catch (Exception ex)
+
+        foreach (var entry in enumerateResult.Value)
         {
-            _logger.LogError(ex, "Failed to import external folder from '{SourceFolderPath}' to '{DestinationFolder}'", sourceFolderPath, destinationFolder);
-            return Result.Fail($"Failed to import external folder from '{sourceFolderPath}' to '{destinationFolder}'")
-                .WithException(ex);
+            if (!entry.IsFolder)
+            {
+                continue;
+            }
+            var folderName = Path.GetFileName(entry.FullPath);
+            var destinationSubFolder = destinationFolder.Combine(folderName);
+            var recurseResult = await ImportFolderAsync(entry.FullPath, destinationSubFolder);
+            if (recurseResult.IsFailure)
+            {
+                return recurseResult;
+            }
         }
 
         return Result.Ok();

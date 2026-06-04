@@ -57,7 +57,7 @@ internal static class SpreadsheetHelper
     /// <summary>
     /// Validates that the resource key is a non-empty .xlsx file that exists
     /// inside a registered root. Returns the key on success so callers can
-    /// pass it to subsequent chokepoint operations.
+    /// pass it to subsequent gateway operations.
     /// </summary>
     public static async Task<Result<ResourceKey>> ResolveWorkbookResourceAsync(
         IWorkspaceWrapper workspaceWrapper,
@@ -74,8 +74,8 @@ internal static class SpreadsheetHelper
             return Result.Fail($"Resource is not an .xlsx workbook: '{fileResource}'");
         }
 
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
-        var infoResult = await fileStorage.GetInfoAsync(fileResource);
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var infoResult = await resourceFileSystem.GetInfoAsync(fileResource);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to inspect workbook: '{fileResource}'")
@@ -96,15 +96,15 @@ internal static class SpreadsheetHelper
     }
 
     /// <summary>
-    /// Loads the workbook bytes via the chokepoint and constructs an XLWorkbook
+    /// Loads the workbook bytes via the gateway and constructs an XLWorkbook
     /// from an in-memory copy. The caller owns the returned workbook and must
     /// dispose it; the underlying stream is owned by the workbook.
     /// </summary>
     public static async Task<Result<XLWorkbook>> LoadWorkbookAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey fileResource)
     {
-        var bytesResult = await fileStorage.ReadAllBytesAsync(fileResource);
+        var bytesResult = await resourceFileSystem.ReadAllBytesAsync(fileResource);
         if (bytesResult.IsFailure)
         {
             return Result.Fail($"Failed to read workbook: '{fileResource}'")
@@ -127,11 +127,11 @@ internal static class SpreadsheetHelper
     }
 
     /// <summary>
-    /// Serialises the workbook to memory and writes it via the chokepoint.
+    /// Serialises the workbook to memory and writes it via the gateway.
     /// Evaluates formulas before saving so cached values stay fresh.
     /// </summary>
     public static async Task<Result> SaveWorkbookAsync(
-        IFileStorage fileStorage,
+        IResourceFileSystem resourceFileSystem,
         ResourceKey fileResource,
         XLWorkbook workbook)
     {
@@ -148,7 +148,7 @@ internal static class SpreadsheetHelper
                 .WithException(ex);
         }
 
-        var writeResult = await fileStorage.WriteAllBytesAsync(fileResource, bytes);
+        var writeResult = await resourceFileSystem.WriteAllBytesAsync(fileResource, bytes);
         if (writeResult.IsFailure)
         {
             return Result.Fail($"Failed to save workbook: '{fileResource}'")

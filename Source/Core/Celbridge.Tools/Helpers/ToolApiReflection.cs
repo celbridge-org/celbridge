@@ -30,14 +30,15 @@ internal static class ToolApiReflection
         }
 
         var xmlPath = Path.ChangeExtension(assemblyLocation, ".xml");
-        if (!File.Exists(xmlPath))
+        var xmlContent = ReadXmlDocumentation(xmlPath);
+        if (xmlContent is null)
         {
             return result;
         }
 
         try
         {
-            var document = XDocument.Load(xmlPath);
+            var document = XDocument.Parse(xmlContent);
             var members = document.Descendants("member");
 
             foreach (var member in members)
@@ -118,6 +119,31 @@ internal static class ToolApiReflection
         }
 
         return results;
+    }
+
+    // Reads the XML documentation file via ILocalFileSystem when the service locator
+    // is initialised (production), and falls back to the raw file APIs when it
+    // is not (the Guides tests load the assembly directly without spinning up
+    // DI). Returns null if the file cannot be read; callers treat that as
+    // "no XML docs available."
+    [AllowDirectFileSystemAccess]
+    private static string? ReadXmlDocumentation(string xmlPath)
+    {
+        if (ServiceLocator.ServiceProvider is not null)
+        {
+            var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+            var readResult = SyncRunner.Run(() => fileSystem.ReadAllTextAsync(xmlPath));
+            return readResult.IsSuccess ? readResult.Value : null;
+        }
+
+        try
+        {
+            return File.ReadAllText(xmlPath);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>

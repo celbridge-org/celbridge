@@ -129,6 +129,24 @@ public abstract class Result
         }
     }
 
+    /// <summary>
+    /// Returns true if any error attached to this result carries an exception
+    /// assignable to TException. Walks the full error chain so an exception
+    /// attached via WithErrors at any depth is matched, not just the outermost.
+    /// </summary>
+    public bool HasException<TException>() where TException : Exception
+    {
+        foreach (var error in _errors)
+        {
+            if (error.Exception is TException)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public bool IsSuccess { get; protected set; }
     public bool IsFailure => !IsSuccess;
 

@@ -6,20 +6,25 @@ namespace Celbridge.Resources.Services;
 
 /// <summary>
 /// Rewrites "project:" reference literals across the project tree when a
-/// resource is renamed or moved. Reads and writes go back through IFileStorage
-/// so referencer files inherit the chokepoint's atomic-write semantics.
+/// resource is renamed or moved.
 /// </summary>
 internal sealed class ReferenceRewriter
 {
     private readonly ILogger _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
-    private readonly IFileStorage _fileStorage;
+    private readonly IResourceFileSystem _resourceFileSystem;
+    private readonly ILocalFileSystem _fileSystem;
 
-    public ReferenceRewriter(ILogger logger, IWorkspaceWrapper workspaceWrapper, IFileStorage fileStorage)
+    public ReferenceRewriter(
+        ILogger logger, 
+        IWorkspaceWrapper workspaceWrapper, 
+        IResourceFileSystem resourceFileSystem, 
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
-        _fileStorage = fileStorage;
+        _resourceFileSystem = resourceFileSystem;
+        _fileSystem = fileSystem;
     }
 
     /// <summary>
@@ -27,7 +32,7 @@ internal sealed class ReferenceRewriter
     /// "project:<source>/<rest>" literal) in every referencer of source.
     /// Successful rewrites land in updatedReferencers; failures land in
     /// skippedReferencers with a reason. The parent move always proceeds —
-    /// data_check_project surfaces residuals; the chokepoint is idempotent so
+    /// data_check_project surfaces residuals; the gateway is idempotent so
     /// a rerun completes them.
     /// </summary>
     public async Task<Result> RewriteForMoveAsync(
@@ -37,7 +42,7 @@ internal sealed class ReferenceRewriter
         List<ResourceKey> updatedReferencers,
         List<SkippedReferencer> skippedReferencers)
     {
-        var scanner = _workspaceWrapper.WorkspaceService.ResourceScanner;
+        var scanner = _workspaceWrapper.WorkspaceService.ResourceService.Scanner;
 
         var referencerSet = new HashSet<ResourceKey>();
         foreach (var referencer in await scanner.FindReferencersAsync(source))
@@ -67,7 +72,7 @@ internal sealed class ReferenceRewriter
 
         foreach (var referencer in orderedReferencers)
         {
-            var readResult = await _fileStorage.ReadAllTextAsync(referencer);
+            var readResult = await _resourceFileSystem.ReadAllTextAsync(referencer);
             if (readResult.IsFailure)
             {
                 var message = $"read failed for '{referencer}'";
@@ -86,7 +91,7 @@ internal sealed class ReferenceRewriter
             // Pre-check the DOS read-only attribute. Windows surfaces it as a
             // write failure but POSIX rename would silently succeed, so the
             // pre-check honors "don't modify this file" identically on both.
-            if (IsReferencerReadOnly(referencer))
+            if (await IsReferencerReadOnlyAsync(referencer))
             {
                 const string readOnlyMessage = "file is read-only";
                 _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {readOnlyMessage}. The reference is left as-is and will surface via data_check_project.");
@@ -94,10 +99,10 @@ internal sealed class ReferenceRewriter
                 continue;
             }
 
-            var writeResult = await _fileStorage.WriteAllTextAsync(referencer, rewritten);
+            var writeResult = await _resourceFileSystem.WriteAllTextAsync(referencer, rewritten);
             if (writeResult.IsFailure)
             {
-                var classification = ClassifyReferencerWriteFailure(referencer, writeResult);
+                var classification = await ClassifyReferencerWriteFailureAsync(referencer, writeResult);
                 _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {classification.Message}. The reference is left as-is and will surface via data_check_project.");
                 skippedReferencers.Add(new SkippedReferencer(referencer, classification.Reason, classification.Message));
                 continue;
@@ -109,7 +114,7 @@ internal sealed class ReferenceRewriter
         return Result.Ok();
     }
 
-    private bool IsReferencerReadOnly(ResourceKey referencer)
+    private async Task<bool> IsReferencerReadOnlyAsync(ResourceKey referencer)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = registry.ResolveResourcePath(referencer);
@@ -118,19 +123,16 @@ internal sealed class ReferenceRewriter
             return false;
         }
 
-        try
-        {
-            var info = new FileInfo(resolveResult.Value);
-            return info.Exists
-                && info.IsReadOnly;
-        }
-        catch
+        var infoResult = await _fileSystem.GetInfoAsync(resolveResult.Value);
+        if (infoResult.IsFailure)
         {
             return false;
         }
+
+        return (infoResult.Value.Attributes & FileSystemAttributes.ReadOnly) != 0;
     }
 
-    private (ReferencerSkipReason Reason, string Message) ClassifyReferencerWriteFailure(ResourceKey referencer, Result writeResult)
+    private async Task<(ReferencerSkipReason Reason, string Message)> ClassifyReferencerWriteFailureAsync(ResourceKey referencer, Result writeResult)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resolveResult = registry.ResolveResourcePath(referencer);
@@ -141,20 +143,14 @@ internal sealed class ReferenceRewriter
 
         // ReadOnly is split from PermissionDenied because the fix is different:
         // read-only is trivially clearable; an ACL deny needs the right account.
-        try
+        var infoResult = await _fileSystem.GetInfoAsync(resolveResult.Value);
+        if (infoResult.IsSuccess
+            && (infoResult.Value.Attributes & FileSystemAttributes.ReadOnly) != 0)
         {
-            var info = new FileInfo(resolveResult.Value);
-            if (info.Exists
-                && info.IsReadOnly)
-            {
-                return (ReferencerSkipReason.ReadOnly, "file is read-only");
-            }
-        }
-        catch
-        {
+            return (ReferencerSkipReason.ReadOnly, "file is read-only");
         }
 
-        if (writeResult.FirstException is UnauthorizedAccessException)
+        if (writeResult.HasException<UnauthorizedAccessException>())
         {
             return (ReferencerSkipReason.PermissionDenied, "permission denied (no write access to file)");
         }

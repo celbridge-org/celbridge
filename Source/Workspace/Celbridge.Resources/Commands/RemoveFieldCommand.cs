@@ -22,7 +22,7 @@ public sealed class RemoveFieldCommand : CommandBase, IRemoveFieldCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         return await sidecarService.RemoveFieldAsync(Resource, Field);
     }
 }

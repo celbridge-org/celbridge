@@ -181,9 +181,14 @@ public partial class AddFileDialogViewModel : ObservableObject
             return;
         }
 
-        // Check if filename only consists of an extension (e.g., ".py" without a name)
-        var nameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
-        if (!string.IsNullOrEmpty(FileName) && string.IsNullOrEmpty(nameWithoutExtension))
+        // Reject names that are only dots or whitespace (e.g. ".", ".."). A
+        // leading-dot name with a real segment after the dot (".gitignore",
+        // ".env") is a valid dotfile, so it must not be rejected here even though
+        // Path.GetFileNameWithoutExtension reports an empty base name for it.
+        var trimmedFileName = FileName.Trim();
+        bool isOnlyDotsOrWhitespace = trimmedFileName.Length > 0
+            && trimmedFileName.All(character => character == '.');
+        if (isOnlyDotsOrWhitespace)
         {
             IsFileNameValid = false;
             IsSubmitEnabled = false;

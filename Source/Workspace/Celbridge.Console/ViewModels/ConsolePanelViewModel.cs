@@ -1,7 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Messaging;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -113,7 +112,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         _messengerService.Register<ConsoleMaximizedChangedMessage>(this, OnConsoleMaximizedChanged);
 
         // Snapshot the project file contents so subsequent changes can be
-        // detected. The hash read goes through the file storage chokepoint,
+        // detected. The hash read goes through the file storage gateway,
         // which is async; fire-and-forget here since the constructor is sync
         // and the snapshot is only consulted on later change events.
         _ = StoreProjectFileHashAsync();
@@ -295,8 +294,8 @@ public partial class ConsolePanelViewModel : ObservableObject
             return;
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
         if (hashResult.IsFailure)
         {
             _originalProjectFileHash = null;
@@ -313,8 +312,8 @@ public partial class ConsolePanelViewModel : ObservableObject
             return;
         }
 
-        var fileStorage = _workspaceWrapper.WorkspaceService.FileStorage;
-        var hashResult = await fileStorage.ComputeHashAsync(projectFileResource);
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var hashResult = await resourceFileSystem.ComputeHashAsync(projectFileResource);
         if (hashResult.IsFailure)
         {
             // If we can't read the file, hide the banner

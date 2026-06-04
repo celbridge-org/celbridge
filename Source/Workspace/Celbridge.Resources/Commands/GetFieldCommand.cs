@@ -30,7 +30,7 @@ public sealed class GetFieldCommand : CommandBase, IGetFieldCommand
             return Result.Fail("Field must be a non-empty string.");
         }
 
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         var readResult = await sidecarService.ReadAsync(Resource);
         if (readResult.IsFailure)
         {

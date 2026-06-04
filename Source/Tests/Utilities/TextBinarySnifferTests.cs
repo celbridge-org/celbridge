@@ -1,4 +1,5 @@
-using Celbridge.Utilities;
+using Celbridge.FileSystem.Services;
+using Celbridge.Tests.Migration.TestHelpers;
 using System.Text;
 
 namespace Celbridge.Tests.Utilities;
@@ -7,7 +8,7 @@ namespace Celbridge.Tests.Utilities;
 public class TextBinarySnifferTests
 {
     private string _testFilesDir = null!;
-    private readonly TextBinarySniffer _sniffer = new();
+    private readonly TextBinarySniffer _sniffer = new(new LocalFileSystem(MigrationTestHelper.CreateMockLogger<LocalFileSystem>()));
 
     [SetUp]
     public void SetUp()
@@ -121,6 +122,34 @@ public class TextBinarySnifferTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeTrue();
+    }
+
+    [Test]
+    public void IsTextFile_Utf8MultibyteCharSplitAtSampleBoundary_ReturnsTrue()
+    {
+        // A valid UTF-8 file whose multibyte character is split by the fixed-size
+        // sample window must still be detected as text - and without raising a
+        // DecoderFallbackException on every scan (the source of log spam).
+        var filePath = Path.Combine(_testFilesDir, "boundary-utf8.txt");
+
+        // The sniffer samples the first 8192 bytes. Place a 3-byte character so
+        // only its first two bytes fall inside the window.
+        var prefix = new byte[8190];
+        Array.Fill(prefix, (byte)'A');
+
+        // U+2500 BOX DRAWINGS LIGHT HORIZONTAL encodes as E2 94 80; the trailing
+        // 0x80 lands just past the sample boundary.
+        var boxDrawing = new byte[] { 0xE2, 0x94, 0x80 };
+        var bytes = prefix
+            .Concat(boxDrawing)
+            .Concat(Encoding.UTF8.GetBytes("more text\n"))
+            .ToArray();
+        File.WriteAllBytes(filePath, bytes);
+
+        var result = _sniffer.IsTextFile(filePath);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeTrue("a multibyte char split by the sample boundary is incomplete, not invalid");
     }
 
     [Test]

@@ -1,13 +1,11 @@
-using Celbridge.Explorer.Services;
 using Celbridge.Messaging;
 using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
-using Celbridge.Resources.Helpers;
 using Celbridge.Resources.Services;
 using Celbridge.Resources.Services.Roots;
+using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
@@ -51,37 +49,40 @@ public class DataCheckProjectTests
         _resourceRegistry = new ResourceRegistry(
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
-            new ProjectTreeBuilder(fileIconService),
+            ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService),
             ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
-            _rootHandlerRegistry);
+            _rootHandlerRegistry,
+            TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
 
         // ProjectCheckCommand writes its latest report to logs:project-check.log,
-        // so the chokepoint needs a logs: root or the write step fails.
+        // so the gateway needs a logs: root or the write step fails.
         _rootHandlerRegistry.RegisterRootHandler(
             new LogsRootHandler(_logsBackingFolder));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
-        resourceService.RootHandlerRegistry.Returns(_rootHandlerRegistry);
+        resourceService.RootHandlers.Returns(_rootHandlerRegistry);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
 
-        var fileStorage = new FileStorage(
-            Substitute.For<ILogger<FileStorage>>(),
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
             _messengerService,
-            _workspaceWrapper);
-        workspaceService.FileStorage.Returns(fileStorage);
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         var scanner = new ResourceScanner(
             Substitute.For<ILogger<ResourceScanner>>(),
             _workspaceWrapper);
-        workspaceService.ResourceScanner.Returns(scanner);
+        resourceService.Scanner.Returns(scanner);
 
         _command = new ProjectCheckCommand(
             Substitute.For<ILogger<ProjectCheckCommand>>(),
@@ -124,7 +125,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "b.json"),
             "{ \"target\": \"project:a.json\" }");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -139,7 +140,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
             "{ \"target\": \"project:missing.json\" }");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -161,7 +162,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"),
             "This documentation mentions \"project:missing.json\" but it should NOT be tracked.");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -183,7 +184,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"),
             "editor = \"celbridge.notes\"\nlink = \"project:missing.json\"\n");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -198,7 +199,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "tags = [\"orphaned\"]\n");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -213,7 +214,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "doc.md.cel"),
             "this = is not valid = toml ###\n");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -228,7 +229,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "weird.cel.cel"),
             "tags = [\"x\"]\n");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -244,7 +245,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "b.json"),
             "{ \"target\": \"project:zzz.json\" }");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -274,7 +275,7 @@ public class DataCheckProjectTests
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
             "tags = [\"orphaned\"]\n");
 
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 
@@ -295,7 +296,7 @@ public class DataCheckProjectTests
     {
         // Clean projects still produce a file so the eventual "open report"
         // button is never broken.
-        _resourceRegistry.UpdateResourceRegistry().IsSuccess.Should().BeTrue();
+        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
 

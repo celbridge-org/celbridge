@@ -23,7 +23,7 @@ public sealed class AddTagCommand : CommandBase, IAddTagCommand
 
     public override async Task<Result> ExecuteAsync()
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.SidecarService;
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
         return await sidecarService.AddTagAsync(Resource, Tag);
     }
 }

@@ -1,15 +1,12 @@
 using Celbridge.Logging;
-using Celbridge.Projects;
 using Celbridge.Workspace;
 using Timer = System.Timers.Timer;
 
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Monitors file system changes across every registered root with the IsWatched
-/// capability and schedules resource updates. Each watched root gets its own
-/// FileSystemWatcher; all watchers feed into a single shared debounce timer so
-/// rapid bursts of events coalesce.
+/// Translates raw file system watch events on watched roots into resource-level
+/// change notifications and registry updates.
 /// </summary>
 public class ResourceMonitor : IResourceMonitor, IDisposable
 {
@@ -18,12 +15,12 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private sealed class WatchedRoot
     {
         public IResourceRootHandler Handler { get; }
-        public FileSystemWatcher Watcher { get; }
+        public IFileSystemMonitor Monitor { get; }
 
-        public WatchedRoot(IResourceRootHandler handler, FileSystemWatcher watcher)
+        public WatchedRoot(IResourceRootHandler handler, IFileSystemMonitor monitor)
         {
             Handler = handler;
-            Watcher = watcher;
+            Monitor = monitor;
         }
     }
 
@@ -31,6 +28,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
     private readonly IMessengerService _messengerService;
     private readonly IDispatcher _dispatcher;
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IFileSystemMonitorFactory _fileSystemMonitorFactory;
 
     private readonly object _updateLock = new();
 
@@ -42,12 +40,14 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         ILogger<ResourceMonitor> logger,
         IDispatcher dispatcher,
         IMessengerService messengerService,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        IFileSystemMonitorFactory fileSystemMonitorFactory)
     {
         _logger = logger;
         _dispatcher = dispatcher;
         _messengerService = messengerService;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystemMonitorFactory = fileSystemMonitorFactory;
     }
 
     public Result Initialize()
@@ -59,10 +59,10 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
         try
         {
-            // Spin up one FileSystemWatcher per registered root that opted in via Capabilities.IsWatched.
+            // Spin up one file system monitor per registered root that opted in via Capabilities.IsWatched.
             // WorkspaceLoader calls Initialize after the workspace finishes constructing, so the wrapper
             // returns the configured registry instance here.
-            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlerRegistry;
+            var rootHandlerRegistry = _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
             foreach (var handler in rootHandlerRegistry.RootHandlers.Values)
             {
                 if (!handler.Capabilities.IsWatched)
@@ -70,15 +70,19 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
                     continue;
                 }
 
-                if (!Directory.Exists(handler.BackingLocation))
+                var monitor = _fileSystemMonitorFactory.Create(handler.BackingLocation);
+                monitor.FileSystemChanged += (sender, monitorEvent) => OnFileSystemChanged(handler, monitorEvent);
+
+                var startResult = monitor.Start();
+                if (startResult.IsFailure)
                 {
-                    _logger.LogWarning(
-                        $"Backing folder for root '{handler.RootName}' does not exist: {handler.BackingLocation}");
+                    _logger.LogWarning(startResult,
+                        $"Resource monitoring not started for root '{handler.RootName}'");
+                    monitor.Dispose();
                     continue;
                 }
 
-                var watcher = CreateWatcher(handler);
-                _watchedRoots.Add(new WatchedRoot(handler, watcher));
+                _watchedRoots.Add(new WatchedRoot(handler, monitor));
 
                 _logger.LogDebug(
                     $"Resource monitoring started for root '{handler.RootName}' at: {handler.BackingLocation}");
@@ -91,29 +95,6 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
             return Result.Fail("Failed to initialize resource monitor")
                 .WithException(ex);
         }
-    }
-
-    private FileSystemWatcher CreateWatcher(IResourceRootHandler handler)
-    {
-        var watcher = new FileSystemWatcher(handler.BackingLocation)
-        {
-            NotifyFilter = NotifyFilters.FileName
-                         | NotifyFilters.DirectoryName
-                         | NotifyFilters.LastWrite
-                         | NotifyFilters.Size,
-            IncludeSubdirectories = true,
-            EnableRaisingEvents = false
-        };
-
-        // Closures capture the handler so each event knows which root it belongs to.
-        watcher.Created += (sender, e) => OnFileSystemCreated(handler, e);
-        watcher.Changed += (sender, e) => OnFileSystemChanged(handler, e);
-        watcher.Deleted += (sender, e) => OnFileSystemDeleted(handler, e);
-        watcher.Renamed += (sender, e) => OnFileSystemRenamed(handler, e);
-        watcher.Error += OnFileSystemError;
-
-        watcher.EnableRaisingEvents = true;
-        return watcher;
     }
 
     public void Shutdown()
@@ -133,9 +114,7 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
 
             foreach (var watchedRoot in _watchedRoots)
             {
-                var watcher = watchedRoot.Watcher;
-                watcher.EnableRaisingEvents = false;
-                watcher.Dispose();
+                watchedRoot.Monitor.Dispose();
             }
             _watchedRoots.Clear();
 
@@ -147,81 +126,90 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
     }
 
-    private void OnFileSystemCreated(IResourceRootHandler handler, FileSystemEventArgs e)
+    private void OnFileSystemChanged(IResourceRootHandler handler, FileSystemMonitorEvent monitorEvent)
     {
-        if (ShouldIgnorePath(handler, e.FullPath))
+        switch (monitorEvent.Kind)
+        {
+            case FileSystemMonitorEventKind.Created:
+                HandleCreated(handler, monitorEvent.Path);
+                break;
+
+            case FileSystemMonitorEventKind.Changed:
+                HandleChanged(handler, monitorEvent.Path);
+                break;
+
+            case FileSystemMonitorEventKind.Deleted:
+                HandleDeleted(handler, monitorEvent.Path);
+                break;
+
+            case FileSystemMonitorEventKind.Renamed:
+                HandleRenamed(handler, monitorEvent.OldPath!, monitorEvent.Path);
+                break;
+        }
+    }
+
+    private void HandleCreated(IResourceRootHandler handler, string fullPath)
+    {
+        if (ShouldIgnorePath(handler, fullPath))
         {
             return;
         }
 
         // Send granular notification for listeners (e.g., document editors)
-        OnResourceCreated(handler, e.FullPath);
+        OnResourceCreated(handler, fullPath);
 
         // Also notify as changed because some save patterns (atomic temp-write
         // followed by replace of an existing destination, used by the in-app
         // file writer and many external editors) surface as a Created event on
         // the destination rather than a Changed or Renamed event. Listeners
         // that watch for content changes need to react in that case too.
-        OnResourceChanged(handler, e.FullPath);
+        OnResourceChanged(handler, fullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemChanged(IResourceRootHandler handler, FileSystemEventArgs e)
+    private void HandleChanged(IResourceRootHandler handler, string fullPath)
     {
-        if (ShouldIgnorePath(handler, e.FullPath))
+        if (ShouldIgnorePath(handler, fullPath))
         {
             return;
         }
 
-        OnResourceChanged(handler, e.FullPath);
+        OnResourceChanged(handler, fullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemDeleted(IResourceRootHandler handler, FileSystemEventArgs e)
+    private void HandleDeleted(IResourceRootHandler handler, string fullPath)
     {
-        if (ShouldIgnorePath(handler, e.FullPath))
+        if (ShouldIgnorePath(handler, fullPath))
         {
             return;
         }
 
-        OnResourceDeleted(handler, e.FullPath);
+        OnResourceDeleted(handler, fullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
     }
 
-    private void OnFileSystemRenamed(IResourceRootHandler handler, RenamedEventArgs e)
+    private void HandleRenamed(IResourceRootHandler handler, string oldFullPath, string newFullPath)
     {
         // Only check the new path for ignore rules. The old path may no longer exist on disk
         // (the rename has already completed), so File.GetAttributes would throw and cause the
         // event to be incorrectly ignored. This is critical for editors and coding agents that
         // use a "write temp, delete original, rename temp" save pattern.
-        if (ShouldIgnorePath(handler, e.FullPath))
+        if (ShouldIgnorePath(handler, newFullPath))
         {
             return;
         }
 
-        OnResourceRenamed(handler, e.OldFullPath, e.FullPath);
+        OnResourceRenamed(handler, oldFullPath, newFullPath);
 
         // Also notify as changed since content may have been updated
         // (handles applications that use rename as part of save, e.g., Excel)
-        OnResourceChanged(handler, e.FullPath);
+        OnResourceChanged(handler, newFullPath);
 
         ScheduleResourceUpdateIfProjectRoot(handler);
-    }
-
-    private void OnFileSystemError(object sender, ErrorEventArgs e)
-    {
-        var exception = e.GetException();
-        if (exception is not null)
-        {
-            _logger.LogError(exception, "File system watcher error");
-        }
-        else
-        {
-            _logger.LogError("File system watcher error (no exception attached)");
-        }
     }
 
     private void ScheduleResourceUpdateIfProjectRoot(IResourceRootHandler handler)
@@ -275,11 +263,11 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         }
 
         // Marshal to UI thread since UpdateResources may trigger UI updates via message
-        _dispatcher.TryEnqueue(() =>
+        _dispatcher.TryEnqueue(async () =>
         {
             var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
 
-            var result = resourceService.UpdateResources();
+            var result = await resourceService.UpdateResourcesAsync();
             if (result.IsFailure)
             {
                 _logger.LogWarning(result, "Failed to refresh resources");
@@ -363,109 +351,25 @@ public class ResourceMonitor : IResourceMonitor, IDisposable
         });
     }
 
+    // Drops a watcher event when its path cannot be keyed, or when a project-root
+    // key is denied List by the policy engine. Events from non-project roots are
+    // already confined to their backing folder and need no policy check.
     private bool ShouldIgnorePath(IResourceRootHandler handler, string fullPath)
     {
-        var fileName = Path.GetFileName(fullPath);
-
-        // Unix hidden files start with '.'. Trailing '~' catches the backup
-        // files written by Emacs and many other editors (e.g. "foo.md~").
-        if (fileName.StartsWith(".")
-            || fileName.StartsWith("~")
-            || fileName.EndsWith(".tmp")
-            || fileName.EndsWith("~"))
+        var keyResult = handler.GetResourceKey(fullPath);
+        if (keyResult.IsFailure)
         {
             return true;
         }
 
-        // External-editor atomic-write temp files commonly use the shape
-        // "<original>.tmp.<pid>.<random>" (e.g. "foo.md.tmp.5912.c2e6892eb512" from
-        // Claude Code's editor). EndsWith(".tmp") above doesn't catch these, so
-        // match ".tmp." anywhere in the filename.
-        if (fileName.Contains(".tmp.", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        // Swap files (.swp/.swo/.swn from Vim), partial-download files
-        // (.crdownload from Chrome/Edge, .part from Firefox/wget).
-        if (fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".swo", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".swn", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".crdownload", StringComparison.OrdinalIgnoreCase)
-            || fileName.EndsWith(".part", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        // Office temporary files. Excel writes lock files like "~$filename.xlsx";
-        // Word writes temporary files prefixed "~WRL".
-        if (fileName.StartsWith("~$")
-            || fileName.StartsWith("~WRL"))
-        {
-            return true;
-        }
-
-        // Python build artifacts: compiled (.pyc), optimised (.pyo),
-        // dynamic-module (.pyd), and the __pycache__ folder.
-        if (fileName.EndsWith(".pyc")
-            || fileName.EndsWith(".pyo")
-            || fileName.EndsWith(".pyd")
-            || fileName.StartsWith("__pycache__"))
-        {
-            return true;
-        }
-
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                var attributes = File.GetAttributes(fullPath);
-                if ((attributes & System.IO.FileAttributes.Hidden) != 0
-                    || (attributes & System.IO.FileAttributes.System) != 0)
-                {
-                    return true;
-                }
-            }
-            catch (Exception)
-            {
-                // File may have been deleted between the event firing and reading attributes.
-                // Treat as "ignore" to avoid race condition issues.
-                return true;
-            }
-        }
-
-        // Only the project watcher needs to suppress the visible legacy "celbridge" folder
-        // and the new hidden ".celbridge" folder at the project root. Non-project watchers
-        // are already scoped inside their own backing location.
         if (handler.RootName == ResourceKey.DefaultRoot)
         {
-            var projectFolder = handler.BackingLocation.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var relativePath = fullPath.StartsWith(projectFolder, StringComparison.OrdinalIgnoreCase)
-                ? fullPath.Substring(projectFolder.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                : string.Empty;
-
-            if (!string.IsNullOrEmpty(relativePath))
+            var policy = _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+            var policyResult = policy.Evaluate(keyResult.Value, ResourceAction.List, isFolder: false);
+            if (policyResult.IsFailure)
             {
-                var firstSegment = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
-
-                if (firstSegment.Equals(LegacyConstants.MetaDataFolder, StringComparison.OrdinalIgnoreCase)
-                    || firstSegment.Equals(ProjectConstants.CelbridgeFolder, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
+                return true;
             }
-        }
-
-        // Ignore tool folders at any depth.
-        var pathParts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (pathParts.Any(part =>
-                part.Equals(".vs", StringComparison.OrdinalIgnoreCase)
-                || part.Equals("bin", StringComparison.OrdinalIgnoreCase)
-                || part.Equals("obj", StringComparison.OrdinalIgnoreCase)
-                || part.Equals(".git", StringComparison.OrdinalIgnoreCase)
-                || part.Equals("__pycache__", StringComparison.OrdinalIgnoreCase)))
-        {
-            return true;
         }
 
         return false;

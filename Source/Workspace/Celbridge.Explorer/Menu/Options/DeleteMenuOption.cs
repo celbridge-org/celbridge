@@ -36,8 +36,18 @@ public class DeleteMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
-        var canDelete = context.HasAnySelection && !context.SelectionContainsProjectFolder;
-        return new MenuItemState(IsVisible: true, IsEnabled: canDelete);
+        if (!context.HasAnySelection
+            || context.SelectionContainsProjectFolder)
+        {
+            return new MenuItemState(IsVisible: true, IsEnabled: false);
+        }
+
+        if (!context.CanModifySelection)
+        {
+            return new MenuItemState(IsVisible: true, IsEnabled: false);
+        }
+
+        return new MenuItemState(IsVisible: true, IsEnabled: true);
     }
 
     public void Execute(ExplorerMenuContext context)

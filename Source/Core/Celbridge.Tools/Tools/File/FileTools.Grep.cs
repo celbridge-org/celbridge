@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Path = System.IO.Path;
 
 namespace Celbridge.Tools;
 
@@ -63,11 +62,11 @@ public partial class FileTools
         }
 
         var workspaceWrapper = GetRequiredService<IWorkspaceWrapper>();
-        var fileStorage = workspaceWrapper.WorkspaceService.FileStorage;
+        var resourceFileSystem = workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
         if (!string.IsNullOrEmpty(files))
         {
-            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, fileStorage);
+            return await GrepTargetedFiles(files, searchTerm, useRegex, matchCase, wholeWord, maxResults, contextLines, includeContent, summaryOnly, resourceFileSystem);
         }
 
         var searchService = workspaceWrapper.WorkspaceService.SearchService;
@@ -101,7 +100,7 @@ public partial class FileTools
                     {
                         if (!fileLineCache.TryGetValue(fileResult.Resource, out var fileLines))
                         {
-                            fileLines = await ReadFileLinesStreamedAsync(fileStorage, fileResult.Resource);
+                            fileLines = await ReadFileLinesStreamedAsync(resourceFileSystem, fileResult.Resource);
                             fileLineCache[fileResult.Resource] = fileLines;
                         }
 
@@ -144,7 +143,7 @@ public partial class FileTools
             if (includeContent
                 && !summaryOnly)
             {
-                var contentResult = await fileStorage.ReadAllTextAsync(fileResult.Resource);
+                var contentResult = await resourceFileSystem.ReadAllTextAsync(fileResult.Resource);
                 if (contentResult.IsSuccess)
                 {
                     fileContent = contentResult.Value;
@@ -192,14 +191,14 @@ public partial class FileTools
     }
 
     /// <summary>
-    /// Streams a file via the chokepoint's OpenReadAsync and returns it as a
+    /// Streams a file via the gateway's OpenReadAsync and returns it as a
     /// line array. Avoids loading the full content into memory and routes the
     /// read through containment validation. Returns an empty array on failure
     /// so callers can treat missing or unreadable files as zero matches.
     /// </summary>
-    private static async Task<string[]> ReadFileLinesStreamedAsync(IFileStorage fileStorage, ResourceKey resource)
+    private static async Task<string[]> ReadFileLinesStreamedAsync(IResourceFileSystem resourceFileSystem, ResourceKey resource)
     {
-        var openResult = await fileStorage.OpenReadAsync(resource);
+        var openResult = await resourceFileSystem.OpenReadAsync(resource);
         if (openResult.IsFailure)
         {
             return Array.Empty<string>();
@@ -216,7 +215,7 @@ public partial class FileTools
         return lines.ToArray();
     }
 
-    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IFileStorage fileStorage)
+    private async Task<CallToolResult> GrepTargetedFiles(string filesJson, string searchTerm, bool useRegex, bool matchCase, bool wholeWord, int maxResults, int contextLines, bool includeContent, bool summaryOnly, IResourceFileSystem resourceFileSystem)
     {
         // Detect the most common mis-use: a glob or single path passed where a
         // JSON array is required. The raw JsonException for this case ("'w' is
@@ -272,14 +271,14 @@ public partial class FileTools
                 continue;
             }
 
-            var infoResult = await fileStorage.GetInfoAsync(fileResourceKey);
+            var infoResult = await resourceFileSystem.GetInfoAsync(fileResourceKey);
             if (infoResult.IsFailure
                 || infoResult.Value.Kind != StorageItemKind.File)
             {
                 continue;
             }
 
-            var fileLines = await ReadFileLinesStreamedAsync(fileStorage, fileResourceKey);
+            var fileLines = await ReadFileLinesStreamedAsync(resourceFileSystem, fileResourceKey);
             var matchList = new List<object>();
             int fileMatchCount = 0;
 

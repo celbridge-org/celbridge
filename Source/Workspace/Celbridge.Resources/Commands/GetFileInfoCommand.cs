@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Utilities;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -37,7 +36,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
     {
         var workspaceService = _workspaceWrapper.WorkspaceService;
         var resourceRegistry = workspaceService.ResourceService.Registry;
-        var fileStorage = workspaceService.FileStorage;
+        var resourceFileSystem = workspaceService.ResourceService.FileSystem;
 
         var resolveResult = resourceRegistry.ResolveResourcePath(Resource);
         if (resolveResult.IsFailure)
@@ -47,7 +46,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         }
         var resourcePath = resolveResult.Value;
 
-        var infoResult = await fileStorage.GetInfoAsync(Resource);
+        var infoResult = await resourceFileSystem.GetInfoAsync(Resource);
         if (infoResult.IsFailure)
         {
             return Result.Fail($"Failed to probe resource: '{Resource}'")
@@ -65,7 +64,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
 
             if (isText)
             {
-                lineCount = await CountLinesAsync(fileStorage, Resource);
+                lineCount = await CountLinesAsync(resourceFileSystem, Resource);
             }
 
             // Surface the paired sidecar's key and current parse state when
@@ -115,12 +114,12 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
         return Result.Fail($"Resource not found: '{Resource}'");
     }
 
-    // Streams the file via the chokepoint and counts lines without loading
+    // Streams the file via the gateway and counts lines without loading
     // the entire content into memory. Used for the LineCount field on the
     // FileInfoSnapshot when the resource is text.
-    private static async Task<int> CountLinesAsync(IFileStorage fileStorage, ResourceKey resource)
+    private static async Task<int> CountLinesAsync(IResourceFileSystem resourceFileSystem, ResourceKey resource)
     {
-        var openResult = await fileStorage.OpenReadAsync(resource);
+        var openResult = await resourceFileSystem.OpenReadAsync(resource);
         if (openResult.IsFailure)
         {
             return 0;

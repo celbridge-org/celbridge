@@ -7,11 +7,11 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Services;
 
 /// <summary>
-/// Wraps the IFileStorage chokepoint and the ITrashService soft-delete layer
+/// Wraps the IResourceFileSystem gateway and the ITrashService soft-delete layer
 /// with a session-local undo/redo stack and batched grouping. Public methods
 /// accept ResourceKey; external imports keep a string source path because the
 /// source is outside the registry by definition. All disk I/O routes through
-/// the chokepoint or the trash service; this class owns no direct System.IO
+/// the gateway or the trash service; this class owns no direct System.IO
 /// calls and no message broadcasts.
 /// </summary>
 public class ResourceOperationService : IResourceOperationService
@@ -26,12 +26,16 @@ public class ResourceOperationService : IResourceOperationService
 
     private FileOperationBatch? _currentBatch;
 
+    private readonly ILocalFileSystem _fileSystem;
+
     public ResourceOperationService(
         ILogger<ResourceOperationService> logger,
-        IWorkspaceWrapper workspaceWrapper)
+        IWorkspaceWrapper workspaceWrapper,
+        ILocalFileSystem fileSystem)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
+        _fileSystem = fileSystem;
     }
 
     private IEntityService? EntityService =>
@@ -40,15 +44,21 @@ public class ResourceOperationService : IResourceOperationService
     private IResourceRegistry ResourceRegistry =>
         _workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
-    private IFileStorage FileStorage =>
-        _workspaceWrapper.WorkspaceService.FileStorage;
+    private IResourceFileSystem ResourceFileSystem =>
+        _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
     private ITrashService TrashService =>
-        _workspaceWrapper.WorkspaceService.TrashService;
+        _workspaceWrapper.WorkspaceService.ResourceService.Trash;
+
+    private IResourcePolicy Policy =>
+        _workspaceWrapper.WorkspaceService.ResourceService.Policy;
+
+    private IRootHandlerRegistry RootHandlerRegistry =>
+        _workspaceWrapper.WorkspaceService.ResourceService.RootHandlers;
 
     public async Task<Result> CreateFileAsync(ResourceKey resource, byte[] content)
     {
-        var operation = new CreateOperation(resource, content, FileStorage);
+        var operation = new CreateOperation(resource, content, ResourceFileSystem);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -61,7 +71,7 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> CreateFolderAsync(ResourceKey resource)
     {
-        var operation = new CreateOperation(resource, FileStorage);
+        var operation = new CreateOperation(resource, ResourceFileSystem);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -90,7 +100,7 @@ public class ResourceOperationService : IResourceOperationService
         }
         var destPath = destPathResult.Value;
 
-        var infoResult = await FileStorage.GetInfoAsync(source);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
@@ -107,7 +117,7 @@ public class ResourceOperationService : IResourceOperationService
             sourcePath,
             destPath,
             entityHelper,
-            FileStorage);
+            ResourceFileSystem);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
@@ -138,7 +148,7 @@ public class ResourceOperationService : IResourceOperationService
         }
         var destPath = destPathResult.Value;
 
-        var infoResult = await FileStorage.GetInfoAsync(source);
+        var infoResult = await ResourceFileSystem.GetInfoAsync(source);
         if (infoResult.IsFailure
             || infoResult.Value.Kind == StorageItemKind.NotFound)
         {
@@ -146,6 +156,16 @@ public class ResourceOperationService : IResourceOperationService
                 .WithErrors(infoResult);
         }
         bool isFolder = infoResult.Value.Kind == StorageItemKind.Folder;
+
+        // Moving or renaming a folder relocates every descendant, which changes
+        // the path of any locked resource inside it. Walk the subtree and refuse
+        // the move if any descendant is locked, freezing the locked resource's
+        // path as well as its content.
+        var policyGateResult = await EvaluateStructuralChangeAsync(source, isFolder);
+        if (policyGateResult.IsFailure)
+        {
+            return Result.Fail(policyGateResult);
+        }
 
         var entityHelper = new EntityFileHelper(EntityService, ResourceRegistry);
         var operation = new MoveOperation(
@@ -155,7 +175,7 @@ public class ResourceOperationService : IResourceOperationService
             sourcePath,
             destPath,
             entityHelper,
-            FileStorage);
+            ResourceFileSystem);
 
         var executeResult = await operation.ExecuteAsync();
         if (executeResult.IsFailure)
@@ -170,6 +190,21 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<Result> DeleteAsync(ResourceKey resource)
     {
+        // The soft-delete path bypasses IResourceFileSystem because TrashService
+        // moves files into .celbridge/trash/ directly through the gateway. The
+        // policy gate that lives on IResourceFileSystem.DeleteAsync would never
+        // run, so the check is repeated here at the service entry. isFolder is
+        // probed so folder-only locked patterns deny correctly.
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        var policyGateResult = await EvaluateStructuralChangeAsync(resource, isFolder);
+        if (policyGateResult.IsFailure)
+        {
+            return policyGateResult;
+        }
+
         var operation = new DeleteOperation(resource, TrashService);
         var result = await operation.ExecuteAsync();
 
@@ -181,11 +216,156 @@ public class ResourceOperationService : IResourceOperationService
         return result;
     }
 
+    // Evaluates the policy on a structural-change target (delete or move) and,
+    // for folders, on every descendant. A locked descendant blocks the change
+    // because delete moves the whole subtree to trash and move relocates it as
+    // one unit; allowing the parent change while a child is locked would break
+    // the locked resource's frozen-in-place guarantee.
+    private async Task<Result> EvaluateStructuralChangeAsync(ResourceKey resource, bool isFolder)
+    {
+        var directResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
+        if (directResult.IsFailure)
+        {
+            return Result.Fail(directResult);
+        }
+
+        if (!isFolder)
+        {
+            return Result.Ok();
+        }
+
+        return await FindLockingDescendantAsync(resource);
+    }
+
+    public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)
+    {
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        var directResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
+        if (directResult.IsFailure)
+        {
+            return ResourceLockState.Locked;
+        }
+
+        if (!isFolder)
+        {
+            return ResourceLockState.None;
+        }
+
+        // Only a matched lock rule means path-frozen. An enumeration failure
+        // leaves the badge as None rather than implying a lock that cannot be
+        // seen. The structural-change executor, in contrast, fails closed.
+        var descendantResult = await FindLockingDescendantAsync(resource);
+        if (descendantResult.IsFailure
+            && descendantResult.HasException<PolicyDenialError>())
+        {
+            return ResourceLockState.ContainsLocked;
+        }
+
+        return ResourceLockState.None;
+    }
+
+    // Walks a folder's subtree for the first descendant whose own key is
+    // write-locked. Returns Ok when none is found. A locked descendant gives a
+    // failure carrying a PolicyDenialError that names it, and an unreadable
+    // subtree gives a plain failure. Structural-change callers treat both failure
+    // kinds as blocking (fail closed), because a subtree that cannot be read might
+    // hide a locked resource the delete or move would relocate.
+    private async Task<Result> FindLockingDescendantAsync(ResourceKey folder)
+    {
+        var enumerateResult = await ResourceFileSystem.EnumerateFolderAsync(folder);
+        if (enumerateResult.IsFailure)
+        {
+            return Result.Fail($"Cannot verify lock state of folder contents: '{folder}'")
+                .WithErrors(enumerateResult);
+        }
+
+        foreach (var entry in enumerateResult.Value)
+        {
+            var childResult = Policy.Evaluate(entry.Resource, ResourceAction.Write, entry.IsFolder);
+            if (childResult.IsFailure)
+            {
+                return Result.Fail(childResult);
+            }
+
+            if (entry.IsFolder)
+            {
+                var nestedResult = await FindLockingDescendantAsync(entry.Resource);
+                if (nestedResult.IsFailure)
+                {
+                    return nestedResult;
+                }
+            }
+        }
+
+        return Result.Ok();
+    }
+
+    public async Task<Result> CanModifyResourceAsync(ResourceKey resource)
+    {
+        if (!IsRootWritable(resource))
+        {
+            return Result.Fail($"Root '{resource.Root}' is read-only.");
+        }
+
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        return await EvaluateStructuralChangeAsync(resource, isFolder);
+    }
+
+    public Result CanCreateResource(ResourceKey destination, bool isFolder)
+    {
+        if (!IsRootWritable(destination))
+        {
+            return Result.Fail($"Root '{destination.Root}' is read-only.");
+        }
+
+        var listResult = Policy.Evaluate(destination, ResourceAction.List, isFolder);
+        if (listResult.IsFailure)
+        {
+            return listResult;
+        }
+
+        return Policy.Evaluate(destination, ResourceAction.Write, isFolder);
+    }
+
+    public Result CanAddToFolder(ResourceKey folder)
+    {
+        if (!IsRootWritable(folder))
+        {
+            return Result.Fail($"Root '{folder.Root}' is read-only.");
+        }
+
+        var listResult = Policy.Evaluate(folder, ResourceAction.List, isFolder: true);
+        if (listResult.IsFailure)
+        {
+            return listResult;
+        }
+
+        // A folder whose own key is write-locked (a bare-name lock such as "Data")
+        // blocks every new child. A pattern that locks only descendants (such as
+        // "Data/**") leaves the folder addable; the per-name CanCreateResource
+        // check catches a specific locked child at create time.
+        return Policy.Evaluate(folder, ResourceAction.Write, isFolder: true);
+    }
+
+    // Treats a root with no registered handler as writable so unit tests that
+    // stub the registry directly do not need to populate the handler dictionary.
+    private bool IsRootWritable(ResourceKey key)
+    {
+        return !RootHandlerRegistry.RootHandlers.TryGetValue(key.Root, out var handler)
+            || handler.Capabilities.IsWritable;
+    }
+
     public async Task<Result> ImportExternalFileAsync(string sourcePath, ResourceKey dest)
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, FileStorage, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: false, ResourceFileSystem, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)
@@ -200,7 +380,7 @@ public class ResourceOperationService : IResourceOperationService
     {
         sourcePath = Path.GetFullPath(sourcePath);
 
-        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, FileStorage, _logger);
+        var operation = new ImportExternalOperation(sourcePath, dest, isFolder: true, ResourceFileSystem, _fileSystem, _logger);
         var result = await operation.ExecuteAsync();
 
         if (result.IsSuccess)

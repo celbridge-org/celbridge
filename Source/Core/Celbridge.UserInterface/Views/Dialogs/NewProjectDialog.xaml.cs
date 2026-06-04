@@ -84,6 +84,10 @@ public sealed partial class NewProjectDialog : ContentDialog, INewProjectDialog
 
     public async Task<Result<NewProjectConfig>> ShowDialogAsync()
     {
+        // Resolve the default folder and run the first validation pass before the
+        // dialog renders, so it opens with a populated path and correct button state.
+        await ViewModel.InitializeAsync();
+
         var contentDialogResult = await ShowAsync();
 
         if (contentDialogResult == ContentDialogResult.Primary && 

@@ -44,10 +44,20 @@ public static class EntityUtils
     /// <summary>
     /// Loads and validates an EntityData object from a json file.
     /// </summary>
-    public static Result<EntityData> LoadEntityDataFile(string entityDataPath, JsonSchema entitySchema, ComponentConfigRegistry configRegistry)
+    public static async Task<Result<EntityData>> LoadEntityDataFileAsync(string entityDataPath, JsonSchema entitySchema, ComponentConfigRegistry configRegistry)
     {
+        var fileSystem = ServiceLocator.AcquireService<ILocalFileSystem>();
+
+        var readResult = await fileSystem.ReadAllTextAsync(entityDataPath);
+        if (readResult.IsFailure)
+        {
+            return Result<EntityData>.Fail($"Failed to read entity data file: '{entityDataPath}'")
+                .WithErrors(readResult);
+        }
+        var jsonContent = readResult.Value;
+
         // Load the EntityData json
-        var jsonObject = JsonNode.Parse(File.ReadAllText(entityDataPath)) as JsonObject;
+        var jsonObject = JsonNode.Parse(jsonContent) as JsonObject;
         if (jsonObject is null)
         {
             return Result<EntityData>.Fail($"Failed to parse entity data from file: '{entityDataPath}'");

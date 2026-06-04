@@ -103,12 +103,18 @@ public class EntityService : IEntityService, IDisposable
 
     public Result MoveEntityDataFile(ResourceKey oldResource, ResourceKey newResource)
     {
-        return _entityRegistry.MoveEntityDataFile(oldResource, newResource);
+        // IEntityService exposes this as sync, so we block on the async registry call.
+        // SyncRunner parks the async work on the thread pool so the awaits inside
+        // MoveEntityDataFileAsync cannot deadlock on the UI SynchronizationContext.
+        return SyncRunner.Run(() => _entityRegistry.MoveEntityDataFileAsync(oldResource, newResource));
     }
 
     public Result CopyEntityDataFile(ResourceKey sourceResource, ResourceKey destResource)
     {
-        return _entityRegistry.CopyEntityDataFile(sourceResource, destResource);
+        // IEntityService exposes this as sync, so we block on the async registry call.
+        // SyncRunner parks the async work on the thread pool so the awaits inside
+        // CopyEntityDataFileAsync cannot deadlock on the UI SynchronizationContext.
+        return SyncRunner.Run(() => _entityRegistry.CopyEntityDataFileAsync(sourceResource, destResource));
     }
 
     public Result AddComponent(ComponentKey componentKey, string componentType)
@@ -668,9 +674,13 @@ public class EntityService : IEntityService, IDisposable
         return jsonPointer;
     }
 
-    private void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
+    private async void OnResourceRegistryUpdatedMessage(object recipient, ResourceRegistryUpdatedMessage message)
     {
-        _entityRegistry.CleanupEntities();
+        var cleanupResult = await _entityRegistry.CleanupEntitiesAsync();
+        if (cleanupResult.IsFailure)
+        {
+            _logger.LogError(cleanupResult.DiagnosticReport);
+        }
     }
 
     private Result ApplyPatchOperation(Entity entity, PatchOperation patchOperation, long undoGroupId, PatchContext context = PatchContext.Modify)

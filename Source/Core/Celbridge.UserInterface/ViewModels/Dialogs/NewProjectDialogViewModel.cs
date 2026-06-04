@@ -8,11 +8,15 @@ namespace Celbridge.UserInterface.ViewModels;
 public partial class NewProjectDialogViewModel : ObservableObject
 {
     private const int MaxLocationLength = 80;
+    private const int ValidationDebounceMilliseconds = 200;
 
     private readonly IEditorSettings _editorSettings;
     private readonly IProjectService _projectService;
     private readonly IFilePickerService _filePickerService;
     private readonly IProjectTemplateService _templateService;
+    private readonly ILocalFileSystem _fileSystem;
+
+    private CancellationTokenSource? _validationCts;
 
     [ObservableProperty]
     private bool _isCreateButtonEnabled;
@@ -50,12 +54,14 @@ public partial class NewProjectDialogViewModel : ObservableObject
         IEditorSettings editorSettings,
         IProjectService projectService,
         IFilePickerService filePickerService,
-        IProjectTemplateService templateService)
+        IProjectTemplateService templateService,
+        ILocalFileSystem fileSystem)
     {
         _editorSettings = editorSettings;
         _projectService = projectService;
         _filePickerService = filePickerService;
         _templateService = templateService;
+        _fileSystem = fileSystem;
 
         // Initialize templates
         _templates = _templateService.GetTemplates();
@@ -69,25 +75,34 @@ public partial class NewProjectDialogViewModel : ObservableObject
         // Fall back to default template if persisted template doesn't exist
         _selectedTemplate ??= _templateService.GetDefaultTemplate();
 
-        // Set default path for projects with fallback chain:
-        // 1. Previous project folder (if valid)
-        // 2. User's Documents folder (if valid)
-        // 3. Previous path as-is (may be invalid, but UI will disable Create button)
-        if (!string.IsNullOrEmpty(_editorSettings.PreviousNewProjectFolderPath) && 
-            Directory.Exists(_editorSettings.PreviousNewProjectFolderPath))
+        PropertyChanged += NewProjectDialogViewModel_PropertyChanged;
+    }
+
+    // Resolves the default destination folder and runs the first validation pass.
+    // The dialog calls this before it is shown so the folder probes go through the
+    // async gateway instead of blocking the constructor on a stat.
+    public async Task InitializeAsync()
+    {
+        // Default folder fallback chain:
+        // 1. Previous project folder, if it exists.
+        // 2. The user's Documents folder, if it exists.
+        // 3. The previous path as-is, which may be invalid (validation disables Create).
+        var previousFolder = _editorSettings.PreviousNewProjectFolderPath;
+        if (!string.IsNullOrEmpty(previousFolder)
+            && await FolderExistsAsync(previousFolder))
         {
-            _destFolderPath = _editorSettings.PreviousNewProjectFolderPath;
-        }
-        else if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
-        {
-            _destFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        }
-        else
-        {
-            _destFolderPath = _editorSettings.PreviousNewProjectFolderPath ?? string.Empty;
+            DestFolderPath = previousFolder;
+            return;
         }
 
-        PropertyChanged += NewProjectDialogViewModel_PropertyChanged;
+        var documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        if (await FolderExistsAsync(documentsFolder))
+        {
+            DestFolderPath = documentsFolder;
+            return;
+        }
+
+        DestFolderPath = previousFolder ?? string.Empty;
     }
 
     private void NewProjectDialogViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -103,63 +118,7 @@ public partial class NewProjectDialogViewModel : ObservableObject
             e.PropertyName == nameof(ProjectName) ||
             e.PropertyName == nameof(CreateSubfolder))
         {
-
-            if (!ResourceKey.IsValidSegment(ProjectName))
-            {
-                // Project name is not a valid filename
-                IsCreateButtonEnabled = false;
-                DestProjectFilePath = string.Empty;
-                ValidationErrorMessage = "NewProjectDialog_InvalidProjectName";
-                IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
-                return;
-            }
-
-            if (!Directory.Exists(DestFolderPath))
-            {
-                // Project base folder is not valid.
-                IsCreateButtonEnabled = false;
-                DestProjectFilePath = string.Empty;
-                ValidationErrorMessage = "NewProjectDialog_InvalidFolderPath";
-                IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
-                return;
-            }
-
-            string destProjectFilePath;
-
-            if (CreateSubfolder)
-            {
-                var subfolderPath = Path.Combine(DestFolderPath, ProjectName);
-                if (Directory.Exists(subfolderPath))
-                {
-                    // A subfolder with this name already exists
-                    IsCreateButtonEnabled = false;
-                    DestProjectFilePath = string.Empty;
-                    ValidationErrorMessage = "NewProjectDialog_SubfolderAlreadyExists";
-                    IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
-                    return;
-                }
-
-                destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{ProjectConstants.ProjectFileExtension}");
-            }
-            else
-            {
-                destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{ProjectConstants.ProjectFileExtension}");
-            }
-
-            if (File.Exists(destProjectFilePath)) 
-            { 
-                // A project file with the same name already exists
-                IsCreateButtonEnabled = false;
-                DestProjectFilePath = string.Empty;
-                ValidationErrorMessage = "NewProjectDialog_ProjectFileAlreadyExists";
-                IsValidationErrorVisible = !string.IsNullOrEmpty(ProjectName);
-                return;
-            }
-
-            IsCreateButtonEnabled = true;
-            DestProjectFilePath = destProjectFilePath;
-            ValidationErrorMessage = string.Empty;
-            IsValidationErrorVisible = false;
+            ScheduleValidation();
         }
 
         if (e.PropertyName == nameof(DestProjectFilePath))
@@ -185,11 +144,133 @@ public partial class NewProjectDialogViewModel : ObservableObject
         if (pickResult.IsSuccess)
         {
             var folder = pickResult.Value;
-            if (Directory.Exists(folder))
+            var infoResult = await _fileSystem.GetInfoAsync(folder);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.Folder)
             {
                 DestFolderPath = pickResult.Value;
             }
         }
+    }
+
+    private void ScheduleValidation()
+    {
+        // Cancel the previous pass and open a fresh debounce window. The old token
+        // source is left for the garbage collector rather than disposed, because
+        // its in-flight ValidateAsync may still hold the token.
+        _validationCts?.Cancel();
+        _validationCts = new CancellationTokenSource();
+        _ = ValidateAsync(_validationCts.Token);
+    }
+
+    // Debounced, latest-wins validation. A newer change cancels the prior token,
+    // so a superseded pass bails at the delay or before applying its result.
+    // Continuations resume on the UI thread, so compute-then-apply is effectively
+    // atomic and the newest pass wins.
+    private async Task ValidateAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(ValidationDebounceMilliseconds, cancellationToken);
+
+            var outcome = await ComputeValidationAsync();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            ApplyValidationOutcome(outcome);
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer change; discard this pass.
+        }
+    }
+
+    private async Task<ValidationOutcome> ComputeValidationAsync()
+    {
+        if (!ResourceKey.IsValidSegment(ProjectName))
+        {
+            return ValidationOutcome.Invalid("NewProjectDialog_InvalidProjectName");
+        }
+
+        if (!await FolderExistsAsync(DestFolderPath))
+        {
+            return ValidationOutcome.Invalid("NewProjectDialog_InvalidFolderPath");
+        }
+
+        string destProjectFilePath;
+        if (CreateSubfolder)
+        {
+            var subfolderPath = Path.Combine(DestFolderPath, ProjectName);
+            if (await FolderExistsAsync(subfolderPath))
+            {
+                return ValidationOutcome.Invalid("NewProjectDialog_SubfolderAlreadyExists");
+            }
+            destProjectFilePath = Path.Combine(subfolderPath, $"{ProjectName}{ProjectConstants.ProjectFileExtension}");
+        }
+        else
+        {
+            destProjectFilePath = Path.Combine(DestFolderPath, $"{ProjectName}{ProjectConstants.ProjectFileExtension}");
+        }
+
+        if (await FileExistsAsync(destProjectFilePath))
+        {
+            return ValidationOutcome.Invalid("NewProjectDialog_ProjectFileAlreadyExists");
+        }
+
+        return ValidationOutcome.Valid(destProjectFilePath);
+    }
+
+    private void ApplyValidationOutcome(ValidationOutcome outcome)
+    {
+        IsCreateButtonEnabled = outcome.CanCreate;
+        DestProjectFilePath = outcome.DestProjectFilePath;
+        ValidationErrorMessage = outcome.ErrorMessageKey;
+
+        // The error stays hidden until the user has typed a name, so an empty
+        // dialog does not open showing a validation error.
+        IsValidationErrorVisible = !outcome.CanCreate
+            && !string.IsNullOrEmpty(ProjectName);
+    }
+
+    private async Task<bool> FolderExistsAsync(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        var infoResult = await _fileSystem.GetInfoAsync(path);
+        return infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+    }
+
+    private async Task<bool> FileExistsAsync(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return false;
+        }
+
+        var infoResult = await _fileSystem.GetInfoAsync(path);
+        return infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.File;
+    }
+
+    // Outcome of one validation pass: whether Create is allowed, the resolved
+    // project file path (empty when invalid), and the localization key for the
+    // error message (empty when valid).
+    private sealed record ValidationOutcome(
+        bool CanCreate,
+        string DestProjectFilePath,
+        string ErrorMessageKey)
+    {
+        public static ValidationOutcome Valid(string destProjectFilePath) =>
+            new(true, destProjectFilePath, string.Empty);
+
+        public static ValidationOutcome Invalid(string errorMessageKey) =>
+            new(false, string.Empty, errorMessageKey);
     }
 
     [RelayCommand]

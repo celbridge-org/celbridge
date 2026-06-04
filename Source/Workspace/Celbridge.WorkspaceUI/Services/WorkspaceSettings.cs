@@ -119,7 +119,7 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
         }
     }
 
-    public static async Task<Result> CreateWorkspaceSettingsAsync(string databasePath)
+    public static async Task<Result> CreateWorkspaceSettingsAsync(ILocalFileSystem fileSystem, string databasePath)
     {
         Guard.IsNotNullOrWhiteSpace(databasePath);
 
@@ -129,15 +129,17 @@ public class WorkspaceSettings : IDisposable, IWorkspaceSettings
             var parentFolder = Path.GetDirectoryName(databasePath);
             Guard.IsNotNull(parentFolder);
 
-            if (!Directory.Exists(parentFolder))
-            {
-                Directory.CreateDirectory(parentFolder);
+            var parentInfoResult = await fileSystem.GetInfoAsync(parentFolder);
+            bool parentExists = parentInfoResult.IsSuccess
+                && parentInfoResult.Value.Kind == StorageItemKind.Folder;
 
-#if WINDOWS
-                // Hide the folder in windows explorer
-                var attributes = File.GetAttributes(parentFolder);
-                File.SetAttributes(parentFolder, attributes | System.IO.FileAttributes.Hidden);
-#endif
+            if (!parentExists)
+            {
+                var createFolderResult = await fileSystem.CreateFolderAsync(parentFolder);
+                if (createFolderResult.IsFailure)
+                {
+                    return createFolderResult;
+                }
             }
 
             // Create and initialize the workspace settings database

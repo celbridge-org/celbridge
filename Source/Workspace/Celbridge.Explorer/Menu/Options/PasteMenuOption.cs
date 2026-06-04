@@ -37,9 +37,12 @@ public class PasteMenuOption : IMenuOption<ExplorerMenuContext>
 
     public MenuItemState GetState(ExplorerMenuContext context)
     {
+        bool isEnabled = context.HasClipboardData
+            && context.CanAddToTargetFolder;
+
         return new MenuItemState(
             IsVisible: context.IsSingleItemOrProjectFolderTargeted,
-            IsEnabled: context.HasClipboardData);
+            IsEnabled: isEnabled);
     }
 
     public void Execute(ExplorerMenuContext context)
