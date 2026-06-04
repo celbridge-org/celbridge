@@ -195,7 +195,7 @@ public class DeleteResourceCommand : CommandBase, IDeleteResourceCommand
                         resource,
                         DeleteResourceOutcome.IOFailure,
                         SidecarOutcome.NotPresent,
-                        FailureMessage: infoResult.FirstErrorMessage));
+                        FailureMessage: infoResult.MessageChain));
                     failedItems.Add(resource.ResourceName);
                     continue;
                 }

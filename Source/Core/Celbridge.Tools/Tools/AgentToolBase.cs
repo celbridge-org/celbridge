@@ -13,7 +13,7 @@ namespace Celbridge.Tools;
 public abstract class AgentToolBase
 {
     // UnmappedMemberHandling.Disallow makes typed deserialisation reject unknown
-    // fields. Agents that typo a property name (e.g. minColor vs lowColor on a
+    // fields. Agents that typo a property name (e.g. lowColor vs minColor on a
     // conditional formatting rule) get a clear error instead of silently running
     // with defaults for the field they meant to set.
     protected static readonly JsonSerializerOptions JsonOptions = new()

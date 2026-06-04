@@ -325,81 +325,81 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
     private static Result ApplyColorScale2(IXLConditionalFormat conditionalFormat, ConditionalFormatRule rule)
     {
-        var lowColorResult = FormatConverterHelper.ParseColor(rule.LowColor ?? "#FFFFFF");
-        if (lowColorResult.IsFailure)
+        var minColorResult = FormatConverterHelper.ParseColor(rule.MinColor ?? "#FFFFFF");
+        if (minColorResult.IsFailure)
         {
-            return lowColorResult;
+            return minColorResult;
         }
-        var highColorResult = FormatConverterHelper.ParseColor(rule.HighColor ?? "#FF0000");
-        if (highColorResult.IsFailure)
+        var maxColorResult = FormatConverterHelper.ParseColor(rule.MaxColor ?? "#FF0000");
+        if (maxColorResult.IsFailure)
         {
-            return highColorResult;
+            return maxColorResult;
         }
 
         var builder = conditionalFormat.ColorScale();
 
-        var lowStop = ApplyLowStop(builder, rule, lowColorResult.Value);
-        if (lowStop.IsFailure)
+        var minStop = ApplyMinStop(builder, rule, minColorResult.Value);
+        if (minStop.IsFailure)
         {
-            return lowStop;
+            return minStop;
         }
 
-        return ApplyHighStopTwoStop(lowStop.Value, rule, highColorResult.Value);
+        return ApplyMaxStopTwoStop(minStop.Value, rule, maxColorResult.Value);
     }
 
     private static Result ApplyColorScale3(IXLConditionalFormat conditionalFormat, ConditionalFormatRule rule)
     {
-        var lowColorResult = FormatConverterHelper.ParseColor(rule.LowColor ?? "#FF0000");
-        if (lowColorResult.IsFailure)
+        var minColorResult = FormatConverterHelper.ParseColor(rule.MinColor ?? "#FF0000");
+        if (minColorResult.IsFailure)
         {
-            return lowColorResult;
+            return minColorResult;
         }
         var midColorResult = FormatConverterHelper.ParseColor(rule.MidColor ?? "#FFFFFF");
         if (midColorResult.IsFailure)
         {
             return midColorResult;
         }
-        var highColorResult = FormatConverterHelper.ParseColor(rule.HighColor ?? "#00FF00");
-        if (highColorResult.IsFailure)
+        var maxColorResult = FormatConverterHelper.ParseColor(rule.MaxColor ?? "#00FF00");
+        if (maxColorResult.IsFailure)
         {
-            return highColorResult;
+            return maxColorResult;
         }
 
         var builder = conditionalFormat.ColorScale();
 
-        var lowStop = ApplyLowStop(builder, rule, lowColorResult.Value);
-        if (lowStop.IsFailure)
+        var minStop = ApplyMinStop(builder, rule, minColorResult.Value);
+        if (minStop.IsFailure)
         {
-            return lowStop;
+            return minStop;
         }
 
-        var midStop = ApplyMidStop(lowStop.Value, rule, midColorResult.Value);
+        var midStop = ApplyMidStop(minStop.Value, rule, midColorResult.Value);
         if (midStop.IsFailure)
         {
             return midStop;
         }
 
-        return ApplyHighStopThreeStop(midStop.Value, rule, highColorResult.Value);
+        return ApplyMaxStopThreeStop(midStop.Value, rule, maxColorResult.Value);
     }
 
-    private static Result<IXLCFColorScaleMid> ApplyLowStop(IXLCFColorScaleMin builder, ConditionalFormatRule rule, XLColor lowColor)
+    private static Result<IXLCFColorScaleMid> ApplyMinStop(IXLCFColorScaleMin builder, ConditionalFormatRule rule, XLColor minColor)
     {
-        if (string.IsNullOrEmpty(rule.LowType) || string.Equals(rule.LowType, "min", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(rule.MinType) || string.Equals(rule.MinType, "min", StringComparison.OrdinalIgnoreCase))
         {
-            return builder.LowestValue(lowColor).OkResult();
+            return builder.LowestValue(minColor).OkResult();
         }
 
-        var stopResult = ParseColorScaleStop("low", rule.LowType!, rule.LowValue);
+        var stopResult = ParseColorScaleStop("min", rule.MinType!, rule.MinValue);
         if (stopResult.IsFailure)
         {
             return Result.Fail(stopResult);
         }
         var stop = stopResult.Value;
 
-        var afterLow = stop.IsFormula
-            ? builder.Minimum(stop.ContentType, stop.FormulaValue, lowColor)
-            : builder.Minimum(stop.ContentType, stop.NumericValue, lowColor);
-        return afterLow.OkResult();
+        var afterMin = stop.IsFormula
+            ? builder.Minimum(stop.ContentType, stop.FormulaValue, minColor)
+            : builder.Minimum(stop.ContentType, stop.NumericValue, minColor);
+        return afterMin.OkResult();
     }
 
     private static Result<IXLCFColorScaleMax> ApplyMidStop(IXLCFColorScaleMid builder, ConditionalFormatRule rule, XLColor midColor)
@@ -422,15 +422,15 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
         return afterMid.OkResult();
     }
 
-    private static Result ApplyHighStopTwoStop(IXLCFColorScaleMid builder, ConditionalFormatRule rule, XLColor highColor)
+    private static Result ApplyMaxStopTwoStop(IXLCFColorScaleMid builder, ConditionalFormatRule rule, XLColor maxColor)
     {
-        if (string.IsNullOrEmpty(rule.HighType) || string.Equals(rule.HighType, "max", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(rule.MaxType) || string.Equals(rule.MaxType, "max", StringComparison.OrdinalIgnoreCase))
         {
-            builder.HighestValue(highColor);
+            builder.HighestValue(maxColor);
             return Result.Ok();
         }
 
-        var stopResult = ParseColorScaleStop("high", rule.HighType!, rule.HighValue);
+        var stopResult = ParseColorScaleStop("max", rule.MaxType!, rule.MaxValue);
         if (stopResult.IsFailure)
         {
             return stopResult;
@@ -439,24 +439,24 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
         if (stop.IsFormula)
         {
-            builder.Maximum(stop.ContentType, stop.FormulaValue, highColor);
+            builder.Maximum(stop.ContentType, stop.FormulaValue, maxColor);
         }
         else
         {
-            builder.Maximum(stop.ContentType, stop.NumericValue, highColor);
+            builder.Maximum(stop.ContentType, stop.NumericValue, maxColor);
         }
         return Result.Ok();
     }
 
-    private static Result ApplyHighStopThreeStop(IXLCFColorScaleMax builder, ConditionalFormatRule rule, XLColor highColor)
+    private static Result ApplyMaxStopThreeStop(IXLCFColorScaleMax builder, ConditionalFormatRule rule, XLColor maxColor)
     {
-        if (string.IsNullOrEmpty(rule.HighType) || string.Equals(rule.HighType, "max", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrEmpty(rule.MaxType) || string.Equals(rule.MaxType, "max", StringComparison.OrdinalIgnoreCase))
         {
-            builder.HighestValue(highColor);
+            builder.HighestValue(maxColor);
             return Result.Ok();
         }
 
-        var stopResult = ParseColorScaleStop("high", rule.HighType!, rule.HighValue);
+        var stopResult = ParseColorScaleStop("max", rule.MaxType!, rule.MaxValue);
         if (stopResult.IsFailure)
         {
             return stopResult;
@@ -465,11 +465,11 @@ public class SetConditionalFormattingCommand : CommandBase, ISetConditionalForma
 
         if (stop.IsFormula)
         {
-            builder.Maximum(stop.ContentType, stop.FormulaValue, highColor);
+            builder.Maximum(stop.ContentType, stop.FormulaValue, maxColor);
         }
         else
         {
-            builder.Maximum(stop.ContentType, stop.NumericValue, highColor);
+            builder.Maximum(stop.ContentType, stop.NumericValue, maxColor);
         }
         return Result.Ok();
     }

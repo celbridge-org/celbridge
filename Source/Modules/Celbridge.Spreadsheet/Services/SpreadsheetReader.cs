@@ -48,6 +48,10 @@ public class SpreadsheetReader : ISpreadsheetReader
             var namedRanges = new List<NamedRange>();
             foreach (var definedName in workbook.DefinedNames)
             {
+                if (IsInternalDefinedName(definedName.Name))
+                {
+                    continue;
+                }
                 var namedRange = new NamedRange(
                     definedName.Name,
                     definedName.RefersTo,
@@ -58,6 +62,10 @@ public class SpreadsheetReader : ISpreadsheetReader
             {
                 foreach (var definedName in worksheet.DefinedNames)
                 {
+                    if (IsInternalDefinedName(definedName.Name))
+                    {
+                        continue;
+                    }
                     var namedRange = new NamedRange(
                         definedName.Name,
                         definedName.RefersTo,
@@ -73,6 +81,14 @@ public class SpreadsheetReader : ISpreadsheetReader
             return Result.Fail("Failed to read workbook info")
                 .WithException(ex);
         }
+    }
+
+    // Excel stores built-in features (auto-filter, print area, print titles) as
+    // defined names under the reserved "_xlnm." prefix. They are not user-facing
+    // named ranges, so the workbook info omits them.
+    private static bool IsInternalDefinedName(string name)
+    {
+        return name.StartsWith("_xlnm.", StringComparison.OrdinalIgnoreCase);
     }
 
     public Result<ReadResult> ReadSheet(Stream workbookStream, string sheetName, ReadOptions options)

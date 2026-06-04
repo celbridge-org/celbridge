@@ -2982,9 +2982,9 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale3",
-                LowColor: "#FF0000",
+                MinColor: "#FF0000",
                 MidColor: "#FFFF00",
-                HighColor: "#00FF00")
+                MaxColor: "#00FF00")
         };
 
         var cfCommand = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3032,8 +3032,8 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale2",
-                LowColor: "#FFFFFF",
-                HighColor: "#0070C0")
+                MinColor: "#FFFFFF",
+                MaxColor: "#0070C0")
         };
 
         var cfCommand = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3275,8 +3275,8 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale2",
-                LowColor: "#FFFFFF",
-                HighColor: "#FF0000")
+                MinColor: "#FFFFFF",
+                MaxColor: "#FF0000")
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3501,12 +3501,12 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale2",
-                LowColor: "#FF0000",
-                HighColor: "#00FF00",
-                LowType: "number",
-                LowValue: "0",
-                HighType: "number",
-                HighValue: "80")
+                MinColor: "#FF0000",
+                MaxColor: "#00FF00",
+                MinType: "number",
+                MinValue: "0",
+                MaxType: "number",
+                MaxValue: "80")
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3543,9 +3543,9 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale3",
-                LowColor: "#FF0000",
+                MinColor: "#FF0000",
                 MidColor: "#FFFF00",
-                HighColor: "#00FF00",
+                MaxColor: "#00FF00",
                 MidType: "percentile",
                 MidValue: "50")
         };
@@ -3580,10 +3580,10 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale2",
-                LowColor: "#FF0000",
-                HighColor: "#00FF00",
-                LowType: "wrong",
-                LowValue: "5")
+                MinColor: "#FF0000",
+                MaxColor: "#00FF00",
+                MinType: "wrong",
+                MinValue: "5")
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)
@@ -3597,7 +3597,7 @@ public class SpreadsheetCommandTests
         var result = await command.ExecuteAsync();
 
         result.IsFailure.Should().BeTrue();
-        result.FirstErrorMessage.Should().Contain("low stop type");
+        result.FirstErrorMessage.Should().Contain("min stop type");
     }
 
     [Test]
@@ -3612,9 +3612,9 @@ public class SpreadsheetCommandTests
         {
             new ConditionalFormatRule(
                 Type: "colorScale2",
-                LowColor: "#FF0000",
-                HighColor: "#00FF00",
-                LowType: "number")
+                MinColor: "#FF0000",
+                MaxColor: "#00FF00",
+                MinType: "number")
         };
 
         var command = new SetConditionalFormattingCommand(_workspaceWrapper)

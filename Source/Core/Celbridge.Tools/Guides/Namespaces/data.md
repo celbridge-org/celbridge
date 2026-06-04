@@ -4,12 +4,12 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 
 ## Must-knows
 
+- **A broken sidecar blocks all `data_*` mutations.** When the sidecar fails to parse (invalid TOML, unterminated string, garbled fence line), `data_set_field`, `data_add_tag`, `data_write_block`, and their siblings refuse with a `Cannot mutate sidecar '...': TOML parse error(s): ...` message rather than silently overwriting the bad content. Repair by hand with `file_write` against one of the three on-disk shapes below, then retry the mutation. `data_check_project` surfaces broken sidecars project-wide for batch triage.
 - **Sidecars are addressed by their parent resource.** `data_get_field docs/notes.md priority` consults the sidecar at `docs/notes.md.cel`. Passing the sidecar's own resource key (`docs/notes.md.cel`) is rejected with a clear error.
 - **Sidecars are created on first write.** `data_set_field`, `data_add_tag`, and `data_write_block` create the sidecar when missing. `data_remove_field`, `data_remove_tag`, and `data_remove_block` never create files and never delete sidecars (empty sidecars are kept).
 - **Field values are JSON-encoded.** `data_set_field` accepts the value as a JSON string so types pass through cleanly: `"high"`, `42`, `true`, `["a", "b"]`. Nested objects are rejected at write time.
 - **Tags are the only structured cross-resource query.** Use `data_add_tag` / `data_remove_tag` for atomic mutation and `data_find_tag` to enumerate resources carrying a tag. The `tag:value` convention (`priority:high`, `status:draft`) covers most "search by field" needs.
 - **Content blocks are opaque text.** Block IDs follow `[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*` (lowercase, dotted, hyphens). By convention each editor namespaces its blocks under its own ID (`celbridge.notes.note-document.content`).
-- **A broken sidecar blocks all `data_*` mutations.** When the sidecar fails to parse (invalid TOML, unterminated string, garbled fence line), `data_set_field`, `data_add_tag`, `data_write_block`, and their siblings refuse with a `Cannot mutate sidecar '...': TOML parse error(s): ...` message rather than silently overwriting the bad content. Repair by hand with `file_write` against one of the three on-disk shapes below, then retry the mutation. `data_check_project` surfaces broken sidecars project-wide for batch triage.
 
 ## Tools
 

@@ -84,7 +84,7 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
                 if (outcome.Result.IsFailure)
                 {
                     _logger.LogError(outcome.Result.DiagnosticReport);
-                    failedResources.Add(new FailedResource(sourceResource, outcome.Result.FirstErrorMessage));
+                    failedResources.Add(new FailedResource(sourceResource, outcome.Result.MessageChain));
                 }
                 else if (outcome.ParentFolder.HasValue)
                 {
