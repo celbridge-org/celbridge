@@ -1,6 +1,7 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Host;
 using Celbridge.Logging;
+using Celbridge.Resources;
 
 namespace Celbridge.Documents.Views;
 
@@ -13,6 +14,7 @@ internal sealed class ContributionDocumentHandler : IHostDocument
     private readonly ContributionDocumentViewModel _viewModel;
     private readonly ILogger _logger;
     private readonly Func<DocumentMetadata> _createMetadata;
+    private readonly Func<WritableState> _getWritableState;
     private readonly Func<bool> _completeSave;
 
     /// <summary>
@@ -31,11 +33,13 @@ internal sealed class ContributionDocumentHandler : IHostDocument
         ContributionDocumentViewModel viewModel,
         ILogger logger,
         Func<DocumentMetadata> createMetadata,
+        Func<WritableState> getWritableState,
         Func<bool> completeSave)
     {
         _viewModel = viewModel;
         _logger = logger;
         _createMetadata = createMetadata;
+        _getWritableState = getWritableState;
         _completeSave = completeSave;
     }
 
@@ -45,8 +49,9 @@ internal sealed class ContributionDocumentHandler : IHostDocument
 
         var content = await _viewModel.LoadTextContentAsync();
         var metadata = _createMetadata();
+        var writableState = _getWritableState().ToString();
 
-        return new InitializeResult(content, metadata);
+        return new InitializeResult(content, metadata, writableState);
     }
 
     public async Task<LoadResult> LoadAsync()

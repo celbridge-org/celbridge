@@ -196,6 +196,19 @@ export class Celbridge {
     async initializeDocument(handlers = {}) {
         const result = await this.initialize();
 
+        // Register the writable-state handler and seed it with the initial state
+        // from the handshake before applying content. The editor enters read-only
+        // mode (if applicable) before its first setValue, so the user never sees
+        // a brief writable window for a locked document.
+        if (handlers.onWritableStateChanged) {
+            // Subscribe the callback to future host-pushed state changes.
+            this.document.onWritableStateChanged(handlers.onWritableStateChanged);
+            if (result.writableState) {
+                // Invoke the callback directly with the initial state from the handshake.
+                handlers.onWritableStateChanged({ state: result.writableState });
+            }
+        }
+
         if (handlers.onContent) {
             await handlers.onContent(result.content, result.metadata);
         }
@@ -210,9 +223,6 @@ export class Celbridge {
         }
         if (handlers.onRestoreState) {
             this.document.onRestoreState(handlers.onRestoreState);
-        }
-        if (handlers.onWritableStateChanged) {
-            this.document.onWritableStateChanged(handlers.onWritableStateChanged);
         }
 
         this.document.notifyContentLoaded();

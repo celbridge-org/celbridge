@@ -286,8 +286,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             _documentHandler = new ContributionDocumentHandler(
                 _viewModel,
                 _logger,
-                CreateDocumentMetadata, // Callback to construct document metadata on demand
-                CompleteSave);          // Callback to update state when saving has completed 
+                CreateDocumentMetadata,    // Callback to construct document metadata on demand
+                () => WritableState,       // Callback to read the current writable state at initialize time
+                CompleteSave);             // Callback to update state when saving has completed
 
             _documentHandler.ContentLoaded += SetContentLoaded;
 
@@ -314,11 +315,6 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             {
                 TryRegisterWithToolBridge();
             }
-
-            // The writable state was applied to the base class before LoadContent
-            // ran, so the host wasn't up to push it then. Push it now so the JS
-            // client sees the correct state on its first content-loaded pass.
-            await Host.NotifyWritableStateChangedAsync(WritableState);
 
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
