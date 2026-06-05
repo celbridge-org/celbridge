@@ -15,3 +15,5 @@ A JSON object:
 - `packageName` (string) — echoed package name.
 - `resource` (string) — resource key of the new package folder, e.g. `"packages/my-widget"`.
 - `manifestPath` (string) — resource key of the created manifest, e.g. `"packages/my-widget/package.toml"`.
+
+If you're contributing a document editor, also read `document_editor_contributions` for the manifest, handler, and read-only contract.
