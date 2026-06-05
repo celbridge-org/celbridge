@@ -9,6 +9,7 @@ import { ContentLoadedReason, PROJECT_HOST_URL, projectUrl } from 'https://share
 import { createImageExtension, init as initImagePopover, toggleImage } from './note-image-popover.js';
 import { init as initLinkPopover, toggleLink } from './note-link-popover.js';
 import { createTableExtensions, init as initTablePopover, toggleTable } from './note-table-popover.js';
+import { hideAllPopovers } from './popover-utils.js';
 
 // ---------------------------------------------------------------------------
 // Table clipboard handling
@@ -102,6 +103,13 @@ let changeTimer = null;
 const CHANGE_DEBOUNCE_MS = 300;
 let projectBaseUrl = '';
 let documentBaseUrl = '';
+let isReadOnly = false;
+
+// Toolbar actions that don't mutate the document (and so stay enabled in
+// read-only mode). The TOC toggles a UI panel, undo/redo run editor commands
+// that no-op against a read-only buffer but are conceptually mutating so they
+// dim with the rest.
+const NON_MUTATING_TOOLBAR_ACTIONS = new Set(['toc']);
 
 // Get the client instance
 const client = celbridge;
@@ -205,7 +213,18 @@ const editor = new Editor({
         ...tableExtensions,
     ],
     content: '',
-    onUpdate: () => {
+    onUpdate: ({ transaction }) => {
+        // Guard against TipTap firing onUpdate without an actual content
+        // change. setEditable() emits update by default with a no-op
+        // transaction, which would otherwise mark the buffer modified and
+        // trigger an auto-save — and on a file that was just flipped to
+        // read-only, that save would strip the attribute and clobber the
+        // user's read-only choice. We also pass emitUpdate=false from
+        // applyReadOnlyState, but the docChanged check is the durable
+        // guarantee.
+        if (!transaction?.docChanged) {
+            return;
+        }
         // Debounce change notifications
         if (changeTimer) clearTimeout(changeTimer);
         changeTimer = setTimeout(() => {
@@ -369,12 +388,44 @@ document.getElementById('toc-close').addEventListener('click', () => {
     toggleToc();
 });
 
+// Applies the document's writable state to the TipTap editor and the
+// toolbar. TipTap's setEditable disables typing, paste, and drop on the
+// content surface; the toolbar handler short-circuits separately so the
+// mutating buttons can't smuggle commands past the editable flag. Open
+// mutating popovers are dismissed so a previously-spawned link/image/table
+// editor doesn't strand over a now-read-only document.
+function applyReadOnlyState(readOnly) {
+    isReadOnly = readOnly === true;
+    if (editor && typeof editor.setEditable === 'function') {
+        // Pass emitUpdate=false so TipTap doesn't fire a no-op update event
+        // that the onUpdate handler would misread as "the user typed
+        // something" and use to schedule notifyChanged. Without this,
+        // toggling read-only externally would round-trip through a save and
+        // overwrite the user's read-only attribute on disk.
+        editor.setEditable(!isReadOnly, false);
+    }
+    toolbarEl.querySelectorAll('.toolbar-btn[data-action]').forEach(btn => {
+        const action = btn.dataset.action;
+        if (NON_MUTATING_TOOLBAR_ACTIONS.has(action)) {
+            return;
+        }
+        btn.disabled = isReadOnly;
+    });
+    if (isReadOnly) {
+        hideAllPopovers();
+    }
+}
+
 // Main toolbar click handler
 toolbarEl.addEventListener('click', (e) => {
     const btn = e.target.closest('.toolbar-btn[data-action]');
     if (!btn) return;
 
     const action = btn.dataset.action;
+
+    if (isReadOnly && !NON_MUTATING_TOOLBAR_ACTIONS.has(action)) {
+        return;
+    }
 
     switch (action) {
         case 'bold': editor.chain().focus().toggleBold().run(); break;
@@ -475,7 +526,13 @@ async function initializeEditor() {
                         console.warn('[Note] Failed to parse content as JSON, using empty document');
                     }
                 }
-                editor.commands.setContent(jsonContent);
+                // Suppress the update event: loading the document is initialization,
+                // not a user edit. Without this, the empty-to-loaded transition fires
+                // onUpdate with docChanged=true, which schedules notifyChanged and
+                // triggers an auto-save attempt before the user has touched anything.
+                // For a locked file the policy denies the write and the user sees a
+                // bogus "save failed" alert seconds after opening.
+                editor.commands.setContent(jsonContent, { emitUpdate: false });
 
                 // Show the editor
                 editorWrapperEl.classList.add('visible');
@@ -496,7 +553,10 @@ async function initializeEditor() {
                 try {
                     const { content } = await client.document.load();
                     const jsonContent = content ? JSON.parse(content) : { type: 'doc', content: [{ type: 'paragraph' }] };
-                    editor.commands.setContent(jsonContent);
+                    // emitUpdate=false: an external reload is the disk overwriting the
+                    // buffer, not a user edit. Letting it fire onUpdate would queue an
+                    // immediate counter-save that races the reload we just took.
+                    editor.commands.setContent(jsonContent, { emitUpdate: false });
                 } catch (e) {
                     console.error('[Note] Failed to reload content:', e);
                 }
@@ -525,6 +585,9 @@ async function initializeEditor() {
                 } catch (e) {
                     console.error('[Note] Failed to restore state:', e);
                 }
+            },
+            onWritableStateChanged: ({ state }) => {
+                applyReadOnlyState(state !== 'Writable');
             }
         });
     } catch (e) {

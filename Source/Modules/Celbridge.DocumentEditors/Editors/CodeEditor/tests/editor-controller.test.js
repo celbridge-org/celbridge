@@ -31,6 +31,7 @@ function createMockEditor(model) {
         setPosition: vi.fn(),
         setScrollTop: vi.fn(),
         onDidScrollChange: vi.fn(),
+        updateOptions: vi.fn(),
         focus: vi.fn(),
         layout: vi.fn(),
         dispose: vi.fn()
@@ -114,5 +115,22 @@ describe('EditorController.handleExternalChange', () => {
         expect(editor.setValue).toHaveBeenNthCalledWith(1, 'first reload');
         expect(editor.setValue).toHaveBeenNthCalledWith(2, 'second reload');
         expect(model.applyEdits).not.toHaveBeenCalled();
+    });
+
+    it('applies Monaco readOnly and forwards the writable state to the caller', async () => {
+        const onWritableStateChanged = vi.fn();
+
+        await controller.initializeHost({ onWritableStateChanged });
+        expect(__capturedHandlers.onWritableStateChanged).toBeTypeOf('function');
+
+        __capturedHandlers.onWritableStateChanged({ state: 'Locked' });
+
+        expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: true });
+        expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'Locked', readOnly: true });
+
+        __capturedHandlers.onWritableStateChanged({ state: 'Writable' });
+
+        expect(editor.updateOptions).toHaveBeenCalledWith({ readOnly: false });
+        expect(onWritableStateChanged).toHaveBeenLastCalledWith({ state: 'Writable', readOnly: false });
     });
 });

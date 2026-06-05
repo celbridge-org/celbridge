@@ -9,6 +9,15 @@ import { ViewMode } from './view-mode-controller.js';
 import { t } from 'https://shared.celbridge/celbridge-client/localization.js';
 import { getSnippetSet } from './snippets.js';
 
+// Module-scope state for the snippet button's effective disabled flag. The
+// button has nowhere to insert into when the editor pane is hidden (Preview
+// mode), and the writable-state contract forbids inserting into a read-only
+// document. Track both inputs and let `syncSnippetButton` apply the combined
+// state, so the two gates can fire in any order without one clobbering the
+// other.
+let snippetButtonViewMode = ViewMode.Source;
+let snippetButtonReadOnly = false;
+
 export function initializeToolbar({
     showViewMode,
     showSnippets,
@@ -58,11 +67,35 @@ export function initializeToolbar({
  * hidden, so the button goes disabled in Preview mode.
  */
 export function syncSnippetButtonForViewMode(activeMode) {
+    snippetButtonViewMode = activeMode;
+    syncSnippetButton();
+}
+
+/**
+ * Updates the toolbar's gating on the document's writable state. The snippet
+ * inserter mutates the editor buffer; when the document is read-only the
+ * button must visibly match the editor's actual behaviour. Pair the menu
+ * close with the disable so an open menu doesn't strand an active popup over
+ * a now-disabled trigger.
+ */
+export function setToolbarReadOnly(isReadOnly) {
+    snippetButtonReadOnly = isReadOnly === true;
+    syncSnippetButton();
+    if (snippetButtonReadOnly) {
+        const snippetMenu = document.getElementById('snippet-menu');
+        if (snippetMenu && !snippetMenu.hidden) {
+            closeMenu(snippetMenu);
+        }
+    }
+}
+
+function syncSnippetButton() {
     const snippetButton = document.getElementById('snippet-button');
     if (!snippetButton) {
         return;
     }
-    snippetButton.disabled = activeMode === ViewMode.Preview;
+    snippetButton.disabled = snippetButtonViewMode === ViewMode.Preview
+        || snippetButtonReadOnly;
 }
 
 function attachViewModeButtons(viewModeController) {

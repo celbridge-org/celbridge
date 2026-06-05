@@ -9,7 +9,9 @@ export default defineConfig({
             'https://shared.celbridge/celbridge-client/celbridge.js':
                 fileURLToPath(new URL('./tests/fixtures/celbridge-stub.js', import.meta.url)),
             'https://shared.celbridge/celbridge-client/api/document-api.js':
-                fileURLToPath(new URL('./tests/fixtures/document-api-stub.js', import.meta.url))
+                fileURLToPath(new URL('./tests/fixtures/document-api-stub.js', import.meta.url)),
+            'https://shared.celbridge/celbridge-client/localization.js':
+                fileURLToPath(new URL('./tests/fixtures/localization-stub.js', import.meta.url))
         }
     }
 });

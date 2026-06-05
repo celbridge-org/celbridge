@@ -93,7 +93,13 @@ async function initializeEditor() {
                 }
 
                 client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
-            }
+            },
+            // The file viewer is a read-only presentation layer with no edit
+            // mode, so writable-state changes have nothing to apply. Register
+            // an explicit no-op so adding edit affordances later forces a
+            // deliberate removal of this handler, surfacing the read-only
+            // contract in code review.
+            onWritableStateChanged: () => {}
         });
     } catch (e) {
         console.error('[FileViewer] Failed to initialize:', e);

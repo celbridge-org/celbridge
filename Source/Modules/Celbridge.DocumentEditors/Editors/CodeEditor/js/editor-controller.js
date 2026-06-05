@@ -279,7 +279,8 @@ export class EditorController {
         onInitialContent,
         onExternalReloadContent,
         onRequestState,
-        onRestoreState
+        onRestoreState,
+        onWritableStateChanged
     } = {}) {
         // Initialize the host connection, load content, and register handlers.
         // notifyContentLoaded() is called automatically after this completes.
@@ -308,6 +309,9 @@ export class EditorController {
                 // instrumentation.
                 log('editor: writable state', { state, readOnly });
                 this.#editor.updateOptions({ readOnly });
+                if (onWritableStateChanged) {
+                    onWritableStateChanged({ state, readOnly });
+                }
             },
             onRequestState,
             onRestoreState

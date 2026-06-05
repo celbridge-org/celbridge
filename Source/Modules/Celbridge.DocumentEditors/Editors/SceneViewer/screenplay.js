@@ -48,7 +48,12 @@ async function initializeEditor() {
                 // editor state to preserve, but emitting the signal keeps the reload contract
                 // uniform across editors and avoids the framework's 5s timeout.
                 client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
-            }
+            },
+            // Screenplay is a read-only presentation layer with no edit mode,
+            // so writable-state changes have nothing to apply. The explicit
+            // no-op locks in the read-only contract: a future edit-mode
+            // addition has to deliberately remove this handler.
+            onWritableStateChanged: () => {}
         });
     } catch (e) {
         console.error('[Screenplay] Failed to initialize:', e);
