@@ -19,7 +19,11 @@ public class DocumentTabViewModelTests
     private ICommandService _commandService = null!;
     private ILogger<DocumentTabViewModel> _logger = null!;
     private IResourceFileSystem _resourceFileSystem = null!;
+    private IResourceRegistry _resourceRegistry = null!;
+    private IResourceOperationService _resourceOperations = null!;
+    private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
+    private readonly List<DocumentTabViewModel> _createdViewModels = new();
 
     [SetUp]
     public void Setup()
@@ -32,17 +36,50 @@ public class DocumentTabViewModelTests
         var existingFileInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UtcNow, FileSystemAttributes.None);
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>()).Returns(Result<StorageItemInfo>.Ok(existingFileInfo));
 
-        var resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        // Default to "not in registry" so stale OnResourceRegistryUpdatedMessage
+        // handlers from prior tests (kept alive by the WeakReferenceMessenger)
+        // don't null-deref when a new test broadcasts a registry-updated message.
+        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
+            .Returns(Result<IResource>.Fail("not found"));
 
-        var resourceService = Substitute.For<IResourceService>();
-        resourceService.Registry.Returns(resourceRegistry);
-        resourceService.FileSystem.Returns(_resourceFileSystem);
+        _resourceOperations = Substitute.For<IResourceOperationService>();
+        _resourceOperations.GetWritableStateAsync(Arg.Any<ResourceKey>()).Returns(WritableState.Writable);
+
+        _resourceService = Substitute.For<IResourceService>();
+        _resourceService.Registry.Returns(_resourceRegistry);
+        _resourceService.FileSystem.Returns(_resourceFileSystem);
+        _resourceService.Operations.Returns(_resourceOperations);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.Returns(resourceService);
+        workspaceService.ResourceService.Returns(_resourceService);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        // The shared WeakReferenceMessenger keeps live registrations across tests
+        // until GC. Unregister every view model the test created so its message
+        // handlers don't fire against torn-down test state in later tests.
+        foreach (var viewModel in _createdViewModels)
+        {
+            _messengerService.UnregisterAll(viewModel);
+        }
+        _createdViewModels.Clear();
+    }
+
+    private DocumentTabViewModel CreateViewModel(ResourceKey fileResource, IDocumentView? documentView = null)
+    {
+        var viewModel = new DocumentTabViewModel(_messengerService, _commandService, _logger, _workspaceWrapper)
+        {
+            FileResource = fileResource,
+            DocumentView = documentView!,
+        };
+        _createdViewModels.Add(viewModel);
+        return viewModel;
     }
 
     [Test]
@@ -53,11 +90,7 @@ public class DocumentTabViewModelTests
         documentView.HasUnsavedChanges.Returns(true);
         documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
 
-        var viewModel = new DocumentTabViewModel(_messengerService, _commandService, _logger, _workspaceWrapper)
-        {
-            FileResource = new ResourceKey("locked.md"),
-            DocumentView = documentView,
-        };
+        var viewModel = CreateViewModel(new ResourceKey("locked.md"), documentView);
 
         var result = await viewModel.CloseDocument(forceClose: false);
 
@@ -74,11 +107,7 @@ public class DocumentTabViewModelTests
         documentView.HasUnsavedChanges.Returns(true);
         documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Ok()));
 
-        var viewModel = new DocumentTabViewModel(_messengerService, _commandService, _logger, _workspaceWrapper)
-        {
-            FileResource = new ResourceKey("writable.md"),
-            DocumentView = documentView,
-        };
+        var viewModel = CreateViewModel(new ResourceKey("writable.md"), documentView);
 
         var result = await viewModel.CloseDocument(forceClose: false);
 
@@ -94,11 +123,7 @@ public class DocumentTabViewModelTests
         documentView.CanClose().Returns(Task.FromResult(false));
         documentView.HasUnsavedChanges.Returns(true);
 
-        var viewModel = new DocumentTabViewModel(_messengerService, _commandService, _logger, _workspaceWrapper)
-        {
-            FileResource = new ResourceKey("vetoed.md"),
-            DocumentView = documentView,
-        };
+        var viewModel = CreateViewModel(new ResourceKey("vetoed.md"), documentView);
 
         var result = await viewModel.CloseDocument(forceClose: false);
 
@@ -106,5 +131,94 @@ public class DocumentTabViewModelTests
         result.Value.Should().Be(CloseDocumentOutcome.Cancelled);
         await documentView.DidNotReceive().SaveDocument();
         await documentView.DidNotReceive().PrepareToClose();
+    }
+
+    [Test]
+    public async Task CloseDocument_SchedulesResourceUpdate_WhenSaveFailsOnCachedWritable()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.CanClose().Returns(Task.FromResult(true));
+        documentView.HasUnsavedChanges.Returns(true);
+        documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
+        documentView.WritableState.Returns(WritableState.Writable);
+
+        var viewModel = CreateViewModel(new ResourceKey("stale.md"), documentView);
+
+        await viewModel.CloseDocument(forceClose: false);
+
+        _commandService.ReceivedWithAnyArgs(1).Execute<IUpdateResourcesCommand>();
+    }
+
+    [Test]
+    public async Task CloseDocument_DoesNotScheduleResourceUpdate_WhenCacheAlreadyKnowsNonWritable()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.CanClose().Returns(Task.FromResult(true));
+        documentView.HasUnsavedChanges.Returns(true);
+        documentView.SaveDocument().Returns(Task.FromResult<Result>(Result.Fail("simulated save failure")));
+        documentView.WritableState.Returns(WritableState.Locked);
+
+        var viewModel = CreateViewModel(new ResourceKey("locked.md"), documentView);
+
+        await viewModel.CloseDocument(forceClose: false);
+
+        _commandService.DidNotReceiveWithAnyArgs().Execute<IUpdateResourcesCommand>();
+    }
+
+    [Test]
+    public void ResourceRegistryUpdated_RequeriesAndAppliesNewWritableState_WhenStateHasChanged()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.WritableState.Returns(WritableState.Writable);
+
+        var fileResource = new ResourceKey("file.md");
+        var resource = Substitute.For<IResource>();
+        _resourceRegistry.GetResource(fileResource).Returns(Result<IResource>.Ok(resource));
+        _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.ReadOnlyAttribute);
+
+        var viewModel = CreateViewModel(fileResource, documentView);
+
+        _messengerService.Send(new ResourceRegistryUpdatedMessage());
+
+        documentView.Received(1).SetWritableState(WritableState.ReadOnlyAttribute);
+    }
+
+    [Test]
+    public void ResourceRegistryUpdated_RequeriesAndAppliesNewWritableState_OnUnsetDirection()
+    {
+        // Mirrors the user-visible "clear read-only externally" path: the cached
+        // state transitions from ReadOnlyAttribute back to Writable and the editor
+        // must lose its read-only signal.
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.WritableState.Returns(WritableState.ReadOnlyAttribute);
+
+        var fileResource = new ResourceKey("file.md");
+        var resource = Substitute.For<IResource>();
+        _resourceRegistry.GetResource(fileResource).Returns(Result<IResource>.Ok(resource));
+        _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.Writable);
+
+        var viewModel = CreateViewModel(fileResource, documentView);
+
+        _messengerService.Send(new ResourceRegistryUpdatedMessage());
+
+        documentView.Received(1).SetWritableState(WritableState.Writable);
+    }
+
+    [Test]
+    public void ResourceRegistryUpdated_SkipsSetWritableState_WhenStateIsUnchanged()
+    {
+        var documentView = Substitute.For<IDocumentView>();
+        documentView.WritableState.Returns(WritableState.Writable);
+
+        var fileResource = new ResourceKey("file.md");
+        var resource = Substitute.For<IResource>();
+        _resourceRegistry.GetResource(fileResource).Returns(Result<IResource>.Ok(resource));
+        _resourceOperations.GetWritableStateAsync(fileResource).Returns(WritableState.Writable);
+
+        var viewModel = CreateViewModel(fileResource, documentView);
+
+        _messengerService.Send(new ResourceRegistryUpdatedMessage());
+
+        documentView.DidNotReceive().SetWritableState(Arg.Any<WritableState>());
     }
 }

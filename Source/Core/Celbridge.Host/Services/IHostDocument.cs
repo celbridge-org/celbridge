@@ -130,7 +130,7 @@ public static class HostDocumentExtensions
     /// across the reload, or to adopt the view state encoded in the on-disk file.
     /// </summary>
     public static Task NotifyExternalChangeAsync(this CelbridgeHost host, bool preserveViewState)
-        => host.Rpc.NotifyAsync(DocumentRpcMethods.ExternalChange, new { preserveViewState });
+        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.ExternalChange, new { preserveViewState });
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.
@@ -152,5 +152,5 @@ public static class HostDocumentExtensions
     /// other than "Writable" as read-only.
     /// </summary>
     public static Task NotifyWritableStateChangedAsync(this CelbridgeHost host, WritableState state)
-        => host.Rpc.NotifyAsync(DocumentRpcMethods.WritableStateChanged, new { state = state.ToString() });
+        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.WritableStateChanged, new { state = state.ToString() });
 }

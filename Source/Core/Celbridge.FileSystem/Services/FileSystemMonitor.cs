@@ -61,10 +61,14 @@ public sealed class FileSystemMonitor : IFileSystemMonitor
         {
             var watcher = new FileSystemWatcher(_backingFolderPath)
             {
+                // Attributes is included so an external attrib +r / -r surfaces
+                // as a Changed event. Consumers that cache WritableState use it
+                // to refresh the ReadOnlyAttribute source.
                 NotifyFilter = NotifyFilters.FileName
                              | NotifyFilters.DirectoryName
                              | NotifyFilters.LastWrite
-                             | NotifyFilters.Size,
+                             | NotifyFilters.Size
+                             | NotifyFilters.Attributes,
                 IncludeSubdirectories = true,
                 EnableRaisingEvents = false
             };

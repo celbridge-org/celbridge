@@ -138,33 +138,46 @@ public partial class DocumentTabViewModel : ObservableObject
 
             var documentMessage = new DocumentResourceChangedMessage(oldResource, newResource);
             _messengerService.Send(documentMessage);
+            return;
         }
-        else
-        {
-            // Check if the open document is in the updated resource registry
-            var getResult = _resourceRegistry.GetResource(FileResource);
-            if (getResult.IsFailure)
-            {
-                // The file may have been temporarily deleted as part of a "write temp, delete original,
-                // rename temp" save pattern used by some editors and coding agents. Check if the file
-                // still exists on disk before closing. The resource registry may not have caught up
-                // with the rename yet.
-                var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
-                var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
-                if (infoResult.IsSuccess
-                    && infoResult.Value.Kind == StorageItemKind.File)
-                {
-                    return;
-                }
 
-                // The resource no longer exists, so close the document.
-                // We force the close operation because the resource no longer exists.
-                // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
-                _commandService.Execute<ICloseDocumentCommand>(command =>
-                {
-                    command.FileResource = FileResource;
-                    command.ForceClose = true;
-                });
+        // Check if the open document is in the updated resource registry
+        var getResult = _resourceRegistry.GetResource(FileResource);
+        if (getResult.IsFailure)
+        {
+            // The file may have been temporarily deleted as part of a "write temp, delete original,
+            // rename temp" save pattern used by some editors and coding agents. Check if the file
+            // still exists on disk before closing. The resource registry may not have caught up
+            // with the rename yet.
+            var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+            var infoResult = await resourceFileSystem.GetInfoAsync(FileResource);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.File)
+            {
+                return;
+            }
+
+            // The resource no longer exists, so close the document.
+            // We force the close operation because the resource no longer exists.
+            // We use a command instead of calling CloseDocument() directly to help avoid race conditions.
+            _commandService.Execute<ICloseDocumentCommand>(command =>
+            {
+                command.FileResource = FileResource;
+                command.ForceClose = true;
+            });
+            return;
+        }
+
+        // Re-apply the writable state to the open document so external attribute
+        // changes (or any other source-of-truth refresh) propagate into the editor's
+        // read-only signal without reopening the document.
+        if (DocumentView is not null)
+        {
+            var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+            var refreshedState = await operationService.GetWritableStateAsync(FileResource);
+            if (refreshedState != DocumentView.WritableState)
+            {
+                DocumentView.SetWritableState(refreshedState);
             }
         }
     }
@@ -220,6 +233,15 @@ public partial class DocumentTabViewModel : ObservableObject
                 // permanently-refused save would otherwise jam the close path forever.
                 // Discard the unsaved edits and proceed to teardown.
                 _logger.LogWarning(saveResult, $"Saving document failed during close. Discarding unsaved edits for file resource: '{FileResource}'");
+
+                // If the cached writable state still reads Writable, an external
+                // attribute change probably slipped past the watcher. Schedule a
+                // resource update so the cache catches up; debouncing inside the
+                // resource service coalesces bursts.
+                if (DocumentView.WritableState == WritableState.Writable)
+                {
+                    _commandService.Execute<IUpdateResourcesCommand>();
+                }
             }
         }
 

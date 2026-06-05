@@ -303,6 +303,10 @@ export class EditorController {
             },
             onWritableStateChanged: ({ state }) => {
                 const readOnly = state !== 'Writable';
+                // Logged so a user-reported "stuck read-only" can be diagnosed
+                // from the WebView2 console without re-running with extra
+                // instrumentation.
+                log('editor: writable state', { state, readOnly });
                 this.#editor.updateOptions({ readOnly });
             },
             onRequestState,

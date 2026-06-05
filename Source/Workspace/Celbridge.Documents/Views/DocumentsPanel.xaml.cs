@@ -529,6 +529,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         int savedCount = 0;
         int pendingSaveCount = 0;
         List<ResourceKey> failedSaves = new();
+        bool updateResourcesRequired = false;
 
         for (int i = 0; i < SectionContainer.SectionCount; i++)
         {
@@ -555,6 +556,14 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     {
                         // Make a note of the failed save and continue saving other documents
                         failedSaves.Add(documentTab.ViewModel.FileResource);
+
+                        // A failed save against a cache that still reads Writable
+                        // suggests an external attribute flip slipped past the
+                        // watcher. Schedule a resource update so the cache catches up.
+                        if (documentView.WritableState == WritableState.Writable)
+                        {
+                            updateResourcesRequired = true;
+                        }
                     }
                     else
                     {
@@ -562,6 +571,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     }
                 }
             }
+        }
+
+        if (updateResourcesRequired)
+        {
+            // Debounced inside the resource service so a burst of failures from
+            // many open files collapses into one project-tree rebuild.
+            _commandService.Execute<IUpdateResourcesCommand>();
         }
 
         if (failedSaves.Count > 0)

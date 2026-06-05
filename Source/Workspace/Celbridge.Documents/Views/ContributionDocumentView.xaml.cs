@@ -432,8 +432,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
 
     protected override void OnWritableStateChanged()
     {
-        // Skip when the host isn't up yet; InitContributionViewAsync pushes the
-        // current state once after setup so the JS client sees it on first load.
+        // Skip when the host isn't up yet; the initial state ships through the
+        // document/initialize handshake (InitializeResult.WritableState) so the
+        // JS client sees it on first load.
         if (Host is null)
         {
             return;

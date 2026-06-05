@@ -201,13 +201,13 @@
   <data name="ResourceTree_CannotRename" xml:space="preserve">
     <value>Cannot rename</value>
   </data>
-  <data name="ResourceTree_ReadOnly_Locked" xml:space="preserve">
+  <data name="Resource_ReadOnly_Locked" xml:space="preserve">
     <value>Locked by project configuration. Edit [resources].lock to unlock.</value>
   </data>
-  <data name="ResourceTree_ReadOnly_ReadOnlyAttribute" xml:space="preserve">
+  <data name="Resource_ReadOnly_ReadOnlyAttribute" xml:space="preserve">
     <value>File is read-only on disk.</value>
   </data>
-  <data name="ResourceTree_ReadOnly_ReadOnlyRoot" xml:space="preserve">
+  <data name="Resource_ReadOnly_ReadOnlyRoot" xml:space="preserve">
     <value>Bundled package — read-only by design.</value>
   </data>
   <data name="Policy_Locked_Single" xml:space="preserve">

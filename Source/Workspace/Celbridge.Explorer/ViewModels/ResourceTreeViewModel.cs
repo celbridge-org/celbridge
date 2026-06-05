@@ -225,9 +225,9 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         var key = state switch
         {
-            WritableState.Locked => "ResourceTree_ReadOnly_Locked",
-            WritableState.ReadOnlyAttribute => "ResourceTree_ReadOnly_ReadOnlyAttribute",
-            WritableState.ReadOnlyRoot => "ResourceTree_ReadOnly_ReadOnlyRoot",
+            WritableState.Locked => "Resource_ReadOnly_Locked",
+            WritableState.ReadOnlyAttribute => "Resource_ReadOnly_ReadOnlyAttribute",
+            WritableState.ReadOnlyRoot => "Resource_ReadOnly_ReadOnlyRoot",
             _ => null,
         };
 

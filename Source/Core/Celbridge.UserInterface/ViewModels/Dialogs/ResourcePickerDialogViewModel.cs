@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -7,6 +8,7 @@ namespace Celbridge.UserInterface.ViewModels;
 public partial class ResourcePickerDialogViewModel : ObservableObject
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IStringLocalizer _stringLocalizer;
 
     private IResourceRegistry? _registry;
     private IResourceFileSystem? _resourceFileSystem;
@@ -39,6 +41,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         PropertyChanged += OnPropertyChanged;
     }
 
@@ -151,7 +154,8 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
                 }
 
                 var resourceKey = registry.GetResourceKey(child);
-                items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon));
+                var readOnlyMessage = ResolveReadOnlyMessage(child.WritableState);
+                items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon, readOnlyMessage));
             }
         }
     }
@@ -170,5 +174,26 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         FilteredItems = _allItems
             .Where(item => item.DisplayTextLower.Contains(searchLower))
             .ToList();
+    }
+
+    // Maps the writable state to its localised tooltip text. Returns null for
+    // Writable so the picker item's ReadOnlyMessage stays empty and the binding
+    // collapses the tooltip element.
+    private string? ResolveReadOnlyMessage(WritableState state)
+    {
+        var key = state switch
+        {
+            WritableState.Locked => "Resource_ReadOnly_Locked",
+            WritableState.ReadOnlyAttribute => "Resource_ReadOnly_ReadOnlyAttribute",
+            WritableState.ReadOnlyRoot => "Resource_ReadOnly_ReadOnlyRoot",
+            _ => null,
+        };
+
+        if (key is null)
+        {
+            return null;
+        }
+
+        return _stringLocalizer.GetString(key).Value;
     }
 }
