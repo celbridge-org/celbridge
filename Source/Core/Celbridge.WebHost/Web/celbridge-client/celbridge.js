@@ -188,6 +188,9 @@ export class Celbridge {
      *   The returned string must round-trip through `onRestoreState` with equivalent editor behavior.
      * @param {Function} [handlers.onRestoreState] - Called with a state string previously returned
      *   from `onRequestState` to restore editor view state.
+     * @param {Function} [handlers.onWritableStateChanged] - Called with `{state}` when the document's
+     *   writable state changes. `state` is one of "Writable", "Locked", "ReadOnlyAttribute", or
+     *   "ReadOnlyRoot"; treat anything other than "Writable" as read-only.
      * @returns {Promise<InitializeResult>} - The initialization result with content and config.
      */
     async initializeDocument(handlers = {}) {
@@ -207,6 +210,9 @@ export class Celbridge {
         }
         if (handlers.onRestoreState) {
             this.document.onRestoreState(handlers.onRestoreState);
+        }
+        if (handlers.onWritableStateChanged) {
+            this.document.onWritableStateChanged(handlers.onWritableStateChanged);
         }
 
         this.document.notifyContentLoaded();

@@ -32,4 +32,11 @@ public sealed partial class TextBoxDocumentView : DocumentView
     {
         return await ViewModel.SaveDocumentContent();
     }
+
+    protected override void OnWritableStateChanged()
+    {
+        // WinUI TextBox.IsReadOnly keeps caret, selection, and copy working and
+        // silently refuses typing.
+        DocumentTextBox.IsReadOnly = WritableState != WritableState.Writable;
+    }
 }

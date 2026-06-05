@@ -1,4 +1,5 @@
 using Celbridge.Host;
+using Celbridge.Resources;
 
 namespace Celbridge.Tests.Host;
 
@@ -66,6 +67,28 @@ public class CelbridgeHostTests
         _channel.SentMessages.Should().HaveCount(1);
         _channel.SentMessages[0].Should().Contain("document/externalChange");
         _channel.SentMessages[0].Should().Contain("preserveViewState");
+    }
+
+    [Test]
+    public async Task NotifyWritableStateChangedAsync_SendsCorrectMethodWithStateName()
+    {
+        _host.StartListening();
+
+        await _host.NotifyWritableStateChangedAsync(WritableState.Locked);
+
+        _channel.SentMessages.Should().HaveCount(1);
+        _channel.SentMessages[0].Should().Contain("document/writableStateChanged");
+        _channel.SentMessages[0].Should().Contain("\"state\":\"Locked\"");
+    }
+
+    [Test]
+    public async Task NotifyWritableStateChangedAsync_SendsWritableWhenDocumentIsEditable()
+    {
+        _host.StartListening();
+
+        await _host.NotifyWritableStateChangedAsync(WritableState.Writable);
+
+        _channel.SentMessages[0].Should().Contain("\"state\":\"Writable\"");
     }
 
     [Test]

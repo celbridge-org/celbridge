@@ -301,6 +301,10 @@ export class EditorController {
             onExternalChange: async () => {
                 await this.#handleExternalChange(onExternalReloadContent);
             },
+            onWritableStateChanged: ({ state }) => {
+                const readOnly = state !== 'Writable';
+                this.#editor.updateOptions({ readOnly });
+            },
             onRequestState,
             onRestoreState
         });

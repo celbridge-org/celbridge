@@ -191,6 +191,22 @@ describe('Celbridge', () => {
             expect(handler).toHaveBeenCalledOnce();
         });
 
+        it('should dispatch writable-state-changed notifications with the state payload', async () => {
+            const { client, simulateResponse, simulateNotification } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            const handler = vi.fn();
+            client.document.onWritableStateChanged(handler);
+
+            simulateNotification('document/writableStateChanged', { state: 'Locked' });
+
+            expect(handler).toHaveBeenCalledOnce();
+            expect(handler).toHaveBeenCalledWith({ state: 'Locked' });
+        });
+
         it('should handle language change notifications', async () => {
             const { client, simulateResponse, simulateNotification } = createTestClient();
 

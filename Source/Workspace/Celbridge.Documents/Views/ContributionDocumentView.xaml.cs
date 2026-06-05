@@ -315,6 +315,11 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
                 TryRegisterWithToolBridge();
             }
 
+            // The writable state was applied to the base class before LoadContent
+            // ran, so the host wasn't up to push it then. Push it now so the JS
+            // client sees the correct state on its first content-loaded pass.
+            await Host.NotifyWritableStateChangedAsync(WritableState);
+
             var entryPoint = Contribution.EntryPoint;
             var entryUrl = $"https://{Contribution.Package.HostName}/{entryPoint}";
             WebView.CoreWebView2.Navigate(entryUrl);
@@ -426,6 +431,30 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         if (WebView?.CoreWebView2 is not null)
         {
             ApplyThemeToWebView();
+        }
+    }
+
+    protected override void OnWritableStateChanged()
+    {
+        // Skip when the host isn't up yet; InitContributionViewAsync pushes the
+        // current state once after setup so the JS client sees it on first load.
+        if (Host is null)
+        {
+            return;
+        }
+
+        _ = NotifyWritableStateAsync();
+    }
+
+    private async Task NotifyWritableStateAsync()
+    {
+        try
+        {
+            await Host!.NotifyWritableStateChangedAsync(WritableState);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to notify contribution of writable-state change");
         }
     }
 
