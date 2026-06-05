@@ -38,7 +38,10 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 
     private async Task<Result> SynchronizeFolderAsync(FolderResource folderResource, ResourceKey folderKey)
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var resourceFileSystem = resourceService.FileSystem;
+        var policy = resourceService.Policy;
+        var rootHandlerRegistry = resourceService.RootHandlers;
 
         var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderKey);
         if (enumerateResult.IsFailure)
@@ -55,10 +58,12 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         foreach (var folderItem in folderItems)
         {
             var childName = folderItem.Resource.ResourceName;
+            var writableState = ComputeWritableState(folderItem, policy, rootHandlerRegistry);
 
             if (folderItem.IsFolder)
             {
                 var childFolder = new FolderResource(childName, folderResource);
+                childFolder.WritableState = writableState;
 
                 var childResult = await SynchronizeFolderAsync(childFolder, folderItem.Resource);
                 if (childResult.IsFailure)
@@ -77,13 +82,43 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
                     ? getIconResult.Value
                     : _fileIconService.DefaultFileIcon;
 
-                folderResource.AddChild(new FileResource(childName, folderResource, iconDefinition));
+                var fileResource = new FileResource(childName, folderResource, iconDefinition);
+                fileResource.WritableState = writableState;
+                folderResource.AddChild(fileResource);
             }
         }
 
         // EnumerateFolderAsync yields folders-first, ordinal order, which matches
         // the tree's required ordering, so no re-sort is needed here.
         return Result.Ok();
+    }
+
+    // Priority mirrors IResourceOperationService.GetWritableStateAsync:
+    // Locked > ReadOnlyRoot > ReadOnlyAttribute. Configured locks dominate
+    // ambient state so a locked file on a read-only root reports Locked.
+    private static WritableState ComputeWritableState(
+        FolderItem folderItem,
+        IResourcePolicy policy,
+        IRootHandlerRegistry rootHandlerRegistry)
+    {
+        var writeResult = policy.Evaluate(folderItem.Resource, ResourceAction.Write, folderItem.IsFolder);
+        if (writeResult.IsFailure)
+        {
+            return WritableState.Locked;
+        }
+
+        if (rootHandlerRegistry.RootHandlers.TryGetValue(folderItem.Resource.Root, out var handler)
+            && !handler.Capabilities.IsWritable)
+        {
+            return WritableState.ReadOnlyRoot;
+        }
+
+        if ((folderItem.Attributes & FileSystemAttributes.ReadOnly) != 0)
+        {
+            return WritableState.ReadOnlyAttribute;
+        }
+
+        return WritableState.Writable;
     }
 
     private static string GetFileExtension(string fileName)

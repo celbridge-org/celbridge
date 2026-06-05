@@ -94,4 +94,5 @@ public record FolderItem(
     ResourceKey Resource,
     bool IsFolder,
     long Size,
-    DateTime ModifiedUtc);
+    DateTime ModifiedUtc,
+    FileSystemAttributes Attributes);

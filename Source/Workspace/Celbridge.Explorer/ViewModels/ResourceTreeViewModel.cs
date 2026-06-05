@@ -4,6 +4,7 @@ using Celbridge.Explorer.Models;
 using Celbridge.Logging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Localization;
 
 namespace Celbridge.Explorer.ViewModels;
 
@@ -14,6 +15,7 @@ public partial class ResourceTreeViewModel : ObservableObject
 {
     private readonly ILogger<ResourceTreeViewModel> _logger;
     private readonly IMessengerService _messengerService;
+    private readonly IStringLocalizer _stringLocalizer;
     private readonly IResourceRegistry _resourceRegistry;
     private readonly IFolderStateService _folderStateService;
     private readonly IDataTransferService _dataTransferService;
@@ -65,6 +67,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         _logger = logger;
         _messengerService = messengerService;
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
         _folderStateService = workspaceWrapper.WorkspaceService.ExplorerService.FolderStateService;
         _dataTransferService = workspaceWrapper.WorkspaceService.DataTransferService;
@@ -187,13 +190,15 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         foreach (var resource in resources)
         {
+            var readOnlyMessage = ResolveReadOnlyMessage(resource.WritableState);
+
             if (resource is IFolderResource folderResource)
             {
                 var hasChildren = folderResource.Children.Count > 0;
                 var resourceKey = _resourceRegistry.GetResourceKey(folderResource);
                 var isExpanded = _folderStateService.IsExpanded(resourceKey);
 
-                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren);
+                var item = new ResourceViewItem(resource, indentLevel, isExpanded, hasChildren, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
 
                 // Only add children if the folder is expanded
@@ -207,10 +212,31 @@ public partial class ResourceTreeViewModel : ObservableObject
             }
             else if (resource is IFileResource)
             {
-                var item = new ResourceViewItem(resource, indentLevel, false, false);
+                var item = new ResourceViewItem(resource, indentLevel, false, false, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
             }
         }
+    }
+
+    // Maps the writable state to its localised tooltip text. Returns null for
+    // Writable so the view item's ReadOnlyMessage stays empty and the binding
+    // collapses the tooltip element.
+    private string? ResolveReadOnlyMessage(WritableState state)
+    {
+        var key = state switch
+        {
+            WritableState.Locked => "ResourceTree_ReadOnly_Locked",
+            WritableState.ReadOnlyAttribute => "ResourceTree_ReadOnly_ReadOnlyAttribute",
+            WritableState.ReadOnlyRoot => "ResourceTree_ReadOnly_ReadOnlyRoot",
+            _ => null,
+        };
+
+        if (key is null)
+        {
+            return null;
+        }
+
+        return _stringLocalizer.GetString(key).Value;
     }
 
     /// <summary>

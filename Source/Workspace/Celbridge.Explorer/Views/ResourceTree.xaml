@@ -19,19 +19,14 @@
       <Grid Margin="{x:Bind IndentMargin}"
             Padding="8,0,0,0"
             MinHeight="32"
-            Background="{ThemeResource SubtleFillColorTransparentBrush}">
+            Background="{ThemeResource SubtleFillColorTransparentBrush}"
+            ToolTipService.ToolTip="{x:Bind TooltipText}"
+            AutomationProperties.HelpText="{x:Bind ReadOnlyMessage}">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="32"/>
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-
-        <!-- Tooltip for project folder -->
-        <ToolTipService.ToolTip>
-          <ToolTip Visibility="{x:Bind IsProjectFolder}">
-            <TextBlock Text="Double-click to open in File Explorer"/>
-          </ToolTip>
-        </ToolTipService.ToolTip>
 
         <!-- Expand/Collapse chevron button (hidden for project folder) -->
         <Button Grid.Column="0"
@@ -43,16 +38,18 @@
                     FontSize="12"/>
         </Button>
 
-        <!-- Resource icon -->
+        <!-- Resource icon. Dims with the name when the resource is read-only. -->
         <local:ResourceIcon Grid.Column="1"
                             Resource="{x:Bind Resource}"
+                            Opacity="{x:Bind NameOpacity}"
                             Margin="0,0,8,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Left" />
 
-        <!-- Resource name (semi-bold for project folder) -->
+        <!-- Resource name (semi-bold for project folder, dimmed when read-only) -->
         <TextBlock Grid.Column="2"
                    Text="{x:Bind Name}"
+                   Opacity="{x:Bind NameOpacity}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis"
                    FontWeight="{x:Bind IsProjectFolder, Converter={StaticResource ProjectFolderFontWeightConverter}}" />

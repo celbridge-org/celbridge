@@ -167,16 +167,32 @@ public sealed class LocalFileSystem : ILocalFileSystem
             // for every consumer.
             var directoryInfo = new DirectoryInfo(path);
 
+            // FileSystemInfo.Attributes is also populated from the directory walk,
+            // so the portable read-only flag costs no extra stat per item.
             var folderInfos = directoryInfo.EnumerateDirectories(pattern, searchOption).OrderBy(folder => folder.FullName, StringComparer.Ordinal);
             foreach (var folderInfo in folderInfos)
             {
-                entries.Add(new FileSystemEntry(folderInfo.FullName, IsFolder: true, Size: 0, ModifiedUtc: folderInfo.LastWriteTimeUtc));
+                var folderAttributes = MapToPortable(folderInfo.Attributes);
+                var folderEntry = new FileSystemEntry(
+                    FullPath: folderInfo.FullName,
+                    IsFolder: true,
+                    Size: 0,
+                    ModifiedUtc: folderInfo.LastWriteTimeUtc,
+                    Attributes: folderAttributes);
+                entries.Add(folderEntry);
             }
 
             var fileInfos = directoryInfo.EnumerateFiles(pattern, searchOption).OrderBy(file => file.FullName, StringComparer.Ordinal);
             foreach (var fileInfo in fileInfos)
             {
-                entries.Add(new FileSystemEntry(fileInfo.FullName, IsFolder: false, Size: fileInfo.Length, ModifiedUtc: fileInfo.LastWriteTimeUtc));
+                var fileAttributes = MapToPortable(fileInfo.Attributes);
+                var fileEntry = new FileSystemEntry(
+                    FullPath: fileInfo.FullName,
+                    IsFolder: false,
+                    Size: fileInfo.Length,
+                    ModifiedUtc: fileInfo.LastWriteTimeUtc,
+                    Attributes: fileAttributes);
+                entries.Add(fileEntry);
             }
 
             IReadOnlyList<FileSystemEntry> list = entries;

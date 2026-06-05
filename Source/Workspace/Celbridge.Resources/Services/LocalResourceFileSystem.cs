@@ -707,7 +707,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 Resource: childKey,
                 IsFolder: entry.IsFolder,
                 Size: entry.Size,
-                ModifiedUtc: entry.ModifiedUtc));
+                ModifiedUtc: entry.ModifiedUtc,
+                Attributes: entry.Attributes));
         }
 
         IReadOnlyList<FolderItem> result = entries;

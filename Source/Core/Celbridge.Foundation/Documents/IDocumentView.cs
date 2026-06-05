@@ -47,16 +47,12 @@ public interface IDocumentView
     Task<Result> SaveDocument();
 
     /// <summary>
-    /// The document's writable state, or the reason it is non-editable. Set
-    /// via SetWritableState after the file resource resolves and the state is
-    /// queried.
+    /// The document's writable state, or the reason it is non-editable.
     /// </summary>
     WritableState WritableState { get; }
 
     /// <summary>
-    /// Applies a writable state to the document view. The base class stores
-    /// the value and notifies the concrete view via OnWritableStateChanged so
-    /// it can refuse edits in its own native way.
+    /// Sets the document's writable state.
     /// </summary>
     void SetWritableState(WritableState state);
 

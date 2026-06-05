@@ -239,8 +239,16 @@ public class ResourceOperationService : IResourceOperationService
 
     public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
     {
-        // The info probe is also reused for the OS-attribute check below so the
-        // gateway is only hit once.
+        // Tree-cached fast path: ProjectTreeBuilder populates IResource.WritableState
+        // during the project walk, so any key in the registry answers without a syscall.
+        var getResult = ResourceRegistry.GetResource(resource);
+        if (getResult.IsSuccess)
+        {
+            return getResult.Value.WritableState;
+        }
+
+        // Live fallback for external keys not in the registry. The info probe is
+        // reused for the OS-attribute check below so the gateway is only hit once.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         bool isFolder = infoResult.IsSuccess
             && infoResult.Value.Kind == StorageItemKind.Folder;

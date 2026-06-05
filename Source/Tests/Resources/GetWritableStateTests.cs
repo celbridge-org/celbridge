@@ -1,5 +1,6 @@
 using Celbridge.Projects;
 using Celbridge.Resources;
+using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
 using Celbridge.Tests.FileSystem;
 using Celbridge.Workspace;
@@ -16,6 +17,7 @@ namespace Celbridge.Tests.Resources;
 public class GetWritableStateTests
 {
     private IResourceFileSystem _resourceFileSystem = null!;
+    private IResourceRegistry _resourceRegistry = null!;
     private IRootHandlerRegistry _rootHandlerRegistry = null!;
     private IResourceService _resourceService = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
@@ -31,10 +33,17 @@ public class GetWritableStateTests
         _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
             .Returns(Result<StorageItemInfo>.Ok(writableFileInfo));
 
+        // These tests exercise the live-computation fallback for keys outside
+        // the registry, so GetResource returns Fail for every key.
+        _resourceRegistry = Substitute.For<IResourceRegistry>();
+        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
+            .Returns(Result<IResource>.Fail("not in registry"));
+
         _rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
         _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>());
 
         _resourceService = Substitute.For<IResourceService>();
+        _resourceService.Registry.Returns(_resourceRegistry);
         _resourceService.FileSystem.Returns(_resourceFileSystem);
         _resourceService.RootHandlers.Returns(_rootHandlerRegistry);
         _resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
@@ -96,6 +105,27 @@ public class GetWritableStateTests
         var state = await operationService.GetWritableStateAsync(new ResourceKey("notes/todo.md"));
 
         state.Should().Be(WritableState.ReadOnlyAttribute);
+    }
+
+    [Test]
+    public async Task ReturnsCachedState_WhenResourceIsInRegistry()
+    {
+        // ProjectTreeBuilder populates IResource.WritableState during the
+        // project walk; the query short-circuits on a registry hit and never
+        // touches the policy, root handlers, or the file system.
+        var cachedResource = new FolderResource("assets", null);
+        cachedResource.WritableState = WritableState.Locked;
+
+        _resourceRegistry.GetResource(Arg.Any<ResourceKey>())
+            .Returns(Result<IResource>.Ok(cachedResource));
+
+        var operationService = CreateOperationService();
+
+        var state = await operationService.GetWritableStateAsync(new ResourceKey("assets"));
+
+        state.Should().Be(WritableState.Locked);
+        // The cached path bypasses the gateway entirely.
+        await _resourceFileSystem.DidNotReceive().GetInfoAsync(Arg.Any<ResourceKey>());
     }
 
     [Test]

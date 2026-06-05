@@ -19,4 +19,9 @@ public interface IResource
     /// The folder resource that contains this resource.
     /// </summary>
     public IFolderResource? ParentFolder { get; }
+
+    /// <summary>
+    /// Whether the resource is editable, and if not, why.
+    /// </summary>
+    WritableState WritableState { get; }
 }

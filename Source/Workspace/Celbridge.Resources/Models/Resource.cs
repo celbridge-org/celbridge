@@ -24,4 +24,6 @@ public abstract partial class Resource : ObservableObject, IResource
 
     public IFolderResource? ParentFolder { get; init; }
 
+    [ObservableProperty]
+    private WritableState _writableState = WritableState.Writable;
 }

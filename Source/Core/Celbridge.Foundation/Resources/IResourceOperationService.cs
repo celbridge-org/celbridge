@@ -37,10 +37,8 @@ public enum ResourceLockState
 }
 
 /// <summary>
-/// Whether a resource can be edited, and if not, why. Reported by
-/// GetWritableStateAsync. Editor and display surfaces drive their treatment
-/// off this enum; the non-Writable values name the source so callers can
-/// localise the cause without re-querying the underlying systems.
+/// Whether a resource can be edited, and if not, why. The non-Writable
+/// values name the source.
 /// </summary>
 public enum WritableState
 {
@@ -135,11 +133,8 @@ public interface IResourceOperationService
     Task<ResourceLockState> GetLockStateAsync(ResourceKey resource);
 
     /// <summary>
-    /// Resolves whether the resource can be edited by the document editor and
-    /// at-rest display surfaces, combining the [resources].lock pattern, OS
-    /// read-only attribute, and read-only resource root sources. The non-
-    /// Writable values name the first source that fires in priority order:
-    /// Locked, ReadOnlyRoot, ReadOnlyAttribute.
+    /// Returns the writable state of the resource. When multiple sources apply,
+    /// the priority order is Locked > ReadOnlyRoot > ReadOnlyAttribute.
     /// </summary>
     Task<WritableState> GetWritableStateAsync(ResourceKey resource);
 
