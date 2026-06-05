@@ -237,6 +237,38 @@ public class ResourceOperationService : IResourceOperationService
         return await FindLockingDescendantAsync(resource);
     }
 
+    public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
+    {
+        // The info probe is also reused for the OS-attribute check below so the
+        // gateway is only hit once.
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+
+        // Priority: Locked > ReadOnlyRoot > ReadOnlyAttribute. Configured locks
+        // dominate ambient state so a locked file on a read-only root still
+        // reports as Locked, which is the more actionable cause for the user.
+        var writeResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
+        if (writeResult.IsFailure)
+        {
+            return WritableState.Locked;
+        }
+
+        if (RootHandlerRegistry.RootHandlers.TryGetValue(resource.Root, out var handler)
+            && !handler.Capabilities.IsWritable)
+        {
+            return WritableState.ReadOnlyRoot;
+        }
+
+        if (infoResult.IsSuccess
+            && (infoResult.Value.Attributes & FileSystemAttributes.ReadOnly) != 0)
+        {
+            return WritableState.ReadOnlyAttribute;
+        }
+
+        return WritableState.Writable;
+    }
+
     public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)
     {
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);

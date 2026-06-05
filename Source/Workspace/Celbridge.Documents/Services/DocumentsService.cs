@@ -240,6 +240,12 @@ public class DocumentsService : IDocumentsService, IDisposable
                 .WithErrors(setFileResult);
         }
 
+        // Queried after SetFileResource so the operation service sees the
+        // resolved file kind through the gateway.
+        var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+        var writableState = await operationService.GetWritableStateAsync(fileResource);
+        documentView.SetWritableState(writableState);
+
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {

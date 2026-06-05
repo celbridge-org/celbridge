@@ -1,3 +1,5 @@
+using Celbridge.Resources;
+
 namespace Celbridge.Documents;
 
 /// <summary>
@@ -43,6 +45,20 @@ public interface IDocumentView
     /// Save the document content from the document view using the previously set file resource.
     /// </summary>
     Task<Result> SaveDocument();
+
+    /// <summary>
+    /// The document's writable state, or the reason it is non-editable. Set
+    /// via SetWritableState after the file resource resolves and the state is
+    /// queried.
+    /// </summary>
+    WritableState WritableState { get; }
+
+    /// <summary>
+    /// Applies a writable state to the document view. The base class stores
+    /// the value and notifies the concrete view via OnWritableStateChanged so
+    /// it can refuse edits in its own native way.
+    /// </summary>
+    void SetWritableState(WritableState state);
 
     /// <summary>
     /// Navigate to a specific location within the document.
