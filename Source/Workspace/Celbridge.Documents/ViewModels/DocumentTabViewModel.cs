@@ -1,4 +1,5 @@
 using Celbridge.Commands;
+using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -7,7 +8,8 @@ namespace Celbridge.Documents.ViewModels;
 
 /// <summary>
 /// Describes the result of a successful call to DocumentTabViewModel.CloseDocument.
-/// A Result.Fail is still reserved for genuine errors (save failure, etc.).
+/// Result.Fail is reserved for genuine framework errors. A failing save during close
+/// is logged and the close proceeds, discarding the unsaved edits.
 /// </summary>
 public enum CloseDocumentOutcome
 {
@@ -26,6 +28,7 @@ public partial class DocumentTabViewModel : ObservableObject
 {
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
+    private readonly ILogger<DocumentTabViewModel> _logger;
     private readonly IResourceRegistry _resourceRegistry;
 
     [ObservableProperty]
@@ -80,10 +83,12 @@ public partial class DocumentTabViewModel : ObservableObject
     public DocumentTabViewModel(
         IMessengerService messengerService,
         ICommandService commandService,
+        ILogger<DocumentTabViewModel> logger,
         IWorkspaceWrapper workspaceWrapper)
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
         _resourceRegistry = workspaceWrapper.WorkspaceService.ResourceService.Registry;
 
@@ -211,8 +216,10 @@ public partial class DocumentTabViewModel : ObservableObject
             var saveResult = await DocumentView.SaveDocument();
             if (saveResult.IsFailure)
             {
-                return Result<CloseDocumentOutcome>.Fail($"Saving document failed for file resource: '{FileResource}'")
-                    .WithErrors(saveResult);
+                // A non-editable document (locked file, read-only attribute) or any other
+                // permanently-refused save would otherwise jam the close path forever.
+                // Discard the unsaved edits and proceed to teardown.
+                _logger.LogWarning(saveResult, $"Saving document failed during close. Discarding unsaved edits for file resource: '{FileResource}'");
             }
         }
 
