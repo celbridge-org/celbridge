@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer.Models;
 using Celbridge.Logging;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.Localization;
@@ -190,7 +191,7 @@ public partial class ResourceTreeViewModel : ObservableObject
     {
         foreach (var resource in resources)
         {
-            var readOnlyMessage = ResolveReadOnlyMessage(resource.WritableState);
+            var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(resource.WritableState, _stringLocalizer);
 
             if (resource is IFolderResource folderResource)
             {
@@ -216,27 +217,6 @@ public partial class ResourceTreeViewModel : ObservableObject
                 items.Add(item);
             }
         }
-    }
-
-    // Maps the writable state to its localised tooltip text. Returns null for
-    // Writable so the view item's ReadOnlyMessage stays empty and the binding
-    // collapses the tooltip element.
-    private string? ResolveReadOnlyMessage(WritableState state)
-    {
-        var key = state switch
-        {
-            WritableState.Locked => "Resource_ReadOnly_Locked",
-            WritableState.ReadOnlyAttribute => "Resource_ReadOnly_ReadOnlyAttribute",
-            WritableState.ReadOnlyRoot => "Resource_ReadOnly_ReadOnlyRoot",
-            _ => null,
-        };
-
-        if (key is null)
-        {
-            return null;
-        }
-
-        return _stringLocalizer.GetString(key).Value;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -154,7 +155,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
                 }
 
                 var resourceKey = registry.GetResourceKey(child);
-                var readOnlyMessage = ResolveReadOnlyMessage(child.WritableState);
+                var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(child.WritableState, _stringLocalizer);
                 items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon, readOnlyMessage));
             }
         }
@@ -176,24 +177,4 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
             .ToList();
     }
 
-    // Maps the writable state to its localised tooltip text. Returns null for
-    // Writable so the picker item's ReadOnlyMessage stays empty and the binding
-    // collapses the tooltip element.
-    private string? ResolveReadOnlyMessage(WritableState state)
-    {
-        var key = state switch
-        {
-            WritableState.Locked => "Resource_ReadOnly_Locked",
-            WritableState.ReadOnlyAttribute => "Resource_ReadOnly_ReadOnlyAttribute",
-            WritableState.ReadOnlyRoot => "Resource_ReadOnly_ReadOnlyRoot",
-            _ => null,
-        };
-
-        if (key is null)
-        {
-            return null;
-        }
-
-        return _stringLocalizer.GetString(key).Value;
-    }
 }

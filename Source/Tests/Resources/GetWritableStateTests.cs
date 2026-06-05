@@ -148,6 +148,60 @@ public class GetWritableStateTests
         state.Should().Be(WritableState.Locked);
     }
 
+    [Test]
+    public void WritableStatePriority_LockedTakesPriority_OverReadOnlyRoot()
+    {
+        // Pinned at the helper so a future refactor that swaps the branch order
+        // is caught. The live fallback can't reach this scenario today
+        // (ResourcePolicy.Evaluate short-circuits non-default roots), but the
+        // helper's contract is the source of truth for priority and a future
+        // policy implementation could produce it.
+        var policy = Substitute.For<IResourcePolicy>();
+        policy.Evaluate(Arg.Any<ResourceKey>(), ResourceAction.Write, Arg.Any<bool>())
+            .Returns(Result.Fail("locked"));
+
+        var bundledHandler = Substitute.For<IResourceRootHandler>();
+        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false));
+        var rootHandlerRegistry = Substitute.For<IRootHandlerRegistry>();
+        rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>
+        {
+            ["bundled"] = bundledHandler,
+        });
+
+        var state = WritableStatePriority.Compute(
+            new ResourceKey("bundled:docs/readme.md"),
+            isFolder: false,
+            attributes: FileSystemAttributes.None,
+            policy,
+            rootHandlerRegistry);
+
+        state.Should().Be(WritableState.Locked);
+    }
+
+    [Test]
+    public async Task ReadOnlyRootTakesPriority_OverReadOnlyAttribute()
+    {
+        // A read-only-root file with the OS read-only bit also set reports
+        // ReadOnlyRoot. The structural source names the more durable cause
+        // (bundled root never becomes writable; the attribute can be cleared).
+        var bundledHandler = Substitute.For<IResourceRootHandler>();
+        bundledHandler.Capabilities.Returns(new ResourceRootCapabilities(IsWritable: false, IsWatched: false));
+        _rootHandlerRegistry.RootHandlers.Returns(new Dictionary<string, IResourceRootHandler>
+        {
+            ["bundled"] = bundledHandler,
+        });
+
+        var readOnlyFileInfo = new StorageItemInfo(StorageItemKind.File, 0, DateTime.UtcNow, FileSystemAttributes.ReadOnly);
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Result<StorageItemInfo>.Ok(readOnlyFileInfo));
+
+        var operationService = CreateOperationService();
+
+        var state = await operationService.GetWritableStateAsync(new ResourceKey("bundled:docs/readme.md"));
+
+        state.Should().Be(WritableState.ReadOnlyRoot);
+    }
+
     private ResourceOperationService CreateOperationService()
     {
         return new ResourceOperationService(

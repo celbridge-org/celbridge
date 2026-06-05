@@ -248,33 +248,17 @@ public class ResourceOperationService : IResourceOperationService
         }
 
         // Live fallback for external keys not in the registry. The info probe is
-        // reused for the OS-attribute check below so the gateway is only hit once.
+        // reused so the priority helper sees both the file kind (for the policy
+        // probe) and the on-disk attributes (for the ReadOnlyAttribute source)
+        // without a second gateway hit.
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         bool isFolder = infoResult.IsSuccess
             && infoResult.Value.Kind == StorageItemKind.Folder;
+        var attributes = infoResult.IsSuccess
+            ? infoResult.Value.Attributes
+            : FileSystemAttributes.None;
 
-        // Priority: Locked > ReadOnlyRoot > ReadOnlyAttribute. Configured locks
-        // dominate ambient state so a locked file on a read-only root still
-        // reports as Locked, which is the more actionable cause for the user.
-        var writeResult = Policy.Evaluate(resource, ResourceAction.Write, isFolder);
-        if (writeResult.IsFailure)
-        {
-            return WritableState.Locked;
-        }
-
-        if (RootHandlerRegistry.RootHandlers.TryGetValue(resource.Root, out var handler)
-            && !handler.Capabilities.IsWritable)
-        {
-            return WritableState.ReadOnlyRoot;
-        }
-
-        if (infoResult.IsSuccess
-            && (infoResult.Value.Attributes & FileSystemAttributes.ReadOnly) != 0)
-        {
-            return WritableState.ReadOnlyAttribute;
-        }
-
-        return WritableState.Writable;
+        return WritableStatePriority.Compute(resource, isFolder, attributes, Policy, RootHandlerRegistry);
     }
 
     public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)

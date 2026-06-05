@@ -134,8 +134,11 @@ public class DocumentTabViewModelTests
     }
 
     [Test]
-    public async Task CloseDocument_SchedulesResourceUpdate_WhenSaveFailsOnCachedWritable()
+    public async Task CloseDocument_SchedulesResourceUpdate_WhenSaveFailsAndViewStillReportsWritable()
     {
+        // A save failure against a view whose WritableState still reads Writable
+        // suggests an external attribute flip slipped past the watcher. The close
+        // path schedules a resource update so the cache catches up.
         var documentView = Substitute.For<IDocumentView>();
         documentView.CanClose().Returns(Task.FromResult(true));
         documentView.HasUnsavedChanges.Returns(true);

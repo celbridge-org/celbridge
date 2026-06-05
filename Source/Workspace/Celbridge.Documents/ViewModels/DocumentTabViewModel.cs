@@ -131,6 +131,9 @@ public partial class DocumentTabViewModel : ObservableObject
         {
             // This open document's resource has been renamed just prior to this registry update.
             // Tell the document service to update the file resource for the document.
+            // The writable-state refresh below is skipped on this path: DocumentsService
+            // re-binds the document for the new key (see OpenDocument), which calls
+            // SetWritableState through the open flow.
 
             var oldResource = _pendingResourceKeyChangedMessage.SourceResource;
             var newResource = _pendingResourceKeyChangedMessage.DestResource;

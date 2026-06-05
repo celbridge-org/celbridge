@@ -224,11 +224,8 @@ function applyWritableState(state) {
     showReadOnlyOverlay(frameworkReadOnly);
 }
 
-// Translucent full-viewport overlay above the SpreadJS designer. Absorbs all
-// pointer events; the visual wash is the read-only cue. Chosen over gating
-// individual SpreadJS options because that surface is too large to cover
-// reliably (sheet protection, workbook tabs, designer ribbon are all
-// separate tiers).
+// Visual cue and pointer-event sink. Not the durable read-only block — the
+// frameworkReadOnly gates above are what stop saves.
 function showReadOnlyOverlay(visible) {
     let overlay = document.getElementById('readonly-overlay');
     if (!overlay) {

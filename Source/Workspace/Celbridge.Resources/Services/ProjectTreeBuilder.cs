@@ -58,7 +58,12 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         foreach (var folderItem in folderItems)
         {
             var childName = folderItem.Resource.ResourceName;
-            var writableState = ComputeWritableState(folderItem, policy, rootHandlerRegistry);
+            var writableState = WritableStatePriority.Compute(
+                folderItem.Resource,
+                folderItem.IsFolder,
+                folderItem.Attributes,
+                policy,
+                rootHandlerRegistry);
 
             if (folderItem.IsFolder)
             {
@@ -91,34 +96,6 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         // EnumerateFolderAsync yields folders-first, ordinal order, which matches
         // the tree's required ordering, so no re-sort is needed here.
         return Result.Ok();
-    }
-
-    // Priority mirrors IResourceOperationService.GetWritableStateAsync:
-    // Locked > ReadOnlyRoot > ReadOnlyAttribute. Configured locks dominate
-    // ambient state so a locked file on a read-only root reports Locked.
-    private static WritableState ComputeWritableState(
-        FolderItem folderItem,
-        IResourcePolicy policy,
-        IRootHandlerRegistry rootHandlerRegistry)
-    {
-        var writeResult = policy.Evaluate(folderItem.Resource, ResourceAction.Write, folderItem.IsFolder);
-        if (writeResult.IsFailure)
-        {
-            return WritableState.Locked;
-        }
-
-        if (rootHandlerRegistry.RootHandlers.TryGetValue(folderItem.Resource.Root, out var handler)
-            && !handler.Capabilities.IsWritable)
-        {
-            return WritableState.ReadOnlyRoot;
-        }
-
-        if ((folderItem.Attributes & FileSystemAttributes.ReadOnly) != 0)
-        {
-            return WritableState.ReadOnlyAttribute;
-        }
-
-        return WritableState.Writable;
     }
 
     private static string GetFileExtension(string fileName)

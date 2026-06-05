@@ -275,6 +275,11 @@ export class EditorController {
         }
     }
 
+    /**
+     * Initialize the host connection, load content, and register handlers.
+     * notifyContentLoaded() is called automatically after this completes.
+     * The `onWritableStateChanged` callback receives `{state, readOnly}`.
+     */
     async initializeHost({
         onInitialContent,
         onExternalReloadContent,
@@ -282,8 +287,6 @@ export class EditorController {
         onRestoreState,
         onWritableStateChanged
     } = {}) {
-        // Initialize the host connection, load content, and register handlers.
-        // notifyContentLoaded() is called automatically after this completes.
         log('editor: initializeHost starting');
         await celbridge.initializeDocument({
             onContent: (content, metadata) => {
@@ -303,6 +306,10 @@ export class EditorController {
                 await this.#handleExternalChange(onExternalReloadContent);
             },
             onWritableStateChanged: ({ state }) => {
+                // Derive readOnly once and forward both fields so Code Editor
+                // consumers can destructure either without recomputing the
+                // predicate. Diverges from the celbridge.js contract, which
+                // forwards {state} only.
                 const readOnly = state !== 'Writable';
                 // Logged so a user-reported "stuck read-only" can be diagnosed
                 // from the WebView2 console without re-running with extra
