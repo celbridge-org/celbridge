@@ -15,7 +15,7 @@ public partial class PackageTools
     /// <summary>Create a new package skeleton at packages/{packageName}/ with stub manifest.</summary>
     [McpServerTool(Name = "package_create", Destructive = true)]
     [ToolAlias("package.create")]
-    [RelatedGuides("packages_overview")]
+    [RelatedGuides("packages_overview", "document_editor_contributions")]
     public async partial Task<CallToolResult> Create(string packageName)
     {
         if (!IsValidPackageName(packageName))

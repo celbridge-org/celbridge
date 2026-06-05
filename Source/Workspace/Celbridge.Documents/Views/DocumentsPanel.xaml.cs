@@ -529,6 +529,7 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
         int savedCount = 0;
         int pendingSaveCount = 0;
         List<ResourceKey> failedSaves = new();
+        bool updateResourcesRequired = false;
 
         for (int i = 0; i < SectionContainer.SectionCount; i++)
         {
@@ -553,8 +554,25 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     var saveResult = await documentView.SaveDocument();
                     if (saveResult.IsFailure)
                     {
-                        // Make a note of the failed save and continue saving other documents
-                        failedSaves.Add(documentTab.ViewModel.FileResource);
+                        // A save failure against a document whose cached state is
+                        // not Writable is the expected outcome of the read-only
+                        // gate in LocalResourceFileSystem. Log it for diagnostics
+                        // but do not surface an alert, otherwise every auto-save
+                        // tick on a locked file with buffered changes would spam
+                        // the user.
+                        if (documentView.WritableState == WritableState.Writable)
+                        {
+                            failedSaves.Add(documentTab.ViewModel.FileResource);
+
+                            // A failed save against a cache that still reads Writable
+                            // suggests an external attribute flip slipped past the
+                            // watcher. Schedule a resource update so the cache catches up.
+                            updateResourcesRequired = true;
+                        }
+                        else
+                        {
+                            _logger.LogDebug($"Skipped save for non-writable document: '{documentTab.ViewModel.FileResource}'");
+                        }
                     }
                     else
                     {
@@ -562,6 +580,13 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
                     }
                 }
             }
+        }
+
+        if (updateResourcesRequired)
+        {
+            // Debounced inside the resource service so a burst of failures from
+            // many open files collapses into one project-tree rebuild.
+            _commandService.Execute<IUpdateResourcesCommand>();
         }
 
         if (failedSaves.Count > 0)

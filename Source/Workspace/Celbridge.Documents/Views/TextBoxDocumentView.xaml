@@ -9,6 +9,7 @@
     <Grid HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch">
         <TextBox
+            x:Name="DocumentTextBox"
             AcceptsReturn="True"
             IsSpellCheckEnabled="False"
             Text="{x:Bind ViewModel.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
+using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Celbridge.UserInterface.ViewModels;
@@ -7,6 +9,7 @@ namespace Celbridge.UserInterface.ViewModels;
 public partial class ResourcePickerDialogViewModel : ObservableObject
 {
     private readonly IWorkspaceWrapper _workspaceWrapper;
+    private readonly IStringLocalizer _stringLocalizer;
 
     private IResourceRegistry? _registry;
     private IResourceFileSystem? _resourceFileSystem;
@@ -39,6 +42,7 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
         IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
+        _stringLocalizer = ServiceLocator.AcquireService<IStringLocalizer>();
         PropertyChanged += OnPropertyChanged;
     }
 
@@ -151,7 +155,8 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
                 }
 
                 var resourceKey = registry.GetResourceKey(child);
-                items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon));
+                var readOnlyMessage = ReadOnlyMessageHelper.GetReadOnlyMessage(child.WritableState, _stringLocalizer);
+                items.Add(new ResourcePickerItem(child, resourceKey, fileResource.Icon, readOnlyMessage));
             }
         }
     }
@@ -171,4 +176,5 @@ public partial class ResourcePickerDialogViewModel : ObservableObject
             .Where(item => item.DisplayTextLower.Contains(searchLower))
             .ToList();
     }
+
 }

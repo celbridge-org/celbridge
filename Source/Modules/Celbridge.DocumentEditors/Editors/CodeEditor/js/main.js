@@ -9,7 +9,7 @@ import celbridge from 'https://shared.celbridge/celbridge-client/celbridge.js';
 import { EditorController } from './editor-controller.js';
 import { ViewMode } from './view-mode-controller.js';
 import { PreviewPipeline } from './preview-pipeline.js';
-import { initializeToolbar } from './toolbar.js';
+import { initializeToolbar, setToolbarReadOnly } from './toolbar.js';
 import { initializeLanguageMap, getLanguageForFile } from './language-mapper.js';
 import { log } from './logger.js';
 
@@ -112,7 +112,13 @@ async function initialize() {
                 previewPipeline?.handleExternalReload(content);
             },
             onRequestState: () => captureState(),
-            onRestoreState: (stateJson) => restoreState(stateJson)
+            onRestoreState: (stateJson) => restoreState(stateJson),
+            onWritableStateChanged: ({ readOnly }) => {
+                // Monaco's readOnly option blocks keyboard input, but the
+                // toolbar's mutating affordances (snippet insertion) wrap it
+                // and would otherwise sneak edits past the option.
+                setToolbarReadOnly(readOnly);
+            }
         });
     } catch (ex) {
         console.error('Failed to initialize host connection:', ex);

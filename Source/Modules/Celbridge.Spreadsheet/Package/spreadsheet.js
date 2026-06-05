@@ -12,6 +12,11 @@ const client = celbridge;
 
 let designer = null;
 
+// True when the host has signalled the file is read-only. Drives the
+// translucent overlay and gates the notifyChanged paths below so events
+// fired during the locked window can't queue a save.
+let frameworkReadOnly = false;
+
 async function deserializeExcelData(base64Data, viewState = null, preserveView = true) {
     if (!base64Data) {
         client.document.notifyImportComplete(true);
@@ -174,20 +179,22 @@ function listenForChanges() {
     const workbook = designer.getWorkbook();
     const commandManager = workbook.commandManager();
 
-    // SpreadJS doesn't have a unified way to detect when the spreadsheet is modified,
-    // but as all modifications are performed via the command system we can just
-    // listen for any executing commands and assume that the data has changed.
-    // Note that mouse-driven selection changes do not flow through commandManager,
-    // so the SelectionChanged hook in bindSheetEvents covers that gap.
+    // Every edit flows through a command, so listening to all commands stands
+    // in for a "doc modified" signal SpreadJS doesn't expose directly. Mouse-
+    // driven selection changes bypass commandManager — SelectionChanged in
+    // bindSheetEvents covers that gap.
     commandManager.addListener('appListener', (args) => {
+        if (frameworkReadOnly) return;
         client.document.notifyChanged();
     });
 
-    // ActiveSheetChanged is workbook-scoped and survives spread.import().
-    // SelectionChanged is sheet-scoped and is dropped when import rebuilds
-    // worksheets, so it's re-bound from bindSheetEvents after every import.
+    // ActiveSheetChanged is workbook-scoped and survives spread.import();
+    // SelectionChanged is per-sheet and gets dropped on import, so it's
+    // re-bound from bindSheetEvents.
     workbook.bind(GC.Spread.Sheets.Events.ActiveSheetChanged, () => {
-        client.document.notifyChanged();
+        if (!frameworkReadOnly) {
+            client.document.notifyChanged();
+        }
         bindSheetEvents();
     });
 
@@ -203,11 +210,40 @@ function bindSheetEvents() {
             const sheet = workbook.getSheet(i);
             sheet.unbind(GC.Spread.Sheets.Events.SelectionChanged);
             sheet.bind(GC.Spread.Sheets.Events.SelectionChanged, () => {
+                if (frameworkReadOnly) return;
                 client.document.notifyChanged();
             });
         }
     } catch (error) {
         console.warn('[Spreadsheet] Failed to bind sheet selection events:', error);
+    }
+}
+
+function applyWritableState(state) {
+    frameworkReadOnly = state !== 'Writable';
+    showReadOnlyOverlay(frameworkReadOnly);
+}
+
+// Visual cue and pointer-event sink. Not the durable read-only block — the
+// frameworkReadOnly gates above are what stop saves.
+function showReadOnlyOverlay(visible) {
+    let overlay = document.getElementById('readonly-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'readonly-overlay';
+        overlay.setAttribute('aria-label', 'Spreadsheet is read-only');
+        overlay.setAttribute('role', 'status');
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = visible ? 'block' : 'none';
+
+    // Drop focus so a keypress can't land in a cell editor that was active
+    // when the file got locked externally.
+    if (visible
+        && document.activeElement
+        && document.activeElement !== document.body
+        && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
     }
 }
 
@@ -266,7 +302,11 @@ async function initializeEditor() {
                     client.document.notifyContentLoaded(ContentLoadedReason.ExternalReload);
                 },
                 onRequestState: () => null,
-                onRestoreState: () => {}
+                onRestoreState: () => {},
+                // No designer to protect, but the bridge contract still
+                // requires an explicit handler so the editor-unavailable
+                // path matches the live-editor path.
+                onWritableStateChanged: () => {}
             });
             return;
         }
@@ -329,6 +369,9 @@ async function initializeEditor() {
                 } catch (e) {
                     console.warn('[Spreadsheet] Failed to restore view state:', e);
                 }
+            },
+            onWritableStateChanged: ({ state }) => {
+                applyWritableState(state);
             }
         });
     } catch (e) {

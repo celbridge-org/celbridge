@@ -74,12 +74,18 @@ public record StorageItemInfo(
     FileSystemAttributes Attributes);
 
 /// <summary>
-/// A file or folder entry returned by EnumerateAsync, with its absolute path and
-/// the size and modified-time from the directory walk. IsFolder is false for
-/// anything that is not a directory, so a non-folder is not guaranteed to be a
-/// readable regular file. Size is 0 for folders.
+/// A file or folder entry returned by EnumerateAsync, with its absolute path,
+/// the size, modified-time, and portable attribute flags from the directory
+/// walk. IsFolder is false for anything that is not a directory, so a
+/// non-folder is not guaranteed to be a readable regular file. Size is 0 for
+/// folders.
 /// </summary>
-public record FileSystemEntry(string FullPath, bool IsFolder, long Size, DateTime ModifiedUtc);
+public record FileSystemEntry(
+    string FullPath,
+    bool IsFolder,
+    long Size,
+    DateTime ModifiedUtc,
+    FileSystemAttributes Attributes);
 
 /// <summary>
 /// Path-based gateway for local-substrate filesystem reads and writes. The

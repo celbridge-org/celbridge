@@ -707,7 +707,8 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
                 Resource: childKey,
                 IsFolder: entry.IsFolder,
                 Size: entry.Size,
-                ModifiedUtc: entry.ModifiedUtc));
+                ModifiedUtc: entry.ModifiedUtc,
+                Attributes: entry.Attributes));
         }
 
         IReadOnlyList<FolderItem> result = entries;
@@ -869,12 +870,22 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
             return ensureParentResult;
         }
 
-        // Clear read-only so the write is not blocked by an attribute the user
-        // already chose to override by saving.
-        var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(resourcePath, FileSystemAttributes.ReadOnly, set: false);
-        if (clearReadOnlyResult.IsFailure)
+        // Only strip the on-disk read-only attribute when the writable cache
+        // confirms the resource is writable. If the cache reports any non-
+        // writable state, leave the attribute in place and let the underlying
+        // write fail. This stops a stale attribute (cleared by an external
+        // tool but not yet seen by the watcher) from blocking a legitimate
+        // save, while also stopping auto-save from clobbering a read-only
+        // mark the user just applied.
+        var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+        var writableState = await operationService.GetWritableStateAsync(resource);
+        if (writableState == WritableState.Writable)
         {
-            _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before writing '{resource}'");
+            var clearReadOnlyResult = await _fileSystem.SetAttributesAsync(resourcePath, FileSystemAttributes.ReadOnly, set: false);
+            if (clearReadOnlyResult.IsFailure)
+            {
+                _logger.LogDebug(clearReadOnlyResult.FirstException, $"Could not clear read-only attribute before writing '{resource}'");
+            }
         }
 
         var writeResult = await _fileSystem.WriteAllBytesAsync(resourcePath, bytes);

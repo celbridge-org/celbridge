@@ -240,6 +240,14 @@ public class DocumentsService : IDocumentsService, IDisposable
                 .WithErrors(setFileResult);
         }
 
+        // Applied after SetFileResource and before LoadContent so the editor
+        // enters read-only mode before its first setValue. For ContributionDocumentView
+        // the state ships through the document/initialize handshake; for editors
+        // that drive their surface directly, OnWritableStateChanged fires here.
+        var operationService = _workspaceWrapper.WorkspaceService.ResourceService.Operations;
+        var writableState = await operationService.GetWritableStateAsync(fileResource);
+        documentView.SetWritableState(writableState);
+
         var loadResult = await documentView.LoadContent();
         if (loadResult.IsFailure)
         {

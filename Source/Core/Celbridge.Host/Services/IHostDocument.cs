@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Celbridge.Resources;
 using StreamJsonRpc;
 
 namespace Celbridge.Host;
@@ -42,6 +43,7 @@ public static class DocumentRpcMethods
     public const string ContentLoaded = "document/contentLoaded";
     public const string RequestState = "document/requestState";
     public const string RestoreState = "document/restoreState";
+    public const string WritableStateChanged = "document/writableStateChanged";
 
     /// <summary>
     /// Validates the protocol version from the WebView client.
@@ -128,7 +130,7 @@ public static class HostDocumentExtensions
     /// across the reload, or to adopt the view state encoded in the on-disk file.
     /// </summary>
     public static Task NotifyExternalChangeAsync(this CelbridgeHost host, bool preserveViewState)
-        => host.Rpc.NotifyAsync(DocumentRpcMethods.ExternalChange, new { preserveViewState });
+        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.ExternalChange, new { preserveViewState });
 
     /// <summary>
     /// Requests the WebView to return its current editor state as an opaque JSON string.
@@ -142,4 +144,13 @@ public static class HostDocumentExtensions
     /// </summary>
     public static Task RestoreStateAsync(this CelbridgeHost host, string state)
         => host.Rpc.InvokeAsync(DocumentRpcMethods.RestoreState, state);
+
+    /// <summary>
+    /// Notifies the WebView that the document's writable state has changed.
+    /// The state is sent as its string name ("Writable", "Locked",
+    /// "ReadOnlyAttribute", "ReadOnlyRoot"); the JS client treats anything
+    /// other than "Writable" as read-only.
+    /// </summary>
+    public static Task NotifyWritableStateChangedAsync(this CelbridgeHost host, WritableState state)
+        => host.Rpc.NotifyWithParameterObjectAsync(DocumentRpcMethods.WritableStateChanged, new { state = state.ToString() });
 }

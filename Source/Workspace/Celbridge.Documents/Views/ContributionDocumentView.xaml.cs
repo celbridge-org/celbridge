@@ -286,8 +286,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
             _documentHandler = new ContributionDocumentHandler(
                 _viewModel,
                 _logger,
-                CreateDocumentMetadata, // Callback to construct document metadata on demand
-                CompleteSave);          // Callback to update state when saving has completed 
+                CreateDocumentMetadata,    // Callback to construct document metadata on demand
+                () => WritableState,       // Callback to read the current writable state at initialize time
+                CompleteSave);             // Callback to update state when saving has completed
 
             _documentHandler.ContentLoaded += SetContentLoaded;
 
@@ -426,6 +427,31 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         if (WebView?.CoreWebView2 is not null)
         {
             ApplyThemeToWebView();
+        }
+    }
+
+    protected override void OnWritableStateChanged()
+    {
+        // Skip when the host isn't up yet; the initial state ships through the
+        // document/initialize handshake (InitializeResult.WritableState) so the
+        // JS client sees it on first load.
+        if (Host is null)
+        {
+            return;
+        }
+
+        _ = NotifyWritableStateAsync();
+    }
+
+    private async Task NotifyWritableStateAsync()
+    {
+        try
+        {
+            await Host!.NotifyWritableStateChangedAsync(WritableState);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to notify contribution of writable-state change");
         }
     }
 

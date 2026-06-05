@@ -62,9 +62,61 @@ public partial class ResourceViewItem : ObservableObject
         IsProjectFolder ? Visibility.Collapsed : (HasChildren ? Visibility.Visible : Visibility.Collapsed);
 
     /// <summary>
+    /// The writable state of the underlying resource, sourced from the
+    /// ProjectTreeBuilder-populated cache on IResource.
+    /// </summary>
+    public WritableState WritableState => Resource.WritableState;
+
+    /// <summary>
+    /// Whether the resource refuses edits. Drives the dimming binding and the
+    /// visibility of the read-only tooltip.
+    /// </summary>
+    public bool IsReadOnly => WritableState != WritableState.Writable;
+
+    /// <summary>
+    /// Opacity for the resource name. Dimmed when read-only.
+    /// </summary>
+    public double NameOpacity => IsReadOnly ? 0.5 : 1.0;
+
+    /// <summary>
+    /// Localised explanation of why the resource is read-only. Empty when
+    /// writable. Drives AutomationProperties.HelpText so screen readers carry
+    /// the same signal as the visual dimming.
+    /// </summary>
+    public string ReadOnlyMessage { get; }
+
+    /// <summary>
+    /// The tooltip shown when the user hovers the item. The project folder
+    /// retains its existing affordance hint; non-editable items show the
+    /// read-only reason; editable items have no tooltip (returns null so the
+    /// tooltip element does not render).
+    /// </summary>
+    public string? TooltipText
+    {
+        get
+        {
+            if (IsProjectFolder)
+            {
+                return "Double-click to open in File Explorer";
+            }
+
+            return string.IsNullOrEmpty(ReadOnlyMessage)
+                ? null
+                : ReadOnlyMessage;
+        }
+    }
+
+    /// <summary>
     /// Creates a new ResourceViewItem for the given resource.
     /// </summary>
-    public ResourceViewItem(IResource resource, int indentLevel, bool isExpanded, bool hasChildren, bool isProjectFolder = false, string? displayName = null)
+    public ResourceViewItem(
+        IResource resource,
+        int indentLevel,
+        bool isExpanded,
+        bool hasChildren,
+        bool isProjectFolder = false,
+        string? displayName = null,
+        string? readOnlyMessage = null)
     {
         Resource = resource;
         IndentLevel = indentLevel;
@@ -72,5 +124,6 @@ public partial class ResourceViewItem : ObservableObject
         HasChildren = hasChildren;
         IsProjectFolder = isProjectFolder;
         Name = displayName ?? resource.Name;
+        ReadOnlyMessage = readOnlyMessage ?? string.Empty;
     }
 }

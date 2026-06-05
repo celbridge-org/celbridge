@@ -1,3 +1,4 @@
+using Celbridge.Resources;
 using Celbridge.Resources.Models;
 using Celbridge.Resources.Services;
 
@@ -102,6 +103,62 @@ public class ProjectTreeBuilderTests
         var names = buildResult.Value.Children.Select(c => c.Name).ToList();
         names.Should().Contain(new[] { "src", "visible.txt", ".editorconfig" });
         names.Should().NotContain(new[] { ".vscode", "secret.txt" });
+    }
+
+    [Test]
+    public async Task BuildTree_PopulatesWritableState_ForRegularFile()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.txt"), "x");
+
+        var buildResult = await _builder.BuildTreeAsync();
+
+        buildResult.IsSuccess.Should().BeTrue();
+        var file = buildResult.Value.Children.Single(c => c.Name == "notes.txt");
+        file.WritableState.Should().Be(WritableState.Writable);
+    }
+
+    [Test]
+    public async Task BuildTree_PopulatesLockedWritableState_ForFileMatchingLockPattern()
+    {
+        File.WriteAllText(Path.Combine(_projectFolderPath, "config.toml"), "x");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.txt"), "y");
+
+        var builder = ProjectTreeBuilderTestHelper.Build(_projectFolderPath, lockPatterns: new[] { "config.toml" });
+        var buildResult = await builder.BuildTreeAsync();
+
+        buildResult.IsSuccess.Should().BeTrue();
+        var configFile = buildResult.Value.Children.Single(c => c.Name == "config.toml");
+        configFile.WritableState.Should().Be(WritableState.Locked);
+
+        // A sibling that does not match the lock pattern stays writable.
+        var notesFile = buildResult.Value.Children.Single(c => c.Name == "notes.txt");
+        notesFile.WritableState.Should().Be(WritableState.Writable);
+    }
+
+    [Test]
+    public async Task BuildTree_PopulatesReadOnlyAttributeWritableState_ForFileWithReadOnlyBit()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("OS read-only attribute behaviour is exercised on Windows.");
+        }
+
+        var readOnlyPath = Path.Combine(_projectFolderPath, "frozen.txt");
+        File.WriteAllText(readOnlyPath, "x");
+        File.SetAttributes(readOnlyPath, File.GetAttributes(readOnlyPath) | FileAttributes.ReadOnly);
+        try
+        {
+            var buildResult = await _builder.BuildTreeAsync();
+
+            buildResult.IsSuccess.Should().BeTrue();
+            var file = buildResult.Value.Children.Single(c => c.Name == "frozen.txt");
+            file.WritableState.Should().Be(WritableState.ReadOnlyAttribute);
+        }
+        finally
+        {
+            // Clear the bit so TearDown can delete the temp folder cleanly.
+            File.SetAttributes(readOnlyPath, File.GetAttributes(readOnlyPath) & ~FileAttributes.ReadOnly);
+        }
     }
 
     [Test]

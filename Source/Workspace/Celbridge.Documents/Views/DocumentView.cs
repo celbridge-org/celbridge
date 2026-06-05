@@ -104,6 +104,32 @@ public abstract partial class DocumentView : UserControl, IDocumentView
 
     public abstract Task<Result> LoadContent();
 
+    public WritableState WritableState { get; private set; } = WritableState.Writable;
+
+    /// <summary>
+    /// Applies a writable state to the document view. Stores the value and
+    /// invokes OnWritableStateChanged so concrete views can apply the state
+    /// to their native editor surface.
+    /// </summary>
+    public void SetWritableState(WritableState state)
+    {
+        if (WritableState == state)
+        {
+            return;
+        }
+
+        WritableState = state;
+        OnWritableStateChanged();
+    }
+
+    /// <summary>
+    /// Hook for concrete views to react to a writable-state change. Subclasses
+    /// override to apply the state to their native editor surface.
+    /// </summary>
+    protected virtual void OnWritableStateChanged()
+    {
+    }
+
     public virtual bool HasUnsavedChanges => false;
 
     public virtual Result<bool> UpdateSaveTimer(double deltaTime)

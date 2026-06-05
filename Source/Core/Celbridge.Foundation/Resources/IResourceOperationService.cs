@@ -37,6 +37,34 @@ public enum ResourceLockState
 }
 
 /// <summary>
+/// Whether a resource can be edited, and if not, why. The non-Writable
+/// values name the source.
+/// </summary>
+public enum WritableState
+{
+    /// <summary>
+    /// The resource accepts edits.
+    /// </summary>
+    Writable,
+
+    /// <summary>
+    /// A [resources].lock pattern matches the resource.
+    /// </summary>
+    Locked,
+
+    /// <summary>
+    /// The underlying file carries the OS read-only attribute.
+    /// </summary>
+    ReadOnlyAttribute,
+
+    /// <summary>
+    /// The resource's root handler declares the root non-writable; every
+    /// resource under the root is read-only by construction.
+    /// </summary>
+    ReadOnlyRoot,
+}
+
+/// <summary>
 /// The workspace-scoped resource operation service. Layers session-local undo
 /// and redo, batched grouping, and soft-delete trash on top of the IResourceFileSystem
 /// gateway. Every method names its target with a ResourceKey; external
@@ -103,6 +131,12 @@ public interface IResourceOperationService
     /// prediction cannot drift from enforcement.
     /// </summary>
     Task<ResourceLockState> GetLockStateAsync(ResourceKey resource);
+
+    /// <summary>
+    /// Returns the writable state of the resource. When multiple sources apply,
+    /// the priority order is Locked > ReadOnlyRoot > ReadOnlyAttribute.
+    /// </summary>
+    Task<WritableState> GetWritableStateAsync(ResourceKey resource);
 
     /// <summary>
     /// Read-only prediction of whether the resource can be deleted, renamed,

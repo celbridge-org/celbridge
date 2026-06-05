@@ -38,7 +38,10 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
 
     private async Task<Result> SynchronizeFolderAsync(FolderResource folderResource, ResourceKey folderKey)
     {
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+        var resourceService = _workspaceWrapper.WorkspaceService.ResourceService;
+        var resourceFileSystem = resourceService.FileSystem;
+        var policy = resourceService.Policy;
+        var rootHandlerRegistry = resourceService.RootHandlers;
 
         var enumerateResult = await resourceFileSystem.EnumerateFolderAsync(folderKey);
         if (enumerateResult.IsFailure)
@@ -55,10 +58,17 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
         foreach (var folderItem in folderItems)
         {
             var childName = folderItem.Resource.ResourceName;
+            var writableState = WritableStatePriority.Compute(
+                folderItem.Resource,
+                folderItem.IsFolder,
+                folderItem.Attributes,
+                policy,
+                rootHandlerRegistry);
 
             if (folderItem.IsFolder)
             {
                 var childFolder = new FolderResource(childName, folderResource);
+                childFolder.WritableState = writableState;
 
                 var childResult = await SynchronizeFolderAsync(childFolder, folderItem.Resource);
                 if (childResult.IsFailure)
@@ -77,7 +87,9 @@ public sealed class ProjectTreeBuilder : IProjectTreeBuilder
                     ? getIconResult.Value
                     : _fileIconService.DefaultFileIcon;
 
-                folderResource.AddChild(new FileResource(childName, folderResource, iconDefinition));
+                var fileResource = new FileResource(childName, folderResource, iconDefinition);
+                fileResource.WritableState = writableState;
+                folderResource.AddChild(fileResource);
             }
         }
 

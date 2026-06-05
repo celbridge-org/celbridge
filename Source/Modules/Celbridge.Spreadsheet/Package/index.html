@@ -40,6 +40,18 @@
             pointer-events: auto;
             text-decoration: none;
         }
+
+        /* Read-only overlay. Toggled by showReadOnlyOverlay() in
+           spreadsheet.js; sits above the designer + badge so it absorbs
+           every pointer event before SpreadJS sees it. */
+        #readonly-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 20000;
+            background: rgba(220, 220, 220, 0.35);
+            display: none;
+            cursor: not-allowed;
+        }
     </style>
 
 </head>

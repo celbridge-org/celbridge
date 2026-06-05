@@ -18,6 +18,7 @@ public class LocalResourceFileSystemTests
     private IResourceRegistry _resourceRegistry = null!;
     private IRootHandlerRegistry _rootHandlerRegistry = null!;
     private IResourceScanner _resourceScanner = null!;
+    private IResourceOperationService _operationService = null!;
     private IMessengerService _messengerService = null!;
     private LocalResourceFileSystem _resourceFileSystem = null!;
 
@@ -49,9 +50,17 @@ public class LocalResourceFileSystemTests
         _rootHandlerRegistry.GetResourceKey(Arg.Any<string>())
             .Returns(Result<ResourceKey>.Fail("not stubbed"));
 
+        // Default the writable cache to Writable so existing tests behave as
+        // they did before the read-only-strip gate was added. The two tests
+        // that exercise the gate override this stub explicitly.
+        _operationService = Substitute.For<IResourceOperationService>();
+        _operationService.GetWritableStateAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(WritableState.Writable));
+
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
         resourceService.RootHandlers.Returns(_rootHandlerRegistry);
+        resourceService.Operations.Returns(_operationService);
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -854,6 +863,63 @@ public class LocalResourceFileSystemTests
         var result = await _resourceFileSystem.CreateFolderAsync(folder);
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task WriteAllBytesAsync_StripsReadOnlyAttribute_WhenStateIsWritable()
+    {
+        // The cache reports Writable, so an on-disk read-only attribute is
+        // treated as stale. The write strips it and succeeds.
+        var resource = new ResourceKey("writable.bin");
+        var path = Path.Combine(_tempFolder, "writable.bin");
+        await File.WriteAllBytesAsync(path, new byte[] { 0x00 });
+        new FileInfo(path).IsReadOnly = true;
+
+        _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+        _operationService.GetWritableStateAsync(resource)
+            .Returns(Task.FromResult(WritableState.Writable));
+
+        var bytes = new byte[] { 0xAA, 0xBB };
+        var result = await _resourceFileSystem.WriteAllBytesAsync(resource, bytes);
+
+        result.IsSuccess.Should().BeTrue();
+        new FileInfo(path).IsReadOnly.Should().BeFalse();
+        (await File.ReadAllBytesAsync(path)).Should().Equal(bytes);
+    }
+
+    [Test]
+    public async Task WriteAllBytesAsync_PreservesReadOnlyAttribute_AndFails_WhenStateIsReadOnlyAttribute()
+    {
+        // The cache reports ReadOnlyAttribute, so the gate refuses to strip
+        // the on-disk attribute. The underlying write throws
+        // UnauthorizedAccessException, which the gateway surfaces as a
+        // failure, and the read-only attribute is preserved.
+        var resource = new ResourceKey("readonly.bin");
+        var path = Path.Combine(_tempFolder, "readonly.bin");
+        var originalBytes = new byte[] { 0x01, 0x02 };
+        await File.WriteAllBytesAsync(path, originalBytes);
+        new FileInfo(path).IsReadOnly = true;
+
+        try
+        {
+            _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));
+            _operationService.GetWritableStateAsync(resource)
+                .Returns(Task.FromResult(WritableState.ReadOnlyAttribute));
+
+            var result = await _resourceFileSystem.WriteAllBytesAsync(resource, new byte[] { 0xAA, 0xBB });
+
+            result.IsFailure.Should().BeTrue();
+            new FileInfo(path).IsReadOnly.Should().BeTrue();
+            (await File.ReadAllBytesAsync(path)).Should().Equal(originalBytes);
+        }
+        finally
+        {
+            // Tear-down needs the file to be writable so the temp-folder delete works.
+            if (File.Exists(path))
+            {
+                new FileInfo(path).IsReadOnly = false;
+            }
+        }
     }
 
     [Test]

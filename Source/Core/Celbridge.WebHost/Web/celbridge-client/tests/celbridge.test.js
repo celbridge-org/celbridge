@@ -191,6 +191,62 @@ describe('Celbridge', () => {
             expect(handler).toHaveBeenCalledOnce();
         });
 
+        it('should dispatch writable-state-changed notifications with the state payload', async () => {
+            const { client, simulateResponse, simulateNotification } = createTestClient();
+
+            const initPromise = client.initialize();
+            simulateResponse(1, { content: '', metadata: {}, localization: {}, theme: {} });
+            await initPromise;
+
+            const handler = vi.fn();
+            client.document.onWritableStateChanged(handler);
+
+            simulateNotification('document/writableStateChanged', { state: 'Locked' });
+
+            expect(handler).toHaveBeenCalledOnce();
+            expect(handler).toHaveBeenCalledWith({ state: 'Locked' });
+        });
+
+        it('initializeDocument seeds onWritableStateChanged from the initialize response before applying content', async () => {
+            const { client, simulateResponse } = createTestClient();
+
+            const onWritableStateChanged = vi.fn();
+            const onContent = vi.fn();
+            const initPromise = client.initializeDocument({ onContent, onWritableStateChanged });
+
+            simulateResponse(1, {
+                content: '# Locked file',
+                metadata: { filePath: '/locked.md', resourceKey: 'locked.md', fileName: 'locked.md' },
+                writableState: 'Locked',
+            });
+
+            await initPromise;
+
+            expect(onWritableStateChanged).toHaveBeenCalledOnce();
+            expect(onWritableStateChanged).toHaveBeenCalledWith({ state: 'Locked' });
+
+            // Ordering: the writable-state seed runs before content is applied, so the
+            // editor enters read-only mode before its first setValue.
+            expect(onWritableStateChanged.mock.invocationCallOrder[0])
+                .toBeLessThan(onContent.mock.invocationCallOrder[0]);
+        });
+
+        it('initializeDocument omits the writable-state seed when the response carries no value', async () => {
+            const { client, simulateResponse } = createTestClient();
+
+            const onWritableStateChanged = vi.fn();
+            const initPromise = client.initializeDocument({ onWritableStateChanged });
+
+            simulateResponse(1, {
+                content: '',
+                metadata: {},
+            });
+
+            await initPromise;
+
+            expect(onWritableStateChanged).not.toHaveBeenCalled();
+        });
+
         it('should handle language change notifications', async () => {
             const { client, simulateResponse, simulateNotification } = createTestClient();
 

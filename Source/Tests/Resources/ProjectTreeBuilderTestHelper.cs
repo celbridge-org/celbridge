@@ -22,7 +22,8 @@ internal static class ProjectTreeBuilderTestHelper
     public static ProjectTreeBuilder Build(
         string projectFolderPath,
         IFileIconService? fileIconService = null,
-        bool useProjectIgnoreFile = false)
+        bool useProjectIgnoreFile = false,
+        string[]? lockPatterns = null)
     {
         var resourceRegistry = Substitute.For<IResourceRegistry>();
         resourceRegistry.ProjectFolderPath.Returns(projectFolderPath);
@@ -46,7 +47,7 @@ internal static class ProjectTreeBuilderTestHelper
         // Build the policy into a local before configuring the substitute: when
         // it stands up its own substitutes, doing so inline inside Returns(...)
         // would corrupt NSubstitute's last-call context.
-        var policy = BuildPolicy(projectFolderPath, useProjectIgnoreFile);
+        var policy = BuildPolicy(projectFolderPath, useProjectIgnoreFile, lockPatterns);
         resourceService.Policy.Returns(policy);
 
         var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
@@ -62,15 +63,20 @@ internal static class ProjectTreeBuilderTestHelper
         return new ProjectTreeBuilder(fileIconService ?? new FileIconService(), workspaceWrapper);
     }
 
-    private static IResourcePolicy BuildPolicy(string projectFolderPath, bool useProjectIgnoreFile)
+    private static IResourcePolicy BuildPolicy(string projectFolderPath, bool useProjectIgnoreFile, string[]? lockPatterns)
     {
-        if (!useProjectIgnoreFile)
+        if (!useProjectIgnoreFile
+            && (lockPatterns is null || lockPatterns.Length == 0))
         {
             return TestResourcePolicy.CreateDefault();
         }
 
+        var resources = lockPatterns is null
+            ? new ResourcesSection()
+            : new ResourcesSection { Lock = lockPatterns };
+
         var project = Substitute.For<IProject>();
-        project.Config.Returns(new ProjectConfig());
+        project.Config.Returns(new ProjectConfig { Resources = resources });
         project.ProjectFolderPath.Returns(projectFolderPath);
 
         var projectService = Substitute.For<IProjectService>();

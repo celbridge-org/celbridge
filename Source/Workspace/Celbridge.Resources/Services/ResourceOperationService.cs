@@ -237,6 +237,30 @@ public class ResourceOperationService : IResourceOperationService
         return await FindLockingDescendantAsync(resource);
     }
 
+    public async Task<WritableState> GetWritableStateAsync(ResourceKey resource)
+    {
+        // Tree-cached fast path: ProjectTreeBuilder populates IResource.WritableState
+        // during the project walk, so any key in the registry answers without a syscall.
+        var getResult = ResourceRegistry.GetResource(resource);
+        if (getResult.IsSuccess)
+        {
+            return getResult.Value.WritableState;
+        }
+
+        // Live fallback for external keys not in the registry. The info probe is
+        // reused so the priority helper sees both the file kind (for the policy
+        // probe) and the on-disk attributes (for the ReadOnlyAttribute source)
+        // without a second gateway hit.
+        var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
+        bool isFolder = infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.Folder;
+        var attributes = infoResult.IsSuccess
+            ? infoResult.Value.Attributes
+            : FileSystemAttributes.None;
+
+        return WritableStatePriority.Compute(resource, isFolder, attributes, Policy, RootHandlerRegistry);
+    }
+
     public async Task<ResourceLockState> GetLockStateAsync(ResourceKey resource)
     {
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);

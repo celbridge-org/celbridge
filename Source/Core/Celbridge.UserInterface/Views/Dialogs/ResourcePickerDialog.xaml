@@ -113,19 +113,24 @@
       </ListView.ItemContainerStyle>
       <ListView.ItemTemplate>
         <DataTemplate x:DataType="vm:ResourcePickerItem">
-          <Grid MinHeight="32">
+          <Grid MinHeight="32"
+                ToolTipService.ToolTip="{x:Bind TooltipText}"
+                AutomationProperties.HelpText="{x:Bind ReadOnlyMessage}">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="24"/>
               <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
+            <!-- Icon dims with the name when the resource is read-only. -->
             <controls:FileIcon Grid.Column="0"
                                Size="16"
                                IconDefinition="{x:Bind IconDefinition}"
+                               Opacity="{x:Bind NameOpacity}"
                                VerticalAlignment="Center"/>
 
             <TextBlock Grid.Column="1"
                        Text="{x:Bind DisplayText}"
+                       Opacity="{x:Bind NameOpacity}"
                        VerticalAlignment="Center"
                        Margin="8,0,0,0"
                        TextTrimming="CharacterEllipsis"/>
