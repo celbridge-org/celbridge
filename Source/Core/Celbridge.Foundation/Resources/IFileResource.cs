@@ -4,7 +4,7 @@ namespace Celbridge.Resources;
 
 /// <summary>
 /// Parse health of a .cel file's content. Applies to any .cel file — paired
-/// sidecar, standalone, or orphan.
+/// sidecar or orphan.
 /// </summary>
 public enum CelFileStatus
 {
@@ -29,8 +29,8 @@ public partial record SidecarLink(ResourceKey Key, CelFileStatus Status);
 /// <summary>
 /// The role a file resource plays in the project resource taxonomy. Populated
 /// by the resource classifier during project load and refreshed on every
-/// resource registry update. Orthogonal to parse health: a Sidecar, Standalone,
-/// or Orphan can independently be Healthy or Broken.
+/// resource registry update. Orthogonal to parse health: a Sidecar or Orphan
+/// can independently be Healthy or Broken.
 /// </summary>
 public enum FileKind
 {
@@ -45,16 +45,8 @@ public enum FileKind
     Sidecar,
 
     /// <summary>
-    /// A parentless .cel file recognized as a registered standalone form
-    /// (e.g. page.webview.cel, sprite.note.cel). Holds both metadata and
-    /// content for a custom document type.
-    /// </summary>
-    Standalone,
-
-    /// <summary>
-    /// A parentless .cel file with no registered standalone form claiming it.
-    /// Usually a sidecar whose parent was renamed or deleted, or a custom
-    /// document type that is no longer installed.
+    /// A parentless .cel file. Usually a sidecar whose parent was renamed
+    /// or deleted.
     /// </summary>
     Orphan,
 

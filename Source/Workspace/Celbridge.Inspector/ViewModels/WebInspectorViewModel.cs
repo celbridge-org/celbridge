@@ -1,4 +1,5 @@
 using Celbridge.Documents;
+using Celbridge.Explorer;
 using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.WebHost;
@@ -11,8 +12,6 @@ namespace Celbridge.Inspector.ViewModels;
 
 public partial class WebInspectorViewModel : InspectorViewModel
 {
-    private const string SourceUrlFieldName = "source_url";
-
     private readonly ILogger<WebInspectorViewModel> _logger;
     private readonly IStringLocalizer _stringLocalizer;
     private readonly IMessengerService _messengerService;
@@ -164,53 +163,51 @@ public partial class WebInspectorViewModel : InspectorViewModel
 
     private async Task LoadWebViewAsync(ResourceKey resource)
     {
-        // The .webview.cel file is a standalone .cel form, so SidecarService
-        // treats the resource itself as the storage. Parse and gateway IO
-        // live in the sidecar service; this method just plucks 'source_url'
-        // from the frontmatter and posts it back to the inspector field.
-        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
-        var readResult = await sidecarService.ReadAsync(resource);
+        // .webview files are small JSON documents read directly through the
+        // resource file system gateway. The inspector field is populated from
+        // the parsed sourceUrl property.
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+
+        var infoResult = await resourceFileSystem.GetInfoAsync(resource);
+        if (infoResult.IsSuccess
+            && infoResult.Value.Kind == StorageItemKind.NotFound)
+        {
+            // No file on disk yet; keep the field blank so the user can type
+            // a URL and have it saved on first edit.
+            _suppressSaving = true;
+            SourceUrl = string.Empty;
+            _suppressSaving = false;
+            return;
+        }
+
+        var readResult = await resourceFileSystem.ReadAllTextAsync(resource);
         if (readResult.IsFailure)
         {
-            _logger.LogError(readResult, $"Failed to read .webview.cel file: '{resource}'");
-            return;
-        }
-        var read = readResult.Value;
-
-        if (read.Outcome == SidecarReadOutcome.Broken)
-        {
-            _logger.LogError($"Failed to parse .webview.cel file '{resource}': {read.FailureMessage ?? "parse failed"}");
+            _logger.LogError(readResult, $"Failed to read {ExplorerConstants.WebViewExtension} file: '{resource}'");
             return;
         }
 
-        var sourceUrl = string.Empty;
-        if (read.Outcome == SidecarReadOutcome.Healthy
-            && read.Content is not null
-            && read.Content.Frontmatter.TryGetValue(SourceUrlFieldName, out var urlObject))
+        var parseResult = WebViewFileContent.TryParse(readResult.Value);
+        if (parseResult.IsFailure)
         {
-            if (urlObject is string urlValue)
-            {
-                sourceUrl = urlValue;
-            }
-            else
-            {
-                var actualType = urlObject?.GetType().Name ?? "null";
-                _logger.LogWarning($"Field '{SourceUrlFieldName}' in '{resource}' is not a string (got {actualType})");
-            }
+            _logger.LogError(parseResult, $"Failed to parse {ExplorerConstants.WebViewExtension} file '{resource}'");
+            return;
         }
 
         _suppressSaving = true;
-        SourceUrl = sourceUrl;
+        SourceUrl = parseResult.Value.SourceUrl;
         _suppressSaving = false;
     }
 
     private async Task SaveWebViewAsync(ResourceKey resource, string sourceUrl)
     {
-        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
-        var setResult = await sidecarService.SetFieldAsync(resource, SourceUrlFieldName, sourceUrl);
-        if (setResult.IsFailure)
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+
+        var content = new WebViewFileContent(sourceUrl);
+        var writeResult = await resourceFileSystem.WriteAllTextAsync(resource, content.ToJson());
+        if (writeResult.IsFailure)
         {
-            _logger.LogError(setResult, $"Failed to save .webview.cel file: '{resource}'");
+            _logger.LogError(writeResult, $"Failed to save {ExplorerConstants.WebViewExtension} file: '{resource}'");
         }
     }
 }

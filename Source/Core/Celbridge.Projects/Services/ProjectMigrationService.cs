@@ -118,7 +118,11 @@ public class ProjectMigrationService : IProjectMigrationService
                         .WithErrors(readResult));
             }
 
-            var text = readResult.Value;
+            // Tomlyn rejects bare-\r line terminators. Normalize once at the
+            // gateway boundary so files written by classic-Mac tools (or
+            // anything that produced CR-only line endings somewhere upstream)
+            // still parse cleanly.
+            var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
             var parse = Toml.Parse(text);
 
             if (parse.HasErrors)
@@ -544,7 +548,9 @@ public class ProjectMigrationService : IProjectMigrationService
                 .WithErrors(readResult);
         }
 
-        var text = readResult.Value;
+        // Match ParseProjectVersionInfoAsync: collapse any bare-\r line
+        // endings to \n before handing the bytes to Tomlyn.
+        var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
         var parse = Toml.Parse(text);
 
         if (parse.HasErrors)

@@ -1,6 +1,5 @@
 using Celbridge.Resources;
 using Celbridge.Resources.Services;
-using Celbridge.Workspace;
 
 namespace Celbridge.Tests.Resources;
 
@@ -14,8 +13,7 @@ internal static class ResourceClassifierTestHelper
     /// <summary>
     /// Builds a stub that returns an empty classification result on every call.
     /// Use for tests that exercise the registry but do not care about file
-    /// classification (most ResourceRegistry tests). Avoids needing a real
-    /// workspace wrapper.
+    /// classification (most ResourceRegistry tests).
     /// </summary>
     public static IResourceClassifier BuildEmptyStub()
     {
@@ -30,39 +28,10 @@ internal static class ResourceClassifierTestHelper
     }
 
     /// <summary>
-    /// Builds a real ResourceClassifier wrapped around an editor registry
-    /// that claims no factories. Every parentless .cel file is classified as
-    /// an orphan, which matches the default expectation for tests that are
-    /// not exercising standalone-form recognition.
+    /// Builds a real ResourceClassifier with no test-time configuration.
     /// </summary>
-    public static ResourceClassifier BuildClassifierWithNoFactories()
+    public static ResourceClassifier BuildClassifier()
     {
-        // NSubstitute returns false for unconfigured bool methods, so the
-        // standalone-form check naturally returns "no match" without any
-        // explicit stubbing.
-        var editorRegistry = Substitute.For<IDocumentEditorRegistry>();
-        return BuildClassifier(editorRegistry);
-    }
-
-    /// <summary>
-    /// Builds a real ResourceClassifier wrapped around the supplied editor
-    /// registry. Use when the test wants to stub specific standalone-form
-    /// recognition rules (e.g. foo.webview.cel, foo.note.cel).
-    /// </summary>
-    public static ResourceClassifier BuildClassifier(IDocumentEditorRegistry editorRegistry)
-    {
-        var documentsService = Substitute.For<IDocumentsService>();
-        documentsService.DocumentEditorRegistry.Returns(editorRegistry);
-
-        var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.DocumentsService.Returns(documentsService);
-
-        var workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
-        workspaceWrapper.WorkspaceService.Returns(workspaceService);
-        workspaceWrapper.IsWorkspacePageLoaded.Returns(true);
-
-        return new ResourceClassifier(
-            Substitute.For<ILogger<ResourceClassifier>>(),
-            workspaceWrapper);
+        return new ResourceClassifier(Substitute.For<ILogger<ResourceClassifier>>());
     }
 }

@@ -31,7 +31,7 @@ public class SidecarClassificationTests
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
-            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
+            ResourceClassifierTestHelper.BuildClassifier(),
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
         _registry.InitializeProjectRoot(_projectFolderPath);

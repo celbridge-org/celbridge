@@ -1,4 +1,5 @@
 using System.Globalization;
+using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -45,7 +46,10 @@ public static class ProjectConfigParser
                     .WithErrors(readResult);
             }
 
-            var text = readResult.Value;
+            // Tomlyn rejects bare-\r line terminators. Normalize once here so
+            // a project config written with non-standard line endings still
+            // parses cleanly.
+            var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
             var parse = Toml.Parse(text);
             if (parse.HasErrors)
             {

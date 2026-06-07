@@ -17,6 +17,7 @@ public class WorkspaceLoader
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
     private readonly ProjectCheckReporter _projectCheckReporter;
+    private readonly IProjectLoadReporter _loadReporter;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -25,7 +26,8 @@ public class WorkspaceLoader
         IFeatureFlags featureFlags,
         IProjectService projectService,
         IServerService serverService,
-        ProjectCheckReporter projectCheckReporter)
+        ProjectCheckReporter projectCheckReporter,
+        IProjectLoadReporter loadReporter)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -34,6 +36,7 @@ public class WorkspaceLoader
         _projectService = projectService;
         _serverService = serverService;
         _projectCheckReporter = projectCheckReporter;
+        _loadReporter = loadReporter;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -250,8 +253,10 @@ public class WorkspaceLoader
         }
     }
 
-    // Runs the project consistency check and hands the report to ProjectCheckReporter.
-    // Errors are logged, never thrown — a broken check must not fail workspace load.
+    // Runs the project consistency check, hands the report to ProjectCheckReporter
+    // for the in-app banner, and records it into the project load reporter so it
+    // lands in logs:project-load.md alongside the load section. Errors are logged,
+    // never thrown — a broken check must not fail workspace load.
     private async Task RunProjectCheckAsync()
     {
         try
@@ -265,6 +270,7 @@ public class WorkspaceLoader
             }
 
             _projectCheckReporter.Report(reportResult.Value);
+            _loadReporter.RecordCheckReport(reportResult.Value);
         }
         catch (Exception ex)
         {

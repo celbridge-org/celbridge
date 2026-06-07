@@ -25,7 +25,7 @@ public class SidecarTrackingTests
             Substitute.For<ILogger<ResourceRegistry>>(),
             new MessengerService(),
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath),
-            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
+            ResourceClassifierTestHelper.BuildClassifier(),
             new RootHandlerRegistry(),
             TestFileSystem.CreateLocal());
         _registry.InitializeProjectRoot(_projectFolderPath);
@@ -157,7 +157,6 @@ public class SidecarTrackingTests
         report.Orphan.Should().Contain(new ResourceKey("lonely.cel"));
     }
 
-    // Standalone .cel form recognition (foo.webview.cel, foo.note.cel) and the
-    // editor-registry hookup live in ResourceClassifierTests, which targets
-    // the classifier directly.
+    // Parentless .cel handling and the orphan / invalid-sidecar split live in
+    // ResourceClassifierTests, which targets the classifier directly.
 }

@@ -59,6 +59,11 @@ public interface ISidecarService
     bool IsSidecarKey(ResourceKey resource);
 
     /// <summary>
+    /// True when the supplied filename ends with the sidecar extension.
+    /// </summary>
+    bool IsSidecarFileName(string fileName);
+
+    /// <summary>
     /// Builds the sidecar resource key for the given parent. Fails when the
     /// parent is empty, or when the parent already ends with the sidecar
     /// extension (which would produce an invalid .cel.cel key).

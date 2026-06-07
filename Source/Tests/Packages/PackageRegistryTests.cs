@@ -56,6 +56,18 @@ public class PackageServiceTests
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
 
+        // Mirror the real SidecarService trailing-extension rule so package
+        // discovery rejects any document-file-type extension that lands in
+        // the reserved .cel namespace.
+        var sidecarService = Substitute.For<ISidecarService>();
+        sidecarService.IsSidecarFileName(Arg.Any<string>()).Returns(callInfo =>
+        {
+            var input = callInfo.Arg<string>();
+            return !string.IsNullOrEmpty(input)
+                && input.EndsWith(".cel", StringComparison.OrdinalIgnoreCase);
+        });
+        resourceService.Sidecars.Returns(sidecarService);
+
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
         resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
@@ -239,6 +251,52 @@ public class PackageServiceTests
         var contributions = _service.GetAllDocumentEditors();
         contributions.Should().HaveCount(1);
         contributions[0].Package.Id.Should().Be("legit-tool");
+    }
+
+    [TestCase(".cel")]
+    [TestCase(".foo.cel")]
+    public async Task RegisterPackages_ProjectPackageWithCelExtension_Skipped(string reservedExtension)
+    {
+        // Document types cannot register inside the reserved .cel namespace.
+        // The check rejects both the bare suffix and multi-part forms that end
+        // in .cel; the classifier would otherwise pre-empt the editor.
+        CreateProjectPackage("reserved", "reserved-ext", "Reserved", "custom", reservedExtension);
+        CreateProjectPackage("legit", "legit", "Legit", "custom", ".legit");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var contributions = _service.GetAllDocumentEditors();
+        contributions.Should().HaveCount(1);
+        contributions[0].Package.Id.Should().Be("legit");
+    }
+
+    [Test]
+    public async Task RegisterPackages_PackageWithCelInMiddleSegment_Accepted()
+    {
+        // Only the trailing extension is reserved. .cel.bar ends in .bar and
+        // does not conflict with sidecar pairing — the editor binds normally
+        // and the sidecar lives next to the parent at <name>.cel.bar.cel.
+        CreateProjectPackage("midcel", "mid-cel", "MidCel", "custom", ".cel.bar");
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        var contributions = _service.GetAllDocumentEditors();
+        contributions.Should().HaveCount(1);
+        contributions[0].Package.Id.Should().Be("mid-cel");
+    }
+
+    [Test]
+    public async Task RegisterPackages_BundledPackageWithCelExtension_Skipped()
+    {
+        // The reservation applies to bundled and project packages alike —
+        // first-party code can't register in the .cel namespace either.
+        var reservedDir = CreateBundledPackage("bundled-reserved", "celbridge.reserved", "Bundled Reserved", "custom", ".cel");
+
+        _moduleService.GetBundledPackages().Returns(new List<BundledPackageDescriptor> { new() { Folder = reservedDir } });
+
+        await _service.RegisterPackagesAsync(_tempProjectFolder);
+
+        _service.GetAllDocumentEditors().Should().BeEmpty();
     }
 
     [Test]

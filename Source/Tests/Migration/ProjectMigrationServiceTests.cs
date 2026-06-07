@@ -68,6 +68,39 @@ public class ProjectMigrationServiceTests
         }
     }
 
+    [Test]
+    public async Task CheckMigrationAsync_BareCarriageReturnLineEndings_ParsesSuccessfully()
+    {
+        // Regression: a project file written with bare-\r line endings (classic
+        // Mac style, or whatever upstream tool ends up producing CR-only output)
+        // used to fail parsing in Tomlyn with "Invalid \r not followed by \n".
+        // The migration service normalises line endings before handing the text
+        // to Tomlyn so any of the three conventions parse cleanly.
+        var appVersion = "1.0.0";
+        _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
+        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
+
+        var tempPath = Path.GetTempFileName();
+        var projectPath = Path.ChangeExtension(tempPath, ".celbridge");
+        File.Delete(tempPath);
+
+        var bareCrContent = $"[celbridge]\rcelbridge-version = \"{appVersion}\"\r\r[project]\rname = \"TestProject\"\r";
+        File.WriteAllText(projectPath, bareCrContent);
+
+        try
+        {
+            var result = await service.CheckMigrationAsync(projectPath);
+
+            result.Status.Should().Be(MigrationStatus.Complete);
+            result.OperationResult.IsSuccess.Should().BeTrue();
+            result.OldVersion.Should().Be(appVersion);
+        }
+        finally
+        {
+            MigrationTestHelper.CleanupTempFile(projectPath);
+        }
+    }
+
     #endregion
 
     #region Same Version Tests

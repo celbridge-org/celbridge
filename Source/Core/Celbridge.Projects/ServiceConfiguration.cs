@@ -16,9 +16,8 @@ public static class ServiceConfiguration
         services.AddSingleton<IProjectTemplateService, ProjectTemplateService>();
         services.AddSingleton<IMigrationStepRegistry, MigrationStepRegistry>();
         services.AddTransient<IProjectLoader, ProjectLoader>();
+        services.AddSingleton<IProjectLoadReporter, ProjectLoadReporter>();
         services.AddTransient<ProjectUnloader>();
-
-        // New services for refactored project loading
         services.AddTransient<ProjectConfigReader>();
         services.AddTransient<ProjectFactory>();
 
