@@ -153,3 +153,22 @@ class TestExplorer:
         items = file.list_contents("TestExplorer/a/b/c")
         names = [i["name"] for i in items]
         assert "deep.txt" in names
+
+    def test_create_file_with_cel_extension_rejected(self, explorer):
+        # The .cel extension is reserved for project metadata sidecars; agents
+        # cannot create files in that namespace directly.
+        with pytest.raises(CelError, match="(?i)\\.cel extension is reserved"):
+            explorer.create_file("TestExplorer/reserved.cel")
+
+    def test_copy_to_cel_destination_rejected(self, explorer):
+        # The same reservation applies to copy destinations.
+        explorer.create_file("TestExplorer/source.txt")
+        with pytest.raises(CelError, match="(?i)\\.cel extension is reserved"):
+            explorer.copy("TestExplorer/source.txt", "TestExplorer/reserved.cel")
+
+    def test_move_to_cel_destination_rejected(self, explorer):
+        # Same gate covers non-interactive renames, which route through the
+        # copy command in move mode.
+        explorer.create_file("TestExplorer/source.txt")
+        with pytest.raises(CelError, match="(?i)\\.cel extension is reserved"):
+            explorer.move("TestExplorer/source.txt", "TestExplorer/reserved.cel")
