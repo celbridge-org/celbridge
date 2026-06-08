@@ -2,7 +2,6 @@ using Celbridge.Commands;
 using Celbridge.ContextMenu;
 using Celbridge.Documents;
 using Celbridge.Projects;
-using Celbridge.Resources;
 using Celbridge.Workspace;
 using Microsoft.Extensions.Localization;
 

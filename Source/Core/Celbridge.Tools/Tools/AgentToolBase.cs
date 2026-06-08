@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Celbridge.Commands;
-using Celbridge.Workspace;
 using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tools;

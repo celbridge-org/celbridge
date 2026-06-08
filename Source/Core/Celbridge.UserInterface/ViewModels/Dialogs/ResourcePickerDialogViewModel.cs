@@ -1,7 +1,5 @@
 using System.ComponentModel;
-using Celbridge.UserInterface.Helpers;
 using Celbridge.Workspace;
-using Microsoft.Extensions.Localization;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Celbridge.UserInterface.ViewModels;
