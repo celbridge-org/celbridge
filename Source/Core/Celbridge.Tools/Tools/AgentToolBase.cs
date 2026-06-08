@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Celbridge.Commands;
+using Celbridge.Workspace;
+using ModelContextProtocol.Protocol;
 
 namespace Celbridge.Tools;
 
@@ -69,6 +71,25 @@ public abstract class AgentToolBase
     /// </summary>
     protected static Result<T> ParseJsonArgument<T>(string json, string label) where T : class
         => JsonArgumentParser.Parse<T>(json, label, JsonOptions);
+
+    /// <summary>
+    /// Returns a typed denial when the resource key targets a .cel sidecar;
+    /// null when it does not.
+    /// </summary>
+    protected CallToolResult? DenyWriteToCelTarget(ResourceKey resource, string original, string toolName)
+    {
+        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.Sidecars;
+        if (!sidecarService.IsSidecarKey(resource))
+        {
+            return null;
+        }
+
+        var message = $"Tool '{toolName}' was denied write access to '{original}' because direct writes to .cel files would corrupt their TOML and block-fence structure. "
+            + $"Use the data_* tools instead (data_set_field, data_write_block, data_add_tag, etc.). "
+            + $"See the per-tool guides under Source/Core/Celbridge.Tools/Guides/Tools/data_*.md.";
+
+        return ToolResponse.Error(message);
+    }
 
     /// <summary>
     /// Loads an embedded resource from the Celbridge.Tools assembly as a string.

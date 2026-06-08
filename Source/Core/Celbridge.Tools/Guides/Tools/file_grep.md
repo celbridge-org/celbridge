@@ -7,6 +7,10 @@ There are two modes:
 - **Project search** — supply `searchTerm` plus any of `resource`, `include`, `exclude`. The tool walks all text files under the chosen scope.
 - **Targeted search** — supply `files` as a JSON array of resource keys to search exactly those files. When `files` is non-empty, `resource`, `include`, and `exclude` are ignored.
 
+## `.cel` sidecar contents are included
+
+Both modes grep `.cel` sidecar files. The in-app Search panel hides sidecar contents (they are plumbing the user should never see), but `file_grep` lets agents locate metadata or block-content text without re-implementing the structured read. Use `file_grep` to **find** text inside a `.cel`; use the `data_*` tools (`data_get_field`, `data_read_block`, `data_get_info`) to **read** it structurally and `data_set_field` / `data_write_block` / `data_add_tag` etc. to **modify** it — direct byte writes to `.cel` files are refused by `file_write` and the other byte-write tools to protect the TOML and block-fence structure.
+
 ## Match parameters
 
 ### searchTerm

@@ -34,6 +34,10 @@ A JSON object with:
 - `affectedLines` — array of `{ from, to, matchCount, contextLines }`. `contextLines` is the post-edit content of the affected range plus one surrounding line on each side, so you can verify the substitution without a follow-up `file_read`. Ranges are 1-based inclusive line numbers in the post-edit file, sorted ascending by `from`. **Ranges are per-line, not per-match:** multiple matches on the same line collapse into one entry whose `matchCount` reports the per-line hit total. The sum of `matchCount` across all entries equals the top-level `replacementCount`. **`contextLines` is included on every returned entry, including the sample entries in a truncated response** — when the list is capped, the first/last sample is the verification signal, so keeping its context attached is the point.
 - `truncated` — `true` when the response was capped because the number of merged `affectedLines` entries exceeded the verbose threshold (5). The first 3 entries and the last 1 entry are returned; `replacementCount` still reflects the real total. `false` when the full list is returned.
 
+## Not for `.cel` files
+
+`.cel` files are project metadata sidecars with a structured TOML and block-fence format. A text-level replacement could corrupt the frontmatter or fence syntax, so `file_replace` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_write_block`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
+
 ## Gotchas
 
 - Edits write straight to disk. If the file is open in an editor, the buffer reloads from disk and Monaco's undo history is wiped — the edit is not Ctrl-Z-revertable.

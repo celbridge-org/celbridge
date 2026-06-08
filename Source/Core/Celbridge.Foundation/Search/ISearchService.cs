@@ -13,6 +13,7 @@ public interface ISearchService
     /// When include is specified, only files whose names match one of the comma-separated glob patterns are searched (e.g. "*.cs,*.xaml").
     /// When exclude is specified, files whose names match any of the comma-separated glob patterns are skipped, even if they match include.
     /// When scope is specified, only files whose resource key starts with the given prefix are searched.
+    /// When includeMetadataFiles is true, .cel sidecar contents are searched alongside other text files.
     /// </summary>
     Task<SearchResults> SearchAsync(
         string searchTerm,
@@ -23,7 +24,8 @@ public interface ISearchService
         bool useRegex = false,
         string include = "",
         string exclude = "",
-        string scope = "");
+        string scope = "",
+        bool includeMetadataFiles = false);
 
     /// <summary>
     /// Replaces all occurrences of search text with replacement text in a single file.

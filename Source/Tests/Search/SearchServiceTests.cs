@@ -1,6 +1,10 @@
+using Celbridge.FileSystem;
 using Celbridge.FileSystem.Services;
+using Celbridge.Messaging;
 using Celbridge.Resources;
+using Celbridge.Resources.Services;
 using Celbridge.Search.Services;
+using Celbridge.Tests.FileSystem;
 using Celbridge.Tests.Migration.TestHelpers;
 using Celbridge.Workspace;
 
@@ -26,6 +30,7 @@ public class SearchServiceTests
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
+        resourceService.Policy.Returns(TestResourcePolicy.CreateDefault());
 
         var workspaceService = Substitute.For<IWorkspaceService>();
         workspaceService.ResourceService.Returns(resourceService);
@@ -36,6 +41,15 @@ public class SearchServiceTests
         // Guard.IsFalse(IsWorkspacePageLoaded) in the SearchService constructor requires false at creation time.
         // NSubstitute returns false for bool by default, but we set it explicitly for clarity.
         _workspaceWrapper.IsWorkspacePageLoaded.Returns(false);
+
+        // A real LocalResourceFileSystem against the temp folder so tests that
+        // place files under _tempFolder can be probed and read end-to-end.
+        var resourceFileSystem = new LocalResourceFileSystem(
+            Substitute.For<ILogger<LocalResourceFileSystem>>(),
+            Substitute.For<IMessengerService>(),
+            _workspaceWrapper,
+            TestFileSystem.CreateLocal());
+        resourceService.FileSystem.Returns(resourceFileSystem);
 
         _searchService = new SearchService(
             Substitute.For<ILogger<SearchService>>(),
@@ -86,5 +100,61 @@ public class SearchServiceTests
             cancellationTokenSource.Token);
 
         result.WasCancelled.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task SearchAsync_DefaultExcludesCelContent()
+    {
+        await WriteFileAsync("photo.png.cel", "title: \"sunset photo\"\n");
+
+        var result = await _searchService.SearchAsync(
+            "sunset",
+            matchCase: false,
+            wholeWord: false,
+            maxResults: null,
+            CancellationToken.None);
+
+        result.FileResults.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task SearchAsync_IncludeMetadataFiles_MatchesCelContent()
+    {
+        await WriteFileAsync("photo.png.cel", "title: \"sunset photo\"\n");
+
+        var result = await _searchService.SearchAsync(
+            "sunset",
+            matchCase: false,
+            wholeWord: false,
+            maxResults: null,
+            CancellationToken.None,
+            includeMetadataFiles: true);
+
+        result.FileResults.Should().HaveCount(1);
+        result.FileResults[0].Resource.ToString().Should().EndWith("photo.png.cel");
+    }
+
+    private async Task WriteFileAsync(string relativePath, string content)
+    {
+        var fullPath = Path.Combine(_tempFolder, relativePath);
+        var folder = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrEmpty(folder))
+        {
+            Directory.CreateDirectory(folder);
+        }
+        await File.WriteAllTextAsync(fullPath, content);
+
+        var resourceKey = new ResourceKey(relativePath.Replace('\\', '/'));
+        var entry = new FileResourceEntry(resourceKey, fullPath);
+
+        var entries = _resourceRegistry.GetAllFileResources();
+        var updated = entries.Concat(new[] { entry }).ToList();
+        _resourceRegistry.GetAllFileResources().Returns(updated);
+
+        // LocalResourceFileSystem.OpenReadAsync resolves the key through the
+        // registry before opening the stream; without this the gateway read
+        // fails and the file is silently skipped.
+        _resourceRegistry.ResolveResourcePath(resourceKey).Returns(Result<string>.Ok(fullPath));
+        _resourceRegistry.ResolveResourcePath(resourceKey, Arg.Any<bool>()).Returns(Result<string>.Ok(fullPath));
     }
 }
