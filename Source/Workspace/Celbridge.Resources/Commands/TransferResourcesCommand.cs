@@ -1,6 +1,7 @@
 using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -145,6 +146,15 @@ public class TransferResourcesCommand : CommandBase, ITransferResourcesCommand
         IResourceTransferService transferService,
         IResourceOperationService resourceOpService)
     {
+        // A sidecar must never be transferred on its own; it follows its parent
+        // automatically when the parent is moved or copied.
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
+        var sidecarDenial = SidecarTransferGuard.DenySidecarSource(sidecarService, item.SourceResource, TransferMode);
+        if (sidecarDenial is not null)
+        {
+            return sidecarDenial;
+        }
+
         var resolvedDestResource = transferService.ResolveDestinationResource(item.SourceResource, item.DestResource);
 
         var result = await resourceOpService.TransferAsync(item.SourceResource, resolvedDestResource, TransferMode);

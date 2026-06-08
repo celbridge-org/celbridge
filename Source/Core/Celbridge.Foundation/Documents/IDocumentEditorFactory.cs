@@ -34,8 +34,8 @@ public interface IDocumentEditorFactory
 
     /// <summary>
     /// The file extensions this factory handles (e.g., ".md", ".txt", ".cs").
-    /// Extensions should be lowercase with leading dot. Multi-part forms such as
-    /// ".webview.cel" or ".document.toml" are also accepted; the registry
+    /// Extensions should be lowercase with leading dot. Multi-part forms (a name
+    /// ending in more than one dotted segment) are also accepted; the registry
     /// resolves longest match first when a file's name matches more than one
     /// registered suffix.
     /// </summary>

@@ -207,10 +207,6 @@ public class WorkspaceLoader
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
 
-        // Run the project-health check after WorkspaceLoadedMessage so it sees
-        // the fully-initialised workspace. Fire-and-forget; never blocks load.
-        _ = Task.Run(() => RunProjectCheckAsync());
-
         //
         // Initialize terminal window and Python scripting
         // These run after the workspace is considered "loaded" because they don't block
@@ -238,6 +234,15 @@ public class WorkspaceLoader
             _logger.LogInformation("Console panel is disabled by feature flag");
         }
 
+        // Run the project-health check last, on the load thread. The scan reads
+        // the registry (populated above), so this placement is not about data
+        // readiness: it runs after WorkspaceLoadedMessage so its console banner
+        // reaches a live subscriber (the message is dropped when no panel is
+        // listening) and so the scan does not delay the visible load. It records
+        // into the load reporter and flushes, adding the consistency-check
+        // section to the report file.
+        await RunProjectCheckAsync();
+
         return Result.Ok();
     }
 
@@ -253,10 +258,11 @@ public class WorkspaceLoader
         }
     }
 
-    // Runs the project consistency check, hands the report to ProjectCheckReporter
-    // for the in-app banner, and records it into the project load reporter so it
-    // lands in logs:project-load.md alongside the load section. Errors are logged,
-    // never thrown — a broken check must not fail workspace load.
+    // Runs the project consistency check on the load thread, hands the report to
+    // ProjectCheckReporter for the in-app banner, records it into the project
+    // load reporter, and flushes so the report file gains its consistency-check
+    // section. Errors are logged, never thrown — a broken check must not fail
+    // workspace load.
     private async Task RunProjectCheckAsync()
     {
         try
@@ -271,6 +277,7 @@ public class WorkspaceLoader
 
             _projectCheckReporter.Report(reportResult.Value);
             _loadReporter.RecordCheckReport(reportResult.Value);
+            await _loadReporter.FlushAsync();
         }
         catch (Exception ex)
         {

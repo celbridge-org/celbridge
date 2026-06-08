@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -174,6 +175,21 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     private async Task<CopyResourceOutcome> CopySingleResourceAsync(ResourceKey sourceResource)
     {
+        // A sidecar must never be transferred on its own. The top-of-batch guard
+        // only covers a user-supplied .cel destination; this catches a .cel
+        // source resolved under a folder destination. Refused per-source so the
+        // rest of the batch still runs.
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
+        var sidecarDenial = SidecarTransferGuard.DenySidecarSource(sidecarService, sourceResource, TransferMode);
+        if (sidecarDenial is not null)
+        {
+            return new CopyResourceOutcome(
+                sidecarDenial,
+                ParentFolder: null,
+                CopiedFolder: null,
+                MoveDetail: null);
+        }
+
         // Resolve destination to handle folder drops
         var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
 

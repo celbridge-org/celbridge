@@ -1,5 +1,4 @@
 using Celbridge.Commands;
-using Celbridge.Logging;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -11,14 +10,10 @@ namespace Celbridge.Resources.Commands;
 /// </summary>
 public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
 {
-    private readonly ILogger<ProjectCheckCommand> _logger;
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ProjectCheckCommand(
-        ILogger<ProjectCheckCommand> logger,
-        IWorkspaceWrapper workspaceWrapper)
+    public ProjectCheckCommand(IWorkspaceWrapper workspaceWrapper)
     {
-        _logger = logger;
         _workspaceWrapper = workspaceWrapper;
     }
 
@@ -72,7 +67,6 @@ public sealed class ProjectCheckCommand : CommandBase, IProjectCheckCommand
             OrphanCelFiles: orphanCelFiles,
             BrokenCelFiles: brokenCelFiles);
 
-        await Task.CompletedTask;
         return Result.Ok();
     }
 }

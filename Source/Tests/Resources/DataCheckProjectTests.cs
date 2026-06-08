@@ -70,9 +70,7 @@ public class DataCheckProjectTests
             _workspaceWrapper);
         resourceService.Scanner.Returns(scanner);
 
-        _command = new ProjectCheckCommand(
-            Substitute.For<ILogger<ProjectCheckCommand>>(),
-            _workspaceWrapper);
+        _command = new ProjectCheckCommand(_workspaceWrapper);
     }
 
     [TearDown]
