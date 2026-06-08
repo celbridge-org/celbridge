@@ -42,17 +42,17 @@ public class FileTypeHelper
     }
 
     /// <summary>
-    /// Returns the document view type for a file. Detects multi-part extensions
-    /// like .webview.cel before falling back to the single-part suffix.
+    /// Returns the document view type for a file based on its single-part
+    /// extension.
     /// </summary>
     public DocumentViewType GetDocumentViewType(string fileName)
     {
-        if (fileName.EndsWith(ExplorerConstants.WebViewExtension, StringComparison.OrdinalIgnoreCase))
+        var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
+
+        if (fileExtension == ExplorerConstants.WebViewExtension)
         {
             return DocumentViewType.WebViewDocument;
         }
-
-        var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
 
         if (fileExtension == ExplorerConstants.MarkdownExtension)
         {
@@ -100,8 +100,8 @@ public class FileTypeHelper
     }
 
     /// <summary>
-    /// Determines if a file is recognized (either as a text editor type or a supported binary type).
-    /// Detects multi-part extensions like .webview.cel before falling back to the single-part suffix.
+    /// Determines if a file is recognized (either as a text editor type or a
+    /// supported binary type) based on its single-part extension.
     /// </summary>
     public bool IsRecognizedExtension(string fileName)
     {
@@ -110,15 +110,15 @@ public class FileTypeHelper
             return false;
         }
 
-        if (fileName.EndsWith(ExplorerConstants.WebViewExtension, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
         var fileExtension = Path.GetExtension(fileName).ToLowerInvariant();
         if (string.IsNullOrEmpty(fileExtension))
         {
             return false;
+        }
+
+        if (fileExtension == ExplorerConstants.WebViewExtension)
+        {
+            return true;
         }
 
         if (fileExtension == ExplorerConstants.MarkdownExtension)

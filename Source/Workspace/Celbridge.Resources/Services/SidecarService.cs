@@ -21,6 +21,15 @@ public sealed class SidecarService : ISidecarService
         return resource.Path.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase);
     }
 
+    public bool IsSidecarFileName(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return false;
+        }
+        return fileName.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase);
+    }
+
     public Result<ResourceKey> GetSidecarKey(ResourceKey parent)
     {
         if (parent.IsEmpty)
@@ -278,6 +287,8 @@ public sealed class SidecarService : ISidecarService
         }
         var sidecarKey = resolveResult.Value;
 
+        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
+
         var readResult = await ReadAsync(resource);
         if (readResult.IsFailure)
         {
@@ -300,6 +311,21 @@ public sealed class SidecarService : ISidecarService
                 {
                     return Result.Ok();
                 }
+                // Creating a fresh sidecar requires the parent file to exist
+                // on disk. The .cel extension is reserved for sidecars, so the
+                // would-be parent is always the sidecar key with the trailing
+                // .cel stripped. Refusing the write keeps orphan .cel files
+                // from materialising when a caller passes a key that does not
+                // match an on-disk file.
+                var parentKey = StripSidecarSuffix(sidecarKey);
+                var parentInfoResult = await resourceFileSystem.GetInfoAsync(parentKey);
+                if (parentInfoResult.IsFailure
+                    || parentInfoResult.Value.Kind != StorageItemKind.File)
+                {
+                    return Result.Fail(
+                        $"Cannot create sidecar '{sidecarKey}': the parent file '{parentKey}' does not exist on disk. "
+                        + "The .cel extension is reserved for project metadata sidecars; pass the parent resource key.");
+                }
                 frontmatter = new Dictionary<string, object>(StringComparer.Ordinal);
                 blocks = new List<SidecarBlock>();
                 break;
@@ -319,7 +345,6 @@ public sealed class SidecarService : ISidecarService
             return Result.Ok();
         }
 
-        var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
         var writeResult = await resourceFileSystem.WriteAllTextAsync(sidecarKey, canonicalAfter);
         if (writeResult.IsFailure)
         {
@@ -337,11 +362,12 @@ public sealed class SidecarService : ISidecarService
 
     // Resolves the resource key whose file holds the frontmatter+blocks for the
     // given resource. For a regular file this is the sibling .cel key produced
-    // by GetSidecarKey. For a standalone .cel file the resource itself carries
-    // the data, so the same key is returned unchanged. Non-project roots are
-    // refused outright: sidecar metadata is a project-scoped system and the
-    // tracking pass only scans the project tree, so cross-root sidecars would
-    // be silently invisible to validation.
+    // by GetSidecarKey. A .cel key passed directly returns unchanged — the data
+    // tools reject such keys at the agent layer, but internal callers may still
+    // operate on a sidecar's own key. Non-project roots are refused outright:
+    // sidecar metadata is a project-scoped system and the tracking pass only
+    // scans the project tree, so cross-root sidecars would be silently
+    // invisible to validation.
     private Result<ResourceKey> ResolveSidecarKey(ResourceKey resource)
     {
         if (resource.IsEmpty)
@@ -358,5 +384,16 @@ public sealed class SidecarService : ISidecarService
         }
 
         return GetSidecarKey(resource);
+    }
+
+    // Strips the trailing .cel from a sidecar key to derive its parent key.
+    // Caller must guarantee the input is a .cel key (e.g. via IsSidecarKey or
+    // by construction). Used by the orphan-prevention check inside
+    // ApplyMutationAsync.
+    private static ResourceKey StripSidecarSuffix(ResourceKey sidecarKey)
+    {
+        var fullKey = sidecarKey.FullKey;
+        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarHelper.Extension.Length);
+        return new ResourceKey(trimmed);
     }
 }

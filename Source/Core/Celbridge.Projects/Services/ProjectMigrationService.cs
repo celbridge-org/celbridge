@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Logging;
-using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -118,7 +117,11 @@ public class ProjectMigrationService : IProjectMigrationService
                         .WithErrors(readResult));
             }
 
-            var text = readResult.Value;
+            // Tomlyn rejects bare-\r line terminators. Normalize once at the
+            // gateway boundary so files written by classic-Mac tools (or
+            // anything that produced CR-only line endings somewhere upstream)
+            // still parse cleanly.
+            var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
             var parse = Toml.Parse(text);
 
             if (parse.HasErrors)
@@ -136,20 +139,6 @@ public class ProjectMigrationService : IProjectMigrationService
                 versionNode is string existingVersion)
             {
                 projectVersion = existingVersion;
-            }
-
-            // Provide limited backwards compatibility for pre-v0.1.5 version format to support migration
-            if (string.IsNullOrEmpty(projectVersion) &&
-                JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
-                legacyVersionNode is string legacyVersion)
-            {
-                // Only populate the project version if the legacy version < v0.1.5
-                var versionA = new Version(legacyVersion);
-                var versionB = new Version("0.1.5");
-                if (versionA < versionB)
-                {
-                    projectVersion = legacyVersion;
-                }
             }
 
             // Get current application version
@@ -544,7 +533,9 @@ public class ProjectMigrationService : IProjectMigrationService
                 .WithErrors(readResult);
         }
 
-        var text = readResult.Value;
+        // Match ParseProjectVersionInfoAsync: collapse any bare-\r line
+        // endings to \n before handing the bytes to Tomlyn.
+        var text = LineEndingHelper.ConvertLineEndings(readResult.Value, "\n");
         var parse = Toml.Parse(text);
 
         if (parse.HasErrors)

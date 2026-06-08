@@ -89,15 +89,19 @@ public partial class DataTools : AgentToolBase
 
     /// <summary>
     /// Returns an error response when the resource key names a .cel sidecar
-    /// file rather than its parent. Returns null when the key is a valid
-    /// parent-shaped resource.
+    /// file rather than its parent. The .cel extension is reserved for
+    /// metadata sidecars; the data tools always address the parent resource
+    /// and resolve to the sibling sidecar internally. Returns null when the
+    /// key is a valid parent-shaped resource.
     /// </summary>
     private CallToolResult? ValidateNotSidecarKey(ResourceKey resource, string original)
     {
         var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.Sidecars;
         if (sidecarService.IsSidecarKey(resource))
         {
-            return ToolResponse.Error($"Resource '{original}' is a .cel sidecar key. Pass the parent resource key instead.");
+            return ToolResponse.Error(
+                $"Resource '{original}' targets a .cel metadata sidecar; the data tools address the parent resource instead. "
+                + $"Pass the same key without the trailing .cel.");
         }
         return null;
     }

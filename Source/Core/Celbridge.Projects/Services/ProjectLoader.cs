@@ -23,6 +23,7 @@ public class ProjectLoader : IProjectLoader
     private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly IMessengerService _messengerService;
     private readonly IStringLocalizer _stringLocalizer;
+    private readonly IProjectLoadReporter _loadReporter;
 
     public ProjectLoader(
         ILogger<ProjectLoader> logger,
@@ -33,7 +34,8 @@ public class ProjectLoader : IProjectLoader
         IEditorSettings editorSettings,
         IWorkspaceWrapper workspaceWrapper,
         IMessengerService messengerService,
-        IStringLocalizer stringLocalizer)
+        IStringLocalizer stringLocalizer,
+        IProjectLoadReporter loadReporter)
     {
         _logger = logger;
         _migrationService = migrationService;
@@ -44,6 +46,7 @@ public class ProjectLoader : IProjectLoader
         _workspaceWrapper = workspaceWrapper;
         _messengerService = messengerService;
         _stringLocalizer = stringLocalizer;
+        _loadReporter = loadReporter;
     }
 
     /// <summary>
@@ -53,10 +56,27 @@ public class ProjectLoader : IProjectLoader
     /// </summary>
     public async Task<Result> LoadProjectAsync(string projectFilePath)
     {
+        _loadReporter.BeginLoad(projectFilePath);
+
+        try
+        {
+            return await LoadProjectInnerAsync(projectFilePath);
+        }
+        finally
+        {
+            await _loadReporter.FlushAsync();
+        }
+    }
+
+    private async Task<Result> LoadProjectInnerAsync(string projectFilePath)
+    {
         var projectName = Path.GetFileNameWithoutExtension(projectFilePath);
 
         // Check the project's migration status
         var migrationResult = await _migrationService.CheckMigrationAsync(projectFilePath);
+
+        bool userConfirmedUpgrade = false;
+        bool userCancelledUpgrade = false;
 
         // Handle the various migration statuses
         switch (migrationResult.Status)
@@ -75,21 +95,24 @@ public class ProjectLoader : IProjectLoader
 
                 if (!confirmed)
                 {
-                    _logger.LogInformation("User cancelled project upgrade for '{ProjectName}'", projectName);
+                    userCancelledUpgrade = true;
+                    _logger.LogInformation($"User cancelled project upgrade for '{projectName}'");
+                    _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: true);
+                    _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
                     _navigationService.NavigateToPage(NavigationConstants.HomeTag);
                     return Result.Ok(); // Not a failure - user chose to cancel
                 }
 
+                userConfirmedUpgrade = true;
                 // User confirmed - perform the upgrade
-                _logger.LogInformation("User confirmed upgrade for '{ProjectName}' from v{OldVersion} to v{NewVersion}",
-                    projectName, migrationResult.OldVersion, migrationResult.NewVersion);
+                _logger.LogInformation($"User confirmed upgrade for '{projectName}' from v{migrationResult.OldVersion} to v{migrationResult.NewVersion}");
 
                 migrationResult = await _migrationService.PerformMigrationUpgradeAsync(projectFilePath);
 
                 if (migrationResult.Status != MigrationStatus.Complete)
                 {
                     // Upgrade failed - show alert but continue to load with limited functionality
-                    _logger.LogWarning("Project upgrade failed for '{ProjectName}', continuing with limited functionality", projectName);
+                    _logger.LogWarning($"Project upgrade failed for '{projectName}', continuing with limited functionality");
                     await ShowUpgradeFailedAlertAsync(projectName);
                 }
                 break;
@@ -98,8 +121,11 @@ public class ProjectLoader : IProjectLoader
             case MigrationStatus.IncompatibleVersion:
             {
                 // Project was created with a newer version of Celbridge - cannot load
-                _logger.LogError("Cannot load project '{ProjectName}' - created with newer Celbridge version", projectName);
+                _logger.LogError($"Cannot load project '{projectName}' - created with newer Celbridge version");
                 _editorSettings.PreviousProject = string.Empty;
+
+                _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade: false, userCancelledUpgrade: false);
+                _loadReporter.RecordLoadOutcome(loadSucceeded: false, loadResult: null);
 
                 await ShowLoadFailedAlertAsync(projectFilePath);
                 _navigationService.NavigateToPage(NavigationConstants.HomeTag);
@@ -113,14 +139,18 @@ public class ProjectLoader : IProjectLoader
             case MigrationStatus.Failed:
             {
                 // Configuration error - show alert but continue to load with limited functionality
-                _logger.LogWarning("Project '{ProjectName}' has configuration errors, continuing with limited functionality", projectName);
+                _logger.LogWarning($"Project '{projectName}' has configuration errors, continuing with limited functionality");
                 await ShowConfigErrorAlertAsync(projectName);
                 break;
             }
         }
 
+        _loadReporter.RecordMigrationResult(migrationResult, userConfirmedUpgrade, userCancelledUpgrade);
+
         // Load the project and navigate to workspace
         var loadResult = await LoadProjectInternalAsync(projectFilePath, migrationResult);
+
+        _loadReporter.RecordLoadOutcome(loadResult.IsSuccess, loadResult);
 
         if (loadResult.IsFailure)
         {

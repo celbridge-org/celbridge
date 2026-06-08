@@ -17,6 +17,7 @@ public class WorkspaceLoader
     private readonly IProjectService _projectService;
     private readonly IServerService _serverService;
     private readonly ProjectCheckReporter _projectCheckReporter;
+    private readonly IProjectLoadReporter _loadReporter;
 
     public WorkspaceLoader(
         ILogger<WorkspaceLoader> logger,
@@ -25,7 +26,8 @@ public class WorkspaceLoader
         IFeatureFlags featureFlags,
         IProjectService projectService,
         IServerService serverService,
-        ProjectCheckReporter projectCheckReporter)
+        ProjectCheckReporter projectCheckReporter,
+        IProjectLoadReporter loadReporter)
     {
         _logger = logger;
         _workspaceWrapper = workspaceWrapper;
@@ -34,6 +36,7 @@ public class WorkspaceLoader
         _projectService = projectService;
         _serverService = serverService;
         _projectCheckReporter = projectCheckReporter;
+        _loadReporter = loadReporter;
     }
 
     public async Task<Result> LoadWorkspaceAsync()
@@ -204,10 +207,6 @@ public class WorkspaceLoader
         var workspaceLoadedMessage = new WorkspaceLoadedMessage();
         messengerService.Send(workspaceLoadedMessage);
 
-        // Run the project-health check after WorkspaceLoadedMessage so it sees
-        // the fully-initialised workspace. Fire-and-forget; never blocks load.
-        _ = Task.Run(() => RunProjectCheckAsync());
-
         //
         // Initialize terminal window and Python scripting
         // These run after the workspace is considered "loaded" because they don't block
@@ -235,6 +234,11 @@ public class WorkspaceLoader
             _logger.LogInformation("Console panel is disabled by feature flag");
         }
 
+        // Runs after WorkspaceLoadedMessage, on the load thread: the banner it
+        // raises needs a live panel subscriber, and a full project scan would
+        // otherwise delay the visible load.
+        await RunProjectCheckAsync();
+
         return Result.Ok();
     }
 
@@ -250,8 +254,8 @@ public class WorkspaceLoader
         }
     }
 
-    // Runs the project consistency check and hands the report to ProjectCheckReporter.
-    // Errors are logged, never thrown — a broken check must not fail workspace load.
+    // Errors are logged, never thrown — a broken consistency check must not fail
+    // workspace load.
     private async Task RunProjectCheckAsync()
     {
         try
@@ -265,6 +269,8 @@ public class WorkspaceLoader
             }
 
             _projectCheckReporter.Report(reportResult.Value);
+            _loadReporter.RecordCheckReport(reportResult.Value);
+            await _loadReporter.FlushAsync();
         }
         catch (Exception ex)
         {

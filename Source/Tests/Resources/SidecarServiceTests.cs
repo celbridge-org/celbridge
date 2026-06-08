@@ -5,11 +5,12 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for SidecarService's dispatch between sibling-sidecar storage (regular
-/// files) and self-storage (standalone .cel files), plus the idempotent-write
-/// and validation behavior of the typed mutation surface. The TOML format
-/// itself is covered by SidecarHelperTests; these tests assert which file gets
-/// read or written and which inputs are rejected at the service boundary.
+/// Tests for SidecarService's read-modify-write engine: which file gets read
+/// or written for a given resource key, the idempotent-write contract, the
+/// orphan-prevention check that refuses to create a sidecar when the parent
+/// file is absent, and the validation behavior of the typed mutation surface.
+/// The TOML format itself is covered by SidecarHelperTests; these tests assert
+/// service-boundary behavior.
 /// </summary>
 [TestFixture]
 public class SidecarServiceTests
@@ -37,7 +38,7 @@ public class SidecarServiceTests
     [Test]
     public void GetSidecarKey_FailsForCelKey()
     {
-        // GetSidecarKey stays sibling-only. DeleteResourceCommand and the rename
+        // GetSidecarKey stays parent-only. DeleteResourceCommand and the rename
         // cascade rely on this failure to skip the "also delete/rename the
         // sidecar" code path when the resource is itself a .cel file.
         var result = _sidecarService.GetSidecarKey(new ResourceKey("design.widget.cel"));
@@ -65,20 +66,20 @@ public class SidecarServiceTests
     }
 
     [Test]
-    public async Task ReadAsync_ReadsFileItself_ForStandaloneCelFile()
+    public async Task ReadAsync_ReadsFileItself_WhenResourceIsCelKey()
     {
-        // When the resource IS a .cel file, the file holds its own frontmatter
-        // and there is no sibling sidecar. ReadAsync must operate on the file
-        // directly rather than appending ".cel" again (which would produce a
-        // bogus .cel.cel key).
-        var standaloneCel = new ResourceKey("design.widget.cel");
+        // Internal callers that already hold a .cel key (e.g. the open-cel
+        // feature flag's open path) read the file's own content directly
+        // rather than appending .cel again (which would produce a bogus
+        // .cel.cel key).
+        var celResource = new ResourceKey("design.widget.cel");
 
-        _resourceFileSystem.GetInfoAsync(standaloneCel)
+        _resourceFileSystem.GetInfoAsync(celResource)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
-        _resourceFileSystem.ReadAllTextAsync(standaloneCel)
+        _resourceFileSystem.ReadAllTextAsync(celResource)
             .Returns(Task.FromResult(Result<string>.Ok("editor = \"celbridge.code-editor.code-document\"\n")));
 
-        var readResult = await _sidecarService.ReadAsync(standaloneCel);
+        var readResult = await _sidecarService.ReadAsync(celResource);
 
         readResult.IsSuccess.Should().BeTrue();
         readResult.Value.Outcome.Should().Be(SidecarReadOutcome.Healthy);
@@ -95,6 +96,10 @@ public class SidecarServiceTests
         var regularFile = new ResourceKey("photo.png");
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
+        // The parent file must exist on disk; otherwise the orphan-prevention
+        // check inside ApplyMutationAsync refuses to create the new sidecar.
+        _resourceFileSystem.GetInfoAsync(regularFile)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _resourceFileSystem.WriteAllTextAsync(siblingSidecar, Arg.Any<string>())
             .Returns(Task.FromResult(Result.Ok()));
 
@@ -107,55 +112,25 @@ public class SidecarServiceTests
     }
 
     [Test]
-    public async Task SetFieldAsync_WritesToFileItself_ForStandaloneCelFile()
+    public async Task SetFieldAsync_PreservesExistingContent_OnExistingSidecar()
     {
-        // Regression for the Open With... -> Code Editor flow on Design.fury.cel.
-        // The user picks Code Editor as the per-file editor, OpenWithMenuOption
-        // executes SetFieldCommand, which calls SetFieldAsync. The mutation
-        // must write the "editor" field directly into the .cel file's own TOML,
-        // not attempt to derive a .cel.cel sibling sidecar.
-        var standaloneCel = new ResourceKey("design.widget.cel");
-
-        _resourceFileSystem.WriteAllTextAsync(standaloneCel, Arg.Any<string>())
-            .Returns(Task.FromResult(Result.Ok()));
-
-        var setResult = await _sidecarService.SetFieldAsync(
-            standaloneCel,
-            "editor",
-            "celbridge.code-editor.code-document");
-
-        setResult.IsSuccess.Should().BeTrue();
-        await _resourceFileSystem.Received(1).WriteAllTextAsync(
-            standaloneCel,
-            Arg.Is<string>(text => text.Contains("editor")
-                && text.Contains("celbridge.code-editor.code-document")));
-
-        // The bogus .cel.cel key must never be touched.
-        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(
-            new ResourceKey("design.widget.cel.cel"),
-            Arg.Any<string>());
-    }
-
-    [Test]
-    public async Task SetFieldAsync_PreservesExistingContent_ForStandaloneCelFile()
-    {
-        // A standalone .cel file may already carry meaningful frontmatter (e.g. a
-        // fury-editor design document's [fury] section). Mutating one field must
-        // preserve the rest of the frontmatter so the editor's own data survives.
-        var standaloneCel = new ResourceKey("design.widget.cel");
+        // An existing sidecar may already carry meaningful frontmatter. Mutating
+        // one field must preserve the rest of the frontmatter so user data
+        // survives the round-trip.
+        var celResource = new ResourceKey("design.widget.cel");
         var existingContent = "title = \"My Design\"\nversion = 1\n";
 
-        _resourceFileSystem.GetInfoAsync(standaloneCel)
+        _resourceFileSystem.GetInfoAsync(celResource)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
-        _resourceFileSystem.ReadAllTextAsync(standaloneCel)
+        _resourceFileSystem.ReadAllTextAsync(celResource)
             .Returns(Task.FromResult(Result<string>.Ok(existingContent)));
 
         string? capturedWrite = null;
-        _resourceFileSystem.WriteAllTextAsync(standaloneCel, Arg.Do<string>(text => capturedWrite = text))
+        _resourceFileSystem.WriteAllTextAsync(celResource, Arg.Do<string>(text => capturedWrite = text))
             .Returns(Task.FromResult(Result.Ok()));
 
         var setResult = await _sidecarService.SetFieldAsync(
-            standaloneCel,
+            celResource,
             "editor",
             "celbridge.code-editor.code-document");
 
@@ -305,11 +280,11 @@ public class SidecarServiceTests
     }
 
     [Test]
-    public async Task SetFieldAsync_FailsForStandaloneCelOnNonProjectRoot()
+    public async Task SetFieldAsync_FailsForCelKeyOnNonProjectRoot()
     {
-        // A .cel file under logs: would, without gating, be treated as a
-        // standalone-cel storage key (the same as Design.fury.cel under project:).
-        // The root check must refuse it before the .cel branch.
+        // A .cel file under logs: would, without gating, hit the .cel-as-self
+        // branch. The root check must refuse it before any .cel-specific
+        // dispatch.
         var setResult = await _sidecarService.SetFieldAsync(
             new ResourceKey("logs:scratch.cel"),
             "editor",
@@ -320,24 +295,47 @@ public class SidecarServiceTests
     }
 
     [Test]
-    public async Task SetFieldAsync_CreatesFile_WhenStandaloneCelMissing()
+    public async Task AddTagAsync_RefusesToCreate_WhenParentFileDoesNotExist()
     {
-        // A standalone .cel file that does not exist yet should be created on
-        // SetField. The created file holds the new frontmatter and nothing else.
-        var standaloneCel = new ResourceKey("new.widget.cel");
+        // Orphan-prevention: creating a sidecar when neither the sidecar nor
+        // the parent file exists would materialise an orphan .cel on disk. The
+        // mutator refuses, telling the caller to pass a parent key that maps
+        // to an actual file.
+        var phantomParent = new ResourceKey("sprite");
 
-        _resourceFileSystem.WriteAllTextAsync(standaloneCel, Arg.Any<string>())
-            .Returns(Task.FromResult(Result.Ok()));
+        // Default GetInfoAsync setup returns NotFound for everything.
 
-        var setResult = await _sidecarService.SetFieldAsync(
-            standaloneCel,
-            "editor",
-            "celbridge.code-editor.code-document");
+        var addResult = await _sidecarService.AddTagAsync(phantomParent, "hero");
 
-        setResult.IsSuccess.Should().BeTrue();
-        await _resourceFileSystem.Received(1).WriteAllTextAsync(
-            standaloneCel,
-            Arg.Is<string>(text => text.Contains("editor")));
+        addResult.IsFailure.Should().BeTrue();
+        addResult.FirstErrorMessage.Should().Contain("parent file");
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task SetFieldAsync_RefusesToCreate_WhenParentFileDoesNotExist()
+    {
+        // Same orphan-prevention as AddTagAsync but for SetField.
+        var phantomParent = new ResourceKey("ghost");
+
+        var setResult = await _sidecarService.SetFieldAsync(phantomParent, "editor", "celbridge.code-editor.code-document");
+
+        setResult.IsFailure.Should().BeTrue();
+        setResult.FirstErrorMessage.Should().Contain("parent file");
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task WriteBlockAsync_RefusesToCreate_WhenParentFileDoesNotExist()
+    {
+        // Same orphan-prevention as AddTagAsync but for WriteBlock.
+        var phantomParent = new ResourceKey("ghost");
+
+        var writeResult = await _sidecarService.WriteBlockAsync(phantomParent, "scratch", "body");
+
+        writeResult.IsFailure.Should().BeTrue();
+        writeResult.FirstErrorMessage.Should().Contain("parent file");
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
     [Test]
@@ -345,7 +343,8 @@ public class SidecarServiceTests
     {
         // Removing a field from a non-existent sidecar must not create the
         // sidecar (createIfMissing=false inside RemoveFieldAsync) and must not
-        // write anything.
+        // write anything. The orphan-prevention check never fires because the
+        // create-if-missing path is skipped first.
         var setResult = await _sidecarService.RemoveFieldAsync(new ResourceKey("photo.png"), "editor");
 
         setResult.IsSuccess.Should().BeTrue();

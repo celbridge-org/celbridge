@@ -209,6 +209,28 @@ public class PackageRegistry
         return null;
     }
 
+    // Rejects packages whose document-type registration declares any file
+    // extension inside the reserved .cel sidecar namespace. The check runs
+    // after the manifest parses cleanly so the failure reason names the
+    // offending extension rather than a generic parse error.
+    private Result CheckReservedExtensions(Package package)
+    {
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
+        foreach (var documentEditor in package.DocumentEditors)
+        {
+            foreach (var fileType in documentEditor.FileTypes)
+            {
+                if (sidecarService.IsSidecarFileName(fileType.FileExtension))
+                {
+                    return Result.Fail(
+                        $"Package '{package.Info.Id}' declares document-file-type extension '{fileType.FileExtension}'. "
+                        + $"The .cel namespace is reserved for project metadata sidecars.");
+                }
+            }
+        }
+        return Result.Ok();
+    }
+
     // Selects the file-read primitive that matches a package's discovery origin.
     // Project packages are read through the gateway; bundled packages stay on
     // direct File.* IO. The project reader is constructed on demand because the
@@ -270,6 +292,20 @@ public class PackageRegistry
             }
 
             var package = loadResult.Value;
+
+            var reservedExtensionCheck = CheckReservedExtensions(package);
+            if (reservedExtensionCheck.IsFailure)
+            {
+                _logger.LogError(reservedExtensionCheck, $"Bundled package uses reserved extension: {manifestPath}");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = descriptor.Folder,
+                    PackageId = package.Info.Id,
+                    Reason = PackageLoadFailureReason.ReservedExtension
+                });
+                continue;
+            }
+
             candidates.Add(package);
         }
 
@@ -374,6 +410,19 @@ public class PackageRegistry
             }
 
             var package = loadResult.Value;
+
+            var reservedExtensionCheck = CheckReservedExtensions(package);
+            if (reservedExtensionCheck.IsFailure)
+            {
+                _logger.LogWarning(reservedExtensionCheck, $"Skipping project package using reserved extension: {manifestPath}");
+                failures.Add(new PackageLoadFailure
+                {
+                    Folder = packageFolder,
+                    PackageId = package.Info.Id,
+                    Reason = PackageLoadFailureReason.ReservedExtension
+                });
+                continue;
+            }
 
             // The "celbridge." id namespace is reserved for first-party packages
             // shipped inside Celbridge module DLLs. Project packages that try to

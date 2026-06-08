@@ -14,7 +14,7 @@ public class WebViewDocumentViewModelTests
 {
     private ICommandService _commandService = null!;
     private IWebViewService _webViewService = null!;
-    private ISidecarService _sidecarService = null!;
+    private IResourceFileSystem _resourceFileSystem = null!;
     private IWorkspaceWrapper _workspaceWrapper = null!;
 
     [SetUp]
@@ -23,9 +23,14 @@ public class WebViewDocumentViewModelTests
         _commandService = Substitute.For<ICommandService>();
         var featureFlags = Substitute.For<IFeatureFlags>();
 
-        _sidecarService = Substitute.For<ISidecarService>();
+        _resourceFileSystem = Substitute.For<IResourceFileSystem>();
+        // Default: file exists on disk so reads are attempted. Per-test stubs
+        // override individual behaviours.
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+
         var workspaceService = Substitute.For<IWorkspaceService>();
-        workspaceService.ResourceService.Sidecars.Returns(_sidecarService);
+        workspaceService.ResourceService.FileSystem.Returns(_resourceFileSystem);
 
         _workspaceWrapper = Substitute.For<IWorkspaceWrapper>();
         _workspaceWrapper.WorkspaceService.Returns(workspaceService);
@@ -36,10 +41,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_AcceptsExternalHttpUrl()
     {
-        StubSidecarFrontmatter(new Dictionary<string, object>
-        {
-            ["source_url"] = "http://example.com",
-        });
+        StubWebViewFile("{\"sourceUrl\": \"http://example.com\"}");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -51,10 +53,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_AcceptsExternalHttpsUrl()
     {
-        StubSidecarFrontmatter(new Dictionary<string, object>
-        {
-            ["source_url"] = "https://example.com/path?q=1",
-        });
+        StubWebViewFile("{\"sourceUrl\": \"https://example.com/path?q=1\"}");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -66,10 +65,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_FailsOnLocalAbsoluteUrl()
     {
-        StubSidecarFrontmatter(new Dictionary<string, object>
-        {
-            ["source_url"] = "local://Sites/index.html",
-        });
+        StubWebViewFile("{\"sourceUrl\": \"local://Sites/index.html\"}");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -80,10 +76,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task LoadContent_FailsOnLocalPathUrl()
     {
-        StubSidecarFrontmatter(new Dictionary<string, object>
-        {
-            ["source_url"] = "../index.html",
-        });
+        StubWebViewFile("{\"sourceUrl\": \"../index.html\"}");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -92,14 +85,11 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
-    public async Task LoadContent_FailsOnBrokenSidecar()
+    public async Task LoadContent_FailsOnInvalidJson()
     {
-        // A malformed .webview.cel should surface as a parse failure, not silently
-        // open with an empty source_url. SidecarReadOutcome.Broken is the channel
-        // SidecarService uses to report this.
-        _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
-                new SidecarReadResult(SidecarReadOutcome.Broken, null, "bad TOML"))));
+        // A malformed .webview file should surface as a parse failure, not silently
+        // open with an empty sourceUrl.
+        StubWebViewFile("{ not valid json ");
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -109,13 +99,26 @@ public class WebViewDocumentViewModelTests
     }
 
     [Test]
-    public async Task LoadContent_TreatsMissingSidecarAsBlankUrl()
+    public async Task LoadContent_TreatsMissingFileAsBlankUrl()
     {
         // No file on disk: open with no URL configured rather than failing. The
         // inspector lets the user type a URL in afterward.
-        _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
-                new SidecarReadResult(SidecarReadOutcome.NoSidecar, null, null))));
+        _resourceFileSystem.GetInfoAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.NotFound, 0, default, FileSystemAttributes.None))));
+
+        var viewModel = CreateViewModel();
+        var result = await viewModel.LoadContent();
+
+        result.IsSuccess.Should().BeTrue();
+        viewModel.SourceUrl.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task LoadContent_TreatsEmptyFileAsBlankUrl()
+    {
+        // A blank file (e.g. just created via the Add File dialog) should load
+        // cleanly with no URL configured.
+        StubWebViewFile(string.Empty);
 
         var viewModel = CreateViewModel();
         var result = await viewModel.LoadContent();
@@ -128,7 +131,8 @@ public class WebViewDocumentViewModelTests
     public async Task LoadContent_HtmlViewer_IgnoresFileContents_AndSucceeds()
     {
         // The HtmlViewer role serves the HTML file directly via the project virtual
-        // host without consulting any .webview.cel; SidecarService is never called.
+        // host without consulting any .webview file; the resource file system is
+        // never called for this role.
         var viewModel = new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper)
         {
             FilePath = "ignored.html",
@@ -139,7 +143,7 @@ public class WebViewDocumentViewModelTests
         var result = await viewModel.LoadContent();
 
         result.IsSuccess.Should().BeTrue();
-        await _sidecarService.DidNotReceive().ReadAsync(Arg.Any<ResourceKey>());
+        await _resourceFileSystem.DidNotReceive().ReadAllTextAsync(Arg.Any<ResourceKey>());
     }
 
     [Test]
@@ -157,10 +161,7 @@ public class WebViewDocumentViewModelTests
     [Test]
     public async Task NavigateUrl_ExternalUrl_ReturnsSourceUrl()
     {
-        StubSidecarFrontmatter(new Dictionary<string, object>
-        {
-            ["source_url"] = "https://example.com/x",
-        });
+        StubWebViewFile("{\"sourceUrl\": \"https://example.com/x\"}");
 
         var viewModel = CreateViewModel();
         await viewModel.LoadContent();
@@ -168,19 +169,17 @@ public class WebViewDocumentViewModelTests
         viewModel.NavigateUrl.Should().Be("https://example.com/x");
     }
 
-    private void StubSidecarFrontmatter(IReadOnlyDictionary<string, object> frontmatter)
+    private void StubWebViewFile(string jsonContent)
     {
-        var content = new SidecarContent(frontmatter, Array.Empty<SidecarBlock>());
-        _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
-            .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
-                new SidecarReadResult(SidecarReadOutcome.Healthy, content, null))));
+        _resourceFileSystem.ReadAllTextAsync(Arg.Any<ResourceKey>())
+            .Returns(Task.FromResult(Result<string>.Ok(jsonContent)));
     }
 
     private WebViewDocumentViewModel CreateViewModel()
     {
         return new WebViewDocumentViewModel(_commandService, _webViewService, _workspaceWrapper)
         {
-            FileResource = new ResourceKey("test.webview.cel"),
+            FileResource = new ResourceKey("test.webview"),
         };
     }
 }

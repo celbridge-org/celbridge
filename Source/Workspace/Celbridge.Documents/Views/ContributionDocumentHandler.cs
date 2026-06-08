@@ -1,7 +1,6 @@
 using Celbridge.Documents.ViewModels;
 using Celbridge.Host;
 using Celbridge.Logging;
-using Celbridge.Resources;
 
 namespace Celbridge.Documents.Views;
 

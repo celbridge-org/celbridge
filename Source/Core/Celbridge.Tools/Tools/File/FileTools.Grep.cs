@@ -80,7 +80,8 @@ public partial class FileTools
             useRegex,
             include,
             exclude,
-            resource);
+            resource,
+            includeMetadataFiles: true);
 
         var truncated = results.ReachedMaxResults || results.WasCancelled;
 

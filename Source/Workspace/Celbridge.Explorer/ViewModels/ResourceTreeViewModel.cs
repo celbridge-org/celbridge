@@ -211,8 +211,14 @@ public partial class ResourceTreeViewModel : ObservableObject
                         indentLevel + 1);
                 }
             }
-            else if (resource is IFileResource)
+            else if (resource is IFileResource fileResource)
             {
+                // .cel files are project metadata sidecars; never shown in the tree.
+                if (fileResource.FileKind is FileKind.Sidecar or FileKind.Orphan or FileKind.InvalidSidecar)
+                {
+                    continue;
+                }
+
                 var item = new ResourceViewItem(resource, indentLevel, false, false, readOnlyMessage: readOnlyMessage);
                 items.Add(item);
             }

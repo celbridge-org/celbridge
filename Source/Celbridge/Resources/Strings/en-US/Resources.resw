@@ -136,7 +136,7 @@
     <value>Inspector</value>
   </data>
   <data name="LoadProjectFailedAlert_Message" xml:space="preserve">
-    <value>Failed to load project file '{0}'. See log for details.</value>
+    <value>Failed to load project file '{0}'. See the project load report for details.</value>
   </data>
   <data name="LoadProjectFailedAlert_Title" xml:space="preserve">
     <value>Failed to Load Project</value>
@@ -323,6 +323,9 @@
   </data>
   <data name="Validation_NameContainsInvalidCharacters" xml:space="preserve">
     <value>Name contains invalid characters: {0}</value>
+  </data>
+  <data name="Validation_CelExtensionReserved" xml:space="preserve">
+    <value>The .cel extension is reserved.</value>
   </data>
   <data name="ResourceTree_Copy" xml:space="preserve">
     <value>Copy</value>
@@ -810,13 +813,13 @@ Do you wish to continue?</value>
     <value>Project Upgrade Failed</value>
   </data>
   <data name="ProjectUpgradeFailedAlert_Message" xml:space="preserve">
-    <value>Failed to upgrade project "{0}". Please edit the project settings file to fix the issue and then reload the project.</value>
+    <value>Failed to upgrade project "{0}". See the project load report for details.</value>
   </data>
   <data name="ProjectConfigErrorAlert_Title" xml:space="preserve">
     <value>Project Configuration Error</value>
   </data>
   <data name="ProjectConfigErrorAlert_Message" xml:space="preserve">
-    <value>The project "{0}" has a configuration error. Please edit the project settings file to fix the issue and then reload the project.</value>
+    <value>The project "{0}" has a configuration error. See the project load report for details.</value>
   </data>
   <data name="DialogButton_Add" xml:space="preserve">
     <value>Add</value>
@@ -1017,6 +1020,9 @@ Do you wish to continue?</value>
   </data>
   <data name="Explorer_OpenWith" xml:space="preserve">
     <value>Open with...</value>
+  </data>
+  <data name="Explorer_OpenCel" xml:space="preserve">
+    <value>Open metadata file</value>
   </data>
   <data name="OpenWithDialog_Title" xml:space="preserve">
     <value>Choose Editor</value>

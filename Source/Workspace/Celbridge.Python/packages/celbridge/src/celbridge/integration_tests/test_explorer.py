@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from celbridge.cel_proxy import CelError
@@ -153,3 +155,59 @@ class TestExplorer:
         items = file.list_contents("TestExplorer/a/b/c")
         names = [i["name"] for i in items]
         assert "deep.txt" in names
+
+    def test_create_file_with_cel_extension_rejected(self, explorer):
+        # The .cel extension is reserved for project metadata sidecars; agents
+        # cannot create files in that namespace directly.
+        with pytest.raises(CelError, match="(?i)\\.cel extension is reserved"):
+            explorer.create_file("TestExplorer/reserved.cel")
+
+    def test_copy_to_cel_destination_rejected(self, explorer):
+        # The same reservation applies to copy destinations.
+        explorer.create_file("TestExplorer/source.txt")
+        with pytest.raises(CelError, match="(?i)\\.cel extension is reserved"):
+            explorer.copy("TestExplorer/source.txt", "TestExplorer/reserved.cel")
+
+    def test_move_to_cel_destination_rejected(self, explorer):
+        # Same gate covers non-interactive renames, which route through the
+        # copy command in move mode.
+        explorer.create_file("TestExplorer/source.txt")
+        with pytest.raises(CelError, match="(?i)\\.cel extension is reserved"):
+            explorer.move("TestExplorer/source.txt", "TestExplorer/reserved.cel")
+
+    def test_copy_cel_source_reported_as_partial_failure(self, explorer, file, data):
+        # A .cel sidecar must never be copied on its own; it would orphan or
+        # duplicate the sidecar. The batch runs to completion and reports the
+        # .cel source per-resource (partial_failure), so it does not raise; the
+        # sidecar stays put and nothing lands at the destination.
+        explorer.create_file("TestExplorer/notes.md")
+        data.set_field("TestExplorer/notes.md", "priority", json.dumps("high"))
+
+        result = explorer.copy(
+            "TestExplorer/notes.md.cel",
+            "TestExplorer/copy_target.txt",
+        )
+
+        assert result["status"] == "partial_failure"
+        messages = " ".join(entry["message"] for entry in result["failedResources"])
+        assert "reserved" in messages.lower()
+        names = [i["name"] for i in file.list_contents("TestExplorer")]
+        assert "copy_target.txt" not in names
+        # The sidecar remains paired with its parent.
+        assert file.get_info("TestExplorer/notes.md.cel")["type"] == "file"
+
+    def test_move_cel_source_reported_as_partial_failure(self, explorer, file, data):
+        # The same per-resource refusal applies to a move (rename) of a lone
+        # sidecar key; the sidecar is not relocated.
+        explorer.create_file("TestExplorer/notes.md")
+        data.set_field("TestExplorer/notes.md", "priority", json.dumps("high"))
+
+        result = explorer.move(
+            "TestExplorer/notes.md.cel",
+            "TestExplorer/moved_sidecar.txt",
+        )
+
+        assert result["status"] == "partial_failure"
+        names = [i["name"] for i in file.list_contents("TestExplorer")]
+        assert "moved_sidecar.txt" not in names
+        assert file.get_info("TestExplorer/notes.md.cel")["type"] == "file"

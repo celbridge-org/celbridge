@@ -1,21 +1,15 @@
-using Celbridge.Documents;
 using Celbridge.Logging;
 using Celbridge.Resources.Helpers;
-using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Services;
 
 public sealed class ResourceClassifier : IResourceClassifier
 {
     private readonly ILogger<ResourceClassifier> _logger;
-    private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public ResourceClassifier(
-        ILogger<ResourceClassifier> logger,
-        IWorkspaceWrapper workspaceWrapper)
+    public ResourceClassifier(ILogger<ResourceClassifier> logger)
     {
         _logger = logger;
-        _workspaceWrapper = workspaceWrapper;
     }
 
     public SidecarReport ClassifyResources(IFolderResource projectRoot, IRootHandlerRegistry rootHandlerRegistry)
@@ -23,8 +17,6 @@ public sealed class ResourceClassifier : IResourceClassifier
         var healthy = new List<ResourceKey>();
         var broken = new List<ResourceKey>();
         var orphan = new List<ResourceKey>();
-
-        var editorRegistry = ResolveEditorRegistry();
 
         ProcessFolder(projectRoot);
 
@@ -137,19 +129,12 @@ public sealed class ResourceClassifier : IResourceClassifier
             }
             else
             {
-                // No parent: either a registered standalone .cel form
-                // (e.g. foo.webview.cel, foo.note.cel) or a true orphan.
-                // Standalone forms are matched via the editor registry and
-                // must not appear in the orphan list.
-                if (IsRegisteredStandaloneCelForm(sidecarKey, editorRegistry))
-                {
-                    sidecarFile.FileKind = FileKind.Standalone;
-                }
-                else
-                {
-                    sidecarFile.FileKind = FileKind.Orphan;
-                    orphan.Add(sidecarKey);
-                }
+                // No parent on disk. The .cel is an orphan — surface it through
+                // the orphan list so the project-check reporter can prompt the
+                // user to clean it up. The .cel extension is reserved for
+                // sidecars; document-type registrations cannot claim it.
+                sidecarFile.FileKind = FileKind.Orphan;
+                orphan.Add(sidecarKey);
             }
 
             if (status == CelFileStatus.Healthy)
@@ -160,69 +145,6 @@ public sealed class ResourceClassifier : IResourceClassifier
             {
                 broken.Add(sidecarKey);
             }
-        }
-    }
-
-    private IDocumentEditorRegistry ResolveEditorRegistry()
-    {
-        // WorkspaceService is populated before the page UI loads, so this is safe
-        // during workspace load. The property throws if no service is present.
-        return _workspaceWrapper.WorkspaceService.DocumentsService.DocumentEditorRegistry;
-    }
-
-    // Checks whether a parentless .cel file is claimed by a registered factory
-    // in a way that denotes a standalone form. The match shape that counts
-    // here is a multi-part extension suffix that includes a segment in front
-    // of ".cel" (e.g. ".webview.cel", ".note.cel"). The bare ".cel" extension
-    // is excluded: it also serves the generic code-editor syntax-highlighting
-    // registration, which says nothing about pairing semantics. Without that
-    // exclusion every parentless ".cel" would silently disappear from the
-    // orphan report.
-    private static bool IsRegisteredStandaloneCelForm(
-        ResourceKey sidecarKey,
-        IDocumentEditorRegistry editorRegistry)
-    {
-        var fileName = sidecarKey.ResourceName;
-
-        foreach (var suffix in EnumerateExtensionSuffixes(fileName))
-        {
-            if (string.Equals(suffix, ".cel", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (editorRegistry.IsExtensionSupported(suffix))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    // Yields each extension suffix of a filename from longest to shortest.
-    // Mirrors the walk in DocumentEditorRegistry so the pairing check sees the
-    // same suffix set as the editor open path. A leading dot is skipped so a
-    // dotfile is not treated as one giant extension.
-    private static IEnumerable<string> EnumerateExtensionSuffixes(string fileName)
-    {
-        int searchFrom = 0;
-        if (fileName.Length > 0
-            && fileName[0] == '.')
-        {
-            searchFrom = 1;
-        }
-
-        while (searchFrom < fileName.Length)
-        {
-            int dotIndex = fileName.IndexOf('.', searchFrom);
-            if (dotIndex < 0)
-            {
-                yield break;
-            }
-
-            yield return fileName.Substring(dotIndex);
-            searchFrom = dotIndex + 1;
         }
     }
 }

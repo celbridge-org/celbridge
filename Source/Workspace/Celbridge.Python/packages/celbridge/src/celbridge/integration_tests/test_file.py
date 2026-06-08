@@ -1,4 +1,5 @@
 import base64
+import json
 
 import pytest
 
@@ -206,6 +207,21 @@ class TestFile:
     def test_grep_whole_word(self, file):
         result = file.grep("Hello", whole_word=True)
         assert result["totalMatches"] >= 1
+
+    def test_grep_matches_cel_sidecar_content(self, file, data):
+        # file.grep includes .cel sidecar contents so agents can locate
+        # metadata text. The user-facing Search panel excludes them.
+        data.set_field(
+            "TestFile/hello.txt",
+            "summary",
+            json.dumps("UNIQUE_CEL_TOKEN_xyz"),
+        )
+        result = file.grep("UNIQUE_CEL_TOKEN_xyz")
+        sidecar_hit = next(
+            (f for f in result["files"] if f["resource"].endswith(".cel")),
+            None,
+        )
+        assert sidecar_hit is not None
 
     def test_read_offset_beyond_file(self, file):
         result = file.read("TestFile/hello.txt", offset=9999)

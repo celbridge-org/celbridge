@@ -1,6 +1,3 @@
-using Celbridge.Resources;
-using Microsoft.Extensions.Localization;
-
 namespace Celbridge.UserInterface.Helpers;
 
 /// <summary>

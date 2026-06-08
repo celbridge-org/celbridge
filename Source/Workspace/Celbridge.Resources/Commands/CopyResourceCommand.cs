@@ -2,6 +2,7 @@ using Celbridge.Commands;
 using Celbridge.DataTransfer;
 using Celbridge.Explorer;
 using Celbridge.Logging;
+using Celbridge.Resources.Helpers;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
@@ -62,6 +63,19 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
         if (SourceResources.Count == 0)
         {
             return Result.Ok();
+        }
+
+        // The .cel extension is reserved for project metadata sidecars. A
+        // user-supplied destination that ends in .cel (e.g. a rename typed
+        // through the dialog or a scripted move target) is refused here.
+        // SidecarCascade handles the legitimate parent.cel rename internally
+        // when the parent is moved, so this guard never blocks the cascade.
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
+        if (sidecarService.IsSidecarFileName(DestResource.ResourceName))
+        {
+            return Result.Fail(
+                $"Cannot {TransferMode.ToString().ToLowerInvariant()} to '{DestResource}': "
+                + "the .cel extension is reserved for project metadata sidecars.");
         }
 
         // Filter out resources whose parent folders are also selected.
@@ -161,6 +175,21 @@ public class CopyResourceCommand : CommandBase, ICopyResourceCommand
 
     private async Task<CopyResourceOutcome> CopySingleResourceAsync(ResourceKey sourceResource)
     {
+        // A sidecar must never be transferred on its own. The top-of-batch guard
+        // only covers a user-supplied .cel destination; this catches a .cel
+        // source resolved under a folder destination. Refused per-source so the
+        // rest of the batch still runs.
+        var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
+        var sidecarDenial = SidecarTransferGuard.DenySidecarSource(sidecarService, sourceResource, TransferMode);
+        if (sidecarDenial is not null)
+        {
+            return new CopyResourceOutcome(
+                sidecarDenial,
+                ParentFolder: null,
+                CopiedFolder: null,
+                MoveDetail: null);
+        }
+
         // Resolve destination to handle folder drops
         var resolvedDestResource = ResourceTransferService.ResolveDestinationResource(sourceResource, DestResource);
 

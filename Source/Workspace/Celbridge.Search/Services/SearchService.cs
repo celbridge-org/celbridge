@@ -50,7 +50,7 @@ public class SearchService : ISearchService, IDisposable
     // Decides whether a file should be included in a search. Probes the file
     // through the gateway so the size check honours the same containment
     // validation as the read that follows. Internal for the test suite.
-    internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath)
+    internal async Task<bool> ShouldSearchFileAsync(ResourceKey resource, string filePath, bool includeMetadataFiles = false)
     {
         var infoResult = await ResourceFileSystem.GetInfoAsync(resource);
         if (infoResult.IsFailure
@@ -65,8 +65,13 @@ public class SearchService : ISearchService, IDisposable
         }
 
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        if (ExcludedMetadataExtensions.Contains(extension)
-            || _textBinarySniffer.IsBinaryExtension(extension))
+        if (_textBinarySniffer.IsBinaryExtension(extension))
+        {
+            return false;
+        }
+
+        if (!includeMetadataFiles
+            && ExcludedMetadataExtensions.Contains(extension))
         {
             return false;
         }
@@ -89,7 +94,8 @@ public class SearchService : ISearchService, IDisposable
         bool useRegex = false,
         string include = "",
         string exclude = "",
-        string scope = "")
+        string scope = "",
+        bool includeMetadataFiles = false)
     {
         var fileResults = new List<SearchFileResult>();
 
@@ -202,7 +208,8 @@ public class SearchService : ISearchService, IDisposable
                     wholeWord,
                     remainingMatches,
                     cancellationToken,
-                    searchRegex);
+                    searchRegex,
+                    includeMetadataFiles);
 
                 if (fileResult != null && fileResult.Matches.Count > 0)
                 {
@@ -232,12 +239,13 @@ public class SearchService : ISearchService, IDisposable
         bool wholeWord,
         int maxMatches,
         CancellationToken cancellationToken,
-        Regex? searchRegex = null)
+        Regex? searchRegex = null,
+        bool includeMetadataFiles = false)
     {
         try
         {
             // Check if file should be searched (size, extension filters)
-            if (!await ShouldSearchFileAsync(resourceKey, filePath))
+            if (!await ShouldSearchFileAsync(resourceKey, filePath, includeMetadataFiles))
             {
                 return null;
             }

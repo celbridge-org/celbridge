@@ -11,7 +11,7 @@ import pytest
 import celbridge
 from celbridge.cel_proxy import CelError
 
-from .helpers import delete_if_exists
+from .helpers import delete_if_exists, write_cel_file_directly
 
 
 def assert_project_clean(extra_broken_references=None, extra_orphan_cel_files=None):
@@ -203,19 +203,26 @@ class TestDataCheckProject:
         assert len(broken) == 1
         assert broken[0]["source"] == "project:TestData/source.json"
 
-    def test_orphan_cel_file_detected_when_parent_missing(self, data, file):
+    def test_orphan_cel_file_detected_when_parent_missing(self, data, app):
         # Write a sidecar whose parent does not exist on disk. The pairing
-        # pass classifies it as an orphan.
-        file.write(
+        # pass classifies it as an orphan. Direct filesystem write bypasses
+        # the file.* tools' .cel denial.
+        write_cel_file_directly(
+            app,
             "TestData/orphaned.png.cel",
             "tags = [\"orphan\"]\n",
         )
         report = data.check_project()
         assert "project:TestData/orphaned.png.cel" in report.get("orphanCelFiles", [])
 
-    def test_broken_cel_file_detected_when_frontmatter_unparseable(self, data, file):
-        # Write a sidecar whose frontmatter is malformed TOML.
-        file.write("TestData/notes.md.cel", "this is not = valid // toml")
+    def test_broken_cel_file_detected_when_frontmatter_unparseable(self, data, app):
+        # Write a sidecar whose frontmatter is malformed TOML. Direct
+        # filesystem write bypasses the file.* tools' .cel denial.
+        write_cel_file_directly(
+            app,
+            "TestData/notes.md.cel",
+            "this is not = valid // toml",
+        )
         report = data.check_project()
         assert "project:TestData/notes.md.cel" in report.get("brokenCelFiles", [])
 

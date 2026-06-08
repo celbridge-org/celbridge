@@ -71,5 +71,6 @@ public static class ServiceConfiguration
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenFileExplorerMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenApplicationMenuOption>();
         services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenWithMenuOption>();
+        services.AddSingleton<IMenuOption<ExplorerMenuContext>, OpenCelMenuOption>();
     }
 }

@@ -3,7 +3,6 @@ using Celbridge.Messaging.Services;
 using Celbridge.Resources;
 using Celbridge.Resources.Commands;
 using Celbridge.Resources.Services;
-using Celbridge.Resources.Services.Roots;
 using Celbridge.Tests.FileSystem;
 using Celbridge.UserInterface.Services;
 using Celbridge.Workspace;
@@ -19,7 +18,6 @@ namespace Celbridge.Tests.Resources;
 public class DataCheckProjectTests
 {
     private string _projectFolderPath = null!;
-    private string _logsBackingFolder = null!;
     private ResourceRegistry _resourceRegistry = null!;
     private RootHandlerRegistry _rootHandlerRegistry = null!;
     private IMessengerService _messengerService = null!;
@@ -36,13 +34,6 @@ public class DataCheckProjectTests
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_projectFolderPath);
 
-        _logsBackingFolder = Path.Combine(
-            Path.GetTempPath(),
-            "Celbridge",
-            nameof(DataCheckProjectTests) + "_logs",
-            Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_logsBackingFolder);
-
         _messengerService = new MessengerService();
         var fileIconService = new FileIconService();
         _rootHandlerRegistry = new RootHandlerRegistry();
@@ -50,15 +41,10 @@ public class DataCheckProjectTests
             Substitute.For<ILogger<ResourceRegistry>>(),
             _messengerService,
             ProjectTreeBuilderTestHelper.Build(_projectFolderPath, fileIconService),
-            ResourceClassifierTestHelper.BuildClassifierWithNoFactories(),
+            ResourceClassifierTestHelper.BuildClassifier(),
             _rootHandlerRegistry,
             TestFileSystem.CreateLocal());
         _resourceRegistry.InitializeProjectRoot(_projectFolderPath);
-
-        // ProjectCheckCommand writes its latest report to logs:project-check.log,
-        // so the gateway needs a logs: root or the write step fails.
-        _rootHandlerRegistry.RegisterRootHandler(
-            new LogsRootHandler(_logsBackingFolder));
 
         var resourceService = Substitute.For<IResourceService>();
         resourceService.Registry.Returns(_resourceRegistry);
@@ -84,9 +70,7 @@ public class DataCheckProjectTests
             _workspaceWrapper);
         resourceService.Scanner.Returns(scanner);
 
-        _command = new ProjectCheckCommand(
-            Substitute.For<ILogger<ProjectCheckCommand>>(),
-            _workspaceWrapper);
+        _command = new ProjectCheckCommand(_workspaceWrapper);
     }
 
     [TearDown]
@@ -97,17 +81,6 @@ public class DataCheckProjectTests
             try
             {
                 Directory.Delete(_projectFolderPath, true);
-            }
-            catch
-            {
-                // Best effort
-            }
-        }
-        if (Directory.Exists(_logsBackingFolder))
-        {
-            try
-            {
-                Directory.Delete(_logsBackingFolder, true);
             }
             catch
             {
@@ -264,47 +237,4 @@ public class DataCheckProjectTests
         keys[2].Item2.Should().Be("project:b.json");
     }
 
-    [Test]
-    public async Task ReportFile_IsWrittenToLogsRoot_WithFindings()
-    {
-        // The report file is the durable artifact the UI will eventually link
-        // to from the project-check warning banner; the command rewrites it on
-        // every run.
-        File.WriteAllText(Path.Combine(_projectFolderPath, "source.json"),
-            "{ \"target\": \"project:missing.json\" }");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "tags = [\"orphaned\"]\n");
-
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
-
-        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
-
-        var reportPath = Path.Combine(_logsBackingFolder, "project-check.log");
-        File.Exists(reportPath).Should().BeTrue();
-
-        var reportText = File.ReadAllText(reportPath);
-        reportText.Should().Contain("Project consistency check");
-        reportText.Should().Contain("Broken references (1):");
-        reportText.Should().Contain("project:source.json");
-        reportText.Should().Contain("project:missing.json");
-        reportText.Should().Contain("Orphan .cel files (1):");
-        reportText.Should().Contain("project:foo.png.cel");
-    }
-
-    [Test]
-    public async Task ReportFile_IsWrittenToLogsRoot_NoFindings()
-    {
-        // Clean projects still produce a file so the eventual "open report"
-        // button is never broken.
-        (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
-
-        (await _command.ExecuteAsync()).IsSuccess.Should().BeTrue();
-
-        var reportPath = Path.Combine(_logsBackingFolder, "project-check.log");
-        File.Exists(reportPath).Should().BeTrue();
-
-        var reportText = File.ReadAllText(reportPath);
-        reportText.Should().Contain("Project consistency check");
-        reportText.Should().Contain("No findings.");
-    }
 }

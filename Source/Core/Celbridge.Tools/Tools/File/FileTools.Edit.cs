@@ -39,6 +39,12 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
+        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_edit");
+        if (celDenial is not null)
+        {
+            return celDenial;
+        }
+
         var editResult = await ExecuteCommandAsync<IEditFileCommand, EditFileResult>(command =>
         {
             command.FileResource = fileResourceKey;

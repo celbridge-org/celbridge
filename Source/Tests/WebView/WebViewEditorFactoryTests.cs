@@ -17,19 +17,22 @@ public class WebViewEditorFactoryTests
     }
 
     [Test]
-    public void SupportedExtensions_IncludesDotWebviewCel()
+    public void SupportedExtensions_IncludesDotWebview()
     {
-        _factory.SupportedExtensions.Should().Contain(".webview.cel");
+        _factory.SupportedExtensions.Should().Contain(".webview");
     }
 
     [Test]
-    public void SupportedExtensions_DoesNotIncludeLegacyDotWebview()
+    public void SupportedExtensions_DoesNotIncludeDotWebviewCel()
     {
-        _factory.SupportedExtensions.Should().NotContain(".webview");
+        // .cel is reserved for project metadata sidecars; the .webview
+        // editor binds to the plain .webview extension and stores its data
+        // directly in the .webview file as JSON.
+        _factory.SupportedExtensions.Should().NotContain(".webview.cel");
     }
 
     [Test]
-    public void SupportedExtensions_DoesNotIncludeDotWebapp()
+    public void SupportedExtensions_DoesNotIncludeLegacyDotWebapp()
     {
         _factory.SupportedExtensions.Should().NotContain(".webapp");
     }

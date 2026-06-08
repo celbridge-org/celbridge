@@ -29,6 +29,12 @@ public enum PackageLoadFailureReason
     /// bundled, project vs bundled, and project vs project conflicts.
     /// </summary>
     DuplicateId,
+
+    /// <summary>
+    /// A package's document-type registration declares a file extension that
+    /// lies in the reserved .cel sidecar namespace.
+    /// </summary>
+    ReservedExtension,
 }
 
 /// <summary>

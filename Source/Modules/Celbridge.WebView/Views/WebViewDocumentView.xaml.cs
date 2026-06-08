@@ -18,10 +18,11 @@ using Microsoft.Web.WebView2.Core;
 namespace Celbridge.WebView.Views;
 
 /// <summary>
-/// Hosts an arbitrary user URL from a .webview document, or a project-served HTML
-/// page from a .html / .htm document. The role is selected per-instance via Options
-/// before LoadContent runs; the two paths share a single WebView2 lifecycle and
-/// differ only in URL source and navigation policy.
+/// Hosts an arbitrary user URL from a .webview document (JSON storage), or a
+/// project-served HTML page from a .html / .htm document. The role is selected
+/// per-instance via Options before LoadContent runs; the two paths share a
+/// single WebView2 lifecycle and differ only in URL source and navigation
+/// policy.
 /// </summary>
 public sealed partial class WebViewDocumentView : DocumentView, IHostInput
 {

@@ -109,6 +109,11 @@ Whichever edit fails, no part of the batch is written. The file on disk is uncha
 - One surgical edit? Use `file_edit` — same shape without the array wrapping.
 - Regex or a line-range scope? Use `file_replace`.
 - Whole-file rewrite? Use `file_write`.
+- Editing a `.cel` sidecar? Don't — use the `data_*` tools instead (see below).
+
+## Not for `.cel` files
+
+`.cel` files are project metadata sidecars with a structured TOML and block-fence format. A text-level batch edit could corrupt the frontmatter or the fence syntax — and a bulk-rename batch that sweeps across many files is the most dangerous case because the damage scales with the match count. `file_multi_edit` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_write_block`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
 
 ## Gotchas
 

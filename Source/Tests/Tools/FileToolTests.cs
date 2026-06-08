@@ -55,6 +55,10 @@ public class FileToolTests
             TestFileSystem.CreateLocal());
         resourceService.FileSystem.Returns(resourceFileSystem);
 
+        // SidecarService is a pure-string predicate over the resource key; the
+        // real implementation is fine in tests.
+        resourceService.Sidecars.Returns(new SidecarService(workspaceWrapper));
+
         _services.GetRequiredService<IWorkspaceWrapper>().Returns(workspaceWrapper);
     }
 
@@ -645,6 +649,174 @@ public class FileToolTests
         result.IsError.Should().BeTrue();
         var text = result.Content.OfType<TextContentBlock>().Single().Text;
         text.Should().Contain("project:Scripts/missing.py");
+    }
+
+    [Test]
+    public async Task Write_DeniesCelTarget_AndDoesNotDispatchCommand()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IWriteFileCommand>(
+                Arg.Any<Action<IWriteFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new FileTools(_services);
+        var result = await tools.Write("notes/photo.png.cel", "hello");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("file_write");
+        text.Should().Contain("notes/photo.png.cel");
+        text.Should().Contain("data_*");
+        dispatched.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task WriteBinary_DeniesCelTarget_AndDoesNotDispatchCommand()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IWriteBinaryFileCommand>(
+                Arg.Any<Action<IWriteBinaryFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new FileTools(_services);
+        var result = await tools.WriteBinary("notes/photo.png.cel", "aGVsbG8=");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("file_write_binary");
+        dispatched.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Edit_DeniesCelTarget_AndDoesNotDispatchCommand()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IEditFileCommand, EditFileResult>(
+                Arg.Any<Action<IEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result<EditFileResult>.Ok(new EditFileResult(0, new List<FileEditAffectedRange>(), false)));
+            });
+
+        var tools = new FileTools(_services);
+        var result = await tools.Edit("notes/photo.png.cel", "old", "new");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("file_edit");
+        dispatched.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task MultiEdit_DeniesCelTarget_AndDoesNotDispatchCommand()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IMultiEditFileCommand, MultiEditFileResult>(
+                Arg.Any<Action<IMultiEditFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result<MultiEditFileResult>.Ok(
+                    new MultiEditFileResult(0, new List<MultiEditFileEditSummary>(), new List<MultiEditFileAffectedRange>())));
+            });
+
+        var tools = new FileTools(_services);
+        var editsJson = "[{\"oldString\":\"a\",\"newString\":\"b\"}]";
+        var result = await tools.MultiEdit("notes/photo.png.cel", editsJson);
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("file_multi_edit");
+        dispatched.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Replace_DeniesCelTarget_AndDoesNotDispatchCommand()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IReplaceFileCommand, ReplaceFileResult>(
+                Arg.Any<Action<IReplaceFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result<ReplaceFileResult>.Ok(
+                    new ReplaceFileResult(0, new List<FileEditAffectedRange>(), false)));
+            });
+
+        var tools = new FileTools(_services);
+        var result = await tools.Replace("notes/photo.png.cel", "old", "new");
+
+        result.IsError.Should().BeTrue();
+        var text = result.Content.OfType<TextContentBlock>().Single().Text;
+        text.Should().Contain("file_replace");
+        dispatched.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Write_DeniesCelTarget_WhenFileDoesNotYetExist()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IWriteFileCommand>(
+                Arg.Any<Action<IWriteFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new FileTools(_services);
+        var result = await tools.Write("notes/new_orphan.cel", "frontmatter: value\n");
+
+        result.IsError.Should().BeTrue();
+        dispatched.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Write_DoesNotDenyNonCelTarget_AndDispatches()
+    {
+        var dispatched = false;
+        _commandService
+            .ExecuteAsync<IWriteFileCommand>(
+                Arg.Any<Action<IWriteFileCommand>?>(),
+                Arg.Any<string>(),
+                Arg.Any<int>())
+            .Returns(callInfo =>
+            {
+                dispatched = true;
+                return Task.FromResult(Celbridge.Core.Result.Ok());
+            });
+
+        var tools = new FileTools(_services);
+        await tools.Write("notes/photo.cel.bak", "hello");
+
+        dispatched.Should().BeTrue();
     }
 
     private static JsonElement ParseResult(CallToolResult result)

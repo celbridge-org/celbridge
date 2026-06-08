@@ -18,6 +18,10 @@ Pass `\n` or `\r\n` in `content` indifferently; the tool converts to the chosen 
 
 A JSON object with `lineCount` — the line count of the written content.
 
+## Not for `.cel` files
+
+`.cel` files are project metadata sidecars with a TOML frontmatter plus block-fence structure. A byte-level write would corrupt that structure, so `file_write` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_write_block`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
+
 ## Gotchas
 
 - Writes go straight to disk. If the file is open in an editor, the buffer reloads from disk and Monaco's undo history is wiped — the write is not Ctrl-Z-revertable.

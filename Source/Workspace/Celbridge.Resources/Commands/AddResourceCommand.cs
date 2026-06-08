@@ -17,20 +17,40 @@ public class AddResourceCommand : CommandBase, IAddResourceCommand
 
     private readonly IMessengerService _messengerService;
     private readonly ICommandService _commandService;
+    private readonly IWorkspaceWrapper _workspaceWrapper;
     private readonly AddResourceHelper _addResourceHelper;
 
     public AddResourceCommand(
         IMessengerService messengerService,
         ICommandService commandService,
+        IWorkspaceWrapper workspaceWrapper,
         AddResourceHelper addResourceHelper)
     {
         _messengerService = messengerService;
         _commandService = commandService;
+        _workspaceWrapper = workspaceWrapper;
         _addResourceHelper = addResourceHelper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
+        // .cel is reserved for project metadata sidecars; refuse to create
+        // files in the namespace. The dialog-level validator catches the same
+        // case through the UI; this guard catches programmatic / scripted
+        // callers that bypass the dialog.
+        if (ResourceType == ResourceType.File
+            && _workspaceWrapper.WorkspaceService.ResourceService.Sidecars.IsSidecarFileName(DestResource.ResourceName))
+        {
+            var reservationFailure = Result.Fail(
+                $"Cannot create file '{DestResource}': the .cel extension is reserved for project metadata sidecars.");
+
+            List<string> failedReservedItems = [DestResource.ResourceName];
+            var reservationMessage = new ResourceOperationFailedMessage(ResourceOperationType.Create, failedReservedItems);
+            _messengerService.Send(reservationMessage);
+
+            return reservationFailure;
+        }
+
         var addResult = await _addResourceHelper.AddResourceAsync(ResourceType, SourcePath, DestResource);
 
         if (addResult.IsFailure)

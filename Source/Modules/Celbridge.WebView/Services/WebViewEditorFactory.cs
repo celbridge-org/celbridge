@@ -5,8 +5,8 @@ using Microsoft.Extensions.Localization;
 namespace Celbridge.WebView.Services;
 
 /// <summary>
-/// Factory for the .webview.cel editor. Produces a WebViewDocumentView configured for
-/// the external-URL role; the URL is read from the .webview.cel document's TOML frontmatter.
+/// Factory for the .webview editor. Produces a WebViewDocumentView configured for
+/// the external-URL role; the URL is read from the .webview document's JSON body.
 /// </summary>
 public class WebViewEditorFactory : DocumentEditorFactoryBase
 {
@@ -17,7 +17,7 @@ public class WebViewEditorFactory : DocumentEditorFactoryBase
 
     public override string DisplayName => _stringLocalizer.GetString("DocumentEditor_WebViewEditor");
 
-    public override IReadOnlyList<string> SupportedExtensions { get; } = [".webview.cel"];
+    public override IReadOnlyList<string> SupportedExtensions { get; } = [".webview"];
 
     public WebViewEditorFactory(IServiceProvider serviceProvider, IStringLocalizer stringLocalizer)
     {

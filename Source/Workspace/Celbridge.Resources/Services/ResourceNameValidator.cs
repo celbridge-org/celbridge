@@ -50,6 +50,18 @@ public class ResourceNameValidator : IResourceNameValidator
             errorList.Add(errorText);
         }
 
+        // .cel is reserved for project metadata sidecars; reject any file
+        // name that lands inside the namespace. Folders are not gated — the
+        // reservation is about the file extension.
+        if (!ValidateAsFolder
+            && _workspaceWrapper.IsWorkspacePageLoaded
+            && _workspaceWrapper.WorkspaceService.ResourceService.Sidecars.IsSidecarFileName(input))
+        {
+            isValid = false;
+            var errorText = _stringLocalizer.GetString("Validation_CelExtensionReserved");
+            errorList.Add(errorText);
+        }
+
         // Check for naming conflict with other resources in the parent folder.
         // Use case-insensitive comparison since Windows file system is case-insensitive.
         // Any name listed in ValidNames is always accepted as valid.

@@ -313,3 +313,42 @@ class TestFileEdit:
         assert affected["from"] == 3
         assert affected["to"] == 3
         assert affected["contextLines"] == ["Line 2", "THIRD", "Line 4"]
+
+
+class TestCelDenial:
+    """Byte-write tools refuse .cel targets and point the caller at data_*."""
+
+    def test_write_denied(self, file):
+        with pytest.raises(CelError, match="(?i)data_"):
+            file.write("TestFileEdit/hello.txt.cel", "content")
+
+    def test_write_binary_denied(self, file):
+        content = base64.b64encode(b"bytes").decode("ascii")
+        with pytest.raises(CelError, match="(?i)data_"):
+            file.write_binary("TestFileEdit/hello.txt.cel", content)
+
+    def test_edit_denied(self, file):
+        with pytest.raises(CelError, match="(?i)data_"):
+            file.edit(
+                "TestFileEdit/hello.txt.cel",
+                old_string="old",
+                new_string="new",
+            )
+
+    def test_multi_edit_denied(self, file):
+        edits = [{"oldString": "a", "newString": "b"}]
+        with pytest.raises(CelError, match="(?i)data_"):
+            file.multi_edit("TestFileEdit/hello.txt.cel", json.dumps(edits))
+
+    def test_replace_denied(self, file):
+        with pytest.raises(CelError, match="(?i)data_"):
+            file.replace(
+                "TestFileEdit/hello.txt.cel",
+                search_text="old",
+                replace_text="new",
+            )
+
+    def test_write_denied_when_creating_new_cel(self, file):
+        # Denial fires on path shape, regardless of whether the target exists.
+        with pytest.raises(CelError, match="(?i)data_"):
+            file.write("TestFileEdit/new_orphan.cel", "content")
