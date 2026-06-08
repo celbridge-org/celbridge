@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Celbridge.ApplicationEnvironment;
 using Celbridge.Logging;
-using Celbridge.Utilities;
 using Tomlyn;
 using Tomlyn.Model;
 
@@ -140,20 +139,6 @@ public class ProjectMigrationService : IProjectMigrationService
                 versionNode is string existingVersion)
             {
                 projectVersion = existingVersion;
-            }
-
-            // Provide limited backwards compatibility for pre-v0.1.5 version format to support migration
-            if (string.IsNullOrEmpty(projectVersion) &&
-                JsonPointerToml.TryResolve(root, "/celbridge/version", out var legacyVersionNode, out _) &&
-                legacyVersionNode is string legacyVersion)
-            {
-                // Only populate the project version if the legacy version < v0.1.5
-                var versionA = new Version(legacyVersion);
-                var versionB = new Version("0.1.5");
-                if (versionA < versionB)
-                {
-                    projectVersion = legacyVersion;
-                }
             }
 
             // Get current application version
