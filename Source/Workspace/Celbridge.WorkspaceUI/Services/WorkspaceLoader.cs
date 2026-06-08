@@ -234,13 +234,9 @@ public class WorkspaceLoader
             _logger.LogInformation("Console panel is disabled by feature flag");
         }
 
-        // Run the project-health check last, on the load thread. The scan reads
-        // the registry (populated above), so this placement is not about data
-        // readiness: it runs after WorkspaceLoadedMessage so its console banner
-        // reaches a live subscriber (the message is dropped when no panel is
-        // listening) and so the scan does not delay the visible load. It records
-        // into the load reporter and flushes, adding the consistency-check
-        // section to the report file.
+        // Runs after WorkspaceLoadedMessage, on the load thread: the banner it
+        // raises needs a live panel subscriber, and a full project scan would
+        // otherwise delay the visible load.
         await RunProjectCheckAsync();
 
         return Result.Ok();
@@ -258,10 +254,7 @@ public class WorkspaceLoader
         }
     }
 
-    // Runs the project consistency check on the load thread, hands the report to
-    // ProjectCheckReporter for the in-app banner, records it into the project
-    // load reporter, and flushes so the report file gains its consistency-check
-    // section. Errors are logged, never thrown — a broken check must not fail
+    // Errors are logged, never thrown — a broken consistency check must not fail
     // workspace load.
     private async Task RunProjectCheckAsync()
     {
