@@ -83,8 +83,8 @@ public abstract class AgentToolBase
             return null;
         }
 
-        var message = $"Tool '{toolName}' was denied write access to '{original}' because direct writes to .cel files would corrupt their TOML and block-fence structure. "
-            + $"Use the data_* tools instead (data_set_field, data_write_block, data_add_tag, etc.). "
+        var message = $"Tool '{toolName}' was denied write access to '{original}' because direct writes to .cel files would corrupt their TOML structure. "
+            + $"Use the data_* tools instead (data_set_field, data_add_tag, etc.). "
             + $"See the per-tool guides under Source/Core/Celbridge.Tools/Guides/Tools/data_*.md.";
 
         return ToolResponse.Error(message);

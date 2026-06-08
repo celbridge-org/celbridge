@@ -1,12 +1,10 @@
-using System.Text;
 using Celbridge.Commands;
 using Celbridge.Workspace;
 
 namespace Celbridge.Resources.Commands;
 
 /// <summary>
-/// Returns the resource's full sidecar frontmatter plus the ordered list of
-/// block descriptors in one call.
+/// Returns the resource's full sidecar field set in one call.
 /// </summary>
 public sealed class GetInfoCommand : CommandBase, IGetInfoCommand
 {
@@ -16,7 +14,6 @@ public sealed class GetInfoCommand : CommandBase, IGetInfoCommand
 
     public GetInfoResult ResultValue { get; private set; } = new GetInfoResult(
         new Dictionary<string, object>(),
-        Array.Empty<SidecarBlockDescriptor>(),
         HasSidecar: false);
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
@@ -49,12 +46,9 @@ public sealed class GetInfoCommand : CommandBase, IGetInfoCommand
         }
 
         var content = read.Content!;
-        var fields = new Dictionary<string, object>(content.Frontmatter, StringComparer.Ordinal);
-        var blocks = content.Blocks
-            .Select(b => new SidecarBlockDescriptor(b.Name, Encoding.UTF8.GetByteCount(b.Content)))
-            .ToList();
+        var fields = new Dictionary<string, object>(content.Fields, StringComparer.Ordinal);
 
-        ResultValue = new GetInfoResult(fields, blocks, HasSidecar: true);
+        ResultValue = new GetInfoResult(fields, HasSidecar: true);
         return Result.Ok();
     }
 }

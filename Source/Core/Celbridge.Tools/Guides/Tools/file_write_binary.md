@@ -13,4 +13,4 @@ The literal string `"ok"` on success.
 
 ## Not for `.cel` files
 
-`.cel` files are project metadata sidecars with a structured TOML and block-fence format. A byte-level binary write would corrupt that structure, so `file_write_binary` refuses any `.cel` target with a typed denial. Use the `data_*` tools to mutate sidecar contents through the structured surface.
+`.cel` files are project metadata sidecars with a structured TOML format. A byte-level binary write would corrupt that structure, so `file_write_binary` refuses any `.cel` target with a typed denial. Use the `data_*` tools to mutate sidecar contents through the structured surface.

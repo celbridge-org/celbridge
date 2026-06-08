@@ -99,12 +99,10 @@ In markdown body prose, write the reference in quotes:
 See "project:docs/intro.md" for details.
 ```
 
-In a `.cel` frontmatter field, TOML's string quotes again:
+In a `.cel` sidecar field, TOML's string quotes again:
 
-```
-+++
+```toml
 target = "project:docs/intro.md"
-+++
 ```
 
 ### Keys containing whitespace
@@ -163,10 +161,10 @@ A `.cel` sidecar attached to a parent whose extension is NOT on the list (e.g. `
 Every extension not in the allowlist is skipped. The most common implications:
 
 - **Markdown (`.md`)** — documentation, READMEs, runbooks, agent-prompt files. Quoted `"project:..."` literals inside `.md` are descriptive prose; they don't cascade and they don't show up as broken references.
-- **Plain text (`.txt`)** — fixtures and notes. If you need cascade tracking for a fixture, use `.json` (or attach a `.cel` sidecar with the reference in frontmatter).
+- **Plain text (`.txt`)** — fixtures and notes. If you need cascade tracking for a fixture, use `.json` (or attach a `.cel` sidecar with the reference in a field).
 - **Source code outside the listed languages** — e.g. `.cs`, `.ts`, `.cpp`. Add the extension to the allowlist if you need cascade support there.
 - **HTML and CSS** — HTML uses `href`-shaped references that don't follow the `"project:..."` form; CSS doesn't address resources by key at all.
-- **Binary files** (PNG, XLSX, PDF, etc.) — never scanned. A reference baked into a binary asset won't participate in the cascade — those workflows must use sidecar frontmatter or a paired text file instead.
+- **Binary files** (PNG, XLSX, PDF, etc.) — never scanned. A reference baked into a binary asset won't participate in the cascade — those workflows must use sidecar fields or a paired text file instead.
 
 Files that are not scanned can still BE referenced. The allowlist gates what gets *read for references*, not what can appear *as a target*. A `.json` referencer pointing at a `.md` document is fully tracked; renaming the `.md` cascades through the `.json`.
 

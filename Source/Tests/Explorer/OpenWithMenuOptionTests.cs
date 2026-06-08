@@ -229,7 +229,7 @@ public class OpenWithMenuOptionTests
         // the text fallback, only the fallback survives the filter, so the
         // menu stays hidden (one candidate, nothing to pick between). This
         // closes the footgun where picking a placeholder would write a
-        // non-functional editor id into the manifest's own frontmatter.
+        // non-functional editor id into the manifest itself.
         var clickedFile = CreateFileResource("package.toml");
         var placeholder = CreateFactory("celbridge.package-manifest");
         placeholder.IsPlaceholder.Returns(true);

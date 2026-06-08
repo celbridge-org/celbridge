@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.RegularExpressions;
 using Celbridge.Logging;
 using Tomlyn;
 using Tomlyn.Model;
@@ -7,12 +5,9 @@ using Tomlyn.Model;
 namespace Celbridge.Resources.Helpers;
 
 /// <summary>
-/// Parse, compose, and on-disk inspection for the .cel sidecar format: TOML
-/// frontmatter at the top, optionally followed by zero-or-more named content
-/// blocks delimited by lines of the form '+++ "block-name"'. Format constants
-/// and pure utility helpers used by the rest of the resources subsystem live
-/// here; the workspace-scoped ISidecarService exposes the surface that crosses
-/// project boundaries.
+/// Parse, compose, and on-disk inspection for the .cel sidecar format. A
+/// sidecar file is plain TOML; the helpers here are a thin wrapper around
+/// Tomlyn for read and around SidecarTomlEncoder for deterministic write.
 /// </summary>
 public static class SidecarHelper
 {
@@ -22,66 +17,14 @@ public static class SidecarHelper
     public const string Extension = ".cel";
 
     /// <summary>
-    /// The standardised list-of-string frontmatter field that the data tools
-    /// surface as tags.
+    /// The on-disk field name carrying the tag list. Reserved root-level
+    /// field; the agent-facing tools surface its values under the domain key
+    /// "tags".
     /// </summary>
-    public const string TagsFieldName = "tags";
-
-    // Fence line: '+++' then one space, then a double-quoted block name, with
-    // optional trailing whitespace. The block name is lowercase letters and
-    // digits with optional dotted segments separated by '.', and hyphens
-    // permitted inside a segment.
-    private static readonly Regex FenceLineRegex = new(
-        @"^\+\+\+\s+""([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*)""\s*$",
-        RegexOptions.Compiled);
-
-    // Block name regex: same shape as the fence's capture group, applied to
-    // candidate names at write time so a malformed block ID is caught before
-    // it lands on disk.
-    private static readonly Regex BlockNameRegex = new(
-        @"^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*$",
-        RegexOptions.Compiled);
+    public const string TagsFieldName = "_tags";
 
     /// <summary>
-    /// True when the candidate string matches the block-naming rules
-    /// (lowercase letters, digits, hyphens, dotted segments).
-    /// </summary>
-    public static bool IsValidBlockName(string name)
-    {
-        return !string.IsNullOrEmpty(name)
-            && BlockNameRegex.IsMatch(name);
-    }
-
-    /// <summary>
-    /// True when the block content contains a line that would parse as a fence
-    /// (e.g. '+++ "evil"'). Block content with a fence line round-trips to a
-    /// file whose Parse splits it incorrectly, so writers must reject this up
-    /// front. There is no escape mechanism.
-    /// </summary>
-    public static bool BlockContentContainsFenceLine(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-        {
-            return false;
-        }
-
-        var lines = content.Split('\n');
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.EndsWith('\r')
-                ? rawLine.Substring(0, rawLine.Length - 1)
-                : rawLine;
-            if (FenceLineRegex.IsMatch(line))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// True when the value can be written through the structured frontmatter
+    /// True when the value can be written through the structured field
     /// surface: scalars (string, numeric, bool, datetime) and lists of those.
     /// Nested objects and mixed lists are rejected.
     /// </summary>
@@ -112,7 +55,7 @@ public static class SidecarHelper
     }
 
     /// <summary>
-    /// Extracts a string list from a frontmatter value (e.g. the tags field).
+    /// Extracts a string list from a field value (e.g. the tags field).
     /// Returns an empty list when the value is missing or not a list-of-string.
     /// </summary>
     public static IReadOnlyList<string> ExtractStringList(object? value)
@@ -152,9 +95,8 @@ public static class SidecarHelper
     }
 
     /// <summary>
-    /// Parses sidecar content into its frontmatter dictionary and ordered
-    /// block list. Frontmatter is parsed as TOML; block bodies are opaque text.
-    /// Fails if the TOML prefix is malformed or any block name appears twice.
+    /// Parses sidecar text as TOML. Returns the field dictionary on success
+    /// and a typed failure describing the TOML diagnostics on rejection.
     /// </summary>
     public static Result<SidecarContent> Parse(string text)
     {
@@ -163,180 +105,52 @@ public static class SidecarHelper
             return Result<SidecarContent>.Fail("Sidecar content is null.");
         }
 
-        // Strip an optional UTF-8 BOM so the first byte is the first content
-        // character. Tomlyn is BOM-tolerant; this normalises the block split.
+        // Strip an optional UTF-8 BOM so Tomlyn sees the first content character.
         if (text.Length > 0
             && text[0] == '﻿')
         {
             text = text.Substring(1);
         }
 
-        var lines = SplitLines(text);
-
-        // Walk the lines once and record the index of every fence line. The
-        // frontmatter spans lines [0, firstFence); each block spans the lines
-        // from (fence + 1) to the next fence (or end of input).
-        var fenceIndexes = new List<int>();
-        var fenceNames = new List<string>();
-        for (int i = 0; i < lines.Count; i++)
-        {
-            var match = FenceLineRegex.Match(lines[i].Text);
-            if (match.Success)
-            {
-                fenceIndexes.Add(i);
-                fenceNames.Add(match.Groups[1].Value);
-            }
-        }
-
-        var frontmatterEnd = fenceIndexes.Count > 0 ? fenceIndexes[0] : lines.Count;
-        var frontmatterText = JoinLines(lines, 0, frontmatterEnd);
-
-        var parseResult = ParseFrontmatterToml(frontmatterText);
+        var parseResult = ParseFieldsToml(text);
         if (parseResult.IsFailure)
         {
             return Result.Fail(parseResult);
         }
-        var frontmatter = parseResult.Value;
 
-        var blocks = new List<SidecarBlock>(fenceIndexes.Count);
-        var seenNames = new HashSet<string>(StringComparer.Ordinal);
-        for (int b = 0; b < fenceIndexes.Count; b++)
-        {
-            var name = fenceNames[b];
-            if (!seenNames.Add(name))
-            {
-                return Result<SidecarContent>.Fail($"Sidecar contains duplicate block name '{name}'.");
-            }
-
-            var contentStart = fenceIndexes[b] + 1;
-            var contentEnd = b + 1 < fenceIndexes.Count ? fenceIndexes[b + 1] : lines.Count;
-            var content = JoinLines(lines, contentStart, contentEnd);
-
-            // Block content is line-oriented: the terminator that follows the
-            // last content line is a separator (between blocks or to EOF), not
-            // part of the block's semantic content. Stripping a single trailing
-            // \n or \r\n makes the SidecarBlock.Content value position-
-            // independent so its byte count is stable as adjacent blocks are
-            // added or removed.
-            content = StripTrailingTerminator(content);
-            blocks.Add(new SidecarBlock(name, content));
-        }
-
-        return Result<SidecarContent>.Ok(new SidecarContent(frontmatter, blocks));
+        return Result<SidecarContent>.Ok(new SidecarContent(parseResult.Value));
     }
 
     /// <summary>
-    /// Composes a sidecar text from the frontmatter dictionary and named blocks.
-    /// The output is the inverse of Parse for any cleanly-parsed input.
+    /// Composes a sidecar text from its field dictionary using the
+    /// deterministic encoder.
     /// </summary>
     public static string Compose(SidecarContent content)
     {
         ArgumentNullException.ThrowIfNull(content);
-        return Compose(content.Frontmatter, content.Blocks);
+        return Compose(content.Fields);
     }
 
     /// <summary>
-    /// Composes a sidecar text from a frontmatter dictionary and an ordered
-    /// list of named blocks.
+    /// Composes a sidecar text from a field dictionary using the deterministic
+    /// encoder. Same input always produces byte-identical output.
     /// </summary>
-    public static string Compose(
-        IReadOnlyDictionary<string, object> frontmatter,
-        IReadOnlyList<SidecarBlock> blocks)
+    public static string Compose(IReadOnlyDictionary<string, object> fields)
     {
-        ArgumentNullException.ThrowIfNull(frontmatter);
-        blocks ??= Array.Empty<SidecarBlock>();
+        ArgumentNullException.ThrowIfNull(fields);
 
-        var builder = new StringBuilder();
-
-        if (frontmatter.Count > 0)
+        if (fields.Count == 0)
         {
-            var tomlTable = new TomlTable();
-            foreach (var (key, value) in frontmatter)
-            {
-                tomlTable[key] = ConvertToTomlValue(value);
-            }
-
-            var tomlText = Toml.FromModel(tomlTable);
-            // Tomlyn emits Environment.NewLine internally (CRLF on Windows).
-            // The rest of Compose uses LF literals (fence lines, block-content
-            // terminators), so normalise to LF here for a single-line-ending
-            // file on every platform. Without this normalisation a sidecar
-            // with TOML frontmatter plus blocks ends up CRLF in the frontmatter
-            // section and LF in the block section, which surprises tools that
-            // round-trip the bytes.
-            tomlText = tomlText.Replace("\r\n", "\n");
-            // Toml.FromModel emits a trailing newline. Trim it so the join with
-            // the first fence (if any) is predictable; we add an explicit
-            // separator below.
-            tomlText = tomlText.TrimEnd('\n');
-            builder.Append(tomlText);
+            return string.Empty;
         }
 
-        for (int i = 0; i < blocks.Count; i++)
+        var encoded = SidecarTomlEncoder.EncodeFields(fields);
+        if (encoded.Length > 0
+            && encoded[encoded.Length - 1] != '\n')
         {
-            var block = blocks[i];
-            if (!IsValidBlockName(block.Name))
-            {
-                throw new ArgumentException($"Block name '{block.Name}' does not match the block-naming rules.");
-            }
-            if (BlockContentContainsFenceLine(block.Content))
-            {
-                throw new ArgumentException($"Block '{block.Name}' content contains a line matching the fence regex; this would corrupt the file on round-trip.");
-            }
-
-            // Each fence line starts on its own line. If we already wrote
-            // frontmatter or a prior block, ensure a newline before this fence.
-            if (builder.Length > 0
-                && builder[builder.Length - 1] != '\n')
-            {
-                builder.Append('\n');
-            }
-
-            builder.Append("+++ \"");
-            builder.Append(block.Name);
-            builder.Append("\"\n");
-            builder.Append(block.Content);
-
-            // Ensure each non-empty block contributes a trailing newline so
-            // the next fence (or EOF) starts on its own line and so the
-            // block's on-disk byte footprint is independent of position.
-            // Parse strips this terminator back off, restoring round-trip
-            // equivalence between "X" and "X\n" input.
-            if (block.Content.Length > 0
-                && block.Content[block.Content.Length - 1] != '\n')
-            {
-                builder.Append('\n');
-            }
+            encoded += "\n";
         }
-
-        // When only frontmatter is present, leave a single trailing newline so
-        // the file ends on a newline boundary. When blocks are present, each
-        // block now guarantees its own terminator (see the per-block append
-        // above), so the file already ends on \n.
-        if (blocks.Count == 0
-            && builder.Length > 0
-            && builder[builder.Length - 1] != '\n')
-        {
-            builder.Append('\n');
-        }
-
-        return builder.ToString();
-    }
-
-    // Removes a single trailing line terminator (\r\n or \n) from a block
-    // content slice extracted by Parse. The terminator is the separator
-    // between blocks (or to EOF), not part of the block's content.
-    private static string StripTrailingTerminator(string content)
-    {
-        if (content.EndsWith("\r\n", StringComparison.Ordinal))
-        {
-            return content.Substring(0, content.Length - 2);
-        }
-        if (content.EndsWith("\n", StringComparison.Ordinal))
-        {
-            return content.Substring(0, content.Length - 1);
-        }
-        return content;
+        return encoded;
     }
 
     /// <summary>
@@ -387,71 +201,7 @@ public static class SidecarHelper
         }
     }
 
-    // One physical line plus the line terminator that follows it. The
-    // terminator is preserved so JoinLines reproduces the original bytes.
-    private readonly record struct PhysicalLine(string Text, string Terminator);
-
-    private static List<PhysicalLine> SplitLines(string text)
-    {
-        var lines = new List<PhysicalLine>();
-        int start = 0;
-        int i = 0;
-        while (i < text.Length)
-        {
-            var c = text[i];
-            if (c == '\r')
-            {
-                var lineText = text.Substring(start, i - start);
-                string terminator;
-                if (i + 1 < text.Length
-                    && text[i + 1] == '\n')
-                {
-                    terminator = "\r\n";
-                    i += 2;
-                }
-                else
-                {
-                    terminator = "\r";
-                    i += 1;
-                }
-                lines.Add(new PhysicalLine(lineText, terminator));
-                start = i;
-                continue;
-            }
-            if (c == '\n')
-            {
-                var lineText = text.Substring(start, i - start);
-                lines.Add(new PhysicalLine(lineText, "\n"));
-                i += 1;
-                start = i;
-                continue;
-            }
-            i++;
-        }
-        if (start < text.Length)
-        {
-            lines.Add(new PhysicalLine(text.Substring(start), string.Empty));
-        }
-        return lines;
-    }
-
-    private static string JoinLines(List<PhysicalLine> lines, int startInclusive, int endExclusive)
-    {
-        if (startInclusive >= endExclusive)
-        {
-            return string.Empty;
-        }
-
-        var builder = new StringBuilder();
-        for (int i = startInclusive; i < endExclusive; i++)
-        {
-            builder.Append(lines[i].Text);
-            builder.Append(lines[i].Terminator);
-        }
-        return builder.ToString();
-    }
-
-    private static Result<IReadOnlyDictionary<string, object>> ParseFrontmatterToml(string tomlText)
+    private static Result<IReadOnlyDictionary<string, object>> ParseFieldsToml(string tomlText)
     {
         try
         {
@@ -479,34 +229,8 @@ public static class SidecarHelper
         }
         catch (Exception ex)
         {
-            return Result<IReadOnlyDictionary<string, object>>.Fail("An exception occurred when parsing TOML frontmatter.")
+            return Result<IReadOnlyDictionary<string, object>>.Fail("An exception occurred when parsing TOML.")
                 .WithException(ex);
-        }
-    }
-
-    private static object ConvertToTomlValue(object value)
-    {
-        switch (value)
-        {
-            case TomlTable:
-            case TomlArray:
-                return value;
-            case IReadOnlyDictionary<string, object> dictionary:
-                var table = new TomlTable();
-                foreach (var (key, child) in dictionary)
-                {
-                    table[key] = ConvertToTomlValue(child);
-                }
-                return table;
-            case System.Collections.IEnumerable enumerable when value is not string:
-                var array = new TomlArray();
-                foreach (var item in enumerable)
-                {
-                    array.Add(ConvertToTomlValue(item!));
-                }
-                return array;
-            default:
-                return value;
         }
     }
 }

@@ -17,9 +17,9 @@ public static class DocumentConstants
     public static readonly DocumentEditorId TextBoxFallbackEditorId = new("celbridge.text-box-fallback");
 
     /// <summary>
-    /// Sidecar frontmatter field that records the user's per-file editor choice
-    /// (last "Open with..." selection). Shared so the read path (preference
-    /// store) and write path (OpenWith menu) stay in lockstep.
+    /// Sidecar field that records the user's per-file editor choice (last
+    /// "Open with..." selection). Shared so the read path (preference store)
+    /// and write path (OpenWith menu) stay in lockstep.
     /// </summary>
     public const string SidecarEditorFieldName = "editor";
 

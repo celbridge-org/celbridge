@@ -154,9 +154,7 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         // field, creating the sidecar if needed. The KISS rule: every "Open
         // With X" invocation writes the chosen editor, even when it matches
         // the per-extension default - a redundant entry is less surprising
-        // than an auto-removal the user did not request. For standalone .cel
-        // files the SidecarService writes the field directly into the file's
-        // own frontmatter (the .cel file is its own metadata).
+        // than an auto-removal the user did not request.
         _commandService.Execute<ISetFieldCommand>(command =>
         {
             command.Resource = resourceKey;

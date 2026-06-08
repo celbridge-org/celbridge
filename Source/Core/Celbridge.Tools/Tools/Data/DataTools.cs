@@ -5,9 +5,8 @@ using ModelContextProtocol.Server;
 namespace Celbridge.Tools;
 
 /// <summary>
-/// MCP tools for resource .cel sidecar data: per-resource frontmatter
-/// read / write, tag affordances, named content blocks, and project-wide
-/// consistency checks.
+/// MCP tools for resource .cel sidecar data: per-resource field read /
+/// write, tag affordances, and project-wide consistency checks.
 /// </summary>
 [McpServerToolType]
 public partial class DataTools : AgentToolBase

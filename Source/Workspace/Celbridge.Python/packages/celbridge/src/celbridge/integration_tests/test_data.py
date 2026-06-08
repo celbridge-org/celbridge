@@ -96,14 +96,14 @@ class TestData:
     def test_add_tag_creates_sidecar_when_missing(self, data):
         data.add_tag("TestData/notes.md", "flagged")
         info = data.get_info("TestData/notes.md")
-        assert "flagged" in info["fields"].get("tags", [])
+        assert "flagged" in info["fields"].get("_tags", [])
 
     def test_add_tag_appends_and_is_idempotent(self, data):
         data.add_tag("TestData/notes.md", "alpha")
         data.add_tag("TestData/notes.md", "beta")
         data.add_tag("TestData/notes.md", "alpha")
         info = data.get_info("TestData/notes.md")
-        tags = info["fields"].get("tags", [])
+        tags = info["fields"].get("_tags", [])
         # Tags appear once each; ordering reflects insertion order.
         assert tags.count("alpha") == 1
         assert "beta" in tags
@@ -130,7 +130,7 @@ class TestData:
 
     def test_get_info_returns_empty_when_no_sidecar(self, data):
         result = data.get_info("TestData/notes.md")
-        assert result == {"hasSidecar": False, "fields": {}, "blocks": []}
+        assert result == {"hasSidecar": False, "fields": {}}
 
     def test_set_field_visible_through_file_read(self, data, file):
         data.set_field("TestData/notes.md", "priority", json.dumps("high"))
@@ -145,31 +145,6 @@ class TestData:
     def test_sidecar_key_rejected(self, data):
         with pytest.raises(CelError):
             data.set_field("TestData/notes.md.cel", "priority", json.dumps("high"))
-
-    def test_write_block_creates_and_overwrites(self, data):
-        data.write_block("TestData/notes.md", "test.content", "first body")
-        data.write_block("TestData/notes.md", "test.content", "second body")
-        content = data.read_block("TestData/notes.md", "test.content")
-        assert "second body" in content
-        assert "first body" not in content
-
-    def test_get_info_lists_blocks_in_order(self, data):
-        data.write_block("TestData/notes.md", "test.first", "one")
-        data.write_block("TestData/notes.md", "test.second", "two")
-        info = data.get_info("TestData/notes.md")
-        block_ids = [b["id"] for b in info["blocks"]]
-        assert block_ids == ["test.first", "test.second"]
-
-    def test_remove_block_drops_named_block(self, data):
-        data.write_block("TestData/notes.md", "test.disposable", "bye")
-        data.remove_block("TestData/notes.md", "test.disposable")
-        info = data.get_info("TestData/notes.md")
-        block_ids = [b["id"] for b in info["blocks"]]
-        assert "test.disposable" not in block_ids
-
-    def test_write_block_rejects_invalid_id(self, data):
-        with pytest.raises(CelError):
-            data.write_block("TestData/notes.md", "Bad ID", "content")
 
 
 class TestDataCheckProject:
@@ -210,14 +185,14 @@ class TestDataCheckProject:
         write_cel_file_directly(
             app,
             "TestData/orphaned.png.cel",
-            "tags = [\"orphan\"]\n",
+            "_tags = [\"orphan\"]\n",
         )
         report = data.check_project()
         assert "project:TestData/orphaned.png.cel" in report.get("orphanCelFiles", [])
 
-    def test_broken_cel_file_detected_when_frontmatter_unparseable(self, data, app):
-        # Write a sidecar whose frontmatter is malformed TOML. Direct
-        # filesystem write bypasses the file.* tools' .cel denial.
+    def test_broken_cel_file_detected_when_unparseable(self, data, app):
+        # Write a sidecar whose TOML is malformed. Direct filesystem write
+        # bypasses the file.* tools' .cel denial.
         write_cel_file_directly(
             app,
             "TestData/notes.md.cel",

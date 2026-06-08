@@ -4,7 +4,7 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Commands;
 
 /// <summary>
-/// Reads a single frontmatter field through the sidecar data service.
+/// Reads a single field through the sidecar data service.
 /// SuppressCommandLog because reads should not clutter the command log.
 /// </summary>
 public sealed class GetFieldCommand : CommandBase, IGetFieldCommand
@@ -47,7 +47,7 @@ public sealed class GetFieldCommand : CommandBase, IGetFieldCommand
             return Result.Fail($"Sidecar for resource '{Resource}' is broken: {read.FailureMessage}");
         }
 
-        if (!read.Content!.Frontmatter.TryGetValue(Field, out var value))
+        if (!read.Content!.Fields.TryGetValue(Field, out var value))
         {
             return Result.Fail(
                 $"Field '{Field}' is not set on resource '{Resource}'. " +

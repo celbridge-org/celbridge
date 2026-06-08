@@ -170,7 +170,7 @@ public class DataCheckProjectTests
     {
         // foo.png is the would-be parent; only the sidecar exists.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "tags = [\"orphaned\"]\n");
+            "_tags = [\"orphaned\"]\n");
 
         (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -200,7 +200,7 @@ public class DataCheckProjectTests
     {
         // .cel.cel files are classified Broken per the sidecar pairing rules.
         File.WriteAllText(Path.Combine(_projectFolderPath, "weird.cel.cel"),
-            "tags = [\"x\"]\n");
+            "_tags = [\"x\"]\n");
 
         (await _resourceRegistry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 

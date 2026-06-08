@@ -5,7 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class DataTools
 {
-    /// <summary>Read a single frontmatter field from a resource's .cel sidecar.</summary>
+    /// <summary>Read a single field from a resource's .cel sidecar.</summary>
     [McpServerTool(Name = "data_get_field", ReadOnly = true)]
     [ToolAlias("data.get_field")]
     [RelatedGuides("resource_keys")]

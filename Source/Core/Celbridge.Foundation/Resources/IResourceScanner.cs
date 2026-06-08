@@ -28,8 +28,8 @@ public interface IResourceScanner
     Task<IReadOnlyList<ResourceKey>> FindAllReferencedTargetsAsync();
 
     /// <summary>
-    /// Returns every paired-sidecar parent resource whose .cel frontmatter
-    /// "tags" list contains the given tag value. Results are sorted by key.
+    /// Returns every paired-sidecar parent resource whose .cel tag list
+    /// contains the given tag value. Results are sorted by key.
     /// </summary>
     Task<IReadOnlyList<ResourceKey>> FindByTagAsync(string tag);
 }

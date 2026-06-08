@@ -5,7 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class DataTools
 {
-    /// <summary>Remove a single frontmatter field from a resource's .cel sidecar (no-op if absent).</summary>
+    /// <summary>Remove a single field from a resource's .cel sidecar (no-op if absent).</summary>
     [McpServerTool(Name = "data_remove_field", Destructive = true, Idempotent = true)]
     [ToolAlias("data.remove_field")]
     [RelatedGuides("resource_keys")]

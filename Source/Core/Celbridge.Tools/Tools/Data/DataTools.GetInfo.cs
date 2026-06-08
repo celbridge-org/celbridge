@@ -5,7 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class DataTools
 {
-    /// <summary>Return a resource's .cel sidecar frontmatter inline plus the ordered list of block descriptors.</summary>
+    /// <summary>Return a resource's .cel sidecar field set inline.</summary>
     [McpServerTool(Name = "data_get_info", ReadOnly = true)]
     [ToolAlias("data.get_info")]
     [RelatedGuides("resource_keys")]
@@ -35,13 +35,6 @@ public partial class DataTools
         {
             hasSidecar = report.HasSidecar,
             fields = report.Fields,
-            blocks = report.Blocks
-                .Select(b => new
-                {
-                    id = b.Id,
-                    size = b.Size,
-                })
-                .ToArray(),
         };
         return ToolResponse.Success(SerializeJson(payload));
     }

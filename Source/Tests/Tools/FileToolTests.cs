@@ -792,7 +792,7 @@ public class FileToolTests
             });
 
         var tools = new FileTools(_services);
-        var result = await tools.Write("notes/new_orphan.cel", "frontmatter: value\n");
+        var result = await tools.Write("notes/new_orphan.cel", "field = \"value\"\n");
 
         result.IsError.Should().BeTrue();
         dispatched.Should().BeFalse();

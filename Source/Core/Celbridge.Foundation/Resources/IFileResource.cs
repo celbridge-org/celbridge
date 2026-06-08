@@ -9,13 +9,13 @@ namespace Celbridge.Resources;
 public enum CelFileStatus
 {
     /// <summary>
-    /// The frontmatter and content blocks parse cleanly.
+    /// The file parses cleanly as TOML.
     /// </summary>
     Healthy,
 
     /// <summary>
-    /// The file failed to parse: malformed TOML, merge-conflict markers,
-    /// missing fences, duplicate block names, or any other parse failure.
+    /// The file failed to parse: malformed TOML, merge-conflict markers, or
+    /// any other parse failure.
     /// </summary>
     Broken,
 }
@@ -39,8 +39,8 @@ public enum FileKind
 
     /// <summary>
     /// A .cel file paired with a parent content file in the same folder
-    /// (e.g. notes.md.cel paired with notes.md). Holds frontmatter and
-    /// content-block metadata for the parent.
+    /// (e.g. notes.md.cel paired with notes.md). Holds field metadata for
+    /// the parent.
     /// </summary>
     Sidecar,
 

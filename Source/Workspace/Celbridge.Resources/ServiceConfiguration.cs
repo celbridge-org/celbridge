@@ -53,11 +53,8 @@ public static class ServiceConfiguration
         services.AddTransient<IRemoveFieldCommand, RemoveFieldCommand>();
         services.AddTransient<IAddTagCommand, AddTagCommand>();
         services.AddTransient<IRemoveTagCommand, RemoveTagCommand>();
-        services.AddTransient<IWriteBlockCommand, WriteBlockCommand>();
-        services.AddTransient<IRemoveBlockCommand, RemoveBlockCommand>();
 
         services.AddTransient<IGetFieldCommand, GetFieldCommand>();
-        services.AddTransient<IReadBlockCommand, ReadBlockCommand>();
         services.AddTransient<IGetInfoCommand, GetInfoCommand>();
         services.AddTransient<IFindTagCommand, FindTagCommand>();
 

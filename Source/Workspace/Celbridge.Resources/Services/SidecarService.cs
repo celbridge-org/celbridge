@@ -48,8 +48,6 @@ public sealed class SidecarService : ISidecarService
         return new ResourceKey(parent.FullKey + SidecarHelper.Extension);
     }
 
-    public bool IsValidBlockName(string name) => SidecarHelper.IsValidBlockName(name);
-
     public bool IsIndexableValue(object? value) => SidecarHelper.IsIndexableValue(value);
 
     public async Task<Result<SidecarReadResult>> ReadAsync(ResourceKey resource)
@@ -85,47 +83,47 @@ public sealed class SidecarService : ISidecarService
         return new SidecarReadResult(SidecarReadOutcome.Healthy, parseResult.Value, null);
     }
 
-    public async Task<Result> SetFieldAsync(ResourceKey resource, string field, object value)
+    public async Task<Result<SidecarWriteOutcome>> SetFieldAsync(ResourceKey resource, string field, object value)
     {
         if (string.IsNullOrEmpty(field))
         {
-            return Result.Fail("Field name is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Field name is empty.");
         }
         if (value is null)
         {
-            return Result.Fail("Value is null. Use RemoveFieldAsync to clear a field.");
+            return Result<SidecarWriteOutcome>.Fail("Value is null. Use RemoveFieldAsync to clear a field.");
         }
         if (!SidecarHelper.IsIndexableValue(value))
         {
-            return Result.Fail($"Field '{field}' value is not indexable. Only scalar (string/number/bool/datetime) and list-of-scalar values are supported.");
+            return Result<SidecarWriteOutcome>.Fail($"Field '{field}' value is not indexable. Only scalar (string/number/bool/datetime) and list-of-scalar values are supported.");
         }
 
-        return await MutateFrontmatterAsync(
+        return await MutateFieldsAsync(
             resource,
             dictionary => dictionary[field] = value);
     }
 
-    public async Task<Result> RemoveFieldAsync(ResourceKey resource, string field)
+    public async Task<Result<SidecarWriteOutcome>> RemoveFieldAsync(ResourceKey resource, string field)
     {
         if (string.IsNullOrEmpty(field))
         {
-            return Result.Fail("Field name is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Field name is empty.");
         }
 
-        return await MutateFrontmatterAsync(
+        return await MutateFieldsAsync(
             resource,
             dictionary => dictionary.Remove(field),
             createIfMissing: false);
     }
 
-    public async Task<Result> AddTagAsync(ResourceKey resource, string tag)
+    public async Task<Result<SidecarWriteOutcome>> AddTagAsync(ResourceKey resource, string tag)
     {
         if (string.IsNullOrEmpty(tag))
         {
-            return Result.Fail("Tag is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Tag is empty.");
         }
 
-        return await MutateFrontmatterAsync(
+        return await MutateFieldsAsync(
             resource,
             dictionary =>
             {
@@ -145,14 +143,14 @@ public sealed class SidecarService : ISidecarService
             });
     }
 
-    public async Task<Result> RemoveTagAsync(ResourceKey resource, string tag)
+    public async Task<Result<SidecarWriteOutcome>> RemoveTagAsync(ResourceKey resource, string tag)
     {
         if (string.IsNullOrEmpty(tag))
         {
-            return Result.Fail("Tag is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Tag is empty.");
         }
 
-        return await MutateFrontmatterAsync(
+        return await MutateFieldsAsync(
             resource,
             dictionary =>
             {
@@ -180,93 +178,8 @@ public sealed class SidecarService : ISidecarService
             createIfMissing: false);
     }
 
-    public async Task<Result> WriteBlockAsync(ResourceKey resource, string blockId, string content)
-    {
-        if (!SidecarHelper.IsValidBlockName(blockId))
-        {
-            return Result.Fail($"Block id '{blockId}' does not match the block-naming rules (lowercase letters, digits, hyphens, dotted segments).");
-        }
-        if (content is null)
-        {
-            return Result.Fail("Block content is null.");
-        }
-        if (SidecarHelper.BlockContentContainsFenceLine(content))
-        {
-            return Result.Fail($"Block '{blockId}' content contains a line matching the fence regex (e.g. '+++ \"name\"'); this would corrupt the sidecar on round-trip.");
-        }
-
-        return await MutateBlocksAsync(
-            resource,
-            blocks =>
-            {
-                var index = -1;
-                for (int i = 0; i < blocks.Count; i++)
-                {
-                    if (string.Equals(blocks[i].Name, blockId, StringComparison.Ordinal))
-                    {
-                        index = i;
-                        break;
-                    }
-                }
-
-                var updated = new SidecarBlock(blockId, content);
-                if (index >= 0)
-                {
-                    blocks[index] = updated;
-                }
-                else
-                {
-                    blocks.Add(updated);
-                }
-            });
-    }
-
-    public async Task<Result> RemoveBlockAsync(ResourceKey resource, string blockId)
-    {
-        if (string.IsNullOrEmpty(blockId))
-        {
-            return Result.Fail("Block id is empty.");
-        }
-
-        return await MutateBlocksAsync(
-            resource,
-            blocks =>
-            {
-                for (int i = blocks.Count - 1; i >= 0; i--)
-                {
-                    if (string.Equals(blocks[i].Name, blockId, StringComparison.Ordinal))
-                    {
-                        blocks.RemoveAt(i);
-                    }
-                }
-            },
-            createIfMissing: false);
-    }
-
-    private Task<Result> MutateFrontmatterAsync(
-        ResourceKey resource,
-        Action<Dictionary<string, object>> mutate,
-        bool createIfMissing = true)
-    {
-        return ApplyMutationAsync(
-            resource,
-            context => mutate(context.Frontmatter),
-            createIfMissing);
-    }
-
-    private Task<Result> MutateBlocksAsync(
-        ResourceKey resource,
-        Action<List<SidecarBlock>> mutate,
-        bool createIfMissing = true)
-    {
-        return ApplyMutationAsync(
-            resource,
-            context => mutate(context.Blocks),
-            createIfMissing);
-    }
-
     // The shared read-modify-write engine behind every typed mutator. Loads the
-    // current sidecar state into mutable working copies, runs the supplied
+    // current sidecar state into a mutable working copy, runs the supplied
     // mutation, then writes the composed result back through the gateway.
     // The pre-mutation compose is captured up front so the post-mutation compose
     // can be compared against it; when they match the write is skipped, so a
@@ -275,15 +188,20 @@ public sealed class SidecarService : ISidecarService
     // resource refresh. A missing storage file is either created
     // (createIfMissing=true) or quietly skipped (createIfMissing=false); a
     // Broken sidecar fails rather than being overwritten with fresh content.
-    private async Task<Result> ApplyMutationAsync(
+    //
+    // The returned outcome lets callers distinguish a freshly-created sidecar
+    // (registry needs to learn about the new file) from an in-place update
+    // (registry already tracks the file; classification unchanged) and from a
+    // no-op (nothing happened on disk).
+    private async Task<Result<SidecarWriteOutcome>> MutateFieldsAsync(
         ResourceKey resource,
-        Action<MutationContext> applyMutation,
-        bool createIfMissing)
+        Action<Dictionary<string, object>> mutate,
+        bool createIfMissing = true)
     {
         var resolveResult = ResolveSidecarKey(resource);
         if (resolveResult.IsFailure)
         {
-            return Result.Fail(resolveResult);
+            return Result<SidecarWriteOutcome>.Fail(resolveResult);
         }
         var sidecarKey = resolveResult.Value;
 
@@ -292,24 +210,24 @@ public sealed class SidecarService : ISidecarService
         var readResult = await ReadAsync(resource);
         if (readResult.IsFailure)
         {
-            return Result.Fail(readResult);
+            return Result<SidecarWriteOutcome>.Fail(readResult);
         }
         var read = readResult.Value;
 
-        Dictionary<string, object> frontmatter;
-        List<SidecarBlock> blocks;
+        Dictionary<string, object> fields;
+        bool sidecarExists;
 
         switch (read.Outcome)
         {
             case SidecarReadOutcome.Healthy:
-                frontmatter = new Dictionary<string, object>(read.Content!.Frontmatter, StringComparer.Ordinal);
-                blocks = new List<SidecarBlock>(read.Content.Blocks);
+                fields = new Dictionary<string, object>(read.Content!.Fields, StringComparer.Ordinal);
+                sidecarExists = true;
                 break;
 
             case SidecarReadOutcome.NoSidecar:
                 if (!createIfMissing)
                 {
-                    return Result.Ok();
+                    return SidecarWriteOutcome.NoChange;
                 }
                 // Creating a fresh sidecar requires the parent file to exist
                 // on disk. The .cel extension is reserved for sidecars, so the
@@ -322,47 +240,41 @@ public sealed class SidecarService : ISidecarService
                 if (parentInfoResult.IsFailure
                     || parentInfoResult.Value.Kind != StorageItemKind.File)
                 {
-                    return Result.Fail(
+                    return Result<SidecarWriteOutcome>.Fail(
                         $"Cannot create sidecar '{sidecarKey}': the parent file '{parentKey}' does not exist on disk. "
                         + "The .cel extension is reserved for project metadata sidecars; pass the parent resource key.");
                 }
-                frontmatter = new Dictionary<string, object>(StringComparer.Ordinal);
-                blocks = new List<SidecarBlock>();
+                fields = new Dictionary<string, object>(StringComparer.Ordinal);
+                sidecarExists = false;
                 break;
 
             case SidecarReadOutcome.Broken:
             default:
-                return Result.Fail($"Cannot mutate sidecar '{sidecarKey}': {read.FailureMessage ?? "parse failed"}.");
+                return Result<SidecarWriteOutcome>.Fail($"Cannot mutate sidecar '{sidecarKey}': {read.FailureMessage ?? "parse failed"}.");
         }
 
-        var canonicalBefore = SidecarHelper.Compose(frontmatter, blocks);
-        var context = new MutationContext(frontmatter, blocks);
-        applyMutation(context);
-        var canonicalAfter = SidecarHelper.Compose(frontmatter, blocks);
+        var canonicalBefore = SidecarHelper.Compose(fields);
+        mutate(fields);
+        var canonicalAfter = SidecarHelper.Compose(fields);
 
         if (string.Equals(canonicalAfter, canonicalBefore, StringComparison.Ordinal))
         {
-            return Result.Ok();
+            return SidecarWriteOutcome.NoChange;
         }
 
         var writeResult = await resourceFileSystem.WriteAllTextAsync(sidecarKey, canonicalAfter);
         if (writeResult.IsFailure)
         {
-            return Result.Fail($"Failed to write sidecar '{sidecarKey}'.")
+            return Result<SidecarWriteOutcome>.Fail($"Failed to write sidecar '{sidecarKey}'.")
                 .WithErrors(writeResult);
         }
-        return Result.Ok();
+
+        return sidecarExists ? SidecarWriteOutcome.Updated : SidecarWriteOutcome.Created;
     }
 
-    // The mutable working state passed to ApplyMutationAsync's callback. Direct
-    // mutation of either collection is the way edits land.
-    private sealed record MutationContext(
-        Dictionary<string, object> Frontmatter,
-        List<SidecarBlock> Blocks);
-
-    // Resolves the resource key whose file holds the frontmatter+blocks for the
-    // given resource. For a regular file this is the sibling .cel key produced
-    // by GetSidecarKey. A .cel key passed directly returns unchanged — the data
+    // Resolves the resource key whose file holds the fields for the given
+    // resource. For a regular file this is the sibling .cel key produced by
+    // GetSidecarKey. A .cel key passed directly returns unchanged — the data
     // tools reject such keys at the agent layer, but internal callers may still
     // operate on a sidecar's own key. Non-project roots are refused outright:
     // sidecar metadata is a project-scoped system and the tracking pass only
@@ -389,7 +301,7 @@ public sealed class SidecarService : ISidecarService
     // Strips the trailing .cel from a sidecar key to derive its parent key.
     // Caller must guarantee the input is a .cel key (e.g. via IsSidecarKey or
     // by construction). Used by the orphan-prevention check inside
-    // ApplyMutationAsync.
+    // MutateFieldsAsync.
     private static ResourceKey StripSidecarSuffix(ResourceKey sidecarKey)
     {
         var fullKey = sidecarKey.FullKey;

@@ -93,7 +93,7 @@ public class DocumentEditorPreferenceStoreTests
     }
 
     [Test]
-    public async Task GetSidecarPreferenceAsync_ReturnsParsedEditorIdFromFrontmatter()
+    public async Task GetSidecarPreferenceAsync_ReturnsParsedEditorIdFromFields()
     {
         StubSidecarEditor("test.specific-editor");
 
@@ -115,11 +115,10 @@ public class DocumentEditorPreferenceStoreTests
     [Test]
     public async Task GetSidecarPreferenceAsync_ReturnsEmptyWhenSidecarHasNoEditorField()
     {
-        // Healthy sidecar with frontmatter but no 'editor' key means the user
+        // Healthy sidecar with fields but no 'editor' key means the user
         // never set a per-file preference. Treat as "no opinion", not failure.
         var content = new SidecarContent(
-            new Dictionary<string, object> { ["title"] = "Notes" },
-            Array.Empty<SidecarBlock>());
+            new Dictionary<string, object> { ["title"] = "Notes" });
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.Healthy, content, null))));
@@ -208,11 +207,11 @@ public class DocumentEditorPreferenceStoreTests
 
     private void StubSidecarEditor(string editorId)
     {
-        var frontmatter = new Dictionary<string, object>
+        var fields = new Dictionary<string, object>
         {
             [DocumentConstants.SidecarEditorFieldName] = editorId,
         };
-        var content = new SidecarContent(frontmatter, Array.Empty<SidecarBlock>());
+        var content = new SidecarContent(fields);
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.Healthy, content, null))));

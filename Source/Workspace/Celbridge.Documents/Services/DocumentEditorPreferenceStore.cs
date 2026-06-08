@@ -96,7 +96,7 @@ public class DocumentEditorPreferenceStore
             return DocumentEditorId.Empty;
         }
 
-        if (!sidecar.Content.Frontmatter.TryGetValue(DocumentConstants.SidecarEditorFieldName, out var editorValue)
+        if (!sidecar.Content.Fields.TryGetValue(DocumentConstants.SidecarEditorFieldName, out var editorValue)
             || editorValue is not string editorIdString
             || string.IsNullOrWhiteSpace(editorIdString))
         {

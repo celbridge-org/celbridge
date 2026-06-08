@@ -3,8 +3,8 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Sets a single frontmatter field in the parent resource's .cel sidecar.
-/// Creates the sidecar if it does not exist.
+/// Sets a single field in the parent resource's .cel sidecar. Creates the
+/// sidecar if it does not exist.
 /// </summary>
 public interface ISetFieldCommand : IExecutableCommand
 {
@@ -15,7 +15,7 @@ public interface ISetFieldCommand : IExecutableCommand
     ResourceKey Resource { get; set; }
 
     /// <summary>
-    /// Frontmatter field name to write. Must be a non-empty TOML key.
+    /// Field name to write. Must be a non-empty TOML key.
     /// </summary>
     string Field { get; set; }
 

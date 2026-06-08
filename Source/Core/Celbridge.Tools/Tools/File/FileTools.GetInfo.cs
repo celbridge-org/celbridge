@@ -6,9 +6,8 @@ namespace Celbridge.Tools;
 /// <summary>
 /// Result returned by file_get_info for file resources. Sidecar fields are
 /// populated when the file has a paired .cel sidecar; SidecarStatus is
-/// "healthy" when the sidecar's frontmatter parses cleanly, "broken"
-/// otherwise. Absence is signalled by sidecar_status = "none" with sidecar
-/// = null.
+/// "healthy" when the sidecar's TOML parses cleanly, "broken" otherwise.
+/// Absence is signalled by sidecar_status = "none" with sidecar = null.
 /// </summary>
 public record class FileInfoResult(
     string Type,

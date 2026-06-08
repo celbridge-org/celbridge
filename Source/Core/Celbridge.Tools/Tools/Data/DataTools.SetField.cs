@@ -5,7 +5,7 @@ namespace Celbridge.Tools;
 
 public partial class DataTools
 {
-    /// <summary>Write a single frontmatter field on a resource's .cel sidecar (creates the sidecar if missing).</summary>
+    /// <summary>Write a single field on a resource's .cel sidecar (creates the sidecar if missing).</summary>
     [McpServerTool(Name = "data_set_field", Idempotent = true)]
     [ToolAlias("data.set_field")]
     [RelatedGuides("resource_keys")]

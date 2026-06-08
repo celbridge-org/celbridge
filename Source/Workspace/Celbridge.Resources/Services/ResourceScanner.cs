@@ -12,7 +12,7 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public sealed class ResourceScanner : IResourceScanner
 {
-    private const string TagsField = "tags";
+    private const string TagsField = SidecarHelper.TagsFieldName;
 
     // File extensions that participate in reference scanning. Add an entry here
     // when a workflow needs cascade support for a new file type, and update the
@@ -141,7 +141,7 @@ public sealed class ResourceScanner : IResourceScanner
                 return;
             }
 
-            if (!parseResult.Value.Frontmatter.TryGetValue(TagsField, out var tagsValue))
+            if (!parseResult.Value.Fields.TryGetValue(TagsField, out var tagsValue))
             {
                 return;
             }

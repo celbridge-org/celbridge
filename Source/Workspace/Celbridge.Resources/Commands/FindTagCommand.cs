@@ -4,8 +4,8 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Commands;
 
 /// <summary>
-/// Enumerates every paired-sidecar parent resource whose .cel frontmatter
-/// "tags" list contains the given tag value.
+/// Enumerates every paired-sidecar parent resource whose .cel tag list
+/// contains the given tag value.
 /// </summary>
 public sealed class FindTagCommand : CommandBase, IFindTagCommand
 {

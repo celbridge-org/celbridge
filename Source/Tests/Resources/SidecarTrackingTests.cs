@@ -65,7 +65,7 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "fake-png-bytes");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "tags = [\"meeting\"]\n");
+            "_tags = [\"meeting\"]\n");
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -81,7 +81,7 @@ public class SidecarTrackingTests
     public async Task OrphanSidecar_AppearsInReportOrphan()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "tags = [\"x\"]\n");
+            "_tags = [\"x\"]\n");
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
@@ -94,7 +94,7 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel"),
-            "tags = [\"a\"]\n");
+            "_tags = [\"a\"]\n");
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png.cel.cel"),
             "should = \"not be paired\"\n");
 
@@ -131,7 +131,7 @@ public class SidecarTrackingTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
-        File.WriteAllText(sidecarPath, "tags = [\"x\"]\n");
+        File.WriteAllText(sidecarPath, "_tags = [\"x\"]\n");
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 

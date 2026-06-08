@@ -3,9 +3,8 @@ using Celbridge.Commands;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Enumerates every paired-sidecar parent resource whose .cel frontmatter
-/// "tags" list contains the given tag value. Results are sorted by resource
-/// key.
+/// Enumerates every paired-sidecar parent resource whose .cel tag list
+/// contains the given tag value. Results are sorted by resource key.
 /// </summary>
 public interface IFindTagCommand : IExecutableCommand<IReadOnlyList<ResourceKey>>
 {

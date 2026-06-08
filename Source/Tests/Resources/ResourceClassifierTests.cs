@@ -71,7 +71,7 @@ public class ResourceClassifierTests
         var sub = Path.Combine(_projectFolderPath, "subfolder");
         Directory.CreateDirectory(sub);
         File.WriteAllText(Path.Combine(sub, "note.md"), "body");
-        File.WriteAllText(Path.Combine(sub, "note.md.cel"), "tags = [\"meeting\"]\n");
+        File.WriteAllText(Path.Combine(sub, "note.md.cel"), "_tags = [\"meeting\"]\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier();
         var registry = BuildRegistry(classifier);
@@ -116,7 +116,7 @@ public class ResourceClassifierTests
     public async Task Classify_PairedSidecarAndParent_AssignsExpectedKinds()
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md"), "# Notes\n");
-        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"), "tags = []\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "notes.md.cel"), "_tags = []\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier();
         var registry = BuildRegistry(classifier);
@@ -132,7 +132,7 @@ public class ResourceClassifierTests
     [Test]
     public async Task Classify_ParentlessCel_IsOrphan()
     {
-        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "tags = []\n");
+        File.WriteAllText(Path.Combine(_projectFolderPath, "lonely.cel"), "_tags = []\n");
 
         var classifier = ResourceClassifierTestHelper.BuildClassifier();
         var registry = BuildRegistry(classifier);

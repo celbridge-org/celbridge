@@ -98,9 +98,9 @@ public class SearchServiceFilterTests
     {
         // .cel sidecar files are excluded from plain-text search because their
         // content is editor-owned and a plain-text replace would corrupt the
-        // TOML frontmatter or block fences.
+        // TOML.
         var (resource, filePath) = MakeResource("photo.png.cel");
-        File.WriteAllText(filePath, "tags = [\"x\"]\n");
+        File.WriteAllText(filePath, "_tags = [\"x\"]\n");
 
         (await _service.ShouldSearchFileAsync(resource, filePath)).Should().BeFalse();
     }

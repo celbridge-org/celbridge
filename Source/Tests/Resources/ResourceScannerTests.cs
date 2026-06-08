@@ -51,7 +51,7 @@ public class ResourceScannerTests
         _resourceFileSystem.GetInfoAsync(parentKey)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _resourceFileSystem.ReadAllTextAsync(sidecarKey)
-            .Returns(Task.FromResult(Result<string>.Ok("tags = [\"boring\"]\n")));
+            .Returns(Task.FromResult(Result<string>.Ok("_tags = [\"boring\"]\n")));
 
         var results = await _scanner.FindByTagAsync("boring");
 
@@ -74,7 +74,7 @@ public class ResourceScannerTests
         // The would-be parent (leftover) does not exist on disk (default
         // NotFound from setup), so the scanner skips this file.
         _resourceFileSystem.ReadAllTextAsync(orphanKey)
-            .Returns(Task.FromResult(Result<string>.Ok("tags = [\"boring\"]\n")));
+            .Returns(Task.FromResult(Result<string>.Ok("_tags = [\"boring\"]\n")));
 
         var results = await _scanner.FindByTagAsync("boring");
 

@@ -62,7 +62,7 @@ public class SidecarServiceTests
 
         readResult.IsSuccess.Should().BeTrue();
         readResult.Value.Outcome.Should().Be(SidecarReadOutcome.Healthy);
-        readResult.Value.Content!.Frontmatter["editor"].Should().Be("acme.binary-editor");
+        readResult.Value.Content!.Fields["editor"].Should().Be("acme.binary-editor");
     }
 
     [Test]
@@ -83,7 +83,7 @@ public class SidecarServiceTests
 
         readResult.IsSuccess.Should().BeTrue();
         readResult.Value.Outcome.Should().Be(SidecarReadOutcome.Healthy);
-        readResult.Value.Content!.Frontmatter["editor"].Should().Be("celbridge.code-editor.code-document");
+        readResult.Value.Content!.Fields["editor"].Should().Be("celbridge.code-editor.code-document");
 
         // Belt-and-braces: the bogus .cel.cel key must never be touched.
         await _resourceFileSystem.DidNotReceive().GetInfoAsync(new ResourceKey("design.widget.cel.cel"));
@@ -97,7 +97,7 @@ public class SidecarServiceTests
         var siblingSidecar = new ResourceKey("photo.png.cel");
 
         // The parent file must exist on disk; otherwise the orphan-prevention
-        // check inside ApplyMutationAsync refuses to create the new sidecar.
+        // check inside MutateFieldsAsync refuses to create the new sidecar.
         _resourceFileSystem.GetInfoAsync(regularFile)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _resourceFileSystem.WriteAllTextAsync(siblingSidecar, Arg.Any<string>())
@@ -106,16 +106,63 @@ public class SidecarServiceTests
         var setResult = await _sidecarService.SetFieldAsync(regularFile, "editor", "acme.binary-editor");
 
         setResult.IsSuccess.Should().BeTrue();
+        // The sidecar did not exist on disk, so this write materialises a new
+        // file. The Created outcome is what gates the registry-update flag on
+        // the calling command (existing-file updates must report Updated so
+        // the rescan is skipped).
+        setResult.Value.Should().Be(SidecarWriteOutcome.Created);
         await _resourceFileSystem.Received(1).WriteAllTextAsync(
             siblingSidecar,
             Arg.Is<string>(text => text.Contains("editor") && text.Contains("acme.binary-editor")));
     }
 
     [Test]
+    public async Task SetFieldAsync_ReportsUpdated_WhenSidecarAlreadyExists()
+    {
+        // Mutating an existing sidecar reports Updated, not Created. The
+        // command layer uses this distinction to suppress the synchronous
+        // registry rebuild that's only needed when a new .cel file appears.
+        var celResource = new ResourceKey("design.widget.cel");
+
+        _resourceFileSystem.GetInfoAsync(celResource)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(celResource)
+            .Returns(Task.FromResult(Result<string>.Ok("title = \"old\"\n")));
+        _resourceFileSystem.WriteAllTextAsync(celResource, Arg.Any<string>())
+            .Returns(Task.FromResult(Result.Ok()));
+
+        var setResult = await _sidecarService.SetFieldAsync(celResource, "title", "new");
+
+        setResult.IsSuccess.Should().BeTrue();
+        setResult.Value.Should().Be(SidecarWriteOutcome.Updated);
+    }
+
+    [Test]
+    public async Task SetFieldAsync_ReportsNoChange_WhenValueMatchesExisting()
+    {
+        // The canonical-compare short-circuits a redundant write. The outcome
+        // must be NoChange so the command layer can skip both the watcher
+        // fan-out and the registry rebuild for set-to-current-value calls.
+        var regularFile = new ResourceKey("photo.png");
+        var siblingSidecar = new ResourceKey("photo.png.cel");
+
+        _resourceFileSystem.GetInfoAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
+        _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
+            .Returns(Task.FromResult(Result<string>.Ok("editor = \"acme.binary-editor\"\n")));
+
+        var setResult = await _sidecarService.SetFieldAsync(regularFile, "editor", "acme.binary-editor");
+
+        setResult.IsSuccess.Should().BeTrue();
+        setResult.Value.Should().Be(SidecarWriteOutcome.NoChange);
+        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
+    }
+
+    [Test]
     public async Task SetFieldAsync_PreservesExistingContent_OnExistingSidecar()
     {
-        // An existing sidecar may already carry meaningful frontmatter. Mutating
-        // one field must preserve the rest of the frontmatter so user data
+        // An existing sidecar may already carry meaningful fields. Mutating
+        // one field must preserve the rest of the fields so user data
         // survives the round-trip.
         var celResource = new ResourceKey("design.widget.cel");
         var existingContent = "title = \"My Design\"\nversion = 1\n";
@@ -174,7 +221,7 @@ public class SidecarServiceTests
         _resourceFileSystem.GetInfoAsync(siblingSidecar)
             .Returns(Task.FromResult(Result<StorageItemInfo>.Ok(new StorageItemInfo(StorageItemKind.File, 0, default, FileSystemAttributes.None))));
         _resourceFileSystem.ReadAllTextAsync(siblingSidecar)
-            .Returns(Task.FromResult(Result<string>.Ok("tags = [\"hero\", \"sprite\"]\n")));
+            .Returns(Task.FromResult(Result<string>.Ok("_tags = [\"hero\", \"sprite\"]\n")));
 
         var addResult = await _sidecarService.AddTagAsync(regularFile, "hero");
 
@@ -185,7 +232,7 @@ public class SidecarServiceTests
     [Test]
     public async Task SetFieldAsync_RejectsNonIndexableValue()
     {
-        // The frontmatter surface only accepts scalars and lists of scalars.
+        // The fields surface only accepts scalars and lists of scalars.
         // A nested dictionary (or any other unsupported shape) must fail at the
         // service boundary before any read or write happens, so the failure
         // surfaces with a clear "not indexable" message rather than from inside
@@ -199,38 +246,6 @@ public class SidecarServiceTests
 
         setResult.IsFailure.Should().BeTrue();
         setResult.FirstErrorMessage.Should().Contain("not indexable");
-        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
-    }
-
-    [Test]
-    public async Task WriteBlockAsync_RejectsInvalidBlockId()
-    {
-        // Block ids must match the dotted-lowercase rule. A bad id is caught at
-        // the service boundary so the failure points at the caller's id rather
-        // than at Compose's throw-on-invalid-name guard.
-        var writeResult = await _sidecarService.WriteBlockAsync(
-            new ResourceKey("photo.png"),
-            "Invalid Block Name!",
-            "body");
-
-        writeResult.IsFailure.Should().BeTrue();
-        writeResult.FirstErrorMessage.Should().Contain("block-naming rules");
-        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
-    }
-
-    [Test]
-    public async Task WriteBlockAsync_RejectsContentContainingFenceLine()
-    {
-        // Block content that contains a line matching the fence regex would
-        // cause Parse to split it incorrectly on read. The service rejects this
-        // up front so the bytes never land on disk.
-        var writeResult = await _sidecarService.WriteBlockAsync(
-            new ResourceKey("photo.png"),
-            "block-a",
-            "first\n+++ \"sneaky\"\nlast\n");
-
-        writeResult.IsFailure.Should().BeTrue();
-        writeResult.FirstErrorMessage.Should().Contain("fence regex");
         await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 
@@ -265,18 +280,6 @@ public class SidecarServiceTests
 
         setResult.IsFailure.Should().BeTrue();
         setResult.FirstErrorMessage.Should().Contain("project root");
-    }
-
-    [Test]
-    public async Task WriteBlockAsync_FailsForNonProjectRoot()
-    {
-        var writeResult = await _sidecarService.WriteBlockAsync(
-            new ResourceKey("logs:foo.txt"),
-            "scratch",
-            string.Empty);
-
-        writeResult.IsFailure.Should().BeTrue();
-        writeResult.FirstErrorMessage.Should().Contain("project root");
     }
 
     [Test]
@@ -322,19 +325,6 @@ public class SidecarServiceTests
 
         setResult.IsFailure.Should().BeTrue();
         setResult.FirstErrorMessage.Should().Contain("parent file");
-        await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
-    }
-
-    [Test]
-    public async Task WriteBlockAsync_RefusesToCreate_WhenParentFileDoesNotExist()
-    {
-        // Same orphan-prevention as AddTagAsync but for WriteBlock.
-        var phantomParent = new ResourceKey("ghost");
-
-        var writeResult = await _sidecarService.WriteBlockAsync(phantomParent, "scratch", "body");
-
-        writeResult.IsFailure.Should().BeTrue();
-        writeResult.FirstErrorMessage.Should().Contain("parent file");
         await _resourceFileSystem.DidNotReceive().WriteAllTextAsync(Arg.Any<ResourceKey>(), Arg.Any<string>());
     }
 

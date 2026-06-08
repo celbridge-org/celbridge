@@ -351,11 +351,11 @@ public class DocumentViewFactoryTests
 
     private void StubSidecarEditor(string editorId)
     {
-        var frontmatter = new Dictionary<string, object>
+        var fields = new Dictionary<string, object>
         {
             [DocumentConstants.SidecarEditorFieldName] = editorId,
         };
-        var content = new SidecarContent(frontmatter, Array.Empty<SidecarBlock>());
+        var content = new SidecarContent(fields);
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())
             .Returns(Task.FromResult(Result<SidecarReadResult>.Ok(
                 new SidecarReadResult(SidecarReadOutcome.Healthy, content, null))));

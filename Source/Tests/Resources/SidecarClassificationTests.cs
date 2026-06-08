@@ -108,12 +108,16 @@ public class SidecarClassificationTests
     }
 
     [Test]
-    public async Task DuplicateBlockNames_ClassifiedAsBroken_BytesUntouched()
+    public async Task LegacyBlockFenceLines_ClassifiedAsBroken_BytesUntouched()
     {
+        // Sidecar files predating the TOML-only format carry '+++ "..."' fence
+        // lines. The TOML-only parser does not give them any special meaning;
+        // it surfaces the file as Broken rather than silently migrating, so
+        // the user notices and rewrites the data into TOML fields.
         File.WriteAllText(Path.Combine(_projectFolderPath, "foo.png"), "data");
         var sidecarPath = Path.Combine(_projectFolderPath, "foo.png.cel");
         var originalContent =
-            "tags = [\"x\"]\n" +
+            "_tags = [\"x\"]\n" +
             "+++ \"a\"\nfirst\n" +
             "+++ \"a\"\nsecond";
         File.WriteAllText(sidecarPath, originalContent);
@@ -142,7 +146,7 @@ public class SidecarClassificationTests
     {
         File.WriteAllText(Path.Combine(_projectFolderPath, "good.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "good.png.cel"),
-            "tags = [\"x\"]\n");
+            "_tags = [\"x\"]\n");
 
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.png"), "data");
         File.WriteAllText(Path.Combine(_projectFolderPath, "bad.png.cel"),

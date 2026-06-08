@@ -36,7 +36,7 @@ A JSON object with:
 
 ## Not for `.cel` files
 
-`.cel` files are project metadata sidecars with a structured TOML and block-fence format. A text-level replacement could corrupt the frontmatter or fence syntax, so `file_replace` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_write_block`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
+`.cel` files are project metadata sidecars with a structured TOML format. A text-level replacement could corrupt the TOML, so `file_replace` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
 
 ## Gotchas
 
