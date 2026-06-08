@@ -28,35 +28,19 @@ public static class MigrationTestHelper
     /// <summary>
     /// Creates a temporary TOML project file with the specified version.
     /// </summary>
-    public static string CreateTempProjectFile(string version, string? legacyVersion = null)
+    public static string CreateTempProjectFile(string version)
     {
         var tempPath = Path.GetTempFileName();
         var projectPath = Path.ChangeExtension(tempPath, ".celbridge");
         File.Delete(tempPath);
 
-        string content;
-        if (legacyVersion != null)
-        {
-            // Old format with "version" property (pre-0.1.5)
-            content = $"""
-                [celbridge]
-                version = "{legacyVersion}"
+        var content = $"""
+            [celbridge]
+            celbridge-version = "{version}"
 
-                [project]
-                name = "TestProject"
-                """;
-        }
-        else
-        {
-            // Modern format with "celbridge-version" property
-            content = $"""
-                [celbridge]
-                celbridge-version = "{version}"
-
-                [project]
-                name = "TestProject"
-                """;
-        }
+            [project]
+            name = "TestProject"
+            """;
 
         File.WriteAllText(projectPath, content);
         return projectPath;

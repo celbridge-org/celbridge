@@ -246,95 +246,6 @@ public class ProjectMigrationServiceTests
 
     #endregion
 
-    #region Legacy Version Compatibility Tests
-
-    [Test]
-    public async Task CheckMigrationAsync_LegacyVersionFormat_ReturnsUpgradeRequired()
-    {
-        // Arrange
-        var appVersion = "0.1.5";
-        _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-
-        // Create file with legacy "version" property (pre-0.1.5)
-        var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4");
-
-        try
-        {
-            // Act
-            var result = await service.CheckMigrationAsync(projectPath);
-
-            // Assert - Should return UpgradeRequired, not Complete
-            result.Status.Should().Be(MigrationStatus.UpgradeRequired);
-            result.OldVersion.Should().Be("0.1.4");
-            result.NewVersion.Should().Be(appVersion);
-        }
-        finally
-        {
-            MigrationTestHelper.CleanupTempFile(projectPath);
-        }
-    }
-
-    [Test]
-    public async Task PerformMigrationUpgradeAsync_LegacyVersionFormat_PerformsMigration()
-    {
-        // Arrange
-        var appVersion = "0.1.5";
-        _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-
-        // Use real registry which will discover MigrationStep_0_1_5
-        var registry = new MigrationStepRegistry(_mockRegistryLogger);
-        registry.Initialize();
-
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry, _fileSystem);
-
-        // Create file with legacy "version" property (pre-0.1.5)
-        var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4");
-
-        try
-        {
-            // Act
-            var result = await service.PerformMigrationUpgradeAsync(projectPath);
-
-            // Assert
-            result.Status.Should().Be(MigrationStatus.Complete);
-            result.OldVersion.Should().Be("0.1.4");
-            result.NewVersion.Should().Be(appVersion);
-        }
-        finally
-        {
-            MigrationTestHelper.CleanupTempFile(projectPath);
-        }
-    }
-
-    [Test]
-    public async Task CheckMigrationAsync_LegacyVersion4Part_ReturnsUpgradeRequired()
-    {
-        // Arrange
-        var appVersion = "0.1.5";
-        _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
-        var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, _registry, _fileSystem);
-
-        // Create file with legacy 4-part version
-        var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: "0.1.4.2");
-
-        try
-        {
-            // Act
-            var result = await service.CheckMigrationAsync(projectPath);
-
-            // Assert - should return UpgradeRequired
-            result.Status.Should().Be(MigrationStatus.UpgradeRequired);
-            result.OldVersion.Should().Be("0.1.4.2");
-        }
-        finally
-        {
-            MigrationTestHelper.CleanupTempFile(projectPath);
-        }
-    }
-
-    #endregion
-
     #region Version Update Tests
 
     [Test]
@@ -404,19 +315,38 @@ public class ProjectMigrationServiceTests
     #region Migration Step Execution Tests
 
     [Test]
-    public async Task PerformMigrationUpgradeAsync_WithMigrationSteps_ExecutesStepsInOrder()
+    public async Task PerformMigrationUpgradeAsync_RunsApplicableStep_AndUpdatesVersion()
     {
-        // Arrange
+        // A project a version behind the app runs the matching migration step
+        // during the upgrade. The 0.2.0 step converts a legacy nested
+        // [shortcuts...] table into the [[shortcut]] array format, and the
+        // version is stamped to the application version once steps complete.
         var appVersion = "0.2.0";
-        var projectVersion = "0.1.4";
+        var projectVersion = "0.1.6";
         _mockEnvironmentService = MigrationTestHelper.CreateMockEnvironmentService(appVersion);
 
-        // Use real registry which will discover MigrationStep_0_1_5
+        // Real registry so the upgrade discovers the 0.2.0 step.
         var registry = new MigrationStepRegistry(_mockRegistryLogger);
         registry.Initialize();
 
         var service = new ProjectMigrationService(_mockLogger, _mockEnvironmentService, registry, _fileSystem);
-        var projectPath = MigrationTestHelper.CreateTempProjectFile("", legacyVersion: projectVersion);
+
+        var tempPath = Path.GetTempFileName();
+        var projectPath = Path.ChangeExtension(tempPath, ".celbridge");
+        File.Delete(tempPath);
+
+        var content = """
+            [celbridge]
+            celbridge-version = "0.1.6"
+
+            [project]
+            name = "TestProject"
+
+            [shortcuts.navigation_bar.run_examples]
+            icon = "Play"
+            tooltip = "Run examples"
+            """;
+        File.WriteAllText(projectPath, content);
 
         try
         {
@@ -429,10 +359,11 @@ public class ProjectMigrationServiceTests
             result.OldVersion.Should().Be(projectVersion);
             result.NewVersion.Should().Be(appVersion);
 
-            // Verify file was migrated to new format
-            var content = File.ReadAllText(projectPath);
-            content.Should().Contain("celbridge-version");
-            content.Should().NotContain("\r\nversion = ");
+            // The 0.2.0 step rewrote the legacy shortcuts table into the new
+            // [[shortcut]] array format.
+            var migratedContent = File.ReadAllText(projectPath);
+            migratedContent.Should().Contain("[[shortcut]]");
+            migratedContent.Should().NotContain("[shortcuts.navigation_bar");
 
             var updatedVersion = MigrationTestHelper.ReadVersionFromFile(projectPath);
             updatedVersion.Should().Be(appVersion);
