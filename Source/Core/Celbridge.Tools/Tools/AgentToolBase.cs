@@ -76,7 +76,7 @@ public abstract class AgentToolBase
     /// Returns a typed denial when the resource key targets a .cel sidecar;
     /// null when it does not.
     /// </summary>
-    protected CallToolResult? DenyWriteToCelTarget(ResourceKey resource, string original, string toolName)
+    protected CallToolResult? ValidateNotCelTarget(ResourceKey resource, string original, string toolName)
     {
         var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.Sidecars;
         if (!sidecarService.IsSidecarKey(resource))

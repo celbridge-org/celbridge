@@ -48,7 +48,7 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = DenyWriteToCelTarget(fileResourceKey, fileResource, "file_multi_edit");
+        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_multi_edit");
         if (celDenial is not null)
         {
             return celDenial;

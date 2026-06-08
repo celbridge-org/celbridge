@@ -16,7 +16,7 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = DenyWriteToCelTarget(fileResourceKey, fileResource, "file_write_binary");
+        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_write_binary");
         if (celDenial is not null)
         {
             return celDenial;
