@@ -315,40 +315,61 @@ class TestFileEdit:
         assert affected["contextLines"] == ["Line 2", "THIRD", "Line 4"]
 
 
-class TestCelDenial:
-    """Byte-write tools refuse .cel targets and point the caller at data_*."""
+class TestCelTargetsAccepted:
+    """Byte-write tools accept .cel targets. The structured data_* tools are
+    ergonomically preferred for routine field/tag mutation, but the byte-write
+    surface stays open for bulk seeding and repairing broken sidecars.
+    """
 
-    def test_write_denied(self, file):
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.write("TestFileEdit/hello.txt.cel", "content")
+    def test_write_creates_cel_sidecar(self, file):
+        file.write("TestFileEdit/hello.txt.cel", "priority = \"high\"\n")
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "priority" in result["content"]
 
-    def test_write_binary_denied(self, file):
-        content = base64.b64encode(b"bytes").decode("ascii")
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.write_binary("TestFileEdit/hello.txt.cel", content)
+    def test_write_binary_accepts_cel_target(self, file):
+        content = base64.b64encode(b"priority = \"high\"\n").decode("ascii")
+        file.write_binary("TestFileEdit/hello.txt.cel", content)
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "priority" in result["content"]
 
-    def test_edit_denied(self, file):
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.edit(
-                "TestFileEdit/hello.txt.cel",
-                old_string="old",
-                new_string="new",
-            )
+    def test_edit_accepts_cel_target(self, file):
+        file.write("TestFileEdit/hello.txt.cel", "priority = \"high\"\n")
+        file.edit(
+            "TestFileEdit/hello.txt.cel",
+            old_string="\"high\"",
+            new_string="\"low\"",
+        )
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "\"low\"" in result["content"]
 
-    def test_multi_edit_denied(self, file):
-        edits = [{"oldString": "a", "newString": "b"}]
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.multi_edit("TestFileEdit/hello.txt.cel", json.dumps(edits))
+    def test_multi_edit_accepts_cel_target(self, file):
+        file.write(
+            "TestFileEdit/hello.txt.cel",
+            "priority = \"high\"\ntitle = \"old\"\n",
+        )
+        edits = [
+            {"oldString": "\"high\"", "newString": "\"low\""},
+            {"oldString": "\"old\"", "newString": "\"new\""},
+        ]
+        file.multi_edit("TestFileEdit/hello.txt.cel", json.dumps(edits))
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "\"low\"" in result["content"]
+        assert "\"new\"" in result["content"]
 
-    def test_replace_denied(self, file):
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.replace(
-                "TestFileEdit/hello.txt.cel",
-                search_text="old",
-                replace_text="new",
-            )
+    def test_replace_accepts_cel_target(self, file):
+        file.write("TestFileEdit/hello.txt.cel", "priority = \"high\"\n")
+        file.replace(
+            "TestFileEdit/hello.txt.cel",
+            search_text="high",
+            replace_text="low",
+        )
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "low" in result["content"]
 
-    def test_write_denied_when_creating_new_cel(self, file):
-        # Denial fires on path shape, regardless of whether the target exists.
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.write("TestFileEdit/new_orphan.cel", "content")
+    def test_write_can_create_new_cel(self, file):
+        # No parent file exists; the write still lands. The resulting sidecar
+        # is an orphan from data_inspect's point of view but the byte-write
+        # surface itself imposes no gate.
+        file.write("TestFileEdit/new_orphan.cel", "_tags = [\"x\"]\n")
+        result = file.read("TestFileEdit/new_orphan.cel")
+        assert "_tags" in result["content"]

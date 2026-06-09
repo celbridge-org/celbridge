@@ -55,8 +55,9 @@ public static class ServiceConfiguration
         services.AddTransient<IRemoveTagsCommand, RemoveTagsCommand>();
 
         services.AddTransient<IGetFieldsCommand, GetFieldsCommand>();
-        services.AddTransient<IGetInfoCommand, GetInfoCommand>();
+        services.AddTransient<IInspectCommand, InspectCommand>();
         services.AddTransient<IFindTagCommand, FindTagCommand>();
+        services.AddTransient<IListTagsCommand, ListTagsCommand>();
 
         services.AddTransient<IApplyRangeEditsCommand, ApplyRangeEditsCommand>();
         services.AddTransient<IEditFileCommand, EditFileCommand>();

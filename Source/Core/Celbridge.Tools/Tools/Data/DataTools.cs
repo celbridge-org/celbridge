@@ -6,7 +6,7 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// MCP tools for resource .cel sidecar data: per-resource field read /
-/// write, tag affordances, and project-wide consistency checks.
+/// write, tag affordances, and project-wide inspection.
 /// </summary>
 [McpServerToolType]
 public partial class DataTools : AgentToolBase

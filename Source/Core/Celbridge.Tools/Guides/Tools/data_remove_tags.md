@@ -11,4 +11,4 @@ Atomically removes a batch of tag strings from a resource's tag list. Idempotent
 
 - The sidecar file is kept after the last tag is removed; the file is rewritten only when at least one removal actually changes the on-disk state.
 - On disk the list lives under the reserved `_tags` field. Agents see only `tags` in tool responses.
-- The `file_*` byte-write tools refuse `.cel` targets to protect the sidecar's TOML structure; this is the structured route they point at.
+- `file_write` can also touch a `.cel` directly, but goes through raw TOML — `data_remove_tags` handles set-difference, idempotency, and the reserved-namespace encoding for you, so it's the right tool for routine tag work.

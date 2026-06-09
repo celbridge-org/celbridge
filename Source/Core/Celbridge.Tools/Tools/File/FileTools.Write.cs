@@ -22,12 +22,6 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_write");
-        if (celDenial is not null)
-        {
-            return celDenial;
-        }
-
         var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
         {
             command.FileResource = fileResourceKey;

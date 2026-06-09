@@ -34,9 +34,9 @@ A JSON object with:
 - `affectedLines` — array of `{ from, to, matchCount, contextLines }`. `contextLines` is the post-edit content of the affected range plus one surrounding line on each side, so you can verify the substitution without a follow-up `file_read`. Ranges are 1-based inclusive line numbers in the post-edit file, sorted ascending by `from`. **Ranges are per-line, not per-match:** multiple matches on the same line collapse into one entry whose `matchCount` reports the per-line hit total. The sum of `matchCount` across all entries equals the top-level `replacementCount`. **`contextLines` is included on every returned entry, including the sample entries in a truncated response** — when the list is capped, the first/last sample is the verification signal, so keeping its context attached is the point.
 - `truncated` — `true` when the response was capped because the number of merged `affectedLines` entries exceeded the verbose threshold (5). The first 3 entries and the last 1 entry are returned; `replacementCount` still reflects the real total. `false` when the full list is returned.
 
-## Not for `.cel` files
+## Editing `.cel` sidecars
 
-`.cel` files are project metadata sidecars with a structured TOML format. A text-level replacement could corrupt the TOML, so `file_replace` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_fields`, `data_add_tags`, etc.) to mutate sidecar contents through the structured surface.
+`file_replace` accepts `.cel` targets, but text-level replacements over TOML are fragile and a bad replacement puts the sidecar into `Broken` status (visible through `data_inspect`, blocks `data_*` mutations until repaired). For field and tag mutations, prefer `data_set_fields` / `data_add_tags` and their siblings — they handle quote-style autoselection and enforce the reserved-namespace rules. Reach for `file_replace` on a `.cel` only for one-off byte-level fixes the structured tools don't express.
 
 ## Gotchas
 

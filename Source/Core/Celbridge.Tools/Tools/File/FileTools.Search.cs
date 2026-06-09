@@ -45,8 +45,12 @@ public partial class FileTools
             var folderKeys = new List<ResourceKey>();
             CollectFolderResources(resourceRegistry.ProjectFolder, resourceRegistry, folderKeys);
 
+            // Match against the bare Path: PathGlobToRegex anchors its regex
+            // to a path like "foo/bar", not the canonical "project:foo/bar"
+            // form ToString() emits — without this, path-anchored globs
+            // ("src/**", "folder/*") return zero results on the default root.
             var matchingFolders = folderKeys
-                .Where(key => regex.IsMatch(key.ToString()))
+                .Where(key => regex.IsMatch(key.Path))
                 .ToList();
 
             if (includeMetadata)
@@ -75,7 +79,7 @@ public partial class FileTools
         var allResources = resourceRegistry.GetAllFileResources();
 
         var matches = allResources
-            .Where(r => regex.IsMatch(r.Resource.ToString()))
+            .Where(r => regex.IsMatch(r.Resource.Path))
             .ToList();
 
         if (includeMetadata)

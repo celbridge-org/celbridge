@@ -85,7 +85,7 @@ public sealed class ResourceClassifier : IResourceClassifier
                 // The sidecar's classification may not have run yet; populate a
                 // placeholder Healthy entry now and let ClassifySidecarFile
                 // overwrite it with the inspected status when it runs.
-                var existingStatus = fileResource.Sidecar?.Status ?? CelFileStatus.Healthy;
+                var existingStatus = fileResource.Sidecar?.Status ?? CelParseStatus.Healthy;
                 fileResource.Sidecar = new SidecarLink(sidecarKey, existingStatus);
                 return;
             }
@@ -106,12 +106,12 @@ public sealed class ResourceClassifier : IResourceClassifier
             // A failed resolve is treated as Broken — the bytes might still be
             // readable, but the rest of the system refuses to operate on them
             // and the user needs to see the file flagged for repair.
-            CelFileStatus status;
+            CelParseStatus status;
             var resolveResult = rootHandlerRegistry.ResolveResourcePath(sidecarKey);
             if (resolveResult.IsFailure)
             {
                 _logger.LogWarning($"sidecar pairing: failed to resolve path for '{sidecarKey}': {resolveResult.FirstErrorMessage}");
-                status = CelFileStatus.Broken;
+                status = CelParseStatus.Broken;
             }
             else
             {
@@ -137,7 +137,7 @@ public sealed class ResourceClassifier : IResourceClassifier
                 orphan.Add(sidecarKey);
             }
 
-            if (status == CelFileStatus.Healthy)
+            if (status == CelParseStatus.Healthy)
             {
                 healthy.Add(sidecarKey);
             }

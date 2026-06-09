@@ -3,10 +3,14 @@ using Celbridge.UserInterface;
 namespace Celbridge.Resources;
 
 /// <summary>
-/// Parse health of a .cel file's content. Applies to any .cel file — paired
-/// sidecar or orphan.
+/// Parse-state axis for a .cel file's content. Binary: parses cleanly or
+/// doesn't. Orthogonal to FileKind (which carries the file's role —
+/// Sidecar / Orphan / InvalidSidecar); the same .cel can independently be
+/// any combination of the two. The agent-facing data_inspect surface projects
+/// the two axes into a single SidecarStatus enum; consumers at the registry
+/// layer keep them separate.
 /// </summary>
-public enum CelFileStatus
+public enum CelParseStatus
 {
     /// <summary>
     /// The file parses cleanly as TOML.
@@ -24,7 +28,7 @@ public enum CelFileStatus
 /// Link from a parent file to its paired .cel sidecar, carrying the sidecar's
 /// resource key and current parse state.
 /// </summary>
-public partial record SidecarLink(ResourceKey Key, CelFileStatus Status);
+public partial record SidecarLink(ResourceKey Key, CelParseStatus Status);
 
 /// <summary>
 /// The role a file resource plays in the project resource taxonomy. Populated
@@ -52,7 +56,7 @@ public enum FileKind
 
     /// <summary>
     /// A .cel file that fails the structural rules for a sidecar (e.g. a
-    /// .cel.cel file). Distinct from CelFileStatus.Broken, which describes a
+    /// .cel.cel file). Distinct from CelParseStatus.Broken, which describes a
     /// well-shaped sidecar whose content failed to parse.
     /// </summary>
     InvalidSidecar,

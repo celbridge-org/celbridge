@@ -14,4 +14,4 @@ Field names beginning with `_` are ignored at this surface — the field tools d
 ## Notes
 
 - The sidecar file is kept after the last field is removed (an empty `.cel` is a valid state, not an error).
-- The `file_*` byte-write tools refuse `.cel` targets to protect the sidecar's TOML structure; this is the structured route they point at.
+- `file_write` can also touch a `.cel` directly, but bypasses the structured surface — `data_remove_fields` handles the no-op case when names are absent and skips the disk hit when nothing changes. For routine field removal this is the shorter path; reach for `file_write` for repairing a `Broken` sidecar.

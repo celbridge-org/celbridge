@@ -74,7 +74,7 @@ public class SidecarTrackingTests
         var fileResource = resourceResult.Value as IFileResource;
         fileResource!.Sidecar.Should().NotBeNull();
         fileResource.Sidecar!.Key.Should().Be(new ResourceKey("foo.png.cel"));
-        fileResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
+        fileResource.Sidecar.Status.Should().Be(CelParseStatus.Healthy);
     }
 
     [Test]
@@ -107,7 +107,7 @@ public class SidecarTrackingTests
         // file is not considered its sidecar.
         report.Healthy.Should().Contain(new ResourceKey("foo.png.cel"));
         var fooPng = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
-        fooPng!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
+        fooPng!.Sidecar!.Status.Should().Be(CelParseStatus.Healthy);
     }
 
     [Test]
@@ -123,7 +123,7 @@ public class SidecarTrackingTests
         report.Broken.Should().Contain(new ResourceKey("foo.png.cel"));
 
         var parent = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
-        parent!.Sidecar!.Status.Should().Be(CelFileStatus.Broken);
+        parent!.Sidecar!.Status.Should().Be(CelParseStatus.Broken);
     }
 
     [Test]
@@ -136,7 +136,7 @@ public class SidecarTrackingTests
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
         var parent1 = _registry.GetResource(new ResourceKey("foo.png")).Value as IFileResource;
-        parent1!.Sidecar!.Status.Should().Be(CelFileStatus.Healthy);
+        parent1!.Sidecar!.Status.Should().Be(CelParseStatus.Healthy);
 
         File.Delete(sidecarPath);
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();

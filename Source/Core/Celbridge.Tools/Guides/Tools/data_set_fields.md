@@ -25,4 +25,4 @@ Field names beginning with `_` are reserved for system metadata and are rejected
 ## Notes
 
 - To mutate tags, use `data_add_tags` / `data_remove_tags`. They are append/remove-aware, so concurrent edits do not clobber each other.
-- The `file_*` byte-write tools refuse `.cel` targets to protect the sidecar's TOML structure; this is the structured route they point at.
+- `file_write` can also touch a `.cel` directly, but bypasses the structured surface — `data_set_fields` handles quote-style autoselection, no-op detection (skips the disk hit when the input matches the current state), and the reserved-namespace rules. For routine field mutation this is the shorter and safer path; reach for `file_write` for bulk seeding or repairing a `Broken` sidecar that `data_set_fields` refuses to overwrite.

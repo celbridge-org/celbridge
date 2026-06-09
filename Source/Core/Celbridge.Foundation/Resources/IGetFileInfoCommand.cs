@@ -18,7 +18,7 @@ public record class FileInfoSnapshot(
     bool IsText,
     int? LineCount,
     ResourceKey? SidecarKey,
-    CelFileStatus? SidecarStatus);
+    CelParseStatus? SidecarStatus);
 
 /// <summary>
 /// Read-only query that captures metadata for a single file or folder resource in a snapshot.

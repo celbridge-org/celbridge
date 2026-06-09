@@ -11,7 +11,7 @@ import pytest
 import celbridge
 from celbridge.cel_proxy import CelError
 
-from .helpers import delete_if_exists, write_cel_file_directly
+from .helpers import delete_if_exists
 
 
 def _fields(*pairs):
@@ -23,37 +23,28 @@ def _fields(*pairs):
     return json.dumps({name: json.dumps(value) for name, value in pairs})
 
 
-def assert_project_clean(extra_broken_references=None, extra_orphan_cel_files=None):
-    """Run data_check_project and assert no unexpected attention items.
+def _get_field_value(data, resource, name):
+    """Convenience wrapper that returns the value for a single named field, or
+    None when the field is absent or the sidecar does not exist."""
+    try:
+        results = data.get_fields(resource, json.dumps([name]))
+    except CelError:
+        return None
+    for record in results:
+        if record["name"] == name and record.get("found"):
+            return record.get("value")
+    return None
 
-    Pass ``extra_*`` for entries the caller knows about (e.g. a deliberate
-    broken reference left by a destructive test). The default expects every
-    list to be empty.
-    """
-    report = celbridge.data.check_project()
 
-    extra_broken = set(extra_broken_references or [])
-    extra_orphan = set(extra_orphan_cel_files or [])
-
-    actual_broken = {
-        (entry["source"], entry["missingTarget"])
-        for entry in report.get("brokenReferences", [])
-    }
-    unexpected_broken = actual_broken - extra_broken
-    assert not unexpected_broken, (
-        f"Unexpected broken references: {unexpected_broken}; expected only {extra_broken}"
-    )
-
-    actual_orphan = set(report.get("orphanCelFiles", []))
-    unexpected_orphan = actual_orphan - extra_orphan
-    assert not unexpected_orphan, (
-        f"Unexpected orphan .cel files: {unexpected_orphan}; expected only {extra_orphan}"
-    )
-
-    broken_cel_files = report.get("brokenCelFiles", [])
-    assert broken_cel_files == [], (
-        f"Unexpected broken .cel files: {broken_cel_files}"
-    )
+def _get_all_fields(data, resource):
+    """Return a {name: value} dict of all visible fields on the sidecar. Returns
+    an empty dict when the sidecar is absent. Hides the reserved namespace
+    (data_get_fields already filters underscore-prefixed names)."""
+    try:
+        results = data.get_fields(resource, json.dumps(["*"]))
+    except CelError:
+        return {}
+    return {record["name"]: record.get("value") for record in results if record.get("found")}
 
 
 @pytest.fixture(autouse=True)
@@ -68,12 +59,11 @@ def workspace(explorer, file):
 
 class TestData:
 
-    def test_set_fields_creates_sidecar_and_get_info_returns_field(self, data):
+    def test_set_fields_creates_sidecar_and_get_fields_returns_field(self, data):
         # Set a field on a resource that has no sidecar. The sidecar is created
-        # and the new field appears in the get_info response.
+        # and the new field appears via data_get_fields.
         data.set_fields("TestData/notes.md", _fields(("priority", "high")))
-        info = data.get_info("TestData/notes.md")
-        assert info["fields"].get("priority") == "high"
+        assert _get_field_value(data, "TestData/notes.md", "priority") == "high"
 
     def test_get_fields_returns_field_value(self, data):
         data.set_fields("TestData/notes.md", _fields(("priority", "high")))
@@ -106,8 +96,7 @@ class TestData:
             "TestData/notes.md",
             _fields(("categories", ["alpha", "beta"])),
         )
-        info = data.get_info("TestData/notes.md")
-        assert info["fields"].get("categories") == ["alpha", "beta"]
+        assert _get_field_value(data, "TestData/notes.md", "categories") == ["alpha", "beta"]
 
     def test_set_fields_atomic_batch_writes_all_or_nothing(self, data):
         # A batch with a nested-object value (rejected at write time) must
@@ -120,8 +109,7 @@ class TestData:
                     "invalid": json.dumps({"nested": "value"}),
                 }),
             )
-        info = data.get_info("TestData/notes.md")
-        assert info["fields"].get("valid") is None
+        assert _get_field_value(data, "TestData/notes.md", "valid") is None
 
     def test_set_fields_rejects_nested_object(self, data):
         with pytest.raises(CelError):
@@ -139,21 +127,24 @@ class TestData:
 
     def test_add_tags_creates_sidecar_when_missing(self, data):
         data.add_tags("TestData/notes.md", json.dumps(["flagged"]))
-        info = data.get_info("TestData/notes.md")
-        assert "flagged" in info["fields"].get("_tags", [])
+        # Verify via data_inspect's tag surfacing rather than poking at the
+        # reserved _tags field directly.
+        report = data.inspect(json.dumps(["TestData/notes.md"]))
+        record = report["results"][0]
+        assert "flagged" in record.get("tags", [])
 
     def test_add_tags_batch_appends_in_one_call(self, data):
         data.add_tags("TestData/notes.md", json.dumps(["alpha", "beta", "gamma"]))
-        info = data.get_info("TestData/notes.md")
-        tags = info["fields"].get("_tags", [])
+        report = data.inspect(json.dumps(["TestData/notes.md"]))
+        tags = report["results"][0].get("tags", [])
         for tag in ("alpha", "beta", "gamma"):
             assert tags.count(tag) == 1
 
     def test_add_tags_idempotent_for_already_present(self, data):
         data.add_tags("TestData/notes.md", json.dumps(["alpha"]))
         data.add_tags("TestData/notes.md", json.dumps(["alpha", "beta"]))
-        info = data.get_info("TestData/notes.md")
-        tags = info["fields"].get("_tags", [])
+        report = data.inspect(json.dumps(["TestData/notes.md"]))
+        tags = report["results"][0].get("tags", [])
         assert tags.count("alpha") == 1
         assert "beta" in tags
 
@@ -162,6 +153,14 @@ class TestData:
         matches = data.find_tag("flagged")
         # Tool responses emit resource keys in canonical "root:path" form.
         assert "project:TestData/notes.md" in matches
+
+    def test_list_tags_returns_known_values(self, data):
+        data.add_tags("TestData/notes.md", json.dumps(["alpha"]))
+        data.add_tags("TestData/other.md", json.dumps(["beta"]))
+        report = data.list_tags()
+        tags = report.get("tags", [])
+        assert "alpha" in tags
+        assert "beta" in tags
 
     def test_remove_tags_drops_entries(self, data):
         data.add_tags("TestData/notes.md", json.dumps(["alpha", "beta"]))
@@ -185,15 +184,15 @@ class TestData:
             _fields(("a", "x"), ("b", "y"), ("c", "z")),
         )
         data.remove_fields("TestData/notes.md", json.dumps(["a", "b"]))
-        info = data.get_info("TestData/notes.md")
-        fields = info["fields"]
+        fields = _get_all_fields(data, "TestData/notes.md")
         assert "a" not in fields
         assert "b" not in fields
         assert fields.get("c") == "z"
 
-    def test_get_info_returns_empty_when_no_sidecar(self, data):
-        result = data.get_info("TestData/notes.md")
-        assert result == {"hasSidecar": False, "fields": {}}
+    def test_inspect_returns_no_sidecar_when_absent(self, data):
+        report = data.inspect(json.dumps(["TestData/notes.md"]))
+        record = report["results"][0]
+        assert record["status"] == "NoSidecar"
 
     def test_set_fields_visible_through_file_read(self, data, file):
         data.set_fields("TestData/notes.md", _fields(("priority", "high")))
@@ -210,88 +209,144 @@ class TestData:
             data.set_fields("TestData/notes.md.cel", _fields(("priority", "high")))
 
 
-class TestDataCheckProject:
+class TestDataInspect:
 
-    def test_clean_project_returns_empty_lists(self, data):
-        report = data.check_project()
-        # The autouse workspace fixture leaves only TestData behind, which
-        # doesn't carry references. Any unrelated project state shows up here
-        # too; we assert only the report shape so the test is robust to other
-        # content in the demo project.
-        assert isinstance(report.get("brokenReferences"), list)
-        assert isinstance(report.get("orphanCelFiles"), list)
-        assert isinstance(report.get("brokenCelFiles"), list)
+    def test_clean_project_returns_expected_shape(self, data):
+        # The autouse workspace fixture leaves only TestData behind; any
+        # unrelated project state shows up too. Assert only the envelope so
+        # the test is robust to other content in the demo project.
+        report = data.inspect()
+        assert isinstance(report.get("results"), list)
+        summary = report.get("summary", {})
+        for key in ("healthy", "broken", "orphan", "invalidSidecar", "noSidecar"):
+            assert isinstance(summary.get(key), int)
 
-    def test_broken_reference_detected_after_target_deleted_with_break_references(self, data, file, explorer):
-        # Create a source that references a target, then delete the target
-        # under break_references so the reference is left dangling. The check
-        # tool reports the resulting broken reference.
-        # The referencer is .json because the scanner walks an allowlist of
-        # data-bearing extensions; .md is excluded (documentation, not data).
-        file.write("TestData/source.json", "{\"target\": \"project:TestData/target.md\"}")
-        file.write("TestData/target.md", "Target body.\n")
+    def test_single_resource_returns_array_of_one(self, data):
+        data.set_fields("TestData/notes.md", _fields(("priority", "high")))
+        report = data.inspect(json.dumps(["TestData/notes.md"]))
+        assert len(report["results"]) == 1
+        record = report["results"][0]
+        assert record["resource"] == "project:TestData/notes.md"
+        assert record["status"] == "Healthy"
 
-        explorer.delete("TestData/target.md", reference_policy="break_references")
+    def test_summary_only_omits_tags_and_fields(self, data):
+        data.set_fields("TestData/notes.md", _fields(("priority", "high")))
+        data.add_tags("TestData/notes.md", json.dumps(["flagged"]))
+        report = data.inspect(json.dumps(["TestData/notes.md"]), summary_only=True)
+        record = report["results"][0]
+        assert "tags" not in record
+        assert "fields" not in record
+        assert record["status"] == "Healthy"
 
-        report = data.check_project()
-        broken = [
-            entry for entry in report.get("brokenReferences", [])
-            if entry["missingTarget"] == "project:TestData/target.md"
-        ]
-        assert len(broken) == 1
-        assert broken[0]["source"] == "project:TestData/source.json"
-
-    def test_orphan_cel_file_detected_when_parent_missing(self, data, app):
+    def test_orphan_cel_file_detected_when_parent_missing(self, data, file):
         # Write a sidecar whose parent does not exist on disk. The pairing
-        # pass classifies it as an orphan. Direct filesystem write bypasses
-        # the file.* tools' .cel denial.
-        write_cel_file_directly(
-            app,
-            "TestData/orphaned.png.cel",
-            "_tags = [\"orphan\"]\n",
+        # pass classifies it as an orphan.
+        file.write("TestData/orphaned.png.cel", "_tags = [\"orphan\"]\n")
+        report = data.inspect(json.dumps(["TestData/orphaned.png.cel"]))
+        record = report["results"][0]
+        assert record["status"] == "Orphan"
+
+    def test_broken_cel_file_detected_when_unparseable(self, data, file):
+        # Write a sidecar whose TOML is malformed.
+        file.write("TestData/notes.md.cel", "this is not = valid // toml")
+        report = data.inspect(json.dumps(["TestData/notes.md"]))
+        record = report["results"][0]
+        assert record["status"] == "Broken"
+        assert "parseError" in record
+
+    def test_file_write_can_repair_broken_sidecar(self, data, file):
+        # data_set_fields refuses to overwrite a Broken sidecar — file.write is
+        # the only path back to Healthy.
+        file.write("TestData/notes.md.cel", "this = is = not = valid toml ###")
+        broken = data.inspect(json.dumps(["TestData/notes.md"]))
+        assert broken["results"][0]["status"] == "Broken"
+
+        file.write("TestData/notes.md.cel", "priority = \"low\"\n")
+        healed = data.inspect(json.dumps(["TestData/notes.md"]))
+        assert healed["results"][0]["status"] == "Healthy"
+
+    def test_inspect_path_anchored_glob_matches_scoped_folder(self, data, file):
+        # Regression: path-anchored globs used to return empty results because
+        # the matcher compared against the canonical "project:foo" form.
+        file.write("TestData/notes.md.cel", "priority = \"high\"\n")
+        report = data.inspect("[]", pattern="TestData/**")
+        resources = [r["resource"] for r in report["results"]]
+        assert any(r.endswith("TestData/notes.md") for r in resources)
+
+    def test_inspect_double_star_does_not_duplicate_sidecar_and_parent(self, data, file):
+        # Regression: ** pattern used to surface both the parent and the
+        # healthy-sidecar key as separate records.
+        file.write("TestData/notes.md.cel", "priority = \"high\"\n")
+        report = data.inspect("[]", pattern="**")
+        resources = [r["resource"] for r in report["results"]]
+        assert "project:TestData/notes.md.cel" not in resources
+
+
+class TestDataCheckReferences:
+
+    def test_clean_state_returns_empty_references(self, data, file, explorer):
+        # Baseline: write a source and its target so the reference resolves.
+        # The references array should not list this pair.
+        file.write("TestData/source.json", "{\"target\": \"project:TestData/target.json\"}")
+        file.write("TestData/target.json", "{}")
+        report = data.check_references()
+        refs = report.get("references", [])
+        for entry in refs:
+            assert not (
+                entry["source"] == "project:TestData/source.json"
+                and entry["missingTarget"] == "project:TestData/target.json"
+            )
+
+    def test_dangling_reference_surfaces_with_canonical_source_and_target(self, data, file):
+        # Create a referencer pointing at a target that doesn't exist.
+        file.write(
+            "TestData/dangling_source.json",
+            "{\"target\": \"project:TestData/never_existed.json\"}",
         )
-        report = data.check_project()
-        assert "project:TestData/orphaned.png.cel" in report.get("orphanCelFiles", [])
-
-    def test_broken_cel_file_detected_when_unparseable(self, data, app):
-        # Write a sidecar whose TOML is malformed. Direct filesystem write
-        # bypasses the file.* tools' .cel denial.
-        write_cel_file_directly(
-            app,
-            "TestData/notes.md.cel",
-            "this is not = valid // toml",
+        report = data.check_references()
+        match = next(
+            (
+                entry for entry in report["references"]
+                if entry["source"] == "project:TestData/dangling_source.json"
+                and entry["missingTarget"] == "project:TestData/never_existed.json"
+            ),
+            None,
         )
-        report = data.check_project()
-        assert "project:TestData/notes.md.cel" in report.get("brokenCelFiles", [])
+        assert match is not None
 
-    def test_move_preserves_invariant(self, data, explorer, file):
-        # A reference rewrite during a move must leave the project in a
-        # consistent state — no broken references remain. The referencer is
-        # .json (an allowlisted extension) so the cascade actually scans and
-        # rewrites the literal; a .md referencer would be invisible to the
-        # scanner.
-        file.write("TestData/src.json", "{\"target\": \"project:TestData/old.md\"}")
-        file.write("TestData/old.md", "Old body.\n")
+    def test_restoring_target_clears_the_reference(self, data, file):
+        # Plant a dangling reference, then create the target. Next call should
+        # not list the now-resolved pair.
+        file.write(
+            "TestData/heals_source.json",
+            "{\"target\": \"project:TestData/heals_target.json\"}",
+        )
+        before = data.check_references()
+        assert any(
+            entry["source"] == "project:TestData/heals_source.json"
+            and entry["missingTarget"] == "project:TestData/heals_target.json"
+            for entry in before["references"]
+        )
 
-        explorer.move("TestData/old.md", "TestData/new.md")
+        file.write("TestData/heals_target.json", "{}")
+        after = data.check_references()
+        assert not any(
+            entry["source"] == "project:TestData/heals_source.json"
+            and entry["missingTarget"] == "project:TestData/heals_target.json"
+            for entry in after["references"]
+        )
 
-        report = data.check_project()
-        broken = [
-            entry for entry in report.get("brokenReferences", [])
-            if entry["source"].startswith("project:TestData/")
-                or entry["missingTarget"].startswith("project:TestData/")
+    def test_off_allowlist_files_are_invisible(self, data, file):
+        # A .md file is not on the scanner allowlist. Its quoted reference is
+        # descriptive prose, not a tracked reference; data_check_references
+        # should not surface it as a broken-reference source.
+        file.write(
+            "TestData/notes.md",
+            "Documentation mentioning \"project:TestData/never_existed_md.json\" descriptively.",
+        )
+        report = data.check_references()
+        offenders = [
+            entry for entry in report["references"]
+            if entry["source"] == "project:TestData/notes.md"
         ]
-        assert broken == [], f"Move broke references: {broken}"
-
-    def test_delete_without_referencers_leaves_clean_state(self, data, explorer, file):
-        # Delete a resource that nothing references; the broken-references list
-        # should not gain any entries scoped to our test folder.
-        file.write("TestData/standalone.md", "No incoming references.\n")
-        explorer.delete("TestData/standalone.md")
-
-        report = data.check_project()
-        broken = [
-            entry for entry in report.get("brokenReferences", [])
-            if entry["missingTarget"].startswith("project:TestData/")
-        ]
-        assert broken == []
+        assert offenders == []

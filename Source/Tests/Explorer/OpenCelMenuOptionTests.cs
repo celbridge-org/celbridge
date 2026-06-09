@@ -86,7 +86,7 @@ public class OpenCelMenuOptionTests
         // Default behaviour: most users never want this menu option, so it stays
         // hidden until the project opts in via the feature flag.
         SetFeatureFlag(enabled: false);
-        var sidecar = new SidecarLink(new ResourceKey("notes.md.cel"), CelFileStatus.Healthy);
+        var sidecar = new SidecarLink(new ResourceKey("notes.md.cel"), CelParseStatus.Healthy);
         var clickedFile = CreateFileResource("notes.md", sidecar);
 
         var state = CreateOption().GetState(ContextFor(clickedFile));
@@ -114,7 +114,7 @@ public class OpenCelMenuOptionTests
     public void GetState_VisibleWhenFlagEnabledAndSidecarPresent()
     {
         SetFeatureFlag(enabled: true);
-        var sidecar = new SidecarLink(new ResourceKey("notes.md.cel"), CelFileStatus.Healthy);
+        var sidecar = new SidecarLink(new ResourceKey("notes.md.cel"), CelParseStatus.Healthy);
         var clickedFile = CreateFileResource("notes.md", sidecar);
 
         var state = CreateOption().GetState(ContextFor(clickedFile));

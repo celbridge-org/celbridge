@@ -20,8 +20,9 @@ public record ProjectCheckReport(
 
 /// <summary>
 /// Read-only check that surfaces dangling project: references and any .cel
-/// file in an attention state (orphan, broken). Invoked at workspace load and
-/// exposed as the data_check_project MCP tool.
+/// file in an attention state (orphan, broken). Invoked at workspace load by
+/// the project-check reporter. Sidecar-health reporting via MCP lives on the
+/// data_inspect tool; this command stays internal.
 /// </summary>
 public interface IProjectCheckCommand : IExecutableCommand<ProjectCheckReport>
 {

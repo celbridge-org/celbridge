@@ -69,7 +69,7 @@ public class SidecarClassificationTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelParseStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
@@ -83,7 +83,7 @@ public class SidecarClassificationTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelParseStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
@@ -102,7 +102,7 @@ public class SidecarClassificationTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelParseStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
         _registry.GetSidecarReport().Broken.Should().Contain(new ResourceKey("foo.png.cel"));
     }
@@ -124,7 +124,7 @@ public class SidecarClassificationTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Broken);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelParseStatus.Broken);
         File.ReadAllText(sidecarPath).Should().Be(originalContent);
     }
 
@@ -138,7 +138,7 @@ public class SidecarClassificationTests
 
         (await _registry.UpdateResourceRegistryAsync()).IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("foo.png")!.Status.Should().Be(CelFileStatus.Healthy);
+        GetParentSidecar("foo.png")!.Status.Should().Be(CelParseStatus.Healthy);
     }
 
     [Test]
@@ -155,7 +155,7 @@ public class SidecarClassificationTests
         var result = await _registry.UpdateResourceRegistryAsync();
         result.IsSuccess.Should().BeTrue();
 
-        GetParentSidecar("good.png")!.Status.Should().Be(CelFileStatus.Healthy);
-        GetParentSidecar("bad.png")!.Status.Should().Be(CelFileStatus.Broken);
+        GetParentSidecar("good.png")!.Status.Should().Be(CelParseStatus.Healthy);
+        GetParentSidecar("bad.png")!.Status.Should().Be(CelParseStatus.Broken);
     }
 }

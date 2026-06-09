@@ -36,12 +36,6 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_replace");
-        if (celDenial is not null)
-        {
-            return celDenial;
-        }
-
         var findReplaceResult = await ExecuteCommandAsync<IReplaceFileCommand, ReplaceFileResult>(command =>
         {
             command.FileResource = fileResourceKey;

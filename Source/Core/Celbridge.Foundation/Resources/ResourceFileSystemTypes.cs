@@ -56,9 +56,10 @@ public enum ReferencerSkipReason
 
 /// <summary>
 /// A referencer the move could not rewrite. The reference is left stale and
-/// will surface via data_check_project; a re-run of the rename after the
-/// underlying issue clears (close the editor, remove the read-only attribute)
-/// picks up the residual rewrite because the FS layer is idempotent.
+/// will surface at workspace load via the project-check reporter; a re-run of
+/// the rename after the underlying issue clears (close the editor, remove the
+/// read-only attribute) picks up the residual rewrite because the FS layer is
+/// idempotent.
 /// </summary>
 public record SkippedReferencer(
     ResourceKey Resource,

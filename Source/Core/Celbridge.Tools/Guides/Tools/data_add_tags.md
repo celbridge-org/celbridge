@@ -15,4 +15,4 @@ Use the `tag:value` convention (`priority:high`, `status:draft`) to piggyback st
 
 - The tags are appended to the existing list in input order; duplicates within the input collapse to one append.
 - On disk the list lives under the reserved `_tags` field. Agents see only `tags` in tool responses.
-- The `file_*` byte-write tools refuse `.cel` targets to protect the sidecar's TOML structure; this is the structured route they point at.
+- `file_write` can also touch a `.cel` directly, but goes through raw TOML — `data_add_tags` handles set-union, idempotency, and the reserved-namespace encoding for you, so it's the right tool for routine tag work.

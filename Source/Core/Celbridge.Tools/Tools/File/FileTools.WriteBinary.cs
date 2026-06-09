@@ -16,12 +16,6 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_write_binary");
-        if (celDenial is not null)
-        {
-            return celDenial;
-        }
-
         var writeResult = await ExecuteCommandAsync<IWriteBinaryFileCommand>(command =>
         {
             command.FileResource = fileResourceKey;

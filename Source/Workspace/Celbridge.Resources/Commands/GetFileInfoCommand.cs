@@ -71,7 +71,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             // the registry has recorded one for this file. Sidecars belong to
             // file resources only; folders don't have their own sidecars in v1.
             ResourceKey? sidecarKey = null;
-            CelFileStatus? sidecarStatus = null;
+            CelParseStatus? sidecarStatus = null;
             var resourceResult = resourceRegistry.GetResource(Resource);
             if (resourceResult.IsSuccess
                 && resourceResult.Value is IFileResource fileResource
