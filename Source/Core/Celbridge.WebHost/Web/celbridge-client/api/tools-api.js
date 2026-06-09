@@ -14,6 +14,11 @@
 //   - Extra positional arguments throw CelToolError(InvalidArgs).
 //   - Arrays and plain objects passed to `string`-typed parameters are JSON-stringified
 //     automatically (for editsJson, resources, files, etc.).
+//   - After auto-stringify, each argument is type-checked against the descriptor's
+//     parameter type. A mismatch throws CelToolError(InvalidArgs) naming the parameter
+//     and the expected vs actual types — surfaces argument-order swaps at the call site
+//     instead of as an opaque JSON deserialization error from the host. `undefined` and
+//     `null` skip validation so callers can leave defaulted slots empty.
 
 /**
  * Error codes for tool proxy failures. Wire codes are JSON-RPC application error codes
@@ -118,6 +123,87 @@ function isPlainObject(value) {
 }
 
 /**
+ * Returns a human-readable description of how `value`'s runtime type fails to match the
+ * descriptor's JSON Schema `expectedType`, or `null` when the value is acceptable.
+ *
+ * Permissive on purpose:
+ * - `undefined` and `null` always pass — they let callers skip optional positional slots.
+ * - An empty or unrecognised `expectedType` passes — descriptors without type info do not
+ *   gate dispatch (the host's deserializer remains the final authority).
+ *
+ * Recognised schema types: "string", "boolean", "integer", "number", "array", "object".
+ * "integer" requires the value to be a finite whole number.
+ *
+ * @param {string} expectedType - The descriptor's parameter type (JSON Schema name).
+ * @param {*} value - The argument value passed by the caller.
+ * @returns {string|null} - Mismatch description for the error message, or null on match.
+ */
+function describeTypeMismatch(expectedType, value) {
+    if (value === undefined || value === null) {
+        return null;
+    }
+    if (typeof expectedType !== 'string' || expectedType.length === 0) {
+        return null;
+    }
+
+    const actualType = describeRuntimeType(value);
+
+    switch (expectedType) {
+        case 'string':
+            if (typeof value === 'string') {
+                return null;
+            }
+            break;
+        case 'boolean':
+            if (typeof value === 'boolean') {
+                return null;
+            }
+            break;
+        case 'integer':
+            if (typeof value === 'number' && Number.isInteger(value)) {
+                return null;
+            }
+            break;
+        case 'number':
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return null;
+            }
+            break;
+        case 'array':
+            if (Array.isArray(value)) {
+                return null;
+            }
+            break;
+        case 'object':
+            if (isPlainObject(value)) {
+                return null;
+            }
+            break;
+        default:
+            // Unknown schema type — defer to the host.
+            return null;
+    }
+
+    return `expects ${expectedType}, got ${actualType}`;
+}
+
+/**
+ * Maps a runtime value to a short type name used in error messages. Distinguishes
+ * arrays and `null` from generic "object" so the message is actionable.
+ * @param {*} value
+ * @returns {string}
+ */
+function describeRuntimeType(value) {
+    if (value === null) {
+        return 'null';
+    }
+    if (Array.isArray(value)) {
+        return 'array';
+    }
+    return typeof value;
+}
+
+/**
  * Converts a snake_case identifier to camelCase. Used to translate server-side
  * aliases (e.g. "get_version") into their JavaScript method names ("getVersion").
  * @param {string} name
@@ -207,6 +293,21 @@ function buildLeafFunction(descriptor, invoke) {
         for (const [parameterName, value] of Object.entries(argumentsObject)) {
             if (parameterTypes[parameterName] === 'string' && (Array.isArray(value) || isPlainObject(value))) {
                 argumentsObject[parameterName] = JSON.stringify(value);
+            }
+        }
+
+        // Validate each argument against the descriptor's parameter type. Auto-stringify
+        // runs first, so an array/object passed to a string-typed param is already a
+        // string by the time it reaches here.
+        for (const [parameterName, value] of Object.entries(argumentsObject)) {
+            const expectedType = parameterTypes[parameterName];
+            const mismatchMessage = describeTypeMismatch(expectedType, value);
+            if (mismatchMessage !== null) {
+                throw new CelToolError(
+                    CelToolErrorCode.InvalidArgs,
+                    alias,
+                    `${signature}: parameter '${parameterName}' ${mismatchMessage}`
+                );
             }
         }
 

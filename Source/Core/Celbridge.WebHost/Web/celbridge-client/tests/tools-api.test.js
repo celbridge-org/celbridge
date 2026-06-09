@@ -195,6 +195,99 @@ describe('buildCelProxy', () => {
         );
         expect(typeof proxy.valid.tool).toBe('function');
     });
+
+    it('rejects a boolean-typed parameter receiving a string (positional-arg swap)', () => {
+        // Reproduces the story-builder export bug: explorer.delete(resource, showDialog, referencePolicy)
+        // called with the second and third arguments swapped. The host error was an opaque
+        // System.Text.Json failure; the proxy now flags it at the call site.
+        const proxy = buildCelProxy(
+            [descriptor('explorer.delete', [
+                { name: 'resource', type: 'string' },
+                { name: 'showDialog', type: 'boolean' },
+                { name: 'referencePolicy', type: 'string' }
+            ])],
+            () => Promise.resolve('ok')
+        );
+
+        expect(() => proxy.explorer.delete('foo.xlsx', 'break_references', false)).toThrow(CelToolError);
+        try {
+            proxy.explorer.delete('foo.xlsx', 'break_references', false);
+        } catch (error) {
+            expect(error.code).toBe(CelToolErrorCode.InvalidArgs);
+            expect(error.message).toContain("'showDialog'");
+            expect(error.message).toContain('expects boolean');
+            expect(error.message).toContain('got string');
+        }
+    });
+
+    it('rejects a string-typed parameter receiving a number', () => {
+        const proxy = buildCelProxy(
+            [descriptor('document.open', [{ name: 'fileResource', type: 'string' }])],
+            () => Promise.resolve('ok')
+        );
+
+        expect(() => proxy.document.open(42)).toThrow(CelToolError);
+    });
+
+    it('rejects an integer-typed parameter receiving a non-integer number', () => {
+        const proxy = buildCelProxy(
+            [descriptor('document.open', [
+                { name: 'fileResource', type: 'string' },
+                { name: 'sectionIndex', type: 'integer' }
+            ])],
+            () => Promise.resolve('ok')
+        );
+
+        expect(() => proxy.document.open('a.md', 1.5)).toThrow(CelToolError);
+    });
+
+    it('accepts undefined and null in defaulted positional slots', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('explorer.delete', [
+                { name: 'resource', type: 'string' },
+                { name: 'showDialog', type: 'boolean' },
+                { name: 'referencePolicy', type: 'string' }
+            ])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        return Promise.all([
+            proxy.explorer.delete('foo.xlsx', undefined, 'break_references'),
+            proxy.explorer.delete('foo.xlsx', null, 'break_references')
+        ]).then(() => {
+            expect(calls[0].args).toEqual({ resource: 'foo.xlsx', showDialog: undefined, referencePolicy: 'break_references' });
+            expect(calls[1].args).toEqual({ resource: 'foo.xlsx', showDialog: null, referencePolicy: 'break_references' });
+        });
+    });
+
+    it('skips validation when the descriptor reports no parameter type', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('legacy.tool', [{ name: 'payload' }])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        return proxy.legacy.tool(42).then(() => {
+            expect(calls[0].args).toEqual({ payload: 42 });
+        });
+    });
+
+    it('runs auto-stringify before type validation (arrays for string params still accepted)', () => {
+        const calls = [];
+        const proxy = buildCelProxy(
+            [descriptor('file.multi_edit', [
+                { name: 'fileResource', type: 'string' },
+                { name: 'editsJson', type: 'string' }
+            ])],
+            (alias, args) => { calls.push({ alias, args }); return Promise.resolve('ok'); }
+        );
+
+        const edits = [{ oldString: 'a', newString: 'A' }];
+        return proxy.file.multiEdit('a.md', edits).then(() => {
+            expect(calls[0].args.editsJson).toBe(JSON.stringify(edits));
+        });
+    });
 });
 
 describe('ToolsAPI', () => {
