@@ -126,7 +126,7 @@ public sealed class TrashService : ITrashService
                     && sidecarInfoResult.Value.Kind == StorageItemKind.File)
                 {
                     sidecarOriginalPath = sidecarPathResult.Value;
-                    sidecarTrashPath = trashPath + SidecarHelper.Extension;
+                    sidecarTrashPath = trashPath + SidecarFile.Extension;
                 }
             }
         }

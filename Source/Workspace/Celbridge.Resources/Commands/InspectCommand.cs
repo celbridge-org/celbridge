@@ -253,7 +253,7 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
 
     private static IReadOnlyList<string> ExtractTags(SidecarContent content)
     {
-        if (!content.Fields.TryGetValue(SidecarHelper.TagsFieldName, out var value))
+        if (!content.Fields.TryGetValue(SidecarFieldNames.Tags, out var value))
         {
             return Array.Empty<string>();
         }
@@ -354,24 +354,24 @@ public sealed class InspectCommand : CommandBase, IInspectCommand
         {
             return false;
         }
-        return resource.Path.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase);
+        return resource.Path.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsInvalidSidecarShape(ResourceKey resource)
     {
         var path = resource.Path;
-        var doubleExtension = SidecarHelper.Extension + SidecarHelper.Extension;
+        var doubleExtension = SidecarFile.Extension + SidecarFile.Extension;
         return path.EndsWith(doubleExtension, StringComparison.OrdinalIgnoreCase);
     }
 
     private static ResourceKey? StripSidecarSuffix(ResourceKey sidecarKey)
     {
         var fullKey = sidecarKey.FullKey;
-        if (!fullKey.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+        if (!fullKey.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
-        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarHelper.Extension.Length);
+        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarFile.Extension.Length);
         if (string.IsNullOrEmpty(trimmed)
             || trimmed.EndsWith(":", StringComparison.Ordinal))
         {

@@ -209,7 +209,7 @@ public class DocumentEditorPreferenceStoreTests
     {
         var fields = new Dictionary<string, object>
         {
-            [DocumentConstants.SidecarEditorFieldName] = editorId,
+            [SidecarFieldNames.Editor] = editorId,
         };
         var content = new SidecarContent(fields);
         _sidecarService.ReadAsync(Arg.Any<ResourceKey>())

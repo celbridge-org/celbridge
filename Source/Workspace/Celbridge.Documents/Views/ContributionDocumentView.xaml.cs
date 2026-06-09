@@ -581,8 +581,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         {
             return await Host.RequestStateAsync();
         }
-        catch
+        catch (StreamJsonRpc.RemoteMethodNotFoundException)
         {
+            // Editor did not register a document/requestState handler.
             return null;
         }
     }
@@ -599,9 +600,9 @@ public sealed partial class ContributionDocumentView : DocumentView, IHostInput
         {
             await Host!.RestoreStateAsync(state);
         }
-        catch
+        catch (StreamJsonRpc.RemoteMethodNotFoundException)
         {
-            // Editor doesn't implement state restoration
+            // Editor did not register a document/restoreState handler.
         }
     }
 

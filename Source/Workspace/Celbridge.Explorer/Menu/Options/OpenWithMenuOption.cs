@@ -86,7 +86,6 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;
         var resourceKey = resourceRegistry.GetResourceKey(clickedFile);
 
-        var extension = Path.GetExtension(clickedFile.Name).ToLowerInvariant();
         var factories = GetCandidateFactories(clickedFile);
 
         if (factories.Count < 2)
@@ -141,29 +140,10 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
 
         var selectedFactory = factories[choiceResult.Value.SelectedIndex];
 
-        if (choiceResult.Value.CheckboxChecked)
-        {
-            _commandService.Execute<ISetEditorPreferenceCommand>(command =>
-            {
-                command.Extension = extension;
-                command.EditorId = selectedFactory.EditorId;
-            });
-        }
-
-        // Persist the user's explicit per-file choice in the sidecar's editor
-        // field, creating the sidecar if needed. The KISS rule: every "Open
-        // With X" invocation writes the chosen editor, even when it matches
-        // the per-extension default - a redundant entry is less surprising
-        // than an auto-removal the user did not request.
-        var editorFields = new Dictionary<string, object>(StringComparer.Ordinal)
-        {
-            [DocumentConstants.SidecarEditorFieldName] = selectedFactory.EditorId,
-        };
-        _commandService.Execute<ISetFieldsCommand>(command =>
-        {
-            command.Resource = resourceKey;
-            command.Fields = editorFields;
-        });
+        await documentsService.SetPreferredEditorAsync(
+            resourceKey,
+            selectedFactory.EditorId,
+            useAsExtensionDefault: choiceResult.Value.CheckboxChecked);
 
         _commandService.Execute<IOpenDocumentCommand>(command =>
         {

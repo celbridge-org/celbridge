@@ -193,13 +193,8 @@ public partial class DocumentsPanelViewModel : ObservableObject
         return new EditorChoiceInfo(factories, displayNames, defaultIndex);
     }
 
-    public void StoreEditorPreference(string extension, DocumentEditorId editorId)
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault)
     {
-        _commandService.Execute<ISetEditorPreferenceCommand>(command =>
-        {
-            command.Extension = extension;
-            command.EditorId = editorId;
-        });
+        return await _documentsService.SetPreferredEditorAsync(fileResource, editorId, useAsExtensionDefault);
     }
-
 }

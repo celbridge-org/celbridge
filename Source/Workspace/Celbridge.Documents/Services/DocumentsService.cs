@@ -4,6 +4,7 @@ using Celbridge.Logging;
 using Celbridge.Messaging;
 using Celbridge.Modules;
 using Celbridge.Packages;
+using Celbridge.Resources;
 using Celbridge.Settings;
 using Celbridge.Workspace;
 
@@ -272,14 +273,30 @@ public class DocumentsService : IDocumentsService, IDisposable
         return _fileTypeHelper.GetTextEditorLanguage(extension);
     }
 
-    public Task<DocumentEditorId> GetEditorPreferenceAsync(string extension) =>
-        _preferenceStore.GetExtensionPreferenceAsync(extension);
-
     public Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource) =>
         _preferenceStore.GetPreferredEditorAsync(fileResource);
 
-    public Task SetEditorPreferenceAsync(string extension, DocumentEditorId editorId) =>
-        _preferenceStore.SetExtensionPreferenceAsync(extension, editorId);
+    public async Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault)
+    {
+        if (useAsExtensionDefault)
+        {
+            var extension = Path.GetExtension(fileResource.Path).ToLowerInvariant();
+            await _preferenceStore.SetExtensionPreferenceAsync(extension, editorId);
+        }
+
+        // ToString() forces a string value; passing the DocumentEditorId struct
+        // directly boxes it and SidecarService rejects non-scalar values.
+        var fields = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [SidecarFieldNames.Editor] = editorId.ToString(),
+        };
+
+        return await _commandService.ExecuteAsync<ISetFieldsCommand>(command =>
+        {
+            command.Resource = fileResource;
+            command.Fields = fields;
+        });
+    }
 
     public async Task<Result<OpenDocumentOutcome>> OpenDocument(ResourceKey fileResource, OpenDocumentOptions? options = null)
     {

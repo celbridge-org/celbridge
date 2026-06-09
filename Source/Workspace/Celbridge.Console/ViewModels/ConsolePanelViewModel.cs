@@ -257,7 +257,7 @@ public partial class ConsolePanelViewModel : ObservableObject
         }
 
         var projectFileName = Path.GetFileName(projectFilePath);
-        var changedResourcePath = message.Resource.ToString();
+        var changedResourcePath = message.Resource.Path;
 
         if (changedResourcePath.Equals(projectFileName, StringComparison.OrdinalIgnoreCase))
         {

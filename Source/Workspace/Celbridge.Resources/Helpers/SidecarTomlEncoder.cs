@@ -21,7 +21,8 @@ public static class SidecarTomlEncoder
     /// </summary>
     public static readonly IReadOnlyList<string> ReservedFieldOrder = new[]
     {
-        SidecarHelper.TagsFieldName,
+        SidecarFieldNames.Editor,
+        SidecarFieldNames.Tags,
     };
 
     /// <summary>

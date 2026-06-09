@@ -1,11 +1,12 @@
 using Celbridge.Logging;
+using Celbridge.Resources;
 using Celbridge.Workspace;
 
 namespace Celbridge.Documents.Services;
 
 /// <summary>
 /// Reads and writes the user's preferred editor for a file. Knows two
-/// preference sources: the per-file sidecar 'editor' field (set by
+/// preference sources: the per-file sidecar '_editor' field (set by
 /// "Open with...") and the per-extension workspace setting. The sidecar
 /// preference takes precedence; resolution stops at the first non-empty value.
 /// </summary>
@@ -66,9 +67,9 @@ public class DocumentEditorPreferenceStore
     }
 
     /// <summary>
-    /// Reads the resource's sidecar (if any) and returns its 'editor' field as
+    /// Reads the resource's sidecar (if any) and returns its '_editor' field as
     /// a DocumentEditorId. Returns success with Empty when no sidecar exists,
-    /// the sidecar has no 'editor' field, or the field value does not parse.
+    /// the sidecar has no '_editor' field, or the field value does not parse.
     /// Returns failure only on unexpected sidecar service errors so callers can
     /// fall through gracefully on success.
     /// </summary>
@@ -96,7 +97,7 @@ public class DocumentEditorPreferenceStore
             return DocumentEditorId.Empty;
         }
 
-        if (!sidecar.Content.Fields.TryGetValue(DocumentConstants.SidecarEditorFieldName, out var editorValue)
+        if (!sidecar.Content.Fields.TryGetValue(SidecarFieldNames.Editor, out var editorValue)
             || editorValue is not string editorIdString
             || string.IsNullOrWhiteSpace(editorIdString))
         {
@@ -113,7 +114,7 @@ public class DocumentEditorPreferenceStore
     }
 
     /// <summary>
-    /// Returns the editor that should open the given file: the sidecar 'editor'
+    /// Returns the editor that should open the given file: the sidecar '_editor'
     /// field when set, otherwise the per-extension workspace preference, or
     /// Empty when neither source has a preference.
     /// </summary>

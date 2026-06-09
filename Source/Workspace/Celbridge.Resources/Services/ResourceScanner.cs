@@ -12,7 +12,7 @@ namespace Celbridge.Resources.Services;
 /// </summary>
 public sealed class ResourceScanner : IResourceScanner
 {
-    private const string TagsField = SidecarHelper.TagsFieldName;
+    private const string TagsField = SidecarFieldNames.Tags;
 
     // File extensions that participate in reference scanning. Add an entry here
     // when a workflow needs cascade support for a new file type, and update the
@@ -328,12 +328,12 @@ public sealed class ResourceScanner : IResourceScanner
     private static bool IsSidecarPath(string absolutePath)
     {
         var fileName = Path.GetFileName(absolutePath);
-        if (!fileName.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+        if (!fileName.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
         // .cel.cel files are invalid sidecars by definition.
-        if (fileName.EndsWith(SidecarHelper.Extension + SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+        if (fileName.EndsWith(SidecarFile.Extension + SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -345,11 +345,11 @@ public sealed class ResourceScanner : IResourceScanner
     private static ResourceKey? StripSidecarSuffix(ResourceKey sidecarKey)
     {
         var fullKey = sidecarKey.FullKey;
-        if (!fullKey.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+        if (!fullKey.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
-        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarHelper.Extension.Length);
+        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarFile.Extension.Length);
         if (string.IsNullOrEmpty(trimmed)
             || trimmed.EndsWith(":", StringComparison.Ordinal))
         {

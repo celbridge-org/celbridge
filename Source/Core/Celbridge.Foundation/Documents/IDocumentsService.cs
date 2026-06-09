@@ -80,23 +80,18 @@ public interface IDocumentsService
     string GetDocumentLanguage(ResourceKey fileResource);
 
     /// <summary>
-    /// Returns the stored editor preference for a file extension, or DocumentEditorId.Empty
-    /// if no preference is stored (or the stored value is invalid).
-    /// </summary>
-    Task<DocumentEditorId> GetEditorPreferenceAsync(string extension);
-
-    /// <summary>
-    /// Returns the editor that would open this file: the sidecar's 'editor'
+    /// Returns the editor that would open this file: the sidecar's '_editor'
     /// field when set, otherwise the per-extension preference, otherwise
     /// DocumentEditorId.Empty.
     /// </summary>
     Task<DocumentEditorId> GetPreferredEditorAsync(ResourceKey fileResource);
 
     /// <summary>
-    /// Stores the user's preferred editor for a file extension. Pass DocumentEditorId.Empty
-    /// to clear the preference.
+    /// Writes the per-file editor selection to the resource's sidecar '_editor'
+    /// field. When useAsExtensionDefault is true, also stores the editor as the
+    /// per-extension preference.
     /// </summary>
-    Task SetEditorPreferenceAsync(string extension, DocumentEditorId editorId);
+    Task<Result> SetPreferredEditorAsync(ResourceKey fileResource, DocumentEditorId editorId, bool useAsExtensionDefault);
 
     /// <summary>
     /// Opens a file resource as a document in the documents panel.
