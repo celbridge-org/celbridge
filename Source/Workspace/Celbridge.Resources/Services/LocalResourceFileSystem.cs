@@ -727,6 +727,31 @@ public sealed class LocalResourceFileSystem : IResourceFileSystem
         return FileHashHelper.HashBytes(readResult.Value);
     }
 
+    public async Task<Result> SetAttributesAsync(ResourceKey resource, FileSystemAttributes mask, bool set)
+    {
+        var infoResult = await GetInfoAsync(resource);
+        if (infoResult.IsFailure)
+        {
+            return Result.Fail($"Failed to probe resource for attribute change: '{resource}'")
+                .WithErrors(infoResult);
+        }
+
+        var policyResult = EvaluatePolicy(resource, ResourceAction.Write, isFolder: infoResult.Value.Kind == StorageItemKind.Folder);
+        if (policyResult.IsFailure)
+        {
+            return Result.Fail(policyResult);
+        }
+
+        var resolveResult = ResolvePath(resource);
+        if (resolveResult.IsFailure)
+        {
+            return Result.Fail($"Failed to resolve path for resource: '{resource}'")
+                .WithErrors(resolveResult);
+        }
+
+        return await _fileSystem.SetAttributesAsync(resolveResult.Value, mask, set);
+    }
+
     private Result<string> ResolvePath(ResourceKey resource, bool validateCase = true)
     {
         var resourceRegistry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;

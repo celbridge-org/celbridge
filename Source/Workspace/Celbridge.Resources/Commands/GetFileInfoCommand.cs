@@ -21,6 +21,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             Extension: string.Empty,
             IsText: false,
             LineCount: null,
+            IsReadOnly: false,
             SidecarKey: null,
             SidecarStatus: null);
 
@@ -89,6 +90,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 Extension: extension,
                 IsText: isText,
                 LineCount: lineCount,
+                IsReadOnly: (info.Attributes & FileSystemAttributes.ReadOnly) != 0,
                 SidecarKey: sidecarKey,
                 SidecarStatus: sidecarStatus);
 
@@ -105,6 +107,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 Extension: string.Empty,
                 IsText: false,
                 LineCount: null,
+                IsReadOnly: (info.Attributes & FileSystemAttributes.ReadOnly) != 0,
                 SidecarKey: null,
                 SidecarStatus: null);
 

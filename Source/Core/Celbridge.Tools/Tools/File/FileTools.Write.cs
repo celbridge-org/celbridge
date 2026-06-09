@@ -30,7 +30,7 @@ public partial class FileTools
 
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult);
+            return await WriteFailureResponseAsync(writeResult, fileResourceKey);
         }
 
         var lineCount = LineEndingHelper.CountLines(content);

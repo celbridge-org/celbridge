@@ -49,7 +49,7 @@ public partial class FileTools
 
         if (editResult.IsFailure)
         {
-            return ToolResponse.Error(editResult);
+            return await WriteFailureResponseAsync(editResult, fileResourceKey);
         }
 
         var editValue = editResult.Value;

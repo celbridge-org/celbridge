@@ -65,5 +65,6 @@ public static class ServiceConfiguration
         services.AddTransient<IReplaceFileCommand, ReplaceFileCommand>();
         services.AddTransient<IWriteFileCommand, WriteFileCommand>();
         services.AddTransient<IWriteBinaryFileCommand, WriteBinaryFileCommand>();
+        services.AddTransient<ISetWriteableCommand, SetWriteableCommand>();
     }
 }

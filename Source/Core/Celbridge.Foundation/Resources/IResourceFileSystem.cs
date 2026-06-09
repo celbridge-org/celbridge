@@ -89,4 +89,11 @@ public interface IResourceFileSystem
     /// with string equality.
     /// </summary>
     Task<Result<string>> ComputeHashAsync(ResourceKey resource);
+
+    /// <summary>
+    /// Sets or clears the named filesystem attribute flags on the resource.
+    /// Flags outside the mask are preserved. Routed through the resource
+    /// policy gate as a write operation.
+    /// </summary>
+    Task<Result> SetAttributesAsync(ResourceKey resource, FileSystemAttributes mask, bool set);
 }

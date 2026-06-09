@@ -14,7 +14,9 @@ For files:
 - `extension` — lower-cased extension including the leading dot (e.g. `.cs`).
 - `isText` — true when the content is treated as text. Binary files only have meaningful values for `size`, `extension`, and `modified`.
 - `lineCount` — number of lines for text files, otherwise null.
+- `isReadOnly` — true when the file carries the filesystem read-only attribute. Write operations (`file_write`, `file_edit`, etc.) will fail until the attribute is cleared via `file_set_writeable`. Common on files imported from archives, source-control checkouts, or network shares.
+- `sidecar`, `sidecarStatus` — the paired `.cel` sidecar's resource key and parse state (`"healthy"`, `"broken"`, or `"none"` when absent).
 
-For folders the result is just `type` and `modified`.
+For folders the result is `type`, `modified`, and `isReadOnly`.
 
 The call fails with a "Resource not found" error if the resource does not exist.

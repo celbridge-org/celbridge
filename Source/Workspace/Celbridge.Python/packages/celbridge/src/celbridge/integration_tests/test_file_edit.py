@@ -373,3 +373,65 @@ class TestCelTargetsAccepted:
         file.write("TestFileEdit/new_orphan.cel", "_tags = [\"x\"]\n")
         result = file.read("TestFileEdit/new_orphan.cel")
         assert "_tags" in result["content"]
+
+
+class TestSetWriteable:
+    """file_set_writeable toggles the filesystem read-only attribute. The
+    motivating workflow is unlocking files that arrive read-only from external
+    sources (source-control checkouts, render-manager outputs, archive extracts).
+    """
+
+    def test_round_trip_lock_then_unlock(self, file):
+        # Baseline: a freshly written file is writeable.
+        file.write("TestFileEdit/round_trip.txt", "body\n")
+        info_before = file.get_info("TestFileEdit/round_trip.txt")
+        assert info_before["isReadOnly"] is False
+
+        # Lock and verify get_info reflects the new state.
+        file.set_writeable("TestFileEdit/round_trip.txt", False)
+        locked = file.get_info("TestFileEdit/round_trip.txt")
+        assert locked["isReadOnly"] is True
+
+        # Write to a read-only file fails with guidance pointing at
+        # file_set_writeable.
+        with pytest.raises(CelError, match="(?i)file_set_writeable"):
+            file.write("TestFileEdit/round_trip.txt", "different body\n")
+
+        # Unlock, retry, succeeds. The error message guided us here.
+        file.set_writeable("TestFileEdit/round_trip.txt", True)
+        unlocked = file.get_info("TestFileEdit/round_trip.txt")
+        assert unlocked["isReadOnly"] is False
+
+        file.write("TestFileEdit/round_trip.txt", "different body\n")
+        result = file.read("TestFileEdit/round_trip.txt")
+        assert "different body" in result["content"]
+
+    def test_idempotent(self, file):
+        file.write("TestFileEdit/idempotent.txt", "body\n")
+        # Setting writeable=True on an already-writeable file is a no-op success.
+        file.set_writeable("TestFileEdit/idempotent.txt", True)
+        info = file.get_info("TestFileEdit/idempotent.txt")
+        assert info["isReadOnly"] is False
+
+        # Same for the read-only direction.
+        file.set_writeable("TestFileEdit/idempotent.txt", False)
+        file.set_writeable("TestFileEdit/idempotent.txt", False)
+        info = file.get_info("TestFileEdit/idempotent.txt")
+        assert info["isReadOnly"] is True
+
+        # Cleanup: leave the file writeable so the fixture teardown can delete it.
+        file.set_writeable("TestFileEdit/idempotent.txt", True)
+
+    def test_edit_on_read_only_surfaces_guidance(self, file):
+        # file_edit, file_replace, file_multi_edit all carry the same enriched
+        # error pointing at file_set_writeable. Sample one (edit) — the others
+        # share the helper.
+        file.write("TestFileEdit/lock_edit.txt", "alpha\nbeta\n")
+        file.set_writeable("TestFileEdit/lock_edit.txt", False)
+        with pytest.raises(CelError, match="(?i)file_set_writeable"):
+            file.edit(
+                "TestFileEdit/lock_edit.txt",
+                old_string="alpha",
+                new_string="ALPHA",
+            )
+        file.set_writeable("TestFileEdit/lock_edit.txt", True)

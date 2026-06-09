@@ -23,7 +23,7 @@ public partial class FileTools
         });
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult);
+            return await WriteFailureResponseAsync(writeResult, fileResourceKey);
         }
 
         return ToolResponse.Success("ok");

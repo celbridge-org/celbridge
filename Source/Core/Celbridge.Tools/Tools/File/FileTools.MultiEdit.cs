@@ -73,7 +73,7 @@ public partial class FileTools
 
         if (multiEditResult.IsFailure)
         {
-            return ToolResponse.Error(multiEditResult);
+            return await WriteFailureResponseAsync(multiEditResult, fileResourceKey);
         }
 
         var resultValue = multiEditResult.Value;

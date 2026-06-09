@@ -50,7 +50,7 @@ public partial class FileTools
 
         if (findReplaceResult.IsFailure)
         {
-            return ToolResponse.Error(findReplaceResult);
+            return await WriteFailureResponseAsync(findReplaceResult, fileResourceKey);
         }
 
         var commandResult = findReplaceResult.Value;
