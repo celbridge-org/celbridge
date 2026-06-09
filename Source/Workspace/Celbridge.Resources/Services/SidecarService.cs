@@ -83,44 +83,92 @@ public sealed class SidecarService : ISidecarService
         return new SidecarReadResult(SidecarReadOutcome.Healthy, parseResult.Value, null);
     }
 
-    public async Task<Result<SidecarWriteOutcome>> SetFieldAsync(ResourceKey resource, string field, object value)
+    public async Task<Result<SidecarWriteOutcome>> SetFieldsAsync(ResourceKey resource, IReadOnlyDictionary<string, object> fields)
     {
-        if (string.IsNullOrEmpty(field))
+        if (fields is null)
         {
-            return Result<SidecarWriteOutcome>.Fail("Field name is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Fields dictionary is null.");
         }
-        if (value is null)
+        if (fields.Count == 0)
         {
-            return Result<SidecarWriteOutcome>.Fail("Value is null. Use RemoveFieldAsync to clear a field.");
+            return SidecarWriteOutcome.NoChange;
         }
-        if (!SidecarHelper.IsIndexableValue(value))
+
+        foreach (var (name, value) in fields)
         {
-            return Result<SidecarWriteOutcome>.Fail($"Field '{field}' value is not indexable. Only scalar (string/number/bool/datetime) and list-of-scalar values are supported.");
+            if (string.IsNullOrEmpty(name))
+            {
+                return Result<SidecarWriteOutcome>.Fail("Field name is empty.");
+            }
+            if (value is null)
+            {
+                return Result<SidecarWriteOutcome>.Fail($"Field '{name}' value is null. Use RemoveFieldsAsync to clear fields.");
+            }
+            if (!SidecarHelper.IsIndexableValue(value))
+            {
+                return Result<SidecarWriteOutcome>.Fail($"Field '{name}' value is not indexable. Only scalar (string/number/bool/datetime) and list-of-scalar values are supported.");
+            }
         }
 
         return await MutateFieldsAsync(
             resource,
-            dictionary => dictionary[field] = value);
+            dictionary =>
+            {
+                foreach (var (name, value) in fields)
+                {
+                    dictionary[name] = value;
+                }
+            });
     }
 
-    public async Task<Result<SidecarWriteOutcome>> RemoveFieldAsync(ResourceKey resource, string field)
+    public async Task<Result<SidecarWriteOutcome>> RemoveFieldsAsync(ResourceKey resource, IReadOnlyList<string> names)
     {
-        if (string.IsNullOrEmpty(field))
+        if (names is null)
         {
-            return Result<SidecarWriteOutcome>.Fail("Field name is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Field names list is null.");
+        }
+        if (names.Count == 0)
+        {
+            return SidecarWriteOutcome.NoChange;
+        }
+
+        foreach (var name in names)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return Result<SidecarWriteOutcome>.Fail("Field name is empty.");
+            }
         }
 
         return await MutateFieldsAsync(
             resource,
-            dictionary => dictionary.Remove(field),
+            dictionary =>
+            {
+                foreach (var name in names)
+                {
+                    dictionary.Remove(name);
+                }
+            },
             createIfMissing: false);
     }
 
-    public async Task<Result<SidecarWriteOutcome>> AddTagAsync(ResourceKey resource, string tag)
+    public async Task<Result<SidecarWriteOutcome>> AddTagsAsync(ResourceKey resource, IReadOnlyList<string> tags)
     {
-        if (string.IsNullOrEmpty(tag))
+        if (tags is null)
         {
-            return Result<SidecarWriteOutcome>.Fail("Tag is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Tags list is null.");
+        }
+        if (tags.Count == 0)
+        {
+            return SidecarWriteOutcome.NoChange;
+        }
+
+        foreach (var tag in tags)
+        {
+            if (string.IsNullOrEmpty(tag))
+            {
+                return Result<SidecarWriteOutcome>.Fail("Tag is empty.");
+            }
         }
 
         return await MutateFieldsAsync(
@@ -131,23 +179,42 @@ public sealed class SidecarService : ISidecarService
                     ? SidecarHelper.ExtractStringList(value)
                     : Array.Empty<string>();
 
-                if (existing.Contains(tag, StringComparer.Ordinal))
+                var updated = new List<string>(existing);
+                var present = new HashSet<string>(existing, StringComparer.Ordinal);
+                foreach (var tag in tags)
+                {
+                    if (present.Add(tag))
+                    {
+                        updated.Add(tag);
+                    }
+                }
+
+                if (updated.Count == existing.Count)
                 {
                     return;
                 }
 
-                var updated = new List<string>(existing.Count + 1);
-                updated.AddRange(existing);
-                updated.Add(tag);
                 dictionary[SidecarHelper.TagsFieldName] = updated;
             });
     }
 
-    public async Task<Result<SidecarWriteOutcome>> RemoveTagAsync(ResourceKey resource, string tag)
+    public async Task<Result<SidecarWriteOutcome>> RemoveTagsAsync(ResourceKey resource, IReadOnlyList<string> tags)
     {
-        if (string.IsNullOrEmpty(tag))
+        if (tags is null)
         {
-            return Result<SidecarWriteOutcome>.Fail("Tag is empty.");
+            return Result<SidecarWriteOutcome>.Fail("Tags list is null.");
+        }
+        if (tags.Count == 0)
+        {
+            return SidecarWriteOutcome.NoChange;
+        }
+
+        foreach (var tag in tags)
+        {
+            if (string.IsNullOrEmpty(tag))
+            {
+                return Result<SidecarWriteOutcome>.Fail("Tag is empty.");
+            }
         }
 
         return await MutateFieldsAsync(
@@ -160,12 +227,14 @@ public sealed class SidecarService : ISidecarService
                 }
 
                 var existing = SidecarHelper.ExtractStringList(value);
-                if (!existing.Contains(tag, StringComparer.Ordinal))
+                var removalSet = new HashSet<string>(tags, StringComparer.Ordinal);
+                var updated = existing.Where(other => !removalSet.Contains(other)).ToList();
+
+                if (updated.Count == existing.Count)
                 {
                     return;
                 }
 
-                var updated = existing.Where(other => !string.Equals(other, tag, StringComparison.Ordinal)).ToList();
                 if (updated.Count == 0)
                 {
                     dictionary.Remove(SidecarHelper.TagsFieldName);
@@ -183,8 +252,8 @@ public sealed class SidecarService : ISidecarService
     // mutation, then writes the composed result back through the gateway.
     // The pre-mutation compose is captured up front so the post-mutation compose
     // can be compared against it; when they match the write is skipped, so a
-    // no-op mutate (AddTagAsync with an already-present tag, SetFieldAsync to
-    // the current value) does not trigger a watcher event or downstream
+    // no-op mutate (AddTagsAsync with already-present tags, SetFieldsAsync to
+    // the current values) does not trigger a watcher event or downstream
     // resource refresh. A missing storage file is either created
     // (createIfMissing=true) or quietly skipped (createIfMissing=false); a
     // Broken sidecar fails rather than being overwritten with fresh content.

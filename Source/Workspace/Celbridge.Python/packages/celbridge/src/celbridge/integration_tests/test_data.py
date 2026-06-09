@@ -14,6 +14,15 @@ from celbridge.cel_proxy import CelError
 from .helpers import delete_if_exists, write_cel_file_directly
 
 
+def _fields(*pairs):
+    """Build the fields-JSON payload for data.set_fields from name/value pairs.
+
+    Each value is JSON-encoded individually (the value_json convention) and the
+    outer dict is JSON-encoded as the tool argument.
+    """
+    return json.dumps({name: json.dumps(value) for name, value in pairs})
+
+
 def assert_project_clean(extra_broken_references=None, extra_orphan_cel_files=None):
     """Run data_check_project and assert no unexpected attention items.
 
@@ -59,92 +68,146 @@ def workspace(explorer, file):
 
 class TestData:
 
-    def test_set_field_creates_sidecar_and_get_info_returns_field(self, data):
+    def test_set_fields_creates_sidecar_and_get_info_returns_field(self, data):
         # Set a field on a resource that has no sidecar. The sidecar is created
         # and the new field appears in the get_info response.
-        data.set_field("TestData/notes.md", "priority", json.dumps("high"))
+        data.set_fields("TestData/notes.md", _fields(("priority", "high")))
         info = data.get_info("TestData/notes.md")
         assert info["fields"].get("priority") == "high"
 
-    def test_get_field_returns_field_value(self, data):
-        data.set_field("TestData/notes.md", "priority", json.dumps("high"))
-        value = data.get_field("TestData/notes.md", "priority")
-        assert value == "high"
+    def test_get_fields_returns_field_value(self, data):
+        data.set_fields("TestData/notes.md", _fields(("priority", "high")))
+        results = data.get_fields("TestData/notes.md", json.dumps(["priority"]))
+        priority = next(r for r in results if r["name"] == "priority")
+        assert priority["found"] is True
+        assert priority["value"] == "high"
 
-    def test_get_field_missing_returns_error(self, data):
-        data.set_field("TestData/notes.md", "priority", json.dumps("high"))
-        with pytest.raises(CelError):
-            data.get_field("TestData/notes.md", "missing_field")
-
-    def test_set_field_accepts_list_of_scalars(self, data):
-        data.set_field(
+    def test_get_fields_missing_returns_found_false(self, data):
+        data.set_fields("TestData/notes.md", _fields(("priority", "high")))
+        results = data.get_fields(
             "TestData/notes.md",
-            "categories",
-            json.dumps(["alpha", "beta"]),
+            json.dumps(["priority", "missing_field"]),
+        )
+        missing = next(r for r in results if r["name"] == "missing_field")
+        assert missing["found"] is False
+        assert "value" not in missing
+
+    def test_get_fields_all_sentinel_returns_every_field(self, data):
+        data.set_fields(
+            "TestData/notes.md",
+            _fields(("priority", "high"), ("title", "Notes")),
+        )
+        results = data.get_fields("TestData/notes.md", json.dumps(["*"]))
+        names = {r["name"] for r in results if r["found"]}
+        assert {"priority", "title"}.issubset(names)
+
+    def test_set_fields_accepts_list_of_scalars(self, data):
+        data.set_fields(
+            "TestData/notes.md",
+            _fields(("categories", ["alpha", "beta"])),
         )
         info = data.get_info("TestData/notes.md")
         assert info["fields"].get("categories") == ["alpha", "beta"]
 
-    def test_set_field_rejects_nested_object(self, data):
+    def test_set_fields_atomic_batch_writes_all_or_nothing(self, data):
+        # A batch with a nested-object value (rejected at write time) must
+        # leave the sidecar unchanged — none of the valid fields land.
         with pytest.raises(CelError):
-            data.set_field(
+            data.set_fields(
                 "TestData/notes.md",
-                "complex",
-                json.dumps({"nested": "value"}),
+                json.dumps({
+                    "valid": json.dumps("ok"),
+                    "invalid": json.dumps({"nested": "value"}),
+                }),
+            )
+        info = data.get_info("TestData/notes.md")
+        assert info["fields"].get("valid") is None
+
+    def test_set_fields_rejects_nested_object(self, data):
+        with pytest.raises(CelError):
+            data.set_fields(
+                "TestData/notes.md",
+                _fields(("complex", {"nested": "value"})),
             )
 
-    def test_add_tag_creates_sidecar_when_missing(self, data):
-        data.add_tag("TestData/notes.md", "flagged")
+    def test_set_fields_rejects_reserved_underscore_name(self, data):
+        with pytest.raises(CelError, match="(?i)reserved"):
+            data.set_fields(
+                "TestData/notes.md",
+                _fields(("_tags", ["should-not-land"])),
+            )
+
+    def test_add_tags_creates_sidecar_when_missing(self, data):
+        data.add_tags("TestData/notes.md", json.dumps(["flagged"]))
         info = data.get_info("TestData/notes.md")
         assert "flagged" in info["fields"].get("_tags", [])
 
-    def test_add_tag_appends_and_is_idempotent(self, data):
-        data.add_tag("TestData/notes.md", "alpha")
-        data.add_tag("TestData/notes.md", "beta")
-        data.add_tag("TestData/notes.md", "alpha")
+    def test_add_tags_batch_appends_in_one_call(self, data):
+        data.add_tags("TestData/notes.md", json.dumps(["alpha", "beta", "gamma"]))
         info = data.get_info("TestData/notes.md")
         tags = info["fields"].get("_tags", [])
-        # Tags appear once each; ordering reflects insertion order.
+        for tag in ("alpha", "beta", "gamma"):
+            assert tags.count(tag) == 1
+
+    def test_add_tags_idempotent_for_already_present(self, data):
+        data.add_tags("TestData/notes.md", json.dumps(["alpha"]))
+        data.add_tags("TestData/notes.md", json.dumps(["alpha", "beta"]))
+        info = data.get_info("TestData/notes.md")
+        tags = info["fields"].get("_tags", [])
         assert tags.count("alpha") == 1
         assert "beta" in tags
 
     def test_find_tag_returns_resource(self, data):
-        data.add_tag("TestData/notes.md", "flagged")
+        data.add_tags("TestData/notes.md", json.dumps(["flagged"]))
         matches = data.find_tag("flagged")
         # Tool responses emit resource keys in canonical "root:path" form.
         assert "project:TestData/notes.md" in matches
 
-    def test_remove_tag_drops_entry(self, data):
-        data.add_tag("TestData/notes.md", "flagged")
-        data.remove_tag("TestData/notes.md", "flagged")
-        matches = data.find_tag("flagged")
-        assert "project:TestData/notes.md" not in matches
+    def test_remove_tags_drops_entries(self, data):
+        data.add_tags("TestData/notes.md", json.dumps(["alpha", "beta"]))
+        data.remove_tags("TestData/notes.md", json.dumps(["alpha", "beta"]))
+        matches_alpha = data.find_tag("alpha")
+        matches_beta = data.find_tag("beta")
+        assert "project:TestData/notes.md" not in matches_alpha
+        assert "project:TestData/notes.md" not in matches_beta
 
-    def test_remove_tag_idempotent_when_missing(self, data):
+    def test_remove_tags_idempotent_when_missing(self, data):
         # No sidecar yet; removing a tag is a no-op success.
-        data.remove_tag("TestData/notes.md", "nope")
+        data.remove_tags("TestData/notes.md", json.dumps(["nope"]))
 
-    def test_remove_field_is_no_op_when_absent(self, data):
+    def test_remove_fields_is_no_op_when_absent(self, data):
         # Returns success without touching disk.
-        data.remove_field("TestData/notes.md", "nope")
+        data.remove_fields("TestData/notes.md", json.dumps(["nope"]))
+
+    def test_remove_fields_batch(self, data):
+        data.set_fields(
+            "TestData/notes.md",
+            _fields(("a", "x"), ("b", "y"), ("c", "z")),
+        )
+        data.remove_fields("TestData/notes.md", json.dumps(["a", "b"]))
+        info = data.get_info("TestData/notes.md")
+        fields = info["fields"]
+        assert "a" not in fields
+        assert "b" not in fields
+        assert fields.get("c") == "z"
 
     def test_get_info_returns_empty_when_no_sidecar(self, data):
         result = data.get_info("TestData/notes.md")
         assert result == {"hasSidecar": False, "fields": {}}
 
-    def test_set_field_visible_through_file_read(self, data, file):
-        data.set_field("TestData/notes.md", "priority", json.dumps("high"))
+    def test_set_fields_visible_through_file_read(self, data, file):
+        data.set_fields("TestData/notes.md", _fields(("priority", "high")))
         sidecar_text = file.read("TestData/notes.md.cel")["content"]
         assert "priority" in sidecar_text
         assert "high" in sidecar_text
 
     def test_invalid_resource_key_fails(self, data):
         with pytest.raises(CelError):
-            data.set_field("\\invalid", "priority", json.dumps("high"))
+            data.set_fields("\\invalid", _fields(("priority", "high")))
 
     def test_sidecar_key_rejected(self, data):
         with pytest.raises(CelError):
-            data.set_field("TestData/notes.md.cel", "priority", json.dumps("high"))
+            data.set_fields("TestData/notes.md.cel", _fields(("priority", "high")))
 
 
 class TestDataCheckProject:

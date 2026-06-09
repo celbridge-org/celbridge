@@ -4,28 +4,29 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 
 ## Must-knows
 
-- **A broken sidecar blocks all `data_*` mutations.** When the sidecar fails to parse (invalid TOML, unterminated string), `data_set_field`, `data_add_tag`, and their siblings refuse with a `Cannot mutate sidecar '...': TOML parse error(s): ...` message rather than silently overwriting the bad content. Repair by hand with `file_write` against valid TOML, then retry the mutation. `data_check_project` surfaces broken sidecars project-wide for batch triage.
-- **Sidecars are addressed by their parent resource.** `data_get_field docs/notes.md priority` consults the sidecar at `docs/notes.md.cel`. Passing the sidecar's own resource key (`docs/notes.md.cel`) is rejected with a clear error.
-- **Sidecars are created on first write.** `data_set_field` and `data_add_tag` create the sidecar when missing. `data_remove_field` and `data_remove_tag` never create files and never delete sidecars (empty sidecars are kept).
-- **Field values are JSON-encoded.** `data_set_field` accepts the value as a JSON string so types pass through cleanly: `"high"`, `42`, `true`, `["a", "b"]`. Nested objects are rejected at write time.
-- **Tags are the only structured cross-resource query.** Use `data_add_tag` / `data_remove_tag` for atomic mutation and `data_find_tag` to enumerate resources carrying a tag. The `tag:value` convention (`priority:high`, `status:draft`) covers most "search by field" needs.
+- **A broken sidecar blocks all `data_*` mutations.** When the sidecar fails to parse (invalid TOML, unterminated string), `data_set_fields`, `data_add_tags`, and their siblings refuse with a `Cannot mutate sidecar '...': TOML parse error(s): ...` message rather than silently overwriting the bad content. Repair by hand with `file_write` against valid TOML, then retry the mutation. `data_check_project` surfaces broken sidecars project-wide for batch triage.
+- **Sidecars are addressed by their parent resource.** `data_get_fields docs/notes.md ["priority"]` consults the sidecar at `docs/notes.md.cel`. Passing the sidecar's own resource key (`docs/notes.md.cel`) is rejected with a clear error.
+- **Sidecars are created on first write.** `data_set_fields` and `data_add_tags` create the sidecar when missing. `data_remove_fields` and `data_remove_tags` never create files and never delete sidecars (empty sidecars are kept).
+- **Operations are batch-aware and atomic.** Every per-resource write tool takes a list/object and applies the whole batch in one read-modify-write — partial state is impossible. Reads also batch through `data_get_fields` (use `["*"]` to fetch every field).
+- **Field values are JSON-encoded.** `data_set_fields` accepts each value as a JSON string so types pass through cleanly: `"\"high\""`, `"42"`, `"true"`, `"[\"a\", \"b\"]"`. Nested objects are rejected at write time.
+- **Tags are the only structured cross-resource query.** Use `data_add_tags` / `data_remove_tags` for atomic mutation and `data_find_tag` to enumerate resources carrying a tag. The `tag:value` convention (`priority:high`, `status:draft`) covers most "search by field" needs.
 
 ## Tools
 
 **Per-resource read.**
 
-- `data_get_field` — read a single field value from a resource's sidecar.
+- `data_get_fields` — read a batch of named fields from a resource's sidecar (use `["*"]` for every field).
 - `data_get_info` — return fields inline in one response.
 
 **Per-resource write.**
 
-- `data_set_field` — write a single field, creating the sidecar if missing.
-- `data_remove_field` — remove a single field; no-op when absent.
+- `data_set_fields` — atomically write a batch of fields, creating the sidecar if missing.
+- `data_remove_fields` — atomically remove a batch of fields; missing names are no-ops.
 
 **Tag affordances.**
 
-- `data_add_tag` — append a tag, creating the sidecar if missing.
-- `data_remove_tag` — remove a tag; no-op when absent.
+- `data_add_tags` — atomically append a batch of tags, creating the sidecar if missing.
+- `data_remove_tags` — atomically remove a batch of tags; missing tags are no-ops.
 - `data_find_tag` — find every resource whose tag list contains the given value.
 
 **Project-wide health.**
@@ -35,9 +36,9 @@ The `data` namespace reads and writes per-resource data stored in `.cel` sidecar
 ## When to use which surface
 
 - "What does this sidecar carry?" → `data_get_info`.
-- "What does this specific field hold?" → `data_get_field`.
+- "What do these specific fields hold?" → `data_get_fields resource ["a", "b", "c"]`.
 - "What resources are tagged X?" → `data_find_tag "X"`.
-- "Tag this resource so a future agent can find it" → `data_add_tag`.
+- "Tag this resource so a future agent can find it" → `data_add_tags resource ["X"]`.
 - "Is the project in a consistent state?" → `data_check_project`.
 
 ## Sidecar file format
@@ -56,20 +57,28 @@ verbatim on disk.
 
 System metadata uses root-level field names that start with `_` (e.g. `_tags`). These appear at the top of the file in a canonical order; user-defined fields follow alphabetically. The reservation only applies at the root scope; nested-table keys may use any name.
 
+The reserved namespace is closed to the field tools: `data_set_fields` rejects any `_`-prefixed field name, `data_get_fields` and `data_remove_fields` skip them, and the tag list (`_tags`) is surfaced through the dedicated tag tools and the `tags` key on `data_inspect`.
+
 When repairing a sidecar by hand with `file_write`, write valid TOML; anything `Tomlyn` parses, the system accepts.
 
 ## Reading tool responses
 
-Each `data_*` tool returns a single text payload. The Python `data.*` proxy and the JS `cel.data.*` proxy hand that payload back to the caller verbatim — no auto-parsing. Structured responses (`data_get_info`'s `{hasSidecar, fields}` envelope, `data_get_field`'s JSON-encoded value, `data_find_tag`'s resource list, `data_check_project`'s report) are JSON-shaped strings that the caller parses:
+Each `data_*` tool returns a single text payload. The Python `data.*` proxy and the JS `cel.data.*` proxy hand that payload back to the caller verbatim — no auto-parsing. Structured responses (`data_get_info`'s `{hasSidecar, fields}` envelope, `data_get_fields`'s array of `{name, found, value}` records, `data_find_tag`'s resource list, `data_check_project`'s report) are JSON-shaped strings that the caller parses:
 
 ```js
 const info = JSON.parse(await cel.data.getInfo(dataKey));
 const graphField = info.fields.graph;
+
+const results = JSON.parse(await cel.data.getFields(dataKey, JSON.stringify(["graph", "viewport"])));
+const graphResult = results.find(record => record.name === "graph");
 ```
 
 ```python
 info = json.loads(data.get_info(data_key))
 graph_field = info["fields"].get("graph")
+
+results = json.loads(data.get_fields(data_key, json.dumps(["graph", "viewport"])))
+graph_result = next(record for record in results if record["name"] == "graph")
 ```
 
 Field values inside the envelope stay as strings — the data layer is format-agnostic, so a string field carrying JSON, markdown, XML, or any other text round-trips byte-for-byte without the host interpreting it. Parse the field's content separately if your editor stored a structured payload there.

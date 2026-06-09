@@ -34,7 +34,7 @@ A JSON object with:
 
 ## Not for `.cel` files
 
-`.cel` files are project metadata sidecars with a structured TOML format. A text-level edit could corrupt the TOML, so `file_edit` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
+`.cel` files are project metadata sidecars with a structured TOML format. A text-level edit could corrupt the TOML, so `file_edit` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_fields`, `data_add_tags`, etc.) to mutate sidecar contents through the structured surface.
 
 ## Gotchas
 

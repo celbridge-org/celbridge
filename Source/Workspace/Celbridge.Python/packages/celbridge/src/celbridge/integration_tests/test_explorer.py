@@ -181,7 +181,10 @@ class TestExplorer:
         # .cel source per-resource (partial_failure), so it does not raise; the
         # sidecar stays put and nothing lands at the destination.
         explorer.create_file("TestExplorer/notes.md")
-        data.set_field("TestExplorer/notes.md", "priority", json.dumps("high"))
+        data.set_fields(
+            "TestExplorer/notes.md",
+            json.dumps({"priority": json.dumps("high")}),
+        )
 
         result = explorer.copy(
             "TestExplorer/notes.md.cel",
@@ -200,7 +203,10 @@ class TestExplorer:
         # The same per-resource refusal applies to a move (rename) of a lone
         # sidecar key; the sidecar is not relocated.
         explorer.create_file("TestExplorer/notes.md")
-        data.set_field("TestExplorer/notes.md", "priority", json.dumps("high"))
+        data.set_fields(
+            "TestExplorer/notes.md",
+            json.dumps({"priority": json.dumps("high")}),
+        )
 
         result = explorer.move(
             "TestExplorer/notes.md.cel",
