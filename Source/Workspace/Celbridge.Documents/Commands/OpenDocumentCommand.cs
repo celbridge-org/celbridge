@@ -99,7 +99,7 @@ public class OpenDocumentCommand : CommandBase, IOpenDocumentCommand
         {
             // Alert the user that the document failed to open
             var title = _stringLocalizer.GetString("Documents_OpenDocumentFailedTitle");
-            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedGeneric", FileResource.ToString());
+            var message = _stringLocalizer.GetString("Documents_OpenDocumentFailedGeneric", FileResource.Path);
             await _dialogService.ShowAlertDialogAsync(title, message);
 
             return Result.Fail($"An error occurred while attempting to open '{FileResource}'")

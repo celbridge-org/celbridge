@@ -91,7 +91,7 @@ public class TrashServiceTests
     {
         var resource = new ResourceKey("doc.txt");
         var path = Path.Combine(_tempFolder, "doc.txt");
-        var sidecarPath = path + SidecarHelper.Extension;
+        var sidecarPath = path + SidecarFile.Extension;
         await File.WriteAllTextAsync(path, "main");
         await File.WriteAllTextAsync(sidecarPath, "+++\ntitle = 'Doc'\n+++\n");
         _resourceRegistry.ResolveResourcePath(resource).Returns(Result<string>.Ok(path));

@@ -112,9 +112,9 @@ public class EditorStatePersistenceTests
     [Test]
     public async Task EditorPreference_RoundTripsThroughSettings()
     {
-        // Locks in the storage shape used by IDocumentsService.GetEditorPreferenceAsync /
-        // SetEditorPreferenceAsync. The key format is a private detail of the service but the
-        // value contract (a string editor id) needs to round-trip cleanly.
+        // Locks in the storage shape used by DocumentEditorPreferenceStore. The key
+        // format is a private detail of the store but the value contract (a string
+        // editor id) needs to round-trip cleanly.
         var settings = _workspaceSettingsService.WorkspaceSettings!;
         var preferenceKey = "DocumentEditorPreference:.md";
         var editorId = "celbridge.markdown-editor";

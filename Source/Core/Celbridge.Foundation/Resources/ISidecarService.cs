@@ -1,6 +1,35 @@
 namespace Celbridge.Resources;
 
 /// <summary>
+/// File-format constants for the .cel sidecar.
+/// </summary>
+public static class SidecarFile
+{
+    /// <summary>
+    /// The on-disk file extension carried by sidecar files.
+    /// </summary>
+    public const string Extension = ".cel";
+}
+
+/// <summary>
+/// Well-known root-level field names in a .cel sidecar. The leading underscore
+/// marks each entry as system metadata; the encoder emits these fields at the top
+/// of the file in canonical order. Add new reserved names here.
+/// </summary>
+public static class SidecarFieldNames
+{
+    /// <summary>
+    /// The user's per-file editor choice (last "Open with..." selection).
+    /// </summary>
+    public const string Editor = "_editor";
+
+    /// <summary>
+    /// The tag list. Agent-facing tools surface its values under the domain key "tags".
+    /// </summary>
+    public const string Tags = "_tags";
+}
+
+/// <summary>
 /// The parsed result of a sidecar file: the TOML field dictionary. A `.cel`
 /// file is just TOML; the field set is the whole content.
 /// </summary>

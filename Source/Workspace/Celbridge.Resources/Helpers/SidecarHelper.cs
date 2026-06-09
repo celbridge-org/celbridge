@@ -12,18 +12,6 @@ namespace Celbridge.Resources.Helpers;
 public static class SidecarHelper
 {
     /// <summary>
-    /// The file extension used for sidecar files.
-    /// </summary>
-    public const string Extension = ".cel";
-
-    /// <summary>
-    /// The on-disk field name carrying the tag list. Reserved root-level
-    /// field; the agent-facing tools surface its values under the domain key
-    /// "tags".
-    /// </summary>
-    public const string TagsFieldName = "_tags";
-
-    /// <summary>
     /// True when the value can be written through the structured field
     /// surface: scalars (string, numeric, bool, datetime) and lists of those.
     /// Nested objects and mixed lists are rejected.

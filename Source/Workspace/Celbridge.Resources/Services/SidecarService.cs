@@ -18,7 +18,7 @@ public sealed class SidecarService : ISidecarService
         {
             return false;
         }
-        return resource.Path.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase);
+        return resource.Path.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase);
     }
 
     public bool IsSidecarFileName(string fileName)
@@ -27,7 +27,7 @@ public sealed class SidecarService : ISidecarService
         {
             return false;
         }
-        return fileName.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase);
+        return fileName.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase);
     }
 
     public Result<ResourceKey> GetSidecarKey(ResourceKey parent)
@@ -45,7 +45,7 @@ public sealed class SidecarService : ISidecarService
             return Result.Fail($"Cannot build a sidecar key for sidecar resource '{parent}': pass the parent resource key instead.");
         }
 
-        return new ResourceKey(parent.FullKey + SidecarHelper.Extension);
+        return new ResourceKey(parent.FullKey + SidecarFile.Extension);
     }
 
     public bool IsIndexableValue(object? value) => SidecarHelper.IsIndexableValue(value);
@@ -175,7 +175,7 @@ public sealed class SidecarService : ISidecarService
             resource,
             dictionary =>
             {
-                var existing = dictionary.TryGetValue(SidecarHelper.TagsFieldName, out var value)
+                var existing = dictionary.TryGetValue(SidecarFieldNames.Tags, out var value)
                     ? SidecarHelper.ExtractStringList(value)
                     : Array.Empty<string>();
 
@@ -194,7 +194,7 @@ public sealed class SidecarService : ISidecarService
                     return;
                 }
 
-                dictionary[SidecarHelper.TagsFieldName] = updated;
+                dictionary[SidecarFieldNames.Tags] = updated;
             });
     }
 
@@ -221,7 +221,7 @@ public sealed class SidecarService : ISidecarService
             resource,
             dictionary =>
             {
-                if (!dictionary.TryGetValue(SidecarHelper.TagsFieldName, out var value))
+                if (!dictionary.TryGetValue(SidecarFieldNames.Tags, out var value))
                 {
                     return;
                 }
@@ -237,11 +237,11 @@ public sealed class SidecarService : ISidecarService
 
                 if (updated.Count == 0)
                 {
-                    dictionary.Remove(SidecarHelper.TagsFieldName);
+                    dictionary.Remove(SidecarFieldNames.Tags);
                 }
                 else
                 {
-                    dictionary[SidecarHelper.TagsFieldName] = updated;
+                    dictionary[SidecarFieldNames.Tags] = updated;
                 }
             },
             createIfMissing: false);
@@ -374,7 +374,7 @@ public sealed class SidecarService : ISidecarService
     private static ResourceKey StripSidecarSuffix(ResourceKey sidecarKey)
     {
         var fullKey = sidecarKey.FullKey;
-        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarHelper.Extension.Length);
+        var trimmed = fullKey.Substring(0, fullKey.Length - SidecarFile.Extension.Length);
         return new ResourceKey(trimmed);
     }
 }

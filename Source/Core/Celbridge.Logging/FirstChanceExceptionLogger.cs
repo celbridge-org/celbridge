@@ -19,6 +19,13 @@ public static class FirstChanceExceptionLogger
         "Windows.",
     };
 
+    // Exception types whose throw is expected control flow, not a bug. Matched
+    // by full type name so this assembly stays free of the StreamJsonRpc reference.
+    private static readonly HashSet<string> SuppressedExceptionTypeFullNames = new(StringComparer.Ordinal)
+    {
+        "StreamJsonRpc.RemoteMethodNotFoundException",
+    };
+
     private static int _installed;
 
     // Recursion guard: the logger itself can throw and re-enter this handler.
@@ -53,6 +60,11 @@ public static class FirstChanceExceptionLogger
             }
 
             var exception = args.Exception;
+            if (SuppressedExceptionTypeFullNames.Contains(exception.GetType().FullName ?? string.Empty))
+            {
+                return;
+            }
+
             var originatingFrame = FindOriginatingFrame();
             var location = FormatLocation(originatingFrame);
 

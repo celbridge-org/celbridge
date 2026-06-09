@@ -65,7 +65,7 @@ public sealed class ResourceClassifier : IResourceClassifier
                 return;
             }
 
-            if (name.EndsWith(SidecarHelper.Extension, StringComparison.OrdinalIgnoreCase))
+            if (name.EndsWith(SidecarFile.Extension, StringComparison.OrdinalIgnoreCase))
             {
                 ClassifySidecarFile(fileResource, siblingByName);
                 return;
@@ -75,7 +75,7 @@ public sealed class ResourceClassifier : IResourceClassifier
             // .cel sidecar exists for it; only its Sidecar pointer changes.
             fileResource.FileKind = FileKind.PlainData;
 
-            var sidecarName = name + SidecarHelper.Extension;
+            var sidecarName = name + SidecarFile.Extension;
             if (siblingByName.TryGetValue(sidecarName, out var sibling)
                 && sibling is FileResource siblingFile
                 && !siblingFile.Name.EndsWith(".cel.cel", StringComparison.OrdinalIgnoreCase))
@@ -96,7 +96,7 @@ public sealed class ResourceClassifier : IResourceClassifier
         void ClassifySidecarFile(FileResource sidecarFile, Dictionary<string, IResource> siblingByName)
         {
             var sidecarName = sidecarFile.Name;
-            var parentName = sidecarName.Substring(0, sidecarName.Length - SidecarHelper.Extension.Length);
+            var parentName = sidecarName.Substring(0, sidecarName.Length - SidecarFile.Extension.Length);
             var sidecarKey = ResourceTreeNavigator.BuildKey(sidecarFile);
 
             // Inspect the .cel file's content to determine its parse state.

@@ -1,5 +1,6 @@
 using Celbridge.Commands;
 using Celbridge.Dialog;
+using Celbridge.Documents;
 using Celbridge.Documents.ViewModels;
 using Celbridge.Messaging;
 using Celbridge.UserInterface;
@@ -1033,10 +1034,10 @@ public sealed partial class DocumentsPanel : UserControl, IDocumentsPanel
 
             selectedEditorId = editorChoices.Factories[choiceResult.Value.SelectedIndex].EditorId;
 
-            if (choiceResult.Value.CheckboxChecked)
-            {
-                ViewModel.StoreEditorPreference(extension, selectedEditorId);
-            }
+            await ViewModel.SetPreferredEditorAsync(
+                fileResource,
+                selectedEditorId,
+                useAsExtensionDefault: choiceResult.Value.CheckboxChecked);
         }
 
         await ReopenTabWithEditor(tab, selectedEditorId);

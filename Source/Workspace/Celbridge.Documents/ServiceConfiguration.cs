@@ -41,6 +41,5 @@ public static class ServiceConfiguration
         services.AddTransient<IActivateDocumentCommand, ActivateDocumentCommand>();
         services.AddTransient<IResetSectionsCommand, ResetSectionsCommand>();
         services.AddTransient<IGetDocumentStateCommand, GetDocumentStateCommand>();
-        services.AddTransient<ISetEditorPreferenceCommand, SetEditorPreferenceCommand>();
     }
 }
