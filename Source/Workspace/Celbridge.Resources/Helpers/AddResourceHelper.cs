@@ -59,23 +59,6 @@ public class AddResourceHelper
 
         var resourceFileSystem = _workspaceWrapper.WorkspaceService.ResourceService.FileSystem;
 
-        // Fail if the parent folder for a new file does not exist.
-        // Folder creation is allowed to materialize missing intermediate
-        // ancestors via the gateway's idempotent CreateFolderAsync.
-        if (resourceType == ResourceType.File)
-        {
-            var parentKey = destResource.GetParent();
-            if (!parentKey.IsEmpty)
-            {
-                var parentInfoResult = await resourceFileSystem.GetInfoAsync(parentKey);
-                if (parentInfoResult.IsFailure
-                    || parentInfoResult.Value.Kind != StorageItemKind.Folder)
-                {
-                    return Result.Fail($"Failed to create resource. Parent folder does not exist: '{parentKey}'");
-                }
-            }
-        }
-
         var createResult = resourceType == ResourceType.File
             ? await CreateFileAsync(sourcePath, destResource, resourceOpService, resourceFileSystem)
             : await CreateFolderAsync(sourcePath, destResource, resourceOpService, resourceFileSystem, _fileSystem);

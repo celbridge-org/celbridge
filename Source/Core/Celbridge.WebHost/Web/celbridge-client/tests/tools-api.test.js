@@ -197,9 +197,6 @@ describe('buildCelProxy', () => {
     });
 
     it('rejects a boolean-typed parameter receiving a string (positional-arg swap)', () => {
-        // Reproduces the story-builder export bug: explorer.delete(resource, showDialog, referencePolicy)
-        // called with the second and third arguments swapped. The host error was an opaque
-        // System.Text.Json failure; the proxy now flags it at the call site.
         const proxy = buildCelProxy(
             [descriptor('explorer.delete', [
                 { name: 'resource', type: 'string' },
