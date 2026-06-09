@@ -1015,6 +1015,12 @@ Do you wish to continue?</value>
   <data name="WebView_NavigationPrompt_OpenInBrowser" xml:space="preserve">
     <value>Open in system browser</value>
   </data>
+  <data name="WebView_DownloadBlocked_Title" xml:space="preserve">
+    <value>Download blocked</value>
+  </data>
+  <data name="WebView_DownloadBlocked_Message" xml:space="preserve">
+    <value>Download of '{0}' was blocked by the resource policy specified in '{1}'.</value>
+  </data>
   <data name="Explorer_OpenWith" xml:space="preserve">
     <value>Open with...</value>
   </data>

@@ -575,6 +575,28 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
             }
             var saveResourceKey = getResourceResult.Value;
 
+            // Probe the destination before staging so policy denials surface to
+            // the user up front instead of after the transfer completes.
+            var probeResult = await ResourceFileSystem.GetInfoAsync(saveResourceKey);
+            if (probeResult.IsFailure)
+            {
+                args.Cancel = true;
+                _logger.LogError($"Download blocked: {probeResult.FirstErrorMessage}");
+
+                var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+                var stringLocalizer = _serviceProvider.GetRequiredService<IStringLocalizer>();
+                var projectService = _serviceProvider.GetRequiredService<IProjectService>();
+                var projectFileName = Path.GetFileName(projectService.CurrentProject?.ProjectFilePath ?? string.Empty);
+
+                var title = stringLocalizer.GetString("WebView_DownloadBlocked_Title");
+                var message = stringLocalizer.GetString(
+                    "WebView_DownloadBlocked_Message",
+                    filename,
+                    projectFileName);
+                await dialogService.ShowAlertDialogAsync(title, message);
+                return;
+            }
+
             // Stage the download under the project's temp: root so the staging
             // location lives alongside the rest of the workspace's scratch space
             // and the wipe-on-load policy bounds orphan accumulation.
@@ -606,13 +628,16 @@ public sealed partial class WebViewDocumentView : DocumentView, IHostInput
                             command.DestResource = saveResourceKey;
                         });
 
-                        // Move semantics: the gateway doesn't support cross-root
-                        // moves (temp: -> project:), so the import above copied
-                        // bytes. Delete the staging copy here so we don't carry two
-                        // copies on disk until temp: is wiped on next workspace load.
-                        if (importResult.IsSuccess)
+                        // The import copies bytes (no cross-root move from temp:
+                        // to project:), so the staging copy is always redundant
+                        // afterwards. Delete it on failure too, or it leaks.
+                        await ResourceFileSystem.DeleteAsync(downloadResource);
+
+                        if (importResult.IsFailure)
                         {
-                            await ResourceFileSystem.DeleteAsync(downloadResource);
+                            // The user-facing toast is raised by AddResourceCommand.
+                            _logger.LogError(
+                                $"Failed to import downloaded file to '{saveResourceKey}'. {importResult.DiagnosticReport}");
                         }
                     }
                     else if (s.State == CoreWebView2DownloadState.Interrupted)
