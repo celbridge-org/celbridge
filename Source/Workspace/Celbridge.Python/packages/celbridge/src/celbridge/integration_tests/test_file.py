@@ -211,10 +211,9 @@ class TestFile:
     def test_grep_matches_cel_sidecar_content(self, file, data):
         # file.grep includes .cel sidecar contents so agents can locate
         # metadata text. The user-facing Search panel excludes them.
-        data.set_field(
+        data.set_fields(
             "TestFile/hello.txt",
-            "summary",
-            json.dumps("UNIQUE_CEL_TOKEN_xyz"),
+            json.dumps({"summary": json.dumps("UNIQUE_CEL_TOKEN_xyz")}),
         )
         result = file.grep("UNIQUE_CEL_TOKEN_xyz")
         sidecar_hit = next(

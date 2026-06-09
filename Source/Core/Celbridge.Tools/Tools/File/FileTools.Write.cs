@@ -22,12 +22,6 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_write");
-        if (celDenial is not null)
-        {
-            return celDenial;
-        }
-
         var writeResult = await ExecuteCommandAsync<IWriteFileCommand>(command =>
         {
             command.FileResource = fileResourceKey;
@@ -36,7 +30,7 @@ public partial class FileTools
 
         if (writeResult.IsFailure)
         {
-            return ToolResponse.Error(writeResult);
+            return await WriteFailureResponseAsync(writeResult, fileResourceKey);
         }
 
         var lineCount = LineEndingHelper.CountLines(content);

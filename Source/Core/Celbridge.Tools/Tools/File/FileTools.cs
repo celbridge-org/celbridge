@@ -38,6 +38,37 @@ public partial class FileTools : AgentToolBase
         return result.IsSuccess && result.Value;
     }
 
+    /// <summary>
+    /// Returns a typed error response, enriched with file_set_writeable guidance
+    /// when the resource exists on disk and carries the read-only attribute.
+    /// One extra stat on the failure path; zero on success. The probe is
+    /// best-effort: any exception or non-success result falls through to the
+    /// original error.
+    /// </summary>
+    private async Task<ModelContextProtocol.Protocol.CallToolResult> WriteFailureResponseAsync(
+        Result writeResult,
+        ResourceKey resource)
+    {
+        try
+        {
+            var resourceFileSystem = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.FileSystem;
+            var infoResult = await resourceFileSystem.GetInfoAsync(resource);
+            if (infoResult.IsSuccess
+                && infoResult.Value.Kind == StorageItemKind.File
+                && (infoResult.Value.Attributes & FileSystemAttributes.ReadOnly) != 0)
+            {
+                var hint = $"Resource '{resource}' is read-only. Unlock it with file_set_writeable(resource, writeable: true) and retry.";
+                return ToolResponse.Error(Result.Fail(hint).WithErrors(writeResult));
+            }
+        }
+        catch
+        {
+            // Probe failed; surface the original error without the hint.
+        }
+
+        return ToolResponse.Error(writeResult);
+    }
+
     private static string GetMimeType(string extension)
     {
         return extension switch

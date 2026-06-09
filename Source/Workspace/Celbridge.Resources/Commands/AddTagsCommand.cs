@@ -4,10 +4,10 @@ using Celbridge.Workspace;
 namespace Celbridge.Resources.Commands;
 
 /// <summary>
-/// Appends a tag to the parent resource's .cel sidecar tags list, creating
-/// the sidecar if missing. Idempotent.
+/// Atomically appends a batch of tags to the parent resource's .cel sidecar
+/// tag list, creating the sidecar if missing. Idempotent.
 /// </summary>
-public sealed class AddTagCommand : CommandBase, IAddTagCommand
+public sealed class AddTagsCommand : CommandBase, IAddTagsCommand
 {
     // CommandFlags.UpdateResources triggers a synchronous project-tree rescan
     // after the command runs, which is needed only when a new sidecar file
@@ -19,21 +19,27 @@ public sealed class AddTagCommand : CommandBase, IAddTagCommand
         _outcome == SidecarWriteOutcome.Created ? CommandFlags.UpdateResources : CommandFlags.None;
 
     public ResourceKey Resource { get; set; }
-    public string Tag { get; set; } = string.Empty;
+    public IReadOnlyList<string> Tags { get; set; } = Array.Empty<string>();
 
     private SidecarWriteOutcome _outcome = SidecarWriteOutcome.NoChange;
 
     private readonly IWorkspaceWrapper _workspaceWrapper;
 
-    public AddTagCommand(IWorkspaceWrapper workspaceWrapper)
+    public AddTagsCommand(IWorkspaceWrapper workspaceWrapper)
     {
         _workspaceWrapper = workspaceWrapper;
     }
 
     public override async Task<Result> ExecuteAsync()
     {
+        if (Tags is null
+            || Tags.Count == 0)
+        {
+            return Result.Fail("Tags list must contain at least one entry.");
+        }
+
         var sidecarService = _workspaceWrapper.WorkspaceService.ResourceService.Sidecars;
-        var addResult = await sidecarService.AddTagAsync(Resource, Tag);
+        var addResult = await sidecarService.AddTagsAsync(Resource, Tags);
         if (addResult.IsFailure)
         {
             return Result.Fail(addResult);

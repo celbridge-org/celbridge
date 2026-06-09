@@ -21,6 +21,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             Extension: string.Empty,
             IsText: false,
             LineCount: null,
+            IsReadOnly: false,
             SidecarKey: null,
             SidecarStatus: null);
 
@@ -71,7 +72,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
             // the registry has recorded one for this file. Sidecars belong to
             // file resources only; folders don't have their own sidecars in v1.
             ResourceKey? sidecarKey = null;
-            CelFileStatus? sidecarStatus = null;
+            CelParseStatus? sidecarStatus = null;
             var resourceResult = resourceRegistry.GetResource(Resource);
             if (resourceResult.IsSuccess
                 && resourceResult.Value is IFileResource fileResource
@@ -89,6 +90,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 Extension: extension,
                 IsText: isText,
                 LineCount: lineCount,
+                IsReadOnly: (info.Attributes & FileSystemAttributes.ReadOnly) != 0,
                 SidecarKey: sidecarKey,
                 SidecarStatus: sidecarStatus);
 
@@ -105,6 +107,7 @@ public class GetFileInfoCommand : CommandBase, IGetFileInfoCommand
                 Extension: string.Empty,
                 IsText: false,
                 LineCount: null,
+                IsReadOnly: (info.Attributes & FileSystemAttributes.ReadOnly) != 0,
                 SidecarKey: null,
                 SidecarStatus: null);
 

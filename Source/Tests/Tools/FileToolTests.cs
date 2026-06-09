@@ -651,8 +651,13 @@ public class FileToolTests
         text.Should().Contain("project:Scripts/missing.py");
     }
 
+    // The file_* tools accept .cel targets — the structured data_* tools are
+    // the ergonomic path for routine field/tag mutation, but the byte-write
+    // surface stays open for bulk seeding and broken-sidecar repair (the data
+    // layer refuses to mutate a Broken sidecar, so file_write is the only
+    // repair path).
     [Test]
-    public async Task Write_DeniesCelTarget_AndDoesNotDispatchCommand()
+    public async Task Write_DispatchesCommand_ForCelTarget()
     {
         var dispatched = false;
         _commandService
@@ -667,18 +672,14 @@ public class FileToolTests
             });
 
         var tools = new FileTools(_services);
-        var result = await tools.Write("notes/photo.png.cel", "hello");
+        var result = await tools.Write("notes/photo.png.cel", "title = \"hello\"\n");
 
-        result.IsError.Should().BeTrue();
-        var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("file_write");
-        text.Should().Contain("notes/photo.png.cel");
-        text.Should().Contain("data_*");
-        dispatched.Should().BeFalse();
+        result.IsError.Should().NotBe(true);
+        dispatched.Should().BeTrue();
     }
 
     [Test]
-    public async Task WriteBinary_DeniesCelTarget_AndDoesNotDispatchCommand()
+    public async Task WriteBinary_DispatchesCommand_ForCelTarget()
     {
         var dispatched = false;
         _commandService
@@ -695,14 +696,12 @@ public class FileToolTests
         var tools = new FileTools(_services);
         var result = await tools.WriteBinary("notes/photo.png.cel", "aGVsbG8=");
 
-        result.IsError.Should().BeTrue();
-        var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("file_write_binary");
-        dispatched.Should().BeFalse();
+        result.IsError.Should().NotBe(true);
+        dispatched.Should().BeTrue();
     }
 
     [Test]
-    public async Task Edit_DeniesCelTarget_AndDoesNotDispatchCommand()
+    public async Task Edit_DispatchesCommand_ForCelTarget()
     {
         var dispatched = false;
         _commandService
@@ -719,14 +718,12 @@ public class FileToolTests
         var tools = new FileTools(_services);
         var result = await tools.Edit("notes/photo.png.cel", "old", "new");
 
-        result.IsError.Should().BeTrue();
-        var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("file_edit");
-        dispatched.Should().BeFalse();
+        result.IsError.Should().NotBe(true);
+        dispatched.Should().BeTrue();
     }
 
     [Test]
-    public async Task MultiEdit_DeniesCelTarget_AndDoesNotDispatchCommand()
+    public async Task MultiEdit_DispatchesCommand_ForCelTarget()
     {
         var dispatched = false;
         _commandService
@@ -745,14 +742,12 @@ public class FileToolTests
         var editsJson = "[{\"oldString\":\"a\",\"newString\":\"b\"}]";
         var result = await tools.MultiEdit("notes/photo.png.cel", editsJson);
 
-        result.IsError.Should().BeTrue();
-        var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("file_multi_edit");
-        dispatched.Should().BeFalse();
+        result.IsError.Should().NotBe(true);
+        dispatched.Should().BeTrue();
     }
 
     [Test]
-    public async Task Replace_DeniesCelTarget_AndDoesNotDispatchCommand()
+    public async Task Replace_DispatchesCommand_ForCelTarget()
     {
         var dispatched = false;
         _commandService
@@ -770,36 +765,12 @@ public class FileToolTests
         var tools = new FileTools(_services);
         var result = await tools.Replace("notes/photo.png.cel", "old", "new");
 
-        result.IsError.Should().BeTrue();
-        var text = result.Content.OfType<TextContentBlock>().Single().Text;
-        text.Should().Contain("file_replace");
-        dispatched.Should().BeFalse();
+        result.IsError.Should().NotBe(true);
+        dispatched.Should().BeTrue();
     }
 
     [Test]
-    public async Task Write_DeniesCelTarget_WhenFileDoesNotYetExist()
-    {
-        var dispatched = false;
-        _commandService
-            .ExecuteAsync<IWriteFileCommand>(
-                Arg.Any<Action<IWriteFileCommand>?>(),
-                Arg.Any<string>(),
-                Arg.Any<int>())
-            .Returns(callInfo =>
-            {
-                dispatched = true;
-                return Task.FromResult(Celbridge.Core.Result.Ok());
-            });
-
-        var tools = new FileTools(_services);
-        var result = await tools.Write("notes/new_orphan.cel", "field = \"value\"\n");
-
-        result.IsError.Should().BeTrue();
-        dispatched.Should().BeFalse();
-    }
-
-    [Test]
-    public async Task Write_DoesNotDenyNonCelTarget_AndDispatches()
+    public async Task Write_DispatchesCommand_ForNonCelTarget()
     {
         var dispatched = false;
         _commandService

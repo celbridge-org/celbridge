@@ -10,13 +10,12 @@ namespace Celbridge.WorkspaceUI.Services;
 /// check. Writes one multi-line warning per non-empty finding category to the
 /// host log (capped per category so a project with many findings doesn't flood
 /// the log) and publishes a single summary banner via IMessengerService so the
-/// user notices without having to invoke data_check_project by hand.
+/// user notices the findings at workspace load.
 /// </summary>
 public sealed class ProjectCheckReporter
 {
     // Cap the per-category enumeration so a project with many findings does
-    // not flood the host log. The MCP tool data_check_project always returns
-    // the full set.
+    // not flood the host log.
     private const int MaxLoggedFindingsPerCategory = 20;
 
     private readonly ILogger<ProjectCheckReporter> _logger;
@@ -99,7 +98,7 @@ public sealed class ProjectCheckReporter
         {
             var omitted = entries.Count - MaxLoggedFindingsPerCategory;
             builder.AppendLine();
-            builder.Append($"  ... and {omitted} more (use data_check_project for the full list).");
+            builder.Append($"  ... and {omitted} more.");
         }
 
         _logger.LogWarning(builder.ToString());

@@ -32,7 +32,7 @@ internal sealed class ReferenceRewriter
     /// "project:<source>/<rest>" literal) in every referencer of source.
     /// Successful rewrites land in updatedReferencers; failures land in
     /// skippedReferencers with a reason. The parent move always proceeds —
-    /// data_check_project surfaces residuals; the gateway is idempotent so
+    /// the workspace-load project-check reporter surfaces residuals; the gateway is idempotent so
     /// a rerun completes them.
     /// </summary>
     public async Task<Result> RewriteForMoveAsync(
@@ -76,7 +76,7 @@ internal sealed class ReferenceRewriter
             if (readResult.IsFailure)
             {
                 var message = $"read failed for '{referencer}'";
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {message}. The reference is left as-is and will surface via data_check_project.");
+                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {message}. The reference is left as-is and will surface at workspace load via the project-check reporter.");
                 skippedReferencers.Add(new SkippedReferencer(referencer, ReferencerSkipReason.ReadFailed, message));
                 continue;
             }
@@ -94,7 +94,7 @@ internal sealed class ReferenceRewriter
             if (await IsReferencerReadOnlyAsync(referencer))
             {
                 const string readOnlyMessage = "file is read-only";
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {readOnlyMessage}. The reference is left as-is and will surface via data_check_project.");
+                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {readOnlyMessage}. The reference is left as-is and will surface at workspace load via the project-check reporter.");
                 skippedReferencers.Add(new SkippedReferencer(referencer, ReferencerSkipReason.ReadOnly, readOnlyMessage));
                 continue;
             }
@@ -103,7 +103,7 @@ internal sealed class ReferenceRewriter
             if (writeResult.IsFailure)
             {
                 var classification = await ClassifyReferencerWriteFailureAsync(referencer, writeResult);
-                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {classification.Message}. The reference is left as-is and will surface via data_check_project.");
+                _logger.LogWarning($"Could not rewrite references in '{referencer}' for rename of '{source}' to '{dest}': {classification.Message}. The reference is left as-is and will surface at workspace load via the project-check reporter.");
                 skippedReferencers.Add(new SkippedReferencer(referencer, classification.Reason, classification.Message));
                 continue;
             }

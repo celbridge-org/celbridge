@@ -155,11 +155,14 @@ public class OpenWithMenuOption : IMenuOption<ExplorerMenuContext>
         // With X" invocation writes the chosen editor, even when it matches
         // the per-extension default - a redundant entry is less surprising
         // than an auto-removal the user did not request.
-        _commandService.Execute<ISetFieldCommand>(command =>
+        var editorFields = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [DocumentConstants.SidecarEditorFieldName] = selectedFactory.EditorId,
+        };
+        _commandService.Execute<ISetFieldsCommand>(command =>
         {
             command.Resource = resourceKey;
-            command.Field = DocumentConstants.SidecarEditorFieldName;
-            command.Value = selectedFactory.EditorId;
+            command.Fields = editorFields;
         });
 
         _commandService.Execute<IOpenDocumentCommand>(command =>

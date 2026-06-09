@@ -315,40 +315,123 @@ class TestFileEdit:
         assert affected["contextLines"] == ["Line 2", "THIRD", "Line 4"]
 
 
-class TestCelDenial:
-    """Byte-write tools refuse .cel targets and point the caller at data_*."""
+class TestCelTargetsAccepted:
+    """Byte-write tools accept .cel targets. The structured data_* tools are
+    ergonomically preferred for routine field/tag mutation, but the byte-write
+    surface stays open for bulk seeding and repairing broken sidecars.
+    """
 
-    def test_write_denied(self, file):
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.write("TestFileEdit/hello.txt.cel", "content")
+    def test_write_creates_cel_sidecar(self, file):
+        file.write("TestFileEdit/hello.txt.cel", "priority = \"high\"\n")
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "priority" in result["content"]
 
-    def test_write_binary_denied(self, file):
-        content = base64.b64encode(b"bytes").decode("ascii")
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.write_binary("TestFileEdit/hello.txt.cel", content)
+    def test_write_binary_accepts_cel_target(self, file):
+        content = base64.b64encode(b"priority = \"high\"\n").decode("ascii")
+        file.write_binary("TestFileEdit/hello.txt.cel", content)
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "priority" in result["content"]
 
-    def test_edit_denied(self, file):
-        with pytest.raises(CelError, match="(?i)data_"):
+    def test_edit_accepts_cel_target(self, file):
+        file.write("TestFileEdit/hello.txt.cel", "priority = \"high\"\n")
+        file.edit(
+            "TestFileEdit/hello.txt.cel",
+            old_string="\"high\"",
+            new_string="\"low\"",
+        )
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "\"low\"" in result["content"]
+
+    def test_multi_edit_accepts_cel_target(self, file):
+        file.write(
+            "TestFileEdit/hello.txt.cel",
+            "priority = \"high\"\ntitle = \"old\"\n",
+        )
+        edits = [
+            {"oldString": "\"high\"", "newString": "\"low\""},
+            {"oldString": "\"old\"", "newString": "\"new\""},
+        ]
+        file.multi_edit("TestFileEdit/hello.txt.cel", json.dumps(edits))
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "\"low\"" in result["content"]
+        assert "\"new\"" in result["content"]
+
+    def test_replace_accepts_cel_target(self, file):
+        file.write("TestFileEdit/hello.txt.cel", "priority = \"high\"\n")
+        file.replace(
+            "TestFileEdit/hello.txt.cel",
+            search_text="high",
+            replace_text="low",
+        )
+        result = file.read("TestFileEdit/hello.txt.cel")
+        assert "low" in result["content"]
+
+    def test_write_can_create_new_cel(self, file):
+        # No parent file exists; the write still lands. The resulting sidecar
+        # is an orphan from data_inspect's point of view but the byte-write
+        # surface itself imposes no gate.
+        file.write("TestFileEdit/new_orphan.cel", "_tags = [\"x\"]\n")
+        result = file.read("TestFileEdit/new_orphan.cel")
+        assert "_tags" in result["content"]
+
+
+class TestSetWriteable:
+    """file_set_writeable toggles the filesystem read-only attribute. The
+    motivating workflow is unlocking files that arrive read-only from external
+    sources (source-control checkouts, render-manager outputs, archive extracts).
+    """
+
+    def test_round_trip_lock_then_unlock(self, file):
+        # Baseline: a freshly written file is writeable.
+        file.write("TestFileEdit/round_trip.txt", "body\n")
+        info_before = file.get_info("TestFileEdit/round_trip.txt")
+        assert info_before["isReadOnly"] is False
+
+        # Lock and verify get_info reflects the new state.
+        file.set_writeable("TestFileEdit/round_trip.txt", False)
+        locked = file.get_info("TestFileEdit/round_trip.txt")
+        assert locked["isReadOnly"] is True
+
+        # Write to a read-only file fails with guidance pointing at
+        # file_set_writeable.
+        with pytest.raises(CelError, match="(?i)file_set_writeable"):
+            file.write("TestFileEdit/round_trip.txt", "different body\n")
+
+        # Unlock, retry, succeeds. The error message guided us here.
+        file.set_writeable("TestFileEdit/round_trip.txt", True)
+        unlocked = file.get_info("TestFileEdit/round_trip.txt")
+        assert unlocked["isReadOnly"] is False
+
+        file.write("TestFileEdit/round_trip.txt", "different body\n")
+        result = file.read("TestFileEdit/round_trip.txt")
+        assert "different body" in result["content"]
+
+    def test_idempotent(self, file):
+        file.write("TestFileEdit/idempotent.txt", "body\n")
+        # Setting writeable=True on an already-writeable file is a no-op success.
+        file.set_writeable("TestFileEdit/idempotent.txt", True)
+        info = file.get_info("TestFileEdit/idempotent.txt")
+        assert info["isReadOnly"] is False
+
+        # Same for the read-only direction.
+        file.set_writeable("TestFileEdit/idempotent.txt", False)
+        file.set_writeable("TestFileEdit/idempotent.txt", False)
+        info = file.get_info("TestFileEdit/idempotent.txt")
+        assert info["isReadOnly"] is True
+
+        # Cleanup: leave the file writeable so the fixture teardown can delete it.
+        file.set_writeable("TestFileEdit/idempotent.txt", True)
+
+    def test_edit_on_read_only_surfaces_guidance(self, file):
+        # file_edit, file_replace, file_multi_edit all carry the same enriched
+        # error pointing at file_set_writeable. Sample one (edit) — the others
+        # share the helper.
+        file.write("TestFileEdit/lock_edit.txt", "alpha\nbeta\n")
+        file.set_writeable("TestFileEdit/lock_edit.txt", False)
+        with pytest.raises(CelError, match="(?i)file_set_writeable"):
             file.edit(
-                "TestFileEdit/hello.txt.cel",
-                old_string="old",
-                new_string="new",
+                "TestFileEdit/lock_edit.txt",
+                old_string="alpha",
+                new_string="ALPHA",
             )
-
-    def test_multi_edit_denied(self, file):
-        edits = [{"oldString": "a", "newString": "b"}]
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.multi_edit("TestFileEdit/hello.txt.cel", json.dumps(edits))
-
-    def test_replace_denied(self, file):
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.replace(
-                "TestFileEdit/hello.txt.cel",
-                search_text="old",
-                replace_text="new",
-            )
-
-    def test_write_denied_when_creating_new_cel(self, file):
-        # Denial fires on path shape, regardless of whether the target exists.
-        with pytest.raises(CelError, match="(?i)data_"):
-            file.write("TestFileEdit/new_orphan.cel", "content")
+        file.set_writeable("TestFileEdit/lock_edit.txt", True)

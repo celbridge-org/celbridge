@@ -30,11 +30,11 @@ A JSON object with:
 - Multiple distinct surgical edits that should land atomically? Use `file_multi_edit` — the whole batch lands or none does.
 - Need regex (capture groups, character classes, alternation) or a line-range scope? Use `file_replace`.
 - Whole-file rewrite or a new file? Use `file_write`.
-- Editing a `.cel` sidecar? Don't — use the `data_*` tools instead (see below).
+- Editing a `.cel` sidecar? Prefer the `data_*` tools (see below).
 
-## Not for `.cel` files
+## Editing `.cel` sidecars
 
-`.cel` files are project metadata sidecars with a structured TOML format. A text-level edit could corrupt the TOML, so `file_edit` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
+`file_edit` accepts `.cel` targets, but surgical text edits over TOML are fragile — whitespace, escape rules, and quote-style choices all matter, and a mistake puts the sidecar into `Broken` status (visible through `data_inspect`, blocks `data_*` mutations until repaired). For field and tag mutations, prefer `data_set_fields` / `data_add_tags` and their siblings: they are shorter, they handle quote-style autoselection automatically, and they enforce the reserved-namespace rules. Reach for `file_edit` on a `.cel` only when you genuinely need a one-off byte-level fix that the structured tools don't express.
 
 ## Gotchas
 

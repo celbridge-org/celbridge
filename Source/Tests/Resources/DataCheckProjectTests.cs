@@ -10,9 +10,9 @@ using Celbridge.Workspace;
 namespace Celbridge.Tests.Resources;
 
 /// <summary>
-/// Tests for ProjectCheckCommand — the engine behind the data_check_project
-/// MCP tool. The command runs the on-demand ResourceScanner over the project's
-/// text files and consults the registry's sidecar report.
+/// Tests for ProjectCheckCommand — the engine consumed by the workspace-load
+/// project-check reporter. The command runs the on-demand ResourceScanner over
+/// the project's text files and consults the registry's sidecar report.
 /// </summary>
 [TestFixture]
 public class DataCheckProjectTests

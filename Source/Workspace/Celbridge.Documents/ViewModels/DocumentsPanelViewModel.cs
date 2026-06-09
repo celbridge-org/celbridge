@@ -109,7 +109,7 @@ public partial class DocumentsPanelViewModel : ObservableObject
     {
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
-            command.Text = fileResource.ToString();
+            command.Text = fileResource.Path;
             command.TransferMode = DataTransferMode.Copy;
         });
     }

@@ -80,7 +80,7 @@ public class ResourceClassifierTests
         var noteResource = registry.GetResource(new ResourceKey("subfolder/note.md")).Value as IFileResource;
         noteResource!.Sidecar.Should().NotBeNull();
         noteResource.Sidecar!.Key.Should().Be(new ResourceKey("subfolder/note.md.cel"));
-        noteResource.Sidecar.Status.Should().Be(CelFileStatus.Healthy);
+        noteResource.Sidecar.Status.Should().Be(CelParseStatus.Healthy);
 
         registry.GetSidecarReport()
             .Healthy.Should().Contain(new ResourceKey("subfolder/note.md.cel"));

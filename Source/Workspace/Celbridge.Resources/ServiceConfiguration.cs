@@ -49,14 +49,15 @@ public static class ServiceConfiguration
         services.AddTransient<IGetFileInfoCommand, GetFileInfoCommand>();
         services.AddTransient<IProjectCheckCommand, ProjectCheckCommand>();
 
-        services.AddTransient<ISetFieldCommand, SetFieldCommand>();
-        services.AddTransient<IRemoveFieldCommand, RemoveFieldCommand>();
-        services.AddTransient<IAddTagCommand, AddTagCommand>();
-        services.AddTransient<IRemoveTagCommand, RemoveTagCommand>();
+        services.AddTransient<ISetFieldsCommand, SetFieldsCommand>();
+        services.AddTransient<IRemoveFieldsCommand, RemoveFieldsCommand>();
+        services.AddTransient<IAddTagsCommand, AddTagsCommand>();
+        services.AddTransient<IRemoveTagsCommand, RemoveTagsCommand>();
 
-        services.AddTransient<IGetFieldCommand, GetFieldCommand>();
-        services.AddTransient<IGetInfoCommand, GetInfoCommand>();
+        services.AddTransient<IGetFieldsCommand, GetFieldsCommand>();
+        services.AddTransient<IInspectCommand, InspectCommand>();
         services.AddTransient<IFindTagCommand, FindTagCommand>();
+        services.AddTransient<IListTagsCommand, ListTagsCommand>();
 
         services.AddTransient<IApplyRangeEditsCommand, ApplyRangeEditsCommand>();
         services.AddTransient<IEditFileCommand, EditFileCommand>();
@@ -64,5 +65,6 @@ public static class ServiceConfiguration
         services.AddTransient<IReplaceFileCommand, ReplaceFileCommand>();
         services.AddTransient<IWriteFileCommand, WriteFileCommand>();
         services.AddTransient<IWriteBinaryFileCommand, WriteBinaryFileCommand>();
+        services.AddTransient<ISetWriteableCommand, SetWriteableCommand>();
     }
 }

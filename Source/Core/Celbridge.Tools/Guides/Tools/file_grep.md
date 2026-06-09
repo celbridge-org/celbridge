@@ -9,7 +9,7 @@ There are two modes:
 
 ## `.cel` sidecar contents are included
 
-Both modes grep `.cel` sidecar files. The in-app Search panel hides sidecar contents (they are plumbing the user should never see), but `file_grep` lets agents locate metadata text without re-implementing the structured read. Use `file_grep` to **find** text inside a `.cel`; use the `data_*` tools (`data_get_field`, `data_get_info`) to **read** it structurally and `data_set_field` / `data_add_tag` etc. to **modify** it — direct byte writes to `.cel` files are refused by `file_write` and the other byte-write tools to protect the TOML structure.
+Both modes grep `.cel` sidecar files. The in-app Search panel hides sidecar contents (they are plumbing the user should never see), but `file_grep` lets agents locate metadata text without re-implementing the structured read. Use `file_grep` to **find** text inside a `.cel`; use the `data_*` tools (`data_get_fields`, `data_inspect`) to **read** it structurally, and `data_set_fields` / `data_add_tags` etc. to **modify** it — `file_write` will also accept a `.cel` directly, but the structured tools handle quote-style autoselection and the reserved-namespace rules for you, so they're the right path for routine mutation.
 
 ## Match parameters
 

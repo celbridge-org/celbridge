@@ -39,12 +39,6 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_edit");
-        if (celDenial is not null)
-        {
-            return celDenial;
-        }
-
         var editResult = await ExecuteCommandAsync<IEditFileCommand, EditFileResult>(command =>
         {
             command.FileResource = fileResourceKey;
@@ -55,7 +49,7 @@ public partial class FileTools
 
         if (editResult.IsFailure)
         {
-            return ToolResponse.Error(editResult);
+            return await WriteFailureResponseAsync(editResult, fileResourceKey);
         }
 
         var editValue = editResult.Value;

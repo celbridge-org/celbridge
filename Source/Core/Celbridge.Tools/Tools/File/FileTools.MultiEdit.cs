@@ -48,12 +48,6 @@ public partial class FileTools
             return ToolResponse.InvalidResourceKey(fileResource);
         }
 
-        var celDenial = ValidateNotCelTarget(fileResourceKey, fileResource, "file_multi_edit");
-        if (celDenial is not null)
-        {
-            return celDenial;
-        }
-
         Result<List<FileEditOperation>> parseResult;
         try
         {
@@ -79,7 +73,7 @@ public partial class FileTools
 
         if (multiEditResult.IsFailure)
         {
-            return ToolResponse.Error(multiEditResult);
+            return await WriteFailureResponseAsync(multiEditResult, fileResourceKey);
         }
 
         var resultValue = multiEditResult.Value;

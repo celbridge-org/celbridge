@@ -102,31 +102,32 @@ public interface ISidecarService
     Task<Result<SidecarReadResult>> ReadAsync(ResourceKey resource);
 
     /// <summary>
-    /// Sets a single field, creating the sidecar if it does not
-    /// already exist. The value must pass IsIndexableValue (scalar or list of
-    /// scalars); other shapes are rejected at the service boundary. Returns
-    /// the outcome so callers can distinguish a freshly-created sidecar
-    /// (registry needs to learn about the new file) from an in-place update.
+    /// Atomically writes a batch of fields, creating the sidecar if it does
+    /// not already exist. Every value must pass IsIndexableValue. Read once,
+    /// mutate in memory, write once: if any value is rejected the file stays
+    /// untouched. Returns the outcome so callers can distinguish a
+    /// freshly-created sidecar (registry needs to learn about the new file)
+    /// from an in-place update.
     /// </summary>
-    Task<Result<SidecarWriteOutcome>> SetFieldAsync(ResourceKey resource, string field, object value);
+    Task<Result<SidecarWriteOutcome>> SetFieldsAsync(ResourceKey resource, IReadOnlyDictionary<string, object> fields);
 
     /// <summary>
-    /// Removes a single field. No-op when the field or the sidecar
-    /// is absent; the sidecar file is not created just to record an absence.
+    /// Atomically removes a batch of fields. Missing names are silent no-ops;
+    /// the sidecar file is not created just to record absences.
     /// </summary>
-    Task<Result<SidecarWriteOutcome>> RemoveFieldAsync(ResourceKey resource, string field);
+    Task<Result<SidecarWriteOutcome>> RemoveFieldsAsync(ResourceKey resource, IReadOnlyList<string> names);
 
     /// <summary>
-    /// Appends a tag to the sidecar's tags list, creating the sidecar if it
-    /// does not already exist. Idempotent: adding a tag that is already present
-    /// neither changes the list nor rewrites the file.
+    /// Atomically appends a batch of tags to the sidecar's tag list, creating
+    /// the sidecar if missing. Idempotent: tags already present do not
+    /// duplicate or rewrite the file.
     /// </summary>
-    Task<Result<SidecarWriteOutcome>> AddTagAsync(ResourceKey resource, string tag);
+    Task<Result<SidecarWriteOutcome>> AddTagsAsync(ResourceKey resource, IReadOnlyList<string> tags);
 
     /// <summary>
-    /// Removes a tag from the sidecar's tags list. Idempotent. Dropping the
-    /// final tag removes the tags field entirely. No-op when the sidecar is
-    /// absent.
+    /// Atomically removes a batch of tags from the sidecar's tag list.
+    /// Idempotent. Removing the final tag drops the tag list entirely. No-op
+    /// when the sidecar is absent.
     /// </summary>
-    Task<Result<SidecarWriteOutcome>> RemoveTagAsync(ResourceKey resource, string tag);
+    Task<Result<SidecarWriteOutcome>> RemoveTagsAsync(ResourceKey resource, IReadOnlyList<string> tags);
 }

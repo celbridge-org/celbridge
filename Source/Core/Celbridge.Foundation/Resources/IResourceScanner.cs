@@ -32,4 +32,11 @@ public interface IResourceScanner
     /// contains the given tag value. Results are sorted by key.
     /// </summary>
     Task<IReadOnlyList<ResourceKey>> FindByTagAsync(string tag);
+
+    /// <summary>
+    /// Returns the unique tag values across every paired-sidecar .cel file in
+    /// the project. Broken sidecars are skipped. Results are sorted ordinal
+    /// for diff stability.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListAllTagsAsync();
 }

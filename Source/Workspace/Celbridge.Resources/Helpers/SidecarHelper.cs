@@ -158,7 +158,7 @@ public static class SidecarHelper
     /// (parses cleanly) or Broken (any parse or read failure). The bytes on
     /// disk are never modified.
     /// </summary>
-    public static CelFileStatus Inspect(string absolutePath, ILogger logger)
+    public static CelParseStatus Inspect(string absolutePath, ILogger logger)
     {
         // Inspect runs synchronously inside ResourceClassifier during
         // UpdateResourceRegistry. In production the call routes through the
@@ -168,17 +168,17 @@ public static class SidecarHelper
         if (text is null)
         {
             logger.LogWarning($"sidecar pairing: failed to read '{absolutePath}'");
-            return CelFileStatus.Broken;
+            return CelParseStatus.Broken;
         }
 
         var parseResult = Parse(text);
         if (parseResult.IsFailure)
         {
             logger.LogWarning($"sidecar pairing: '{absolutePath}' has unparseable content");
-            return CelFileStatus.Broken;
+            return CelParseStatus.Broken;
         }
 
-        return CelFileStatus.Healthy;
+        return CelParseStatus.Healthy;
     }
 
     [AllowDirectFileSystemAccess]

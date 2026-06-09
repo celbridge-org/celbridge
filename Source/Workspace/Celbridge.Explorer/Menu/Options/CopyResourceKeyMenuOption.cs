@@ -54,7 +54,7 @@ public class CopyResourceKeyMenuOption : IMenuOption<ExplorerMenuContext>
 
         _commandService.Execute<ICopyTextToClipboardCommand>(command =>
         {
-            command.Text = resourceKey.ToString();
+            command.Text = resourceKey.Path;
         });
     }
 }

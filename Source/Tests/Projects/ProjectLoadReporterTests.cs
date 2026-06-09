@@ -208,9 +208,9 @@ public class ProjectLoadReporterTests
     public async Task BeginLoad_ClearsPriorCheckSection()
     {
         // A new project load invalidates the previous run's check state. The
-        // load-report rewrites with just the new load section; the agent (or
-        // user) has to run data_check_project again to repopulate the check
-        // section.
+        // load-report rewrites with just the new load section; the workspace
+        // load runs the project check again and the new report repopulates the
+        // check section.
         _reporter.BeginLoad(_projectFilePath);
         _reporter.RecordCheckReport(new ProjectCheckReport(
             BrokenReferences: Array.Empty<BrokenReference>(),

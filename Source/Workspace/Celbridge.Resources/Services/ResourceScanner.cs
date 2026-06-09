@@ -110,6 +110,40 @@ public sealed class ResourceScanner : IResourceScanner
             .ToList();
     }
 
+    public async Task<IReadOnlyList<string>> ListAllTagsAsync()
+    {
+        var tags = new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+
+        await EnumerateProjectSidecarFilesAsync(async (sidecarKey, _) =>
+        {
+            var text = await ReadFileTextAsync(sidecarKey);
+            if (text is null)
+            {
+                return;
+            }
+
+            var parseResult = SidecarHelper.Parse(text);
+            if (parseResult.IsFailure)
+            {
+                return;
+            }
+
+            if (!parseResult.Value.Fields.TryGetValue(TagsField, out var tagsValue))
+            {
+                return;
+            }
+
+            foreach (var item in SidecarHelper.ExtractStringList(tagsValue))
+            {
+                tags.TryAdd(item, 0);
+            }
+        });
+
+        return tags.Keys
+            .OrderBy(t => t, StringComparer.Ordinal)
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<ResourceKey>> FindByTagAsync(string tag)
     {
         if (string.IsNullOrEmpty(tag))
@@ -253,7 +287,7 @@ public sealed class ResourceScanner : IResourceScanner
     // registry's snapshot directly; mutation commands carry
     // CommandFlags.UpdateResources so the snapshot reflects the latest disk
     // state. Orphans (no parent file on disk) are skipped — tag queries are
-    // scoped to paired sidecars; orphans surface via data_check_project.
+    // scoped to paired sidecars; orphans surface via data_inspect.
     private async Task EnumerateProjectSidecarFilesAsync(Func<ResourceKey, ResourceKey, Task> visit)
     {
         var registry = _workspaceWrapper.WorkspaceService.ResourceService.Registry;

@@ -8,6 +8,9 @@ namespace Celbridge.Tools;
 /// populated when the file has a paired .cel sidecar; SidecarStatus is
 /// "healthy" when the sidecar's TOML parses cleanly, "broken" otherwise.
 /// Absence is signalled by sidecar_status = "none" with sidecar = null.
+/// IsReadOnly reflects the filesystem read-only attribute — a true value
+/// means write operations will fail until the attribute is cleared with
+/// file_set_writeable.
 /// </summary>
 public record class FileInfoResult(
     string Type,
@@ -16,13 +19,14 @@ public record class FileInfoResult(
     string Extension,
     bool IsText,
     int? LineCount,
+    bool IsReadOnly,
     string? Sidecar,
     string SidecarStatus);
 
 /// <summary>
 /// Result returned by file_get_info for folder resources.
 /// </summary>
-public record class FolderInfoResult(string Type, string Modified);
+public record class FolderInfoResult(string Type, string Modified, bool IsReadOnly);
 
 public partial class FileTools
 {
@@ -57,8 +61,8 @@ public partial class FileTools
         {
             var sidecarStatusText = snapshot.SidecarStatus switch
             {
-                Celbridge.Resources.CelFileStatus.Healthy => "healthy",
-                Celbridge.Resources.CelFileStatus.Broken => "broken",
+                CelParseStatus.Healthy => "healthy",
+                CelParseStatus.Broken => "broken",
                 _ => "none",
             };
 
@@ -69,12 +73,16 @@ public partial class FileTools
                 snapshot.Extension,
                 snapshot.IsText,
                 snapshot.LineCount,
+                snapshot.IsReadOnly,
                 snapshot.SidecarKey?.ToString(),
                 sidecarStatusText);
             return ToolResponse.Success(SerializeJson(fileResult));
         }
 
-        var folderResult = new FolderInfoResult("folder", snapshot.ModifiedUtc.ToString("o"));
+        var folderResult = new FolderInfoResult(
+            "folder",
+            snapshot.ModifiedUtc.ToString("o"),
+            snapshot.IsReadOnly);
         return ToolResponse.Success(SerializeJson(folderResult));
     }
 }

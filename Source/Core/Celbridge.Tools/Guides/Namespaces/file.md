@@ -42,3 +42,7 @@ The `file` namespace operates on the contents of files in the project tree: read
 - `file_replace` — regex or literal pattern replace, optional line-range scope.
 - `file_write` — replace a file's contents or create a new file.
 - `file_write_binary` — write raw bytes from base64.
+
+**Attributes.**
+
+- `file_set_writeable` — toggle the filesystem read-only attribute. Used to unlock files imported from source control, render managers, archives, or other locked-by-default workflows.

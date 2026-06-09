@@ -18,9 +18,13 @@ Pass `\n` or `\r\n` in `content` indifferently; the tool converts to the chosen 
 
 A JSON object with `lineCount` — the line count of the written content.
 
-## Not for `.cel` files
+## Editing `.cel` sidecars
 
-`.cel` files are project metadata sidecars with a structured TOML format. A byte-level write would corrupt that structure, so `file_write` refuses any `.cel` target with a typed denial. Use the `data_*` tools (`data_set_field`, `data_add_tag`, etc.) to mutate sidecar contents through the structured surface.
+`file_write` accepts `.cel` targets — useful for seeding a fresh sidecar in bulk or repairing one that has become unparseable. The on-disk format is plain TOML; anything `Tomlyn` accepts is read back cleanly by the data layer.
+
+For routine field and tag mutations on an existing sidecar, prefer the `data_*` tools — `data_set_fields`, `data_add_tags`, etc. They are shorter, handle quote-style autoselection automatically (literal triple-quoted for multi-line content, basic strings for single-line), skip no-op disk hits when the input matches the current state, and enforce the reserved-namespace rules (`_`-prefixed fields are off-limits except through the tag tools). `file_write` does none of that — it writes whatever bytes you pass.
+
+The natural division: use `file_write` for *initial seeding* and *broken-sidecar repair*; use `data_*` for *routine mutation*.
 
 ## Gotchas
 

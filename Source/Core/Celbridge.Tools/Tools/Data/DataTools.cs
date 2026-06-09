@@ -6,7 +6,7 @@ namespace Celbridge.Tools;
 
 /// <summary>
 /// MCP tools for resource .cel sidecar data: per-resource field read /
-/// write, tag affordances, and project-wide consistency checks.
+/// write, tag affordances, and project-wide inspection.
 /// </summary>
 [McpServerToolType]
 public partial class DataTools : AgentToolBase
@@ -16,6 +16,52 @@ public partial class DataTools : AgentToolBase
     private static string SerializeJson(object? value)
     {
         return JsonSerializer.Serialize(value, JsonOptions);
+    }
+
+    /// <summary>
+    /// Parses a JSON string-array argument into a List of strings. Fails when
+    /// the input is not a JSON array, or any element is non-string. The label
+    /// names the offending parameter for the error message.
+    /// </summary>
+    private static Result<List<string>> TryParseStringArray(string json, string label)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return Result.Fail($"{label} must be a non-empty JSON array of strings.");
+        }
+
+        JsonElement element;
+        try
+        {
+            element = JsonSerializer.Deserialize<JsonElement>(json);
+        }
+        catch (JsonException ex)
+        {
+            return Result.Fail($"{label} is not valid JSON: {ex.Message}");
+        }
+
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            return Result.Fail($"{label} must be a JSON array of strings.");
+        }
+
+        var list = new List<string>();
+        var index = 0;
+        foreach (var item in element.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                return Result.Fail($"{label}[{index}] is not a string.");
+            }
+            var value = item.GetString();
+            if (value is null)
+            {
+                return Result.Fail($"{label}[{index}] is null.");
+            }
+            list.Add(value);
+            index++;
+        }
+        return list;
     }
 
     /// <summary>

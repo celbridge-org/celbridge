@@ -72,25 +72,6 @@ public abstract class AgentToolBase
         => JsonArgumentParser.Parse<T>(json, label, JsonOptions);
 
     /// <summary>
-    /// Returns a typed denial when the resource key targets a .cel sidecar;
-    /// null when it does not.
-    /// </summary>
-    protected CallToolResult? ValidateNotCelTarget(ResourceKey resource, string original, string toolName)
-    {
-        var sidecarService = GetRequiredService<IWorkspaceWrapper>().WorkspaceService.ResourceService.Sidecars;
-        if (!sidecarService.IsSidecarKey(resource))
-        {
-            return null;
-        }
-
-        var message = $"Tool '{toolName}' was denied write access to '{original}' because direct writes to .cel files would corrupt their TOML structure. "
-            + $"Use the data_* tools instead (data_set_field, data_add_tag, etc.). "
-            + $"See the per-tool guides under Source/Core/Celbridge.Tools/Guides/Tools/data_*.md.";
-
-        return ToolResponse.Error(message);
-    }
-
-    /// <summary>
     /// Loads an embedded resource from the Celbridge.Tools assembly as a string.
     /// Returns a placeholder string when the resource is missing (build-time invariant).
     /// </summary>
